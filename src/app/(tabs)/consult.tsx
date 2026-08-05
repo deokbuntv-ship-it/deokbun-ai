@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable } from 'react-native';
 
@@ -53,13 +54,23 @@ const TOPICS: Topic[] = [
 export default function ConsultScreen() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const router = useRouter();
 
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
   const selectedTopic = TOPICS.find((topic) => topic.id === selectedTopicId) ?? null;
 
   const handleNext = () => {
-    // 이번 Sprint 범위 아님: 아직 다음 화면으로 이동하지 않음
+    if (selectedTopicId === null) {
+      return;
+    }
+
+    router.push({
+      pathname: '/birth-info',
+      params: {
+        topicId: selectedTopicId,
+      },
+    });
   };
 
   return (
@@ -85,7 +96,12 @@ export default function ConsultScreen() {
               const isSelected = topic.id === selectedTopicId;
 
               return (
-                <Pressable key={topic.id} onPress={() => setSelectedTopicId(topic.id)}>
+                <Pressable
+                  key={topic.id}
+                  onPress={() => setSelectedTopicId(topic.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                >
                   <Card
                     style={{
                       borderColor: isSelected ? theme.primary : theme.border,
