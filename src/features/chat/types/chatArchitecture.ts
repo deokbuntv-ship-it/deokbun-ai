@@ -34,11 +34,23 @@ export type LLMResponse = {
   text: string;
 };
 
+export type ConversationMemoryState = {
+  summary: string | null;
+  lastSummarizedMessageId: string | null;
+};
+
+export type ConversationMemoryResult = {
+  recentMessages: ChatMessage[];
+  messagesToSummarize: ChatMessage[];
+  existingSummary: string | null;
+  shouldUpdateSummary: boolean;
+};
+
 export type ChatServiceInput = {
   userMessage: string;
   draft: ConsultationDraft;
   messages: ChatMessage[];
-  conversationSummary: string | null;
+  conversationMemory: ConversationMemoryState;
 };
 
 export type ChatServiceResult =

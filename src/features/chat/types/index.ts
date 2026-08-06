@@ -1,12 +1,7 @@
 export type { ChatMessage } from './chat';
-
 export type {
-  LLMMessageRole,
-  LLMMessage,
-  SelectedConsultationContext,
-  PromptBuildInput,
-  LLMRequest,
-  LLMResponse,
-  ChatServiceInput,
-  ChatServiceResult,
+    ChatServiceInput,
+    ChatServiceResult, ConversationMemoryResult, ConversationMemoryState, LLMMessage, LLMMessageRole, LLMRequest,
+    LLMResponse, PromptBuildInput, SelectedConsultationContext
 } from './chatArchitecture';
+

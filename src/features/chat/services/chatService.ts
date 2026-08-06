@@ -1,6 +1,7 @@
 import type { LLMAdapter } from '@/features/chat/adapters/llmAdapter';
 import { chatConfig } from '@/features/chat/config/chatConfig';
 import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
+import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
 import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import type {
@@ -34,12 +35,15 @@ export function createChatService(adapter: LLMAdapter) {
       return { success: false, errorCode: 'INVALID_INPUT' };
     }
 
-    const recentMessages = input.messages.slice(-chatConfig.maxRecentMessages);
+    const memoryResult = computeConversationMemory(
+      input.messages,
+      input.conversationMemory,
+    );
 
     const promptMessages = buildPrompt({
       selectedContext,
-      conversationSummary: input.conversationSummary,
-      recentMessages,
+      conversationSummary: memoryResult.existingSummary,
+      recentMessages: memoryResult.recentMessages,
       currentUserMessage: trimmedUserMessage,
     });
 
