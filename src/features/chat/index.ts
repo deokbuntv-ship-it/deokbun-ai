@@ -2,17 +2,17 @@ export { ChatBubble } from './components/ChatBubble';
 export { ChatInput } from './components/ChatInput';
 
 export type {
-  ChatMessage,
-  ChatServiceInput,
-  ChatServiceResult,
-  ConversationMemoryResult,
-  ConversationMemoryState,
-  LLMMessage,
-  LLMMessageRole,
-  LLMRequest,
-  LLMResponse,
-  PromptBuildInput,
-  SelectedConsultationContext,
+    ChatMessage,
+    ChatServiceInput,
+    ChatServiceResult,
+    ConversationMemoryResult,
+    ConversationMemoryState,
+    LLMMessage,
+    LLMMessageRole,
+    LLMRequest,
+    LLMResponse,
+    PromptBuildInput,
+    SelectedConsultationContext
 } from './types';
 
 export { unconfiguredLLMAdapter } from './adapters/llmAdapter';
@@ -24,3 +24,5 @@ export { computeConversationMemory } from './memory/conversationMemory';
 export { buildPrompt } from './prompts/promptBuilder';
 export { selectConsultationContext } from './selectors/contextSelector';
 export { createChatService } from './services/chatService';
+export type { AuthGuard } from './services/chatService';
+

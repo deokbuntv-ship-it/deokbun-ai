@@ -9,7 +9,9 @@ import type {
     ChatServiceResult,
 } from '@/features/chat/types/chatArchitecture';
 
-export function createChatService(adapter: LLMAdapter) {
+export type AuthGuard = () => boolean;
+
+export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
   async function sendMessage(
     input: ChatServiceInput,
   ): Promise<ChatServiceResult> {
@@ -27,6 +29,10 @@ export function createChatService(adapter: LLMAdapter) {
 
     if (gatewayResult.type === 'LOCAL_RESPONSE') {
       return { success: true, responseText: gatewayResult.text };
+    }
+
+    if (!authGuard()) {
+      return { success: false, errorCode: 'AUTH_REQUIRED' };
     }
 
     const selectedContext = selectConsultationContext(input.draft);

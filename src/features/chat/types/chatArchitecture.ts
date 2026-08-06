@@ -60,5 +60,9 @@ export type ChatServiceResult =
     }
   | {
       success: false;
-      errorCode: 'NOT_CONFIGURED' | 'INVALID_INPUT' | 'REQUEST_FAILED';
+      errorCode:
+        | 'NOT_CONFIGURED'
+        | 'INVALID_INPUT'
+        | 'REQUEST_FAILED'
+        | 'AUTH_REQUIRED';
     };

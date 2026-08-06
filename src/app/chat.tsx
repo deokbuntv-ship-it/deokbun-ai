@@ -6,6 +6,7 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
+import { useAuth } from '@/features/auth';
 import {
     ChatBubble,
     ChatInput,
@@ -23,12 +24,13 @@ const WELCOME_MESSAGE_TEXT =
 const ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT =
   '현재 AI 상담 기능을 준비하고 있습니다.\n잠시 후 다시 시도해 주세요.';
 
+const AUTH_REQUIRED_MESSAGE_TEXT =
+  'AI 상담을 이용하려면 로그인이 필요합니다.\n로그인 기능은 현재 준비 중입니다.';
+
 const INITIAL_CONVERSATION_MEMORY: ConversationMemoryState = {
   summary: null,
   lastSummarizedMessageId: null,
 };
-
-const chatService = createChatService(unconfiguredLLMAdapter);
 
 function createMessageId(role: ChatMessage['role']): string {
   return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -36,6 +38,7 @@ function createMessageId(role: ChatMessage['role']): string {
 
 export default function ChatScreen() {
   const { draft } = useConsultationDraft();
+  const { isAuthenticated } = useAuth();
 
   const isDraftReady = draft.subject !== null && draft.birthInfo !== null;
 
@@ -49,6 +52,10 @@ export default function ChatScreen() {
   );
 
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const chatServiceRef = useRef(
+    createChatService(unconfiguredLLMAdapter, () => isAuthenticated),
+  );
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -82,7 +89,7 @@ export default function ChatScreen() {
     setIsSending(true);
 
     try {
-      const result = await chatService.sendMessage({
+      const result = await chatServiceRef.current.sendMessage({
         userMessage: trimmedInput,
         draft,
         messages: previousMessages,
@@ -101,10 +108,15 @@ export default function ChatScreen() {
           assistantMessage,
         ]);
       } else {
+        const errorText =
+          result.errorCode === 'AUTH_REQUIRED'
+            ? AUTH_REQUIRED_MESSAGE_TEXT
+            : ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT;
+
         const assistantMessage: ChatMessage = {
           id: createMessageId('assistant'),
           role: 'assistant',
-          text: ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT,
+          text: errorText,
         };
 
         setMessages((currentMessages) => [
