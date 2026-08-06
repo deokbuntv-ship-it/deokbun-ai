@@ -6,15 +6,32 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
-import { ChatBubble, ChatInput, type ChatMessage } from '@/features/chat';
+import {
+    ChatBubble,
+    ChatInput,
+    createChatService,
+    unconfiguredLLMAdapter,
+    type ChatMessage,
+    type ConversationMemoryState,
+} from '@/features/chat';
 import { useConsultationDraft } from '@/features/consultation';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
   '안녕하세요. 덕분AI입니다. 😊\n\n출생정보 등록이 완료되었습니다.\n상담을 시작할 준비가 되었습니다.\n\n궁금한 점이나 고민이 있으시면 편하게 말씀해 주세요.';
 
-function createUserMessageId(): string {
-  return `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT =
+  '현재 AI 상담 기능을 준비하고 있습니다.\n잠시 후 다시 시도해 주세요.';
+
+const INITIAL_CONVERSATION_MEMORY: ConversationMemoryState = {
+  summary: null,
+  lastSummarizedMessageId: null,
+};
+
+const chatService = createChatService(unconfiguredLLMAdapter);
+
+function createMessageId(role: ChatMessage['role']): string {
+  return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export default function ChatScreen() {
@@ -26,28 +43,80 @@ export default function ChatScreen() {
     { id: 'welcome-message', role: 'assistant', text: WELCOME_MESSAGE_TEXT },
   ]);
   const [inputText, setInputText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [conversationMemory] = useState<ConversationMemoryState>(
+    INITIAL_CONVERSATION_MEMORY,
+  );
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const handleSend = () => {
-    const trimmed = inputText.trim();
-
-    if (trimmed.length === 0) {
-      return;
-    }
-
-    const newMessage: ChatMessage = {
-      id: createUserMessageId(),
-      role: 'user',
-      text: trimmed,
-    };
-
-    setMessages((current) => [...current, newMessage]);
-    setInputText('');
-
+  const scrollToEnd = () => {
     requestAnimationFrame(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     });
+  };
+
+  const handleSend = async () => {
+    if (isSending) {
+      return;
+    }
+
+    const trimmedInput = inputText.trim();
+
+    if (trimmedInput.length === 0) {
+      return;
+    }
+
+    const previousMessages = messages;
+
+    const userMessage: ChatMessage = {
+      id: createMessageId('user'),
+      role: 'user',
+      text: trimmedInput,
+    };
+
+    setMessages((currentMessages) => [...currentMessages, userMessage]);
+    setInputText('');
+    scrollToEnd();
+
+    setIsSending(true);
+
+    try {
+      const result = await chatService.sendMessage({
+        userMessage: trimmedInput,
+        draft,
+        messages: previousMessages,
+        conversationMemory,
+      });
+
+      if (result.success) {
+        const assistantMessage: ChatMessage = {
+          id: createMessageId('assistant'),
+          role: 'assistant',
+          text: result.responseText,
+        };
+
+        setMessages((currentMessages) => [
+          ...currentMessages,
+          assistantMessage,
+        ]);
+      } else {
+        const assistantMessage: ChatMessage = {
+          id: createMessageId('assistant'),
+          role: 'assistant',
+          text: ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT,
+        };
+
+        setMessages((currentMessages) => [
+          ...currentMessages,
+          assistantMessage,
+        ]);
+      }
+
+      scrollToEnd();
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!isDraftReady) {
@@ -91,7 +160,7 @@ export default function ChatScreen() {
               value={inputText}
               onChangeText={setInputText}
               onSend={handleSend}
-              disabled={inputText.trim().length === 0}
+              disabled={inputText.trim().length === 0 || isSending}
             />
           </View>
         </View>
