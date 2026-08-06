@@ -1,22 +1,25 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
 
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { Input } from '@/components/Input';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { Card } from '@/components/Card';
-import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
+import { MaxContentWidth } from '@/constants/theme';
+import {
+    useConsultationDraft,
+    type ApproximateTimePeriod,
+    type BirthInfoDraft,
+    type BirthTimeAccuracy,
+    type CalendarType,
+    type Gender,
+    type LunarMonthType,
+} from '@/features/consultation';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors } from '@/theme';
-import { MaxContentWidth } from '@/constants/theme';
-
-type Gender = 'male' | 'female';
-type CalendarType = 'solar' | 'lunar';
-type LunarMonthType = 'normal' | 'leap';
-type BirthTimeAccuracy = 'exact' | 'approximate' | 'unknown';
-type ApproximateTimePeriod = 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night';
 
 type SelectOption<T extends string> = {
   value: T;
@@ -34,7 +37,7 @@ const CALENDAR_TYPE_OPTIONS: SelectOption<CalendarType>[] = [
 ];
 
 const LUNAR_MONTH_TYPE_OPTIONS: SelectOption<LunarMonthType>[] = [
-  { value: 'normal', label: '평달' },
+  { value: 'regular', label: '평달' },
   { value: 'leap', label: '윤달' },
 ];
 
@@ -116,9 +119,8 @@ function isValidMinute(value: string): boolean {
 }
 
 export default function BirthInfoScreen() {
-  const { topicId } = useLocalSearchParams<{ topicId?: string }>();
-
-  void topicId;
+  const router = useRouter();
+  const { updateBirthInfo } = useConsultationDraft();
 
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
@@ -172,8 +174,28 @@ export default function BirthInfoScreen() {
     isBirthTimeValid &&
     birthPlace.trim().length > 0;
 
-  const handleGoToQuestion = () => {
-    // 이번 Sprint 범위 아님: 질문 입력 화면으로 아직 이동하지 않음
+  const handleStartConsultation = () => {
+    if (!isFormValid || gender === null || calendarType === null || birthTimeAccuracy === null) {
+      return;
+    }
+
+    const birthInfo: BirthInfoDraft = {
+      displayName: displayName.trim(),
+      gender,
+      calendarType,
+      lunarMonthType: calendarType === 'lunar' ? lunarMonthType : null,
+      birthYear: year,
+      birthMonth: month,
+      birthDay: day,
+      birthTimeAccuracy,
+      birthHour: birthTimeAccuracy === 'exact' ? hour : '',
+      birthMinute: birthTimeAccuracy === 'exact' ? minute : '',
+      approximateTimePeriod: birthTimeAccuracy === 'approximate' ? approximatePeriod : null,
+      birthPlace: birthPlace.trim(),
+    };
+
+    updateBirthInfo(birthInfo);
+    router.push('/chat');
   };
 
   return (
@@ -317,9 +339,9 @@ export default function BirthInfoScreen() {
             />
 
             <Button
-              label="질문 입력으로 이동"
+              label="상담 시작하기"
               disabled={!isFormValid}
-              onPress={handleGoToQuestion}
+              onPress={handleStartConsultation}
             />
           </Stack>
         </View>

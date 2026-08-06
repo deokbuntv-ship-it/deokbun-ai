@@ -8,38 +8,6 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 
-type ConsultationMethod = {
-  id: string;
-  title: string;
-  description: string;
-};
-
-const CONSULTATION_METHODS: ConsultationMethod[] = [
-  {
-    id: 'myeongrihak',
-    title: '명리학',
-    description: '타고난 성향과 장기적인 흐름',
-  },
-  {
-    id: 'jamidusu',
-    title: '자미두수',
-    description: '삶의 영역별 구조와 변화',
-  },
-  {
-    id: 'gimundungap',
-    title: '기문둔갑',
-    description: '특정 시점의 선택과 방향',
-  },
-];
-
-const RECOMMENDED_TOPICS: string[] = [
-  '나의 성향과 강점',
-  '직업과 사업 방향',
-  '재물 흐름',
-  '인간관계',
-  '중요한 결정과 시기',
-];
-
 export default function HomeScreen() {
   const router = useRouter();
 
@@ -59,54 +27,40 @@ export default function HomeScreen() {
             <Stack gap="xs">
               <Text variant="displayMedium">덕분AI</Text>
               <Text variant="bodyMedium" colorToken="textSecondary">
-                세 가지 관점으로 더 깊게 보는 AI 상담
+                편하게 이야기를 나누는 AI 상담
               </Text>
             </Stack>
 
             {/* 2. 메인 상담 시작 카드 */}
             <Card elevation="md">
               <Stack gap="md">
-                <Text variant="headingMedium">새로운 상담을 시작해 보세요</Text>
+                <Text variant="headingMedium">편하게 이야기를 시작해 보세요</Text>
                 <Text variant="bodyMedium" colorToken="textSecondary">
-                  명리학과 자미두수를 중심으로 분석하고, 질문에 따라 기문둔갑
-                  관점을 더합니다.
+                  궁금한 점이나 고민이 있다면 덕분AI와 자유롭게 대화해 보세요.
                 </Text>
                 <Button label="상담 시작하기" onPress={handleStartConsultation} />
               </Stack>
             </Card>
 
-            {/* 3. 상담 방식 소개 영역 */}
-            <Stack gap="md">
-              <Text variant="headingMedium">상담 방식 소개</Text>
-              <Stack gap="sm">
-                {CONSULTATION_METHODS.map((method) => (
-                  <Card key={method.id} elevation="sm">
-                    <Stack gap="xs">
-                      <Text variant="bodyLarge">{method.title}</Text>
-                      <Text variant="bodySmall" colorToken="textSecondary">
-                        {method.description}
-                      </Text>
-                    </Stack>
-                  </Card>
-                ))}
+            {/* 3. 운세 리포트 영역 */}
+            <Card elevation="sm">
+              <Stack gap="xs">
+                <Text variant="headingMedium">운세 리포트</Text>
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  상세 기능은 추후 확정됩니다.
+                </Text>
               </Stack>
-              <Text variant="caption" colorToken="textSecondary">
-                기문둔갑은 모든 상담에서 사용되지 않으며, 질문과 시점 조건에
-                따라 활용됩니다.
-              </Text>
-            </Stack>
+            </Card>
 
-            {/* 4. 추천 상담 주제 */}
-            <Stack gap="md">
-              <Text variant="headingMedium">추천 상담 주제</Text>
-              <Stack direction="row" gap="sm" style={styles.topicWrap}>
-                {RECOMMENDED_TOPICS.map((topic) => (
-                  <View key={topic} style={styles.topicChip}>
-                    <Text variant="bodySmall">{topic}</Text>
-                  </View>
-                ))}
+            {/* 4. 오늘의 운세 영역 */}
+            <Card elevation="sm">
+              <Stack gap="xs">
+                <Text variant="headingMedium">오늘의 운세</Text>
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  상세 기능은 추후 확정됩니다.
+                </Text>
               </Stack>
-            </Stack>
+            </Card>
 
             {/* 5. 최근 상담 영역 (Empty State) */}
             <Stack gap="md">
@@ -147,14 +101,5 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-  },
-  topicWrap: {
-    flexWrap: 'wrap',
-  },
-  topicChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: 'rgba(128, 128, 128, 0.12)',
   },
 });

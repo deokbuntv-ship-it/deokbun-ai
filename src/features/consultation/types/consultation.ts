@@ -19,11 +19,6 @@ export type ConsultationSubject = {
   relationship: string | null;
 };
 
-export type ConsultationTopic = {
-  id: string;
-  title: string;
-};
-
 export type BirthInfoDraft = {
   displayName: string;
   gender: Gender | null;
@@ -39,21 +34,12 @@ export type BirthInfoDraft = {
   birthPlace: string;
 };
 
-export type QuestionDraft = {
-  text: string;
-  recommendedQuestionId: string | null;
-};
-
 export type ConsultationDraft = {
   subject: ConsultationSubject | null;
-  topic: ConsultationTopic | null;
   birthInfo: BirthInfoDraft | null;
-  question: QuestionDraft | null;
 };
 
 export const initialConsultationDraft: ConsultationDraft = {
   subject: null,
-  topic: null,
   birthInfo: null,
-  question: null,
 };
