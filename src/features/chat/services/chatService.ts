@@ -1,10 +1,11 @@
-import { chatConfig } from '@/features/chat/config/chatConfig';
-import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
-import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import type { LLMAdapter } from '@/features/chat/adapters/llmAdapter';
+import { chatConfig } from '@/features/chat/config/chatConfig';
+import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
+import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
+import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import type {
-  ChatServiceInput,
-  ChatServiceResult,
+    ChatServiceInput,
+    ChatServiceResult,
 } from '@/features/chat/types/chatArchitecture';
 
 export function createChatService(adapter: LLMAdapter) {
@@ -15,6 +16,16 @@ export function createChatService(adapter: LLMAdapter) {
 
     if (trimmedUserMessage.length === 0) {
       return { success: false, errorCode: 'INVALID_INPUT' };
+    }
+
+    const gatewayResult = evaluateMessage(trimmedUserMessage);
+
+    if (gatewayResult.type === 'INVALID_INPUT') {
+      return { success: false, errorCode: 'INVALID_INPUT' };
+    }
+
+    if (gatewayResult.type === 'LOCAL_RESPONSE') {
+      return { success: true, responseText: gatewayResult.text };
     }
 
     const selectedContext = selectConsultationContext(input.draft);
