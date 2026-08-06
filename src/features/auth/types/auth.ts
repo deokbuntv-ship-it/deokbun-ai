@@ -10,3 +10,5 @@ export type AuthState = {
   status: AuthStatus;
   user: AuthUser | null;
 };
+
+export type AuthProviderId = 'kakao' | 'google' | 'naver' | 'apple';
