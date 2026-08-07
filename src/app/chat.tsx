@@ -40,7 +40,7 @@ function createMessageId(role: ChatMessage['role']): string {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { draft } = useConsultationDraft();
+  const { draft, hydrationStatus } = useConsultationDraft();
   const { isAuthenticated } = useAuth();
 
   const isDraftReady = draft.subject !== null && draft.birthInfo !== null;
@@ -138,6 +138,20 @@ export default function ChatScreen() {
       setIsSending(false);
     }
   };
+
+  if (hydrationStatus !== 'ready') {
+    return (
+      <Screen>
+        <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
+          <Card>
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              상담 정보를 불러오는 중입니다...
+            </Text>
+          </Card>
+        </Stack>
+      </Screen>
+    );
+  }
 
   if (!isDraftReady) {
     return (
