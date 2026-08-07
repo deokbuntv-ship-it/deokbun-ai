@@ -13,7 +13,7 @@ import {
     ChatBubble,
     ChatInput,
     createChatService,
-    unconfiguredLLMAdapter,
+    supabaseEdgeLLMAdapter,
     type ChatMessage,
     type ConversationMemoryState,
 } from '@/features/chat';
@@ -58,7 +58,7 @@ export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const chatServiceRef = useRef(
-    createChatService(unconfiguredLLMAdapter, () => isAuthenticated),
+    createChatService(supabaseEdgeLLMAdapter, () => isAuthenticated),
   );
 
   const scrollToEnd = () => {

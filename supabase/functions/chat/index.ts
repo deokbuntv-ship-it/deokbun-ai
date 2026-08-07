@@ -1,0 +1,210 @@
+// DeokbunAI — Chat Edge Function
+//
+// This is the ONLY place a real LLM provider is called (server trust boundary).
+//
+// Principles enforced here:
+// - OpenAI API key lives only in server secrets (never in the client).           [Sprint 2-19 #1, #6]
+// - Only authenticated Supabase users may call this function.                     [#3, #4]
+//   Auth uses the recommended `withSupabase({ auth: 'user' })` wrapper with the
+//   platform-level `verify_jwt = true`; unauthenticated requests are rejected
+//   before this handler runs.
+// - The client only sends `messages`. The MODEL and OUTPUT TOKEN LIMIT are
+//   decided by the server (env/secret), so the client cannot inflate cost.       [#15, #16, #17]
+// - A future Rate Limit / Usage check can be added at the top of this handler
+//   without changing the pipeline.                                               [#13]
+//
+// Logging policy: the success path is silent. Only failure paths log, via
+// `console.error`, and never include secrets, tokens, the Authorization header,
+// the user JWT, the request body, or the full OpenAI response body — only a
+// stage marker, HTTP status, or exception name/message.
+//
+// Runtime: Supabase Edge Functions (Deno). This file is intentionally excluded
+// from the app's TypeScript project (see tsconfig `exclude`) and is never bundled
+// by Metro — it runs only on Supabase.
+
+import { withSupabase } from 'npm:@supabase/server';
+
+type ChatMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
+
+const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
+const DEFAULT_MODEL = 'gpt-5-mini';
+const DEFAULT_MAX_OUTPUT_TOKENS = 800;
+
+function readServerConfig() {
+  const apiKey = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
+  const model = Deno.env.get('LLM_MODEL')?.trim() || DEFAULT_MODEL;
+
+  const rawMaxOutputTokens = Deno.env.get('LLM_MAX_OUTPUT_TOKENS')?.trim();
+  const parsedMaxOutputTokens = Number(rawMaxOutputTokens);
+  const maxOutputTokens =
+    Number.isFinite(parsedMaxOutputTokens) && parsedMaxOutputTokens > 0
+      ? Math.floor(parsedMaxOutputTokens)
+      : DEFAULT_MAX_OUTPUT_TOKENS;
+
+  return { apiKey, model, maxOutputTokens };
+}
+
+function isValidMessages(value: unknown): value is ChatMessage[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (message) =>
+        message !== null &&
+        typeof message === 'object' &&
+        (message.role === 'system' ||
+          message.role === 'user' ||
+          message.role === 'assistant') &&
+        typeof message.content === 'string',
+    )
+  );
+}
+
+// Extract assistant text from the raw Responses API JSON.
+// The raw HTTP response exposes an `output` array; the assistant text lives in a
+// `message` item's `output_text` content parts. `output_text` at the top level
+// is an SDK convenience and may be absent in the raw payload, so it is only a
+// fallback here.
+function extractText(payload: unknown): string {
+  const output = (payload as { output?: unknown } | null)?.output;
+
+  if (Array.isArray(output)) {
+    const parts: string[] = [];
+
+    for (const item of output) {
+      if (item?.type === 'message' && Array.isArray(item.content)) {
+        for (const contentPart of item.content) {
+          if (
+            contentPart?.type === 'output_text' &&
+            typeof contentPart.text === 'string'
+          ) {
+            parts.push(contentPart.text);
+          }
+        }
+      }
+    }
+
+    const joined = parts.join('').trim();
+    if (joined.length > 0) {
+      return joined;
+    }
+  }
+
+  const convenience = (payload as { output_text?: unknown } | null)?.output_text;
+  if (typeof convenience === 'string' && convenience.trim().length > 0) {
+    return convenience.trim();
+  }
+
+  return '';
+}
+
+export default {
+  fetch: withSupabase(
+    { auth: 'user' },
+    async (req: Request, _ctx: unknown): Promise<Response> => {
+      // `stage` is tracked so an unhandled exception can be attributed to a step.
+      let stage = 'auth_completed';
+
+      try {
+        // Future: insert Rate Limit / Usage checks here (#13) before any LLM call.
+
+        if (req.method !== 'POST') {
+          return Response.json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
+        }
+
+        const { apiKey, model, maxOutputTokens } = readServerConfig();
+
+        if (apiKey.length === 0) {
+          // Missing secret — do not leak configuration details to the client.
+          console.error('[chat] server_not_configured');
+          return Response.json({ error: 'SERVER_NOT_CONFIGURED' }, { status: 500 });
+        }
+
+        let body: unknown;
+        try {
+          body = await req.json();
+        } catch {
+          return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+
+        const messages = (body as { messages?: unknown } | null)?.messages;
+        if (!isValidMessages(messages)) {
+          return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+
+        stage = 'openai_request';
+
+        let providerResponse: Response;
+        try {
+          providerResponse = await fetch(OPENAI_RESPONSES_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model, // server-decided (#15, #17)
+              input: messages,
+              max_output_tokens: maxOutputTokens, // server-enforced (#16, #17)
+            }),
+          });
+        } catch (fetchError) {
+          // Network/transport failure before any HTTP status was received.
+          console.error(
+            '[chat] openai_fetch_threw',
+            JSON.stringify({
+              stage,
+              name: (fetchError as Error)?.name ?? 'UnknownError',
+              message: (fetchError as Error)?.message ?? String(fetchError),
+            }),
+          );
+          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+        }
+
+        if (!providerResponse.ok) {
+          // Fault tracking: HTTP status ONLY (e.g. 429 billing/quota, 401, 5xx).
+          // Never forward the provider's error body/URL/token to the client (#20).
+          console.error(
+            '[chat] openai_error_status',
+            JSON.stringify({ status: providerResponse.status }),
+          );
+          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+        }
+
+        stage = 'response_parse';
+
+        let payload: unknown;
+        try {
+          payload = await providerResponse.json();
+        } catch {
+          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+        }
+
+        const text = extractText(payload);
+
+        if (text.length === 0) {
+          // Fault tracking: no assistant text parsed (marker only, no content).
+          console.error('[chat] empty_response');
+          return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
+        }
+
+        return Response.json({ text });
+      } catch (error) {
+        // Fault tracking: capture the failing stage + exception identity, then
+        // re-throw to preserve the platform's EDGE_FUNCTION_ERROR behavior.
+        console.error(
+          '[chat] unhandled_exception',
+          JSON.stringify({
+            stage,
+            name: (error as Error)?.name ?? 'UnknownError',
+            message: (error as Error)?.message ?? String(error),
+          }),
+        );
+        throw error;
+      }
+    },
+  ),
+};

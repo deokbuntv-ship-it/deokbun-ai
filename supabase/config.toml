@@ -1,0 +1,13 @@
+# Supabase project configuration (minimal — Edge Functions only).
+#
+# This declares the `chat` Edge Function with platform JWT verification enabled,
+# so only authenticated users can invoke it.
+#
+# If you prefer the full CLI-generated config, delete this file first and run
+# `supabase init`, then re-add the [functions.chat] block below.
+
+project_id = "olvkpaldrwvtexxpoaag"
+
+[functions.chat]
+enabled = true
+verify_jwt = true

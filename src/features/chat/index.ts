@@ -17,6 +17,7 @@ export type {
 
 export { unconfiguredLLMAdapter } from './adapters/llmAdapter';
 export type { LLMAdapter } from './adapters/llmAdapter';
+export { supabaseEdgeLLMAdapter } from './adapters/supabaseEdgeLLMAdapter';
 export { chatConfig } from './config/chatConfig';
 export { evaluateMessage } from './gateway/AIGateway';
 export type { GatewayResult } from './gateway/AIGateway';
