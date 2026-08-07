@@ -195,7 +195,8 @@ export default function BirthInfoScreen() {
     };
 
     updateBirthInfo(birthInfo);
-    router.push('/chat');
+    // Explicit "start new consultation" signal → chat starts a fresh conversation.
+    router.push({ pathname: '/chat', params: { startNew: '1' } });
   };
 
   return (

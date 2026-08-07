@@ -26,4 +26,10 @@ export { buildPrompt } from './prompts/promptBuilder';
 export { selectConsultationContext } from './selectors/contextSelector';
 export { createChatService } from './services/chatService';
 export type { AuthGuard } from './services/chatService';
+export { conversationService } from './services/conversationService';
+export type {
+    LoadedConversation, PersistableMessageRole
+} from './services/conversationService';
+export { useConversationPersistence } from './hooks/useConversationPersistence';
+export type { MessagesHydrationStatus } from './hooks/useConversationPersistence';
 

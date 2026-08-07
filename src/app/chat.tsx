@@ -1,5 +1,9 @@
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import {
+    useLocalSearchParams,
+    useRootNavigationState,
+    useRouter,
+} from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
@@ -14,6 +18,7 @@ import {
     ChatInput,
     createChatService,
     supabaseEdgeLLMAdapter,
+    useConversationPersistence,
     type ChatMessage,
     type ConversationMemoryState,
 } from '@/features/chat';
@@ -22,6 +27,12 @@ import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
   '안녕하세요. 덕분AI입니다. 😊\n\n출생정보 등록이 완료되었습니다.\n상담을 시작할 준비가 되었습니다.\n\n궁금한 점이나 고민이 있으시면 편하게 말씀해 주세요.';
+
+const WELCOME_MESSAGE: ChatMessage = {
+  id: 'welcome-message',
+  role: 'assistant',
+  text: WELCOME_MESSAGE_TEXT,
+};
 
 const ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT =
   '현재 AI 상담 기능을 준비하고 있습니다.\n잠시 후 다시 시도해 주세요.';
@@ -40,14 +51,28 @@ function createMessageId(role: ChatMessage['role']): string {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { draft, hydrationStatus } = useConsultationDraft();
+  const params = useLocalSearchParams<{ startNew?: string }>();
+  // Consume the one-shot "start new consultation" signal exactly once, at mount
+  // time, via a ref. We do NOT mutate navigation (no setParams/replace) — doing
+  // that during mount crashes ("navigate before mounting the Root Layout").
+  const startNewRef = useRef(params.startNew === '1');
+  const rootNavState = useRootNavigationState();
+  const startNewClearedRef = useRef(false);
+
+  const { draft, hydrationStatus: draftHydrationStatus } =
+    useConsultationDraft();
   const { isAuthenticated } = useAuth();
+
+  const {
+    hydrationStatus: messagesHydrationStatus,
+    restoredMessages,
+    resetToken,
+    persistMessage,
+  } = useConversationPersistence({ startNew: startNewRef.current });
 
   const isDraftReady = draft.subject !== null && draft.birthInfo !== null;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'welcome-message', role: 'assistant', text: WELCOME_MESSAGE_TEXT },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
@@ -60,6 +85,33 @@ export default function ChatScreen() {
   const chatServiceRef = useRef(
     createChatService(supabaseEdgeLLMAdapter, () => isAuthenticated),
   );
+
+  // After the root navigation is actually ready (never during mount), drop the
+  // one-shot startNew param exactly once so a later F5 restores the latest
+  // conversation instead of starting new again. The conversation hook keeps
+  // using the captured `startNewRef`, so clearing the URL neither cancels the
+  // new-consultation processing nor re-triggers hydration.
+  useEffect(() => {
+    if (!rootNavState?.key || startNewClearedRef.current) {
+      return;
+    }
+    startNewClearedRef.current = true;
+    if (params.startNew !== undefined) {
+      router.setParams({ startNew: undefined });
+    }
+  }, [rootNavState?.key, params.startNew, router]);
+
+  // Seed the visible messages once conversation hydration settles: the fixed
+  // welcome message first, then any restored history. Re-seeds on reset
+  // (login / logout / user switch / start-new).
+  useEffect(() => {
+    if (messagesHydrationStatus !== 'ready') {
+      return;
+    }
+    setMessages([WELCOME_MESSAGE, ...(restoredMessages ?? [])]);
+    setInputText('');
+    setIsAuthRequired(false);
+  }, [messagesHydrationStatus, resetToken, restoredMessages]);
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -89,6 +141,7 @@ export default function ChatScreen() {
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setInputText('');
     scrollToEnd();
+    persistMessage(userMessage);
 
     setIsSending(true);
 
@@ -111,6 +164,7 @@ export default function ChatScreen() {
           ...currentMessages,
           assistantMessage,
         ]);
+        persistMessage(assistantMessage);
       } else {
         if (result.errorCode === 'AUTH_REQUIRED') {
           setIsAuthRequired(true);
@@ -127,6 +181,7 @@ export default function ChatScreen() {
           text: errorText,
         };
 
+        // Error placeholders are intentionally NOT persisted.
         setMessages((currentMessages) => [
           ...currentMessages,
           assistantMessage,
@@ -139,7 +194,10 @@ export default function ChatScreen() {
     }
   };
 
-  if (hydrationStatus !== 'ready') {
+  if (
+    draftHydrationStatus !== 'ready' ||
+    messagesHydrationStatus !== 'ready'
+  ) {
     return (
       <Screen>
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
