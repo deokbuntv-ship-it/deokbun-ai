@@ -1,6 +1,8 @@
+import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
@@ -25,7 +27,7 @@ const ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT =
   '현재 AI 상담 기능을 준비하고 있습니다.\n잠시 후 다시 시도해 주세요.';
 
 const AUTH_REQUIRED_MESSAGE_TEXT =
-  'AI 상담을 이용하려면 로그인이 필요합니다.\n로그인 기능은 현재 준비 중입니다.';
+  'AI 상담을 이용하려면 로그인이 필요합니다.\n아래 "로그인하기" 버튼을 눌러 로그인해 주세요.';
 
 const INITIAL_CONVERSATION_MEMORY: ConversationMemoryState = {
   summary: null,
@@ -37,6 +39,7 @@ function createMessageId(role: ChatMessage['role']): string {
 }
 
 export default function ChatScreen() {
+  const router = useRouter();
   const { draft } = useConsultationDraft();
   const { isAuthenticated } = useAuth();
 
@@ -47,6 +50,7 @@ export default function ChatScreen() {
   ]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [conversationMemory] = useState<ConversationMemoryState>(
     INITIAL_CONVERSATION_MEMORY,
   );
@@ -108,6 +112,10 @@ export default function ChatScreen() {
           assistantMessage,
         ]);
       } else {
+        if (result.errorCode === 'AUTH_REQUIRED') {
+          setIsAuthRequired(true);
+        }
+
         const errorText =
           result.errorCode === 'AUTH_REQUIRED'
             ? AUTH_REQUIRED_MESSAGE_TEXT
@@ -168,6 +176,14 @@ export default function ChatScreen() {
 
         <View style={styles.inputArea}>
           <View style={styles.contentWrapper}>
+            {isAuthRequired && !isAuthenticated ? (
+              <Stack gap="xs" style={styles.loginPrompt}>
+                <Button
+                  label="로그인하기"
+                  onPress={() => router.push('/login')}
+                />
+              </Stack>
+            ) : null}
             <ChatInput
               value={inputText}
               onChangeText={setInputText}
@@ -200,5 +216,8 @@ const styles = StyleSheet.create({
   inputArea: {
     paddingVertical: spacing.sm,
     alignItems: 'center',
+  },
+  loginPrompt: {
+    marginBottom: spacing.sm,
   },
 });
