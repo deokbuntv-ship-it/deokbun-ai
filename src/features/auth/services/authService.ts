@@ -21,12 +21,16 @@ export type AuthActionResult =
 				| 'REQUEST_FAILED';
 		};
 
-async function signInWithKakao(): Promise<AuthActionResult> {
+type SupabaseOAuthProvider = 'kakao' | 'google';
+
+async function signInWithSupabaseOAuth(
+	provider: SupabaseOAuthProvider,
+): Promise<AuthActionResult> {
 	const supabase = getSupabaseClient();
 	const redirectTo = makeRedirectUri({ path: 'login-callback' });
 
 	const { data, error } = await supabase.auth.signInWithOAuth({
-		provider: 'kakao',
+		provider,
 		options: {
 			redirectTo,
 			skipBrowserRedirect: true,
@@ -74,8 +78,8 @@ async function signInWithKakao(): Promise<AuthActionResult> {
 async function signInWithProvider(
 	providerId: AuthProviderId,
 ): Promise<AuthActionResult> {
-	if (providerId === 'kakao') {
-		return signInWithKakao();
+	if (providerId === 'kakao' || providerId === 'google') {
+		return signInWithSupabaseOAuth(providerId);
 	}
 
 	return { success: false, reason: 'NOT_SUPPORTED' };

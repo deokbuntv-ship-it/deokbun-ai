@@ -5,7 +5,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { useAuth } from '@/features/auth';
+import { useAuth, type AuthProviderId } from '@/features/auth';
 
 const SIGN_IN_FAILED_MESSAGE = '로그인에 실패했습니다. 다시 시도해 주세요.';
 
@@ -15,10 +15,10 @@ export default function LoginScreen() {
 
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  const handleKakaoLogin = async () => {
+  const handleLogin = async (providerId: AuthProviderId) => {
     setErrorText(null);
 
-    const success = await signInWithProvider('kakao');
+    const success = await signInWithProvider(providerId);
 
     if (success) {
       router.replace('/');
@@ -40,7 +40,13 @@ export default function LoginScreen() {
 
         <Button
           label="카카오로 시작하기"
-          onPress={handleKakaoLogin}
+          onPress={() => handleLogin('kakao')}
+          disabled={isSigningIn}
+        />
+
+        <Button
+          label="Google로 시작하기"
+          onPress={() => handleLogin('google')}
           disabled={isSigningIn}
         />
 
