@@ -44,3 +44,6 @@ example
 /ios
 /android
 *.zip
+
+# supabase CLI local state
+supabase/.temp/
