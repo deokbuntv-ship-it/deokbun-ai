@@ -28,20 +28,33 @@ export type ResolutionProvenance = {
   source: TemporalDataSource | 'ENGINE';
 };
 
+export type ResolvedLunarDate = LocalDate & {
+  lunarMonthKind: 'REGULAR' | 'LEAP';
+};
+
+export type ResolvedLunisolarCalendar = {
+  sourceDate: BirthCalendarDate;
+  gregorianDate: LocalDate;
+  lunarDate: ResolvedLunarDate;
+  calendarDatasetVersion: string;
+  calendarConversionRuleVersion: string;
+  provenance: ResolutionProvenance;
+};
+
 export type CalendarResolution =
-  | {
+  | (ResolvedLunisolarCalendar & {
       status: 'RESOLVED';
-      sourceDate: BirthCalendarDate;
-      gregorianDate: LocalDate;
-      provenance: ResolutionProvenance;
-    }
+    })
   | {
       status: 'UNRESOLVED';
       sourceDate: BirthCalendarDate;
       reason:
         | 'RESOLVER_NOT_PROVIDED'
         | 'UNSUPPORTED_CALENDAR_RANGE'
-        | 'INVALID_LUNAR_MONTH_KIND';
+        | 'INVALID_LUNAR_DATE'
+        | 'INVALID_LUNAR_MONTH_KIND'
+        | 'CALENDAR_DATA_UNAVAILABLE'
+        | 'CALENDAR_CONVERSION_FAILED';
     };
 
 export type CivilLocalBirthTime =
@@ -168,6 +181,15 @@ export type CalendarResolver = {
   resolveToGregorian(
     date: BirthCalendarDate,
   ): Promise<CalendarResolution>;
+};
+
+/**
+ * Resolves either Gregorian or Lunar input into both representations. It owns
+ * conversion, leap-month/month-length validation, range validation, and
+ * dataset provenance. No conversion algorithm or dataset is supplied here.
+ */
+export type LunisolarCalendarResolver = {
+  resolve(date: BirthCalendarDate): Promise<CalendarResolution>;
 };
 
 export type HistoricalTimezoneResolutionRequest = {

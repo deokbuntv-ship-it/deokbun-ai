@@ -65,7 +65,10 @@ export type {
   EngineCapabilityStatus,
   HistoricalTimezoneResolutionRequest,
   HistoricalTimezoneResolver,
+  LunisolarCalendarResolver,
   NormalizedBirthInput,
+  ResolvedLunarDate,
+  ResolvedLunisolarCalendar,
   ResolutionProvenance,
   TimezoneResolution,
   TrueSolarTimeResolution,
@@ -73,6 +76,27 @@ export type {
   TrueSolarTimeResolver,
 } from './contracts/normalization';
 export type { SajuEngineInput } from './contracts/saju';
+export {
+  DEOKBUNAI_SAJU_V1_RULE_ID,
+  DEOKBUNAI_SAJU_V1_RULE_PROFILE,
+  DEOKBUNAI_SAJU_V1_RULE_VERSION,
+  SAJU_LUNAR_MONTH_BRANCHES,
+} from './contracts/sajuRules';
+export type {
+  LunarMonthOrdinal,
+  SajuCalculationIdentity,
+  SajuCivilMidnightPolicy,
+  SajuDayBoundaryRule,
+  SajuLeapMonthRule,
+  SajuMonthEarthlyBranch,
+  SajuMonthPillarRule,
+  SajuPillarRuleProfile,
+  SajuProductRuleGoldenCaseKind,
+  SajuSolarTermRole,
+  SajuTrueSolarTimeRule,
+  SajuYearPillarRule,
+  SajuYearMonthPillarCalculationInput,
+} from './contracts/sajuRules';
 export type { ZiweiEngineInput } from './contracts/ziwei';
 export type {
   CanonicalEventInput,
