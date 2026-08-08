@@ -158,3 +158,18 @@ export {
   resolveLunarToGregorian,
 } from './calendar/resolver';
 export { validateCalendarDataset } from './calendar/integrity';
+export {
+  KASI_LUNISOLAR_CALENDAR_RESOLVER,
+  resolveWithKasiCalendar,
+} from './calendar/kasiCalendarResolver';
+export {
+  KASI_CALENDAR_DATASET,
+  KASI_CALENDAR_MANIFEST,
+  KASI_LUNAR_MONTH_RECORDS,
+} from './calendar/data/kasiCalendarV1';
+export {
+  KASI_CALENDAR_GOLDEN_FIXTURES,
+} from './calendar/fixtures/kasiCalendarGoldenFixtures';
+export type {
+  KasiCalendarGoldenFixture,
+} from './calendar/fixtures/kasiCalendarGoldenFixtures';

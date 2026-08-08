@@ -105,8 +105,20 @@ export function validateCalendarDataset(dataset: CalendarDataset): CalendarInteg
     }
   });
 
+  const lunarYears = [...regularMonthsByYear.keys()].sort((left, right) => left - right);
+  const firstLunarYear = lunarYears[0];
+  const lastLunarYear = lunarYears[lunarYears.length - 1];
   regularMonthsByYear.forEach((months, year) => {
-    if (months.size !== 12) {
+    const orderedMonths = [...months].sort((left, right) => left - right);
+    const isCompleteYear = orderedMonths.length === 12 &&
+      orderedMonths.every((month, index) => month === index + 1);
+    const isLeadingBoundary =
+      year === firstLunarYear &&
+      orderedMonths.every((month, index) => month === 12 - orderedMonths.length + index + 1);
+    const isTrailingBoundary =
+      year === lastLunarYear &&
+      orderedMonths.every((month, index) => month === index + 1);
+    if (!isCompleteYear && !isLeadingBoundary && !isTrailingBoundary) {
       errors.push({
         code: 'DATASET_CORRUPTION',
         path: 'records',
