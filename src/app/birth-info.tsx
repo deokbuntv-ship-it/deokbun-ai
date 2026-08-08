@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
@@ -12,6 +12,7 @@ import { MaxContentWidth } from '@/constants/theme';
 import {
     consultationSubjectService,
     createTempSubjectId,
+    isSavedSubjectId,
     useConsultationDraft,
     type ApproximateTimePeriod,
     type BirthInfoDraft,
@@ -56,6 +57,8 @@ const APPROXIMATE_TIME_PERIOD_OPTIONS: SelectOption<ApproximateTimePeriod>[] = [
   { value: 'evening', label: '저녁' },
   { value: 'night', label: '밤' },
 ];
+
+type EditStatus = 'loading' | 'ready' | 'invalid' | 'notfound' | 'error';
 
 function SelectField<T extends string>({
   options,
@@ -122,11 +125,17 @@ function isValidMinute(value: string): boolean {
 
 export default function BirthInfoScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ subjectId?: string }>();
+  const subjectId =
+    typeof params.subjectId === 'string' ? params.subjectId : undefined;
+  const isEditMode = subjectId !== undefined;
+
   const { updateSubject, updateBirthInfo } = useConsultationDraft();
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   const [displayName, setDisplayName] = useState('');
+  const [relationship, setRelationship] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
   const [calendarType, setCalendarType] = useState<CalendarType | null>(null);
   const [lunarMonthType, setLunarMonthType] = useState<LunarMonthType | null>(null);
@@ -142,9 +151,73 @@ export default function BirthInfoScreen() {
 
   const [birthPlace, setBirthPlace] = useState('');
 
-  const [saveAsSelf, setSaveAsSelf] = useState(false);
+  const [isSelf, setIsSelf] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [editStatus, setEditStatus] = useState<EditStatus>(
+    isEditMode ? 'loading' : 'ready',
+  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Edit mode: validate the id and prefill the form from the saved subject.
+  useEffect(() => {
+    if (!isEditMode) {
+      return;
+    }
+    // Only real UUIDs are editable. temp:* / legacy 'self' / malformed ids are
+    // rejected without any DB lookup.
+    if (subjectId === undefined || !isSavedSubjectId(subjectId)) {
+      setEditStatus('invalid');
+      return;
+    }
+
+    let cancelled = false;
+    setEditStatus('loading');
+
+    consultationSubjectService
+      .getSubject(subjectId)
+      .then((record) => {
+        if (cancelled) {
+          return;
+        }
+        if (record === null) {
+          // RLS / non-existent: no fallback data is fabricated.
+          setEditStatus('notfound');
+          return;
+        }
+
+        setDisplayName(record.displayName ?? '');
+        setRelationship(record.relationship ?? '');
+        setIsSelf(record.isSelf);
+
+        const birthInfo = record.birthInfo;
+        setGender(birthInfo.gender);
+        setCalendarType(birthInfo.calendarType);
+        setLunarMonthType(birthInfo.lunarMonthType);
+        setYear(birthInfo.birthYear);
+        setMonth(birthInfo.birthMonth);
+        setDay(birthInfo.birthDay);
+        setBirthTimeAccuracy(birthInfo.birthTimeAccuracy);
+        setHour(birthInfo.birthHour);
+        setMinute(birthInfo.birthMinute);
+        setApproximatePeriod(birthInfo.approximateTimePeriod);
+        setBirthPlace(birthInfo.birthPlace);
+
+        setEditStatus('ready');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEditStatus('error');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, subjectId]);
 
   const handleCalendarTypeSelect = (value: CalendarType) => {
     setCalendarType(value);
@@ -203,12 +276,15 @@ export default function BirthInfoScreen() {
     };
   };
 
+  const relationshipValue = (): string | null =>
+    relationship.trim().length > 0 ? relationship.trim() : null;
+
   const startConsultation = () => {
     // Explicit "start new consultation" signal → chat starts a fresh conversation.
     router.push({ pathname: '/chat', params: { startNew: '1' } });
   };
 
-  // Start immediately with a TEMPORARY (unsaved) subject.
+  // Create flow — start immediately with a TEMPORARY (unsaved) subject.
   const handleStartConsultation = () => {
     const birthInfo = buildBirthInfo();
     if (birthInfo === null) {
@@ -218,13 +294,13 @@ export default function BirthInfoScreen() {
     updateSubject({
       id: createTempSubjectId(),
       displayName: birthInfo.displayName || '본인',
-      relationship: null,
+      relationship: relationshipValue(),
     });
     updateBirthInfo(birthInfo);
     startConsultation();
   };
 
-  // Save the subject to the DB first, then start with the saved (UUID) subject.
+  // Create flow — save to DB, then start with the saved (UUID) subject.
   const handleSaveAndStart = async () => {
     if (isSaving) {
       return;
@@ -238,9 +314,9 @@ export default function BirthInfoScreen() {
     setIsSaving(true);
     try {
       const record = await consultationSubjectService.createSubject({
-        displayName: birthInfo.displayName || (saveAsSelf ? '본인' : '대상'),
-        relationship: null,
-        isSelf: saveAsSelf,
+        displayName: birthInfo.displayName || (isSelf ? '본인' : '대상'),
+        relationship: relationshipValue(),
+        isSelf,
         birthInfo,
       });
 
@@ -263,6 +339,87 @@ export default function BirthInfoScreen() {
     }
   };
 
+  // Edit flow — update the saved subject only (never touches drafts/conversations).
+  const handleSaveEdit = async () => {
+    if (isSaving || subjectId === undefined) {
+      return;
+    }
+    const birthInfo = buildBirthInfo();
+    if (birthInfo === null) {
+      return;
+    }
+
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await consultationSubjectService.updateSubject(subjectId, {
+        displayName: displayName.trim() || '대상',
+        relationship: relationshipValue(),
+        birthInfo,
+      });
+
+      // is_self reassignment (sequential, clear-then-set inside the service).
+      if (isSelf) {
+        await consultationSubjectService.setPrimarySubject(subjectId);
+      } else {
+        await consultationSubjectService.updateSubject(subjectId, {
+          isSelf: false,
+        });
+      }
+
+      router.back();
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      setSaveError(
+        code === '23505'
+          ? '본인 지정에 실패했습니다. 다시 시도해 주세요.'
+          : '대상 수정에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isDeleting || subjectId === undefined) {
+      return;
+    }
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await consultationSubjectService.deleteSubject(subjectId);
+      router.back();
+    } catch {
+      setDeleteError('대상 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (isEditMode && editStatus !== 'ready') {
+    const message =
+      editStatus === 'loading'
+        ? '대상 정보를 불러오는 중입니다...'
+        : editStatus === 'invalid'
+          ? '유효하지 않은 대상입니다.'
+          : editStatus === 'notfound'
+            ? '대상을 찾을 수 없습니다.'
+            : '대상 정보를 불러오지 못했습니다.';
+
+    return (
+      <Screen>
+        <Stack style={{ flex: 1, paddingTop: 24 }} align="center" gap="md">
+          <Card>
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              {message}
+            </Text>
+          </Card>
+          <Button label="돌아가기" variant="secondary" onPress={() => router.back()} />
+        </Stack>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <ScrollView
@@ -273,17 +430,12 @@ export default function BirthInfoScreen() {
         <View style={styles.contentWrapper}>
           <Stack gap="xxl">
             <Stack gap="xs">
-              <Text variant="headingLarge">출생정보 입력</Text>
+              <Text variant="headingLarge">
+                {isEditMode ? '대상 편집' : '출생정보 입력'}
+              </Text>
               <Text variant="bodyMedium" colorToken="textSecondary">
                 정확한 분석을 위해 알고 있는 범위에서 입력해 주세요.
               </Text>
-            </Stack>
-
-            <Stack gap="sm">
-              <Text variant="headingMedium">상담 대상</Text>
-              <Card>
-                <Text variant="bodyLarge">본인</Text>
-              </Card>
             </Stack>
 
             <Input
@@ -292,6 +444,13 @@ export default function BirthInfoScreen() {
               onChangeText={setDisplayName}
               placeholder="예) 나, 홍길동, 첫째 아이"
               helperText="실명을 입력하지 않아도 괜찮습니다."
+            />
+
+            <Input
+              label="관계"
+              value={relationship}
+              onChangeText={setRelationship}
+              placeholder="예) 본인, 배우자, 자녀 (선택)"
             />
 
             <Stack gap="sm">
@@ -405,39 +564,97 @@ export default function BirthInfoScreen() {
 
             <Stack gap="sm">
               <Pressable
-                onPress={() => setSaveAsSelf((value) => !value)}
+                onPress={() => setIsSelf((value) => !value)}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: saveAsSelf }}
+                accessibilityState={{ checked: isSelf }}
               >
                 <Card
                   style={{
-                    borderColor: saveAsSelf ? theme.primary : theme.border,
-                    borderWidth: saveAsSelf ? 2 : 1,
+                    borderColor: isSelf ? theme.primary : theme.border,
+                    borderWidth: isSelf ? 2 : 1,
                   }}
                 >
                   <Text variant="bodyMedium">
-                    {saveAsSelf ? '☑' : '☐'} 본인으로 저장
+                    {isSelf ? '☑' : '☐'} {isEditMode ? '본인으로 지정' : '본인으로 저장'}
                   </Text>
                 </Card>
               </Pressable>
 
-              <Button
-                label="상담 시작하기"
-                disabled={!isFormValid || isSaving}
-                onPress={handleStartConsultation}
-              />
-              <Button
-                label={isSaving ? '저장 중...' : '대상으로 저장하고 시작'}
-                variant="secondary"
-                disabled={!isFormValid || isSaving}
-                onPress={handleSaveAndStart}
-              />
+              {isEditMode ? (
+                <>
+                  <Button
+                    label={isSaving ? '저장 중...' : '수정 저장'}
+                    disabled={!isFormValid || isSaving}
+                    onPress={handleSaveEdit}
+                  />
 
-              {saveError ? (
-                <Text variant="bodySmall" colorToken="danger">
-                  {saveError}
-                </Text>
-              ) : null}
+                  {saveError ? (
+                    <Text variant="bodySmall" colorToken="danger">
+                      {saveError}
+                    </Text>
+                  ) : null}
+
+                  {confirmDelete ? (
+                    <Card
+                      style={{ borderColor: theme.border, borderWidth: 1 }}
+                    >
+                      <Stack gap="sm">
+                        <Text variant="bodyMedium">
+                          이 대상을 삭제하시겠습니까?
+                        </Text>
+                        <Stack direction="row" gap="sm">
+                          <Button
+                            label={isDeleting ? '삭제 중...' : '삭제'}
+                            disabled={isDeleting}
+                            onPress={handleDelete}
+                          />
+                          <Button
+                            label="취소"
+                            variant="secondary"
+                            disabled={isDeleting}
+                            onPress={() => setConfirmDelete(false)}
+                          />
+                        </Stack>
+                        {deleteError ? (
+                          <Text variant="bodySmall" colorToken="danger">
+                            {deleteError}
+                          </Text>
+                        ) : null}
+                      </Stack>
+                    </Card>
+                  ) : (
+                    <Button
+                      label="대상 삭제"
+                      variant="secondary"
+                      disabled={isSaving}
+                      onPress={() => {
+                        setDeleteError(null);
+                        setConfirmDelete(true);
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button
+                    label="상담 시작하기"
+                    disabled={!isFormValid || isSaving}
+                    onPress={handleStartConsultation}
+                  />
+                  <Button
+                    label={isSaving ? '저장 중...' : '대상으로 저장하고 시작'}
+                    variant="secondary"
+                    disabled={!isFormValid || isSaving}
+                    onPress={handleSaveAndStart}
+                  />
+
+                  {saveError ? (
+                    <Text variant="bodySmall" colorToken="danger">
+                      {saveError}
+                    </Text>
+                  ) : null}
+                </>
+              )}
             </Stack>
           </Stack>
         </View>

@@ -7,6 +7,7 @@ import { computeConversationMemory } from '@/features/chat/memory/conversationMe
 import { buildSummaryPrompt } from '@/features/chat/prompts/summaryPromptBuilder';
 import {
   conversationService,
+  type ConversationSubjectSnapshot,
   type PersistableMessageRole,
 } from '@/features/chat/services/conversationService';
 import type { ChatMessage } from '@/features/chat/types/chat';
@@ -15,10 +16,17 @@ import type { ConversationMemoryState } from '@/features/chat/types/chatArchitec
 export type MessagesHydrationStatus = 'idle' | 'loading' | 'ready';
 
 type UseConversationPersistenceOptions = {
-  // One-shot navigation signal ("start a new consultation"). When true, the
-  // latest conversation is NOT restored; a fresh conversation is created lazily
-  // on the first user message.
+  // One-shot navigation signal ("start a new consultation"). When true, no
+  // conversation is restored; a fresh one is created lazily on the first message.
   startNew: boolean;
+  // Whether the consultation draft has finished hydrating. Subject-aware
+  // hydration waits for this so `subjectId` is meaningful.
+  draftReady: boolean;
+  // Saved consultation_subjects UUID for the current draft, or null for
+  // temp / legacy / absent subjects.
+  subjectId: string | null;
+  // Frozen { subject, birthInfo } snapshot stored when a conversation is created.
+  subjectSnapshot: ConversationSubjectSnapshot;
 };
 
 type UseConversationPersistenceResult = {
@@ -40,7 +48,7 @@ const EMPTY_MEMORY: ConversationMemoryState = {
 export function useConversationPersistence(
   options: UseConversationPersistenceOptions,
 ): UseConversationPersistenceResult {
-  const { startNew } = options;
+  const { startNew, draftReady, subjectId, subjectSnapshot } = options;
   const { authState } = useAuth();
 
   const [hydrationStatus, setHydrationStatus] =
@@ -52,8 +60,8 @@ export function useConversationPersistence(
   const [conversationMemory, setConversationMemory] =
     useState<ConversationMemoryState>(EMPTY_MEMORY);
 
-  // Which user's conversation is currently hydrated (keyed by user id).
-  const hydratedUserIdRef = useRef<string | null>(null);
+  // Which (user + startNew + subject) context is currently hydrated.
+  const hydratedKeyRef = useRef<string | null>(null);
   // Active conversation id for this session (null until restored or created).
   const conversationIdRef = useRef<string | null>(null);
   // Message ids already saved or in-flight — prevents duplicate insert attempts.
@@ -62,6 +70,13 @@ export function useConversationPersistence(
   const saveChainRef = useRef<Promise<unknown>>(Promise.resolve());
   // In-flight lazy conversation creation, shared so rapid sends create one row.
   const creationRef = useRef<Promise<string> | null>(null);
+
+  // Latest subject identity/snapshot for lazy conversation creation. Updated
+  // every render so createConversation freezes the current draft snapshot.
+  const subjectIdRef = useRef<string | null>(subjectId);
+  subjectIdRef.current = subjectId;
+  const subjectSnapshotRef = useRef<ConversationSubjectSnapshot>(subjectSnapshot);
+  subjectSnapshotRef.current = subjectSnapshot;
 
   // Ordered messages CONFIRMED persisted in the DB (restore + successful saves).
   // This — not the UI message list — is the summary input, so welcome/error
@@ -102,7 +117,7 @@ export function useConversationPersistence(
     if (status === 'unauthenticated' || userId === null) {
       // Logout / unauthenticated: drop everything immediately; never create a
       // conversation from this transition.
-      hydratedUserIdRef.current = null;
+      hydratedKeyRef.current = null;
       resetInMemory();
       setRestoredMessages([]);
       setResetToken((token) => token + 1);
@@ -110,31 +125,41 @@ export function useConversationPersistence(
       return;
     }
 
-    if (hydratedUserIdRef.current === userId) {
+    // Wait until the draft has settled so subjectId reflects the real subject.
+    if (!draftReady) {
+      setHydrationStatus('idle');
       return;
     }
 
-    // New / switched authenticated user: clear first (never expose the previous
-    // user's data), then hydrate.
+    const hydrationKey = `${userId}|${startNew ? 'new' : 'resume'}|${
+      subjectId ?? 'none'
+    }`;
+    if (hydratedKeyRef.current === hydrationKey) {
+      return;
+    }
+    hydratedKeyRef.current = hydrationKey;
+
+    // New context: clear first (never expose previous data), then hydrate.
     resetInMemory();
     setRestoredMessages(null);
     setResetToken((token) => token + 1);
     setHydrationStatus('loading');
 
-    if (startNew) {
-      hydratedUserIdRef.current = userId;
+    // Explicit new consultation, or temp/legacy subject (no saved identity):
+    // welcome-only. We never restore a global-latest conversation here, so a
+    // different subject's conversation can never be mis-attached.
+    if (startNew || subjectId === null) {
       setRestoredMessages([]);
       setHydrationStatus('ready');
       return;
     }
 
     conversationService
-      .loadLatestConversation()
+      .loadLatestConversationForSubject(subjectId)
       .then((loaded) => {
         if (cancelled) {
           return;
         }
-        hydratedUserIdRef.current = userId;
         if (loaded !== null) {
           conversationIdRef.current = loaded.conversationId;
           persistedMessagesRef.current = loaded.messages;
@@ -158,7 +183,6 @@ export function useConversationPersistence(
           return;
         }
         // Fail-open to a fresh in-memory conversation; do not block chat.
-        hydratedUserIdRef.current = userId;
         setRestoredMessages([]);
         setHydrationStatus('ready');
       });
@@ -166,7 +190,7 @@ export function useConversationPersistence(
     return () => {
       cancelled = true;
     };
-  }, [authState.status, authState.user?.id, startNew]);
+  }, [authState.status, authState.user?.id, startNew, draftReady, subjectId]);
 
   const ensureConversationId = (): Promise<string> => {
     if (conversationIdRef.current !== null) {
@@ -176,7 +200,7 @@ export function useConversationPersistence(
       return creationRef.current;
     }
     const creation = conversationService
-      .createConversation()
+      .createConversation(subjectIdRef.current, subjectSnapshotRef.current)
       .then((id) => {
         conversationIdRef.current = id;
         return id;

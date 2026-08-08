@@ -21,7 +21,7 @@ import {
     useConversationPersistence,
     type ChatMessage,
 } from '@/features/chat';
-import { useConsultationDraft } from '@/features/consultation';
+import { isSavedSubjectId, useConsultationDraft } from '@/features/consultation';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
@@ -57,13 +57,30 @@ export default function ChatScreen() {
     useConsultationDraft();
   const { isAuthenticated } = useAuth();
 
+  // Subject identity for subject-aware conversation hydration (chat.tsx owns the
+  // draft; the persistence hook does not import ConsultationDraftContext).
+  const draftReady = draftHydrationStatus === 'ready';
+  const subjectId =
+    draftReady && draft.subject !== null && isSavedSubjectId(draft.subject.id)
+      ? draft.subject.id
+      : null;
+  const subjectSnapshot =
+    draft.subject !== null && draft.birthInfo !== null
+      ? { subject: draft.subject, birthInfo: draft.birthInfo }
+      : null;
+
   const {
     hydrationStatus: messagesHydrationStatus,
     restoredMessages,
     resetToken,
     conversationMemory,
     persistMessage,
-  } = useConversationPersistence({ startNew: startNewRef.current });
+  } = useConversationPersistence({
+    startNew: startNewRef.current,
+    draftReady,
+    subjectId,
+    subjectSnapshot,
+  });
 
   const isDraftReady = draft.subject !== null && draft.birthInfo !== null;
 

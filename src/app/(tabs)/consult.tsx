@@ -15,32 +15,51 @@ import {
 
 export default function ConsultScreen() {
   const router = useRouter();
-  const { updateSubject, updateBirthInfo } = useConsultationDraft();
+  const { draft, updateSubject, updateBirthInfo } = useConsultationDraft();
   const { subjects, status, reload } = useConsultationSubjects();
 
   // Refresh the saved-subject list whenever this screen regains focus (e.g.
-  // after adding a subject on the birth-info screen). The hook's internal token
-  // discards any stale/overlapping response, so this is race-safe.
+  // after adding/editing a subject). The hook's token discards stale responses.
   useFocusEffect(
     useCallback(() => {
       reload();
     }, [reload]),
   );
 
-  // Selecting a saved subject copies a SNAPSHOT into the current draft. Later
-  // edits to the saved subject do not retroactively change this consultation.
-  const selectSubject = (record: ConsultationSubjectRecord) => {
+  const applySubjectToDraft = (record: ConsultationSubjectRecord) => {
     updateSubject({
       id: record.id,
       displayName: record.displayName,
       relationship: record.relationship,
     });
     updateBirthInfo(record.birthInfo);
+  };
+
+  // Select = RESUME that subject's latest conversation (subject-aware hydration,
+  // no startNew). For a different subject we replace the draft snapshot first so
+  // chat hydrates the selected subject's conversation. Same subject keeps the
+  // current draft untouched.
+  const selectSubject = (record: ConsultationSubjectRecord) => {
+    if (draft.subject?.id !== record.id) {
+      applySubjectToDraft(record);
+    }
+    router.push('/chat');
+  };
+
+  // Explicit NEW consultation for a subject → startNew (a fresh empty
+  // conversation). Existing conversations for this subject stay in the DB.
+  const startNewConsultation = (record: ConsultationSubjectRecord) => {
+    applySubjectToDraft(record);
     router.push({ pathname: '/chat', params: { startNew: '1' } });
   };
 
   const addNewSubject = () => {
     router.push('/birth-info');
+  };
+
+  // Distinct "manage" action → edit mode (never confused with selection).
+  const manageSubject = (record: ConsultationSubjectRecord) => {
+    router.push({ pathname: '/birth-info', params: { subjectId: record.id } });
   };
 
   return (
@@ -49,7 +68,8 @@ export default function ConsultScreen() {
         <Stack gap="xs">
           <Text variant="headingLarge">상담 시작</Text>
           <Text variant="bodyMedium" colorToken="textSecondary">
-            상담할 대상을 선택하거나 새 대상을 추가하세요.
+            대상을 선택하면 진행 중 상담을 이어가고, "새 상담"으로 새로
+            시작할 수 있습니다.
           </Text>
         </Stack>
 
@@ -70,25 +90,40 @@ export default function ConsultScreen() {
             </Card>
           ) : (
             subjects.map((subject) => (
-              <Pressable
-                key={subject.id}
-                onPress={() => selectSubject(subject)}
-                accessibilityRole="button"
-              >
-                <Card>
-                  <Stack gap="xs">
-                    <Text variant="bodyLarge">
-                      {subject.displayName}
-                      {subject.isSelf ? ' (본인)' : ''}
-                    </Text>
-                    {subject.relationship ? (
-                      <Text variant="bodySmall" colorToken="textSecondary">
-                        {subject.relationship}
+              <Card key={subject.id}>
+                <Stack gap="sm">
+                  <Pressable
+                    onPress={() => selectSubject(subject)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${subject.displayName} 상담 이어가기`}
+                  >
+                    <Stack gap="xs">
+                      <Text variant="bodyLarge">
+                        {subject.displayName}
+                        {subject.isSelf ? ' (본인)' : ''}
                       </Text>
-                    ) : null}
+                      {subject.relationship ? (
+                        <Text variant="bodySmall" colorToken="textSecondary">
+                          {subject.relationship}
+                        </Text>
+                      ) : null}
+                    </Stack>
+                  </Pressable>
+
+                  <Stack direction="row" gap="sm">
+                    <Button
+                      label="새 상담"
+                      variant="secondary"
+                      onPress={() => startNewConsultation(subject)}
+                    />
+                    <Button
+                      label="관리"
+                      variant="secondary"
+                      onPress={() => manageSubject(subject)}
+                    />
                   </Stack>
-                </Card>
-              </Pressable>
+                </Stack>
+              </Card>
             ))
           )}
         </Stack>

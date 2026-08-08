@@ -139,10 +139,54 @@ async function deleteSubject(id: string): Promise<void> {
   }
 }
 
+// Makes `targetId` the user's single is_self subject.
+// V1: sequential client updates (no RPC/transaction). To avoid violating the
+// partial unique index (one is_self=true per user), the existing self is cleared
+// FIRST, then the target is set. If the final update fails the caller must treat
+// it as a failure (do NOT report success); at most one self is ever guaranteed.
+async function setPrimarySubject(targetId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id')
+    .eq('is_self', true)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const currentSelfId = (data as { id: string } | null)?.id ?? null;
+
+  if (currentSelfId === targetId) {
+    return; // already the primary subject
+  }
+
+  if (currentSelfId !== null) {
+    const { error: clearError } = await supabase
+      .from(TABLE)
+      .update({ is_self: false })
+      .eq('id', currentSelfId);
+    if (clearError) {
+      throw clearError;
+    }
+  }
+
+  const { error: setError } = await supabase
+    .from(TABLE)
+    .update({ is_self: true })
+    .eq('id', targetId);
+  if (setError) {
+    throw setError;
+  }
+}
+
 export const consultationSubjectService = {
   listSubjects,
   createSubject,
   getSubject,
   updateSubject,
   deleteSubject,
+  setPrimarySubject,
 };
