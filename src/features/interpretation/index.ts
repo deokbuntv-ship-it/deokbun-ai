@@ -45,6 +45,16 @@ export type {
 } from './contracts/engine';
 export type { EngineResult } from './contracts/result';
 export type {
+  HistoricalAuthorityStatus,
+  HistoricalLocalTimeResolution,
+  HistoricalSourceComparison,
+  HistoricalSourceReference,
+  HistoricalTimeProvenance,
+  HistoricalTimeUnresolvedReason,
+  HistoricalUtcCandidate,
+  KoreaHistoricalTimePolicyDecision,
+} from './contracts/historicalTime';
+export type {
   BirthNormalizationResult,
   CalendarResolution,
   CalendarResolver,

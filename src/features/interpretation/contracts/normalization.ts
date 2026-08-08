@@ -15,6 +15,10 @@ import type {
   NormalizationWarning,
 } from '../domain/validation';
 import type { EngineId } from './engine';
+import type {
+  HistoricalLocalTimeResolution,
+  HistoricalTimeProvenance,
+} from './historicalTime';
 
 export type ResolutionProvenance = {
   resolverId: string;
@@ -65,11 +69,16 @@ export type CivilLocalBirthTime =
 export type DstResolution =
   | {
       status: 'OBSERVED';
+      /** Calculation authority. Do not derive this value from minutes. */
+      dstOffsetSeconds: number;
+      /** Compatibility/display value derived exactly as dstOffsetSeconds / 60. */
       offsetMinutes: number;
       provenance: ResolutionProvenance;
     }
   | {
       status: 'NOT_OBSERVED';
+      /** Calculation authority; always zero for this state. */
+      dstOffsetSeconds: 0;
       provenance: ResolutionProvenance;
     }
   | {
@@ -81,10 +90,15 @@ export type TimezoneResolution =
   | {
       status: 'RESOLVED';
       ianaZone: string;
+      /** Calculation authority. Do not derive this value from minutes. */
+      resolvedOffsetSeconds: number;
+      /** Compatibility/display value derived exactly as seconds / 60. */
       resolvedOffsetMinutes: number;
       timezoneDataVersion: string;
       resolutionSource: TemporalDataSource;
       dst: DstResolution;
+      localTimeResolution: HistoricalLocalTimeResolution;
+      historicalProvenance: HistoricalTimeProvenance;
       provenance: ResolutionProvenance;
     }
   | {
@@ -95,6 +109,8 @@ export type TimezoneResolution =
         | 'COORDINATES_REQUIRED'
         | 'RESOLVER_NOT_PROVIDED'
         | 'HISTORICAL_DATA_UNAVAILABLE'
+        | 'HISTORICAL_SOURCE_CONFLICT'
+        | 'LMT_NOT_AUTHORIZED'
         | 'TIME_UNRESOLVED';
     };
 

@@ -2,7 +2,7 @@ import type { CanonicalBirthInput } from '../domain/birth';
 import type { NormalizedBirthInput } from '../contracts/normalization';
 
 export const BIRTH_FINGERPRINT_SCHEMA_VERSION =
-  'deokbunai.birth-normalization.v1' as const;
+  'deokbunai.birth-normalization.v2' as const;
 
 export type BirthFingerprintPayload = {
   schemaVersion: typeof BIRTH_FINGERPRINT_SCHEMA_VERSION;
