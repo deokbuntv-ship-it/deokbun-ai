@@ -12,3 +12,14 @@ export type {
     LoadedConsultationDraft, SavedConsultationDraft
 } from './services/consultationDraftService';
 
+export { consultationSubjectService } from './services/consultationSubjectService';
+export type {
+    CreateSubjectInput, UpdateSubjectInput
+} from './services/consultationSubjectService';
+export { useConsultationSubjects } from './hooks/useConsultationSubjects';
+export type { SubjectsStatus } from './hooks/useConsultationSubjects';
+export type { ConsultationSubjectRecord } from './types/subject';
+export {
+    createTempSubjectId, isSavedSubjectId, isTempSubjectId
+} from './types/subject';
+

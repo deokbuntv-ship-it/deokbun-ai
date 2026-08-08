@@ -10,6 +10,8 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import {
+    consultationSubjectService,
+    createTempSubjectId,
     useConsultationDraft,
     type ApproximateTimePeriod,
     type BirthInfoDraft,
@@ -120,7 +122,9 @@ function isValidMinute(value: string): boolean {
 
 export default function BirthInfoScreen() {
   const router = useRouter();
-  const { updateBirthInfo } = useConsultationDraft();
+  const { updateSubject, updateBirthInfo } = useConsultationDraft();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
@@ -137,6 +141,10 @@ export default function BirthInfoScreen() {
   const [approximatePeriod, setApproximatePeriod] = useState<ApproximateTimePeriod | null>(null);
 
   const [birthPlace, setBirthPlace] = useState('');
+
+  const [saveAsSelf, setSaveAsSelf] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleCalendarTypeSelect = (value: CalendarType) => {
     setCalendarType(value);
@@ -174,12 +182,12 @@ export default function BirthInfoScreen() {
     isBirthTimeValid &&
     birthPlace.trim().length > 0;
 
-  const handleStartConsultation = () => {
+  const buildBirthInfo = (): BirthInfoDraft | null => {
     if (!isFormValid || gender === null || calendarType === null || birthTimeAccuracy === null) {
-      return;
+      return null;
     }
 
-    const birthInfo: BirthInfoDraft = {
+    return {
       displayName: displayName.trim(),
       gender,
       calendarType,
@@ -193,10 +201,66 @@ export default function BirthInfoScreen() {
       approximateTimePeriod: birthTimeAccuracy === 'approximate' ? approximatePeriod : null,
       birthPlace: birthPlace.trim(),
     };
+  };
 
-    updateBirthInfo(birthInfo);
+  const startConsultation = () => {
     // Explicit "start new consultation" signal → chat starts a fresh conversation.
     router.push({ pathname: '/chat', params: { startNew: '1' } });
+  };
+
+  // Start immediately with a TEMPORARY (unsaved) subject.
+  const handleStartConsultation = () => {
+    const birthInfo = buildBirthInfo();
+    if (birthInfo === null) {
+      return;
+    }
+
+    updateSubject({
+      id: createTempSubjectId(),
+      displayName: birthInfo.displayName || '본인',
+      relationship: null,
+    });
+    updateBirthInfo(birthInfo);
+    startConsultation();
+  };
+
+  // Save the subject to the DB first, then start with the saved (UUID) subject.
+  const handleSaveAndStart = async () => {
+    if (isSaving) {
+      return;
+    }
+    const birthInfo = buildBirthInfo();
+    if (birthInfo === null) {
+      return;
+    }
+
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const record = await consultationSubjectService.createSubject({
+        displayName: birthInfo.displayName || (saveAsSelf ? '본인' : '대상'),
+        relationship: null,
+        isSelf: saveAsSelf,
+        birthInfo,
+      });
+
+      updateSubject({
+        id: record.id,
+        displayName: record.displayName,
+        relationship: record.relationship,
+      });
+      updateBirthInfo(record.birthInfo);
+      startConsultation();
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      setSaveError(
+        code === '23505'
+          ? '이미 본인으로 등록된 대상이 있습니다. "본인으로 저장"을 해제해 주세요.'
+          : '대상 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -339,11 +403,42 @@ export default function BirthInfoScreen() {
               required
             />
 
-            <Button
-              label="상담 시작하기"
-              disabled={!isFormValid}
-              onPress={handleStartConsultation}
-            />
+            <Stack gap="sm">
+              <Pressable
+                onPress={() => setSaveAsSelf((value) => !value)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: saveAsSelf }}
+              >
+                <Card
+                  style={{
+                    borderColor: saveAsSelf ? theme.primary : theme.border,
+                    borderWidth: saveAsSelf ? 2 : 1,
+                  }}
+                >
+                  <Text variant="bodyMedium">
+                    {saveAsSelf ? '☑' : '☐'} 본인으로 저장
+                  </Text>
+                </Card>
+              </Pressable>
+
+              <Button
+                label="상담 시작하기"
+                disabled={!isFormValid || isSaving}
+                onPress={handleStartConsultation}
+              />
+              <Button
+                label={isSaving ? '저장 중...' : '대상으로 저장하고 시작'}
+                variant="secondary"
+                disabled={!isFormValid || isSaving}
+                onPress={handleSaveAndStart}
+              />
+
+              {saveError ? (
+                <Text variant="bodySmall" colorToken="danger">
+                  {saveError}
+                </Text>
+              ) : null}
+            </Stack>
           </Stack>
         </View>
       </ScrollView>
