@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Pressable } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -35,19 +35,18 @@ export default function ConsultScreen() {
     updateBirthInfo(record.birthInfo);
   };
 
-  // Select = RESUME that subject's latest conversation (subject-aware hydration,
-  // no startNew). For a different subject we replace the draft snapshot first so
-  // chat hydrates the selected subject's conversation. Same subject keeps the
-  // current draft untouched.
-  const selectSubject = (record: ConsultationSubjectRecord) => {
+  // "상담 열기" = open/resume this subject's latest conversation (subject-aware
+  // hydration, no startNew). For a different subject we replace the draft
+  // snapshot first; same subject keeps the current draft untouched.
+  const openConsultation = (record: ConsultationSubjectRecord) => {
     if (draft.subject?.id !== record.id) {
       applySubjectToDraft(record);
     }
     router.push('/chat');
   };
 
-  // Explicit NEW consultation for a subject → startNew (a fresh empty
-  // conversation). Existing conversations for this subject stay in the DB.
+  // "새 상담" = explicit new consultation (startNew, fresh empty conversation).
+  // Existing conversations for this subject are preserved in the DB.
   const startNewConsultation = (record: ConsultationSubjectRecord) => {
     applySubjectToDraft(record);
     router.push({ pathname: '/chat', params: { startNew: '1' } });
@@ -57,9 +56,90 @@ export default function ConsultScreen() {
     router.push('/birth-info');
   };
 
-  // Distinct "manage" action → edit mode (never confused with selection).
+  // "관리" = edit/delete the saved subject (never confused with opening a chat).
   const manageSubject = (record: ConsultationSubjectRecord) => {
     router.push({ pathname: '/birth-info', params: { subjectId: record.id } });
+  };
+
+  const renderSubjectList = () => {
+    if (status === 'loading') {
+      return (
+        <Card>
+          <Text variant="bodyMedium" colorToken="textSecondary">
+            대상을 불러오는 중입니다...
+          </Text>
+        </Card>
+      );
+    }
+
+    if (status === 'error') {
+      // Error must never be shown as an empty list.
+      return (
+        <Card>
+          <Stack gap="sm">
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              대상을 불러오지 못했습니다.
+            </Text>
+            <Button label="다시 시도" variant="secondary" onPress={reload} />
+          </Stack>
+        </Card>
+      );
+    }
+
+    if (subjects.length === 0) {
+      return (
+        <Card>
+          <Text variant="bodyMedium" colorToken="textSecondary">
+            저장된 대상이 없습니다.{'\n'}아래에서 새 대상을 추가해 주세요.
+          </Text>
+        </Card>
+      );
+    }
+
+    return subjects.map((subject) => {
+      // "진행 중" reflects only that this subject is the current in-memory draft.
+      // It does NOT imply an existing conversation (no DB lookup here).
+      const isCurrent = draft.subject?.id === subject.id;
+
+      return (
+        <Card key={subject.id}>
+          <Stack gap="sm">
+            <Stack gap="xs">
+              <Stack direction="row" gap="xs" align="center">
+                <Text variant="bodyLarge">
+                  {subject.displayName}
+                  {subject.isSelf ? ' (본인)' : ''}
+                </Text>
+                {isCurrent ? (
+                  <Text variant="bodySmall" colorToken="textSecondary">
+                    · 진행 중
+                  </Text>
+                ) : null}
+              </Stack>
+              {subject.relationship ? (
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {subject.relationship}
+                </Text>
+              ) : null}
+            </Stack>
+
+            <Stack direction="row" gap="sm" style={styles.actionRow}>
+              <Button label="상담 열기" onPress={() => openConsultation(subject)} />
+              <Button
+                label="새 상담"
+                variant="secondary"
+                onPress={() => startNewConsultation(subject)}
+              />
+              <Button
+                label="관리"
+                variant="secondary"
+                onPress={() => manageSubject(subject)}
+              />
+            </Stack>
+          </Stack>
+        </Card>
+      );
+    });
   };
 
   return (
@@ -68,64 +148,14 @@ export default function ConsultScreen() {
         <Stack gap="xs">
           <Text variant="headingLarge">상담 시작</Text>
           <Text variant="bodyMedium" colorToken="textSecondary">
-            대상을 선택하면 진행 중 상담을 이어가고, "새 상담"으로 새로
-            시작할 수 있습니다.
+            "상담 열기"로 최근 상담을 이어가고, "새 상담"으로 새로 시작할 수
+            있습니다.
           </Text>
         </Stack>
 
         <Stack gap="sm">
           <Text variant="headingMedium">상담 대상</Text>
-
-          {status === 'loading' ? (
-            <Card>
-              <Text variant="bodyMedium" colorToken="textSecondary">
-                대상을 불러오는 중입니다...
-              </Text>
-            </Card>
-          ) : subjects.length === 0 ? (
-            <Card>
-              <Text variant="bodyMedium" colorToken="textSecondary">
-                저장된 대상이 없습니다.{'\n'}아래에서 새 대상을 추가해 주세요.
-              </Text>
-            </Card>
-          ) : (
-            subjects.map((subject) => (
-              <Card key={subject.id}>
-                <Stack gap="sm">
-                  <Pressable
-                    onPress={() => selectSubject(subject)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${subject.displayName} 상담 이어가기`}
-                  >
-                    <Stack gap="xs">
-                      <Text variant="bodyLarge">
-                        {subject.displayName}
-                        {subject.isSelf ? ' (본인)' : ''}
-                      </Text>
-                      {subject.relationship ? (
-                        <Text variant="bodySmall" colorToken="textSecondary">
-                          {subject.relationship}
-                        </Text>
-                      ) : null}
-                    </Stack>
-                  </Pressable>
-
-                  <Stack direction="row" gap="sm">
-                    <Button
-                      label="새 상담"
-                      variant="secondary"
-                      onPress={() => startNewConsultation(subject)}
-                    />
-                    <Button
-                      label="관리"
-                      variant="secondary"
-                      onPress={() => manageSubject(subject)}
-                    />
-                  </Stack>
-                </Stack>
-              </Card>
-            ))
-          )}
+          {renderSubjectList()}
         </Stack>
 
         <Button label="새 대상 추가" onPress={addNewSubject} />
@@ -133,3 +163,9 @@ export default function ConsultScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  actionRow: {
+    flexWrap: 'wrap',
+  },
+});
