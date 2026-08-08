@@ -23,6 +23,7 @@ export { evaluateMessage } from './gateway/AIGateway';
 export type { GatewayResult } from './gateway/AIGateway';
 export { computeConversationMemory } from './memory/conversationMemory';
 export { buildPrompt } from './prompts/promptBuilder';
+export { buildSummaryPrompt } from './prompts/summaryPromptBuilder';
 export { selectConsultationContext } from './selectors/contextSelector';
 export { createChatService } from './services/chatService';
 export type { AuthGuard } from './services/chatService';

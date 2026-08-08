@@ -24,6 +24,8 @@ type ConversationMessageRow = {
 export type LoadedConversation = {
   conversationId: string;
   messages: ChatMessage[];
+  summary: string | null;
+  lastSummarizedMessageId: string | null;
 };
 
 // Creates a new conversation. user_id is decided by the DB default `auth.uid()`,
@@ -84,7 +86,7 @@ async function loadLatestConversation(): Promise<LoadedConversation | null> {
 
   const { data: conversation, error: conversationError } = await supabase
     .from(CONVERSATIONS)
-    .select('id')
+    .select('id, summary, last_summarized_message_id')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -97,7 +99,12 @@ async function loadLatestConversation(): Promise<LoadedConversation | null> {
     return null;
   }
 
-  const conversationId = (conversation as { id: string }).id;
+  const conversationRow = conversation as {
+    id: string;
+    summary: string | null;
+    last_summarized_message_id: string | null;
+  };
+  const conversationId = conversationRow.id;
 
   const { data: rows, error: messagesError } = await supabase
     .from(MESSAGES)
@@ -117,11 +124,40 @@ async function loadLatestConversation(): Promise<LoadedConversation | null> {
     text: row.content,
   }));
 
-  return { conversationId, messages };
+  return {
+    conversationId,
+    messages,
+    summary: conversationRow.summary,
+    lastSummarizedMessageId: conversationRow.last_summarized_message_id,
+  };
+}
+
+// Persists the compressed conversation summary and its checkpoint. Idempotent:
+// a plain update, safe to retry. `lastSummarizedMessageId` must be a
+// client_message_id that already exists in this conversation's messages.
+async function saveSummary(
+  conversationId: string,
+  summary: string,
+  lastSummarizedMessageId: string,
+): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase
+    .from(CONVERSATIONS)
+    .update({
+      summary,
+      last_summarized_message_id: lastSummarizedMessageId,
+    })
+    .eq('id', conversationId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export const conversationService = {
   createConversation,
   saveMessage,
   loadLatestConversation,
+  saveSummary,
 };

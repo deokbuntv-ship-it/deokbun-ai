@@ -20,7 +20,6 @@ import {
     supabaseEdgeLLMAdapter,
     useConversationPersistence,
     type ChatMessage,
-    type ConversationMemoryState,
 } from '@/features/chat';
 import { useConsultationDraft } from '@/features/consultation';
 import { spacing } from '@/theme';
@@ -39,11 +38,6 @@ const ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT =
 
 const AUTH_REQUIRED_MESSAGE_TEXT =
   'AI 상담을 이용하려면 로그인이 필요합니다.\n아래 "로그인하기" 버튼을 눌러 로그인해 주세요.';
-
-const INITIAL_CONVERSATION_MEMORY: ConversationMemoryState = {
-  summary: null,
-  lastSummarizedMessageId: null,
-};
 
 function createMessageId(role: ChatMessage['role']): string {
   return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -67,6 +61,7 @@ export default function ChatScreen() {
     hydrationStatus: messagesHydrationStatus,
     restoredMessages,
     resetToken,
+    conversationMemory,
     persistMessage,
   } = useConversationPersistence({ startNew: startNewRef.current });
 
@@ -76,9 +71,6 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
-  const [conversationMemory] = useState<ConversationMemoryState>(
-    INITIAL_CONVERSATION_MEMORY,
-  );
 
   const scrollViewRef = useRef<ScrollView>(null);
 
