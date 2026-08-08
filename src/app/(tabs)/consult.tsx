@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable } from 'react-native';
 
 import { Button } from '@/components/Button';
@@ -15,7 +16,16 @@ import {
 export default function ConsultScreen() {
   const router = useRouter();
   const { updateSubject, updateBirthInfo } = useConsultationDraft();
-  const { subjects, status } = useConsultationSubjects();
+  const { subjects, status, reload } = useConsultationSubjects();
+
+  // Refresh the saved-subject list whenever this screen regains focus (e.g.
+  // after adding a subject on the birth-info screen). The hook's internal token
+  // discards any stale/overlapping response, so this is race-safe.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   // Selecting a saved subject copies a SNAPSHOT into the current draft. Later
   // edits to the saved subject do not retroactively change this consultation.
