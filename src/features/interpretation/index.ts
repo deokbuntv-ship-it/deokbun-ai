@@ -21,6 +21,12 @@ export type {
   WarningSeverity,
 } from './domain/issues';
 export type {
+  NormalizationError,
+  NormalizationErrorCode,
+  NormalizationStage,
+  NormalizationWarning,
+} from './domain/validation';
+export type {
   ApproximateTimePeriod,
   BirthTimeInput,
   DstInput,
@@ -38,6 +44,24 @@ export type {
   EngineUnavailableReason,
 } from './contracts/engine';
 export type { EngineResult } from './contracts/result';
+export type {
+  BirthNormalizationResult,
+  CalendarResolution,
+  CalendarResolver,
+  CivilLocalBirthTime,
+  CivilLocalDateTime,
+  DstResolution,
+  EngineCapabilityAssessment,
+  EngineCapabilityStatus,
+  HistoricalTimezoneResolutionRequest,
+  HistoricalTimezoneResolver,
+  NormalizedBirthInput,
+  ResolutionProvenance,
+  TimezoneResolution,
+  TrueSolarTimeResolution,
+  TrueSolarTimeResolutionRequest,
+  TrueSolarTimeResolver,
+} from './contracts/normalization';
 export type { SajuEngineInput } from './contracts/saju';
 export type { ZiweiEngineInput } from './contracts/ziwei';
 export type {
@@ -55,3 +79,16 @@ export type {
   CrossTension,
   NormalizedEngineResult,
 } from './contracts/cross';
+export {
+  BIRTH_FINGERPRINT_SCHEMA_VERSION,
+  CanonicalSerializationError,
+  createBirthFingerprintFrame,
+  createBirthFingerprintPayload,
+  serializeBirthFingerprintPayload,
+} from './normalization/canonicalSerialization';
+export type { BirthFingerprintPayload } from './normalization/canonicalSerialization';
+export { digestBirthFingerprintFrame } from './normalization/fingerprint';
+export type {
+  DigestProvider,
+  Sha256Fingerprint,
+} from './normalization/fingerprint';
