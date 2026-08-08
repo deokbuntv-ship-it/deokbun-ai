@@ -126,3 +126,35 @@ export type {
   DigestProvider,
   Sha256Fingerprint,
 } from './normalization/fingerprint';
+export type {
+  CalendarArtifactChecksum,
+  CalendarDataset,
+  CalendarDatasetManifest,
+  CalendarDatasetSource,
+  CalendarDateRange,
+  CalendarIntegrityReport,
+  CalendarOperationResult,
+  CalendarResolutionError,
+  CalendarResolutionErrorCode,
+  LunarDateRange,
+  LunarMonthKey,
+  LunarMonthKind,
+  LunarMonthLengthDays,
+  LunarMonthRecord,
+  ResolvedGregorianToLunar,
+  ResolvedLunarToGregorian,
+} from './calendar/contracts';
+export {
+  addGregorianDays,
+  civilDayOrdinalToGregorian,
+  compareGregorianDates,
+  getGregorianMonthLength,
+  gregorianToCivilDayOrdinal,
+  isGregorianLeapYear,
+  isValidGregorianDate,
+} from './calendar/civilDay';
+export {
+  resolveGregorianToLunar,
+  resolveLunarToGregorian,
+} from './calendar/resolver';
+export { validateCalendarDataset } from './calendar/integrity';
