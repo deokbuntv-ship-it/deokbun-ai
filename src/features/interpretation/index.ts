@@ -173,3 +173,37 @@ export {
 export type {
   KasiCalendarGoldenFixture,
 } from './calendar/fixtures/kasiCalendarGoldenFixtures';
+export {
+  EARTHLY_BRANCHES,
+  HEAVENLY_STEMS,
+} from './saju/contracts';
+export type {
+  EarthlyBranch,
+  HeavenlyStem,
+  SajuYearMonthPillars,
+  SexagenaryIndex,
+  SexagenaryPillar,
+  SexagenaryResult,
+  SexagenaryValidationError,
+  SexagenaryValidationErrorCode,
+} from './saju/contracts';
+export {
+  advanceSexagenaryIndex,
+  floorMod,
+  isValidSexagenaryPair,
+  pillarToSexagenaryIndex,
+  sexagenaryIndexToPillar,
+} from './saju/sexagenary';
+export {
+  calculateMonthPillar,
+  calculateYearMonthPillars,
+  calculateYearPillar,
+} from './saju/pillars';
+export {
+  SEXAGENARY_YEAR_GOLDEN_FIXTURES,
+} from './saju/fixtures/sexagenaryGoldenFixtures';
+export type {
+  SexagenaryYearGoldenFixture,
+} from './saju/fixtures/sexagenaryGoldenFixtures';
+export { validateSexagenaryInvariants } from './saju/validation';
+export type { SexagenaryInvariantReport } from './saju/validation';
