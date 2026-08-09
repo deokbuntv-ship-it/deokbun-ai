@@ -1,0 +1,1184 @@
+{
+  "schemaVersion": "deokbunai.legacy-calendar-diff.v1",
+  "authority": {
+    "identity": "KASI_LRSR_CLD_INFO_SERVICE_GET_LUN_CAL_INFO",
+    "revision": "OPENAPI_GUIDE_V1.1",
+    "acquisitionDate": "2026-08-08T15:53:07Z"
+  },
+  "datasetVersion": "kasi.lunisolar.1900-2050.acquired-20260808t155307.sha256-410f6b887dff",
+  "lunarToSolarSql": {
+    "dailyCounts": {
+      "MATCH": 54495,
+      "LEGACY_DIFF": 657,
+      "LEGACY_CORRUPT": 0,
+      "OUT_OF_LEGACY_RANGE": 0,
+      "AUTHORITATIVE_UNRESOLVED": 0
+    },
+    "dailyDiffRanges": [
+      {
+        "start": "1903-10-20",
+        "end": "1903-11-18",
+        "dayCount": 30
+      },
+      {
+        "start": "1904-01-17",
+        "end": "1904-02-15",
+        "dayCount": 30
+      },
+      {
+        "start": "1904-11-07",
+        "end": "1904-12-06",
+        "dayCount": 30
+      },
+      {
+        "start": "1905-05-04",
+        "end": "1905-06-02",
+        "dayCount": 30
+      },
+      {
+        "start": "1907-07-10",
+        "end": "1907-08-08",
+        "dayCount": 30
+      },
+      {
+        "start": "1908-04-30",
+        "end": "1908-05-29",
+        "dayCount": 30
+      },
+      {
+        "start": "1908-09-25",
+        "end": "1908-10-24",
+        "dayCount": 30
+      },
+      {
+        "start": "1909-09-14",
+        "end": "1909-10-13",
+        "dayCount": 30
+      },
+      {
+        "start": "1911-12-20",
+        "end": "1912-01-18",
+        "dayCount": 30
+      },
+      {
+        "start": "1922-06-25",
+        "end": "1922-08-22",
+        "dayCount": 59
+      },
+      {
+        "start": "1976-11-21",
+        "end": "1976-12-20",
+        "dayCount": 30
+      },
+      {
+        "start": "2015-08-14",
+        "end": "2015-09-12",
+        "dayCount": 30
+      },
+      {
+        "start": "2016-02-08",
+        "end": "2016-03-08",
+        "dayCount": 30
+      },
+      {
+        "start": "2017-02-26",
+        "end": "2017-03-27",
+        "dayCount": 30
+      },
+      {
+        "start": "2019-11-26",
+        "end": "2019-12-25",
+        "dayCount": 30
+      },
+      {
+        "start": "2033-08-25",
+        "end": "2034-01-19",
+        "dayCount": 148
+      },
+      {
+        "start": "2044-11-19",
+        "end": "2044-12-18",
+        "dayCount": 30
+      }
+    ],
+    "dailySamples": [
+      {
+        "gregorianDate": "1903-10-20",
+        "kasi": [
+          1903,
+          9,
+          1,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          8,
+          30,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-21",
+        "kasi": [
+          1903,
+          9,
+          2,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          1,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-22",
+        "kasi": [
+          1903,
+          9,
+          3,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          2,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-23",
+        "kasi": [
+          1903,
+          9,
+          4,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          3,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-24",
+        "kasi": [
+          1903,
+          9,
+          5,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          4,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-25",
+        "kasi": [
+          1903,
+          9,
+          6,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          5,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-26",
+        "kasi": [
+          1903,
+          9,
+          7,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          6,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-27",
+        "kasi": [
+          1903,
+          9,
+          8,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          7,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-28",
+        "kasi": [
+          1903,
+          9,
+          9,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          8,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-29",
+        "kasi": [
+          1903,
+          9,
+          10,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          9,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-30",
+        "kasi": [
+          1903,
+          9,
+          11,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          10,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-10-31",
+        "kasi": [
+          1903,
+          9,
+          12,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          11,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-01",
+        "kasi": [
+          1903,
+          9,
+          13,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          12,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-02",
+        "kasi": [
+          1903,
+          9,
+          14,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          13,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-03",
+        "kasi": [
+          1903,
+          9,
+          15,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          14,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-04",
+        "kasi": [
+          1903,
+          9,
+          16,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          15,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-05",
+        "kasi": [
+          1903,
+          9,
+          17,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          16,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-06",
+        "kasi": [
+          1903,
+          9,
+          18,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          17,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-07",
+        "kasi": [
+          1903,
+          9,
+          19,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          18,
+          "REGULAR"
+        ]
+      },
+      {
+        "gregorianDate": "1903-11-08",
+        "kasi": [
+          1903,
+          9,
+          20,
+          "REGULAR"
+        ],
+        "legacy": [
+          1903,
+          9,
+          19,
+          "REGULAR"
+        ]
+      }
+    ],
+    "monthMetadataCounts": {
+      "MATCH": 1831,
+      "LEGACY_DIFF": 35,
+      "LEGACY_CORRUPT": 0,
+      "OUT_OF_LEGACY_RANGE": 2,
+      "AUTHORITATIVE_UNRESOLVED": 0
+    },
+    "monthMetadataSamples": [
+      {
+        "key": [
+          1903,
+          8,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1903-09-21",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1903-09-21",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1903,
+          9,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1903-10-20",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1903-10-21",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1903,
+          11,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1903-12-19",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1903-12-19",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1903,
+          12,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1904-01-17",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1904-01-18",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1904,
+          9,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1904-10-09",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1904-10-09",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1904,
+          10,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1904-11-07",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1904-11-08",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1905,
+          3,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1905-04-05",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1905-04-05",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1905,
+          4,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1905-05-04",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1905-05-05",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1907,
+          5,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1907-06-11",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1907-06-11",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1907,
+          6,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1907-07-10",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1907-07-11",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1908,
+          3,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1908-04-01",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1908-04-01",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1908,
+          4,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1908-04-30",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1908-05-01",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1908,
+          8,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1908-08-27",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1908-08-27",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1908,
+          9,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1908-09-25",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1908-09-26",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1909,
+          7,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1909-08-16",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1909-08-16",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1909,
+          8,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1909-09-14",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1909-09-15",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1911,
+          10,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1911-11-21",
+          "lengthDays": 29
+        },
+        "legacy": {
+          "start": "1911-11-21",
+          "lengthDays": 30
+        }
+      },
+      {
+        "key": [
+          1911,
+          11,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1911-12-20",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1911-12-21",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1922,
+          6,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1922-07-24",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1922-06-25",
+          "lengthDays": 29
+        }
+      },
+      {
+        "key": [
+          1976,
+          9,
+          "REGULAR"
+        ],
+        "kasi": {
+          "start": "1976-10-23",
+          "lengthDays": 30
+        },
+        "legacy": {
+          "start": "1976-10-23",
+          "lengthDays": 29
+        }
+      }
+    ]
+  },
+  "suntolunDat": {
+    "counts": {
+      "MATCH": 1853,
+      "LEGACY_DIFF": 14,
+      "LEGACY_CORRUPT": 0,
+      "OUT_OF_LEGACY_RANGE": 1,
+      "AUTHORITATIVE_UNRESOLVED": 0
+    },
+    "samples": [
+      {
+        "key": [
+          1990,
+          8,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      },
+      {
+        "key": [
+          1990,
+          9,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2004,
+          9,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2004,
+          10,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      },
+      {
+        "key": [
+          2015,
+          12,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2016,
+          1,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      },
+      {
+        "key": [
+          2017,
+          1,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2017,
+          2,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      },
+      {
+        "key": [
+          2033,
+          8,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2033,
+          11,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      },
+      {
+        "key": [
+          2036,
+          10,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      },
+      {
+        "key": [
+          2036,
+          11,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2042,
+          10,
+          "REGULAR"
+        ],
+        "kasi": 29,
+        "legacy": 30
+      },
+      {
+        "key": [
+          2042,
+          11,
+          "REGULAR"
+        ],
+        "kasi": 30,
+        "legacy": 29
+      }
+    ]
+  },
+  "yunDat": {
+    "counts": {
+      "MATCH": 1559,
+      "LEGACY_DIFF": 59,
+      "LEGACY_CORRUPT": 40,
+      "OUT_OF_LEGACY_RANGE": 0,
+      "AUTHORITATIVE_UNRESOLVED": 1589
+    },
+    "samples": [
+      {
+        "line": 234,
+        "gregorianDate": "1922-07-24",
+        "kasi": [
+          1922,
+          6,
+          1,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          1,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 235,
+        "gregorianDate": "1922-07-25",
+        "kasi": [
+          1922,
+          6,
+          2,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          2,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 236,
+        "gregorianDate": "1922-07-26",
+        "kasi": [
+          1922,
+          6,
+          3,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          3,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 237,
+        "gregorianDate": "1922-07-27",
+        "kasi": [
+          1922,
+          6,
+          4,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          4,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 238,
+        "gregorianDate": "1922-07-28",
+        "kasi": [
+          1922,
+          6,
+          5,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          5,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 239,
+        "gregorianDate": "1922-07-29",
+        "kasi": [
+          1922,
+          6,
+          6,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          6,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 240,
+        "gregorianDate": "1922-07-30",
+        "kasi": [
+          1922,
+          6,
+          7,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          7,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 241,
+        "gregorianDate": "1922-07-31",
+        "kasi": [
+          1922,
+          6,
+          8,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          8,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 242,
+        "gregorianDate": "1922-08-01",
+        "kasi": [
+          1922,
+          6,
+          9,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          9,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 243,
+        "gregorianDate": "1922-08-02",
+        "kasi": [
+          1922,
+          6,
+          10,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          10,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 244,
+        "gregorianDate": "1922-08-03",
+        "kasi": [
+          1922,
+          6,
+          11,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          11,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 245,
+        "gregorianDate": "1922-08-04",
+        "kasi": [
+          1922,
+          6,
+          12,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          12,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 246,
+        "gregorianDate": "1922-08-05",
+        "kasi": [
+          1922,
+          6,
+          13,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          13,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 247,
+        "gregorianDate": "1922-08-06",
+        "kasi": [
+          1922,
+          6,
+          14,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          14,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 248,
+        "gregorianDate": "1922-08-07",
+        "kasi": [
+          1922,
+          6,
+          15,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          15,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 249,
+        "gregorianDate": "1922-08-08",
+        "kasi": [
+          1922,
+          6,
+          16,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          16,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 250,
+        "gregorianDate": "1922-08-09",
+        "kasi": [
+          1922,
+          6,
+          17,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          17,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 251,
+        "gregorianDate": "1922-08-10",
+        "kasi": [
+          1922,
+          6,
+          18,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          18,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 252,
+        "gregorianDate": "1922-08-11",
+        "kasi": [
+          1922,
+          6,
+          19,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          19,
+          "LEAP"
+        ]
+      },
+      {
+        "line": 253,
+        "gregorianDate": "1922-08-12",
+        "kasi": [
+          1922,
+          6,
+          20,
+          "REGULAR"
+        ],
+        "legacy": [
+          1922,
+          6,
+          20,
+          "LEAP"
+        ]
+      }
+    ]
+  }
+}
