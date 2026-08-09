@@ -236,3 +236,16 @@ export type {
   HourBranchBoundaryFixture,
   HourPillarGoldenFixture,
 } from './saju/fixtures/hourPillarGoldenFixtures';
+export { calculateFourPillars } from './saju/fourPillars';
+export type {
+  SajuFourPillars,
+  SajuFourPillarsCalculationIdentity,
+  SajuFourPillarsCalculationInput,
+  SajuFourPillarsHour,
+  SajuFourPillarsHourUnavailableReason,
+  SajuFourPillarsProvenance,
+  SajuFourPillarsResult,
+  SajuFourPillarsUnavailableReason,
+} from './saju/contracts';
+export { FOUR_PILLARS_GOLDEN_FIXTURES } from './saju/fixtures/fourPillarsGoldenFixtures';
+export type { FourPillarsGoldenFixture } from './saju/fixtures/fourPillarsGoldenFixtures';
