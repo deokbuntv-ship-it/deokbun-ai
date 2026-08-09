@@ -71,6 +71,11 @@ export type {
   ResolvedLunisolarCalendar,
   ResolutionProvenance,
   TimezoneResolution,
+  TimezoneUnresolvedReason,
+  UniqueTimezoneResolution,
+  AmbiguousTimezoneResolution,
+  NonexistentTimezoneResolution,
+  UnresolvedTimezoneResolution,
   TrueSolarTimeResolution,
   TrueSolarTimeResolutionRequest,
   TrueSolarTimeResolver,
@@ -123,12 +128,18 @@ export type {
 } from './contracts/cross';
 export {
   BIRTH_FINGERPRINT_SCHEMA_VERSION,
+  BIRTH_FINGERPRINT_SCHEMA_VERSION_V3,
   CanonicalSerializationError,
   createBirthFingerprintFrame,
+  createBirthFingerprintFrameV3,
   createBirthFingerprintPayload,
+  createBirthFingerprintPayloadV3,
   serializeBirthFingerprintPayload,
 } from './normalization/canonicalSerialization';
-export type { BirthFingerprintPayload } from './normalization/canonicalSerialization';
+export type {
+  BirthFingerprintPayload,
+  BirthFingerprintPayloadV3,
+} from './normalization/canonicalSerialization';
 export { digestBirthFingerprintFrame } from './normalization/fingerprint';
 export type {
   DigestProvider,
@@ -315,3 +326,23 @@ export {
   STEM_YIN_YANG,
 } from './saju/derived/rules';
 export { calculateSajuDerivedFacts } from './saju/derived/calculateDerivedFacts';
+export type {
+  HistoricalTimezoneArtifact,
+  HistoricalTimezoneArtifactManifest,
+  HistoricalTimezoneOfficialCrossCheck,
+  HistoricalTimezoneState,
+  HistoricalTimezoneTransition,
+  TimezoneArtifactChecksum,
+} from './timezone/contracts';
+export {
+  ASIA_SEOUL_TZDB_2026C_ARTIFACT,
+  ASIA_SEOUL_TZDB_2026C_ARTIFACT_SHA256,
+} from './timezone/data/asiaSeoulTzdb2026c';
+export {
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER_ID,
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER_VERSION,
+  createAsiaSeoulHistoricalTimezoneResolver,
+} from './timezone/historicalTimezoneResolver';
+export { ASIA_SEOUL_GOLDEN_FIXTURES } from './timezone/fixtures/asiaSeoulGoldenFixtures';
+export type { AsiaSeoulGoldenFixture } from './timezone/fixtures/asiaSeoulGoldenFixtures';

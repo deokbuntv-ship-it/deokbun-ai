@@ -99,33 +99,68 @@ export type DstResolution =
       reason: 'RESOLVER_NOT_PROVIDED' | 'DATA_UNAVAILABLE' | 'TIME_UNRESOLVED';
     };
 
+export type TimezoneUnresolvedReason =
+  | 'TIMEZONE_NOT_PROVIDED'
+  | 'COORDINATES_REQUIRED'
+  | 'RESOLVER_NOT_PROVIDED'
+  | 'UNSUPPORTED_ZONE'
+  | 'OUTSIDE_SUPPORTED_RANGE'
+  | 'HISTORICAL_DATA_UNAVAILABLE'
+  | 'HISTORICAL_SOURCE_CONFLICT'
+  | 'LMT_NOT_AUTHORIZED'
+  | 'TIME_UNRESOLVED';
+
+type ResolvedTimezoneBase = {
+  status: 'RESOLVED';
+  ianaZone: string;
+  timezoneDataVersion: string;
+  resolutionSource: TemporalDataSource | 'ENGINE';
+  historicalProvenance: HistoricalTimeProvenance;
+  provenance: ResolutionProvenance;
+};
+
+export type UniqueTimezoneResolution = ResolvedTimezoneBase & {
+  /** A single calculation offset is authoritative only for UNIQUE local time. */
+  resolvedOffsetSeconds: number;
+  /** Compatibility/display value derived exactly as seconds / 60. */
+  resolvedOffsetMinutes: number;
+  dst: Exclude<DstResolution, { status: 'UNRESOLVED' }>;
+  localTimeResolution: Extract<
+    HistoricalLocalTimeResolution,
+    { kind: 'UNIQUE' }
+  >;
+};
+
+export type AmbiguousTimezoneResolution = ResolvedTimezoneBase & {
+  /** No candidate is selected and no single top-level offset is exposed. */
+  localTimeResolution: Extract<
+    HistoricalLocalTimeResolution,
+    { kind: 'AMBIGUOUS' }
+  >;
+};
+
+export type NonexistentTimezoneResolution = ResolvedTimezoneBase & {
+  /** The local clock gap is preserved without shifting to a valid time. */
+  localTimeResolution: Extract<
+    HistoricalLocalTimeResolution,
+    { kind: 'NONEXISTENT' }
+  >;
+};
+
+export type UnresolvedTimezoneResolution = {
+  status: 'UNRESOLVED';
+  ianaZone?: string;
+  reason: TimezoneUnresolvedReason;
+  timezoneDataVersion?: string;
+  historicalProvenance: HistoricalTimeProvenance;
+  provenance: ResolutionProvenance;
+};
+
 export type TimezoneResolution =
-  | {
-      status: 'RESOLVED';
-      ianaZone: string;
-      /** Calculation authority. Do not derive this value from minutes. */
-      resolvedOffsetSeconds: number;
-      /** Compatibility/display value derived exactly as seconds / 60. */
-      resolvedOffsetMinutes: number;
-      timezoneDataVersion: string;
-      resolutionSource: TemporalDataSource;
-      dst: DstResolution;
-      localTimeResolution: HistoricalLocalTimeResolution;
-      historicalProvenance: HistoricalTimeProvenance;
-      provenance: ResolutionProvenance;
-    }
-  | {
-      status: 'UNRESOLVED';
-      ianaZone?: string;
-      reason:
-        | 'TIMEZONE_NOT_PROVIDED'
-        | 'COORDINATES_REQUIRED'
-        | 'RESOLVER_NOT_PROVIDED'
-        | 'HISTORICAL_DATA_UNAVAILABLE'
-        | 'HISTORICAL_SOURCE_CONFLICT'
-        | 'LMT_NOT_AUTHORIZED'
-        | 'TIME_UNRESOLVED';
-    };
+  | UniqueTimezoneResolution
+  | AmbiguousTimezoneResolution
+  | NonexistentTimezoneResolution
+  | UnresolvedTimezoneResolution;
 
 export type CivilLocalDateTime = {
   date: LocalDate;

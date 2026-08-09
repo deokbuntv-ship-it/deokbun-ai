@@ -27,7 +27,8 @@ function unavailable(
 function unresolvedTimezoneReason(
   timezone: Extract<TimezoneResolution, { status: 'UNRESOLVED' }>,
 ): Extract<SajuFourPillarsHour, { status: 'UNAVAILABLE' }>['reason'] {
-  return timezone.reason === 'HISTORICAL_SOURCE_CONFLICT'
+  return timezone.reason === 'HISTORICAL_SOURCE_CONFLICT' ||
+    timezone.historicalProvenance.authorityStatus === 'SOURCE_CONFLICT'
     ? 'HISTORICAL_SOURCE_CONFLICT'
     : 'HISTORICAL_TIME_UNRESOLVED';
 }
@@ -66,9 +67,6 @@ function resolveHour(
   if (timezone.historicalProvenance.authorityStatus === 'UNRESOLVED') {
     return { status: 'UNAVAILABLE', reason: 'HISTORICAL_TIME_UNRESOLVED' };
   }
-  if (timezone.dst.status === 'UNRESOLVED') {
-    return { status: 'UNAVAILABLE', reason: 'HISTORICAL_TIME_UNRESOLVED' };
-  }
 
   const localResolution = timezone.localTimeResolution;
   if (localResolution.kind === 'AMBIGUOUS') {
@@ -77,10 +75,6 @@ function resolveHour(
   if (localResolution.kind === 'NONEXISTENT') {
     return { status: 'UNAVAILABLE', reason: 'LOCAL_TIME_NONEXISTENT' };
   }
-  if (localResolution.kind === 'UNRESOLVED') {
-    return { status: 'UNAVAILABLE', reason: 'HISTORICAL_TIME_UNRESOLVED' };
-  }
-
   const hour = calculateHourPillar({
     dayStem: dayPillar.stem,
     localTime: civilLocal.time as ExactLocalCivilTime,

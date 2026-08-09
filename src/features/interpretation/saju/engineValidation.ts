@@ -76,6 +76,28 @@ function uniqueTimezone(): TimezoneResolution {
   };
 }
 
+function unresolvedTimezone(): TimezoneResolution {
+  const provenance = {
+    resolverId: 'ENGINE_10A_VALIDATION',
+    resolverVersion: '1',
+    source: 'ENGINE' as const,
+  };
+  return {
+    status: 'UNRESOLVED',
+    reason: 'TIME_UNRESOLVED',
+    historicalProvenance: {
+      authorityStatus: 'UNRESOLVED',
+      officialSources: [],
+      ruleSetVersion: 'engine-10a-validation',
+      comparison: 'NOT_VERIFIED',
+      jurisdiction: 'KR',
+      applicableRegion: 'KR',
+      unresolvedReason: 'TIME_UNRESOLVED',
+    },
+    provenance,
+  };
+}
+
 function createExecutionInput(
   fixture: (typeof FOUR_PILLARS_GOLDEN_FIXTURES)[number],
 ): SajuEngineExecutionInput {
@@ -128,7 +150,7 @@ function createExecutionInput(
     timezone:
       fixture.time.accuracy === 'EXACT'
         ? uniqueTimezone()
-        : { status: 'UNRESOLVED', reason: 'TIME_UNRESOLVED' },
+        : unresolvedTimezone(),
     trueSolarTime: { status: 'NOT_APPLIED' },
     provenance: calendar.status === 'RESOLVED' ? [calendar.provenance] : [],
     warnings: [],
@@ -294,15 +316,21 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   let historicalPartialCases = 0;
   if (
     exactTimezone.status === 'RESOLVED' &&
-    exactTimezone.localTimeResolution.kind === 'UNIQUE'
+    'resolvedOffsetSeconds' in exactTimezone
   ) {
     const candidate = exactTimezone.localTimeResolution.candidate;
+    const {
+      resolvedOffsetSeconds: _resolvedOffsetSeconds,
+      resolvedOffsetMinutes: _resolvedOffsetMinutes,
+      dst: _dst,
+      ...resolvedBase
+    } = exactTimezone;
     const ambiguousInput: SajuEngineExecutionInput = {
       ...exactInput,
       normalizedBirth: {
         ...exactInput.normalizedBirth,
         timezone: {
-          ...exactTimezone,
+          ...resolvedBase,
           localTimeResolution: {
             kind: 'AMBIGUOUS',
             candidates: [
