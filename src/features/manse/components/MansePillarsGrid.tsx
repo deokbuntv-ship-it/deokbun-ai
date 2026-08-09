@@ -7,17 +7,14 @@ import type {
   ManseFourPillars,
   ManseHourStatus,
 } from '../types';
+import { HiddenStemsList } from './HiddenStemsList';
 import { PillarColumn } from './PillarColumn';
 
 // Presentation-only Four Pillars grid. Column order: 시 | 일 | 월 | 년.
-// The grid never computes anything; it renders the slots it is given and shows
-// product-facing status messages for the presentation states.
+// 지장간 is rendered INSIDE the same 사주 명식 Card (as a connected sub-row under
+// the 원국), not as a separate large card. The grid never computes anything.
 
-const AGGREGATE_PENDING_MESSAGE =
-  '사주 명식은 계산 엔진 연동 후 표시됩니다.';
-
-const AGGREGATE_UNAVAILABLE_MESSAGE =
-  '만세력 결과를 표시할 수 없습니다.';
+const AGGREGATE_UNAVAILABLE_MESSAGE = '만세력 결과를 표시할 수 없습니다.';
 
 // Hour-pillar notes. 'approximate'/'unknown' are derivable from the raw input;
 // 'ambiguous'/'unavailable' are ENGINE-determined. 'available'/'pending' show no
@@ -70,19 +67,17 @@ export function MansePillarsGrid({
     <Stack gap="sm">
       <Text variant="headingMedium">사주 명식</Text>
       <Card>
-        <Stack direction="row" gap="sm">
-          <PillarColumn pillar={pillars.hour} />
-          <PillarColumn pillar={pillars.day} />
-          <PillarColumn pillar={pillars.month} />
-          <PillarColumn pillar={pillars.year} />
+        <Stack gap="md">
+          <Stack direction="row" gap="sm">
+            <PillarColumn pillar={pillars.hour} />
+            <PillarColumn pillar={pillars.day} />
+            <PillarColumn pillar={pillars.month} />
+            <PillarColumn pillar={pillars.year} />
+          </Stack>
+          {/* 지장간: connected sub-row under each 지지 (same Card, same 4 columns). */}
+          <HiddenStemsList pillars={pillars} />
         </Stack>
       </Card>
-
-      {aggregateStatus === 'pending' ? (
-        <Text variant="bodySmall" colorToken="textSecondary">
-          {AGGREGATE_PENDING_MESSAGE}
-        </Text>
-      ) : null}
 
       {hourMessage ? (
         <Text variant="bodySmall" colorToken="textSecondary">

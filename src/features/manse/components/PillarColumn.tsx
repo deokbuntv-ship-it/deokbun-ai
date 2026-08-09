@@ -115,7 +115,11 @@ export function PillarColumn({ pillar }: { pillar: PillarView }) {
 
       {/* 천간 */}
       {stem ? (
-        <ElementGlyphTile glyph={stem.hanja} elementColorKey={stem.elementColorKey} />
+        <ElementGlyphTile
+          glyph={stem.hanja}
+          elementColorKey={stem.elementColorKey}
+          accessibilityLabel={`${pillar.columnLabel}주 천간 ${stem.hangul}, ${stem.elementLabel}, ${stem.yinYangLabel}, ${stem.tenGodLabel}`}
+        />
       ) : (
         <NeutralCell />
       )}
@@ -126,6 +130,7 @@ export function PillarColumn({ pillar }: { pillar: PillarView }) {
         <ElementGlyphTile
           glyph={branch.hanja}
           elementColorKey={branch.elementColorKey}
+          accessibilityLabel={`${pillar.columnLabel}주 지지 ${branch.hangul}, ${branch.elementLabel}, ${branch.yinYangLabel}`}
         />
       ) : (
         <NeutralCell />

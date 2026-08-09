@@ -16,7 +16,6 @@ import {
   BirthInfoSummary,
   DerivedFactsSection,
   FortuneCycleSection,
-  HiddenStemsList,
   MansePillarsGrid,
   getManseView,
   type ManseView,
@@ -140,6 +139,15 @@ export default function SubjectManseScreen() {
               unavailableReason={view.unavailableReason}
             />
 
+            {view.aggregateStatus !== 'unavailable' ? (
+              <>
+                {/* 지장간 is rendered inside MansePillarsGrid's Card (connected to
+                    each 지지). Here: 오행 분포 seam (ENGINE-11B, pending) + 대운/세운. */}
+                <DerivedFactsSection available={false} />
+                <FortuneCycleSection available={view.fortuneCycleAvailable} />
+              </>
+            ) : null}
+
             {showEditCta ? (
               <Button
                 label="대상 편집"
@@ -152,12 +160,6 @@ export default function SubjectManseScreen() {
                 }
               />
             ) : null}
-
-            <DerivedFactsSection available={view.derivedFactsAvailable}>
-              <HiddenStemsList pillars={view.pillars} />
-            </DerivedFactsSection>
-
-            <FortuneCycleSection available={view.fortuneCycleAvailable} />
 
             <Button
               label="뒤로"

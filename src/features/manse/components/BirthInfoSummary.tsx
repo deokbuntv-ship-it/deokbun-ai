@@ -1,6 +1,7 @@
 import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
+import { spacing } from '@/theme';
 
 import type {
   ManseApproximatePeriod,
@@ -69,17 +70,15 @@ function birthTimeText(accuracy: ManseTimeAccuracy | null, birth: ManseBirthDisp
   return '–';
 }
 
+// Compact row: tighter label column + bodySmall value so the 입력 정보 card stays
+// visually secondary to the 원국 8글자 (APP-29B). No information is removed.
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <Stack direction="row" gap="sm" align="flex-start">
-      <Text
-        variant="bodySmall"
-        colorToken="textSecondary"
-        style={{ width: 88 }}
-      >
+      <Text variant="caption" colorToken="textSecondary" style={{ width: 68 }}>
         {label}
       </Text>
-      <Text variant="bodyMedium" style={{ flex: 1 }}>
+      <Text variant="bodySmall" style={{ flex: 1 }}>
         {value}
       </Text>
     </Stack>
@@ -90,10 +89,12 @@ export function BirthInfoSummary({ birth }: { birth: ManseBirthDisplay }) {
   const nameLine = `${birth.displayName}${birth.isSelf ? ' (본인)' : ''}`;
 
   return (
-    <Stack gap="sm">
-      <Text variant="headingMedium">입력 정보</Text>
-      <Card>
-        <Stack gap="sm">
+    <Stack gap="xs">
+      <Text variant="bodyMedium" colorToken="textSecondary">
+        입력 정보
+      </Text>
+      <Card style={{ paddingVertical: spacing.md }}>
+        <Stack gap="xs">
           <Row label="이름" value={nameLine} />
           {birth.relationship ? (
             <Row label="관계" value={birth.relationship} />
