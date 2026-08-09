@@ -5,77 +5,84 @@ import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
-import type { PillarView } from '../types';
+import type { ManseBranchView, ManseStemView, PillarView } from '../types';
+import { ElementGlyphTile } from './ElementGlyphTile';
 
-// Presentation-only. Renders one pillar column (시/일/월/년) with its display
-// slots. Values are ENGINE-provided (APP-28C); when null they render as a clear
-// placeholder ("–") that never resembles a real calculated value.
+// Presentation-only. Renders one pillar column (시/일/월/년):
+//   [column label] / 천간 오행 tile / 천간 meta / 지지 오행 tile / 지지 meta.
+// The glyph sits inside an 오행-colored tile (requirement: WOOD=green .. METAL=white
+// .. WATER=black) and the 오행 label is shown alongside (accessibility — never
+// color-only). A null stem/branch renders a neutral placeholder ("–").
 
-function Cell({
-  value,
-  borderColor,
-  backgroundColor,
-}: {
-  value: string | null;
-  borderColor: string;
-  backgroundColor: string;
-}) {
-  const hasValue = value !== null && value.length > 0;
-
+function NeutralCell() {
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
   return (
     <View
       style={{
         width: '100%',
         minHeight: 44,
         borderWidth: 1,
-        borderColor,
+        borderColor: theme.border,
         borderRadius: radius.md,
-        backgroundColor,
+        backgroundColor: theme.backgroundElevated,
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: spacing.xs,
       }}
     >
-      <Text
-        variant="bodyLarge"
-        colorToken={hasValue ? 'textPrimary' : 'textSecondary'}
-      >
-        {hasValue ? value : '–'}
+      <Text variant="bodyLarge" colorToken="textSecondary">
+        –
       </Text>
     </View>
   );
 }
 
+function Meta({ children }: { children: string }) {
+  return (
+    <Text variant="caption" colorToken="textSecondary">
+      {children}
+    </Text>
+  );
+}
+
 export function PillarColumn({ pillar }: { pillar: PillarView }) {
-  const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const stem: ManseStemView | null = pillar.stem;
+  const branch: ManseBranchView | null = pillar.branch;
 
   return (
     <Stack style={{ flex: 1 }} gap="xs" align="center">
       <Text variant="bodyMedium">{pillar.columnLabel}</Text>
+
       {/* 천간 */}
-      <Cell
-        value={pillar.heavenlyStem}
-        borderColor={theme.border}
-        backgroundColor={theme.backgroundElevated}
-      />
+      {stem ? (
+        <ElementGlyphTile glyph={stem.hanja} elementColorKey={stem.elementColorKey} />
+      ) : (
+        <NeutralCell />
+      )}
+      {stem ? (
+        <Stack gap="none" align="center">
+          <Meta>{stem.hangul}</Meta>
+          <Meta>{`${stem.elementLabel}·${stem.yinYangLabel}`}</Meta>
+          <Meta>{stem.tenGodLabel}</Meta>
+        </Stack>
+      ) : null}
+
       {/* 지지 */}
-      <Cell
-        value={pillar.earthlyBranch}
-        borderColor={theme.border}
-        backgroundColor={theme.backgroundElevated}
-      />
-      <Stack gap="none" align="center">
-        <Text variant="caption" colorToken="textSecondary">
-          {pillar.ganzhiLabel ?? '간지 –'}
-        </Text>
-        <Text variant="caption" colorToken="textSecondary">
-          {pillar.yinYang ?? '음양 –'}
-        </Text>
-        <Text variant="caption" colorToken="textSecondary">
-          {pillar.element ?? '오행 –'}
-        </Text>
-      </Stack>
+      {branch ? (
+        <ElementGlyphTile
+          glyph={branch.hanja}
+          elementColorKey={branch.elementColorKey}
+        />
+      ) : (
+        <NeutralCell />
+      )}
+      {branch ? (
+        <Stack gap="none" align="center">
+          <Meta>{branch.hangul}</Meta>
+          <Meta>{`${branch.elementLabel}·${branch.yinYangLabel}`}</Meta>
+        </Stack>
+      ) : null}
     </Stack>
   );
 }

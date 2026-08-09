@@ -1,5 +1,6 @@
 import type { ConsultationSubjectRecord } from '@/features/consultation';
 import {
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
   DEOKBUNAI_SAJU_RULE_SET_VERSION,
   executeSajuFromBirthInput,
 } from '@/features/interpretation';
@@ -64,8 +65,12 @@ export async function getManseView(
   const birth = toManseBirthDisplay(record);
   const input = toSajuEngineInput(record.birthInfo);
 
+  // Inject the ENGINE's public Asia/Seoul historical timezone resolver (ENGINE-10C)
+  // and the crypto DigestProvider. The APP re-implements neither — offset/DST and
+  // fingerprint framing are ENGINE-owned.
   const execution = await executeSajuFromBirthInput(input, {
     digestProvider: expoCryptoDigestProvider,
+    historicalTimezoneResolver: ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
   });
 
   // Normalization/fingerprint stage failure (invalid date, unsupported range,

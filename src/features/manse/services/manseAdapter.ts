@@ -1,52 +1,109 @@
-import type {
-  SajuBirthExecutionResult,
-  SajuEngineResult,
-  SajuFourPillarsHour,
-  SajuFourPillarsUnavailableReason,
-  SexagenaryPillar,
+import {
+  EARTHLY_BRANCH_LABELS,
+  FIVE_ELEMENT_LABELS,
+  HEAVENLY_STEM_LABELS,
+  HIDDEN_STEM_ROLE_LABELS,
+  TEN_GOD_LABELS,
+  YIN_YANG_LABELS,
+  type SajuBirthExecutionResult,
+  type SajuDerivedBranchAnnotation,
+  type SajuDerivedHiddenStemAnnotation,
+  type SajuDerivedPillarAnnotation,
+  type SajuDerivedStemAnnotation,
+  type SajuEngineResult,
+  type SajuFourPillars,
+  type SajuFourPillarsHour,
+  type SajuFourPillarsUnavailableReason,
+  type SexagenaryPillar,
 } from '@/features/interpretation';
 
 import type {
   ManseBirthDisplay,
+  ManseBranchView,
+  ManseFourPillars,
+  ManseHiddenStemView,
   ManseHourStatus,
+  ManseStemView,
   ManseView,
   PillarView,
 } from '../types';
+import { fiveElementColorKey } from './elementColor';
 
 // APP-owned adapter: ENGINE SajuEngineResult -> presentation ManseView. NO
-// calculation happens here — it only maps authoritative ENGINE output onto the
-// existing APP-28B presentation view model.
+// calculation happens here — it maps authoritative ENGINE output + canonical ENGINE
+// labels onto the presentation view model. element/yinYang/tenGod/hiddenStems are
+// all ENGINE-owned; the APP only picks a theme color key and reuses ENGINE labels.
 
-// NOTE (Korean labels): the ENGINE exposes stem/branch as romanized semantic ids
-// (HEAVENLY_STEMS 'JIA'.., EARTHLY_BRANCHES 'ZI'..) and does NOT provide Korean
-// 간지 labels. Per the sprint rule the APP must NOT invent a 60갑자 lookup, so the
-// authoritative semantic ids are shown provisionally and Korean canonical labels
-// are reported as Integration Required. 음양/오행 remain placeholders (null) until
-// the Derived Facts ENGINE provides them.
+const DAY_MASTER_LABEL = '일간';
 
-function pillarView(columnLabel: string, pillar: SexagenaryPillar): PillarView {
+function stemView(
+  sexStem: SexagenaryPillar['stem'],
+  annotation: SajuDerivedStemAnnotation,
+  isDayMaster: boolean,
+): ManseStemView {
+  const label = HEAVENLY_STEM_LABELS[sexStem];
+  return {
+    hanja: label.hanja,
+    hangul: label.hangul,
+    elementColorKey: fiveElementColorKey(annotation.element),
+    elementLabel: FIVE_ELEMENT_LABELS[annotation.element].hangul,
+    yinYangLabel: YIN_YANG_LABELS[annotation.yinYang].hangul,
+    // ENGINE raw fact stays PEER for the day stem; the APP shows "일간" for the
+    // Day Master position only. Value is not altered — presentation label only.
+    tenGodLabel: isDayMaster
+      ? DAY_MASTER_LABEL
+      : TEN_GOD_LABELS[annotation.tenGod].hangul,
+  };
+}
+
+function hiddenStemView(
+  hidden: SajuDerivedHiddenStemAnnotation,
+): ManseHiddenStemView {
+  const label = HEAVENLY_STEM_LABELS[hidden.stem];
+  return {
+    hanja: label.hanja,
+    hangul: label.hangul,
+    roleLabel: HIDDEN_STEM_ROLE_LABELS[hidden.role].hangul,
+    elementColorKey: fiveElementColorKey(hidden.element),
+    elementLabel: FIVE_ELEMENT_LABELS[hidden.element].hangul,
+    yinYangLabel: YIN_YANG_LABELS[hidden.yinYang].hangul,
+    tenGodLabel: TEN_GOD_LABELS[hidden.tenGod].hangul,
+  };
+}
+
+function branchView(
+  sexBranch: SexagenaryPillar['branch'],
+  annotation: SajuDerivedBranchAnnotation,
+): ManseBranchView {
+  const label = EARTHLY_BRANCH_LABELS[sexBranch];
+  return {
+    hanja: label.hanja,
+    hangul: label.hangul,
+    elementColorKey: fiveElementColorKey(annotation.element),
+    elementLabel: FIVE_ELEMENT_LABELS[annotation.element].hangul,
+    yinYangLabel: YIN_YANG_LABELS[annotation.yinYang].hangul,
+    hiddenStems: annotation.hiddenStems.map(hiddenStemView),
+  };
+}
+
+function pillarView(
+  columnLabel: string,
+  sexagenary: SexagenaryPillar,
+  annotation: SajuDerivedPillarAnnotation,
+  isDayMaster: boolean,
+): PillarView {
   return {
     columnLabel,
-    heavenlyStem: pillar.stem,
-    earthlyBranch: pillar.branch,
-    ganzhiLabel: null,
-    yinYang: null,
-    element: null,
+    stem: stemView(sexagenary.stem, annotation.stem, isDayMaster),
+    branch: branchView(sexagenary.branch, annotation.branch),
   };
 }
 
 function emptyPillar(columnLabel: string): PillarView {
-  return {
-    columnLabel,
-    heavenlyStem: null,
-    earthlyBranch: null,
-    ganzhiLabel: null,
-    yinYang: null,
-    element: null,
-  };
+  return { columnLabel, stem: null, branch: null };
 }
 
-function emptyPillars() {
+function emptyPillars(): ManseFourPillars {
   return {
     hour: emptyPillar('시'),
     day: emptyPillar('일'),
@@ -55,27 +112,28 @@ function emptyPillars() {
   };
 }
 
-function mapHour(hour: SajuFourPillarsHour): {
-  status: ManseHourStatus;
-  pillar: PillarView;
-} {
+// Hour column: full view only when the ENGINE hour is AVAILABLE and its derived
+// annotation exists. Otherwise null stem/branch (PARTIAL-safe, never fabricated).
+function hourPillarView(
+  fourPillarsHour: SajuFourPillarsHour,
+  hourAnnotation: SajuDerivedPillarAnnotation | undefined,
+): PillarView {
+  if (fourPillarsHour.status === 'AVAILABLE' && hourAnnotation !== undefined) {
+    return pillarView('시', fourPillarsHour.pillar, hourAnnotation, false);
+  }
+  return emptyPillar('시');
+}
+
+function mapHourStatus(hour: SajuFourPillarsHour): ManseHourStatus {
   if (hour.status === 'AVAILABLE') {
-    return { status: 'available', pillar: pillarView('시', hour.pillar) };
+    return 'available';
   }
   if (hour.status === 'AMBIGUOUS') {
-    return {
-      status:
-        hour.reason === 'BIRTH_TIME_APPROXIMATE_AMBIGUOUS'
-          ? 'approximate'
-          : 'ambiguous',
-      pillar: emptyPillar('시'),
-    };
+    return hour.reason === 'BIRTH_TIME_APPROXIMATE_AMBIGUOUS'
+      ? 'approximate'
+      : 'ambiguous';
   }
-  // UNAVAILABLE
-  return {
-    status: hour.reason === 'BIRTH_TIME_UNKNOWN' ? 'unknown' : 'unavailable',
-    pillar: emptyPillar('시'),
-  };
+  return hour.reason === 'BIRTH_TIME_UNKNOWN' ? 'unknown' : 'unavailable';
 }
 
 const AGGREGATE_UNAVAILABLE_MESSAGE: Partial<
@@ -98,7 +156,7 @@ const NORMALIZATION_FAILURE_MESSAGE: Record<string, string> = {
   INVALID_TIME: '출생시간 정보가 올바르지 않습니다.',
 };
 
-// SajuEngineResult -> ManseView (the core adapter mapping).
+// SajuEngineResult -> ManseView (core adapter mapping).
 export function manseViewFromEngineResult(
   birth: ManseBirthDisplay,
   result: SajuEngineResult,
@@ -117,21 +175,22 @@ export function manseViewFromEngineResult(
     };
   }
 
-  const fourPillars = result.output.fourPillars;
-  const hour = mapHour(fourPillars.hour);
+  const fourPillars: SajuFourPillars = result.output.fourPillars;
+  const derived = result.output.derivedFacts.pillars;
 
   return {
     birth,
-    // SUCCESS = all four pillars; PARTIAL = year/month/day authoritative, hour not.
+    // SUCCESS = all four pillars; PARTIAL = year/month/day, hour not available.
     aggregateStatus: result.status === 'SUCCESS' ? 'complete' : 'partial',
-    hourStatus: hour.status,
+    hourStatus: mapHourStatus(fourPillars.hour),
     pillars: {
-      hour: hour.pillar,
-      day: pillarView('일', fourPillars.day),
-      month: pillarView('월', fourPillars.month),
-      year: pillarView('년', fourPillars.year),
+      hour: hourPillarView(fourPillars.hour, derived.hour),
+      day: pillarView('일', fourPillars.day, derived.day, true),
+      month: pillarView('월', fourPillars.month, derived.month, false),
+      year: pillarView('년', fourPillars.year, derived.year, false),
     },
-    derivedFactsAvailable: false,
+    // year/month/day derived facts are always present for SUCCESS/PARTIAL.
+    derivedFactsAvailable: true,
     fortuneCycleAvailable: false,
   };
 }

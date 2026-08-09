@@ -16,16 +16,13 @@ import {
   BirthInfoSummary,
   DerivedFactsSection,
   FortuneCycleSection,
+  HiddenStemsList,
   MansePillarsGrid,
   getManseView,
   type ManseView,
 } from '@/features/manse';
 
 type ManseStatus = 'loading' | 'ready' | 'error' | 'invalid';
-
-// Shown while ENGINE stem/branch are romanized ids and derived facts are pending.
-const PROVISIONAL_NOTE =
-  '천간·지지 한글 표기와 오행·음양 정보는 계산 엔진 연동 후 제공됩니다.';
 
 export default function SubjectManseScreen() {
   const router = useRouter();
@@ -143,13 +140,6 @@ export default function SubjectManseScreen() {
               unavailableReason={view.unavailableReason}
             />
 
-            {view.aggregateStatus === 'complete' ||
-            view.aggregateStatus === 'partial' ? (
-              <Text variant="bodySmall" colorToken="textSecondary">
-                {PROVISIONAL_NOTE}
-              </Text>
-            ) : null}
-
             {showEditCta ? (
               <Button
                 label="대상 편집"
@@ -163,7 +153,9 @@ export default function SubjectManseScreen() {
               />
             ) : null}
 
-            <DerivedFactsSection available={view.derivedFactsAvailable} />
+            <DerivedFactsSection available={view.derivedFactsAvailable}>
+              <HiddenStemsList pillars={view.pillars} />
+            </DerivedFactsSection>
 
             <FortuneCycleSection available={view.fortuneCycleAvailable} />
 

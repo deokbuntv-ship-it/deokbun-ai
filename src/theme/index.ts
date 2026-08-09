@@ -1,5 +1,5 @@
-export { colors } from './colors';
-export type { ColorScheme, SemanticColorToken, SemanticColors, Palette } from './colors';
+export { colors, fiveElementTiles } from './colors';
+export type { ColorScheme, SemanticColorToken, SemanticColors, Palette, FiveElementColorKey, FiveElementTile } from './colors';
 
 export { spacing } from './spacing';
 export type { SpacingToken } from './spacing';
