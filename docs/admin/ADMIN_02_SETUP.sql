@@ -9,12 +9,25 @@
 -- public.is_admin() and return only curated fields. Until applied, the app's
 -- admin user screens surface an error state (fail-closed).
 --
+-- Security hardening (2026-08):
+--   * SECURITY DEFINER functions pin search_path = public, pg_temp.
+--   * admin_get_user returns a CURATED birth projection (only the fields the
+--     ADMIN-02 UI uses) — never the raw birth_info object. No exact time
+--     (birthHour/Minute), no gender, no approximateTimePeriod are exposed.
+--   * Whole script runs in one transaction.
+--
 -- Depends on existing tables: public.profiles(id, display_name),
--- public.consultation_subjects(user_id, ...), public.conversations(user_id, ...),
+-- public.consultation_subjects(user_id, display_name, relationship, is_self,
+-- birth_info jsonb, created_at, updated_at), public.conversations(user_id),
 -- and auth.users (accessed only inside these definer functions, never the client).
+-- birth_info stores the app's BirthInfoDraft shape (top-level string keys).
 -- =============================================================================
 
+begin;
+
 -- 1) admin_list_users: paginated user overview with per-user counts. -----------
+--    Returns exactly 5 columns: user_id, display_name, created_at,
+--    subject_count, conversation_count.
 create or replace function public.admin_list_users(
   p_search text default null,
   p_limit  int  default 25,
@@ -30,7 +43,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   if not public.is_admin() then
@@ -60,14 +73,14 @@ revoke all on function public.admin_list_users(text, int, int) from public;
 grant execute on function public.admin_list_users(text, int, int) to authenticated;
 
 -- 2) admin_get_user: one user's profile + curated subject summaries. -----------
---    Returns jsonb. Subjects include the raw birth_info object; the APP renders
---    only curated fields (never a raw JSON dump).
+--    Returns jsonb. Each subject exposes ONLY the curated birth fields the UI
+--    renders (data minimization at the response layer) — never raw birth_info.
 create or replace function public.admin_get_user(p_user_id uuid)
 returns jsonb
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   result jsonb;
@@ -91,7 +104,16 @@ begin
           'display_name', s.display_name,
           'relationship', s.relationship,
           'is_self', s.is_self,
-          'birth_info', s.birth_info,
+          -- Curated birth projection: only the fields the ADMIN-02 UI uses.
+          'birth_info', jsonb_build_object(
+            'birthYear',         s.birth_info ->> 'birthYear',
+            'birthMonth',        s.birth_info ->> 'birthMonth',
+            'birthDay',          s.birth_info ->> 'birthDay',
+            'calendarType',      s.birth_info ->> 'calendarType',
+            'lunarMonthType',    s.birth_info ->> 'lunarMonthType',
+            'birthTimeAccuracy', s.birth_info ->> 'birthTimeAccuracy',
+            'birthPlace',        s.birth_info ->> 'birthPlace'
+          ),
           'created_at', s.created_at,
           'updated_at', s.updated_at
         )
@@ -113,8 +135,11 @@ $$;
 revoke all on function public.admin_get_user(uuid) from public;
 grant execute on function public.admin_get_user(uuid) to authenticated;
 
+commit;
+
 -- =============================================================================
 -- After applying: reload the web /admin/users screen (as an admin user).
 --   - Non-admins calling these RPCs get "not authorized" (fail-closed).
 --   - No table RLS was widened; raw cross-user tables remain owner-only.
+--   - Client receives only curated birth fields (no exact time / gender / etc.).
 -- =============================================================================

@@ -32,8 +32,9 @@ function toListItem(row: Record<string, unknown>): AdminUserListItem {
   };
 }
 
-// Curates a subject row into a presentation-safe summary. The raw birth_info
-// object is read for a fixed set of fields only (never surfaced wholesale).
+// Maps a subject row to a presentation-safe summary. The RPC already returns a
+// curated birth projection (only the fields below) — the raw birth_info object is
+// never sent to the client. This reads that curated object defensively.
 function toSubjectSummary(row: Record<string, unknown>): AdminSubjectSummary {
   const birth = (row.birth_info ?? {}) as Record<string, unknown>;
 
