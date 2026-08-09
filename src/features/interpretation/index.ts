@@ -326,6 +326,18 @@ export {
   STEM_YIN_YANG,
 } from './saju/derived/rules';
 export { calculateSajuDerivedFacts } from './saju/derived/calculateDerivedFacts';
+export {
+  EARTHLY_BRANCH_LABELS,
+  FIVE_ELEMENT_LABELS,
+  HEAVENLY_STEM_LABELS,
+  HIDDEN_STEM_ROLE_LABELS,
+  TEN_GOD_LABELS,
+  YIN_YANG_LABELS,
+} from './saju/presentationLabels';
+export type {
+  SajuHangulLabel,
+  SajuHanjaHangulLabel,
+} from './saju/presentationLabels';
 export type {
   HistoricalTimezoneArtifact,
   HistoricalTimezoneArtifactManifest,

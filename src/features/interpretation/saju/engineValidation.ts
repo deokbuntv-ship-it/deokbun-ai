@@ -9,9 +9,12 @@ import {
   NORMALIZATION_WARNING_SEVERITY,
   SAJU_HOUR_WARNING_SEVERITY,
   executeSaju,
+  executeSajuWithCalculatorsForValidation,
 } from './engineAdapter';
 import { calculateFourPillars } from './fourPillars';
 import { FOUR_PILLARS_GOLDEN_FIXTURES } from './fixtures/fourPillarsGoldenFixtures';
+import { calculateSajuDerivedFacts } from './derived/calculateDerivedFacts';
+import { DEOKBUNAI_SAJU_DERIVED_FACTS_V1_RULE_VERSIONS } from './derived/rules';
 
 export type SajuEngineValidationReport = {
   ok: boolean;
@@ -32,6 +35,14 @@ export type SajuEngineValidationReport = {
   evidenceIntegrityCases: number;
   warningMappingCases: number;
   derivedFactViolations: number;
+  derivedCompleteCases: number;
+  derivedPartialCases: number;
+  derivedRuleVersionCases: number;
+  derivedDayMasterPeerCases: number;
+  derivedEvidenceCases: number;
+  productionCallCountCases: number;
+  maxDerivedCallsObserved: number;
+  unavailableDerivedZeroCallCases: number;
 };
 
 function uniqueTimezone(): TimezoneResolution {
@@ -233,6 +244,11 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   let provenanceCases = 0;
   let evidenceIntegrityCases = 0;
   let derivedFactViolations = 0;
+  let derivedCompleteCases = 0;
+  let derivedPartialCases = 0;
+  let derivedRuleVersionCases = 0;
+  let derivedDayMasterPeerCases = 0;
+  let derivedEvidenceCases = 0;
   const allowedFactKeys = new Set([
     'YEAR_PILLAR',
     'MONTH_PILLAR',
@@ -262,6 +278,13 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
       successMappings += 1;
       if (result.facts.length === 4) completeFactCases += 1;
       else failures.push(`${fixture.id} did not expose four facts.`);
+      if (
+        result.output.derivedFacts.pillars.year &&
+        result.output.derivedFacts.pillars.month &&
+        result.output.derivedFacts.pillars.day &&
+        result.output.derivedFacts.pillars.hour
+      ) derivedCompleteCases += 1;
+      else failures.push(`${fixture.id} did not expose COMPLETE Derived Facts.`);
     }
     if (result.status === 'PARTIAL') {
       partialMappings += 1;
@@ -273,6 +296,16 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
       } else {
         failures.push(`${fixture.id} exposed an unavailable Hour fact.`);
       }
+      if (
+        result.output.derivedFacts.pillars.year &&
+        result.output.derivedFacts.pillars.month &&
+        result.output.derivedFacts.pillars.day &&
+        !Object.prototype.hasOwnProperty.call(
+          result.output.derivedFacts.pillars,
+          'hour',
+        )
+      ) derivedPartialCases += 1;
+      else failures.push(`${fixture.id} exposed invalid PARTIAL Derived Facts.`);
     }
     if (result.signals.length === 0) zeroSignalCases += 1;
     else failures.push(`${fixture.id} generated signals.`);
@@ -302,6 +335,25 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
       } else {
         failures.push(`${fixture.id} provenance was not preserved.`);
       }
+      if (
+        result.output.derivedFacts.ruleVersions ===
+          DEOKBUNAI_SAJU_DERIVED_FACTS_V1_RULE_VERSIONS &&
+        provenance.derivedFactsRuleVersions ===
+          result.output.derivedFacts.ruleVersions
+      ) derivedRuleVersionCases += 1;
+      else failures.push(`${fixture.id} Derived Facts rule versions were not preserved.`);
+      if (result.output.derivedFacts.pillars.day.stem.tenGod === 'PEER') {
+        derivedDayMasterPeerCases += 1;
+      } else failures.push(`${fixture.id} changed the raw Day Master Ten God.`);
+      if (
+        result.evidence.some(
+          (node) =>
+            node.id === 'SAJU.EVIDENCE.DERIVED_FACTS_RULES' &&
+            node.ruleVersion ===
+              result.output.derivedFacts.ruleVersions.derivedFacts,
+        )
+      ) derivedEvidenceCases += 1;
+      else failures.push(`${fixture.id} Derived Facts evidence was missing.`);
     }
     if (evidenceIsComplete(result)) evidenceIntegrityCases += 1;
     else failures.push(`${fixture.id} evidence references are incomplete.`);
@@ -408,6 +460,63 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
     }
   }
 
+  let productionCallCountCases = 0;
+  let maxDerivedCallsObserved = 0;
+  let unavailableDerivedZeroCallCases = 0;
+  let fourPillarsCalls = 0;
+  let derivedCalls = 0;
+  const countedCalculators = {
+    calculateFourPillars(input: Parameters<typeof calculateFourPillars>[0]) {
+      fourPillarsCalls += 1;
+      return calculateFourPillars(input);
+    },
+    calculateDerivedFacts(
+      input: Parameters<typeof calculateSajuDerivedFacts>[0],
+    ) {
+      derivedCalls += 1;
+      maxDerivedCallsObserved = Math.max(maxDerivedCallsObserved, derivedCalls);
+      return calculateSajuDerivedFacts(input);
+    },
+  };
+  const countedComplete = executeSajuWithCalculatorsForValidation(
+    exactInput,
+    countedCalculators,
+  );
+  if (
+    countedComplete.status === 'SUCCESS' &&
+    fourPillarsCalls === 1 &&
+    derivedCalls === 1
+  ) productionCallCountCases += 1;
+  else failures.push('COMPLETE production calculator call counts were not 1/1.');
+
+  fourPillarsCalls = 0;
+  derivedCalls = 0;
+  const countedPartial = executeSajuWithCalculatorsForValidation(
+    createExecutionInput(FOUR_PILLARS_GOLDEN_FIXTURES[5]),
+    countedCalculators,
+  );
+  if (
+    countedPartial.status === 'PARTIAL' &&
+    fourPillarsCalls === 1 &&
+    derivedCalls === 1
+  ) productionCallCountCases += 1;
+  else failures.push('PARTIAL production calculator call counts were not 1/1.');
+
+  fourPillarsCalls = 0;
+  derivedCalls = 0;
+  const countedUnavailable = executeSajuWithCalculatorsForValidation(
+    missingCalendarInput,
+    countedCalculators,
+  );
+  if (
+    countedUnavailable.status === 'UNAVAILABLE' &&
+    fourPillarsCalls === 1 &&
+    derivedCalls === 0
+  ) {
+    productionCallCountCases += 1;
+    unavailableDerivedZeroCallCases += 1;
+  } else failures.push('UNAVAILABLE invoked Derived Facts or Four Pillars more than once.');
+
   const sourceWarning: NormalizationWarning = {
     code: 'VALIDATION_WARNING',
     path: 'source.time',
@@ -481,5 +590,13 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
     evidenceIntegrityCases,
     warningMappingCases,
     derivedFactViolations,
+    derivedCompleteCases,
+    derivedPartialCases,
+    derivedRuleVersionCases,
+    derivedDayMasterPeerCases,
+    derivedEvidenceCases,
+    productionCallCountCases,
+    maxDerivedCallsObserved,
+    unavailableDerivedZeroCallCases,
   };
 }
