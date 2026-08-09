@@ -11,88 +11,21 @@ import { MaxContentWidth } from '@/constants/theme';
 import {
   consultationSubjectService,
   isSavedSubjectId,
-  type ConsultationSubjectRecord,
 } from '@/features/consultation';
 import {
   BirthInfoSummary,
   DerivedFactsSection,
   FortuneCycleSection,
   MansePillarsGrid,
-  type ManseBirthDisplay,
-  type ManseHourStatus,
+  getManseView,
   type ManseView,
-  type PillarView,
 } from '@/features/manse';
 
 type ManseStatus = 'loading' | 'ready' | 'error' | 'invalid';
 
-// ---- Shell ManseView builders (APP-28B) -----------------------------------
-// These map the Saved Subject's RAW input into the presentation view model.
-// They perform NO saju calculation: pillar values are always null and the
-// aggregate status is always 'pending' (awaiting ENGINE integration, APP-28C).
-
-function toBirthDisplay(record: ConsultationSubjectRecord): ManseBirthDisplay {
-  const birthInfo = record.birthInfo;
-  return {
-    displayName: record.displayName,
-    isSelf: record.isSelf,
-    relationship: record.relationship,
-    gender: birthInfo.gender,
-    calendarType: birthInfo.calendarType,
-    lunarMonthType: birthInfo.lunarMonthType,
-    birthYear: birthInfo.birthYear,
-    birthMonth: birthInfo.birthMonth,
-    birthDay: birthInfo.birthDay,
-    birthTimeAccuracy: birthInfo.birthTimeAccuracy,
-    birthHour: birthInfo.birthHour,
-    birthMinute: birthInfo.birthMinute,
-    approximateTimePeriod: birthInfo.approximateTimePeriod,
-    birthPlace: birthInfo.birthPlace,
-  };
-}
-
-function emptyPillar(columnLabel: string): PillarView {
-  return {
-    columnLabel,
-    heavenlyStem: null,
-    earthlyBranch: null,
-    ganzhiLabel: null,
-    yinYang: null,
-    element: null,
-  };
-}
-
-// Hour presentation derived ONLY from the raw accuracy field (not a calculation):
-// unknown/approximate are permanent truths about the input; exact stays 'pending'
-// because resolving the hour pillar itself requires the ENGINE (APP-28C).
-function shellHourStatus(
-  accuracy: ManseBirthDisplay['birthTimeAccuracy'],
-): ManseHourStatus {
-  if (accuracy === 'unknown') {
-    return 'unknown';
-  }
-  if (accuracy === 'approximate') {
-    return 'approximate';
-  }
-  return 'pending';
-}
-
-function buildShellManseView(record: ConsultationSubjectRecord): ManseView {
-  const birth = toBirthDisplay(record);
-  return {
-    birth,
-    aggregateStatus: 'pending',
-    hourStatus: shellHourStatus(birth.birthTimeAccuracy),
-    pillars: {
-      hour: emptyPillar('시'),
-      day: emptyPillar('일'),
-      month: emptyPillar('월'),
-      year: emptyPillar('년'),
-    },
-    derivedFactsAvailable: false,
-    fortuneCycleAvailable: false,
-  };
-}
+// Shown while ENGINE stem/branch are romanized ids and derived facts are pending.
+const PROVISIONAL_NOTE =
+  '천간·지지 한글 표기와 오행·음양 정보는 계산 엔진 연동 후 제공됩니다.';
 
 export default function SubjectManseScreen() {
   const router = useRouter();
@@ -103,12 +36,12 @@ export default function SubjectManseScreen() {
   const [view, setView] = useState<ManseView | null>(null);
   const [status, setStatus] = useState<ManseStatus>('loading');
 
-  // Discards stale responses (unmount / manual retry). Same pattern as history.
+  // Discards stale responses (unmount / manual retry / subject switch).
   const loadTokenRef = useRef(0);
 
-  // READ ONLY: this screen never calls updateSubject/updateBirthInfo or mutates
-  // the draft/conversation, so opening it does not change which subject is
-  // "진행 중" nor affect resume/new/history behavior.
+  // READ ONLY: getSubject to load the current subject, then the ENGINE-backed
+  // manse view. This screen never calls updateSubject/updateBirthInfo or mutates
+  // the draft/conversation, so "진행 중" / resume / new / history are unaffected.
   const loadManse = useCallback(() => {
     if (subjectId === undefined || !isSavedSubjectId(subjectId)) {
       setStatus('invalid');
@@ -129,8 +62,16 @@ export default function SubjectManseScreen() {
           setStatus('error');
           return;
         }
-        setView(buildShellManseView(record));
-        setStatus('ready');
+        // ENGINE-backed computation (Saved Subject manse = LIVE from current
+        // birthInfo). getManseView never throws; ENGINE failures surface as an
+        // 'unavailable' ManseView, not a screen error.
+        return getManseView(record).then((manseView) => {
+          if (token !== loadTokenRef.current) {
+            return;
+          }
+          setView(manseView);
+          setStatus('ready');
+        });
       })
       .catch(() => {
         if (token !== loadTokenRef.current) {
@@ -176,6 +117,8 @@ export default function SubjectManseScreen() {
     return renderStatusCard('만세력을 불러오지 못했습니다.', true);
   }
 
+  const showEditCta = view.aggregateStatus === 'unavailable';
+
   return (
     <Screen>
       <ScrollView
@@ -199,6 +142,26 @@ export default function SubjectManseScreen() {
               hourStatus={view.hourStatus}
               unavailableReason={view.unavailableReason}
             />
+
+            {view.aggregateStatus === 'complete' ||
+            view.aggregateStatus === 'partial' ? (
+              <Text variant="bodySmall" colorToken="textSecondary">
+                {PROVISIONAL_NOTE}
+              </Text>
+            ) : null}
+
+            {showEditCta ? (
+              <Button
+                label="대상 편집"
+                variant="secondary"
+                onPress={() =>
+                  router.push({
+                    pathname: '/birth-info',
+                    params: { subjectId },
+                  })
+                }
+              />
+            ) : null}
 
             <DerivedFactsSection available={view.derivedFactsAvailable} />
 

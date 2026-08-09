@@ -4,6 +4,8 @@ export { PillarColumn } from './components/PillarColumn';
 export { DerivedFactsSection } from './components/DerivedFactsSection';
 export { FortuneCycleSection } from './components/FortuneCycleSection';
 
+export { getManseView } from './services/manseService';
+
 export type {
   ManseApproximatePeriod,
   ManseAggregateStatus,
