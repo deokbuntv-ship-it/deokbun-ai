@@ -68,3 +68,73 @@ export type AdminUserDetail = {
   conversationCount: number;
   subjects: AdminSubjectSummary[];
 };
+
+// ---- ADMIN-03: consultation monitoring (metadata-only, PII-minimal) ---------
+// Message CONTENT is never returned to the client — only role / length / order.
+export type AdminConsultationListParams = {
+  search?: string;
+  limit: number;
+  offset: number;
+};
+
+export type AdminConsultationListItem = {
+  conversationId: string;
+  userDisplayName: string | null;
+  subjectLabel: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  messageCount: number;
+};
+
+export type AdminMessageMeta = {
+  seq: number;
+  role: string; // 'user' | 'assistant' (ENGINE/app value, shown as-is)
+  length: number; // char length of content — never the content itself
+};
+
+export type AdminConsultationDetail = {
+  conversationId: string;
+  userId: string | null;
+  userDisplayName: string | null;
+  subjectLabel: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  hasSummary: boolean; // whether a summary exists — never the summary text
+  messageCount: number;
+  messages: AdminMessageMeta[];
+};
+
+// ---- ADMIN-04: AI usage / operations dashboard -----------------------------
+// AI metrics come from public.ai_usage_logs (written by the chat Edge Function
+// via service_role). Raw token/cost data only — no price table is hardcoded.
+export type AdminDashboardOverview = {
+  userCount: number;
+  subjectCount: number;
+  conversationCount: number;
+  conversationToday: number;
+  aiRequestCount: number;
+  aiSuccessCount: number;
+  aiErrorCount: number;
+  aiInputTokens: number;
+  aiOutputTokens: number;
+  aiTodayRequestCount: number;
+};
+
+export type AdminAiUsageParams = {
+  limit: number;
+  offset: number;
+};
+
+export type AdminAiUsageItem = {
+  id: string;
+  createdAt: string | null;
+  userId: string | null;
+  model: string | null;
+  requestType: string | null;
+  status: string | null; // 'success' | 'error'
+  errorCode: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  latencyMs: number | null;
+};

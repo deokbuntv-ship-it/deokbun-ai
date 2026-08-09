@@ -1,6 +1,8 @@
 export { useAdminAuthorization } from './hooks/useAdminAuthorization';
 export { adminAuthorizationService } from './services/adminAuthorizationService';
 export { adminUsersService } from './services/adminUsersService';
+export { adminConsultationsService } from './services/adminConsultationsService';
+export { adminOpsService } from './services/adminOpsService';
 
 export { AdminShell } from './components/AdminShell';
 export { AdminSidebar } from './components/AdminSidebar';
@@ -16,7 +18,14 @@ export type { AdminColumn } from './components/AdminDataTable';
 export type { AdminDetailRow } from './components/AdminDetailSection';
 
 export type {
+  AdminAiUsageItem,
+  AdminAiUsageParams,
   AdminAuthorizationStatus,
+  AdminConsultationDetail,
+  AdminConsultationListItem,
+  AdminConsultationListParams,
+  AdminDashboardOverview,
+  AdminMessageMeta,
   AdminNavKey,
   AdminResolvedStatus,
   AdminSubjectSummary,

@@ -11,15 +11,19 @@ import { colors, radius, spacing } from '@/theme';
 // is derived from the current path. No fake data.
 type NavItem = {
   label: string;
-  href?: '/admin' | '/admin/users';
+  href?:
+    | '/admin'
+    | '/admin/users'
+    | '/admin/consultations'
+    | '/admin/ai-usage';
   available: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
   { label: '대시보드', href: '/admin', available: true },
   { label: '사용자', href: '/admin/users', available: true },
-  { label: '상담', available: false },
-  { label: 'AI 사용량', available: false },
+  { label: '상담', href: '/admin/consultations', available: true },
+  { label: 'AI 사용량', href: '/admin/ai-usage', available: true },
   { label: '유명인', available: false },
   { label: '콘텐츠', available: false },
 ];

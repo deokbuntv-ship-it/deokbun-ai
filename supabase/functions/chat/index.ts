@@ -23,6 +23,7 @@
 // by Metro — it runs only on Supabase.
 
 import { withSupabase } from 'npm:@supabase/server';
+import { createClient } from 'npm:@supabase/supabase-js';
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -101,12 +102,67 @@ function extractText(payload: unknown): string {
   return '';
 }
 
+// ---- AI usage logging (ADMIN-04) --------------------------------------------
+// Fail-safe, server-side only. Writes public.ai_usage_logs via the service_role
+// key (auto-injected into Edge Functions). It NEVER blocks or fails the chat
+// response — every path swallows its own errors. The user id is read from the
+// already-verified JWT `sub` claim (no extra network call). Only raw usage is
+// stored; no cost/price calculation happens here.
+type AiUsageLog = {
+  user_id: string | null;
+  model: string | null;
+  request_type: 'chat';
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  latency_ms: number;
+  status: 'success' | 'error';
+  error_code: string | null;
+};
+
+function toNullableInt(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.trunc(value)
+    : null;
+}
+
+function userIdFromRequest(req: Request): string | null {
+  try {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return null;
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(normalized)) as { sub?: unknown };
+    return typeof decoded.sub === 'string' ? decoded.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+async function logAiUsage(entry: AiUsageLog): Promise<void> {
+  try {
+    const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+    if (url.length === 0 || serviceRoleKey.length === 0) {
+      return;
+    }
+    const admin = createClient(url, serviceRoleKey);
+    await admin.from('ai_usage_logs').insert(entry);
+  } catch {
+    // Usage logging must never affect the chat response.
+  }
+}
+
 export default {
   fetch: withSupabase(
     { auth: 'user' },
     async (req: Request, _ctx: unknown): Promise<Response> => {
       // `stage` is tracked so an unhandled exception can be attributed to a step.
       let stage = 'auth_completed';
+      const startedAt = Date.now();
+      const userId = userIdFromRequest(req);
 
       try {
         // Future: insert Rate Limit / Usage checks here (#13) before any LLM call.
@@ -161,6 +217,17 @@ export default {
               message: (fetchError as Error)?.message ?? String(fetchError),
             }),
           );
+          await logAiUsage({
+            user_id: userId,
+            model,
+            request_type: 'chat',
+            input_tokens: null,
+            output_tokens: null,
+            total_tokens: null,
+            latency_ms: Date.now() - startedAt,
+            status: 'error',
+            error_code: 'OPENAI_FETCH_FAILED',
+          });
           return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
         }
 
@@ -171,6 +238,17 @@ export default {
             '[chat] openai_error_status',
             JSON.stringify({ status: providerResponse.status }),
           );
+          await logAiUsage({
+            user_id: userId,
+            model,
+            request_type: 'chat',
+            input_tokens: null,
+            output_tokens: null,
+            total_tokens: null,
+            latency_ms: Date.now() - startedAt,
+            status: 'error',
+            error_code: `OPENAI_${providerResponse.status}`,
+          });
           return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
         }
 
@@ -188,8 +266,34 @@ export default {
         if (text.length === 0) {
           // Fault tracking: no assistant text parsed (marker only, no content).
           console.error('[chat] empty_response');
+          await logAiUsage({
+            user_id: userId,
+            model,
+            request_type: 'chat',
+            input_tokens: null,
+            output_tokens: null,
+            total_tokens: null,
+            latency_ms: Date.now() - startedAt,
+            status: 'error',
+            error_code: 'EMPTY_RESPONSE',
+          });
           return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
         }
+
+        // Success: record raw usage (tokens are provider-reported; no cost calc).
+        const usage =
+          (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
+        await logAiUsage({
+          user_id: userId,
+          model,
+          request_type: 'chat',
+          input_tokens: toNullableInt(usage.input_tokens),
+          output_tokens: toNullableInt(usage.output_tokens),
+          total_tokens: toNullableInt(usage.total_tokens),
+          latency_ms: Date.now() - startedAt,
+          status: 'success',
+          error_code: null,
+        });
 
         return Response.json({ text });
       } catch (error) {
