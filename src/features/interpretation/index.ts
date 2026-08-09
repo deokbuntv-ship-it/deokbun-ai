@@ -75,7 +75,15 @@ export type {
   TrueSolarTimeResolutionRequest,
   TrueSolarTimeResolver,
 } from './contracts/normalization';
-export type { SajuEngineInput } from './contracts/saju';
+export type {
+  SajuEngineExecutionInput,
+  SajuEngineInput,
+  SajuEngineOutput,
+  SajuEngineResult,
+  SajuEngineWarning,
+  SajuPillarFact,
+  SajuPillarFactKey,
+} from './contracts/saju';
 export {
   DEOKBUNAI_SAJU_V1_RULE_ID,
   DEOKBUNAI_SAJU_V1_RULE_PROFILE,
@@ -249,3 +257,10 @@ export type {
 } from './saju/contracts';
 export { FOUR_PILLARS_GOLDEN_FIXTURES } from './saju/fixtures/fourPillarsGoldenFixtures';
 export type { FourPillarsGoldenFixture } from './saju/fixtures/fourPillarsGoldenFixtures';
+export {
+  DEOKBUNAI_SAJU_ENGINE_VERSION,
+  DEOKBUNAI_SAJU_RULE_SET_VERSION,
+  NORMALIZATION_WARNING_SEVERITY,
+  SAJU_HOUR_WARNING_SEVERITY,
+  executeSaju,
+} from './saju/engineAdapter';
