@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -69,6 +69,16 @@ export default function ConsultScreen() {
     });
   };
 
+  // Tapping the card's identity area opens this subject's manse (Four Pillars)
+  // screen. READ ONLY: it does not touch the draft, so "진행 중" / resume / new /
+  // history behavior is unaffected. Separate from the four action buttons.
+  const openManse = (record: ConsultationSubjectRecord) => {
+    router.push({
+      pathname: '/subject-manse',
+      params: { subjectId: record.id },
+    });
+  };
+
   const renderSubjectList = () => {
     if (status === 'loading') {
       return (
@@ -112,24 +122,30 @@ export default function ConsultScreen() {
       return (
         <Card key={subject.id}>
           <Stack gap="sm">
-            <Stack gap="xs">
-              <Stack direction="row" gap="xs" align="center">
-                <Text variant="bodyLarge">
-                  {subject.displayName}
-                  {subject.isSelf ? ' (본인)' : ''}
-                </Text>
-                {isCurrent ? (
+            <Pressable
+              onPress={() => openManse(subject)}
+              accessibilityRole="button"
+              accessibilityLabel={`${subject.displayName} 만세력 보기`}
+            >
+              <Stack gap="xs">
+                <Stack direction="row" gap="xs" align="center">
+                  <Text variant="bodyLarge">
+                    {subject.displayName}
+                    {subject.isSelf ? ' (본인)' : ''}
+                  </Text>
+                  {isCurrent ? (
+                    <Text variant="bodySmall" colorToken="textSecondary">
+                      · 진행 중
+                    </Text>
+                  ) : null}
+                </Stack>
+                {subject.relationship ? (
                   <Text variant="bodySmall" colorToken="textSecondary">
-                    · 진행 중
+                    {subject.relationship}
                   </Text>
                 ) : null}
               </Stack>
-              {subject.relationship ? (
-                <Text variant="bodySmall" colorToken="textSecondary">
-                  {subject.relationship}
-                </Text>
-              ) : null}
-            </Stack>
+            </Pressable>
 
             <Stack direction="row" gap="sm" style={styles.actionRow}>
               <Button label="상담 열기" onPress={() => openConsultation(subject)} />
