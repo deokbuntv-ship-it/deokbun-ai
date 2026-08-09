@@ -15,6 +15,9 @@ import { calculateFourPillars } from './fourPillars';
 import { FOUR_PILLARS_GOLDEN_FIXTURES } from './fixtures/fourPillarsGoldenFixtures';
 import { calculateSajuDerivedFacts } from './derived/calculateDerivedFacts';
 import { DEOKBUNAI_SAJU_DERIVED_FACTS_V1_RULE_VERSIONS } from './derived/rules';
+import { calculateFiveElementDistribution } from './distribution/calculateFiveElementDistribution';
+import { DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_V1_RULE_VERSIONS } from './distribution/calculateFiveElementDistribution';
+import type { SajuDirectFiveElementSlot } from './distribution/contracts';
 
 export type SajuEngineValidationReport = {
   ok: boolean;
@@ -43,6 +46,16 @@ export type SajuEngineValidationReport = {
   productionCallCountCases: number;
   maxDerivedCallsObserved: number;
   unavailableDerivedZeroCallCases: number;
+  distributionCompleteCases: number;
+  distributionPartialCases: number;
+  distributionCrossValidationCases: number;
+  distributionCrossValidationMismatches: number;
+  distributionRuleVersionCases: number;
+  distributionEvidenceCases: number;
+  distributionCapabilityCases: number;
+  distributionCapabilityMismatches: number;
+  maxDistributionCallsObserved: number;
+  unavailableDistributionZeroCallCases: number;
 };
 
 function uniqueTimezone(): TimezoneResolution {
@@ -231,6 +244,50 @@ function evidenceIsComplete(result: SajuEngineResult): boolean {
   );
 }
 
+function derivedElementForSlot(
+  result: Exclude<SajuEngineResult, { status: 'UNAVAILABLE' }>,
+  slot: SajuDirectFiveElementSlot,
+) {
+  const pillars = result.output.derivedFacts.pillars;
+  switch (slot) {
+    case 'YEAR_STEM': return pillars.year.stem.element;
+    case 'YEAR_BRANCH': return pillars.year.branch.element;
+    case 'MONTH_STEM': return pillars.month.stem.element;
+    case 'MONTH_BRANCH': return pillars.month.branch.element;
+    case 'DAY_STEM': return pillars.day.stem.element;
+    case 'DAY_BRANCH': return pillars.day.branch.element;
+    case 'HOUR_STEM': return pillars.hour?.stem.element;
+    case 'HOUR_BRANCH': return pillars.hour?.branch.element;
+  }
+}
+
+function distributionIsPartial(
+  result: SajuEngineResult,
+): result is Extract<SajuEngineResult, { status: 'PARTIAL' }> {
+  if (result.status !== 'PARTIAL') return false;
+  const direct = result.output.fiveElementDistribution.direct;
+  return (
+    direct.completeness === 'PARTIAL' &&
+    direct.observedSlots === 6 &&
+    direct.expectedSlots === 8 &&
+    direct.slots.length === 6 &&
+    JSON.stringify(direct.missingSlots) ===
+      JSON.stringify(['HOUR_STEM', 'HOUR_BRANCH'])
+  );
+}
+
+function distributionIsComplete(result: SajuEngineResult): boolean {
+  if (result.status !== 'SUCCESS') return false;
+  const direct = result.output.fiveElementDistribution.direct;
+  return (
+    direct.completeness === 'COMPLETE' &&
+    direct.observedSlots === 8 &&
+    direct.expectedSlots === 8 &&
+    direct.slots.length === 8 &&
+    direct.missingSlots.length === 0
+  );
+}
+
 export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   const failures: string[] = [];
   let aggregateCrossValidations = 0;
@@ -249,6 +306,12 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   let derivedRuleVersionCases = 0;
   let derivedDayMasterPeerCases = 0;
   let derivedEvidenceCases = 0;
+  let distributionCompleteCases = 0;
+  let distributionPartialCases = 0;
+  let distributionCrossValidationCases = 0;
+  let distributionCrossValidationMismatches = 0;
+  let distributionRuleVersionCases = 0;
+  let distributionEvidenceCases = 0;
   const allowedFactKeys = new Set([
     'YEAR_PILLAR',
     'MONTH_PILLAR',
@@ -285,6 +348,15 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
         result.output.derivedFacts.pillars.hour
       ) derivedCompleteCases += 1;
       else failures.push(`${fixture.id} did not expose COMPLETE Derived Facts.`);
+      const direct = result.output.fiveElementDistribution.direct;
+      if (
+        direct.completeness === 'COMPLETE' &&
+        direct.observedSlots === 8 &&
+        direct.expectedSlots === 8 &&
+        direct.slots.length === 8 &&
+        direct.missingSlots.length === 0
+      ) distributionCompleteCases += 1;
+      else failures.push(`${fixture.id} did not expose COMPLETE distribution.`);
     }
     if (result.status === 'PARTIAL') {
       partialMappings += 1;
@@ -306,6 +378,8 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
         )
       ) derivedPartialCases += 1;
       else failures.push(`${fixture.id} exposed invalid PARTIAL Derived Facts.`);
+      if (distributionIsPartial(result)) distributionPartialCases += 1;
+      else failures.push(`${fixture.id} exposed invalid PARTIAL distribution.`);
     }
     if (result.signals.length === 0) zeroSignalCases += 1;
     else failures.push(`${fixture.id} generated signals.`);
@@ -354,6 +428,40 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
         )
       ) derivedEvidenceCases += 1;
       else failures.push(`${fixture.id} Derived Facts evidence was missing.`);
+      const distribution = result.output.fiveElementDistribution;
+      if (
+        distribution.ruleVersion ===
+          DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_V1_RULE_VERSIONS.distribution &&
+        distribution.sourceRuleVersions.derivedFacts ===
+          DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_V1_RULE_VERSIONS.derivedFacts &&
+        distribution.sourceRuleVersions.fiveElements ===
+          DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_V1_RULE_VERSIONS.fiveElements &&
+        provenance.fiveElementDistributionRuleVersions.distribution ===
+          distribution.ruleVersion &&
+        provenance.fiveElementDistributionRuleVersions.derivedFacts ===
+          distribution.sourceRuleVersions.derivedFacts &&
+        provenance.fiveElementDistributionRuleVersions.fiveElements ===
+          distribution.sourceRuleVersions.fiveElements
+      ) distributionRuleVersionCases += 1;
+      else failures.push(`${fixture.id} distribution rule versions were not preserved.`);
+      if (
+        result.evidence.some(
+          (node) =>
+            node.id ===
+              'SAJU.EVIDENCE.FIVE_ELEMENT_DISTRIBUTION_RULES' &&
+            node.ruleVersion === distribution.ruleVersion &&
+            node.parentEvidenceIds?.includes(
+              'SAJU.EVIDENCE.DERIVED_FACTS_RULES',
+            ),
+        )
+      ) distributionEvidenceCases += 1;
+      else failures.push(`${fixture.id} distribution evidence was missing.`);
+      for (const slot of distribution.direct.slots) {
+        distributionCrossValidationCases += 1;
+        if (derivedElementForSlot(result, slot.slot) !== slot.element) {
+          distributionCrossValidationMismatches += 1;
+        }
+      }
     }
     if (evidenceIsComplete(result)) evidenceIntegrityCases += 1;
     else failures.push(`${fixture.id} evidence references are incomplete.`);
@@ -364,6 +472,30 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   }
 
   const exactInput = createExecutionInput(FOUR_PILLARS_GOLDEN_FIXTURES[0]);
+  let distributionCapabilityCases = 0;
+  let distributionCapabilityMismatches = 0;
+  const initialCapabilityCases: readonly [string, SajuEngineResult, 'COMPLETE' | 'PARTIAL'][] = [
+    ['EXACT_UNIQUE', executeSaju(exactInput), 'COMPLETE'],
+    [
+      'UNKNOWN',
+      executeSaju(createExecutionInput(FOUR_PILLARS_GOLDEN_FIXTURES[4])),
+      'PARTIAL',
+    ],
+    [
+      'APPROXIMATE',
+      executeSaju(createExecutionInput(FOUR_PILLARS_GOLDEN_FIXTURES[5])),
+      'PARTIAL',
+    ],
+  ];
+  for (const [name, result, expected] of initialCapabilityCases) {
+    distributionCapabilityCases += 1;
+    if (
+      (expected === 'COMPLETE' && distributionIsComplete(result)) ||
+      (expected === 'PARTIAL' && distributionIsPartial(result))
+    ) continue;
+    distributionCapabilityMismatches += 1;
+    failures.push(`${name} distribution capability mapping failed.`);
+  }
   const exactTimezone = exactInput.normalizedBirth.timezone;
   let historicalPartialCases = 0;
   if (
@@ -377,31 +509,79 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
       dst: _dst,
       ...resolvedBase
     } = exactTimezone;
-    const ambiguousInput: SajuEngineExecutionInput = {
-      ...exactInput,
-      normalizedBirth: {
-        ...exactInput.normalizedBirth,
-        timezone: {
-          ...resolvedBase,
-          localTimeResolution: {
-            kind: 'AMBIGUOUS',
-            candidates: [
-              candidate,
-              { ...candidate, utcEpochSeconds: candidate.utcEpochSeconds + 1 },
-            ],
+    const historicalInputs: readonly [string, SajuEngineExecutionInput][] = [
+      [
+        'AMBIGUOUS',
+        {
+          ...exactInput,
+          normalizedBirth: {
+            ...exactInput.normalizedBirth,
+            timezone: {
+              ...resolvedBase,
+              localTimeResolution: {
+                kind: 'AMBIGUOUS',
+                candidates: [
+                  candidate,
+                  {
+                    ...candidate,
+                    utcEpochSeconds: candidate.utcEpochSeconds + 1,
+                  },
+                ],
+              },
+            },
           },
         },
-      },
-    };
-    const ambiguousResult = executeSaju(ambiguousInput);
-    if (
-      ambiguousResult.status === 'PARTIAL' &&
-      ambiguousResult.output.fourPillars.hour.status === 'AMBIGUOUS' &&
-      !ambiguousResult.facts.some((fact) => fact.key === 'HOUR_PILLAR')
-    ) {
-      historicalPartialCases = 1;
-    } else {
-      failures.push('Historical ambiguity did not remain PARTIAL.');
+      ],
+      [
+        'NONEXISTENT',
+        {
+          ...exactInput,
+          normalizedBirth: {
+            ...exactInput.normalizedBirth,
+            timezone: {
+              ...resolvedBase,
+              localTimeResolution: {
+                kind: 'NONEXISTENT',
+                gap: {
+                  startLocalDateTime: {
+                    date: { year: 2000, month: 1, day: 7 },
+                    time: { hour: 1, minute: 0, second: 0 },
+                  },
+                  endLocalDateTime: {
+                    date: { year: 2000, month: 1, day: 7 },
+                    time: { hour: 2, minute: 0, second: 0 },
+                  },
+                  transitionUtcEpochSeconds: 0,
+                  offsetBeforeSeconds: 32_400,
+                  offsetAfterSeconds: 36_000,
+                  dstOffsetBeforeSeconds: 0,
+                  dstOffsetAfterSeconds: 3_600,
+                },
+              },
+            },
+          },
+        },
+      ],
+      [
+        'TIMEZONE_UNRESOLVED',
+        {
+          ...exactInput,
+          normalizedBirth: {
+            ...exactInput.normalizedBirth,
+            timezone: unresolvedTimezone(),
+          },
+        },
+      ],
+    ];
+    for (const [name, input] of historicalInputs) {
+      const result = executeSaju(input);
+      distributionCapabilityCases += 1;
+      if (distributionIsPartial(result)) {
+        historicalPartialCases += 1;
+      } else {
+        distributionCapabilityMismatches += 1;
+        failures.push(`${name} did not preserve a 6-slot PARTIAL distribution.`);
+      }
     }
   }
 
@@ -463,8 +643,11 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   let productionCallCountCases = 0;
   let maxDerivedCallsObserved = 0;
   let unavailableDerivedZeroCallCases = 0;
+  let maxDistributionCallsObserved = 0;
+  let unavailableDistributionZeroCallCases = 0;
   let fourPillarsCalls = 0;
   let derivedCalls = 0;
+  let distributionCalls = 0;
   const countedCalculators = {
     calculateFourPillars(input: Parameters<typeof calculateFourPillars>[0]) {
       fourPillarsCalls += 1;
@@ -477,6 +660,16 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
       maxDerivedCallsObserved = Math.max(maxDerivedCallsObserved, derivedCalls);
       return calculateSajuDerivedFacts(input);
     },
+    calculateFiveElementDistribution(
+      input: Parameters<typeof calculateFiveElementDistribution>[0],
+    ) {
+      distributionCalls += 1;
+      maxDistributionCallsObserved = Math.max(
+        maxDistributionCallsObserved,
+        distributionCalls,
+      );
+      return calculateFiveElementDistribution(input);
+    },
   };
   const countedComplete = executeSajuWithCalculatorsForValidation(
     exactInput,
@@ -485,12 +678,14 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   if (
     countedComplete.status === 'SUCCESS' &&
     fourPillarsCalls === 1 &&
-    derivedCalls === 1
+    derivedCalls === 1 &&
+    distributionCalls === 1
   ) productionCallCountCases += 1;
-  else failures.push('COMPLETE production calculator call counts were not 1/1.');
+  else failures.push('COMPLETE production calculator call counts were not 1/1/1.');
 
   fourPillarsCalls = 0;
   derivedCalls = 0;
+  distributionCalls = 0;
   const countedPartial = executeSajuWithCalculatorsForValidation(
     createExecutionInput(FOUR_PILLARS_GOLDEN_FIXTURES[5]),
     countedCalculators,
@@ -498,12 +693,14 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   if (
     countedPartial.status === 'PARTIAL' &&
     fourPillarsCalls === 1 &&
-    derivedCalls === 1
+    derivedCalls === 1 &&
+    distributionCalls === 1
   ) productionCallCountCases += 1;
-  else failures.push('PARTIAL production calculator call counts were not 1/1.');
+  else failures.push('PARTIAL production calculator call counts were not 1/1/1.');
 
   fourPillarsCalls = 0;
   derivedCalls = 0;
+  distributionCalls = 0;
   const countedUnavailable = executeSajuWithCalculatorsForValidation(
     missingCalendarInput,
     countedCalculators,
@@ -511,11 +708,13 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
   if (
     countedUnavailable.status === 'UNAVAILABLE' &&
     fourPillarsCalls === 1 &&
-    derivedCalls === 0
+    derivedCalls === 0 &&
+    distributionCalls === 0
   ) {
     productionCallCountCases += 1;
     unavailableDerivedZeroCallCases += 1;
-  } else failures.push('UNAVAILABLE invoked Derived Facts or Four Pillars more than once.');
+    unavailableDistributionZeroCallCases += 1;
+  } else failures.push('UNAVAILABLE invoked a downstream calculator.');
 
   const sourceWarning: NormalizationWarning = {
     code: 'VALIDATION_WARNING',
@@ -570,6 +769,16 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
       `${aggregateCrossValidationMismatches} aggregate cross-validations failed.`,
     );
   }
+  if (distributionCrossValidationMismatches > 0) {
+    failures.push(
+      `${distributionCrossValidationMismatches} distribution cross-validations failed.`,
+    );
+  }
+  if (distributionCapabilityMismatches > 0) {
+    failures.push(
+      `${distributionCapabilityMismatches} distribution capability validations failed.`,
+    );
+  }
 
   return {
     ok: failures.length === 0,
@@ -598,5 +807,15 @@ export function validateSajuEngineAdapter(): SajuEngineValidationReport {
     productionCallCountCases,
     maxDerivedCallsObserved,
     unavailableDerivedZeroCallCases,
+    distributionCompleteCases,
+    distributionPartialCases,
+    distributionCrossValidationCases,
+    distributionCrossValidationMismatches,
+    distributionRuleVersionCases,
+    distributionEvidenceCases,
+    distributionCapabilityCases,
+    distributionCapabilityMismatches,
+    maxDistributionCallsObserved,
+    unavailableDistributionZeroCallCases,
   };
 }

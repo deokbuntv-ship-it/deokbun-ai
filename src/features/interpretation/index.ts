@@ -326,6 +326,32 @@ export {
   STEM_YIN_YANG,
 } from './saju/derived/rules';
 export { calculateSajuDerivedFacts } from './saju/derived/calculateDerivedFacts';
+export type {
+  SajuDirectFiveElementObservation,
+  SajuDirectFiveElementSlot,
+  SajuFiveElementCounts,
+  SajuFiveElementDistribution,
+  SajuFiveElementDistributionError,
+  SajuFiveElementDistributionInput,
+  SajuFiveElementDistributionResult,
+  SajuFiveElementDistributionRuleVersions,
+  SajuFiveElementDistributionSourceRuleVersions,
+} from './saju/distribution/contracts';
+export {
+  DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_VERSION,
+  SAJU_DIRECT_FIVE_ELEMENT_SLOTS,
+  SAJU_FIVE_ELEMENT_KEYS,
+} from './saju/distribution/contracts';
+export {
+  calculateFiveElementDistribution,
+  DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_V1_RULE_VERSIONS,
+} from './saju/distribution/calculateFiveElementDistribution';
+export {
+  FIVE_ELEMENT_DISTRIBUTION_GOLDEN_FIXTURES,
+} from './saju/fixtures/fiveElementDistributionGoldenFixtures';
+export type {
+  FiveElementDistributionGoldenFixture,
+} from './saju/fixtures/fiveElementDistributionGoldenFixtures';
 export {
   EARTHLY_BRANCH_LABELS,
   FIVE_ELEMENT_LABELS,
