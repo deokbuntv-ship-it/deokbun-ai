@@ -4,19 +4,12 @@ import { ScrollView, View } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
 
-import type { AdminNavKey } from '../types';
 import { AdminSidebar } from './AdminSidebar';
 
 // Web desktop/tablet admin shell: fixed sidebar + scrollable main content.
 // Presentation-only; access control is enforced by the admin route layout before
-// this ever renders.
-export function AdminShell({
-  children,
-  activeKey = 'dashboard',
-}: {
-  children: ReactNode;
-  activeKey?: AdminNavKey;
-}) {
+// this ever renders. Active nav state is derived inside AdminSidebar.
+export function AdminShell({ children }: { children: ReactNode }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
@@ -28,7 +21,7 @@ export function AdminShell({
         backgroundColor: theme.background,
       }}
     >
-      <AdminSidebar activeKey={activeKey} />
+      <AdminSidebar />
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
           {children}

@@ -1,32 +1,41 @@
-import { View } from 'react-native';
+import { Link, usePathname } from 'expo-router';
+import { Pressable, View } from 'react-native';
 
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
-import type { AdminNavKey } from '../types';
+// Web-only admin sidebar. Available items navigate via expo-router Link; items
+// for unimplemented sections show "준비 중" and are non-interactive. Active state
+// is derived from the current path. No fake data.
+type NavItem = {
+  label: string;
+  href?: '/admin' | '/admin/users';
+  available: boolean;
+};
 
-// Web-only admin sidebar. Nav items for unimplemented sections are shown as
-// "준비 중" and are intentionally NON-interactive in ADMIN-01 (no routes exist
-// yet) — clicking must never navigate to a non-existent route. No fake data.
-const NAV_ITEMS: { key: AdminNavKey; label: string; available: boolean }[] = [
-  { key: 'dashboard', label: '대시보드', available: true },
-  { key: 'users', label: '사용자', available: false },
-  { key: 'subjects', label: '상담 대상', available: false },
-  { key: 'consultations', label: '상담', available: false },
-  { key: 'ai-usage', label: 'AI 사용량', available: false },
-  { key: 'famous', label: '유명인', available: false },
-  { key: 'content', label: '콘텐츠', available: false },
+const NAV_ITEMS: NavItem[] = [
+  { label: '대시보드', href: '/admin', available: true },
+  { label: '사용자', href: '/admin/users', available: true },
+  { label: '상담', available: false },
+  { label: 'AI 사용량', available: false },
+  { label: '유명인', available: false },
+  { label: '콘텐츠', available: false },
 ];
 
-export function AdminSidebar({
-  activeKey = 'dashboard',
-}: {
-  activeKey?: AdminNavKey;
-}) {
+function isActive(pathname: string, href?: string): boolean {
+  if (!href) {
+    return false;
+  }
+  // Dashboard is an exact match; section roots match their subtree.
+  return href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
+}
+
+export function AdminSidebar() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const pathname = usePathname();
 
   return (
     <View
@@ -44,32 +53,43 @@ export function AdminSidebar({
 
         <Stack gap="xs">
           {NAV_ITEMS.map((item) => {
-            const isActive = item.available && item.key === activeKey;
-            return (
-              <View
-                key={item.key}
-                style={{
-                  paddingVertical: spacing.sm,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: radius.md,
-                  backgroundColor: isActive
-                    ? theme.backgroundSelected
-                    : 'transparent',
-                }}
-              >
-                <Stack direction="row" gap="xs" align="center">
-                  <Text
-                    variant="bodyMedium"
-                    colorToken={item.available ? 'textPrimary' : 'textSecondary'}
-                  >
-                    {item.label}
+            const active = isActive(pathname, item.href);
+            const rowStyle = {
+              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.md,
+              borderRadius: radius.md,
+              backgroundColor: active ? theme.backgroundSelected : 'transparent',
+            } as const;
+
+            const label = (
+              <Stack direction="row" gap="xs" align="center">
+                <Text
+                  variant="bodyMedium"
+                  colorToken={item.available ? 'textPrimary' : 'textSecondary'}
+                >
+                  {item.label}
+                </Text>
+                {!item.available ? (
+                  <Text variant="caption" colorToken="textSecondary">
+                    · 준비 중
                   </Text>
-                  {!item.available ? (
-                    <Text variant="caption" colorToken="textSecondary">
-                      · 준비 중
-                    </Text>
-                  ) : null}
-                </Stack>
+                ) : null}
+              </Stack>
+            );
+
+            if (item.available && item.href) {
+              return (
+                <Link key={item.label} href={item.href} asChild>
+                  <Pressable style={rowStyle} accessibilityRole="link">
+                    {label}
+                  </Pressable>
+                </Link>
+              );
+            }
+
+            return (
+              <View key={item.label} style={rowStyle}>
+                {label}
               </View>
             );
           })}
