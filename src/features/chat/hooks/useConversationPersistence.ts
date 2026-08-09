@@ -27,6 +27,9 @@ type UseConversationPersistenceOptions = {
   subjectId: string | null;
   // Frozen { subject, birthInfo } snapshot stored when a conversation is created.
   subjectSnapshot: ConversationSubjectSnapshot;
+  // When set, open THIS exact conversation (from history) instead of the
+  // subject's latest. Takes priority over subject-latest / startNew.
+  conversationId?: string;
 };
 
 type UseConversationPersistenceResult = {
@@ -37,6 +40,9 @@ type UseConversationPersistenceResult = {
   resetToken: number;
   // Current conversation memory (summary + checkpoint) for the chat prompt.
   conversationMemory: ConversationMemoryState;
+  // Authoritative subject snapshot of a conversation opened by id (history).
+  // The screen uses this to self-correct the draft on direct/F5 entry.
+  restoredSubjectSnapshot: ConversationSubjectSnapshot;
   persistMessage: (message: ChatMessage) => void;
 };
 
@@ -48,7 +54,8 @@ const EMPTY_MEMORY: ConversationMemoryState = {
 export function useConversationPersistence(
   options: UseConversationPersistenceOptions,
 ): UseConversationPersistenceResult {
-  const { startNew, draftReady, subjectId, subjectSnapshot } = options;
+  const { startNew, draftReady, subjectId, subjectSnapshot, conversationId } =
+    options;
   const { authState } = useAuth();
 
   const [hydrationStatus, setHydrationStatus] =
@@ -59,6 +66,8 @@ export function useConversationPersistence(
   const [resetToken, setResetToken] = useState(0);
   const [conversationMemory, setConversationMemory] =
     useState<ConversationMemoryState>(EMPTY_MEMORY);
+  const [restoredSubjectSnapshot, setRestoredSubjectSnapshot] =
+    useState<ConversationSubjectSnapshot>(null);
 
   // Which (user + startNew + subject) context is currently hydrated.
   const hydratedKeyRef = useRef<string | null>(null);
@@ -125,15 +134,18 @@ export function useConversationPersistence(
       return;
     }
 
-    // Wait until the draft has settled so subjectId reflects the real subject.
-    if (!draftReady) {
+    // The subject-latest path needs the draft to settle (it reads subjectId).
+    // The conversationId path is authoritative via the loaded snapshot and does
+    // not depend on the draft.
+    if (conversationId === undefined && !draftReady) {
       setHydrationStatus('idle');
       return;
     }
 
-    const hydrationKey = `${userId}|${startNew ? 'new' : 'resume'}|${
-      subjectId ?? 'none'
-    }`;
+    const hydrationKey =
+      conversationId !== undefined
+        ? `${userId}|conv:${conversationId}`
+        : `${userId}|${startNew ? 'new' : 'resume'}|${subjectId ?? 'none'}`;
     if (hydratedKeyRef.current === hydrationKey) {
       return;
     }
@@ -142,8 +154,58 @@ export function useConversationPersistence(
     // New context: clear first (never expose previous data), then hydrate.
     resetInMemory();
     setRestoredMessages(null);
+    setRestoredSubjectSnapshot(null);
     setResetToken((token) => token + 1);
     setHydrationStatus('loading');
+
+    const applyLoaded = (loaded: {
+      conversationId: string;
+      messages: ChatMessage[];
+      summary: string | null;
+      lastSummarizedMessageId: string | null;
+    }) => {
+      conversationIdRef.current = loaded.conversationId;
+      persistedMessagesRef.current = loaded.messages;
+      loaded.messages.forEach((message) => {
+        persistedIdsRef.current.add(message.id);
+      });
+      const restoredMemory: ConversationMemoryState = {
+        summary: loaded.summary,
+        lastSummarizedMessageId: loaded.lastSummarizedMessageId,
+      };
+      summaryStateRef.current = restoredMemory;
+      setConversationMemory(restoredMemory);
+      setRestoredMessages(loaded.messages);
+    };
+
+    // Priority: open a specific conversation by id (from history).
+    if (conversationId !== undefined) {
+      conversationService
+        .loadConversationById(conversationId)
+        .then((loaded) => {
+          if (cancelled) {
+            return;
+          }
+          if (loaded !== null) {
+            applyLoaded(loaded);
+            setRestoredSubjectSnapshot(loaded.subjectSnapshot);
+          } else {
+            setRestoredMessages([]);
+          }
+          setHydrationStatus('ready');
+        })
+        .catch(() => {
+          if (cancelled) {
+            return;
+          }
+          setRestoredMessages([]);
+          setHydrationStatus('ready');
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
 
     // Explicit new consultation, or temp/legacy subject (no saved identity):
     // welcome-only. We never restore a global-latest conversation here, so a
@@ -161,18 +223,7 @@ export function useConversationPersistence(
           return;
         }
         if (loaded !== null) {
-          conversationIdRef.current = loaded.conversationId;
-          persistedMessagesRef.current = loaded.messages;
-          loaded.messages.forEach((message) => {
-            persistedIdsRef.current.add(message.id);
-          });
-          const restoredMemory: ConversationMemoryState = {
-            summary: loaded.summary,
-            lastSummarizedMessageId: loaded.lastSummarizedMessageId,
-          };
-          summaryStateRef.current = restoredMemory;
-          setConversationMemory(restoredMemory);
-          setRestoredMessages(loaded.messages);
+          applyLoaded(loaded);
         } else {
           setRestoredMessages([]);
         }
@@ -190,7 +241,14 @@ export function useConversationPersistence(
     return () => {
       cancelled = true;
     };
-  }, [authState.status, authState.user?.id, startNew, draftReady, subjectId]);
+  }, [
+    authState.status,
+    authState.user?.id,
+    startNew,
+    draftReady,
+    subjectId,
+    conversationId,
+  ]);
 
   const ensureConversationId = (): Promise<string> => {
     if (conversationIdRef.current !== null) {
@@ -358,6 +416,7 @@ export function useConversationPersistence(
     restoredMessages,
     resetToken,
     conversationMemory,
+    restoredSubjectSnapshot,
     persistMessage,
   };
 }

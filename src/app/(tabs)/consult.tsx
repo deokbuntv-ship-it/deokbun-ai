@@ -61,6 +61,14 @@ export default function ConsultScreen() {
     router.push({ pathname: '/birth-info', params: { subjectId: record.id } });
   };
 
+  // "상담 기록" = view this subject's past conversations (read + open).
+  const openHistory = (record: ConsultationSubjectRecord) => {
+    router.push({
+      pathname: '/subject-history',
+      params: { subjectId: record.id },
+    });
+  };
+
   const renderSubjectList = () => {
     if (status === 'loading') {
       return (
@@ -134,6 +142,11 @@ export default function ConsultScreen() {
                 label="관리"
                 variant="secondary"
                 onPress={() => manageSubject(subject)}
+              />
+              <Button
+                label="상담 기록"
+                variant="secondary"
+                onPress={() => openHistory(subject)}
               />
             </Stack>
           </Stack>

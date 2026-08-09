@@ -29,6 +29,8 @@ export { createChatService } from './services/chatService';
 export type { AuthGuard } from './services/chatService';
 export { conversationService } from './services/conversationService';
 export type {
+    ConversationSubjectSnapshot,
+    ConversationSummaryItem,
     LoadedConversation, PersistableMessageRole
 } from './services/conversationService';
 export { useConversationPersistence } from './hooks/useConversationPersistence';

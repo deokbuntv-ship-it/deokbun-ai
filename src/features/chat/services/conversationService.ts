@@ -15,7 +15,8 @@ import { getSupabaseClient } from '@/services/supabase';
 const CONVERSATIONS = 'conversations';
 const MESSAGES = 'conversation_messages';
 
-const CONVERSATION_COLUMNS = 'id, summary, last_summarized_message_id';
+const CONVERSATION_COLUMNS =
+  'id, summary, last_summarized_message_id, subject_snapshot';
 
 export type PersistableMessageRole = 'user' | 'assistant';
 
@@ -34,6 +35,7 @@ type ConversationRow = {
   id: string;
   summary: string | null;
   last_summarized_message_id: string | null;
+  subject_snapshot: ConversationSubjectSnapshot;
 };
 
 export type LoadedConversation = {
@@ -41,6 +43,17 @@ export type LoadedConversation = {
   messages: ChatMessage[];
   summary: string | null;
   lastSummarizedMessageId: string | null;
+  subjectSnapshot: ConversationSubjectSnapshot;
+};
+
+// A single row for the per-subject history list. Metadata comes only from the
+// conversation row (no per-conversation message query → no N+1).
+export type ConversationSummaryItem = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  summary: string | null;
+  subjectSnapshot: ConversationSubjectSnapshot;
 };
 
 // Creates a new conversation. user_id is decided by the DB default `auth.uid()`.
@@ -130,6 +143,7 @@ async function hydrateConversation(
     messages,
     summary: conversationRow.summary,
     lastSummarizedMessageId: conversationRow.last_summarized_message_id,
+    subjectSnapshot: conversationRow.subject_snapshot,
   };
 }
 
@@ -182,6 +196,65 @@ async function loadLatestConversationForSubject(
   return hydrateConversation(data as ConversationRow);
 }
 
+// Loads a specific conversation by id (for opening a past conversation from
+// history). RLS restricts to own rows → another user's id returns null.
+async function loadConversationById(
+  conversationId: string,
+): Promise<LoadedConversation | null> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .select(CONVERSATION_COLUMNS)
+    .eq('id', conversationId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (data === null) {
+    return null;
+  }
+
+  return hydrateConversation(data as ConversationRow);
+}
+
+// Lists all conversations for a saved subject (history), newest activity first.
+// RLS restricts to own rows. One query, no per-conversation message lookups.
+async function listConversationsForSubject(
+  subjectId: string,
+): Promise<ConversationSummaryItem[]> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .select('id, created_at, updated_at, summary, subject_snapshot')
+    .eq('subject_id', subjectId)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (
+    (data as
+      | Array<{
+          id: string;
+          created_at: string;
+          updated_at: string;
+          summary: string | null;
+          subject_snapshot: ConversationSubjectSnapshot;
+        }>
+      | null) ?? []
+  ).map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    summary: row.summary,
+    subjectSnapshot: row.subject_snapshot,
+  }));
+}
+
 // Persists the compressed conversation summary and its checkpoint. Idempotent:
 // a plain update, safe to retry. `lastSummarizedMessageId` must be a
 // client_message_id that already exists in this conversation's messages.
@@ -210,5 +283,7 @@ export const conversationService = {
   saveMessage,
   loadLatestConversation,
   loadLatestConversationForSubject,
+  loadConversationById,
+  listConversationsForSubject,
   saveSummary,
 };

@@ -21,7 +21,12 @@ import {
     useConversationPersistence,
     type ChatMessage,
 } from '@/features/chat';
-import { isSavedSubjectId, useConsultationDraft } from '@/features/consultation';
+import {
+    isSavedSubjectId,
+    useConsultationDraft,
+    type BirthInfoDraft,
+    type ConsultationSubject,
+} from '@/features/consultation';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
@@ -45,7 +50,14 @@ function createMessageId(role: ChatMessage['role']): string {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ startNew?: string }>();
+  const params = useLocalSearchParams<{
+    startNew?: string;
+    conversationId?: string;
+  }>();
+  const conversationIdParam =
+    typeof params.conversationId === 'string' && params.conversationId.length > 0
+      ? params.conversationId
+      : undefined;
   // Consume the one-shot "start new consultation" signal exactly once, at mount
   // time, via a ref. We do NOT mutate navigation (no setParams/replace) — doing
   // that during mount crashes ("navigate before mounting the Root Layout").
@@ -53,7 +65,7 @@ export default function ChatScreen() {
   const rootNavState = useRootNavigationState();
   const startNewClearedRef = useRef(false);
 
-  const { draft, hydrationStatus: draftHydrationStatus } =
+  const { draft, hydrationStatus: draftHydrationStatus, updateSubject, updateBirthInfo } =
     useConsultationDraft();
   const { isAuthenticated } = useAuth();
 
@@ -74,13 +86,50 @@ export default function ChatScreen() {
     restoredMessages,
     resetToken,
     conversationMemory,
+    restoredSubjectSnapshot,
     persistMessage,
   } = useConversationPersistence({
     startNew: startNewRef.current,
     draftReady,
     subjectId,
     subjectSnapshot,
+    conversationId: conversationIdParam,
   });
+
+  // When a specific past conversation is opened by id, its stored subject
+  // snapshot is authoritative. Self-correct the draft (once per conversation) so
+  // direct/F5 entry never uses a mismatched in-memory subject.
+  const correctedConversationRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (conversationIdParam === undefined) {
+      return;
+    }
+    if (correctedConversationRef.current === conversationIdParam) {
+      return;
+    }
+    const snapshot = restoredSubjectSnapshot as {
+      subject: ConsultationSubject | null;
+      birthInfo: BirthInfoDraft | null;
+    } | null;
+    if (
+      snapshot === null ||
+      snapshot.subject === null ||
+      snapshot.birthInfo === null
+    ) {
+      return;
+    }
+    correctedConversationRef.current = conversationIdParam;
+    if (draft.subject?.id !== snapshot.subject.id) {
+      updateSubject(snapshot.subject);
+      updateBirthInfo(snapshot.birthInfo);
+    }
+  }, [
+    conversationIdParam,
+    restoredSubjectSnapshot,
+    draft.subject?.id,
+    updateSubject,
+    updateBirthInfo,
+  ]);
 
   const isDraftReady = draft.subject !== null && draft.birthInfo !== null;
 
