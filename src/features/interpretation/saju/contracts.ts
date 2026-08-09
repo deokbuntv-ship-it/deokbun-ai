@@ -2,6 +2,7 @@ import type {
   LunarMonthOrdinal,
   SajuPillarRuleProfile,
 } from '../contracts/sajuRules';
+import type { LocalDate } from '../domain/time';
 
 export const HEAVENLY_STEMS = [
   'JIA',
@@ -52,6 +53,8 @@ export type SexagenaryValidationErrorCode =
   | 'INVALID_STEM'
   | 'INVALID_BRANCH'
   | 'INVALID_SEXAGENARY_PAIR'
+  | 'INVALID_GREGORIAN_DATE'
+  | 'UNSUPPORTED_DATE_RANGE'
   | 'INVALID_LUNAR_YEAR'
   | 'INVALID_LUNAR_MONTH'
   | 'INVALID_LUNAR_MONTH_KIND'
@@ -75,4 +78,19 @@ export type SajuYearMonthPillars = {
   lunarMonth: LunarMonthOrdinal;
   lunarMonthKind: 'REGULAR' | 'LEAP';
   ruleProfile: SajuPillarRuleProfile;
+};
+
+export type SajuDayPillarRuleDescriptor = {
+  readonly ruleId: 'DEOKBUNAI_SAJU_DAY_V1';
+  readonly ruleVersion: 'deokbunai.saju-day-pillar-rules.v1';
+  readonly calendarBasis: 'GREGORIAN_CIVIL_DATE';
+  readonly dayBoundary: 'CIVIL_MIDNIGHT';
+  readonly anchorDate: Readonly<LocalDate>;
+  readonly anchorPillar: 'JIA-ZI';
+  readonly anchorIndex: 0;
+  readonly authority: 'KASI_LUN_ILJIN';
+  readonly supportedRange: {
+    readonly start: Readonly<LocalDate>;
+    readonly end: Readonly<LocalDate>;
+  };
 };

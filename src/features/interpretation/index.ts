@@ -207,3 +207,14 @@ export type {
 } from './saju/fixtures/sexagenaryGoldenFixtures';
 export { validateSexagenaryInvariants } from './saju/validation';
 export type { SexagenaryInvariantReport } from './saju/validation';
+export {
+  calculateDayPillar,
+  DEOKBUNAI_SAJU_DAY_V1_RULE,
+} from './saju/dayPillar';
+export type { SajuDayPillarRuleDescriptor } from './saju/contracts';
+export {
+  DAY_PILLAR_GOLDEN_FIXTURES,
+} from './saju/fixtures/dayPillarGoldenFixtures';
+export type {
+  DayPillarGoldenFixture,
+} from './saju/fixtures/dayPillarGoldenFixtures';
