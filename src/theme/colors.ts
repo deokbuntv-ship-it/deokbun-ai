@@ -96,7 +96,9 @@ const lightFiveElementTiles = {
   wood: { background: '#2E7D32', glyph: '#FFFFFF', border: '#1B5E20' }, // green
   fire: { background: '#C62828', glyph: '#FFFFFF', border: '#8E1B1B' }, // red
   earth: { background: '#F2C14E', glyph: '#1F2937', border: '#C9971F' }, // yellow/ochre, dark glyph
-  metal: { background: '#FFFFFF', glyph: '#111827', border: '#9CA3AF' }, // white, black glyph, gray border
+  // METAL is white on a (usually white) surface → stronger gray-600 border so the
+  // tile boundary stays visible (APP-29A). Identity color unchanged.
+  metal: { background: '#FFFFFF', glyph: '#111827', border: '#4B5563' }, // white, black glyph, strong border
   water: { background: '#111827', glyph: '#FFFFFF', border: '#4B5563' }, // near-black, white glyph
 } as const satisfies Record<FiveElementColorKey, FiveElementTile>;
 
@@ -105,7 +107,9 @@ const darkFiveElementTiles = {
   fire: { background: '#C62828', glyph: '#FFFFFF', border: '#EF5350' },
   earth: { background: '#E6B23A', glyph: '#1F2937', border: '#F2C14E' }, // yellow, dark glyph
   metal: { background: '#F3F4F6', glyph: '#111827', border: '#9CA3AF' }, // near-white, black glyph
-  water: { background: '#0B1220', glyph: '#FFFFFF', border: '#6B7280' }, // near-black, gray border to delineate on dark
+  // WATER is near-black on a near-black dark surface → stronger gray-400 border so
+  // the tile boundary stays visible (APP-29A). Identity color unchanged.
+  water: { background: '#0B1220', glyph: '#FFFFFF', border: '#9CA3AF' }, // near-black, strong border on dark
 } as const satisfies Record<FiveElementColorKey, FiveElementTile>;
 
 export const fiveElementTiles = {

@@ -32,7 +32,9 @@ export function ElementGlyphTile({
     <View
       style={{
         width: isSmall ? 30 : '100%',
-        minHeight: isSmall ? 30 : 44,
+        // md is the primary 8-glyph tile — sized so the 한자 is the dominant
+        // element on screen while keeping the 4-column single-screen layout.
+        minHeight: isSmall ? 30 : 52,
         borderWidth: 1,
         borderColor: tile.border,
         borderRadius: radius.md,
@@ -43,7 +45,7 @@ export function ElementGlyphTile({
       }}
     >
       <Text
-        variant={isSmall ? 'bodyMedium' : 'bodyLarge'}
+        variant={isSmall ? 'bodyMedium' : 'headingLarge'}
         style={{ color: tile.glyph }}
       >
         {glyph}

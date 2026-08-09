@@ -65,6 +65,7 @@ export type ManseStemView = {
   elementLabel: string;
   yinYangLabel: string;
   tenGodLabel: string; // 십신, or '일간' for the Day Master stem
+  isDayMaster: boolean; // true only for the day pillar stem (presentation emphasis)
 };
 
 export type ManseBranchView = {

@@ -53,6 +53,7 @@ function stemView(
     tenGodLabel: isDayMaster
       ? DAY_MASTER_LABEL
       : TEN_GOD_LABELS[annotation.tenGod].hangul,
+    isDayMaster,
   };
 }
 

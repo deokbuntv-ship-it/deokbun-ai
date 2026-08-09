@@ -8,11 +8,15 @@ import { colors, radius, spacing } from '@/theme';
 import type { ManseBranchView, ManseStemView, PillarView } from '../types';
 import { ElementGlyphTile } from './ElementGlyphTile';
 
-// Presentation-only. Renders one pillar column (시/일/월/년):
-//   [column label] / 천간 오행 tile / 천간 meta / 지지 오행 tile / 지지 meta.
-// The glyph sits inside an 오행-colored tile (requirement: WOOD=green .. METAL=white
-// .. WATER=black) and the 오행 label is shown alongside (accessibility — never
-// color-only). A null stem/branch renders a neutral placeholder ("–").
+// Presentation-only. Renders one pillar column (시/일/월/년). Visual hierarchy:
+//   한자 (large 오행 tile) → 한글 → 십신/일간 → 오행·음양.
+// A null stem/branch (e.g. PARTIAL hour) renders a neutral tile PLUS matching
+// blank meta lines so every column keeps the same vertical bands and the 지지
+// tiles stay aligned across all four columns (scaling-safe — blanks scale too).
+
+// Matches the md ElementGlyphTile height so a neutral cell and a real tile occupy
+// the same band.
+const TILE_MIN_HEIGHT = 52;
 
 function NeutralCell() {
   const scheme = useColorScheme();
@@ -21,7 +25,7 @@ function NeutralCell() {
     <View
       style={{
         width: '100%',
-        minHeight: 44,
+        minHeight: TILE_MIN_HEIGHT,
         borderWidth: 1,
         borderColor: theme.border,
         borderRadius: radius.md,
@@ -31,28 +35,83 @@ function NeutralCell() {
         paddingVertical: spacing.xs,
       }}
     >
-      <Text variant="bodyLarge" colorToken="textSecondary">
+      <Text variant="headingLarge" colorToken="textSecondary">
         –
       </Text>
     </View>
   );
 }
 
-function Meta({ children }: { children: string }) {
+// Blank line preserving one line of vertical rhythm for a null pillar.
+function BlankLine({
+  variant,
+}: {
+  variant: 'bodyMedium' | 'bodySmall' | 'caption';
+}) {
   return (
-    <Text variant="caption" colorToken="textSecondary">
-      {children}
+    <Text variant={variant} colorToken="textSecondary">
+      {' '}
     </Text>
   );
 }
 
+// Stem meta: 한글 / 십신(or 일간) / 오행·음양 — 3 lines (blank equivalents if null).
+function StemMeta({ stem }: { stem: ManseStemView | null }) {
+  if (stem === null) {
+    return (
+      <Stack gap="none" align="center">
+        <BlankLine variant="bodyMedium" />
+        <BlankLine variant="bodySmall" />
+        <BlankLine variant="caption" />
+      </Stack>
+    );
+  }
+  return (
+    <Stack gap="none" align="center">
+      <Text variant="bodyMedium">{stem.hangul}</Text>
+      <Text
+        variant="bodySmall"
+        colorToken={stem.isDayMaster ? 'primary' : 'textSecondary'}
+        style={stem.isDayMaster ? { fontWeight: '700' } : undefined}
+      >
+        {stem.tenGodLabel}
+      </Text>
+      <Text variant="caption" colorToken="textSecondary">
+        {`${stem.elementLabel}·${stem.yinYangLabel}`}
+      </Text>
+    </Stack>
+  );
+}
+
+// Branch meta: 한글 / 오행·음양 — 2 lines (blank equivalents if null).
+function BranchMeta({ branch }: { branch: ManseBranchView | null }) {
+  if (branch === null) {
+    return (
+      <Stack gap="none" align="center">
+        <BlankLine variant="bodyMedium" />
+        <BlankLine variant="caption" />
+      </Stack>
+    );
+  }
+  return (
+    <Stack gap="none" align="center">
+      <Text variant="bodyMedium">{branch.hangul}</Text>
+      <Text variant="caption" colorToken="textSecondary">
+        {`${branch.elementLabel}·${branch.yinYangLabel}`}
+      </Text>
+    </Stack>
+  );
+}
+
 export function PillarColumn({ pillar }: { pillar: PillarView }) {
-  const stem: ManseStemView | null = pillar.stem;
-  const branch: ManseBranchView | null = pillar.branch;
+  const stem = pillar.stem;
+  const branch = pillar.branch;
 
   return (
     <Stack style={{ flex: 1 }} gap="xs" align="center">
-      <Text variant="bodyMedium">{pillar.columnLabel}</Text>
+      <Text variant="bodyMedium" colorToken="textSecondary">
+        {pillar.columnLabel}
+      </Text>
 
       {/* 천간 */}
       {stem ? (
@@ -60,13 +119,7 @@ export function PillarColumn({ pillar }: { pillar: PillarView }) {
       ) : (
         <NeutralCell />
       )}
-      {stem ? (
-        <Stack gap="none" align="center">
-          <Meta>{stem.hangul}</Meta>
-          <Meta>{`${stem.elementLabel}·${stem.yinYangLabel}`}</Meta>
-          <Meta>{stem.tenGodLabel}</Meta>
-        </Stack>
-      ) : null}
+      <StemMeta stem={stem} />
 
       {/* 지지 */}
       {branch ? (
@@ -77,12 +130,7 @@ export function PillarColumn({ pillar }: { pillar: PillarView }) {
       ) : (
         <NeutralCell />
       )}
-      {branch ? (
-        <Stack gap="none" align="center">
-          <Meta>{branch.hangul}</Meta>
-          <Meta>{`${branch.elementLabel}·${branch.yinYangLabel}`}</Meta>
-        </Stack>
-      ) : null}
+      <BranchMeta branch={branch} />
     </Stack>
   );
 }
