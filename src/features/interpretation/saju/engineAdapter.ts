@@ -12,6 +12,7 @@ import type { SajuFourPillarsUnavailableReason } from './contracts';
 import type { EvidenceNode } from '../domain/evidence';
 import type { MissingDataItem, WarningSeverity } from '../domain/issues';
 import { calculateFourPillars } from './fourPillars';
+import { calculateSajuDerivedFacts } from './derived/calculateDerivedFacts';
 
 export const DEOKBUNAI_SAJU_ENGINE_VERSION =
   'deokbunai.saju-engine.v1' as const;
@@ -51,6 +52,7 @@ const EVIDENCE_IDS = {
   month: 'SAJU.EVIDENCE.MONTH_PILLAR',
   day: 'SAJU.EVIDENCE.DAY_PILLAR',
   hour: 'SAJU.EVIDENCE.HOUR_PILLAR',
+  derivedFacts: 'SAJU.EVIDENCE.DERIVED_FACTS_RULES',
 } as const;
 
 function createDescriptor(input: SajuEngineExecutionInput): EngineDescriptor {
@@ -290,14 +292,39 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
       ],
     });
   }
+  evidence.push({
+    id: EVIDENCE_IDS.derivedFacts,
+    kind: 'RULE',
+    ruleId: 'DEOKBUNAI_SAJU_DERIVED_FACTS',
+    ruleVersion: output.derivedFacts.ruleVersions.derivedFacts,
+    parentEvidenceIds: [
+      EVIDENCE_IDS.year,
+      EVIDENCE_IDS.month,
+      EVIDENCE_IDS.day,
+      ...(factIds.hour ? [EVIDENCE_IDS.hour] : []),
+    ],
+  });
   return evidence;
 }
 
-/** The only public Saju execution entrypoint. */
-export function executeSaju(input: SajuEngineExecutionInput): SajuEngineResult {
+type SajuExecutionCalculators = {
+  calculateFourPillars: typeof calculateFourPillars;
+  calculateDerivedFacts: typeof calculateSajuDerivedFacts;
+};
+
+const PRODUCTION_CALCULATORS: SajuExecutionCalculators = {
+  calculateFourPillars,
+  calculateDerivedFacts: calculateSajuDerivedFacts,
+};
+
+/** @internal Validation seam. Not exported from the interpretation package. */
+export function executeSajuWithCalculatorsForValidation(
+  input: SajuEngineExecutionInput,
+  calculators: SajuExecutionCalculators,
+): SajuEngineResult {
   const engine = createDescriptor(input);
   const normalizationWarnings = mapNormalizationWarnings(input);
-  const aggregate = calculateFourPillars({
+  const aggregate = calculators.calculateFourPillars({
     normalizedBirthFingerprint: input.normalizedBirthFingerprint.value,
     normalized: {
       calendar: input.normalizedBirth.calendar,
@@ -324,10 +351,23 @@ export function executeSaju(input: SajuEngineExecutionInput): SajuEngineResult {
     };
   }
 
+  const derived = calculators.calculateDerivedFacts({
+    fourPillars: aggregate.pillars,
+  });
+  if (!derived.ok) {
+    throw new Error(
+      `Saju Derived Facts invariant failed: ${derived.error.code} at ${derived.error.field}.`,
+    );
+  }
+
   const output: SajuEngineOutput = {
     fourPillars: aggregate.pillars,
+    derivedFacts: derived.value,
     identity: aggregate.identity,
-    provenance: aggregate.provenance,
+    provenance: {
+      ...aggregate.provenance,
+      derivedFactsRuleVersions: derived.value.ruleVersions,
+    },
   };
   const hour = output.fourPillars.hour;
   const hourWarnings =
@@ -346,4 +386,9 @@ export function executeSaju(input: SajuEngineExecutionInput): SajuEngineResult {
     missingData,
     output,
   };
+}
+
+/** The only public Saju execution entrypoint. */
+export function executeSaju(input: SajuEngineExecutionInput): SajuEngineResult {
+  return executeSajuWithCalculatorsForValidation(input, PRODUCTION_CALCULATORS);
 }

@@ -71,6 +71,11 @@ export type {
   ResolvedLunisolarCalendar,
   ResolutionProvenance,
   TimezoneResolution,
+  TimezoneUnresolvedReason,
+  UniqueTimezoneResolution,
+  AmbiguousTimezoneResolution,
+  NonexistentTimezoneResolution,
+  UnresolvedTimezoneResolution,
   TrueSolarTimeResolution,
   TrueSolarTimeResolutionRequest,
   TrueSolarTimeResolver,
@@ -123,12 +128,18 @@ export type {
 } from './contracts/cross';
 export {
   BIRTH_FINGERPRINT_SCHEMA_VERSION,
+  BIRTH_FINGERPRINT_SCHEMA_VERSION_V3,
   CanonicalSerializationError,
   createBirthFingerprintFrame,
+  createBirthFingerprintFrameV3,
   createBirthFingerprintPayload,
+  createBirthFingerprintPayloadV3,
   serializeBirthFingerprintPayload,
 } from './normalization/canonicalSerialization';
-export type { BirthFingerprintPayload } from './normalization/canonicalSerialization';
+export type {
+  BirthFingerprintPayload,
+  BirthFingerprintPayloadV3,
+} from './normalization/canonicalSerialization';
 export { digestBirthFingerprintFrame } from './normalization/fingerprint';
 export type {
   DigestProvider,
@@ -273,3 +284,77 @@ export type {
   SajuBirthExecutionDependencies,
   SajuBirthExecutionResult,
 } from './saju/birthExecutionBridge';
+export type {
+  BranchRuleLookup,
+  FiveElement,
+  HiddenStemDefinition,
+  HiddenStemRole,
+  SajuDerivedBranchAnnotation,
+  SajuDerivedFacts,
+  SajuDerivedFactsError,
+  SajuDerivedFactsErrorCode,
+  SajuDerivedFactsInput,
+  SajuDerivedFactsResult,
+  SajuDerivedFactsRuleVersions,
+  SajuDerivedHiddenStemAnnotation,
+  SajuDerivedPillarAnnotation,
+  SajuDerivedStemAnnotation,
+  SajuPillarPosition,
+  StemRuleLookup,
+  TenGod,
+  YinYang,
+} from './saju/derived/contracts';
+export {
+  BRANCH_ELEMENTS,
+  BRANCH_YIN_YANG,
+  calculateTenGod,
+  DEOKBUNAI_SAJU_DERIVED_FACTS_V1_RULE_VERSIONS,
+  DEOKBUNAI_SAJU_DERIVED_FACTS_VERSION,
+  DEOKBUNAI_SAJU_FIVE_ELEMENTS_VERSION,
+  DEOKBUNAI_SAJU_HIDDEN_STEMS_VERSION,
+  DEOKBUNAI_SAJU_TEN_GODS_VERSION,
+  DEOKBUNAI_SAJU_YIN_YANG_VERSION,
+  getBranchElement,
+  getBranchRule,
+  getBranchYinYang,
+  getHiddenStems,
+  getStemElement,
+  getStemRule,
+  getStemYinYang,
+  HIDDEN_STEMS,
+  STEM_ELEMENTS,
+  STEM_YIN_YANG,
+} from './saju/derived/rules';
+export { calculateSajuDerivedFacts } from './saju/derived/calculateDerivedFacts';
+export {
+  EARTHLY_BRANCH_LABELS,
+  FIVE_ELEMENT_LABELS,
+  HEAVENLY_STEM_LABELS,
+  HIDDEN_STEM_ROLE_LABELS,
+  TEN_GOD_LABELS,
+  YIN_YANG_LABELS,
+} from './saju/presentationLabels';
+export type {
+  SajuHangulLabel,
+  SajuHanjaHangulLabel,
+} from './saju/presentationLabels';
+export type {
+  HistoricalTimezoneArtifact,
+  HistoricalTimezoneArtifactManifest,
+  HistoricalTimezoneOfficialCrossCheck,
+  HistoricalTimezoneState,
+  HistoricalTimezoneTransition,
+  TimezoneArtifactChecksum,
+} from './timezone/contracts';
+export {
+  ASIA_SEOUL_TZDB_2026C_ARTIFACT,
+  ASIA_SEOUL_TZDB_2026C_ARTIFACT_SHA256,
+} from './timezone/data/asiaSeoulTzdb2026c';
+export {
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER_ID,
+  ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER_VERSION,
+  createAsiaSeoulHistoricalTimezoneResolver,
+} from './timezone/historicalTimezoneResolver';
+export { ASIA_SEOUL_GOLDEN_FIXTURES } from './timezone/fixtures/asiaSeoulGoldenFixtures';
+export type { AsiaSeoulGoldenFixture } from './timezone/fixtures/asiaSeoulGoldenFixtures';

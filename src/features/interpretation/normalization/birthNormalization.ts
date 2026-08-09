@@ -8,6 +8,7 @@ import type {
   NormalizedBirthInput,
   ResolutionProvenance,
   TimezoneResolution,
+  TimezoneUnresolvedReason,
   TrueSolarTimeResolution,
   TrueSolarTimeResolver,
 } from '../contracts/normalization';
@@ -248,6 +249,52 @@ function createCivilLocal(
   return { accuracy: 'UNKNOWN', date: gregorianDate };
 }
 
+function unresolvedTimezone(
+  reason: TimezoneUnresolvedReason,
+  ianaZone?: string,
+): TimezoneResolution {
+  const historicalReason =
+    reason === 'UNSUPPORTED_ZONE'
+      ? 'UNSUPPORTED_ZONE'
+      : reason === 'OUTSIDE_SUPPORTED_RANGE'
+        ? 'OUTSIDE_SUPPORTED_RANGE'
+        : reason === 'LMT_NOT_AUTHORIZED'
+          ? 'LMT_NOT_AUTHORIZED'
+          : reason === 'HISTORICAL_SOURCE_CONFLICT'
+            ? 'SOURCE_CONFLICT_REQUIRES_RULE'
+            : 'TIME_UNRESOLVED';
+  const provenance: ResolutionProvenance = {
+    resolverId: 'deokbunai.normalization.timezone-unresolved',
+    resolverVersion: 'deokbunai.normalization.timezone-unresolved.v1',
+    ruleSetVersion: 'deokbunai.historical-timezone-policy.v1',
+    source: 'ENGINE',
+  };
+  return {
+    status: 'UNRESOLVED',
+    ...(ianaZone ? { ianaZone } : {}),
+    reason,
+    historicalProvenance: {
+      authorityStatus:
+        reason === 'HISTORICAL_SOURCE_CONFLICT'
+          ? 'SOURCE_CONFLICT'
+          : 'UNRESOLVED',
+      ...(ianaZone ? { tzdbZone: ianaZone } : {}),
+      officialSources: [],
+      ruleSetVersion: 'deokbunai.historical-timezone-policy.v1',
+      comparison:
+        reason === 'HISTORICAL_SOURCE_CONFLICT' ? 'CONFLICT' : 'NOT_VERIFIED',
+      jurisdiction: 'UNRESOLVED',
+      applicableRegion: 'UNRESOLVED',
+      supportedRange: {
+        startLocalDate: '1970-01-01',
+        endLocalDate: '2050-12-31',
+      },
+      unresolvedReason: historicalReason,
+    },
+    provenance,
+  };
+}
+
 async function resolveTimezone(
   source: CanonicalBirthInput,
   civilLocal: CivilLocalBirthTime,
@@ -255,7 +302,7 @@ async function resolveTimezone(
   warnings: NormalizationWarning[],
 ): Promise<TimezoneResolution> {
   if (civilLocal.accuracy !== 'EXACT') {
-    return { status: 'UNRESOLVED', reason: 'TIME_UNRESOLVED' };
+    return unresolvedTimezone('TIME_UNRESOLVED');
   }
   const timezone = source.temporalContext.timezone;
   if (timezone.status !== 'EXPLICIT') {
@@ -269,7 +316,7 @@ async function resolveTimezone(
         stage: 'TIMEZONE',
       }),
     );
-    return { status: 'UNRESOLVED', reason: 'TIMEZONE_NOT_PROVIDED' };
+    return unresolvedTimezone('TIMEZONE_NOT_PROVIDED');
   }
   if (!resolver) {
     warnings.push(
@@ -279,11 +326,7 @@ async function resolveTimezone(
         stage: 'TIMEZONE',
       }),
     );
-    return {
-      status: 'UNRESOLVED',
-      ianaZone: timezone.ianaZone,
-      reason: 'RESOLVER_NOT_PROVIDED',
-    };
+    return unresolvedTimezone('RESOLVER_NOT_PROVIDED', timezone.ianaZone);
   }
   try {
     return await resolver.resolve({
@@ -299,11 +342,7 @@ async function resolveTimezone(
         stage: 'TIMEZONE',
       }),
     );
-    return {
-      status: 'UNRESOLVED',
-      ianaZone: timezone.ianaZone,
-      reason: 'HISTORICAL_DATA_UNAVAILABLE',
-    };
+    return unresolvedTimezone('HISTORICAL_DATA_UNAVAILABLE', timezone.ianaZone);
   }
 }
 
@@ -404,9 +443,11 @@ function collectProvenance(
   }
   if (normalized.timezone.status === 'RESOLVED') {
     values.push(normalized.timezone.provenance);
-    if (normalized.timezone.dst.status !== 'UNRESOLVED') {
+    if ('dst' in normalized.timezone) {
       values.push(normalized.timezone.dst.provenance);
     }
+  } else {
+    values.push(normalized.timezone.provenance);
   }
   if (normalized.trueSolarTime.status === 'APPLIED') {
     values.push(normalized.trueSolarTime.provenance);

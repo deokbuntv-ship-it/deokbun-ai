@@ -74,6 +74,36 @@ function uniqueTimezone(): TimezoneResolution {
   };
 }
 
+function unresolvedTimezone(
+  reason:
+    | 'TIME_UNRESOLVED'
+    | 'HISTORICAL_SOURCE_CONFLICT'
+    | 'HISTORICAL_DATA_UNAVAILABLE',
+): TimezoneResolution {
+  const conflict = reason === 'HISTORICAL_SOURCE_CONFLICT';
+  const provenance = {
+    resolverId: 'VALIDATION_FIXTURE',
+    resolverVersion: '1',
+    source: 'ENGINE' as const,
+  };
+  return {
+    status: 'UNRESOLVED',
+    reason,
+    historicalProvenance: {
+      authorityStatus: conflict ? 'SOURCE_CONFLICT' : 'UNRESOLVED',
+      officialSources: [],
+      ruleSetVersion: 'validation-fixture',
+      comparison: conflict ? 'CONFLICT' : 'NOT_VERIFIED',
+      jurisdiction: 'KR',
+      applicableRegion: 'KR',
+      unresolvedReason: conflict
+        ? 'SOURCE_CONFLICT_REQUIRES_RULE'
+        : 'TIME_UNRESOLVED',
+    },
+    provenance,
+  };
+}
+
 function createInput(
   fixture: (typeof FOUR_PILLARS_GOLDEN_FIXTURES)[number],
 ): SajuFourPillarsCalculationInput {
@@ -105,7 +135,7 @@ function createInput(
       civilLocal,
       timezone: fixture.time.accuracy === 'EXACT'
         ? uniqueTimezone()
-        : { status: 'UNRESOLVED', reason: 'TIME_UNRESOLVED' },
+        : unresolvedTimezone('TIME_UNRESOLVED'),
       trueSolarTime: { status: 'NOT_APPLIED' },
     },
     ruleProfile: DEOKBUNAI_SAJU_V1_RULE_PROFILE,
@@ -249,8 +279,8 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
   let historicalCapabilityCases = 0;
   if (base.normalized.calendar.status === 'RESOLVED') {
     const historicalCases: readonly [TimezoneResolution, 'AMBIGUOUS' | 'UNAVAILABLE', string][] = [
-      [{ status: 'UNRESOLVED', reason: 'HISTORICAL_SOURCE_CONFLICT' }, 'UNAVAILABLE', 'HISTORICAL_SOURCE_CONFLICT'],
-      [{ status: 'UNRESOLVED', reason: 'HISTORICAL_DATA_UNAVAILABLE' }, 'UNAVAILABLE', 'HISTORICAL_TIME_UNRESOLVED'],
+      [unresolvedTimezone('HISTORICAL_SOURCE_CONFLICT'), 'UNAVAILABLE', 'HISTORICAL_SOURCE_CONFLICT'],
+      [unresolvedTimezone('HISTORICAL_DATA_UNAVAILABLE'), 'UNAVAILABLE', 'HISTORICAL_TIME_UNRESOLVED'],
     ];
     for (const [timezone, status, reason] of historicalCases) {
       const result = calculateFourPillars({
@@ -264,7 +294,10 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
     }
 
     const resolved = uniqueTimezone();
-    if (resolved.status === 'RESOLVED') {
+    if (
+      resolved.status === 'RESOLVED' &&
+      'resolvedOffsetSeconds' in resolved
+    ) {
       const uniqueCandidate = resolved.localTimeResolution.kind === 'UNIQUE'
         ? resolved.localTimeResolution.candidate
         : {
@@ -273,8 +306,14 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
             dstOffsetSeconds: 0,
             isDst: false,
           };
+      const {
+        resolvedOffsetSeconds: _resolvedOffsetSeconds,
+        resolvedOffsetMinutes: _resolvedOffsetMinutes,
+        dst: _dst,
+        ...resolvedBase
+      } = resolved;
       const ambiguous: TimezoneResolution = {
-        ...resolved,
+        ...resolvedBase,
         localTimeResolution: {
           kind: 'AMBIGUOUS',
           candidates: [
@@ -284,7 +323,7 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
         },
       };
       const nonexistent: TimezoneResolution = {
-        ...resolved,
+        ...resolvedBase,
         localTimeResolution: {
           kind: 'NONEXISTENT',
           gap: {
@@ -299,24 +338,13 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
             transitionUtcEpochSeconds: 0,
             offsetBeforeSeconds: 32_400,
             offsetAfterSeconds: 36_000,
+            dstOffsetBeforeSeconds: 0,
+            dstOffsetAfterSeconds: 3_600,
           },
         },
       };
-      const localUnresolved: TimezoneResolution = {
-        ...resolved,
-        localTimeResolution: {
-          kind: 'UNRESOLVED',
-          reason: 'TIME_UNRESOLVED',
-        },
-      };
-      const sourceConflict: TimezoneResolution = {
-        ...resolved,
-        historicalProvenance: {
-          ...resolved.historicalProvenance,
-          authorityStatus: 'SOURCE_CONFLICT',
-          comparison: 'CONFLICT',
-        },
-      };
+      const localUnresolved = unresolvedTimezone('TIME_UNRESOLVED');
+      const sourceConflict = unresolvedTimezone('HISTORICAL_SOURCE_CONFLICT');
       const resolvedCases: readonly [TimezoneResolution, 'AMBIGUOUS' | 'UNAVAILABLE', string][] = [
         [ambiguous, 'AMBIGUOUS', 'LOCAL_TIME_AMBIGUOUS'],
         [nonexistent, 'UNAVAILABLE', 'LOCAL_TIME_NONEXISTENT'],

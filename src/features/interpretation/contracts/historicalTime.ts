@@ -14,6 +14,7 @@ export type HistoricalAuthorityStatus =
 export type HistoricalSourceReference = {
   authority: string;
   documentId: string;
+  sourceUrl?: string;
   publicationDate?: string;
   effectiveLocalTime?: string;
   sourceChecksum?: string;
@@ -26,6 +27,7 @@ export type HistoricalSourceComparison =
 
 export type HistoricalTimeUnresolvedReason =
   | 'ZONE_NOT_FOUND'
+  | 'UNSUPPORTED_ZONE'
   | 'OUTSIDE_SUPPORTED_RANGE'
   | 'HISTORICAL_DATA_UNAVAILABLE'
   | 'OFFICIAL_SOURCE_REQUIRED'
@@ -43,6 +45,12 @@ export type HistoricalTimeProvenance = {
   comparison: HistoricalSourceComparison;
   jurisdiction: string;
   applicableRegion: string;
+  sourceIdentity?: string;
+  sourceRevision?: string;
+  supportedRange?: {
+    startLocalDate: string;
+    endLocalDate: string;
+  };
   unresolvedReason?: HistoricalTimeUnresolvedReason;
 };
 
@@ -76,6 +84,10 @@ export type HistoricalLocalTimeResolution =
         transitionUtcEpochSeconds: number;
         offsetBeforeSeconds: number;
         offsetAfterSeconds: number;
+        dstOffsetBeforeSeconds: number;
+        dstOffsetAfterSeconds: number;
+        designationBefore?: string;
+        designationAfter?: string;
       };
     }
   | {
