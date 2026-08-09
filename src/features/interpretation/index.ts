@@ -218,3 +218,21 @@ export {
 export type {
   DayPillarGoldenFixture,
 } from './saju/fixtures/dayPillarGoldenFixtures';
+export {
+  calculateHourPillar,
+  DEOKBUNAI_SAJU_HOUR_V1_RULE,
+  resolveHourBranch,
+} from './saju/hourPillar';
+export type {
+  ExactLocalCivilTime,
+  SajuHourPillarInput,
+  SajuHourPillarRuleDescriptor,
+} from './saju/contracts';
+export {
+  HOUR_BRANCH_BOUNDARY_FIXTURES,
+  HOUR_PILLAR_GOLDEN_FIXTURES,
+} from './saju/fixtures/hourPillarGoldenFixtures';
+export type {
+  HourBranchBoundaryFixture,
+  HourPillarGoldenFixture,
+} from './saju/fixtures/hourPillarGoldenFixtures';

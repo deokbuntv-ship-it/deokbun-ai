@@ -2,7 +2,7 @@ import type {
   LunarMonthOrdinal,
   SajuPillarRuleProfile,
 } from '../contracts/sajuRules';
-import type { LocalDate } from '../domain/time';
+import type { LocalClockTime, LocalDate } from '../domain/time';
 
 export const HEAVENLY_STEMS = [
   'JIA',
@@ -54,6 +54,7 @@ export type SexagenaryValidationErrorCode =
   | 'INVALID_BRANCH'
   | 'INVALID_SEXAGENARY_PAIR'
   | 'INVALID_GREGORIAN_DATE'
+  | 'INVALID_LOCAL_TIME'
   | 'UNSUPPORTED_DATE_RANGE'
   | 'INVALID_LUNAR_YEAR'
   | 'INVALID_LUNAR_MONTH'
@@ -93,4 +94,21 @@ export type SajuDayPillarRuleDescriptor = {
     readonly start: Readonly<LocalDate>;
     readonly end: Readonly<LocalDate>;
   };
+};
+
+export type ExactLocalCivilTime = Required<LocalClockTime>;
+
+export type SajuHourPillarInput = {
+  dayStem: HeavenlyStem;
+  localTime: ExactLocalCivilTime;
+};
+
+export type SajuHourPillarRuleDescriptor = {
+  readonly ruleId: 'DEOKBUNAI_SAJU_HOUR_V1';
+  readonly ruleVersion: 'deokbunai.saju-hour-pillar-rules.v1';
+  readonly timeBasis: 'LOCAL_CIVIL_TIME';
+  readonly dayBoundary: 'CIVIL_MIDNIGHT';
+  readonly ziHourRange: '23:00:00..00:59:59';
+  readonly trueSolarTime: 'DO_NOT_APPLY';
+  readonly authority: 'DEOKBUNAI_SAJU_V1_PRODUCT_RULE';
 };
