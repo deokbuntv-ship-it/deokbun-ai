@@ -134,6 +134,10 @@ export type {
   DigestProvider,
   Sha256Fingerprint,
 } from './normalization/fingerprint';
+export { normalizeBirthInput } from './normalization/birthNormalization';
+export type {
+  BirthNormalizationDependencies,
+} from './normalization/birthNormalization';
 export type {
   CalendarArtifactChecksum,
   CalendarDataset,
@@ -264,3 +268,8 @@ export {
   SAJU_HOUR_WARNING_SEVERITY,
   executeSaju,
 } from './saju/engineAdapter';
+export { executeSajuFromBirthInput } from './saju/birthExecutionBridge';
+export type {
+  SajuBirthExecutionDependencies,
+  SajuBirthExecutionResult,
+} from './saju/birthExecutionBridge';
