@@ -21,14 +21,20 @@ Already applied per your report: `ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`,
 3. `docs/admin/PUBLIC_UPDATE_search_alt.sql` — adds `content_items.hero_alt`
    (image alt text) + `/content` search (`public_list_content` p_search;
    backward compatible — the search-less list already works without it).
+4. `docs/admin/VIDEO_SETUP.sql` — adds `content_items.video_url` (applied video)
+   + exposes it via `public_get_content` (public video seam).
 
 ### B. Edge deploy (CMD / terminal)
 ```bash
 npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag
 npx supabase functions deploy media-generate --project-ref olvkpaldrwvtexxpoaag
+npx supabase functions deploy video-generate --project-ref olvkpaldrwvtexxpoaag
+npx supabase functions deploy video-status --project-ref olvkpaldrwvtexxpoaag
 ```
 `content-generate` redeploy is needed for the AI-workload layer (P0-7).
-`media-generate` is the NEW image generation function (reuses `OPENAI_API_KEY`).
+`media-generate` is the image generation function (reuses `OPENAI_API_KEY`).
+`video-generate`/`video-status` are the NEW async video functions (need
+`GEMINI_API_KEY` — see §2B).
 `famous-suggest` is already deployed; redeploy only if you change its code.
 
 ### C. Environment variables (optional, enables canonical URLs + sitemap)
@@ -56,15 +62,31 @@ apply as hero (no auto-apply). Provider is swappable later via server config onl
 `IMAGE_PREMIUM` remains `NOT_CONFIGURED` (future seam). Run §1.A(2) SQL + §1.B
 `media-generate` deploy to activate.
 
-### B. Video generation provider (CONTENT-06) — lower priority
-| Provider | ~Price/sec | Notes |
-|---|---|---|
-| **Kling 3.0** (value) | ~$0.04 | Cheapest, self-serve |
-| Runway Gen-4.5 | ~$0.15 | Best creative control (enterprise waitlist) |
-| Google Veo 3.1 | ~$0.75 | 4K + native audio (Vertex, region-gated) |
-| OpenAI Sora 2 | ~$0.10 (std) | ⚠️ Videos API deprecation scheduled 2026-09-24 — avoid as primary |
-**Recommendation:** defer video; if pursued, Kling (cost) or Veo (quality). Not
-Sora as primary due to deprecation risk.
+### B. Video generation provider (CONTENT-06) — ✅ DECIDED & IMPLEMENTED
+**Approved:** `VIDEO_STANDARD` = **Google Veo** (short-form, 720p, native audio
+OFF). Verified against current Google docs → default model
+**`veo-3.1-fast-generate-001`** (the cost-efficient production variant; there is no
+official "Lite" id), 8-second clips, aspect 9:16/16:9, async
+`:predictLongRunning` + operation polling. Implemented via `video-generate`
+(start) + `video-status` (poll → Supabase Storage). Provider/model/resolution/
+duration are server config only (`VIDEO_STANDARD_MODEL` etc.) — swappable without
+UI/DB changes. `VIDEO_PREMIUM` stays `NOT_CONFIGURED`.
+
+**Google setup (USER ACTION — Gemini API, chosen for simple API-key auth):**
+1. Open **Google AI Studio** (aistudio.google.com) with your Google account →
+   **Get API key** (creates/links a Google Cloud project).
+2. **Enable billing** on that Cloud project — Veo is a paid model.
+3. Confirm the **Generative Language API** is enabled on the project.
+4. Set the key as a Supabase secret (value never shown/committed):
+   ```bash
+   npx supabase secrets set GEMINI_API_KEY=YOUR_KEY --project-ref olvkpaldrwvtexxpoaag
+   ```
+5. Deploy `video-generate` + `video-status` (§1.B) and apply `VIDEO_SETUP.sql`
+   (§1.A-4).
+6. Smoke: `/admin/content/[id]` → **AI 영상 생성** → wait (processing, minutes) →
+   preview → apply → `/content/{slug}` shows ▶ 영상 보기.
+> Do NOT commit the key. If billing/model access is region-gated, the function
+> fails closed with a clear error (no fake success).
 
 ### C. Instagram automatic publishing — go / no-go (CONTENT-05)
 Requires Meta app + IG Professional account + FB Page + App Review (2–4 wks). See
@@ -90,7 +112,10 @@ Schedule *persistence* works. Automatic external publishing (pg_cron→Edge) is
   `LLM_MODEL`, `CONTENT_LLM_MODEL`, `CONTENT_LLM_MAX_OUTPUT_TOKENS`,
   `PREMIUM_CONTENT_LLM_MODEL`, `PREMIUM_CONTENT_MAX_OUTPUT_TOKENS`,
   `IMAGE_STANDARD_PROVIDER`, `IMAGE_STANDARD_MODEL`, `IMAGE_STANDARD_QUALITY`
-  (image defaults: openai / gpt-image-1 / low).
+  (image defaults: openai / gpt-image-1 / low),
+  **`GEMINI_API_KEY`** (video — required), optional `VIDEO_STANDARD_MODEL`,
+  `VIDEO_STANDARD_RESOLUTION`, `VIDEO_STANDARD_DURATION`, `VIDEO_STANDARD_AUDIO`
+  (video defaults: google-veo / veo-3.1-fast-generate-001 / 720p / 8 / off).
 - Future provider-specific (only after you choose): image/video provider keys,
   Meta app id/secret + IG token — **edge/server-side only, never `EXPO_PUBLIC_*`.**
 
@@ -99,6 +124,7 @@ Schedule *persistence* works. Automatic external publishing (pg_cron→Edge) is
 - `content-generate` — deployed; **redeploy pending** (P0-7).
 - `famous-suggest` — deployed.
 - `media-generate` — **new; deploy pending** (image generation, OpenAI/LOW).
+- `video-generate` / `video-status` — **new; deploy pending** (async video, Google Veo; needs `GEMINI_API_KEY`).
 
 ### 3C. SQL setup order (full)
 Applied: `admin/ADMIN_SETUP` → `ADMIN_02..05` → `CONTENT_01` → `PUBLIC_SETUP` →

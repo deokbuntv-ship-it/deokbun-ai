@@ -56,6 +56,7 @@
 | IMG IMAGE_STANDARD 이미지 생성(OpenAI/LOW) | 🟡 코드 완료 · **IMAGE_STORAGE_SETUP.sql + media-generate 배포 대기** (provider/model/quality 서버 결정, Storage 저장, provenance, IMAGE_PREMIUM=NOT_CONFIGURED). owner smoke PASS |
 | R4-A 이미지 alt + 공개검색 + JSON-LD | 🟡 코드 완료 · **PUBLIC_UPDATE_search_alt.sql 대기** (hero_alt, /content?q=, Article/Person 구조화데이터-검증필드만) |
 | R4-B Admin 채널/소스 + 공개여부/계산상태 필터 | ✅ 코드 완료 |
+| VIDEO_STANDARD 영상 생성(Google Veo, async) | 🟡 코드 완료 · **VIDEO_SETUP.sql + video-generate/status 배포 + GEMINI_API_KEY 대기** (veo-3.1-fast, 720p/8s/audio off, 서버 결정, Storage 저장, bounded polling, VIDEO_PREMIUM=NOT_CONFIGURED) |
 
 ### DB 스크립트 (docs/) — 적용 순서 아래 참조
 - 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.
