@@ -48,6 +48,11 @@
 | CONTENT-05 인스타 채널 seam + CONTENT-07 예약 | 🟡 코드 완료 · **CONTENT_05_07_SETUP.sql 대기** (실발행=OAUTH_REQUIRED, 실행=DEPLOY_REQUIRED) |
 | SEO: robots.txt + 페이지 메타 | ✅ 코드 완료 (사이트맵/동적 슬러그 프리렌더는 향후) |
 | 보안 감사(신규 표면) | ✅ 통과 (service_role/시크릿/HTML/토큰/공개누출 0) |
+| R3-1 Canonical URL(결정론적)+OG | ✅ 코드 완료 (PUBLIC_BASE_URL 미설정 시 omit) |
+| R3-2 AI 사용량 유형 필터 + 버전 토큰 | 🟡 코드 완료 · **ADMIN_04_UPDATE_usage_filter.sql 대기** |
+| R3-3 sitemap 생성기 + SEO 한계 문서 | ✅ 코드 완료 (base-url gated, 가짜도메인 0) |
+| R3-4 Admin content/famous 필터 + 삭제 확인 | ✅ 코드 완료 |
+| R3-5 provider decision pack + 오너 문서 | ✅ 문서 완료 (OWNER_ACTIONS_AND_DECISIONS.md) |
 
 ### DB 스크립트 (docs/) — 적용 순서 아래 참조
 - 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.
@@ -63,23 +68,17 @@
 - 관리자: `/admin` · `/admin/users` · `/admin/consultations` · `/admin/ai-usage` · `/admin/famous` · `/admin/content` (fail-closed, `admin/_layout` 가드).
 - 공개: `/content` · `/content/[slug]` · `/content/category/[slug]` · `/famous` · `/famous/[slug]` (published-only, 무인증, `expo-router/head` SEO, web.output=static).
 
-### 통합 USER ACTION (순서대로)
-1. **Supabase SQL Editor** (순서대로 실행):
-   1) `docs/admin/PUBLICATION_SETUP.sql`
-   2) `docs/admin/CONTENT_ASSETS_SETUP.sql`
-   3) `docs/admin/CONTENT_05_07_SETUP.sql`
-   4) `docs/admin/FAMOUS_AI_SETUP.sql` (선택 — 제안 이력 저장)
-2. **CMD** (Edge 배포):
-   - `npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag` (재배포)
-   - `npx supabase functions deploy famous-suggest --project-ref olvkpaldrwvtexxpoaag`
-3. (선택) **CMD** 프리미엄 모델: `npx supabase secrets set PREMIUM_CONTENT_LLM_MODEL=gpt-5 --project-ref olvkpaldrwvtexxpoaag`
-4. 스모크: `/admin/famous`에서 AI 제안 생성/적용 → 저장 → `/admin/content`에서 대표이미지 첨부·slug·발행 → `/content/{slug}` 대표이미지/본문 확인.
+### 통합 USER ACTION / OWNER DECISION
+> **전체 상세는 [docs/OWNER_ACTIONS_AND_DECISIONS.md](docs/OWNER_ACTIONS_AND_DECISIONS.md) 참조** (단일 운영 문서).
 
-### OWNER DECISION QUEUE (비용/락인 — 소유자 결정)
-- 이미지 생성 provider (CONTENT-03) · 영상 생성 provider (CONTENT-06)
-- 인스타그램 실발행(Meta 앱/전문계정/App Review 2~4주) 진행 여부 (CONTENT-05)
-- 예약 자동실행 인프라(pg_cron→Edge) 및 자동 외부발행 승인 (CONTENT-07)
-- 동적 슬러그 사이트맵/프리렌더 SEO 강화 범위
+이미 적용 완료(사용자 보고): 모든 ADMIN/CONTENT/PUBLIC/PUBLICATION/ASSETS/05_07/FAMOUS_AI SQL + `content-generate`·`famous-suggest` 배포.
+
+**현재 남은 USER ACTION(소규모):**
+1. SQL: `docs/admin/ADMIN_04_UPDATE_usage_filter.sql` (AI 사용량 유형 필터; 미적용해도 전체 목록 동작).
+2. CMD: `npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag` (P0-7 워크로드 반영 재배포).
+3. (선택) env `EXPO_PUBLIC_PUBLIC_BASE_URL` (canonical/sitemap 활성화) + `node scripts/generate-sitemap.mjs`.
+
+**OWNER DECISION**(비용/락인): 이미지 provider(추천 OpenAI GPT Image) · 영상 provider(defer/Kling) · 인스타 실발행 go/no-go(App Review) · 예약 자동실행 승인 · 프로덕션 도메인 · 동적 슬러그 프리렌더 범위. 상세/후보 비교는 위 문서 §2.
 
 ### 보안 원칙 (이 트랙 전반 준수)
 - 모든 관리자 DB 접근은 `is_admin()` 게이트(RLS/SECURITY DEFINER, `search_path=public,pg_temp`, revoke/grant).
