@@ -21,26 +21,12 @@ import { withSupabase } from 'npm:@supabase/server';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 import { getTemplate, type TemplateVariables } from './templates.ts';
+import { resolveWorkload } from './workloads.ts';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
-const DEFAULT_MODEL = 'gpt-5-mini';
-const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
 
-function readServerConfig() {
-  const apiKey = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
-  const model =
-    Deno.env.get('CONTENT_LLM_MODEL')?.trim() ||
-    Deno.env.get('LLM_MODEL')?.trim() ||
-    DEFAULT_MODEL;
-
-  const rawMax = Deno.env.get('CONTENT_LLM_MAX_OUTPUT_TOKENS')?.trim();
-  const parsed = Number(rawMax);
-  const maxOutputTokens =
-    Number.isFinite(parsed) && parsed > 0
-      ? Math.floor(parsed)
-      : DEFAULT_MAX_OUTPUT_TOKENS;
-
-  return { apiKey, model, maxOutputTokens };
+function readApiKey(): string {
+  return Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
 }
 
 function toNullableInt(value: unknown): number | null {
@@ -204,7 +190,7 @@ export default {
           return Response.json({ error: 'FORBIDDEN' }, { status: 403 });
         }
 
-        const { apiKey, model, maxOutputTokens } = readServerConfig();
+        const apiKey = readApiKey();
         if (apiKey.length === 0) {
           console.error('[content-generate] server_not_configured');
           return Response.json(
@@ -223,6 +209,10 @@ export default {
         const contentId = (body as { contentId?: unknown } | null)?.contentId;
         const templateId = (body as { templateId?: unknown } | null)?.templateId;
         const variables = (body as { variables?: unknown } | null)?.variables;
+        const workloadInput = (body as { workload?: unknown } | null)?.workload;
+        // Server decides the concrete model from the logical workload.
+        const { workload, model, maxOutputTokens } =
+          resolveWorkload(workloadInput);
 
         if (
           typeof contentId !== 'string' ||
@@ -335,6 +325,7 @@ export default {
         const inputRef = {
           template_id: templateId,
           prompt_version: template.promptVersion,
+          workload,
           variables: vars,
         };
         const tokenUsage = {
@@ -385,6 +376,7 @@ export default {
           provenance: {
             provider: 'openai',
             model,
+            workload,
             promptVersion: template.promptVersion,
             tokenUsage,
           },

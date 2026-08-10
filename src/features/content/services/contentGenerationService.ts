@@ -27,6 +27,7 @@ async function generate(
       contentId: request.contentId,
       templateId: request.templateId,
       variables: request.variables,
+      workload: request.workload ?? 'CONTENT_STANDARD',
     },
   });
 

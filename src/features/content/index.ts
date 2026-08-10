@@ -6,6 +6,7 @@ export { ContentGenerationPanel } from './components/ContentGenerationPanel';
 export { PublicationPanel } from './components/PublicationPanel';
 
 export type {
+  AiWorkload,
   ContentChannel,
   ContentGenerationDraft,
   ContentGenerationProvenance,

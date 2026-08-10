@@ -93,10 +93,16 @@ export type ContentGenerationVariables = {
   channel?: ContentChannel;
 };
 
+// Logical AI workloads. The concrete provider/model is resolved SERVER-SIDE
+// (supabase/functions/content-generate/workloads.ts) — no model strings here.
+// CHAT is handled by the separate chat function.
+export type AiWorkload = 'CONTENT_STANDARD' | 'PREMIUM_CONTENT';
+
 export type ContentGenerationRequest = {
   contentId: string;
   templateId: string;
   variables: ContentGenerationVariables;
+  workload?: AiWorkload;
 };
 
 export type ContentGenerationDraft = {
@@ -109,6 +115,7 @@ export type ContentGenerationDraft = {
 export type ContentGenerationProvenance = {
   provider: string;
   model: string;
+  workload?: string;
   promptVersion: string;
   tokenUsage: {
     input_tokens: number | null;

@@ -44,6 +44,28 @@ npx supabase secrets set CONTENT_LLM_MAX_OUTPUT_TOKENS=2000 --project-ref olvkpa
 If unset, it falls back to `LLM_MODEL` (chat's model) then `gpt-5-mini`, and a
 2000-token output cap.
 
+### AI workloads (P0-7) — server-side model per logical workload
+
+The function resolves the concrete model from a logical **workload** so the UI
+never contains model strings and Famous can use a stronger model than ordinary
+content (see `supabase/functions/content-generate/workloads.ts`):
+
+- `CONTENT_STANDARD` (default) → `CONTENT_LLM_MODEL` → `LLM_MODEL` → `gpt-5-mini`,
+  cap `CONTENT_LLM_MAX_OUTPUT_TOKENS` (2000).
+- `PREMIUM_CONTENT` (Famous premium generation) → `PREMIUM_CONTENT_LLM_MODEL`
+  (falls back to the standard model when unset — never a missing/invented model),
+  cap `PREMIUM_CONTENT_MAX_OUTPUT_TOKENS` (4000).
+
+Optional premium config:
+
+```bash
+npx supabase secrets set PREMIUM_CONTENT_LLM_MODEL=gpt-5 --project-ref olvkpaldrwvtexxpoaag
+npx supabase secrets set PREMIUM_CONTENT_MAX_OUTPUT_TOKENS=4000 --project-ref olvkpaldrwvtexxpoaag
+```
+
+> After this P0-7 change, **redeploy** `content-generate` (same command as above)
+> so the workload resolution takes effect. Provenance now records the workload.
+
 ## Smoke test (after deploy)
 
 1. `/admin/content` → open or create a content item → detail page.
