@@ -23,6 +23,10 @@ export default function RootLayout() {
             <Stack.Screen name="birth-info" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
+            {/* 운세 우편함 — reached from MY as a stack screen; native header
+                supplies the back action. /today redirects into /fortune. */}
+            <Stack.Screen name="records" options={{ title: '운세 우편함' }} />
+            <Stack.Screen name="today" options={{ headerShown: false }} />
             {/* Public content / famous surface (consumer-facing, no auth). */}
             <Stack.Screen name="content/index" options={{ headerShown: false }} />
             <Stack.Screen name="content/[slug]" options={{ headerShown: false }} />

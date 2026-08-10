@@ -5,10 +5,14 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
+import { StatusBadge } from '@/components/StatusBadge';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
 
+// MY — clean, utilitarian account hub (§27). Sections: account · saved people ·
+// records/reports (운세 우편함) · settings · logout. No internal auth IDs. Future
+// surfaces (리포트, 알림) show a truthful 준비 중.
 export default function MyScreen() {
   const router = useRouter();
   const { isAuthenticated, authState, signOut } = useAuth();
@@ -22,7 +26,7 @@ export default function MyScreen() {
       >
         <View style={styles.wrapper}>
           <Stack gap="xl">
-            <Text variant="displayMedium">마이</Text>
+            <Text variant="displayMedium">MY</Text>
 
             {/* Account — user-facing info only (no internal IDs). */}
             {isAuthenticated && user ? (
@@ -45,38 +49,56 @@ export default function MyScreen() {
               <Card>
                 <Stack gap="md">
                   <Text variant="bodyMedium" colorToken="textSecondary">
-                    로그인하면 상담 대상과 상담 기록을 저장할 수 있어요.
+                    로그인하면 저장된 사람과 상담 기록을 저장할 수 있어요.
                   </Text>
                   <Button label="로그인하기" onPress={() => router.push('/login')} />
                 </Stack>
               </Card>
             )}
 
-            {/* Quick links */}
+            {/* Saved people (§28) — managed in the consultation hub. */}
             <Stack gap="sm">
-              <Text variant="headingMedium">바로가기</Text>
+              <Text variant="headingMedium">저장된 사람</Text>
               <Stack gap="sm">
                 <Button
-                  label="상담 대상 · 상담 시작"
+                  label="상담 대상 관리"
                   variant="secondary"
                   onPress={() => router.push('/consult')}
                 />
                 <Button
-                  label="오늘의 운세"
+                  label="새 대상 추가"
                   variant="secondary"
-                  onPress={() => router.push('/today')}
+                  onPress={() => router.push('/birth-info')}
                 />
+              </Stack>
+            </Stack>
+
+            {/* Records / reports (§34) — 운세 우편함. */}
+            <Stack gap="sm">
+              <Text variant="headingMedium">기록 · 리포트</Text>
+              <Stack gap="sm">
                 <Button
                   label="운세 우편함"
                   variant="secondary"
                   onPress={() => router.push('/records')}
                 />
-                <Button
-                  label="콘텐츠 둘러보기"
-                  variant="secondary"
-                  onPress={() => router.push('/content')}
-                />
               </Stack>
+            </Stack>
+
+            {/* Settings / notifications (§27) — future. */}
+            <Stack gap="sm">
+              <Text variant="headingMedium">알림 · 설정</Text>
+              <Card>
+                <Stack
+                  direction="row"
+                  gap="sm"
+                  align="center"
+                  style={styles.rowBetween}
+                >
+                  <Text variant="bodyMedium">알림 설정</Text>
+                  <StatusBadge label="준비 중" tone="neutral" />
+                </Stack>
+              </Card>
             </Stack>
 
             {isAuthenticated ? (
@@ -113,6 +135,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  rowBetween: {
+    justifyContent: 'space-between',
   },
   disclaimer: {
     paddingTop: 4,

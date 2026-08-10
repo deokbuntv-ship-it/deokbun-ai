@@ -13,6 +13,13 @@ const palette = {
   gray900: '#111827',
   blue500: '#3B82F6',
   blue600: '#2563EB',
+  // Indigo/lavender AI accent family + warm ivory (§4 brand direction).
+  indigo400: '#818CF8',
+  indigo500: '#6366F1',
+  indigo600: '#4F46E5',
+  lavender50: '#EEEDFB',
+  lavenderDark: '#26243A',
+  ivory: '#FBFAF8',
   red500: '#EF4444',
   green500: '#22C55E',
   amber500: '#F59E0B',
@@ -31,13 +38,17 @@ export type SemanticColors = {
   textInverse: string;
   primary: string;
   primaryText: string;
+  // Soft lavender/indigo AI accent (§4). `accent` = strong accent (icons/labels),
+  // `accentSurface` = tinted background for AI-emphasis cards/chips.
+  accent: string;
+  accentSurface: string;
   success: string;
   warning: string;
   danger: string;
 };
 
 const lightColors = {
-  background: palette.white,
+  background: palette.ivory,
   backgroundElevated: palette.gray50,
   backgroundSelected: palette.gray200,
   surface: palette.white,
@@ -45,8 +56,10 @@ const lightColors = {
   textPrimary: palette.gray900,
   textSecondary: palette.gray500,
   textInverse: palette.white,
-  primary: palette.blue600,
+  primary: palette.indigo600,
   primaryText: palette.white,
+  accent: palette.indigo500,
+  accentSurface: palette.lavender50,
   success: palette.green500,
   warning: palette.amber500,
   danger: palette.red500,
@@ -61,8 +74,10 @@ const darkColors = {
   textPrimary: palette.white,
   textSecondary: palette.gray400,
   textInverse: palette.gray900,
-  primary: palette.blue500,
+  primary: palette.indigo500,
   primaryText: palette.white,
+  accent: palette.indigo400,
+  accentSurface: palette.lavenderDark,
   success: palette.green500,
   warning: palette.amber500,
   danger: palette.red500,

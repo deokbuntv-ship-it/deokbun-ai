@@ -175,10 +175,11 @@ export default function ConsultScreen() {
     <Screen>
       <Stack gap="xxl" style={{ flex: 1, paddingTop: 24 }}>
         <Stack gap="xs">
-          <Text variant="headingLarge">상담 시작</Text>
+          <Text variant="displayMedium">AI 상담</Text>
           <Text variant="bodyMedium" colorToken="textSecondary">
-            "상담 열기"로 최근 상담을 이어가고, "새 상담"으로 새로 시작할 수
-            있습니다.
+            무엇이 궁금하세요? 상담할 대상을 선택하면 바로 대화를 시작할 수
+            있어요. "상담 열기"로 최근 상담을 이어가고, "새 상담"으로 새로
+            시작합니다.
           </Text>
         </Stack>
 

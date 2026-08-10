@@ -6,15 +6,15 @@ import {
   TabTrigger,
   TabTriggerSlotProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
-import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
+// Web top nav — mirrors the native bottom-tab IA (§2): 홈 · 운세 · AI 상담 ·
+// 인연 · MY. Kept in sync with app-tabs.tsx. 운세 우편함 / records live under MY.
 export default function AppTabs() {
   return (
     <Tabs>
@@ -24,14 +24,17 @@ export default function AppTabs() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton>홈</TabButton>
           </TabTrigger>
-          <TabTrigger name="consult" href="/consult" asChild>
-            <TabButton>상담</TabButton>
+          <TabTrigger name="fortune" href="/fortune" asChild>
+            <TabButton>운세</TabButton>
           </TabTrigger>
-          <TabTrigger name="records" href="/records" asChild>
-            <TabButton>기록</TabButton>
+          <TabTrigger name="consult" href="/consult" asChild>
+            <TabButton>AI 상담</TabButton>
+          </TabTrigger>
+          <TabTrigger name="relationship" href="/relationship" asChild>
+            <TabButton>인연</TabButton>
           </TabTrigger>
           <TabTrigger name="my" href="/my" asChild>
-            <TabButton>마이</TabButton>
+            <TabButton>MY</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -54,9 +57,6 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
@@ -65,17 +65,6 @@ export function CustomTabList(props: TabListProps) {
         </ThemedText>
 
         {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
       </ThemedView>
     </View>
   );
@@ -99,6 +88,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
+    flexWrap: 'wrap',
   },
   brandText: {
     marginRight: 'auto',
@@ -110,12 +100,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
-  },
-  externalPressable: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
   },
 });
