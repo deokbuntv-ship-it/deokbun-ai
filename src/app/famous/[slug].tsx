@@ -6,6 +6,7 @@ import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import {
+  Markdown,
   PublicScreen,
   PublicStateView,
   RelatedList,
@@ -104,7 +105,7 @@ export default function PublicFamousDetailScreen() {
             </Card>
           ) : null}
 
-          {item.bio ? <Text variant="bodyMedium">{item.bio}</Text> : null}
+          {item.bio ? <Markdown source={item.bio} /> : null}
 
           {item.birthSource ? (
             <Text variant="caption" colorToken="textSecondary">

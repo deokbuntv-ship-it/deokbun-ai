@@ -6,6 +6,7 @@ import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import {
+  Markdown,
   PublicScreen,
   PublicStateView,
   RelatedList,
@@ -117,9 +118,7 @@ export default function PublicContentDetailScreen() {
             </Card>
           ) : null}
 
-          {item.body ? (
-            <Text variant="bodyMedium">{item.body}</Text>
-          ) : null}
+          {item.body ? <Markdown source={item.body} /> : null}
 
           {item.tags.length > 0 ? (
             <Text variant="caption" colorToken="textSecondary">

@@ -3,6 +3,7 @@ export { CONTENT_CATEGORIES, categoryLabel } from './categories';
 export type { ContentCategory } from './categories';
 export { SeoHead } from './components/SeoHead';
 export { PublicScreen } from './components/PublicLayout';
+export { Markdown } from './components/Markdown';
 export {
   CategoryChips,
   PublicContentCard,
