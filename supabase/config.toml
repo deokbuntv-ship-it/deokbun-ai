@@ -24,3 +24,9 @@ verify_jwt = true
 [functions.famous-suggest]
 enabled = true
 verify_jwt = true
+
+# IMAGE_STANDARD: admin-gated image generation (OpenAI/LOW, resolved server-side).
+# Downloads + persists to Supabase Storage before marking success. Reuses OPENAI_API_KEY.
+[functions.media-generate]
+enabled = true
+verify_jwt = true

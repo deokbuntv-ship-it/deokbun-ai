@@ -14,14 +14,18 @@ Already applied per your report: `ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`,
 `FAMOUS_AI_SETUP`. **Do not re-run those.**
 
 **New / pending:**
-1. `docs/admin/ADMIN_04_UPDATE_usage_filter.sql` — enables the AI-usage 유형 필터
-   (backward compatible; the unfiltered list already works without it).
+1. `docs/admin/ADMIN_04_UPDATE_usage_filter.sql` — AI-usage 유형 필터 (backward
+   compatible; the unfiltered list already works without it).
+2. `docs/admin/IMAGE_STORAGE_SETUP.sql` — creates the public `content-media`
+   Storage bucket (+ admin-write / public-read policies) for AI-generated images.
 
 ### B. Edge deploy (CMD / terminal)
 ```bash
 npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag
+npx supabase functions deploy media-generate --project-ref olvkpaldrwvtexxpoaag
 ```
-Redeploy is needed because CONTENT-02 gained the AI-workload layer (P0-7).
+`content-generate` redeploy is needed for the AI-workload layer (P0-7).
+`media-generate` is the NEW image generation function (reuses `OPENAI_API_KEY`).
 `famous-suggest` is already deployed; redeploy only if you change its code.
 
 ### C. Environment variables (optional, enables canonical URLs + sitemap)
@@ -39,18 +43,15 @@ node scripts/generate-sitemap.mjs
 
 ## 2. OWNER DECISION QUEUE (cost / lock-in — you choose)
 
-### A. Image generation provider (CONTENT-03)
-Current app status is honestly `PROVIDER_NOT_CONFIGURED`; manual image URL attach
-works today. Candidates (Aug 2026):
-| Provider | ~Price/img | Notes |
-|---|---|---|
-| **OpenAI GPT Image** (recommended) | $0.005 (mini) – $0.21 (high) | Reuses your existing OpenAI key/account = lowest integration friction; commercial rights included |
-| Ideogram (hosted API) | $0.03 – $0.10 | Best text-in-image (Korean text on cards); commercial via hosted API only |
-| Google Imagen 4 | ~$0.05 | Strong photorealism |
-| Flux (Black Forest Labs) | $0.014 – $0.07 | FLUX.2 klein Apache-2.0 free for self-host |
-**Recommendation:** OpenAI GPT Image (reuse account). Pick Ideogram if Korean
-text rendered *inside* images matters most. Next step after you choose: I add a
-`media-generate` edge + flip `assetProviders.image` to `AVAILABLE`.
+### A. Image generation provider (CONTENT-03) — ✅ DECIDED & IMPLEMENTED
+**Approved:** `IMAGE_STANDARD` = **OpenAI, quality LOW** (reuses `OPENAI_API_KEY`).
+Implemented via the `media-generate` Edge Function (server resolves provider/model/
+quality — never hardcoded in UI/DB) → persists to Supabase Storage → records
+`content_assets` provenance. Admin generates from `/admin/content/[id]` → preview →
+apply as hero (no auto-apply). Provider is swappable later via server config only
+(`IMAGE_STANDARD_PROVIDER` / `IMAGE_STANDARD_MODEL` / `IMAGE_STANDARD_QUALITY`).
+`IMAGE_PREMIUM` remains `NOT_CONFIGURED` (future seam). Run §1.A(2) SQL + §1.B
+`media-generate` deploy to activate.
 
 ### B. Video generation provider (CONTENT-06) — lower priority
 | Provider | ~Price/sec | Notes |
@@ -84,7 +85,9 @@ Schedule *persistence* works. Automatic external publishing (pg_cron→Edge) is
 - Edge-only (Supabase secrets): `OPENAI_API_KEY`, `SUPABASE_URL`,
   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (auto-injected); optional
   `LLM_MODEL`, `CONTENT_LLM_MODEL`, `CONTENT_LLM_MAX_OUTPUT_TOKENS`,
-  `PREMIUM_CONTENT_LLM_MODEL`, `PREMIUM_CONTENT_MAX_OUTPUT_TOKENS`.
+  `PREMIUM_CONTENT_LLM_MODEL`, `PREMIUM_CONTENT_MAX_OUTPUT_TOKENS`,
+  `IMAGE_STANDARD_PROVIDER`, `IMAGE_STANDARD_MODEL`, `IMAGE_STANDARD_QUALITY`
+  (image defaults: openai / gpt-image-1 / low).
 - Future provider-specific (only after you choose): image/video provider keys,
   Meta app id/secret + IG token — **edge/server-side only, never `EXPO_PUBLIC_*`.**
 
@@ -92,6 +95,7 @@ Schedule *persistence* works. Automatic external publishing (pg_cron→Edge) is
 - `chat` — deployed.
 - `content-generate` — deployed; **redeploy pending** (P0-7).
 - `famous-suggest` — deployed.
+- `media-generate` — **new; deploy pending** (image generation, OpenAI/LOW).
 
 ### 3C. SQL setup order (full)
 Applied: `admin/ADMIN_SETUP` → `ADMIN_02..05` → `CONTENT_01` → `PUBLIC_SETUP` →

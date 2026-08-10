@@ -253,3 +253,38 @@ export type ManualAssetInput = {
   kind: AssetKind;
   externalUrl: string;
 };
+
+// ---- IMAGE_STANDARD: AI image generation (provider resolved server-side) ------
+// Logical image workloads. The concrete provider/model/quality is decided by the
+// server (media-generate/imagePolicy.ts) — never in the client/domain.
+export type ImageWorkload = 'IMAGE_STANDARD' | 'IMAGE_PREMIUM';
+export type ImageAspectRatio = '1:1' | '16:9' | '4:5';
+export type ImageWorkloadStatus = 'AVAILABLE' | 'NOT_CONFIGURED';
+
+export type ImageGenerationRequest = {
+  contentId?: string | null;
+  famousId?: string | null;
+  workload: ImageWorkload;
+  aspectRatio: ImageAspectRatio;
+  subject?: string | null;
+  category?: string | null;
+  targetUse?: string | null;
+};
+
+export type ImageGenerationResult = {
+  asset: {
+    id: string;
+    status: AssetStatus;
+    externalUrl: string | null;
+    width: number | null;
+    height: number | null;
+    aspectRatio: string | null;
+  };
+  provenance: {
+    provider: string;
+    model: string;
+    workload: string;
+    quality: string;
+    promptVersion: string;
+  };
+};

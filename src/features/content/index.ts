@@ -3,7 +3,11 @@ export { contentGenerationService } from './services/contentGenerationService';
 export { publicationService } from './services/publicationService';
 export { providerConnectionService } from './services/providerConnectionService';
 export { assetService } from './services/assetService';
-export { generationStatus } from './assetProviders';
+export {
+  imageGenerationService,
+  suggestImageSubject,
+} from './services/imageGenerationService';
+export { generationStatus, imageWorkloadStatus } from './assetProviders';
 export {
   buildInstagramCaption,
   validateInstagram,
@@ -35,6 +39,11 @@ export type {
   ContentStatus,
   ContentTemplateMeta,
   ContentVersion,
+  ImageAspectRatio,
+  ImageGenerationRequest,
+  ImageGenerationResult,
+  ImageWorkload,
+  ImageWorkloadStatus,
   ManualAssetInput,
   ManualPublicationInput,
   ProviderConnection,

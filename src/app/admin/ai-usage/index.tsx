@@ -18,6 +18,7 @@ const TYPE_FILTER_OPTIONS = [
   { value: 'chat', label: '상담' },
   { value: 'content_generate', label: '콘텐츠' },
   { value: 'famous_suggest', label: 'Famous' },
+  { value: 'image_generate', label: '이미지' },
 ];
 
 type Status = 'loading' | 'ready' | 'error';
@@ -37,6 +38,8 @@ const COLUMNS: AdminColumn[] = [
 const REQUEST_TYPE_LABEL: Record<string, string> = {
   chat: '상담',
   content_generate: '콘텐츠 생성',
+  famous_suggest: 'Famous 제안',
+  image_generate: '이미지 생성',
 };
 
 function formatDateTime(iso: string | null): string {

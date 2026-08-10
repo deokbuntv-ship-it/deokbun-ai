@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/Button';
@@ -7,14 +8,32 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminSelect } from '@/features/admin';
 
-import { generationStatus } from '../assetProviders';
+import { generationStatus, imageWorkloadStatus } from '../assetProviders';
 import { assetService } from '../services/assetService';
-import type { AssetKind, ContentAsset, ContentItem } from '../types';
+import {
+  imageGenerationService,
+  suggestImageSubject,
+} from '../services/imageGenerationService';
+import type {
+  AssetKind,
+  ContentAsset,
+  ContentItem,
+  ImageAspectRatio,
+} from '../types';
 
 const KIND_OPTIONS = [
   { value: 'image' as AssetKind, label: '이미지' },
   { value: 'video' as AssetKind, label: '영상' },
 ];
+const ASPECT_OPTIONS = [
+  { value: '16:9' as ImageAspectRatio, label: '16:9 (웹/대표)' },
+  { value: '4:5' as ImageAspectRatio, label: '4:5 (인스타)' },
+  { value: '1:1' as ImageAspectRatio, label: '1:1 (카드)' },
+];
+const IMG_ERROR_LABEL: Record<string, string> = {
+  IMAGE_GENERATION_INCOMPLETE: '이미지가 생성되었지만 저장에 실패했습니다.',
+  PROVIDER_NOT_CONFIGURED: '이미지 provider가 설정되지 않았습니다.',
+};
 
 // http(s)-only URL guard (no javascript:/data: etc.).
 function isSafeUrl(url: string): boolean {
@@ -33,6 +52,15 @@ export function AssetPanel({
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // AI image generation (IMAGE_STANDARD)
+  const [aspect, setAspect] = useState<ImageAspectRatio>('16:9');
+  const [subject, setSubject] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; width: number | null } | null>(
+    null,
+  );
 
   const load = useCallback(() => {
     assetService
@@ -74,7 +102,35 @@ export function AssetPanel({
       .finally(() => setBusy(false));
   };
 
-  const imageGen = generationStatus('image');
+  // In-flight lock prevents double-charge from repeated clicks (§18). Each call
+  // creates a NEW asset; the existing hero is untouched until the operator applies.
+  const handleGenerateImage = () => {
+    if (generating) return;
+    setGenerating(true);
+    setGenError(null);
+    imageGenerationService
+      .generate({
+        contentId: item.id,
+        workload: 'IMAGE_STANDARD',
+        aspectRatio: aspect,
+        subject: subject.trim() || suggestImageSubject(item),
+        category: item.category,
+        targetUse: 'content hero',
+      })
+      .then((res) => {
+        setPreview({ url: res.asset.externalUrl ?? '', width: res.asset.width });
+        load();
+      })
+      .catch((e: unknown) => {
+        const code = e instanceof Error ? e.message : 'IMAGE_GENERATION_FAILED';
+        setGenError(
+          IMG_ERROR_LABEL[code] ??
+            'AI 이미지 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+      })
+      .finally(() => setGenerating(false));
+  };
+
   const videoGen = generationStatus('video');
 
   return (
@@ -134,17 +190,78 @@ export function AssetPanel({
         </Stack>
       </Card>
 
-      {/* AI generation seam — provider not configured (owner decision) */}
+      {/* AI image generation — IMAGE_STANDARD (OpenAI/LOW, resolved server-side) */}
       <Card>
-        <Stack gap="xs">
-          <Text variant="bodyMedium">AI 미디어 생성</Text>
-          <Text variant="caption" colorToken="textSecondary">
-            이미지 생성: {imageGen} · 영상 생성: {videoGen}
+        <Stack gap="md">
+          <Text variant="bodyMedium">
+            AI 이미지 생성 ({imageWorkloadStatus('IMAGE_STANDARD')})
           </Text>
           <Text variant="caption" colorToken="textSecondary">
-            AI 이미지/영상 생성 provider가 아직 설정되지 않았습니다. provider 선택은
-            비용/락인이 있는 소유자 결정 사항이며, 선택 후 서버측 생성 연동이
-            필요합니다. (가짜 미디어를 생성하지 않습니다.)
+            콘텐츠 맥락으로 이미지를 제안 생성합니다. 실존 인물의 얼굴/브랜드/캐릭터는
+            생성하지 않습니다. 생성 후 검토하여 대표 이미지로 적용하세요(자동 적용 없음).
+          </Text>
+          <AdminSelect
+            label="비율"
+            options={ASPECT_OPTIONS}
+            value={aspect}
+            onChange={setAspect}
+          />
+          <Input
+            label="주제/스타일 힌트 (선택 — 비우면 자동)"
+            value={subject}
+            onChangeText={setSubject}
+            placeholder={suggestImageSubject(item)}
+          />
+          <Button
+            label={generating ? '생성 중... (최대 1분)' : 'AI 이미지 생성'}
+            disabled={generating}
+            onPress={handleGenerateImage}
+          />
+          {genError ? (
+            <Text variant="bodySmall" colorToken="danger">
+              {genError}
+            </Text>
+          ) : null}
+
+          {preview && preview.url ? (
+            <Stack gap="sm">
+              <Image
+                source={{ uri: preview.url }}
+                style={{ width: '100%', height: 200, borderRadius: 8 }}
+                contentFit="cover"
+                transition={150}
+              />
+              <Stack direction="row" gap="sm" style={{ flexWrap: 'wrap' }}>
+                <Button
+                  label="대표 이미지로 설정"
+                  disabled={busy || generating}
+                  onPress={() => setHero(preview.url)}
+                />
+                <Button
+                  label="다시 생성"
+                  variant="secondary"
+                  disabled={generating}
+                  onPress={handleGenerateImage}
+                />
+                <Button
+                  label="버리기"
+                  variant="secondary"
+                  disabled={generating}
+                  onPress={() => setPreview(null)}
+                />
+              </Stack>
+            </Stack>
+          ) : null}
+        </Stack>
+      </Card>
+
+      {/* Video generation — no provider selected yet (owner decision) */}
+      <Card>
+        <Stack gap="xs">
+          <Text variant="bodyMedium">AI 영상 생성</Text>
+          <Text variant="caption" colorToken="textSecondary">
+            영상 생성: {videoGen}. provider 선택(비용/락인)은 소유자 결정 사항이며,
+            선택 후 서버측 연동이 필요합니다. (가짜 미디어를 생성하지 않습니다.)
           </Text>
         </Stack>
       </Card>

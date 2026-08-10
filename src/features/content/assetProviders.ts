@@ -1,17 +1,32 @@
-import type { AssetGenerationStatus, AssetKind } from './types';
+import type {
+  AssetGenerationStatus,
+  AssetKind,
+  ImageWorkload,
+  ImageWorkloadStatus,
+} from './types';
 
-// Provider-neutral generation status. AI image/video generation requires a
-// provider the OWNER must choose (cost/lock-in) plus a generation Edge Function.
-// Until then, generation is PROVIDER_NOT_CONFIGURED — never faked. Manual attach
-// (operator-hosted URL) is always available and independent of this.
+// Provider-neutral generation status. The concrete provider is resolved
+// server-side; this only reflects whether a workload is usable (owner decision).
 //
-// When a provider is later configured server-side, flip the relevant entry to
-// 'AVAILABLE' and route generation through its edge/adapter.
-const GENERATION_STATUS: Record<AssetKind, AssetGenerationStatus> = {
-  image: 'PROVIDER_NOT_CONFIGURED',
+// IMAGE_STANDARD is configured (OpenAI/LOW). IMAGE_PREMIUM is a future seam.
+// Video generation still has no provider selected. No status is ever faked.
+const IMAGE_WORKLOAD_STATUS: Record<ImageWorkload, ImageWorkloadStatus> = {
+  IMAGE_STANDARD: 'AVAILABLE',
+  IMAGE_PREMIUM: 'NOT_CONFIGURED',
+};
+
+export function imageWorkloadStatus(
+  workload: ImageWorkload,
+): ImageWorkloadStatus {
+  return IMAGE_WORKLOAD_STATUS[workload];
+}
+
+// Video (and any non-image kind) generation — no provider configured yet.
+const KIND_GENERATION_STATUS: Record<AssetKind, AssetGenerationStatus> = {
+  image: 'AVAILABLE',
   video: 'PROVIDER_NOT_CONFIGURED',
 };
 
 export function generationStatus(kind: AssetKind): AssetGenerationStatus {
-  return GENERATION_STATUS[kind];
+  return KIND_GENERATION_STATUS[kind];
 }
