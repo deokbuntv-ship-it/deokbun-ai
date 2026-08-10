@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/Button';
 import { Stack } from '@/components/Stack';
+import { StatusBadge, type BadgeTone } from '@/components/StatusBadge';
 import { Text } from '@/components/Text';
 import {
   AdminDataTable,
@@ -82,6 +83,15 @@ const STATUS_LABEL: Record<string, string> = {
   published: '게시됨',
   failed: '실패',
   cancelled: '취소',
+};
+const STATUS_TONE: Record<string, BadgeTone> = {
+  draft: 'neutral',
+  generating: 'info',
+  ready: 'info',
+  publish_pending: 'warning',
+  published: 'success',
+  failed: 'danger',
+  cancelled: 'neutral',
 };
 
 function formatDate(iso: string | null): string {
@@ -249,9 +259,10 @@ export default function AdminContentListScreen() {
               }
               if (columnKey === 'status') {
                 return (
-                  <Text variant="bodySmall">
-                    {STATUS_LABEL[item.status] ?? item.status}
-                  </Text>
+                  <StatusBadge
+                    label={STATUS_LABEL[item.status] ?? item.status}
+                    tone={STATUS_TONE[item.status] ?? 'neutral'}
+                  />
                 );
               }
               return (

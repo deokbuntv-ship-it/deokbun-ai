@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/Button';
 import { Stack } from '@/components/Stack';
+import { StatusBadge, type BadgeTone } from '@/components/StatusBadge';
 import { Text } from '@/components/Text';
 import {
   AdminDataTable,
@@ -61,6 +62,11 @@ const STATUS_LABEL: Record<string, string> = {
   draft: '초안',
   published: '공개',
   archived: '보관',
+};
+const STATUS_TONE: Record<string, BadgeTone> = {
+  draft: 'neutral',
+  published: 'success',
+  archived: 'neutral',
 };
 const CALC_LABEL: Record<string, string> = {
   not_calculated: '미계산',
@@ -209,10 +215,15 @@ export default function AdminFamousListScreen() {
               }
               if (columnKey === 'status') {
                 return (
-                  <Text variant="bodySmall">
-                    {STATUS_LABEL[item.status] ?? item.status}
-                    {item.isPublic ? ' · 공개' : ''}
-                  </Text>
+                  <Stack direction="row" gap="xs" align="center" style={{ flexWrap: 'wrap' }}>
+                    <StatusBadge
+                      label={STATUS_LABEL[item.status] ?? item.status}
+                      tone={STATUS_TONE[item.status] ?? 'neutral'}
+                    />
+                    {item.isPublic ? (
+                      <StatusBadge label="공개" tone="info" />
+                    ) : null}
+                  </Stack>
                 );
               }
               return (

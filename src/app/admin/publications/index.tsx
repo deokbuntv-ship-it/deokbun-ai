@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Stack } from '@/components/Stack';
+import { StatusBadge, type BadgeTone } from '@/components/StatusBadge';
 import { Text } from '@/components/Text';
 import {
   AdminDataTable,
@@ -37,6 +38,15 @@ const STATUS_LABEL: Record<string, string> = {
   published: '발행됨',
   failed: '실패',
   cancelled: '취소',
+};
+const STATUS_TONE: Record<string, BadgeTone> = {
+  draft: 'neutral',
+  scheduled: 'warning',
+  queued: 'warning',
+  processing: 'info',
+  published: 'success',
+  failed: 'danger',
+  cancelled: 'neutral',
 };
 
 function fmt(iso: string | null): string {
