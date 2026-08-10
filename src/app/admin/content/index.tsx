@@ -37,6 +37,28 @@ const CATEGORY_FILTER_OPTIONS = [
   { value: '', label: '전체 카테고리' },
   ...CONTENT_CATEGORIES.map((c) => ({ value: c.slug, label: c.label })),
 ];
+const CHANNEL_FILTER_OPTIONS = [
+  { value: '', label: '전체 채널' },
+  { value: 'generic', label: '일반' },
+  { value: 'naver_blog', label: '네이버 블로그' },
+  { value: 'instagram', label: '인스타그램' },
+  { value: 'youtube', label: '유튜브' },
+  { value: 'video', label: '영상' },
+];
+const SOURCE_FILTER_OPTIONS = [
+  { value: '', label: '전체 소스' },
+  { value: 'operator', label: '운영자' },
+  { value: 'famous', label: '유명인' },
+  { value: 'topic', label: '주제' },
+];
+
+type ContentFilters = {
+  search: string;
+  status: string;
+  category: string;
+  channel: string;
+  source: string;
+};
 
 const COLUMNS: AdminColumn[] = [
   { key: 'title', header: '제목', flex: 4 },
@@ -75,38 +97,56 @@ export default function AdminContentListScreen() {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [channelFilter, setChannelFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [offset, setOffset] = useState(0);
   const loadTokenRef = useRef(0);
 
-  const load = useCallback(
-    (search: string, nextOffset: number, sFilter: string, cFilter: string) => {
-      const token = loadTokenRef.current + 1;
-      loadTokenRef.current = token;
-      setStatus('loading');
-      contentService
-        .listContent({
-          search,
-          status: (sFilter || null) as ContentStatus | null,
-          category: cFilter || null,
-          limit: PAGE_SIZE,
-          offset: nextOffset,
-        })
-        .then((rows) => {
-          if (token !== loadTokenRef.current) return;
-          setItems(rows);
-          setStatus('ready');
-        })
-        .catch(() => {
-          if (token !== loadTokenRef.current) return;
-          setStatus('error');
-        });
-    },
-    [],
-  );
+  const load = useCallback((nextOffset: number, f: ContentFilters) => {
+    const token = loadTokenRef.current + 1;
+    loadTokenRef.current = token;
+    setStatus('loading');
+    contentService
+      .listContent({
+        search: f.search,
+        status: (f.status || null) as ContentStatus | null,
+        category: f.category || null,
+        channel: (f.channel || null) as ContentListItem['channel'] | null,
+        sourceType: (f.source || null) as ContentListItem['sourceType'] | null,
+        limit: PAGE_SIZE,
+        offset: nextOffset,
+      })
+      .then((rows) => {
+        if (token !== loadTokenRef.current) return;
+        setItems(rows);
+        setStatus('ready');
+      })
+      .catch(() => {
+        if (token !== loadTokenRef.current) return;
+        setStatus('error');
+      });
+  }, []);
+
+  const filters: ContentFilters = {
+    search: appliedSearch,
+    status: statusFilter,
+    category: categoryFilter,
+    channel: channelFilter,
+    source: sourceFilter,
+  };
 
   useEffect(() => {
-    load(appliedSearch, offset, statusFilter, categoryFilter);
-  }, [load, appliedSearch, offset, statusFilter, categoryFilter]);
+    load(offset, filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    load,
+    offset,
+    appliedSearch,
+    statusFilter,
+    categoryFilter,
+    channelFilter,
+    sourceFilter,
+  ]);
 
   return (
     <Stack gap="xl">
@@ -152,6 +192,26 @@ export default function AdminContentListScreen() {
           }}
           style={{ flex: 1, minWidth: 160 }}
         />
+        <AdminSelect
+          label="채널"
+          options={CHANNEL_FILTER_OPTIONS}
+          value={channelFilter}
+          onChange={(v) => {
+            setOffset(0);
+            setChannelFilter(v);
+          }}
+          style={{ flex: 1, minWidth: 160 }}
+        />
+        <AdminSelect
+          label="소스"
+          options={SOURCE_FILTER_OPTIONS}
+          value={sourceFilter}
+          onChange={(v) => {
+            setOffset(0);
+            setSourceFilter(v);
+          }}
+          style={{ flex: 1, minWidth: 160 }}
+        />
       </Stack>
 
       {status === 'loading' ? (
@@ -160,7 +220,7 @@ export default function AdminContentListScreen() {
         <AdminStateView
           state="error"
           message="콘텐츠 목록을 불러오지 못했습니다. 관리자 권한 또는 DB 설정을 확인해 주세요."
-          onRetry={() => load(appliedSearch, offset, statusFilter, categoryFilter)}
+          onRetry={() => load(offset, filters)}
         />
       ) : items.length === 0 ? (
         <AdminStateView state="empty" message="콘텐츠가 없습니다." />

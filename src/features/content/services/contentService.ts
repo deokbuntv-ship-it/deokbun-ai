@@ -97,6 +97,9 @@ async function listContent(
   if (params.channel) {
     query = query.eq('channel', params.channel);
   }
+  if (params.sourceType) {
+    query = query.eq('source_type', params.sourceType);
+  }
   if (params.status) {
     query = query.eq('status', params.status);
   }

@@ -104,6 +104,12 @@ async function listFamous(params: FamousListParams): Promise<FamousListItem[]> {
   if (params.status) {
     query = query.eq('status', params.status);
   }
+  if (params.isPublic != null) {
+    query = query.eq('is_public', params.isPublic);
+  }
+  if (params.calculationState) {
+    query = query.eq('calculation_state', params.calculationState);
+  }
 
   const { data, error } = await query
     .order('updated_at', { ascending: false })

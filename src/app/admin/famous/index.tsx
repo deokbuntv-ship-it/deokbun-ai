@@ -29,6 +29,26 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'published', label: '공개' },
   { value: 'archived', label: '보관' },
 ];
+const VISIBILITY_FILTER_OPTIONS = [
+  { value: '', label: '전체 공개여부' },
+  { value: 'public', label: '공개' },
+  { value: 'private', label: '비공개' },
+];
+const CALC_FILTER_OPTIONS = [
+  { value: '', label: '전체 계산상태' },
+  { value: 'not_calculated', label: '미계산' },
+  { value: 'current', label: '최신' },
+  { value: 'stale', label: '갱신필요' },
+  { value: 'failed', label: '실패' },
+  { value: 'unavailable', label: '불가' },
+];
+
+type FamousFilters = {
+  search: string;
+  status: string;
+  visibility: string;
+  calc: string;
+};
 
 const COLUMNS: AdminColumn[] = [
   { key: 'name', header: '이름', flex: 3 },
@@ -58,37 +78,48 @@ export default function AdminFamousListScreen() {
   const [searchText, setSearchText] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [visibilityFilter, setVisibilityFilter] = useState('');
+  const [calcFilter, setCalcFilter] = useState('');
   const [offset, setOffset] = useState(0);
   const loadTokenRef = useRef(0);
 
-  const load = useCallback(
-    (search: string, nextOffset: number, sFilter: string) => {
-      const token = loadTokenRef.current + 1;
-      loadTokenRef.current = token;
-      setStatus('loading');
-      famousService
-        .listFamous({
-          search,
-          status: (sFilter || null) as FamousStatus | null,
-          limit: PAGE_SIZE,
-          offset: nextOffset,
-        })
-        .then((rows) => {
-          if (token !== loadTokenRef.current) return;
-          setItems(rows);
-          setStatus('ready');
-        })
-        .catch(() => {
-          if (token !== loadTokenRef.current) return;
-          setStatus('error');
-        });
-    },
-    [],
-  );
+  const load = useCallback((nextOffset: number, f: FamousFilters) => {
+    const token = loadTokenRef.current + 1;
+    loadTokenRef.current = token;
+    setStatus('loading');
+    famousService
+      .listFamous({
+        search: f.search,
+        status: (f.status || null) as FamousStatus | null,
+        isPublic:
+          f.visibility === '' ? null : f.visibility === 'public' ? true : false,
+        calculationState:
+          (f.calc || null) as FamousListItem['calculationState'] | null,
+        limit: PAGE_SIZE,
+        offset: nextOffset,
+      })
+      .then((rows) => {
+        if (token !== loadTokenRef.current) return;
+        setItems(rows);
+        setStatus('ready');
+      })
+      .catch(() => {
+        if (token !== loadTokenRef.current) return;
+        setStatus('error');
+      });
+  }, []);
+
+  const filters: FamousFilters = {
+    search: appliedSearch,
+    status: statusFilter,
+    visibility: visibilityFilter,
+    calc: calcFilter,
+  };
 
   useEffect(() => {
-    load(appliedSearch, offset, statusFilter);
-  }, [load, appliedSearch, offset, statusFilter]);
+    load(offset, filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load, offset, appliedSearch, statusFilter, visibilityFilter, calcFilter]);
 
   return (
     <Stack gap="xl">
@@ -110,15 +141,38 @@ export default function AdminFamousListScreen() {
         placeholder="이름 또는 slug 검색"
       />
 
-      <AdminSelect
-        label="상태"
-        options={STATUS_FILTER_OPTIONS}
-        value={statusFilter}
-        onChange={(v) => {
-          setOffset(0);
-          setStatusFilter(v);
-        }}
-      />
+      <Stack direction="row" gap="md" style={{ flexWrap: 'wrap' }}>
+        <AdminSelect
+          label="상태"
+          options={STATUS_FILTER_OPTIONS}
+          value={statusFilter}
+          onChange={(v) => {
+            setOffset(0);
+            setStatusFilter(v);
+          }}
+          style={{ flex: 1, minWidth: 150 }}
+        />
+        <AdminSelect
+          label="공개여부"
+          options={VISIBILITY_FILTER_OPTIONS}
+          value={visibilityFilter}
+          onChange={(v) => {
+            setOffset(0);
+            setVisibilityFilter(v);
+          }}
+          style={{ flex: 1, minWidth: 150 }}
+        />
+        <AdminSelect
+          label="계산상태"
+          options={CALC_FILTER_OPTIONS}
+          value={calcFilter}
+          onChange={(v) => {
+            setOffset(0);
+            setCalcFilter(v);
+          }}
+          style={{ flex: 1, minWidth: 150 }}
+        />
+      </Stack>
 
       {status === 'loading' ? (
         <AdminStateView state="loading" />
@@ -126,7 +180,7 @@ export default function AdminFamousListScreen() {
         <AdminStateView
           state="error"
           message="유명인 목록을 불러오지 못했습니다. 관리자 권한 또는 DB 설정을 확인해 주세요."
-          onRetry={() => load(appliedSearch, offset, statusFilter)}
+          onRetry={() => load(offset, filters)}
         />
       ) : items.length === 0 ? (
         <AdminStateView state="empty" message="등록된 유명인이 없습니다." />
