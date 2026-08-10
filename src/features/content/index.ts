@@ -17,6 +17,12 @@ export {
   videoWorkloadStatus,
 } from './assetProviders';
 export {
+  instagramEligibility,
+  naverEligibility,
+  READINESS_LABEL,
+} from './channelEligibility';
+export type { PublishReadiness, EligibilityResult } from './channelEligibility';
+export {
   buildInstagramCaption,
   validateInstagram,
   IG_CAPTION_MAX,

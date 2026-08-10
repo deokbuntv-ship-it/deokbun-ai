@@ -8,6 +8,10 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminSelect } from '@/features/admin';
 
+import {
+  instagramEligibility,
+  READINESS_LABEL,
+} from '../channelEligibility';
 import { buildInstagramCaption, validateInstagram } from '../instagram';
 import { providerConnectionService } from '../services/providerConnectionService';
 import { publicationService } from '../services/publicationService';
@@ -152,10 +156,12 @@ export function PublicationPanel({ item }: { item: ContentItem }) {
       .finally(() => setBusy(false));
   };
 
+  // Accurate, fail-closed readiness (never READY without real prerequisites).
+  const igEligibility = instagramEligibility(igConnection, item);
   const igStatusLabel =
-    igConnection && igConnection.status === 'connected'
-      ? `연결됨 (${igConnection.externalAccountName ?? '계정'})`
-      : 'OAUTH_REQUIRED (Meta 앱/App Review 필요)';
+    igEligibility.readiness === 'READY' && igConnection?.externalAccountName
+      ? `발행 준비됨 (${igConnection.externalAccountName})`
+      : READINESS_LABEL[igEligibility.readiness];
 
   return (
     <Stack gap="sm">
@@ -209,6 +215,11 @@ export function PublicationPanel({ item }: { item: ContentItem }) {
             상태: {igStatusLabel}. 공식 API 발행에는 Meta 앱·전문계정·App Review가
             필요합니다(소유자 작업). 그 전까지는 아래 캡션으로 직접 게시 후 기록하세요.
           </Text>
+          {igEligibility.reasons.map((r, idx) => (
+            <Text key={idx} variant="caption" colorToken="textSecondary">
+              • {r}
+            </Text>
+          ))}
           {igWarnings.map((w, idx) => (
             <Text key={idx} variant="caption" colorToken="danger">
               • {w}
