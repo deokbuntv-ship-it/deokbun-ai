@@ -60,6 +60,16 @@
 | R5-B 채널 발행 적격성(Instagram/Naver, fail-closed) | ✅ 코드 완료 (READY는 실제 전제조건 충족 시에만) |
 | R5-C 발행 현황 뷰(/admin/publications, 읽기전용) | 🟡 코드 완료 · **SCHEDULER_SETUP.sql 대기** (자동 실행 없음) |
 | 릴리스 점검: Expo web export | ✅ PASS (전 라우트 static export, EXIT 0) |
+| UX-1/2 StatusBadge + Button variants + admin 뱃지 | ✅ 코드 완료 (색+텍스트, tap target 44px) |
+| UX-3 공개 웹 헤더/푸터(콘텐츠 포털 내비) | ✅ 코드 완료 |
+| UX-QA Markdown 렌더러 line-based 수정 | ✅ 실브라우저 QA로 발견·수정·재검증 (헤딩+리스트 raw 마커 제거) |
+
+### UI/UX 원칙/시스템 (요약)
+- 포지셔닝: PREMIUM AI LIFE INSIGHT (촌스러운 점술앱 지양, 절제된 현대 동양). 가짜 계산 수치(재물운 87점 등) 절대 생성 안 함 — ENGINE 미연동은 준비중/미계산으로 표기.
+- 디자인 시스템 재사용(재작성 아님): `src/theme`(colors 시맨틱+오행, typography, spacing, radius, shadows) + primitives(`Button/Card/Input/Screen/Stack/Text/AdminSelect`). 추가: `StatusBadge`(색+텍스트, §88), Button `tertiary/danger`.
+- 공개 웹: `PublicScreen`이 브랜드 헤더+푸터로 콘텐츠 포털화. 본문은 안전 Markdown 렌더러(line-based, raw HTML 미허용, http(s) 링크만).
+- 실 브라우저 Visual QA(정적 export 서빙): /content·상세·/famous·/login·/home @375·1440 렌더/오버플로우 확인. 인증 필요한 내부 화면(chat/subject/records/my/admin)은 export 빌드 성공 + tsc + 코드리뷰로 검증(정적 QA는 로그인 필요로 제외).
+- Recharts 미도입(RN/웹 유니버설 앱에서 DOM 전용 → 네이티브 번들 파손 위험; §61). 차트는 실데이터 집계 RPC 확보 후 별도 진행 권장.
 
 ### DB 스크립트 (docs/) — 적용 순서 아래 참조
 - 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.
