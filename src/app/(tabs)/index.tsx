@@ -74,13 +74,20 @@ export default function HomeScreen() {
               </Stack>
             </Card>
 
-            {/* 4. 오늘의 운세 영역 */}
+            {/* 4. 오늘의 운세 discovery entry → /today */}
             <Card elevation="sm">
-              <Stack gap="xs">
-                <Text variant="headingMedium">오늘의 운세</Text>
-                <Text variant="bodySmall" colorToken="textSecondary">
-                  상세 기능은 추후 확정됩니다.
-                </Text>
+              <Stack gap="md">
+                <Stack gap="xs">
+                  <Text variant="headingMedium">오늘의 운세</Text>
+                  <Text variant="bodySmall" colorToken="textSecondary">
+                    하루의 흐름을 확인하고 오늘을 준비해 보세요.
+                  </Text>
+                </Stack>
+                <Button
+                  label="오늘의 운세 보기"
+                  variant="secondary"
+                  onPress={() => router.push('/today')}
+                />
               </Stack>
             </Card>
 

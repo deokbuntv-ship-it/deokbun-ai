@@ -21,6 +21,23 @@ const LIST_COLUMNS =
   'id, title, channel, status, source_type, famous_id, updated_at';
 const FULL_COLUMNS =
   'id, title, channel, source_type, famous_id, status, slug, category, hero_image_url, hero_alt, video_url, body, summary, tags, published_at, created_at, updated_at';
+// Columns guaranteed by the base content migrations. hero_alt (PUBLIC_UPDATE_
+// search_alt.sql) and video_url (VIDEO_SETUP.sql) are newer/optional — the admin
+// editor must open/save even if those migrations are not applied yet.
+const CORE_COLUMNS =
+  'id, title, channel, source_type, famous_id, status, slug, category, hero_image_url, body, summary, tags, published_at, created_at, updated_at';
+const OPTIONAL_ROW_KEYS = ['hero_alt', 'video_url'] as const;
+
+// Postgres "undefined_column" — a selected/written column does not exist (a newer
+// migration is pending). Only THIS retries with core columns; RLS/other errors surface.
+function isUndefinedColumn(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === '42703';
+}
+function coreRow(row: Row): Row {
+  const r: Row = { ...row };
+  for (const k of OPTIONAL_ROW_KEYS) delete r[k];
+  return r;
+}
 
 type Row = Record<string, unknown>;
 
@@ -121,9 +138,20 @@ async function listContent(
 
 async function getContent(id: string): Promise<ContentItem | null> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
+  const primary = await supabase
     .from(TABLE)
     .select(FULL_COLUMNS)
+    .eq('id', id)
+    .maybeSingle();
+  if (!primary.error) {
+    return primary.data === null ? null : toItem(primary.data as Row);
+  }
+  if (!isUndefinedColumn(primary.error)) {
+    throw primary.error;
+  }
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(CORE_COLUMNS)
     .eq('id', id)
     .maybeSingle();
   if (error) {
@@ -134,10 +162,22 @@ async function getContent(id: string): Promise<ContentItem | null> {
 
 async function createContent(input: ContentInput): Promise<ContentItem> {
   const supabase = getSupabaseClient();
+  const row = toRow(input);
+  const primary = await supabase
+    .from(TABLE)
+    .insert(row)
+    .select(FULL_COLUMNS)
+    .single();
+  if (!primary.error) {
+    return toItem(primary.data as Row);
+  }
+  if (!isUndefinedColumn(primary.error)) {
+    throw primary.error;
+  }
   const { data, error } = await supabase
     .from(TABLE)
-    .insert(toRow(input))
-    .select(FULL_COLUMNS)
+    .insert(coreRow(row))
+    .select(CORE_COLUMNS)
     .single();
   if (error) {
     throw error;
@@ -147,7 +187,15 @@ async function createContent(input: ContentInput): Promise<ContentItem> {
 
 async function updateContent(id: string, input: ContentInput): Promise<void> {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.from(TABLE).update(toRow(input)).eq('id', id);
+  const row = toRow(input);
+  const primary = await supabase.from(TABLE).update(row).eq('id', id);
+  if (!primary.error) {
+    return;
+  }
+  if (!isUndefinedColumn(primary.error)) {
+    throw primary.error;
+  }
+  const { error } = await supabase.from(TABLE).update(coreRow(row)).eq('id', id);
   if (error) {
     throw error;
   }

@@ -3,6 +3,9 @@ import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
+// Fortune-service primary IA (5 tabs): 홈 · 상담 · 오늘의 운세 · 운세 우편함 · 마이.
+// Single icon family (SF Symbols on iOS, Material on Android/web) via the same
+// NativeTabs architecture — no parallel nav system.
 export default function AppTabs() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
@@ -22,9 +25,14 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="bubble.left.and.bubble.right.fill" md="chat" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="today">
+        <NativeTabs.Trigger.Label>오늘의 운세</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="sun.max.fill" md="wb_sunny" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="records">
-        <NativeTabs.Trigger.Label>기록</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="clock.arrow.circlepath" md="history" />
+        <NativeTabs.Trigger.Label>운세 우편함</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="tray.full.fill" md="inbox" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="my">

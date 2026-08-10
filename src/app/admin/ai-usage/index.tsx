@@ -48,6 +48,11 @@ function formatDateTime(iso: string | null): string {
   return iso ? iso.slice(0, 16).replace('T', ' ') : '–';
 }
 
+// Thousands-separated counts/latency (1945 → 1,945). Null stays as an em dash.
+function formatCount(n: number | null | undefined): string {
+  return typeof n === 'number' ? n.toLocaleString() : '–';
+}
+
 export default function AdminAiUsageScreen() {
   const [items, setItems] = useState<AdminAiUsageItem[]>([]);
   const [status, setStatus] = useState<Status>('loading');
@@ -158,21 +163,17 @@ export default function AdminAiUsageScreen() {
               }
               if (columnKey === 'input') {
                 return (
-                  <Text variant="bodySmall">
-                    {item.inputTokens ?? '–'}
-                  </Text>
+                  <Text variant="bodySmall">{formatCount(item.inputTokens)}</Text>
                 );
               }
               if (columnKey === 'output') {
                 return (
-                  <Text variant="bodySmall">
-                    {item.outputTokens ?? '–'}
-                  </Text>
+                  <Text variant="bodySmall">{formatCount(item.outputTokens)}</Text>
                 );
               }
               return (
                 <Text variant="bodySmall" colorToken="textSecondary">
-                  {item.latencyMs ?? '–'}
+                  {formatCount(item.latencyMs)}
                 </Text>
               );
             }}

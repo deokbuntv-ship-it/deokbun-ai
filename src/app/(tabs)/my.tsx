@@ -62,7 +62,12 @@ export default function MyScreen() {
                   onPress={() => router.push('/consult')}
                 />
                 <Button
-                  label="상담 기록"
+                  label="오늘의 운세"
+                  variant="secondary"
+                  onPress={() => router.push('/today')}
+                />
+                <Button
+                  label="운세 우편함"
                   variant="secondary"
                   onPress={() => router.push('/records')}
                 />
@@ -84,10 +89,12 @@ export default function MyScreen() {
               />
             ) : null}
 
-            <Text variant="caption" colorToken="textSecondary">
-              덕분AI의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
-              의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
-            </Text>
+            <View style={styles.disclaimer}>
+              <Text variant="caption" colorToken="textSecondary">
+                덕분AI의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
+                의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
+              </Text>
+            </View>
           </Stack>
         </View>
       </ScrollView>
@@ -98,12 +105,17 @@ export default function MyScreen() {
 const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
-    paddingVertical: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
     alignItems: 'center',
   },
   wrapper: {
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  disclaimer: {
+    paddingTop: 4,
+    paddingHorizontal: 4,
   },
 });

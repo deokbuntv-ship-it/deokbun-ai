@@ -5,6 +5,7 @@ import {
 } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -50,10 +51,36 @@ function createMessageId(role: ChatMessage['role']): string {
 
 export default function ChatScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     startNew?: string;
     conversationId?: string;
   }>();
+
+  // Back navigation via real router history. Going back simply unmounts this
+  // screen; the conversation is already persisted, so no state is destroyed and
+  // no message is re-sent. Falls back to the 상담 tab when there is no history
+  // (e.g. deep link / hard refresh).
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/consult');
+    }
+  };
+
+  const backBar = (
+    <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={styles.contentWrapper}>
+        <Button
+          label="← 뒤로"
+          variant="tertiary"
+          onPress={handleBack}
+          style={styles.backButton}
+        />
+      </View>
+    </View>
+  );
   const conversationIdParam =
     typeof params.conversationId === 'string' && params.conversationId.length > 0
       ? params.conversationId
@@ -258,6 +285,7 @@ export default function ChatScreen() {
   ) {
     return (
       <Screen>
+        {backBar}
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
           <Card>
             <Text variant="bodyMedium" colorToken="textSecondary">
@@ -272,6 +300,7 @@ export default function ChatScreen() {
   if (!isDraftReady) {
     return (
       <Screen>
+        {backBar}
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
           <Card>
             <Text variant="bodyMedium" colorToken="textSecondary">
@@ -286,6 +315,7 @@ export default function ChatScreen() {
 
   return (
     <Screen>
+      {backBar}
       <View style={styles.container}>
         <ScrollView
           ref={scrollViewRef}
@@ -328,6 +358,14 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: spacing.xs,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+  },
   container: {
     flex: 1,
   },
