@@ -69,7 +69,8 @@
 - 디자인 시스템 재사용(재작성 아님): `src/theme`(colors 시맨틱+오행, typography, spacing, radius, shadows) + primitives(`Button/Card/Input/Screen/Stack/Text/AdminSelect`). 추가: `StatusBadge`(색+텍스트, §88), Button `tertiary/danger`.
 - 공개 웹: `PublicScreen`이 브랜드 헤더+푸터로 콘텐츠 포털화. 본문은 안전 Markdown 렌더러(line-based, raw HTML 미허용, http(s) 링크만).
 - 실 브라우저 Visual QA(정적 export 서빙): /content·상세·/famous·/login·/home @375·1440 렌더/오버플로우 확인. 인증 필요한 내부 화면(chat/subject/records/my/admin)은 export 빌드 성공 + tsc + 코드리뷰로 검증(정적 QA는 로그인 필요로 제외).
-- Recharts 미도입(RN/웹 유니버설 앱에서 DOM 전용 → 네이티브 번들 파손 위험; §61). 차트는 실데이터 집계 RPC 확보 후 별도 진행 권장.
+- Recharts 미도입(RN/웹 유니버설 앱; DOM 전용 → 네이티브 번들 파손 위험, §95 네이티브빌드 증명 부담). 대신 **의존성 0 유니버설 TrendChart**(View 기반 막대, 접근성, 빈상태)로 대시보드 최근 30일 추이 구현 — 실데이터(`admin_daily_activity` RPC, DASHBOARD_TRENDS_SETUP.sql 대기).
+- **Phase 2 미완료(인증 필요)**: 로그인 세션이 없어 인증 데이터 화면(채팅-메시지/기록/저장대상/마이/전체 /admin)은 실브라우저 Visual QA 불가. 무인증 렌더 화면(공개 콘텐츠·상세·유명인·홈·로그인·birth-info·consult)은 @375 QA 완료(오버플로우 0). birth-info는 이미 우수(progressive disclosure) — 출생지 helper만 보강. **인증 화면 QA는 소유자 로그인 필요(USER ACTION).**
 
 ### DB 스크립트 (docs/) — 적용 순서 아래 참조
 - 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.

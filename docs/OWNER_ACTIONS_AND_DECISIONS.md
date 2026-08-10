@@ -25,6 +25,8 @@ Already applied per your report: `ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`,
    + exposes it via `public_get_content` (public video seam).
 5. `docs/admin/SCHEDULER_SETUP.sql` — `admin_list_scheduled_publications` RPC
    (read-only pipeline view for `/admin/publications`; no execution).
+6. `docs/admin/DASHBOARD_TRENDS_SETUP.sql` — `admin_daily_activity` RPC
+   (real 30-day trend charts on `/admin`; charts show unavailable until applied).
 
 ### B. Edge deploy (CMD / terminal)
 ```bash
