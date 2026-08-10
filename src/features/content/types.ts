@@ -37,9 +37,12 @@ export type ContentItem = {
   sourceType: ContentSourceType;
   famousId: string | null;
   status: ContentStatus;
+  slug: string | null;
+  category: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
+  publishedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -53,6 +56,8 @@ export type ContentInput = {
   sourceType: ContentSourceType;
   famousId: string | null;
   status: ContentStatus;
+  slug: string | null;
+  category: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];

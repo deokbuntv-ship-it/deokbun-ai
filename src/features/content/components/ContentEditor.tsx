@@ -8,6 +8,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminSearchInput, AdminSelect } from '@/features/admin';
 import { famousService, type FamousListItem } from '@/features/famous';
+import { CONTENT_CATEGORIES } from '@/features/publicSite';
 
 import type {
   ContentChannel,
@@ -29,12 +30,21 @@ const SOURCE_OPTIONS = [
   { value: 'famous' as ContentSourceType, label: '유명인' },
   { value: 'topic' as ContentSourceType, label: '일반 주제' },
 ];
-// Operator-editable status subset (system flows set the others).
+// Operator-editable status subset (generating/publish_pending/failed are set by
+// system flows: CONTENT-02 generation, CONTENT-07 publishing).
 const STATUS_OPTIONS = [
   { value: 'draft' as ContentStatus, label: '초안' },
   { value: 'ready' as ContentStatus, label: '준비완료' },
+  { value: 'published' as ContentStatus, label: '발행' },
   { value: 'cancelled' as ContentStatus, label: '취소' },
 ];
+
+const CATEGORY_OPTIONS = [
+  { value: '', label: '미분류' },
+  ...CONTENT_CATEGORIES.map((c) => ({ value: c.slug, label: c.label })),
+];
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 // Inline famous picker (search + select). Uses famousService (admin RLS).
 function FamousPicker({
@@ -123,6 +133,8 @@ export function ContentEditor({
     initialFamousLabel ?? null,
   );
   const [status, setStatus] = useState<ContentStatus>(initial?.status ?? 'draft');
+  const [slug, setSlug] = useState(initial?.slug ?? '');
+  const [category, setCategory] = useState(initial?.category ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
   const [summary, setSummary] = useState(initial?.summary ?? '');
   const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '));
@@ -130,7 +142,10 @@ export function ContentEditor({
 
   // Operator status subset; preserve non-subset statuses (e.g. generating) as-is.
   const statusOptionValue: ContentStatus =
-    status === 'draft' || status === 'ready' || status === 'cancelled'
+    status === 'draft' ||
+    status === 'ready' ||
+    status === 'published' ||
+    status === 'cancelled'
       ? status
       : 'draft';
 
@@ -143,6 +158,16 @@ export function ContentEditor({
       setLocalError('유명인 소스를 선택해 주세요.');
       return;
     }
+    const trimmedSlug = slug.trim();
+    if (trimmedSlug.length > 0 && !SLUG_PATTERN.test(trimmedSlug)) {
+      setLocalError('slug는 영문 소문자/숫자/하이픈만 사용할 수 있습니다.');
+      return;
+    }
+    // Publishing requires a slug (public URL) — fail-closed, no invisible publish.
+    if (statusOptionValue === 'published' && trimmedSlug.length === 0) {
+      setLocalError('발행하려면 slug가 필요합니다.');
+      return;
+    }
     setLocalError(null);
     onSubmit({
       title: title.trim(),
@@ -150,6 +175,8 @@ export function ContentEditor({
       sourceType,
       famousId: sourceType === 'famous' ? famousId : null,
       status: statusOptionValue,
+      slug: trimmedSlug || null,
+      category: category || null,
       body: body.trim() || null,
       summary: summary.trim() || null,
       tags: tagsText
@@ -199,6 +226,23 @@ export function ContentEditor({
               value={statusOptionValue}
               onChange={setStatus}
             />
+            <AdminSelect
+              label="카테고리"
+              options={CATEGORY_OPTIONS}
+              value={category}
+              onChange={setCategory}
+            />
+            <Input
+              label="slug (공개 URL)"
+              value={slug}
+              onChangeText={setSlug}
+              placeholder="예) jo-seyoung-2026"
+              autoCapitalize="none"
+            />
+            <Text variant="caption" colorToken="textSecondary">
+              발행(published) 시 /content/{'{slug}'} 로 공개됩니다. slug는 영문
+              소문자·숫자·하이픈만 사용합니다.
+            </Text>
           </Stack>
         </Card>
       </Stack>

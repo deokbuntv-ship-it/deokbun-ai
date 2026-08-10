@@ -20,7 +20,7 @@ const VERSION_COLUMNS =
 const LIST_COLUMNS =
   'id, title, channel, status, source_type, famous_id, updated_at';
 const FULL_COLUMNS =
-  'id, title, channel, source_type, famous_id, status, body, summary, tags, created_at, updated_at';
+  'id, title, channel, source_type, famous_id, status, slug, category, body, summary, tags, published_at, created_at, updated_at';
 
 type Row = Record<string, unknown>;
 
@@ -54,9 +54,12 @@ function toItem(row: Row): ContentItem {
       (str(row.source_type) as ContentItem['sourceType']) ?? 'operator',
     famousId: str(row.famous_id),
     status: (str(row.status) as ContentItem['status']) ?? 'draft',
+    slug: str(row.slug),
+    category: str(row.category),
     body: str(row.body),
     summary: str(row.summary),
     tags: toStringArray(row.tags),
+    publishedAt: str(row.published_at),
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
   };
@@ -69,6 +72,8 @@ function toRow(input: ContentInput): Row {
     source_type: input.sourceType,
     famous_id: input.sourceType === 'famous' ? input.famousId : null,
     status: input.status,
+    slug: input.slug,
+    category: input.category,
     body: input.body,
     summary: input.summary,
     tags: input.tags,

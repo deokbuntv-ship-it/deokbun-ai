@@ -99,6 +99,8 @@ export default function AdminContentDetailScreen() {
       sourceType: item.sourceType,
       famousId: item.famousId,
       status: item.status,
+      slug: item.slug,
+      category: item.category,
       body: draft.body,
       summary: draft.summary ?? item.summary,
       tags: draft.tags.length > 0 ? draft.tags : item.tags,

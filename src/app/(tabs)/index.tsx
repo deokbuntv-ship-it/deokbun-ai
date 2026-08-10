@@ -42,6 +42,28 @@ export default function HomeScreen() {
               </Stack>
             </Card>
 
+            {/* 2-1. 콘텐츠 둘러보기 */}
+            <Card elevation="sm">
+              <Stack gap="md">
+                <Text variant="headingMedium">콘텐츠 둘러보기</Text>
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  사주·명리·운세·유명인 이야기를 만나보세요.
+                </Text>
+                <Stack direction="row" gap="sm">
+                  <Button
+                    label="콘텐츠"
+                    variant="secondary"
+                    onPress={() => router.push('/content')}
+                  />
+                  <Button
+                    label="유명인"
+                    variant="secondary"
+                    onPress={() => router.push('/famous')}
+                  />
+                </Stack>
+              </Stack>
+            </Card>
+
             {/* 3. 운세 리포트 영역 */}
             <Card elevation="sm">
               <Stack gap="xs">
