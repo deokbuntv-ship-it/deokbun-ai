@@ -12,6 +12,7 @@ import {
   PublicStateView,
   RelatedList,
   SeoHead,
+  canonicalForContent,
   categoryLabel,
   publicSiteService,
   type PublicContentDetail,
@@ -62,6 +63,8 @@ export default function PublicContentDetailScreen() {
         <SeoHead
           title={`${item.seoTitle ?? item.title} | 덕분AI`}
           description={item.seoDescription ?? item.summary}
+          canonical={canonicalForContent(item.slug)}
+          image={item.heroImageUrl}
         />
       ) : (
         <SeoHead title="콘텐츠 | 덕분AI" />

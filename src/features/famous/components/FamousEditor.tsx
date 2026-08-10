@@ -6,6 +6,7 @@ import { Input } from '@/components/Input';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminSelect } from '@/features/admin';
+import { canonicalForFamous } from '@/features/publicSite';
 import type {
   ApproximateTimePeriod,
   BirthInfoDraft,
@@ -388,11 +389,20 @@ export function FamousEditor({
               multiline
             />
             <Input
-              label="Canonical URL"
+              label="Canonical URL (선택 — 비우면 자동 생성)"
               value={canonicalUrl}
               onChangeText={setCanonicalUrl}
+              placeholder="비우면 자동"
               autoCapitalize="none"
             />
+            <Text variant="caption" colorToken="textSecondary">
+              {canonicalUrl.trim().length > 0
+                ? '직접 지정한 값이 사용됩니다.'
+                : `자동: ${
+                    canonicalForFamous(slug.trim().toLowerCase()) ??
+                    'PUBLIC_BASE_URL 미설정 — 배포 후 자동 생성됩니다.'
+                  }`}
+            </Text>
             <AdminSelect
               label="색인 정책"
               options={INDEX_OPTIONS}

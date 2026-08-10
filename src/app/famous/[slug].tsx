@@ -11,6 +11,7 @@ import {
   PublicStateView,
   RelatedList,
   SeoHead,
+  canonicalForFamous,
   publicSiteService,
   type PublicFamousDetail,
 } from '@/features/publicSite';
@@ -63,7 +64,7 @@ export default function PublicFamousDetailScreen() {
         <SeoHead
           title={`${item.seoTitle ?? item.name} | 덕분AI`}
           description={item.seoDescription ?? item.shortDescription}
-          canonical={item.canonicalUrl}
+          canonical={item.canonicalUrl ?? canonicalForFamous(item.slug)}
           noindex={item.indexPolicy === 'noindex'}
         />
       ) : (
