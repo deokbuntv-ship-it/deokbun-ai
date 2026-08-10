@@ -75,10 +75,16 @@ async function listAiUsage(
   params: AdminAiUsageParams,
 ): Promise<AdminAiUsageItem[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc('admin_list_ai_usage', {
+  // p_request_type is only sent when a filter is active; the RPC's 3rd arg has a
+  // default so the unfiltered (2-arg) call remains valid before/after migration.
+  const args: Record<string, unknown> = {
     p_limit: params.limit,
     p_offset: params.offset,
-  });
+  };
+  if (params.requestType) {
+    args.p_request_type = params.requestType;
+  }
+  const { data, error } = await supabase.rpc('admin_list_ai_usage', args);
   if (error) {
     throw error;
   }

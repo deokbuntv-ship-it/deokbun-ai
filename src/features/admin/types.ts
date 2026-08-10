@@ -123,6 +123,7 @@ export type AdminDashboardOverview = {
 export type AdminAiUsageParams = {
   limit: number;
   offset: number;
+  requestType?: string | null;
 };
 
 export type AdminAiUsageItem = {

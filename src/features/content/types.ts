@@ -143,6 +143,7 @@ export type ContentVersion = {
   provider: string | null;
   model: string | null;
   promptVersion: string | null;
+  totalTokens: number | null;
   createdAt: string | null;
 };
 

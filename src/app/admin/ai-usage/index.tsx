@@ -6,11 +6,19 @@ import {
   AdminDataTable,
   AdminPageHeader,
   AdminPagination,
+  AdminSelect,
   AdminStateView,
   adminOpsService,
   type AdminAiUsageItem,
   type AdminColumn,
 } from '@/features/admin';
+
+const TYPE_FILTER_OPTIONS = [
+  { value: '', label: '전체' },
+  { value: 'chat', label: '상담' },
+  { value: 'content_generate', label: '콘텐츠' },
+  { value: 'famous_suggest', label: 'Famous' },
+];
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -39,33 +47,41 @@ export default function AdminAiUsageScreen() {
   const [items, setItems] = useState<AdminAiUsageItem[]>([]);
   const [status, setStatus] = useState<Status>('loading');
   const [offset, setOffset] = useState(0);
+  const [typeFilter, setTypeFilter] = useState('');
   const loadTokenRef = useRef(0);
 
-  const load = useCallback((nextOffset: number) => {
-    const token = loadTokenRef.current + 1;
-    loadTokenRef.current = token;
-    setStatus('loading');
+  const load = useCallback(
+    (nextOffset: number, requestType: string) => {
+      const token = loadTokenRef.current + 1;
+      loadTokenRef.current = token;
+      setStatus('loading');
 
-    adminOpsService
-      .listAiUsage({ limit: PAGE_SIZE, offset: nextOffset })
-      .then((rows) => {
-        if (token !== loadTokenRef.current) {
-          return;
-        }
-        setItems(rows);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (token !== loadTokenRef.current) {
-          return;
-        }
-        setStatus('error');
-      });
-  }, []);
+      adminOpsService
+        .listAiUsage({
+          limit: PAGE_SIZE,
+          offset: nextOffset,
+          requestType: requestType || null,
+        })
+        .then((rows) => {
+          if (token !== loadTokenRef.current) {
+            return;
+          }
+          setItems(rows);
+          setStatus('ready');
+        })
+        .catch(() => {
+          if (token !== loadTokenRef.current) {
+            return;
+          }
+          setStatus('error');
+        });
+    },
+    [],
+  );
 
   useEffect(() => {
-    load(offset);
-  }, [load, offset]);
+    load(offset, typeFilter);
+  }, [load, offset, typeFilter]);
 
   return (
     <Stack gap="xl">
@@ -74,13 +90,23 @@ export default function AdminAiUsageScreen() {
         subtitle="LLM 호출 사용량/오류 로그 (원문 미포함)."
       />
 
+      <AdminSelect
+        label="유형"
+        options={TYPE_FILTER_OPTIONS}
+        value={typeFilter}
+        onChange={(v) => {
+          setOffset(0);
+          setTypeFilter(v);
+        }}
+      />
+
       {status === 'loading' ? (
         <AdminStateView state="loading" />
       ) : status === 'error' ? (
         <AdminStateView
           state="error"
-          message="AI 사용량 로그를 불러오지 못했습니다. 운영 지표 DB 설정을 확인해 주세요."
-          onRetry={() => load(offset)}
+          message="AI 사용량 로그를 불러오지 못했습니다. 유형 필터는 SQL 업데이트(ADMIN_04_UPDATE_usage_filter.sql) 적용 후 동작합니다."
+          onRetry={() => load(offset, typeFilter)}
         />
       ) : items.length === 0 ? (
         <AdminStateView

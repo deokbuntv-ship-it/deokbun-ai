@@ -236,6 +236,7 @@ export function ContentGenerationPanel({
                   {v.source === 'ai'
                     ? `AI · ${v.model ?? '?'} · ${v.promptVersion ?? '?'}`
                     : '수동'}
+                  {v.totalTokens != null ? ` · ${v.totalTokens} 토큰` : ''}
                   {v.createdAt ? ` · ${v.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
                 </Text>
               </Stack>

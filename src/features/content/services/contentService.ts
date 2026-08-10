@@ -15,7 +15,7 @@ import type {
 const TABLE = 'content_items';
 const VERSIONS_TABLE = 'content_versions';
 const VERSION_COLUMNS =
-  'id, version, title, body, summary, source, provider, model, prompt_version, created_at';
+  'id, version, title, body, summary, source, provider, model, prompt_version, token_usage, created_at';
 
 const LIST_COLUMNS =
   'id, title, channel, status, source_type, famous_id, updated_at';
@@ -153,6 +153,9 @@ async function cancelContent(id: string): Promise<void> {
 
 function toVersion(row: Row): ContentVersion {
   const source = str(row.source) === 'ai' ? 'ai' : 'manual';
+  const usage = (row.token_usage ?? null) as Record<string, unknown> | null;
+  const total =
+    usage && typeof usage.total_tokens === 'number' ? usage.total_tokens : null;
   return {
     id: String(row.id ?? ''),
     version: typeof row.version === 'number' ? row.version : 0,
@@ -163,6 +166,7 @@ function toVersion(row: Row): ContentVersion {
     provider: str(row.provider),
     model: str(row.model),
     promptVersion: str(row.prompt_version),
+    totalTokens: total,
     createdAt: str(row.created_at),
   };
 }
