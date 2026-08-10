@@ -15,7 +15,8 @@ type NavItem = {
     | '/admin'
     | '/admin/users'
     | '/admin/consultations'
-    | '/admin/ai-usage';
+    | '/admin/ai-usage'
+    | '/admin/famous';
   available: boolean;
 };
 
@@ -24,7 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: '사용자', href: '/admin/users', available: true },
   { label: '상담', href: '/admin/consultations', available: true },
   { label: 'AI 사용량', href: '/admin/ai-usage', available: true },
-  { label: '유명인', available: false },
+  { label: '유명인', href: '/admin/famous', available: true },
   { label: '콘텐츠', available: false },
 ];
 

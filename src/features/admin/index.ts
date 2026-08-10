@@ -9,6 +9,7 @@ export { AdminSidebar } from './components/AdminSidebar';
 export { AdminGate } from './components/AdminGate';
 export { AdminPageHeader } from './components/AdminPageHeader';
 export { AdminStateView } from './components/AdminStateView';
+export { AdminSelect } from './components/AdminSelect';
 export { AdminDataTable } from './components/AdminDataTable';
 export { AdminPagination } from './components/AdminPagination';
 export { AdminSearchInput } from './components/AdminSearchInput';
@@ -16,6 +17,7 @@ export { AdminDetailSection } from './components/AdminDetailSection';
 
 export type { AdminColumn } from './components/AdminDataTable';
 export type { AdminDetailRow } from './components/AdminDetailSection';
+export type { AdminSelectOption } from './components/AdminSelect';
 
 export type {
   AdminAiUsageItem,
