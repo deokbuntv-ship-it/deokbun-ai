@@ -1,4 +1,9 @@
-import { Pressable, View } from 'react-native';
+import {
+  Pressable,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -16,17 +21,19 @@ export function AdminSelect<T extends string>({
   options,
   value,
   onChange,
+  style,
 }: {
   label?: string;
   options: AdminSelectOption<T>[];
   value: T | null;
   onChange: (value: T) => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xs" style={style}>
       {label ? (
         <Text variant="bodySmall" colorToken="textSecondary">
           {label}

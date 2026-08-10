@@ -9,14 +9,26 @@ import {
   AdminPageHeader,
   AdminPagination,
   AdminSearchInput,
+  AdminSelect,
   AdminStateView,
   type AdminColumn,
 } from '@/features/admin';
-import { famousService, type FamousListItem } from '@/features/famous';
+import {
+  famousService,
+  type FamousListItem,
+  type FamousStatus,
+} from '@/features/famous';
 
 type ListStatus = 'loading' | 'ready' | 'error';
 
 const PAGE_SIZE = 25;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: '전체' },
+  { value: 'draft', label: '초안' },
+  { value: 'published', label: '공개' },
+  { value: 'archived', label: '보관' },
+];
 
 const COLUMNS: AdminColumn[] = [
   { key: 'name', header: '이름', flex: 3 },
@@ -45,29 +57,38 @@ export default function AdminFamousListScreen() {
   const [status, setStatus] = useState<ListStatus>('loading');
   const [searchText, setSearchText] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [offset, setOffset] = useState(0);
   const loadTokenRef = useRef(0);
 
-  const load = useCallback((search: string, nextOffset: number) => {
-    const token = loadTokenRef.current + 1;
-    loadTokenRef.current = token;
-    setStatus('loading');
-    famousService
-      .listFamous({ search, limit: PAGE_SIZE, offset: nextOffset })
-      .then((rows) => {
-        if (token !== loadTokenRef.current) return;
-        setItems(rows);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (token !== loadTokenRef.current) return;
-        setStatus('error');
-      });
-  }, []);
+  const load = useCallback(
+    (search: string, nextOffset: number, sFilter: string) => {
+      const token = loadTokenRef.current + 1;
+      loadTokenRef.current = token;
+      setStatus('loading');
+      famousService
+        .listFamous({
+          search,
+          status: (sFilter || null) as FamousStatus | null,
+          limit: PAGE_SIZE,
+          offset: nextOffset,
+        })
+        .then((rows) => {
+          if (token !== loadTokenRef.current) return;
+          setItems(rows);
+          setStatus('ready');
+        })
+        .catch(() => {
+          if (token !== loadTokenRef.current) return;
+          setStatus('error');
+        });
+    },
+    [],
+  );
 
   useEffect(() => {
-    load(appliedSearch, offset);
-  }, [load, appliedSearch, offset]);
+    load(appliedSearch, offset, statusFilter);
+  }, [load, appliedSearch, offset, statusFilter]);
 
   return (
     <Stack gap="xl">
@@ -89,13 +110,23 @@ export default function AdminFamousListScreen() {
         placeholder="이름 또는 slug 검색"
       />
 
+      <AdminSelect
+        label="상태"
+        options={STATUS_FILTER_OPTIONS}
+        value={statusFilter}
+        onChange={(v) => {
+          setOffset(0);
+          setStatusFilter(v);
+        }}
+      />
+
       {status === 'loading' ? (
         <AdminStateView state="loading" />
       ) : status === 'error' ? (
         <AdminStateView
           state="error"
           message="유명인 목록을 불러오지 못했습니다. 관리자 권한 또는 DB 설정을 확인해 주세요."
-          onRetry={() => load(appliedSearch, offset)}
+          onRetry={() => load(appliedSearch, offset, statusFilter)}
         />
       ) : items.length === 0 ? (
         <AdminStateView state="empty" message="등록된 유명인이 없습니다." />

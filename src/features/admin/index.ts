@@ -14,6 +14,7 @@ export { AdminDataTable } from './components/AdminDataTable';
 export { AdminPagination } from './components/AdminPagination';
 export { AdminSearchInput } from './components/AdminSearchInput';
 export { AdminDetailSection } from './components/AdminDetailSection';
+export { confirmDestructive } from './confirm';
 
 export type { AdminColumn } from './components/AdminDataTable';
 export type { AdminDetailRow } from './components/AdminDetailSection';

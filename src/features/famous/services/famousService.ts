@@ -101,6 +101,9 @@ async function listFamous(params: FamousListParams): Promise<FamousListItem[]> {
   if (search) {
     query = query.or(`name.ilike.%${search}%,slug.ilike.%${search}%`);
   }
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
 
   const { data, error } = await query
     .order('updated_at', { ascending: false })

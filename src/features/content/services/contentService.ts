@@ -95,6 +95,12 @@ async function listContent(
   if (params.channel) {
     query = query.eq('channel', params.channel);
   }
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
+  if (params.category) {
+    query = query.eq('category', params.category);
+  }
 
   const { data, error } = await query
     .order('updated_at', { ascending: false })

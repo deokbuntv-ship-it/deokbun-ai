@@ -68,6 +68,8 @@ export type ContentInput = {
 export type ContentListParams = {
   search?: string;
   channel?: ContentChannel | null;
+  status?: ContentStatus | null;
+  category?: string | null;
   limit: number;
   offset: number;
 };

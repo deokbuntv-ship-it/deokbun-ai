@@ -85,6 +85,7 @@ export type FamousInput = {
 
 export type FamousListParams = {
   search?: string;
+  status?: FamousStatus | null;
   limit: number;
   offset: number;
 };

@@ -8,6 +8,7 @@ import {
   AdminDetailSection,
   AdminPageHeader,
   AdminStateView,
+  confirmDestructive,
 } from '@/features/admin';
 import {
   FamousEditor,
@@ -91,15 +92,18 @@ export default function AdminFamousDetailScreen() {
 
   const handleArchive = () => {
     if (submitting || id === undefined) return;
-    setSubmitting(true);
-    setErrorMessage(null);
-    famousService
-      .archiveFamous(id)
-      .then(() => router.push('/admin/famous'))
-      .catch(() => {
-        setErrorMessage('보관에 실패했습니다.');
-        setSubmitting(false);
-      });
+    confirmDestructive('이 유명인을 보관 처리할까요?').then((ok) => {
+      if (!ok) return;
+      setSubmitting(true);
+      setErrorMessage(null);
+      famousService
+        .archiveFamous(id)
+        .then(() => router.push('/admin/famous'))
+        .catch(() => {
+          setErrorMessage('보관에 실패했습니다.');
+          setSubmitting(false);
+        });
+    });
   };
 
   return (

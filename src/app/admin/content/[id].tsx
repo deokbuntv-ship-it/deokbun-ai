@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { AdminPageHeader, AdminStateView } from '@/features/admin';
+import {
+  AdminPageHeader,
+  AdminStateView,
+  confirmDestructive,
+} from '@/features/admin';
 import {
   AssetPanel,
   ContentEditor,
@@ -121,15 +125,18 @@ export default function AdminContentDetailScreen() {
 
   const handleCancel = () => {
     if (submitting || id === undefined) return;
-    setSubmitting(true);
-    setErrorMessage(null);
-    contentService
-      .cancelContent(id)
-      .then(() => router.push('/admin/content'))
-      .catch(() => {
-        setErrorMessage('취소 처리에 실패했습니다.');
-        setSubmitting(false);
-      });
+    confirmDestructive('이 콘텐츠를 취소 처리할까요?').then((ok) => {
+      if (!ok) return;
+      setSubmitting(true);
+      setErrorMessage(null);
+      contentService
+        .cancelContent(id)
+        .then(() => router.push('/admin/content'))
+        .catch(() => {
+          setErrorMessage('취소 처리에 실패했습니다.');
+          setSubmitting(false);
+        });
+    });
   };
 
   return (
