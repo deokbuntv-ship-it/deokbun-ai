@@ -15,6 +15,7 @@ import type {
   LunarMonthType,
 } from '@/features/consultation';
 
+import { FamousAiPanel } from './FamousAiPanel';
 import type {
   FamousBirthSource,
   FamousIndexPolicy,
@@ -188,8 +189,34 @@ export function FamousEditor({
     });
   };
 
+  // Birth data as interpretation context only (never asserted as biography).
+  const birthSummary =
+    birthYear && birthMonth && birthDay
+      ? [
+          `${birthYear}-${birthMonth}-${birthDay}`,
+          calendarType === 'lunar' ? '음력' : calendarType === 'solar' ? '양력' : '',
+          birthPlace.trim(),
+        ]
+          .filter((p) => p.length > 0)
+          .join(' ')
+      : null;
+
   return (
     <Stack gap="xl">
+      <FamousAiPanel
+        famousId={initial?.id ?? null}
+        name={name}
+        occupation={occupation}
+        category={category}
+        birthSummary={birthSummary}
+        onApplyOneLiner={setShortDescription}
+        onApplyIntroduction={setBio}
+        onApplySeoTitle={setSeoTitle}
+        onApplySeoDescription={setSeoDescription}
+        onApplySlug={(s) => setSlug(s.toLowerCase())}
+        onApplyIndexPolicy={setIndexPolicy}
+      />
+
       <Stack gap="sm">
         <Text variant="headingMedium">기본 정보</Text>
         <Card>

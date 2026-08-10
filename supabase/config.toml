@@ -18,3 +18,9 @@ verify_jwt = true
 [functions.content-generate]
 enabled = true
 verify_jwt = true
+
+# P0-6: admin-gated Famous profile/SEO AI suggestions (PREMIUM_CONTENT). Same
+# security model as content-generate; proposes fields (never auto-applies/publishes).
+[functions.famous-suggest]
+enabled = true
+verify_jwt = true

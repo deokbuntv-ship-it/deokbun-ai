@@ -89,6 +89,52 @@ export type FamousListParams = {
   offset: number;
 };
 
+// ---- P0-6: AI profile/SEO suggestions ---------------------------------------
+
+// Whether a suggested text is grounded in operator-provided facts, is
+// interpretation/general, or unknown (no info). Prevents fabricated biography.
+export type FamousSuggestionBasis = 'fact' | 'interpretation' | 'unknown';
+
+export type FamousSuggestionField = {
+  text: string;
+  basis: FamousSuggestionBasis;
+};
+
+export type FamousSuggestion = {
+  oneLiner: FamousSuggestionField | null;
+  introduction: FamousSuggestionField | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  recommendedSlug: string | null;
+  indexPolicy: FamousIndexPolicy | null;
+  topics: string[];
+  disclaimer: string | null;
+};
+
+export type FamousSuggestionInput = {
+  famousId?: string | null;
+  name: string;
+  occupation?: string | null;
+  category?: string | null;
+  knownFacts?: string | null;
+  birthSummary?: string | null;
+};
+
+export type FamousSuggestionResult = {
+  suggestion: FamousSuggestion;
+  provenance: {
+    provider: string;
+    model: string;
+    workload?: string;
+    promptVersion: string;
+    tokenUsage: {
+      input_tokens: number | null;
+      output_tokens: number | null;
+      total_tokens: number | null;
+    };
+  };
+};
+
 // Immutable calculation snapshot (ENGINE output stored opaquely; APP never
 // computes it). Surfaced read-only for provenance.
 export type FamousSnapshot = {
