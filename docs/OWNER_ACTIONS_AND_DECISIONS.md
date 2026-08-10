@@ -169,3 +169,25 @@ Applied: `admin/ADMIN_SETUP` → `ADMIN_02..05` → `CONTENT_01` → `PUBLIC_SET
    shows a confirm.
 
 Known limitations & remaining blockers: see `HANDOVER.md` §0 and `docs/SEO_NOTES.md`.
+
+## 5. Authenticated visual QA — one enabler needed (UI/UX Phase 3)
+The authenticated consumer-data screens (chat-with-messages, records, subject list,
+my) and all `/admin/*` screens can only be visually inspected with a live logged-in
+session. Automated tooling here has **no** connected browser session (the
+Claude-for-Chrome extension is not connected to this account, and the in-app browser
+has no session for `localhost:8081`). I will not extract cookies/tokens or log in
+with your OAuth credentials.
+
+**Minimal enabler (pick one):**
+- **(A) Let me inspect it:** install/sign into the **Claude for Chrome** extension in
+  the same Chrome where DeokbunAI is logged in, and connect it to this account. Then I
+  can attach to your authenticated `/admin` tab (read-only structure/overflow checks;
+  no credential handling) and complete the authenticated visual QA + polish.
+- **(B) You inspect it:** run the manual QA in `HANDOVER.md` §0 note / prior report:
+  logged-in @375 — chat/records/subject/my; admin @1440 — dashboard (KPI + 최근 30일
+  추이 charts), users/detail, consultations, ai-usage, famous(+editor), content(+editor:
+  AI/media/publication), publications — and report any issue.
+
+Until (A) or (B): UI/UX MASTER SPRINT is **NOT COMPLETE** (authenticated screens
+un-inspected). All no-auth screens are QA'd (public/home/login/birth-info/consult @375,
+no overflow) and a real Markdown rendering bug was found + fixed.
