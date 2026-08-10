@@ -66,6 +66,18 @@ export default function PublicFamousDetailScreen() {
           description={item.seoDescription ?? item.shortDescription}
           canonical={item.canonicalUrl ?? canonicalForFamous(item.slug)}
           noindex={item.indexPolicy === 'noindex'}
+          jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'Person',
+            name: item.name,
+            ...(item.occupation ? { jobTitle: item.occupation } : {}),
+            ...(item.shortDescription
+              ? { description: item.shortDescription }
+              : {}),
+            ...(item.canonicalUrl ?? canonicalForFamous(item.slug)
+              ? { url: item.canonicalUrl ?? canonicalForFamous(item.slug) }
+              : {}),
+          }}
         />
       ) : (
         <SeoHead title="유명인 | 덕분AI" />

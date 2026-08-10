@@ -17,6 +17,7 @@ export type PublicContentListItem = {
   category: string | null;
   tags: string[];
   heroImageUrl: string | null;
+  heroAlt: string | null;
   publishedAt: string | null;
   famousSlug: string | null;
   famousName: string | null;
@@ -31,6 +32,7 @@ export type PublicContentDetail = {
   category: string | null;
   tags: string[];
   heroImageUrl: string | null;
+  heroAlt: string | null;
   publishedAt: string | null;
   updatedAt: string | null;
   seoTitle: string | null;
@@ -66,6 +68,7 @@ export type PublicFamousDetail = {
 
 export type PublicListParams = {
   category?: string | null;
+  search?: string | null;
   limit: number;
   offset: number;
 };

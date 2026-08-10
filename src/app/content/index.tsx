@@ -1,7 +1,9 @@
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable } from 'react-native';
 
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import {
@@ -18,17 +20,22 @@ type Status = 'loading' | 'ready' | 'error';
 const PAGE_SIZE = 20;
 
 export default function PublicContentListScreen() {
+  const params = useLocalSearchParams<{ q?: string }>();
+  const initialQuery = typeof params.q === 'string' ? params.q : '';
+
   const [items, setItems] = useState<PublicContentListItem[]>([]);
   const [status, setStatus] = useState<Status>('loading');
   const [offset, setOffset] = useState(0);
+  const [searchText, setSearchText] = useState(initialQuery);
+  const [appliedSearch, setAppliedSearch] = useState(initialQuery);
   const tokenRef = useRef(0);
 
-  const load = useCallback((nextOffset: number) => {
+  const load = useCallback((nextOffset: number, search: string) => {
     const token = tokenRef.current + 1;
     tokenRef.current = token;
     setStatus('loading');
     publicSiteService
-      .listContent({ limit: PAGE_SIZE, offset: nextOffset })
+      .listContent({ search, limit: PAGE_SIZE, offset: nextOffset })
       .then((rows) => {
         if (token !== tokenRef.current) return;
         setItems(rows);
@@ -41,8 +48,13 @@ export default function PublicContentListScreen() {
   }, []);
 
   useEffect(() => {
-    load(offset);
-  }, [load, offset]);
+    load(offset, appliedSearch);
+  }, [load, offset, appliedSearch]);
+
+  const runSearch = () => {
+    setOffset(0);
+    setAppliedSearch(searchText.trim());
+  };
 
   return (
     <PublicScreen>
@@ -65,14 +77,33 @@ export default function PublicContentListScreen() {
           </Link>
         </Stack>
 
+        <Stack direction="row" gap="sm" align="center">
+          <Input
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="콘텐츠 검색"
+            onSubmitEditing={runSearch}
+            returnKeyType="search"
+            style={{ flex: 1 }}
+          />
+          <Button label="검색" variant="secondary" onPress={runSearch} />
+        </Stack>
+
         <CategoryChips />
 
         {status === 'loading' ? (
           <PublicStateView state="loading" />
         ) : status === 'error' ? (
-          <PublicStateView state="error" onRetry={() => load(offset)} />
+          <PublicStateView state="error" onRetry={() => load(offset, appliedSearch)} />
         ) : items.length === 0 ? (
-          <PublicStateView state="empty" message="아직 발행된 콘텐츠가 없습니다." />
+          <PublicStateView
+            state="empty"
+            message={
+              appliedSearch
+                ? `"${appliedSearch}" 검색 결과가 없습니다.`
+                : '아직 발행된 콘텐츠가 없습니다.'
+            }
+          />
         ) : (
           <Stack gap="md">
             {items.map((item) => (

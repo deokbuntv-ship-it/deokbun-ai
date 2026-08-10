@@ -20,7 +20,7 @@ const VERSION_COLUMNS =
 const LIST_COLUMNS =
   'id, title, channel, status, source_type, famous_id, updated_at';
 const FULL_COLUMNS =
-  'id, title, channel, source_type, famous_id, status, slug, category, hero_image_url, body, summary, tags, published_at, created_at, updated_at';
+  'id, title, channel, source_type, famous_id, status, slug, category, hero_image_url, hero_alt, body, summary, tags, published_at, created_at, updated_at';
 
 type Row = Record<string, unknown>;
 
@@ -57,6 +57,7 @@ function toItem(row: Row): ContentItem {
     slug: str(row.slug),
     category: str(row.category),
     heroImageUrl: str(row.hero_image_url),
+    heroAlt: str(row.hero_alt),
     body: str(row.body),
     summary: str(row.summary),
     tags: toStringArray(row.tags),
@@ -76,6 +77,7 @@ function toRow(input: ContentInput): Row {
     slug: input.slug,
     category: input.category,
     hero_image_url: input.heroImageUrl,
+    hero_alt: input.heroAlt,
     body: input.body,
     summary: input.summary,
     tags: input.tags,

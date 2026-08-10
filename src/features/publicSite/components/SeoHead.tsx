@@ -13,12 +13,15 @@ export function SeoHead({
   canonical,
   image,
   noindex,
+  jsonLd,
 }: {
   title: string;
   description?: string | null;
   canonical?: string | null;
   image?: string | null;
   noindex?: boolean;
+  // schema.org JSON-LD. Pass ONLY verified fields (no fake rating/review/award).
+  jsonLd?: Record<string, unknown> | null;
 }) {
   const desc = description ?? undefined;
   return (
@@ -32,6 +35,14 @@ export function SeoHead({
       <meta property="og:type" content="article" />
       {canonical ? <meta property="og:url" content={canonical} /> : null}
       {image ? <meta property="og:image" content={image} /> : null}
+      {jsonLd ? (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react-native/no-raw-text
+        >
+          {JSON.stringify(jsonLd)}
+        </script>
+      ) : null}
     </Head>
   );
 }

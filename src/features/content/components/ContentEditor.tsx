@@ -142,6 +142,7 @@ export function ContentEditor({
   const [slug, setSlug] = useState(initial?.slug ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [heroImageUrl, setHeroImageUrl] = useState(initial?.heroImageUrl ?? '');
+  const [heroAlt, setHeroAlt] = useState(initial?.heroAlt ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
   const [summary, setSummary] = useState(initial?.summary ?? '');
   const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '));
@@ -185,6 +186,7 @@ export function ContentEditor({
       slug: trimmedSlug || null,
       category: category || null,
       heroImageUrl: heroImageUrl.trim() || null,
+      heroAlt: heroImageUrl.trim() ? heroAlt.trim() || null : null,
       body: body.trim() || null,
       summary: summary.trim() || null,
       tags: tagsText
@@ -258,6 +260,18 @@ export function ContentEditor({
               placeholder="https://..."
               autoCapitalize="none"
             />
+            {heroImageUrl.trim().length > 0 ? (
+              <Input
+                label="대표 이미지 대체텍스트 (alt, 접근성/SEO)"
+                value={heroAlt}
+                onChangeText={setHeroAlt}
+                placeholder={
+                  title.trim().length > 0
+                    ? `예) ${title.trim()} 관련 이미지`
+                    : '이미지 내용을 사실적으로 설명'
+                }
+              />
+            ) : null}
           </Stack>
         </Card>
       </Stack>

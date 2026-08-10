@@ -41,11 +41,18 @@ async function listContent(
   params: PublicListParams,
 ): Promise<PublicContentListItem[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc('public_list_content', {
+  // p_search is only sent when a query is present; the RPC's param is defaulted so
+  // the search-less call stays valid before/after the migration.
+  const args: Record<string, unknown> = {
     p_category: params.category ?? null,
     p_limit: params.limit,
     p_offset: params.offset,
-  });
+  };
+  const search = params.search?.trim();
+  if (search) {
+    args.p_search = search;
+  }
+  const { data, error } = await supabase.rpc('public_list_content', args);
   if (error) throw error;
   return ((data as Row[] | null) ?? []).map((row) => ({
     slug: String(row.slug ?? ''),
@@ -55,6 +62,7 @@ async function listContent(
     category: str(row.category),
     tags: toStringArray(row.tags),
     heroImageUrl: str(row.hero_image_url),
+    heroAlt: str(row.hero_alt),
     publishedAt: str(row.published_at),
     famousSlug: str(row.famous_slug),
     famousName: str(row.famous_name),
@@ -79,6 +87,7 @@ async function getContent(slug: string): Promise<PublicContentDetail | null> {
     category: str(row.category),
     tags: toStringArray(row.tags),
     heroImageUrl: str(row.hero_image_url),
+    heroAlt: str(row.hero_alt),
     publishedAt: str(row.published_at),
     updatedAt: str(row.updated_at),
     seoTitle: str(row.seo_title),

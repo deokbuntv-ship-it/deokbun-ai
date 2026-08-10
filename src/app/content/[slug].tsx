@@ -65,6 +65,18 @@ export default function PublicContentDetailScreen() {
           description={item.seoDescription ?? item.summary}
           canonical={canonicalForContent(item.slug)}
           image={item.heroImageUrl}
+          jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: item.title,
+            ...(item.summary ? { description: item.summary } : {}),
+            ...(item.heroImageUrl ? { image: item.heroImageUrl } : {}),
+            ...(item.publishedAt ? { datePublished: item.publishedAt } : {}),
+            ...(item.updatedAt ? { dateModified: item.updatedAt } : {}),
+            ...(canonicalForContent(item.slug)
+              ? { mainEntityOfPage: canonicalForContent(item.slug) }
+              : {}),
+          }}
         />
       ) : (
         <SeoHead title="콘텐츠 | 덕분AI" />
@@ -94,6 +106,8 @@ export default function PublicContentDetailScreen() {
               style={{ width: '100%', height: 220, borderRadius: 12 }}
               contentFit="cover"
               transition={150}
+              alt={item.heroAlt ?? item.title}
+              accessibilityLabel={item.heroAlt ?? item.title}
             />
           ) : null}
           <Stack gap="xs">

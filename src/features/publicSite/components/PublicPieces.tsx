@@ -93,6 +93,8 @@ export function PublicContentCard({ item }: { item: PublicContentListItem }) {
                 style={{ width: '100%', height: 160, borderRadius: 8 }}
                 contentFit="cover"
                 transition={150}
+                alt={item.heroAlt ?? item.title}
+                accessibilityLabel={item.heroAlt ?? item.title}
               />
             ) : null}
             {item.category ? (

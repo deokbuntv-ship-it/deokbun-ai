@@ -40,6 +40,7 @@ export type ContentItem = {
   slug: string | null;
   category: string | null;
   heroImageUrl: string | null;
+  heroAlt: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
@@ -60,6 +61,7 @@ export type ContentInput = {
   slug: string | null;
   category: string | null;
   heroImageUrl: string | null;
+  heroAlt: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
