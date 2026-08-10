@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
@@ -86,6 +87,14 @@ export function PublicContentCard({ item }: { item: PublicContentListItem }) {
       <Pressable style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}>
         <Card elevation="sm">
           <Stack gap="xs">
+            {item.heroImageUrl ? (
+              <Image
+                source={{ uri: item.heroImageUrl }}
+                style={{ width: '100%', height: 160, borderRadius: 8 }}
+                contentFit="cover"
+                transition={150}
+              />
+            ) : null}
             {item.category ? (
               <Text variant="caption" colorToken="textSecondary">
                 {categoryLabel(item.category)}

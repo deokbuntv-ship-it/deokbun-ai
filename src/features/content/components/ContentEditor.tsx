@@ -141,6 +141,7 @@ export function ContentEditor({
   const [status, setStatus] = useState<ContentStatus>(initial?.status ?? 'draft');
   const [slug, setSlug] = useState(initial?.slug ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
+  const [heroImageUrl, setHeroImageUrl] = useState(initial?.heroImageUrl ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
   const [summary, setSummary] = useState(initial?.summary ?? '');
   const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '));
@@ -183,6 +184,7 @@ export function ContentEditor({
       status: statusOptionValue,
       slug: trimmedSlug || null,
       category: category || null,
+      heroImageUrl: heroImageUrl.trim() || null,
       body: body.trim() || null,
       summary: summary.trim() || null,
       tags: tagsText
@@ -249,6 +251,13 @@ export function ContentEditor({
               발행(published) 시 /content/{'{slug}'} 로 공개됩니다. slug는 영문
               소문자·숫자·하이픈만 사용합니다.
             </Text>
+            <Input
+              label="대표 이미지 URL (선택)"
+              value={heroImageUrl}
+              onChangeText={setHeroImageUrl}
+              placeholder="https://..."
+              autoCapitalize="none"
+            />
           </Stack>
         </Card>
       </Stack>

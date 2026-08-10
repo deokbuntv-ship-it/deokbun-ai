@@ -39,6 +39,7 @@ export type ContentItem = {
   status: ContentStatus;
   slug: string | null;
   category: string | null;
+  heroImageUrl: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
@@ -58,6 +59,7 @@ export type ContentInput = {
   status: ContentStatus;
   slug: string | null;
   category: string | null;
+  heroImageUrl: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
@@ -184,4 +186,44 @@ export type ManualPublicationInput = {
   channel: PublicationChannel;
   externalUrl: string | null;
   provider: string;
+};
+
+// ---- CONTENT-03/06: media assets (provider-neutral) --------------------------
+
+export type AssetKind = 'image' | 'video';
+
+export type AssetStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+// Whether AI generation for a given kind is usable. No provider selected yet →
+// PROVIDER_NOT_CONFIGURED (owner decision). Manual attach is always available.
+export type AssetGenerationStatus = 'AVAILABLE' | 'PROVIDER_NOT_CONFIGURED';
+
+export type ContentAsset = {
+  id: string;
+  contentId: string | null;
+  kind: AssetKind;
+  status: AssetStatus;
+  provider: string | null;
+  prompt: string | null;
+  model: string | null;
+  aspectRatio: string | null;
+  durationSeconds: number | null;
+  width: number | null;
+  height: number | null;
+  storagePath: string | null;
+  externalUrl: string | null;
+  errorCode: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type ManualAssetInput = {
+  contentId: string;
+  kind: AssetKind;
+  externalUrl: string;
 };

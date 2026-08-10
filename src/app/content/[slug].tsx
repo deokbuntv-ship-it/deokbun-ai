@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable } from 'react-native';
@@ -84,6 +85,14 @@ export default function PublicContentDetailScreen() {
         <PublicStateView state="error" onRetry={load} />
       ) : (
         <Stack gap="xl">
+          {item.heroImageUrl ? (
+            <Image
+              source={{ uri: item.heroImageUrl }}
+              style={{ width: '100%', height: 220, borderRadius: 12 }}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : null}
           <Stack gap="xs">
             {item.category ? (
               <Text variant="caption" colorToken="textSecondary">

@@ -6,6 +6,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminPageHeader, AdminStateView } from '@/features/admin';
 import {
+  AssetPanel,
   ContentEditor,
   ContentGenerationPanel,
   PublicationPanel,
@@ -102,6 +103,7 @@ export default function AdminContentDetailScreen() {
       status: item.status,
       slug: item.slug,
       category: item.category,
+      heroImageUrl: item.heroImageUrl,
       body: draft.body,
       summary: draft.summary ?? item.summary,
       tags: draft.tags.length > 0 ? draft.tags : item.tags,
@@ -177,6 +179,13 @@ export default function AdminContentDetailScreen() {
             famousLabel={famousLabel}
             onApplyDraft={handleApplyDraft}
             applying={applyingDraft}
+          />
+          <AssetPanel
+            item={item}
+            onHeroChanged={() => {
+              setEditorKey((k) => k + 1);
+              load();
+            }}
           />
           <PublicationPanel item={item} />
         </>
