@@ -28,7 +28,7 @@ const PAGE_SIZE = 50;
 
 const COLUMNS: AdminColumn[] = [
   { key: 'createdAt', header: '시각', flex: 3 },
-  { key: 'type', header: '유형', flex: 2 },
+  { key: 'type', header: '유형', flex: 3 },
   { key: 'model', header: '모델', flex: 3 },
   { key: 'status', header: '상태', flex: 2 },
   { key: 'input', header: '입력', flex: 1, align: 'right' },

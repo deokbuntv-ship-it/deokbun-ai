@@ -16,7 +16,7 @@ import {
 type Status = 'loading' | 'ready' | 'error';
 const TREND_DAYS = 30;
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <View style={{ width: 180 }}>
       <Card>
@@ -24,7 +24,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
           <Text variant="bodySmall" colorToken="textSecondary">
             {label}
           </Text>
-          <Text variant="displayMedium">{value}</Text>
+          <Text variant="displayMedium">{value.toLocaleString()}</Text>
         </Stack>
       </Card>
     </View>
@@ -94,12 +94,12 @@ export default function AdminDashboardScreen() {
             <View
               style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}
             >
-              <StatCard label="사용자" value={String(overview.userCount)} />
-              <StatCard label="상담 대상" value={String(overview.subjectCount)} />
-              <StatCard label="상담" value={String(overview.conversationCount)} />
+              <StatCard label="사용자" value={overview.userCount} />
+              <StatCard label="상담 대상" value={overview.subjectCount} />
+              <StatCard label="상담" value={overview.conversationCount} />
               <StatCard
                 label="오늘 상담"
-                value={String(overview.conversationToday)}
+                value={overview.conversationToday}
               />
             </View>
           </Stack>
@@ -109,23 +109,23 @@ export default function AdminDashboardScreen() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               <StatCard
                 label="AI 요청"
-                value={String(overview.aiRequestCount)}
+                value={overview.aiRequestCount}
               />
               <StatCard
                 label="AI 실패"
-                value={String(overview.aiErrorCount)}
+                value={overview.aiErrorCount}
               />
               <StatCard
                 label="오늘 AI 요청"
-                value={String(overview.aiTodayRequestCount)}
+                value={overview.aiTodayRequestCount}
               />
               <StatCard
                 label="입력 토큰"
-                value={String(overview.aiInputTokens)}
+                value={overview.aiInputTokens}
               />
               <StatCard
                 label="출력 토큰"
-                value={String(overview.aiOutputTokens)}
+                value={overview.aiOutputTokens}
               />
             </View>
             <Text variant="caption" colorToken="textSecondary">

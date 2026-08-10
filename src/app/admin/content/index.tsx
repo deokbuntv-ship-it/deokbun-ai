@@ -109,8 +109,16 @@ export default function AdminContentListScreen() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [offset, setOffset] = useState(0);
   const loadTokenRef = useRef(0);
+
+  const activeFilterCount = [
+    statusFilter,
+    categoryFilter,
+    channelFilter,
+    sourceFilter,
+  ].filter(Boolean).length;
 
   const load = useCallback((nextOffset: number, f: ContentFilters) => {
     const token = loadTokenRef.current + 1;
@@ -181,7 +189,35 @@ export default function AdminContentListScreen() {
         placeholder="제목 검색"
       />
 
-      <Stack direction="row" gap="md" style={{ flexWrap: 'wrap' }}>
+      <Stack direction="row" gap="sm" align="center" style={{ flexWrap: 'wrap' }}>
+        <Button
+          label={
+            showFilters
+              ? '필터 숨기기'
+              : activeFilterCount > 0
+                ? `필터 (${activeFilterCount})`
+                : '필터'
+          }
+          variant="secondary"
+          onPress={() => setShowFilters((v) => !v)}
+        />
+        {activeFilterCount > 0 ? (
+          <Button
+            label="필터 초기화"
+            variant="tertiary"
+            onPress={() => {
+              setOffset(0);
+              setStatusFilter('');
+              setCategoryFilter('');
+              setChannelFilter('');
+              setSourceFilter('');
+            }}
+          />
+        ) : null}
+      </Stack>
+
+      {showFilters ? (
+        <Stack direction="row" gap="md" style={{ flexWrap: 'wrap' }}>
         <AdminSelect
           label="상태"
           options={STATUS_FILTER_OPTIONS}
@@ -222,7 +258,8 @@ export default function AdminContentListScreen() {
           }}
           style={{ flex: 1, minWidth: 160 }}
         />
-      </Stack>
+        </Stack>
+      ) : null}
 
       {status === 'loading' ? (
         <AdminStateView state="loading" />
