@@ -5,6 +5,7 @@ import type {
   ManualPublicationInput,
   PublicationChannel,
   PublicationStatus,
+  ScheduledPublicationItem,
   SchedulePublicationInput,
 } from '../types';
 
@@ -105,9 +106,34 @@ async function schedulePublication(
   return toPublication(data as Row);
 }
 
+// Cross-content publication pipeline (admin visibility; read-only). Uses the
+// is_admin()-gated RPC (docs/admin/SCHEDULER_SETUP.sql).
+async function listScheduled(limit = 100): Promise<ScheduledPublicationItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc(
+    'admin_list_scheduled_publications',
+    { p_limit: limit },
+  );
+  if (error) throw error;
+  return ((data as Row[] | null) ?? []).map((row) => ({
+    id: String(row.id ?? ''),
+    contentId: str(row.content_id),
+    contentTitle: str(row.content_title),
+    channel: (str(row.channel) as PublicationChannel) ?? 'web',
+    status: (str(row.status) as PublicationStatus) ?? 'draft',
+    scheduledAt: str(row.scheduled_at),
+    publishedAt: str(row.published_at),
+    provider: str(row.provider),
+    externalUrl: str(row.external_url),
+    attemptCount: typeof row.attempt_count === 'number' ? row.attempt_count : 0,
+    lastError: str(row.last_error),
+  }));
+}
+
 export const publicationService = {
   listByContent,
   recordManualPublish,
   cancelPublication,
   schedulePublication,
+  listScheduled,
 };

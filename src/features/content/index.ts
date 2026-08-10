@@ -70,5 +70,6 @@ export type {
   ProviderConnectionStatus,
   PublicationChannel,
   PublicationStatus,
+  ScheduledPublicationItem,
   SchedulePublicationInput,
 } from './types';

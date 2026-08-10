@@ -220,6 +220,21 @@ export type SchedulePublicationInput = {
   provider: string;
 };
 
+// Cross-content publication pipeline row (admin visibility; read-only).
+export type ScheduledPublicationItem = {
+  id: string;
+  contentId: string | null;
+  contentTitle: string | null;
+  channel: PublicationChannel;
+  status: PublicationStatus;
+  scheduledAt: string | null;
+  publishedAt: string | null;
+  provider: string | null;
+  externalUrl: string | null;
+  attemptCount: number;
+  lastError: string | null;
+};
+
 // ---- CONTENT-03/06: media assets (provider-neutral) --------------------------
 
 export type AssetKind = 'image' | 'video';

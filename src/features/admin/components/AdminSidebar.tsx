@@ -17,7 +17,8 @@ type NavItem = {
     | '/admin/consultations'
     | '/admin/ai-usage'
     | '/admin/famous'
-    | '/admin/content';
+    | '/admin/content'
+    | '/admin/publications';
   available: boolean;
 };
 
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'AI 사용량', href: '/admin/ai-usage', available: true },
   { label: '유명인', href: '/admin/famous', available: true },
   { label: '콘텐츠', href: '/admin/content', available: true },
+  { label: '발행 현황', href: '/admin/publications', available: true },
 ];
 
 function isActive(pathname: string, href?: string): boolean {
