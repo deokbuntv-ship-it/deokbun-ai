@@ -1,15 +1,15 @@
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Linking, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { Spacing } from '@/constants/theme';
 
 // Dependency-free, SAFE Markdown renderer for public article content.
-// Supports a deliberately limited subset: headings (#/##/###), paragraphs,
-// unordered (-,*) and ordered (1.) lists, blockquotes (>), horizontal rules,
-// inline **bold** / *italic* / `code` / [text](https link). It NEVER renders raw
-// HTML (no dangerouslySetInnerHTML equivalent) and only opens http(s) links, so
-// AI/operator-authored markup cannot inject markup or unsafe schemes.
+// LINE-BASED parser: headings (#/##/###), paragraphs, unordered (-,*) and ordered
+// (1.) lists, blockquotes (>), horizontal rules, inline **bold** / *italic* /
+// `code` / [text](https link). Groups consecutive list/paragraph lines even when a
+// heading is immediately followed by a list without a blank line (real AI output).
+// It NEVER renders raw HTML and only opens http(s) links (no injection).
 
 type InlineNode =
   | { t: 'text'; v: string }
@@ -74,11 +74,8 @@ function parseInline(text: string): InlineNode[] {
 }
 
 function openLink(url: string) {
-  // Only http(s) reaches here (enforced by LINK_RE). Guard again defensively.
   if (/^https?:\/\//.test(url)) {
-    Linking.openURL(url).catch(() => {
-      /* ignore */
-    });
+    Linking.openURL(url).catch(() => {});
   }
 }
 
@@ -103,11 +100,7 @@ function InlineText({ text }: { text: string }) {
         }
         if (n.t === 'code') {
           return (
-            <Text
-              key={idx}
-              variant="bodySmall"
-              style={{ fontFamily: 'monospace' }}
-            >
+            <Text key={idx} variant="bodySmall" style={{ fontFamily: 'monospace' }}>
               {n.v}
             </Text>
           );
@@ -130,110 +123,141 @@ function InlineText({ text }: { text: string }) {
   );
 }
 
-function isUnorderedList(lines: string[]): boolean {
-  return lines.length > 0 && lines.every((l) => /^\s*[-*]\s+/.test(l));
-}
-function isOrderedList(lines: string[]): boolean {
-  return lines.length > 0 && lines.every((l) => /^\s*\d+\.\s+/.test(l));
-}
-
-function Block({ raw }: { raw: string }) {
-  const block = raw.trim();
-  if (block.length === 0) return null;
-
-  // Horizontal rule
-  if (/^(-{3,}|\*{3,}|_{3,})$/.test(block)) {
-    return (
-      <View
-        style={{
-          borderBottomWidth: 1,
-          borderBottomColor: 'rgba(128,128,128,0.35)',
-          marginVertical: Spacing.two,
-        }}
-      />
-    );
-  }
-
-  // Headings
-  const heading = /^(#{1,3})\s+(.*)$/.exec(block);
-  if (heading) {
-    const level = heading[1].length;
-    const variant =
-      level === 1 ? 'headingLarge' : level === 2 ? 'headingMedium' : 'bodyLarge';
-    return (
-      <Text variant={variant} style={level === 3 ? { fontWeight: '700' } : undefined}>
-        {heading[2]}
-      </Text>
-    );
-  }
-
-  // Blockquote
-  if (block.split('\n').every((l) => /^\s*>\s?/.test(l))) {
-    const quote = block
-      .split('\n')
-      .map((l) => l.replace(/^\s*>\s?/, ''))
-      .join('\n');
-    return (
-      <View
-        style={{
-          borderLeftWidth: 3,
-          borderLeftColor: 'rgba(128,128,128,0.4)',
-          paddingLeft: Spacing.three,
-        }}
-      >
-        <Text variant="bodyMedium" colorToken="textSecondary">
-          {quote}
-        </Text>
-      </View>
-    );
-  }
-
-  const lines = block.split('\n');
-
-  // Unordered list
-  if (isUnorderedList(lines)) {
-    return (
-      <View style={{ gap: Spacing.one }}>
-        {lines.map((l, idx) => (
-          <View key={idx} style={{ flexDirection: 'row', gap: Spacing.two }}>
-            <Text variant="bodyMedium">•</Text>
-            <View style={{ flex: 1 }}>
-              <InlineText text={l.replace(/^\s*[-*]\s+/, '')} />
-            </View>
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  // Ordered list
-  if (isOrderedList(lines)) {
-    return (
-      <View style={{ gap: Spacing.one }}>
-        {lines.map((l, idx) => (
-          <View key={idx} style={{ flexDirection: 'row', gap: Spacing.two }}>
-            <Text variant="bodyMedium">{idx + 1}.</Text>
-            <View style={{ flex: 1 }}>
-              <InlineText text={l.replace(/^\s*\d+\.\s+/, '')} />
-            </View>
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  // Paragraph (single newlines kept as soft breaks)
-  return <InlineText text={block} />;
-}
-
-export function Markdown({ source }: { source: string }) {
-  const normalized = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const blocks = normalized.split(/\n{2,}/);
+function Heading({ level, text }: { level: number; text: string }) {
+  const variant =
+    level === 1 ? 'headingLarge' : level === 2 ? 'headingMedium' : 'bodyLarge';
   return (
-    <View style={{ gap: Spacing.three }}>
-      {blocks.map((b, idx) => (
-        <Block key={idx} raw={b} />
+    <Text variant={variant} style={level >= 3 ? { fontWeight: '700' } : undefined}>
+      {text}
+    </Text>
+  );
+}
+
+function ListBlock({ items, ordered }: { items: string[]; ordered: boolean }) {
+  return (
+    <View style={{ gap: Spacing.one }}>
+      {items.map((l, idx) => (
+        <View key={idx} style={{ flexDirection: 'row', gap: Spacing.two }}>
+          <Text variant="bodyMedium">{ordered ? `${idx + 1}.` : '•'}</Text>
+          <View style={{ flex: 1 }}>
+            <InlineText text={l} />
+          </View>
+        </View>
       ))}
     </View>
   );
+}
+
+function Hr() {
+  return (
+    <View
+      style={{
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(128,128,128,0.35)',
+        marginVertical: Spacing.two,
+      }}
+    />
+  );
+}
+
+export function Markdown({ source }: { source: string }) {
+  const lines = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const blocks: ReactNode[] = [];
+  let para: string[] = [];
+  let ul: string[] = [];
+  let ol: string[] = [];
+  let quote: string[] = [];
+  let key = 0;
+
+  const flushPara = () => {
+    if (para.length) {
+      blocks.push(<InlineText key={key++} text={para.join('\n')} />);
+      para = [];
+    }
+  };
+  const flushUl = () => {
+    if (ul.length) {
+      blocks.push(<ListBlock key={key++} items={ul} ordered={false} />);
+      ul = [];
+    }
+  };
+  const flushOl = () => {
+    if (ol.length) {
+      blocks.push(<ListBlock key={key++} items={ol} ordered />);
+      ol = [];
+    }
+  };
+  const flushQuote = () => {
+    if (quote.length) {
+      blocks.push(
+        <View
+          key={key++}
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: 'rgba(128,128,128,0.4)',
+            paddingLeft: Spacing.three,
+          }}
+        >
+          <Text variant="bodyMedium" colorToken="textSecondary">
+            {quote.join('\n')}
+          </Text>
+        </View>,
+      );
+      quote = [];
+    }
+  };
+  const flushAll = () => {
+    flushPara();
+    flushUl();
+    flushOl();
+    flushQuote();
+  };
+
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (t === '') {
+      flushAll();
+      continue;
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) {
+      flushAll();
+      blocks.push(<Hr key={key++} />);
+      continue;
+    }
+    const h = /^(#{1,3})\s+(.*)$/.exec(t);
+    if (h) {
+      flushAll();
+      blocks.push(<Heading key={key++} level={h[1].length} text={h[2]} />);
+      continue;
+    }
+    if (/^\s*[-*]\s+/.test(raw)) {
+      flushPara();
+      flushOl();
+      flushQuote();
+      ul.push(raw.replace(/^\s*[-*]\s+/, ''));
+      continue;
+    }
+    if (/^\s*\d+\.\s+/.test(raw)) {
+      flushPara();
+      flushUl();
+      flushQuote();
+      ol.push(raw.replace(/^\s*\d+\.\s+/, ''));
+      continue;
+    }
+    if (/^\s*>\s?/.test(raw)) {
+      flushPara();
+      flushUl();
+      flushOl();
+      quote.push(raw.replace(/^\s*>\s?/, ''));
+      continue;
+    }
+    // Paragraph line (soft-wrapped; consecutive lines join).
+    flushUl();
+    flushOl();
+    flushQuote();
+    para.push(raw);
+  }
+  flushAll();
+
+  return <View style={{ gap: Spacing.three }}>{blocks}</View>;
 }
