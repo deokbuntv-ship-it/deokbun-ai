@@ -559,6 +559,7 @@ export default function BirthInfoScreen() {
               value={birthPlace}
               onChangeText={setBirthPlace}
               placeholder="예) 대한민국 고양시"
+              helperText="도시 수준으로 입력해도 괜찮습니다."
               required
             />
 
