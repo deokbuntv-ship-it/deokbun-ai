@@ -7,7 +7,9 @@ import { Text } from '@/components/Text';
 import { AdminPageHeader, AdminStateView } from '@/features/admin';
 import {
   ContentEditor,
+  ContentGenerationPanel,
   contentService,
+  type ContentGenerationDraft,
   type ContentInput,
   type ContentItem,
 } from '@/features/content';
@@ -24,8 +26,10 @@ export default function AdminContentDetailScreen() {
   const [famousLabel, setFamousLabel] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [submitting, setSubmitting] = useState(false);
+  const [applyingDraft, setApplyingDraft] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
   const loadTokenRef = useRef(0);
 
   const load = useCallback(() => {
@@ -83,6 +87,33 @@ export default function AdminContentDetailScreen() {
       .finally(() => setSubmitting(false));
   };
 
+  // Apply an AI draft to the content item after operator review. Merges into the
+  // current item (never auto-publishes) and re-mounts the editor with fresh data.
+  const handleApplyDraft = (draft: ContentGenerationDraft) => {
+    if (applyingDraft || id === undefined || item === null) return;
+    setApplyingDraft(true);
+    setErrorMessage(null);
+    const merged: ContentInput = {
+      title: draft.title ?? item.title,
+      channel: item.channel,
+      sourceType: item.sourceType,
+      famousId: item.famousId,
+      status: item.status,
+      body: draft.body,
+      summary: draft.summary ?? item.summary,
+      tags: draft.tags.length > 0 ? draft.tags : item.tags,
+    };
+    contentService
+      .updateContent(id, merged)
+      .then(() => {
+        setSavedAt(new Date().toISOString().slice(0, 19).replace('T', ' '));
+        setEditorKey((k) => k + 1);
+        load();
+      })
+      .catch(() => setErrorMessage('초안 적용에 실패했습니다.'))
+      .finally(() => setApplyingDraft(false));
+  };
+
   const handleCancel = () => {
     if (submitting || id === undefined) return;
     setSubmitting(true);
@@ -128,12 +159,21 @@ export default function AdminContentDetailScreen() {
             </Text>
           ) : null}
           <ContentEditor
+            key={editorKey}
             initial={item}
             initialFamousLabel={famousLabel}
             submitting={submitting}
             errorMessage={errorMessage}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
+          />
+          <ContentGenerationPanel
+            contentId={item.id}
+            channel={item.channel}
+            sourceType={item.sourceType}
+            famousLabel={famousLabel}
+            onApplyDraft={handleApplyDraft}
+            applying={applyingDraft}
           />
         </>
       )}

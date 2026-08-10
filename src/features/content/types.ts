@@ -64,3 +64,70 @@ export type ContentListParams = {
   limit: number;
   offset: number;
 };
+
+// ---- CONTENT-02: AI text generation -----------------------------------------
+
+// Client-facing template metadata (labels only — the actual prompt bodies live
+// server-side in supabase/functions/content-generate/templates.ts and are never
+// shipped to the client). `id` must match a server template id exactly.
+export type ContentTemplateMeta = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+// Operator-supplied generation inputs. These are descriptive context only — the
+// model never computes myeongri results (see the server NO_CALC_RULE guardrail).
+export type ContentGenerationVariables = {
+  topic?: string;
+  audience?: string;
+  tone?: string;
+  keyPoints?: string;
+  subjectName?: string;
+  subjectContext?: string;
+  channel?: ContentChannel;
+};
+
+export type ContentGenerationRequest = {
+  contentId: string;
+  templateId: string;
+  variables: ContentGenerationVariables;
+};
+
+export type ContentGenerationDraft = {
+  title: string | null;
+  summary: string | null;
+  body: string;
+  tags: string[];
+};
+
+export type ContentGenerationProvenance = {
+  provider: string;
+  model: string;
+  promptVersion: string;
+  tokenUsage: {
+    input_tokens: number | null;
+    output_tokens: number | null;
+    total_tokens: number | null;
+  };
+};
+
+export type ContentGenerationResult = {
+  version: { id: string; version: number; createdAt: string | null };
+  draft: ContentGenerationDraft;
+  provenance: ContentGenerationProvenance;
+};
+
+// Immutable generation/edit history row (public.content_versions).
+export type ContentVersion = {
+  id: string;
+  version: number;
+  title: string | null;
+  body: string | null;
+  summary: string | null;
+  source: 'manual' | 'ai';
+  provider: string | null;
+  model: string | null;
+  promptVersion: string | null;
+  createdAt: string | null;
+};

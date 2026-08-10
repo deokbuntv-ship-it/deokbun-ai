@@ -5,6 +5,7 @@ import type {
   ContentItem,
   ContentListItem,
   ContentListParams,
+  ContentVersion,
 } from '../types';
 
 // Admin-managed Content CRUD via admin-gated RLS on public.content_items (all
@@ -12,6 +13,9 @@ import type {
 // Normal client, RLS enforced, no service_role. Fail-closed until applied.
 
 const TABLE = 'content_items';
+const VERSIONS_TABLE = 'content_versions';
+const VERSION_COLUMNS =
+  'id, version, title, body, summary, source, provider, model, prompt_version, created_at';
 
 const LIST_COLUMNS =
   'id, title, channel, status, source_type, famous_id, updated_at';
@@ -140,10 +144,44 @@ async function cancelContent(id: string): Promise<void> {
   }
 }
 
+function toVersion(row: Row): ContentVersion {
+  const source = str(row.source) === 'ai' ? 'ai' : 'manual';
+  return {
+    id: String(row.id ?? ''),
+    version: typeof row.version === 'number' ? row.version : 0,
+    title: str(row.title),
+    body: str(row.body),
+    summary: str(row.summary),
+    source,
+    provider: str(row.provider),
+    model: str(row.model),
+    promptVersion: str(row.prompt_version),
+    createdAt: str(row.created_at),
+  };
+}
+
+async function listVersions(
+  contentId: string,
+  limit = 20,
+): Promise<ContentVersion[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(VERSIONS_TABLE)
+    .select(VERSION_COLUMNS)
+    .eq('content_id', contentId)
+    .order('version', { ascending: false })
+    .limit(limit);
+  if (error) {
+    throw error;
+  }
+  return ((data as Row[] | null) ?? []).map(toVersion);
+}
+
 export const contentService = {
   listContent,
   getContent,
   createContent,
   updateContent,
   cancelContent,
+  listVersions,
 };

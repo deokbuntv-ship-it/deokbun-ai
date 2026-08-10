@@ -11,3 +11,10 @@ project_id = "olvkpaldrwvtexxpoaag"
 [functions.chat]
 enabled = true
 verify_jwt = true
+
+# CONTENT-02: admin-gated AI text generation. Platform JWT verification rejects
+# unauthenticated callers; the handler additionally requires admin_users
+# membership (server-side) before generating. Reuses the OPENAI_API_KEY secret.
+[functions.content-generate]
+enabled = true
+verify_jwt = true

@@ -18,12 +18,18 @@ const PAGE_SIZE = 50;
 
 const COLUMNS: AdminColumn[] = [
   { key: 'createdAt', header: '시각', flex: 3 },
+  { key: 'type', header: '유형', flex: 2 },
   { key: 'model', header: '모델', flex: 3 },
   { key: 'status', header: '상태', flex: 2 },
   { key: 'input', header: '입력', flex: 1, align: 'right' },
   { key: 'output', header: '출력', flex: 1, align: 'right' },
   { key: 'latency', header: '지연(ms)', flex: 2, align: 'right' },
 ];
+
+const REQUEST_TYPE_LABEL: Record<string, string> = {
+  chat: '상담',
+  content_generate: '콘텐츠 생성',
+};
 
 function formatDateTime(iso: string | null): string {
   return iso ? iso.slice(0, 16).replace('T', ' ') : '–';
@@ -92,6 +98,15 @@ export default function AdminAiUsageScreen() {
                 return (
                   <Text variant="bodySmall" colorToken="textSecondary">
                     {formatDateTime(item.createdAt)}
+                  </Text>
+                );
+              }
+              if (columnKey === 'type') {
+                return (
+                  <Text variant="bodySmall" colorToken="textSecondary">
+                    {item.requestType
+                      ? (REQUEST_TYPE_LABEL[item.requestType] ?? item.requestType)
+                      : '–'}
                   </Text>
                 );
               }
