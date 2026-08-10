@@ -40,35 +40,58 @@
 | CONTENT-02 AI 텍스트 생성 (`content-generate` edge) | 🟡 코드 완료 · **edge 배포 대기** |
 | PUBLIC-01 공개 웹(`/content`,`/famous`,SEO,카테고리) | 🟡 코드 완료 · **PUBLIC_SETUP.sql 대기** |
 | CONTENT-04/07 발행추적 + 네이버 수동발행 | 🟡 코드 완료 · **PUBLICATION_SETUP.sql 대기** |
+| P0-3 안전 Markdown 렌더러(공개 본문/약력) | ✅ 코드 완료 (의존성 0) |
+| P0-7 AI 워크로드 아키텍처(STANDARD/PREMIUM) | 🟡 코드 완료 · **content-generate 재배포 필요** |
+| P0-6 유명인 AI 프로필/SEO 자동화 | 🟡 코드 완료 · **famous-suggest 배포 + (선택)FAMOUS_AI_SETUP.sql** |
+| P0-8 유명인→콘텐츠 워크플로(소스 프리셀렉트) | ✅ 코드 완료 |
+| CONTENT-03/06 미디어 자산 + 대표이미지 | 🟡 코드 완료 · **CONTENT_ASSETS_SETUP.sql 대기** (수동첨부 동작, AI생성=PROVIDER_NOT_CONFIGURED) |
+| CONTENT-05 인스타 채널 seam + CONTENT-07 예약 | 🟡 코드 완료 · **CONTENT_05_07_SETUP.sql 대기** (실발행=OAUTH_REQUIRED, 실행=DEPLOY_REQUIRED) |
+| SEO: robots.txt + 페이지 메타 | ✅ 코드 완료 (사이트맵/동적 슬러그 프리렌더는 향후) |
+| 보안 감사(신규 표면) | ✅ 통과 (service_role/시크릿/HTML/토큰/공개누출 0) |
 
-### DB 스크립트 (docs/)
-- 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`.
-- **미적용(USER ACTION)**: `docs/PUBLIC_SETUP.sql`, `docs/admin/PUBLICATION_SETUP.sql`.
+### DB 스크립트 (docs/) — 적용 순서 아래 참조
+- 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.
+- **미적용(USER ACTION)**: `docs/admin/PUBLICATION_SETUP.sql`, `docs/admin/CONTENT_ASSETS_SETUP.sql`, `docs/admin/CONTENT_05_07_SETUP.sql`, `docs/admin/FAMOUS_AI_SETUP.sql`(선택).
+  - ⚠️ `CONTENT_ASSETS_SETUP.sql`은 이미 적용된 `public_list_content`/`public_get_content`를 drop+recreate 하여 `hero_image_url`을 추가함(재실행 안전).
 
 ### Edge Functions (supabase/functions/)
 - `chat` — 배포됨.
-- `content-generate` — 코드 완료, **배포 필요**(`OPENAI_API_KEY` 재사용). `docs/admin/CONTENT_02_SETUP.md` 참조.
+- `content-generate` — 배포됨(초기). **P0-7 워크로드 변경으로 재배포 필요**. `docs/admin/CONTENT_02_SETUP.md` 참조.
+- `famous-suggest` — 코드 완료, **배포 필요**(`OPENAI_API_KEY` 재사용, PREMIUM_CONTENT).
 
 ### 라우트
 - 관리자: `/admin` · `/admin/users` · `/admin/consultations` · `/admin/ai-usage` · `/admin/famous` · `/admin/content` (fail-closed, `admin/_layout` 가드).
 - 공개: `/content` · `/content/[slug]` · `/content/category/[slug]` · `/famous` · `/famous/[slug]` (published-only, 무인증, `expo-router/head` SEO, web.output=static).
 
 ### 통합 USER ACTION (순서대로)
-1. **Supabase SQL Editor**: `docs/PUBLIC_SETUP.sql` → `docs/admin/PUBLICATION_SETUP.sql` 실행.
-2. **CMD**: `npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag`.
-3. (선택) 콘텐츠 발행 스모크: `/admin/content`에서 slug+카테고리 입력 후 상태=발행 → `/content/{slug}` 확인.
+1. **Supabase SQL Editor** (순서대로 실행):
+   1) `docs/admin/PUBLICATION_SETUP.sql`
+   2) `docs/admin/CONTENT_ASSETS_SETUP.sql`
+   3) `docs/admin/CONTENT_05_07_SETUP.sql`
+   4) `docs/admin/FAMOUS_AI_SETUP.sql` (선택 — 제안 이력 저장)
+2. **CMD** (Edge 배포):
+   - `npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag` (재배포)
+   - `npx supabase functions deploy famous-suggest --project-ref olvkpaldrwvtexxpoaag`
+3. (선택) **CMD** 프리미엄 모델: `npx supabase secrets set PREMIUM_CONTENT_LLM_MODEL=gpt-5 --project-ref olvkpaldrwvtexxpoaag`
+4. 스모크: `/admin/famous`에서 AI 제안 생성/적용 → 저장 → `/admin/content`에서 대표이미지 첨부·slug·발행 → `/content/{slug}` 대표이미지/본문 확인.
+
+### OWNER DECISION QUEUE (비용/락인 — 소유자 결정)
+- 이미지 생성 provider (CONTENT-03) · 영상 생성 provider (CONTENT-06)
+- 인스타그램 실발행(Meta 앱/전문계정/App Review 2~4주) 진행 여부 (CONTENT-05)
+- 예약 자동실행 인프라(pg_cron→Edge) 및 자동 외부발행 승인 (CONTENT-07)
+- 동적 슬러그 사이트맵/프리렌더 SEO 강화 범위
 
 ### 보안 원칙 (이 트랙 전반 준수)
 - 모든 관리자 DB 접근은 `is_admin()` 게이트(RLS/SECURITY DEFINER, `search_path=public,pg_temp`, revoke/grant).
 - 공개 읽기는 curated SECURITY DEFINER RPC(published-only, 초안/관리메타/provenance/원시 birth 미노출).
 - `service_role`은 edge 전용(클라이언트 0). 시크릿 하드코딩 0. fake/mock 0.
 
-### 남은 작업 (다음 연속 트랙 — provider/인프라 결정 필요)
-- **CONTENT-03 이미지 / CONTENT-06 영상**: provider-neutral seam 구축 예정 — **provider 선택은 USER DECISION**(비용/락인, §38).
-- **CONTENT-05 인스타그램**: Meta Graph API(전문계정+FB Page+App Review 2~4주, `instagram_content_publish`, 2단계 publish). `content_publications`에 seam 존재 — **Meta App/OAuth/App Review = USER ACTION**.
-- **CONTENT-04 네이버**: 공식 개인블로그 글쓰기 API 부재 확인 → 수동 발행으로 확정(자동화/스크래핑 금지).
-- **CONTENT-07 예약발행 실행부**: `content_publications`(scheduled_at/idempotency) 스키마 존재 → pg_cron→Edge 실행부 + 배포(USER ACTION) 예정.
-- **감사(§27~33)/릴리스 점검(§34)**: SQL 적용·edge 배포 후 스모크/RLS 네거티브 테스트 수행 예정.
+### 남은 작업 (provider/인프라/승인 대기)
+- **AI 이미지/영상 실제 생성**: provider 선택(OWNER DECISION) 후 생성 Edge + 어댑터 연동. 현재 seam+수동첨부만.
+- **인스타그램 실제 API 발행**: Meta 앱/전문계정/App Review 완료 후 OAuth 토큰 서버 저장 + 2단계 publish Edge. 현재 OAUTH_REQUIRED + 수동기록.
+- **예약 자동실행**: pg_cron→Edge 실행부(DEPLOY_REQUIRED) + 자동 외부발행 소유자 승인. 현재 예약 저장만.
+- **SEO 강화**: 동적 슬러그 사이트맵/프리렌더(build-time enumeration). 현재 static export + <Head> 메타 + robots.txt.
+- **런타임 스모크/RLS 네거티브 테스트**: 위 SQL 적용·edge 배포 후 수행.
 
 ------------------------------------------------------------
 

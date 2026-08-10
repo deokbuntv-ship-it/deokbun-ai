@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# Public content/famous pages are crawlable (web.output="static" + per-page
+# <Head> metadata). Admin is disallowed. A generated sitemap is a future step
+# (dynamic content/famous slugs must be enumerated at export time).
