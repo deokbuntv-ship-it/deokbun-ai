@@ -126,6 +126,18 @@ export default function AdminFamousDetailScreen() {
         <>
           <AdminPageHeader title={profile.name} subtitle={`slug: ${profile.slug}`} />
 
+          <Stack direction="row" gap="sm" style={{ flexWrap: 'wrap' }}>
+            <Button
+              label="이 인물로 콘텐츠 만들기"
+              onPress={() =>
+                router.push({
+                  pathname: '/admin/content/new',
+                  params: { famousId: profile.id, famousName: profile.name },
+                })
+              }
+            />
+          </Stack>
+
           <AdminDetailSection
             title="계산 스냅샷 (읽기 전용)"
             rows={[

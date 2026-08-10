@@ -107,6 +107,8 @@ function FamousPicker({
 export function ContentEditor({
   initial,
   initialFamousLabel,
+  presetSourceType,
+  presetFamousId,
   submitting,
   errorMessage,
   onSubmit,
@@ -114,6 +116,10 @@ export function ContentEditor({
 }: {
   initial: ContentItem | null;
   initialFamousLabel?: string | null;
+  // Presets apply only for a NEW item (initial === null) — e.g. "create content
+  // from this Famous profile" preselects the famous source.
+  presetSourceType?: ContentSourceType;
+  presetFamousId?: string | null;
   submitting: boolean;
   errorMessage: string | null;
   onSubmit: (input: ContentInput) => void;
@@ -124,10 +130,10 @@ export function ContentEditor({
     initial?.channel ?? 'generic',
   );
   const [sourceType, setSourceType] = useState<ContentSourceType>(
-    initial?.sourceType ?? 'operator',
+    initial?.sourceType ?? presetSourceType ?? 'operator',
   );
   const [famousId, setFamousId] = useState<string | null>(
-    initial?.famousId ?? null,
+    initial?.famousId ?? presetFamousId ?? null,
   );
   const [famousLabel, setFamousLabel] = useState<string | null>(
     initialFamousLabel ?? null,
