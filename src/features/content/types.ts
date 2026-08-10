@@ -136,3 +136,45 @@ export type ContentVersion = {
   promptVersion: string | null;
   createdAt: string | null;
 };
+
+// ---- CONTENT-04/07: publication tracking (public.content_publications) --------
+
+export type PublicationChannel =
+  | 'web'
+  | 'naver_blog'
+  | 'instagram'
+  | 'youtube'
+  | 'video';
+
+export type PublicationStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'queued'
+  | 'processing'
+  | 'published'
+  | 'failed'
+  | 'cancelled';
+
+export type ContentPublication = {
+  id: string;
+  contentId: string;
+  channel: PublicationChannel;
+  status: PublicationStatus;
+  scheduledAt: string | null;
+  publishedAt: string | null;
+  externalId: string | null;
+  externalUrl: string | null;
+  attemptCount: number;
+  lastError: string | null;
+  provider: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+// Operator-recorded manual publication (e.g. Naver Blog, published by hand).
+export type ManualPublicationInput = {
+  contentId: string;
+  channel: PublicationChannel;
+  externalUrl: string | null;
+  provider: string;
+};

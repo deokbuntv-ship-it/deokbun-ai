@@ -8,6 +8,7 @@ import { AdminPageHeader, AdminStateView } from '@/features/admin';
 import {
   ContentEditor,
   ContentGenerationPanel,
+  PublicationPanel,
   contentService,
   type ContentGenerationDraft,
   type ContentInput,
@@ -177,6 +178,7 @@ export default function AdminContentDetailScreen() {
             onApplyDraft={handleApplyDraft}
             applying={applyingDraft}
           />
+          <PublicationPanel item={item} />
         </>
       )}
     </Stack>

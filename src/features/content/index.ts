@@ -1,7 +1,9 @@
 export { contentService } from './services/contentService';
 export { contentGenerationService } from './services/contentGenerationService';
+export { publicationService } from './services/publicationService';
 export { ContentEditor } from './components/ContentEditor';
 export { ContentGenerationPanel } from './components/ContentGenerationPanel';
+export { PublicationPanel } from './components/PublicationPanel';
 
 export type {
   ContentChannel,
@@ -14,8 +16,12 @@ export type {
   ContentItem,
   ContentListItem,
   ContentListParams,
+  ContentPublication,
   ContentSourceType,
   ContentStatus,
   ContentTemplateMeta,
   ContentVersion,
+  ManualPublicationInput,
+  PublicationChannel,
+  PublicationStatus,
 } from './types';
