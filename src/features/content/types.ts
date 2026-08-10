@@ -188,6 +188,29 @@ export type ManualPublicationInput = {
   provider: string;
 };
 
+// ---- CONTENT-05: channel connection status ----------------------------------
+// STATUS ONLY — never a token (tokens are server-side only).
+export type ProviderConnectionStatus =
+  | 'not_connected'
+  | 'connected'
+  | 'expired'
+  | 'error';
+
+export type ProviderConnection = {
+  channel: PublicationChannel;
+  status: ProviderConnectionStatus;
+  externalAccountName: string | null;
+  connectedAt: string | null;
+};
+
+// ---- CONTENT-07: scheduled publication --------------------------------------
+export type SchedulePublicationInput = {
+  contentId: string;
+  channel: PublicationChannel;
+  scheduledAt: string; // ISO timestamp
+  provider: string;
+};
+
 // ---- CONTENT-03/06: media assets (provider-neutral) --------------------------
 
 export type AssetKind = 'image' | 'video';

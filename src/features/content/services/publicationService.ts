@@ -5,6 +5,7 @@ import type {
   ManualPublicationInput,
   PublicationChannel,
   PublicationStatus,
+  SchedulePublicationInput,
 } from '../types';
 
 // Publication tracking via admin-gated RLS on public.content_publications (all
@@ -83,8 +84,30 @@ async function cancelPublication(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Persist a scheduled publication (status=scheduled). Execution (pg_cron → Edge)
+// is a separate DEPLOY_REQUIRED action; scheduling here does NOT auto-publish.
+async function schedulePublication(
+  input: SchedulePublicationInput,
+): Promise<ContentPublication> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .insert({
+      content_id: input.contentId,
+      channel: input.channel,
+      status: 'scheduled',
+      scheduled_at: input.scheduledAt,
+      provider: input.provider,
+    })
+    .select(COLUMNS)
+    .single();
+  if (error) throw error;
+  return toPublication(data as Row);
+}
+
 export const publicationService = {
   listByContent,
   recordManualPublish,
   cancelPublication,
+  schedulePublication,
 };
