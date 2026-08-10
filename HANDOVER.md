@@ -57,6 +57,9 @@
 | R4-A 이미지 alt + 공개검색 + JSON-LD | 🟡 코드 완료 · **PUBLIC_UPDATE_search_alt.sql 대기** (hero_alt, /content?q=, Article/Person 구조화데이터-검증필드만) |
 | R4-B Admin 채널/소스 + 공개여부/계산상태 필터 | ✅ 코드 완료 |
 | VIDEO_STANDARD 영상 생성(Google Veo, async) | 🟡 코드 완료 · **VIDEO_SETUP.sql + video-generate/status 배포 + GEMINI_API_KEY 대기** (veo-3.1-fast, 720p/8s/audio off, 서버 결정, Storage 저장, bounded polling, VIDEO_PREMIUM=NOT_CONFIGURED) |
+| R5-B 채널 발행 적격성(Instagram/Naver, fail-closed) | ✅ 코드 완료 (READY는 실제 전제조건 충족 시에만) |
+| R5-C 발행 현황 뷰(/admin/publications, 읽기전용) | 🟡 코드 완료 · **SCHEDULER_SETUP.sql 대기** (자동 실행 없음) |
+| 릴리스 점검: Expo web export | ✅ PASS (전 라우트 static export, EXIT 0) |
 
 ### DB 스크립트 (docs/) — 적용 순서 아래 참조
 - 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.

@@ -23,6 +23,8 @@ Already applied per your report: `ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`,
    backward compatible — the search-less list already works without it).
 4. `docs/admin/VIDEO_SETUP.sql` — adds `content_items.video_url` (applied video)
    + exposes it via `public_get_content` (public video seam).
+5. `docs/admin/SCHEDULER_SETUP.sql` — `admin_list_scheduled_publications` RPC
+   (read-only pipeline view for `/admin/publications`; no execution).
 
 ### B. Edge deploy (CMD / terminal)
 ```bash
