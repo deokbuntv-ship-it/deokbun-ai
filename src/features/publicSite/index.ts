@@ -9,7 +9,7 @@ export {
 } from './publicUrl';
 export { SeoHead } from './components/SeoHead';
 export { PublicScreen } from './components/PublicLayout';
-export { Markdown } from './components/Markdown';
+export { Markdown } from '@/components/Markdown';
 export {
   CategoryChips,
   PublicContentCard,

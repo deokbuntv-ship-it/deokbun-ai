@@ -1,39 +1,44 @@
 import { StyleSheet, View } from 'react-native';
 
+import { Markdown } from '@/components/Markdown';
 import { Text } from '@/components/Text';
 import type { ChatMessage } from '@/features/chat/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 type ChatBubbleProps = {
   message: ChatMessage;
 };
 
+// AI answers are long-form insight, so they render as a document-width block with
+// the safe Markdown renderer (headings/lists/emphasis, presentation-only — never
+// alters generated meaning, no raw HTML). User messages stay compact right-aligned
+// bubbles (§17/§35).
 export function ChatBubble({ message }: ChatBubbleProps) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   const isAssistant = message.role === 'assistant';
 
-  return (
-    <View
-      style={[
-        styles.messageRow,
-        { justifyContent: isAssistant ? 'flex-start' : 'flex-end' },
-      ]}
-    >
-      <View
-        style={[
-          styles.bubble,
-          {
-            backgroundColor: isAssistant ? theme.backgroundElevated : theme.primary,
-          },
-        ]}
-      >
-        <Text
-          variant="bodyMedium"
-          colorToken={isAssistant ? 'textPrimary' : 'primaryText'}
+  if (isAssistant) {
+    return (
+      <View style={styles.assistantRow}>
+        <View
+          style={[
+            styles.assistantBlock,
+            { backgroundColor: theme.backgroundElevated },
+          ]}
         >
+          <Markdown source={message.text} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.userRow}>
+      <View style={[styles.userBubble, { backgroundColor: theme.primary }]}>
+        <Text variant="bodyMedium" colorToken="primaryText">
           {message.text}
         </Text>
       </View>
@@ -42,13 +47,24 @@ export function ChatBubble({ message }: ChatBubbleProps) {
 }
 
 const styles = StyleSheet.create({
-  messageRow: {
+  assistantRow: {
     flexDirection: 'row',
+    justifyContent: 'flex-start',
   },
-  bubble: {
+  assistantBlock: {
+    width: '100%',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+  },
+  userRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  userBubble: {
     maxWidth: '80%',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: spacing.md,
+    borderRadius: radius.lg,
   },
 });
