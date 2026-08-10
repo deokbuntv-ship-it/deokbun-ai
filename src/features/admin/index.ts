@@ -14,6 +14,7 @@ export { AdminDataTable } from './components/AdminDataTable';
 export { AdminPagination } from './components/AdminPagination';
 export { AdminSearchInput } from './components/AdminSearchInput';
 export { AdminDetailSection } from './components/AdminDetailSection';
+export { TrendChart } from './components/TrendChart';
 export { confirmDestructive } from './confirm';
 
 export type { AdminColumn } from './components/AdminDataTable';
@@ -23,6 +24,7 @@ export type { AdminSelectOption } from './components/AdminSelect';
 export type {
   AdminAiUsageItem,
   AdminAiUsageParams,
+  AdminDailyActivityPoint,
   AdminAuthorizationStatus,
   AdminConsultationDetail,
   AdminConsultationListItem,

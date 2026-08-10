@@ -7,11 +7,14 @@ import { Text } from '@/components/Text';
 import {
   AdminPageHeader,
   AdminStateView,
+  TrendChart,
   adminOpsService,
+  type AdminDailyActivityPoint,
   type AdminDashboardOverview,
 } from '@/features/admin';
 
 type Status = 'loading' | 'ready' | 'error';
+const TREND_DAYS = 30;
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -31,6 +34,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function AdminDashboardScreen() {
   const [overview, setOverview] = useState<AdminDashboardOverview | null>(null);
   const [status, setStatus] = useState<Status>('loading');
+  const [trends, setTrends] = useState<AdminDailyActivityPoint[]>([]);
+  const [trendsOk, setTrendsOk] = useState<boolean>(true);
   const loadTokenRef = useRef(0);
 
   const load = useCallback(() => {
@@ -57,7 +62,18 @@ export default function AdminDashboardScreen() {
 
   useEffect(() => {
     load();
+    // Trends load independently — the RPC (DASHBOARD_TRENDS_SETUP.sql) may not be
+    // applied yet; failure shows an unavailable note, never a fake chart.
+    adminOpsService
+      .getDailyActivity(TREND_DAYS)
+      .then((rows) => {
+        setTrends(rows);
+        setTrendsOk(true);
+      })
+      .catch(() => setTrendsOk(false));
   }, [load]);
+
+  const trendDays = trends.map((t) => t.day);
 
   return (
     <Stack gap="xl">
@@ -116,6 +132,42 @@ export default function AdminDashboardScreen() {
               AI 지표는 chat Edge Function이 기록한 사용량 로그 기준입니다(엔진
               연동/재배포 후 누적).
             </Text>
+          </Stack>
+
+          <Stack gap="sm">
+            <Text variant="headingMedium">최근 {TREND_DAYS}일 추이</Text>
+            {!trendsOk ? (
+              <Text variant="caption" colorToken="textSecondary">
+                추이 데이터를 불러올 수 없습니다. DASHBOARD_TRENDS_SETUP.sql 적용이
+                필요합니다.
+              </Text>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                <View style={{ flex: 1, minWidth: 260 }}>
+                  <TrendChart
+                    title="신규 사용자"
+                    unit="명"
+                    days={trendDays}
+                    values={trends.map((t) => t.newUsers)}
+                  />
+                </View>
+                <View style={{ flex: 1, minWidth: 260 }}>
+                  <TrendChart
+                    title="상담"
+                    days={trendDays}
+                    values={trends.map((t) => t.consultations)}
+                  />
+                </View>
+                <View style={{ flex: 1, minWidth: 260 }}>
+                  <TrendChart
+                    title="AI 요청"
+                    unit="회"
+                    days={trendDays}
+                    values={trends.map((t) => t.aiRequests)}
+                  />
+                </View>
+              </View>
+            )}
           </Stack>
         </Stack>
       )}

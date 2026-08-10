@@ -126,6 +126,14 @@ export type AdminAiUsageParams = {
   requestType?: string | null;
 };
 
+// Daily activity trend point (real aggregation; docs/admin/DASHBOARD_TRENDS_SETUP.sql).
+export type AdminDailyActivityPoint = {
+  day: string;
+  newUsers: number;
+  consultations: number;
+  aiRequests: number;
+};
+
 export type AdminAiUsageItem = {
   id: string;
   createdAt: string | null;

@@ -91,7 +91,28 @@ async function listAiUsage(
   return ((data as Record<string, unknown>[] | null) ?? []).map(toUsageItem);
 }
 
+async function getDailyActivity(
+  days = 30,
+): Promise<import('../types').AdminDailyActivityPoint[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_daily_activity', {
+    p_days: days,
+  });
+  if (error) {
+    throw error;
+  }
+  const toNum = (v: unknown) =>
+    typeof v === 'number' ? v : Number(v) || 0;
+  return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
+    day: String(r.day ?? ''),
+    newUsers: toNum(r.new_users),
+    consultations: toNum(r.consultations),
+    aiRequests: toNum(r.ai_requests),
+  }));
+}
+
 export const adminOpsService = {
   getDashboardOverview,
   listAiUsage,
+  getDailyActivity,
 };
