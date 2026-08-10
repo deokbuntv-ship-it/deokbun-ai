@@ -33,6 +33,7 @@ export type PublicContentDetail = {
   tags: string[];
   heroImageUrl: string | null;
   heroAlt: string | null;
+  videoUrl: string | null;
   publishedAt: string | null;
   updatedAt: string | null;
   seoTitle: string | null;

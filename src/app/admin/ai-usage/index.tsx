@@ -19,6 +19,7 @@ const TYPE_FILTER_OPTIONS = [
   { value: 'content_generate', label: '콘텐츠' },
   { value: 'famous_suggest', label: 'Famous' },
   { value: 'image_generate', label: '이미지' },
+  { value: 'video_generate', label: '영상' },
 ];
 
 type Status = 'loading' | 'ready' | 'error';
@@ -40,6 +41,7 @@ const REQUEST_TYPE_LABEL: Record<string, string> = {
   content_generate: '콘텐츠 생성',
   famous_suggest: 'Famous 제안',
   image_generate: '이미지 생성',
+  video_generate: '영상 생성',
 };
 
 function formatDateTime(iso: string | null): string {

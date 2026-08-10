@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable } from 'react-native';
+import { Linking, Pressable } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
@@ -142,6 +142,16 @@ export default function PublicContentDetailScreen() {
                 {item.summary}
               </Text>
             </Card>
+          ) : null}
+
+          {item.videoUrl ? (
+            <Pressable onPress={() => Linking.openURL(item.videoUrl as string)}>
+              <Card elevation="sm">
+                <Text variant="bodyMedium" colorToken="primary">
+                  ▶ 영상 보기
+                </Text>
+              </Card>
+            </Pressable>
           ) : null}
 
           {item.body ? <Markdown source={item.body} /> : null}

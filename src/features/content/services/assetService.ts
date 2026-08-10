@@ -93,9 +93,23 @@ async function setContentHero(
   if (error) throw error;
 }
 
+// Set (or clear) a content item's applied video.
+async function setContentVideo(
+  contentId: string,
+  url: string | null,
+): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from('content_items')
+    .update({ video_url: url })
+    .eq('id', contentId);
+  if (error) throw error;
+}
+
 export const assetService = {
   listByContent,
   attachManual,
   cancelAsset,
   setContentHero,
+  setContentVideo,
 };

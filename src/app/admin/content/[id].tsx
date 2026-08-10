@@ -109,6 +109,7 @@ export default function AdminContentDetailScreen() {
       category: item.category,
       heroImageUrl: item.heroImageUrl,
       heroAlt: item.heroAlt,
+      videoUrl: item.videoUrl,
       body: draft.body,
       summary: draft.summary ?? item.summary,
       tags: draft.tags.length > 0 ? draft.tags : item.tags,

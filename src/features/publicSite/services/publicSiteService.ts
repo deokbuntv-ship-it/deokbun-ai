@@ -88,6 +88,7 @@ async function getContent(slug: string): Promise<PublicContentDetail | null> {
     tags: toStringArray(row.tags),
     heroImageUrl: str(row.hero_image_url),
     heroAlt: str(row.hero_alt),
+    videoUrl: str(row.video_url),
     publishedAt: str(row.published_at),
     updatedAt: str(row.updated_at),
     seoTitle: str(row.seo_title),

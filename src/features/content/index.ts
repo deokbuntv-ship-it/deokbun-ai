@@ -7,7 +7,15 @@ export {
   imageGenerationService,
   suggestImageSubject,
 } from './services/imageGenerationService';
-export { generationStatus, imageWorkloadStatus } from './assetProviders';
+export {
+  videoGenerationService,
+  suggestVideoSubject,
+} from './services/videoGenerationService';
+export {
+  generationStatus,
+  imageWorkloadStatus,
+  videoWorkloadStatus,
+} from './assetProviders';
 export {
   buildInstagramCaption,
   validateInstagram,
@@ -44,6 +52,12 @@ export type {
   ImageGenerationResult,
   ImageWorkload,
   ImageWorkloadStatus,
+  VideoAspectRatio,
+  VideoGenerationRequest,
+  VideoGenerationStart,
+  VideoStatusResult,
+  VideoWorkload,
+  VideoWorkloadStatus,
   ManualAssetInput,
   ManualPublicationInput,
   ProviderConnection,

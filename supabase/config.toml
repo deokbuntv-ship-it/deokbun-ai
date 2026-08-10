@@ -30,3 +30,14 @@ verify_jwt = true
 [functions.media-generate]
 enabled = true
 verify_jwt = true
+
+# VIDEO_STANDARD: admin-gated async video generation (Google Veo, resolved
+# server-side). video-generate starts the long-running op; video-status polls +
+# persists to Storage. Needs GEMINI_API_KEY (server secret; USER ACTION).
+[functions.video-generate]
+enabled = true
+verify_jwt = true
+
+[functions.video-status]
+enabled = true
+verify_jwt = true

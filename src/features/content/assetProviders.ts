@@ -3,6 +3,8 @@ import type {
   AssetKind,
   ImageWorkload,
   ImageWorkloadStatus,
+  VideoWorkload,
+  VideoWorkloadStatus,
 } from './types';
 
 // Provider-neutral generation status. The concrete provider is resolved
@@ -21,10 +23,22 @@ export function imageWorkloadStatus(
   return IMAGE_WORKLOAD_STATUS[workload];
 }
 
-// Video (and any non-image kind) generation — no provider configured yet.
+// VIDEO_STANDARD is configured (Google Veo, server-resolved). VIDEO_PREMIUM is a
+// future seam. The edge still fail-closes if GEMINI_API_KEY is unset (USER ACTION).
+const VIDEO_WORKLOAD_STATUS: Record<VideoWorkload, VideoWorkloadStatus> = {
+  VIDEO_STANDARD: 'AVAILABLE',
+  VIDEO_PREMIUM: 'NOT_CONFIGURED',
+};
+
+export function videoWorkloadStatus(
+  workload: VideoWorkload,
+): VideoWorkloadStatus {
+  return VIDEO_WORKLOAD_STATUS[workload];
+}
+
 const KIND_GENERATION_STATUS: Record<AssetKind, AssetGenerationStatus> = {
   image: 'AVAILABLE',
-  video: 'PROVIDER_NOT_CONFIGURED',
+  video: 'AVAILABLE',
 };
 
 export function generationStatus(kind: AssetKind): AssetGenerationStatus {

@@ -187,6 +187,8 @@ export function ContentEditor({
       category: category || null,
       heroImageUrl: heroImageUrl.trim() || null,
       heroAlt: heroImageUrl.trim() ? heroAlt.trim() || null : null,
+      // video is applied via the media panel (setContentVideo); preserve it here.
+      videoUrl: initial?.videoUrl ?? null,
       body: body.trim() || null,
       summary: summary.trim() || null,
       tags: tagsText

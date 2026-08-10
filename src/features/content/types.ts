@@ -41,6 +41,7 @@ export type ContentItem = {
   category: string | null;
   heroImageUrl: string | null;
   heroAlt: string | null;
+  videoUrl: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
@@ -62,9 +63,11 @@ export type ContentInput = {
   category: string | null;
   heroImageUrl: string | null;
   heroAlt: string | null;
+  videoUrl: string | null;
   body: string | null;
   summary: string | null;
   tags: string[];
+  // videoUrl is set via assetService.setContentVideo (not the editor form).
 };
 
 export type ContentListParams = {
@@ -290,4 +293,38 @@ export type ImageGenerationResult = {
     quality: string;
     promptVersion: string;
   };
+};
+
+// ---- VIDEO_STANDARD: async AI video generation (provider server-resolved) -----
+export type VideoWorkload = 'VIDEO_STANDARD' | 'VIDEO_PREMIUM';
+export type VideoAspectRatio = '9:16' | '16:9';
+export type VideoWorkloadStatus = 'AVAILABLE' | 'NOT_CONFIGURED';
+
+export type VideoGenerationRequest = {
+  contentId?: string | null;
+  famousId?: string | null;
+  workload: VideoWorkload;
+  aspectRatio: VideoAspectRatio;
+  subject?: string | null;
+  category?: string | null;
+  targetUse?: string | null;
+};
+
+export type VideoGenerationStart = {
+  asset: { id: string; status: AssetStatus };
+  provenance: {
+    provider: string;
+    model: string;
+    workload: string;
+    resolution: string;
+    durationSeconds: number;
+    generateAudio: boolean;
+    aspectRatio: string;
+    promptVersion: string;
+  };
+};
+
+export type VideoStatusResult = {
+  status: AssetStatus;
+  externalUrl: string | null;
 };

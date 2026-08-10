@@ -1,25 +1,38 @@
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Linking } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Input } from '@/components/Input';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { AdminSelect } from '@/features/admin';
+import { AdminSelect, confirmDestructive } from '@/features/admin';
 
-import { generationStatus, imageWorkloadStatus } from '../assetProviders';
+import { imageWorkloadStatus, videoWorkloadStatus } from '../assetProviders';
 import { assetService } from '../services/assetService';
 import {
   imageGenerationService,
   suggestImageSubject,
 } from '../services/imageGenerationService';
+import {
+  videoGenerationService,
+  suggestVideoSubject,
+} from '../services/videoGenerationService';
 import type {
   AssetKind,
   ContentAsset,
   ContentItem,
   ImageAspectRatio,
+  VideoAspectRatio,
 } from '../types';
+
+const VIDEO_ASPECT_OPTIONS = [
+  { value: '9:16' as VideoAspectRatio, label: '9:16 (쇼츠/릴스)' },
+  { value: '16:9' as VideoAspectRatio, label: '16:9 (가로)' },
+];
+const VIDEO_POLL_MAX = 40; // bounded: ~40 × 9s ≈ 6분
+const VIDEO_POLL_INTERVAL_MS = 9000;
 
 const KIND_OPTIONS = [
   { value: 'image' as AssetKind, label: '이미지' },
@@ -60,6 +73,24 @@ export function AssetPanel({
   const [genError, setGenError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; width: number | null } | null>(
     null,
+  );
+
+  // AI video generation (VIDEO_STANDARD, async)
+  const [videoAspect, setVideoAspect] = useState<VideoAspectRatio>('9:16');
+  const [videoSubject, setVideoSubject] = useState('');
+  const [videoStatus, setVideoStatus] = useState<
+    'idle' | 'processing' | 'completed' | 'failed'
+  >('idle');
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollAttemptsRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    },
+    [],
   );
 
   const load = useCallback(() => {
@@ -131,7 +162,98 @@ export function AssetPanel({
       .finally(() => setGenerating(false));
   };
 
-  const videoGen = generationStatus('video');
+  // Bounded polling of the async video job (no infinite loop; §28).
+  const pollVideo = useCallback((assetId: string) => {
+    pollAttemptsRef.current += 1;
+    videoGenerationService
+      .pollStatus(assetId)
+      .then((res) => {
+        if (res.status === 'completed') {
+          setVideoStatus('completed');
+          setVideoPreviewUrl(res.externalUrl);
+          load();
+          return;
+        }
+        if (res.status === 'failed') {
+          setVideoStatus('failed');
+          setVideoError('영상 생성에 실패했습니다.');
+          return;
+        }
+        if (pollAttemptsRef.current >= VIDEO_POLL_MAX) {
+          setVideoStatus('failed');
+          setVideoError('영상 생성이 시간 내에 완료되지 않았습니다 (TIMEOUT).');
+          return;
+        }
+        pollTimerRef.current = setTimeout(
+          () => pollVideo(assetId),
+          VIDEO_POLL_INTERVAL_MS,
+        );
+      })
+      .catch(() => {
+        if (pollAttemptsRef.current >= VIDEO_POLL_MAX) {
+          setVideoStatus('failed');
+          setVideoError('영상 상태 확인에 실패했습니다.');
+          return;
+        }
+        pollTimerRef.current = setTimeout(
+          () => pollVideo(assetId),
+          VIDEO_POLL_INTERVAL_MS,
+        );
+      });
+  }, [load]);
+
+  // Cost safety: explicit confirmation + in-flight lock (video is expensive).
+  const handleGenerateVideo = async () => {
+    if (videoStatus === 'processing') return;
+    const ok = await confirmDestructive(
+      'AI 영상 생성은 이미지보다 비용이 큽니다. 1건을 생성할까요?',
+    );
+    if (!ok) return;
+    setVideoStatus('processing');
+    setVideoError(null);
+    setVideoPreviewUrl(null);
+    pollAttemptsRef.current = 0;
+    try {
+      const started = await videoGenerationService.start({
+        contentId: item.id,
+        workload: 'VIDEO_STANDARD',
+        aspectRatio: videoAspect,
+        subject: videoSubject.trim() || suggestVideoSubject(item),
+        category: item.category,
+        targetUse: 'content video',
+      });
+      pollTimerRef.current = setTimeout(
+        () => pollVideo(started.asset.id),
+        VIDEO_POLL_INTERVAL_MS,
+      );
+    } catch {
+      setVideoStatus('failed');
+      setVideoError(
+        'AI 영상 생성을 시작하지 못했습니다. 관리자 권한/서버 설정(GEMINI_API_KEY·Edge 배포)을 확인해 주세요.',
+      );
+    }
+  };
+
+  const applyVideo = () => {
+    if (!videoPreviewUrl || busy) return;
+    setBusy(true);
+    setError(null);
+    assetService
+      .setContentVideo(item.id, videoPreviewUrl)
+      .then(() => onHeroChanged())
+      .catch(() => setError('대표 영상 설정에 실패했습니다.'))
+      .finally(() => setBusy(false));
+  };
+
+  const clearVideo = () => {
+    if (busy) return;
+    setBusy(true);
+    assetService
+      .setContentVideo(item.id, null)
+      .then(() => onHeroChanged())
+      .catch(() => setError('영상 해제에 실패했습니다.'))
+      .finally(() => setBusy(false));
+  };
 
   return (
     <Stack gap="sm">
@@ -255,14 +377,85 @@ export function AssetPanel({
         </Stack>
       </Card>
 
-      {/* Video generation — no provider selected yet (owner decision) */}
+      {/* AI video generation — VIDEO_STANDARD (Google Veo, server-resolved, async) */}
       <Card>
-        <Stack gap="xs">
-          <Text variant="bodyMedium">AI 영상 생성</Text>
-          <Text variant="caption" colorToken="textSecondary">
-            영상 생성: {videoGen}. provider 선택(비용/락인)은 소유자 결정 사항이며,
-            선택 후 서버측 연동이 필요합니다. (가짜 미디어를 생성하지 않습니다.)
+        <Stack gap="md">
+          <Text variant="bodyMedium">
+            AI 영상 생성 ({videoWorkloadStatus('VIDEO_STANDARD')})
           </Text>
+          <Text variant="caption" colorToken="textSecondary">
+            짧은 개념 영상(약 8초, 720p, 오디오 없음)을 생성합니다. 실존 인물
+            얼굴/브랜드/캐릭터는 생성하지 않습니다. 생성에는 시간이 걸리며(수 분),
+            검토 후 적용하세요(자동 적용 없음).
+          </Text>
+
+          {item.videoUrl ? (
+            <Stack gap="xs">
+              <Text variant="caption" colorToken="success">
+                적용된 영상이 있습니다.
+              </Text>
+              <Stack direction="row" gap="sm" style={{ flexWrap: 'wrap' }}>
+                <Button
+                  label="영상 열기"
+                  variant="secondary"
+                  onPress={() => Linking.openURL(item.videoUrl as string)}
+                />
+                <Button
+                  label="영상 해제"
+                  variant="secondary"
+                  disabled={busy}
+                  onPress={clearVideo}
+                />
+              </Stack>
+            </Stack>
+          ) : null}
+
+          <AdminSelect
+            label="비율"
+            options={VIDEO_ASPECT_OPTIONS}
+            value={videoAspect}
+            onChange={setVideoAspect}
+          />
+          <Input
+            label="주제/스타일 힌트 (선택 — 비우면 자동)"
+            value={videoSubject}
+            onChangeText={setVideoSubject}
+            placeholder={suggestVideoSubject(item)}
+          />
+          <Button
+            label={
+              videoStatus === 'processing'
+                ? '영상 생성 중... (수 분 소요)'
+                : 'AI 영상 생성'
+            }
+            disabled={videoStatus === 'processing'}
+            onPress={handleGenerateVideo}
+          />
+          {videoStatus === 'processing' ? (
+            <Text variant="caption" colorToken="textSecondary">
+              처리 중입니다. 이 화면을 열어두면 완료 시 미리보기가 표시됩니다.
+            </Text>
+          ) : null}
+          {videoError ? (
+            <Text variant="bodySmall" colorToken="danger">
+              {videoError}
+            </Text>
+          ) : null}
+
+          {videoStatus === 'completed' && videoPreviewUrl ? (
+            <Stack gap="sm">
+              <Button
+                label="생성된 영상 미리보기 열기"
+                variant="secondary"
+                onPress={() => Linking.openURL(videoPreviewUrl)}
+              />
+              <Button
+                label={busy ? '적용 중...' : '이 영상을 대표 영상으로 적용'}
+                disabled={busy}
+                onPress={applyVideo}
+              />
+            </Stack>
+          ) : null}
         </Stack>
       </Card>
 
