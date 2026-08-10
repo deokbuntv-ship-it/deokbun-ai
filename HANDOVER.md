@@ -17,6 +17,61 @@
 
 ------------------------------------------------------------
 
+## 0. 최신 상태 — ADMIN / CONTENT / PUBLIC MASTER TRACK (2026-08-10)
+
+> ⚠️ 아래 1~20절은 2026-08-07 `main` 기준(관리자/실 LLM 이전)이며 일부는
+> 이 0절로 **대체**되었다. 최신 사실은 이 0절을 우선한다.
+
+- **브랜치**: `admin/master-operations-content` (origin 동기화, working tree clean).
+  `main` 미변경. Codex ENGINE(`src/features/interpretation/**`)은 **FROZEN — 이 트랙에서 변경 0**.
+- **실 LLM 연결됨**: `supabase/functions/chat`(OpenAI Responses) 배포·검증 완료.
+  (구 5절 "실제 LLM 호출 미구현", "Edge Function 없음"은 더 이상 사실 아님.)
+
+### 완료(코드+검증) / 완료(코드, USER ACTION 대기)
+
+| 영역 | 상태 |
+|------|------|
+| ADMIN-01 권한 seam (`admin_users`,`is_admin()`) | ✅ 적용·검증 |
+| ADMIN-02 사용자/대상 | ✅ 적용·검증 |
+| ADMIN-03 상담 모니터링 | ✅ 적용·검증 |
+| ADMIN-04 AI 사용량/대시보드 (`ai_usage_logs`) | ✅ 적용·검증 |
+| ADMIN-05 유명인/SEO (`famous_profiles`,`famous_snapshots`) | ✅ 적용·검증 |
+| CONTENT-01 콘텐츠 스튜디오 (`content_items`,`content_versions`) | ✅ 적용·검증 |
+| CONTENT-02 AI 텍스트 생성 (`content-generate` edge) | 🟡 코드 완료 · **edge 배포 대기** |
+| PUBLIC-01 공개 웹(`/content`,`/famous`,SEO,카테고리) | 🟡 코드 완료 · **PUBLIC_SETUP.sql 대기** |
+| CONTENT-04/07 발행추적 + 네이버 수동발행 | 🟡 코드 완료 · **PUBLICATION_SETUP.sql 대기** |
+
+### DB 스크립트 (docs/)
+- 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`.
+- **미적용(USER ACTION)**: `docs/PUBLIC_SETUP.sql`, `docs/admin/PUBLICATION_SETUP.sql`.
+
+### Edge Functions (supabase/functions/)
+- `chat` — 배포됨.
+- `content-generate` — 코드 완료, **배포 필요**(`OPENAI_API_KEY` 재사용). `docs/admin/CONTENT_02_SETUP.md` 참조.
+
+### 라우트
+- 관리자: `/admin` · `/admin/users` · `/admin/consultations` · `/admin/ai-usage` · `/admin/famous` · `/admin/content` (fail-closed, `admin/_layout` 가드).
+- 공개: `/content` · `/content/[slug]` · `/content/category/[slug]` · `/famous` · `/famous/[slug]` (published-only, 무인증, `expo-router/head` SEO, web.output=static).
+
+### 통합 USER ACTION (순서대로)
+1. **Supabase SQL Editor**: `docs/PUBLIC_SETUP.sql` → `docs/admin/PUBLICATION_SETUP.sql` 실행.
+2. **CMD**: `npx supabase functions deploy content-generate --project-ref olvkpaldrwvtexxpoaag`.
+3. (선택) 콘텐츠 발행 스모크: `/admin/content`에서 slug+카테고리 입력 후 상태=발행 → `/content/{slug}` 확인.
+
+### 보안 원칙 (이 트랙 전반 준수)
+- 모든 관리자 DB 접근은 `is_admin()` 게이트(RLS/SECURITY DEFINER, `search_path=public,pg_temp`, revoke/grant).
+- 공개 읽기는 curated SECURITY DEFINER RPC(published-only, 초안/관리메타/provenance/원시 birth 미노출).
+- `service_role`은 edge 전용(클라이언트 0). 시크릿 하드코딩 0. fake/mock 0.
+
+### 남은 작업 (다음 연속 트랙 — provider/인프라 결정 필요)
+- **CONTENT-03 이미지 / CONTENT-06 영상**: provider-neutral seam 구축 예정 — **provider 선택은 USER DECISION**(비용/락인, §38).
+- **CONTENT-05 인스타그램**: Meta Graph API(전문계정+FB Page+App Review 2~4주, `instagram_content_publish`, 2단계 publish). `content_publications`에 seam 존재 — **Meta App/OAuth/App Review = USER ACTION**.
+- **CONTENT-04 네이버**: 공식 개인블로그 글쓰기 API 부재 확인 → 수동 발행으로 확정(자동화/스크래핑 금지).
+- **CONTENT-07 예약발행 실행부**: `content_publications`(scheduled_at/idempotency) 스키마 존재 → pg_cron→Edge 실행부 + 배포(USER ACTION) 예정.
+- **감사(§27~33)/릴리스 점검(§34)**: SQL 적용·edge 배포 후 스모크/RLS 네거티브 테스트 수행 예정.
+
+------------------------------------------------------------
+
 ## 1. 프로젝트 개요
 
 - **프로젝트명**: DeokbunAI (덕분AI)
