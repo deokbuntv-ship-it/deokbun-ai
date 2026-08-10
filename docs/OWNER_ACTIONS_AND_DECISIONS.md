@@ -18,6 +18,9 @@ Already applied per your report: `ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`,
    compatible; the unfiltered list already works without it).
 2. `docs/admin/IMAGE_STORAGE_SETUP.sql` — creates the public `content-media`
    Storage bucket (+ admin-write / public-read policies) for AI-generated images.
+3. `docs/admin/PUBLIC_UPDATE_search_alt.sql` — adds `content_items.hero_alt`
+   (image alt text) + `/content` search (`public_list_content` p_search;
+   backward compatible — the search-less list already works without it).
 
 ### B. Edge deploy (CMD / terminal)
 ```bash

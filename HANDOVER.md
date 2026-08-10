@@ -53,7 +53,9 @@
 | R3-3 sitemap 생성기 + SEO 한계 문서 | ✅ 코드 완료 (base-url gated, 가짜도메인 0) |
 | R3-4 Admin content/famous 필터 + 삭제 확인 | ✅ 코드 완료 |
 | R3-5 provider decision pack + 오너 문서 | ✅ 문서 완료 (OWNER_ACTIONS_AND_DECISIONS.md) |
-| IMG IMAGE_STANDARD 이미지 생성(OpenAI/LOW) | 🟡 코드 완료 · **IMAGE_STORAGE_SETUP.sql + media-generate 배포 대기** (provider/model/quality 서버 결정, Storage 저장, provenance, IMAGE_PREMIUM=NOT_CONFIGURED) |
+| IMG IMAGE_STANDARD 이미지 생성(OpenAI/LOW) | 🟡 코드 완료 · **IMAGE_STORAGE_SETUP.sql + media-generate 배포 대기** (provider/model/quality 서버 결정, Storage 저장, provenance, IMAGE_PREMIUM=NOT_CONFIGURED). owner smoke PASS |
+| R4-A 이미지 alt + 공개검색 + JSON-LD | 🟡 코드 완료 · **PUBLIC_UPDATE_search_alt.sql 대기** (hero_alt, /content?q=, Article/Person 구조화데이터-검증필드만) |
+| R4-B Admin 채널/소스 + 공개여부/계산상태 필터 | ✅ 코드 완료 |
 
 ### DB 스크립트 (docs/) — 적용 순서 아래 참조
 - 적용됨: `admin/ADMIN_SETUP.sql`, `ADMIN_02~05_SETUP.sql`, `CONTENT_01_SETUP.sql`, `PUBLIC_SETUP.sql`, `content-generate` 배포.
