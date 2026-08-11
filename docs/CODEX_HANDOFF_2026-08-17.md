@@ -119,3 +119,44 @@
   admin 운영 데이터 계약(ModelPricingConfig/EngineTelemetry/AdminAudit, §17~20), 앱 오류
   로깅, 표준 에러 계약의 서비스 적용, 보안 감사(IDOR/RLS 재확인).
 - **엔진(Codex)**: SAJU 파이프라인 연결, 자미두수/기문둔갑 계산기, cross-analysis 규칙.
+
+---
+
+## 15. Claude PRE-CODEX SPRINT 2 (2026-08-11) — 결과 + CONTINUE FROM HERE
+
+**추가된 엔진 외부 모듈(전부 순수/계약, frozen·UI·live-DB 무변경, tsc 0):**
+- `src/features/analysis/rateLimit.ts` — 순수 `checkRateLimit`(burst/duplicate/
+  concurrent + retryAfter → LLM_RATE_LIMIT/DUPLICATE_REQUEST) + `boundRecentByChars`
+  (토크나이저 의존 없는 컨텍스트 바운딩). chat Edge에서 상태 주입식으로 사용 가능
+  (배포 대기). **미배선**(chatService/edge 미수정).
+- `src/features/analysis/logging.ts` — PII-safe `AppErrorEvent`+`AppErrorLogger`+
+  console adapter (Sentry adapter만 추가하면 연결).
+- `src/features/fortune/domain/fortuneDomain.ts` — FortuneMailType/Status +
+  전이 머신 + deterministic `fortuneIdempotencyKey` + `evaluateFortunePipeline`
+  (엔진 미연결 시 ENGINE_NOT_CONNECTED에서 정지, 가짜 운세 없음) + 구조 검증.
+- `src/features/admin/operational/operationalContracts.ts` — `ModelPricingConfig`
+  + 순수 `computeCost`(가격 없으면 null, 가짜 ₩0 없음) + `EngineTelemetryRepository`
+  seam + `AdminAuditEvent`/`AdminAuditService`(+noop, 가짜 audit 없음).
+- specs: `src/features/analysis/__tests__/analysis.spec.ts`(러너 미설치 → tsc 검증
+  + `runAnalysisSpecs()`).
+
+**보안 감사(코드 기준)**: CRITICAL/HIGH 0. MEDIUM 1건(M1: `consultationDraftService`가
+클라이언트 제공 `user_id`를 draft에 insert — 해당 테이블 RLS `WITH CHECK
+(user_id=auth.uid())` 확인 필요; 없으면 default auth.uid()로 전환 권장. draft
+DDL/RLS가 repo에 없어 미검증). service_role/OpenAI 키 클라 노출 0, XSS 싱크 0,
+PII 로그 0. RLS parity는 계속 NEEDS_OWNER_DB_COMPARISON.
+
+**API drift(경미)**: `chatConfig.defaultModel='gpt-mini-placeholder'`는 전송되나
+서버가 `LLM_MODEL`로 결정 → 사실상 dead config(위험 아님). 정리는 후속.
+
+**CONTINUE FROM HERE (다음 Claude 세션이 바로 이어받을 것):**
+1. rate-limit을 chat Edge에 배선(요청 시작 시 `checkRateLimit`, 종료 시
+   `releaseInFlight`; 상태 저장은 Postgres row 또는 함수 메모리). edge 배포는 오너.
+2. 표준 Error Contract를 chatService/consultation/subject/admin 서비스 경계에 적용
+   (raw→`toAppErrorCode`, UI엔 `userMessage`, 로그엔 requestId). backward-compatible,
+   UI 파일 무변경 원칙.
+3. `newRequestId`를 chatService→persistence 경로에 실제 전파.
+4. M1 보안: draft 테이블 RLS 확인/보정(SQL artifact만).
+5. fortune 도메인의 idempotency DB unique constraint를 SQL artifact로 작성(live 미적용).
+6. 테스트 러너(jest-expo/vitest) 도입 결정(현재 기술부채) 후 specs 실행.
+(엔진 계산 연결·자미두수/기문둔갑·cross는 Codex 8/17.)
