@@ -9,16 +9,21 @@ import { getSupabaseClient } from '@/services/supabase';
 // prompt messages to the Supabase Edge Function (the server trust boundary),
 // which holds the OpenAI key and decides the model / output-token limit.
 //
-// Only `messages` is sent. `model` / `maxOutputTokens` / `temperature` from the
-// client are intentionally not forwarded, so the client cannot influence cost;
-// the server has the final say. `functions.invoke` automatically attaches the
-// current user's Supabase access token as the Authorization bearer.
+// Only `messages` (and an optional non-PII `requestId` for tracing) is sent.
+// `model` / `maxOutputTokens` / `temperature` from the client are intentionally
+// not forwarded, so the client cannot influence cost; the server has the final
+// say. `functions.invoke` automatically attaches the current user's Supabase
+// access token as the Authorization bearer.
 export const supabaseEdgeLLMAdapter: LLMAdapter = {
   async generateResponse(request: LLMRequest): Promise<LLMResponse> {
     const supabase = getSupabaseClient();
 
+    const body = request.requestId
+      ? { messages: request.messages, requestId: request.requestId }
+      : { messages: request.messages };
+
     const { data, error } = await supabase.functions.invoke('chat', {
-      body: { messages: request.messages },
+      body,
     });
 
     if (error) {

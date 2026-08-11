@@ -89,6 +89,7 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
         messages: promptMessages,
         maxOutputTokens: chatConfig.maxOutputTokens,
         temperature: chatConfig.temperature,
+        requestId, // forwarded to the edge for end-to-end correlation
       });
 
       return { success: true, responseText: response.text, requestId };

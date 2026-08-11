@@ -126,6 +126,15 @@ function toNullableInt(value: unknown): number | null {
     : null;
 }
 
+// Accept only a short, safe correlation id from the client (never PII by
+// contract; still sanitized here to prevent log injection / oversized values).
+function sanitizeRequestId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 64) return null;
+  return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : null;
+}
+
 function userIdFromRequest(req: Request): string | null {
   try {
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -140,7 +149,10 @@ function userIdFromRequest(req: Request): string | null {
   }
 }
 
-async function logAiUsage(entry: AiUsageLog): Promise<void> {
+async function logAiUsage(
+  entry: AiUsageLog,
+  requestId: string | null,
+): Promise<void> {
   try {
     const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
     const serviceRoleKey =
@@ -149,6 +161,19 @@ async function logAiUsage(entry: AiUsageLog): Promise<void> {
       return;
     }
     const admin = createClient(url, serviceRoleKey);
+
+    // Persist the correlation id when we have one. The `request_id` column is
+    // optional (see docs/AI_USAGE_LOGS_REQUEST_ID.sql — owner-apply): if it does
+    // not exist yet, the insert errors and we FALL BACK to inserting without it,
+    // so usage telemetry is never lost pre-migration.
+    if (requestId) {
+      const { error } = await admin
+        .from('ai_usage_logs')
+        .insert({ ...entry, request_id: requestId });
+      if (!error) {
+        return;
+      }
+    }
     await admin.from('ai_usage_logs').insert(entry);
   } catch {
     // Usage logging must never affect the chat response.
@@ -265,6 +290,12 @@ export default {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
 
+        // Client correlation id (directive §2-C): trace one request across
+        // client → edge logs → usage persistence. Optional + sanitized + non-PII.
+        const requestId = sanitizeRequestId(
+          (body as { requestId?: unknown } | null)?.requestId,
+        );
+
         stage = 'openai_request';
 
         let providerResponse: Response;
@@ -287,21 +318,25 @@ export default {
             '[chat] openai_fetch_threw',
             JSON.stringify({
               stage,
+              requestId,
               name: (fetchError as Error)?.name ?? 'UnknownError',
               message: (fetchError as Error)?.message ?? String(fetchError),
             }),
           );
-          await logAiUsage({
-            user_id: userId,
-            model,
-            request_type: 'chat',
-            input_tokens: null,
-            output_tokens: null,
-            total_tokens: null,
-            latency_ms: Date.now() - startedAt,
-            status: 'error',
-            error_code: 'OPENAI_FETCH_FAILED',
-          });
+          await logAiUsage(
+            {
+              user_id: userId,
+              model,
+              request_type: 'chat',
+              input_tokens: null,
+              output_tokens: null,
+              total_tokens: null,
+              latency_ms: Date.now() - startedAt,
+              status: 'error',
+              error_code: 'OPENAI_FETCH_FAILED',
+            },
+            requestId,
+          );
           return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
         }
 
@@ -310,19 +345,22 @@ export default {
           // Never forward the provider's error body/URL/token to the client (#20).
           console.error(
             '[chat] openai_error_status',
-            JSON.stringify({ status: providerResponse.status }),
+            JSON.stringify({ status: providerResponse.status, requestId }),
           );
-          await logAiUsage({
-            user_id: userId,
-            model,
-            request_type: 'chat',
-            input_tokens: null,
-            output_tokens: null,
-            total_tokens: null,
-            latency_ms: Date.now() - startedAt,
-            status: 'error',
-            error_code: `OPENAI_${providerResponse.status}`,
-          });
+          await logAiUsage(
+            {
+              user_id: userId,
+              model,
+              request_type: 'chat',
+              input_tokens: null,
+              output_tokens: null,
+              total_tokens: null,
+              latency_ms: Date.now() - startedAt,
+              status: 'error',
+              error_code: `OPENAI_${providerResponse.status}`,
+            },
+            requestId,
+          );
           return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
         }
 
@@ -339,35 +377,41 @@ export default {
 
         if (text.length === 0) {
           // Fault tracking: no assistant text parsed (marker only, no content).
-          console.error('[chat] empty_response');
-          await logAiUsage({
-            user_id: userId,
-            model,
-            request_type: 'chat',
-            input_tokens: null,
-            output_tokens: null,
-            total_tokens: null,
-            latency_ms: Date.now() - startedAt,
-            status: 'error',
-            error_code: 'EMPTY_RESPONSE',
-          });
+          console.error('[chat] empty_response', JSON.stringify({ requestId }));
+          await logAiUsage(
+            {
+              user_id: userId,
+              model,
+              request_type: 'chat',
+              input_tokens: null,
+              output_tokens: null,
+              total_tokens: null,
+              latency_ms: Date.now() - startedAt,
+              status: 'error',
+              error_code: 'EMPTY_RESPONSE',
+            },
+            requestId,
+          );
           return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
         }
 
         // Success: record raw usage (tokens are provider-reported; no cost calc).
         const usage =
           (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
-        await logAiUsage({
-          user_id: userId,
-          model,
-          request_type: 'chat',
-          input_tokens: toNullableInt(usage.input_tokens),
-          output_tokens: toNullableInt(usage.output_tokens),
-          total_tokens: toNullableInt(usage.total_tokens),
-          latency_ms: Date.now() - startedAt,
-          status: 'success',
-          error_code: null,
-        });
+        await logAiUsage(
+          {
+            user_id: userId,
+            model,
+            request_type: 'chat',
+            input_tokens: toNullableInt(usage.input_tokens),
+            output_tokens: toNullableInt(usage.output_tokens),
+            total_tokens: toNullableInt(usage.total_tokens),
+            latency_ms: Date.now() - startedAt,
+            status: 'success',
+            error_code: null,
+          },
+          requestId,
+        );
 
         return Response.json({ text });
       } catch (error) {

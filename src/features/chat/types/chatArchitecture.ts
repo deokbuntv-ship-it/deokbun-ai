@@ -28,6 +28,9 @@ export type LLMRequest = {
   messages: LLMMessage[];
   maxOutputTokens: number;
   temperature: number;
+  // Correlation id forwarded to the Edge Function for end-to-end tracing
+  // (client → edge logs → usage persistence). Optional; never PII.
+  requestId?: string;
 };
 
 export type LLMResponse = {
