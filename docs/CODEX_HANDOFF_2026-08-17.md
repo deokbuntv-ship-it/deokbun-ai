@@ -315,3 +315,41 @@ UI 작업 종료 후 비UI V1.0 작업을 계속 진행(§directive). 전부 로
 **Codex 검증 항목:** ① 학파 확정 후 iztro config 반영 ② 독립 reference로 fixture 검증 ③ 사주↔자미 干支 boundary 일치 ④ SAJU→prompt 배선과 동일하게 ziwei evidence를 pipeline에 연결(공유경계 — Codex 소관). 
 **Codex가 덮어쓰면 안 되는 것(추가):** `src/features/ziwei/**` (Claude-owned).
 **Owner blocker:** 자미 canonical 학파 결정 + 검증 reference 제공.
+
+---
+
+## 19. Claude QIMEN REUSE-FIRST IMPLEMENTATION (2026-08-12)
+
+기문둔갑을 REUSE-first로 구축. Core = **qimen-dunjia@2.1.0**(MIT), Claude-owned
+`src/features/qimen/**`. frozen/UI/ziwei 무변경.
+
+**BUILD vs REUSE 판정:** `REUSE_WITH_ADAPTER`
+- qimen-dunjia@2.1.0: MIT · dep lunar-javascript(MIT) · 전용 奇門 排盤 · **時家 기문 + 拆補法** · deterministic · 년월일시柱/음양둔/국수/구궁/천지반/팔문/구성/팔신/값부값사/節氣/三元 커버.
+- reject: **kinqimen(GPL-3.0)**, paipan(ESM-only + qimen coverage 미확인), @qimen-lab/core(framework).
+
+**아키텍처(라이브러리 격리):**
+- `adapters/qimenCoreAdapter.ts` — **qimen-dunjia import 유일 파일**(CJS-safe dist subpath `qimen-dunjia/dist/qimen.min.js`). lib가 타입 미제공 → 로컬 ambient `qimen-dunjia.d.ts`. 버전 pin.
+- `adapters/qimenInputAdapter.ts` — **시점 eligibility**: timing 질문 + 명시적 로컬 질문시각일 때만(현재시각 fallback 없음, birth data 없음) → not_applicable/missing_question_time/unsupported.
+- `adapters/qimenResultAdapter.ts` — raw board → `QimenBoard`(레이어를 palace index로 zip, 위치 창작 없음).
+- `adapters/qimenEvidenceAdapter.ts` — `QimenBoard`→`EngineEvidence`(bounded, 사실만, 해석 없음).
+- `services/qimenService.ts`(+`qimenCache.ts` bounded memoize), `validation/`.
+
+**jest ESM:** qimen-dunjia는 ESM → `transformIgnorePatterns`로 통과 + ts-jest `.js` 트랜스파일(+allowJs, rootDir). 기존 88 tests 영향 없음(전체 105 green).
+
+**커버리지:** 음양둔·국수·구궁·地盤/天盤·地門/天門·九星·八神·값부(值符)/값사(值使)·旬首/符首·節氣/三元·질문 干支 = library 결과 normalize.
+
+**테스트(17):** eligibility gating(가짜 board 없음), 구조 검증(9궁·국수 1–9·음양둔), DETERMINISM(바이트 동일), evidence 사실-only, cache, + qimen-dunjia@2.1.0 **CHARACTERIZATION LOCK**(小寒/中元/陽/8국/天輔/杜門 — 독립 정확성 주장 아님).
+
+**정직성/미결(Owner/Codex):** `docs/QIMEN_SCHOOL_DIFFERENCES.md` — 拆補法(baseline)/음양둔/국수/팔문·구성·팔신/天禽寄宮/자시/LMT + Status. **DECISION_REQUIRED**: canonical 정국(拆補 vs 置閏), LMT/자시 정책(사주·자미 일치). **UNVERIFIED**: 실제 배치 정확성 → 독립 reference로 verified fixture 필요.
+
+**Codex 검증:** ① 拆補/置閏 확정 후 adapter 반영 ② 독립 reference fixture ③ 사주↔기문 干支/절기 boundary ④ qimen evidence를 pipeline(eligibility=engineOrchestration.isTimingQuestion, 이미 존재)에 배선 — 공유경계 Codex 소관.
+**Codex가 덮어쓰면 안 되는 것(추가):** `src/features/qimen/**` (Claude-owned).
+**Owner blocker:** 기문 canonical 학파(拆補/置閏) 결정 + 검증 reference.
+
+### 3-engine 상태 요약 (2026-08-12)
+| 엔진 | Core | 상태 |
+|---|---|---|
+| 사주명리 | Codex frozen `interpretation/**` | DONE(계산) / prompt 배선 CODEX |
+| 자미두수 | iztro@2.5.8 (Claude `ziwei/**`) | V1 natal DONE / 학파 DECISION_REQUIRED |
+| 기문둔갑 | qimen-dunjia@2.1.0 (Claude `qimen/**`) | V1 board DONE / 정국 DECISION_REQUIRED |
+| cross-analysis | `analysis/crossAnalysis.ts` | 구조 계약 DONE / polarity 매핑 CODEX |

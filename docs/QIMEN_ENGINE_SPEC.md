@@ -1,6 +1,12 @@
 # 기문둔갑(奇門遁甲) ENGINE — RESEARCH & SPECIFICATION (v0.1, scaffold)
 
-> **STATUS: RESEARCH/SPEC SCAFFOLD — NOT AN IMPLEMENTATION.**
+> **UPDATE (2026-08-12): IMPLEMENTED via REUSE.** Core = MIT library
+> **qimen-dunjia@2.1.0** (時家 기문, 拆補法), integrated in the Claude-owned module
+> `src/features/qimen/**` (library isolated behind one adapter). Method/lineage
+> decisions moved to **docs/QIMEN_SCHOOL_DIFFERENCES.md**. Verified golden fixtures
+> still require independent references (Owner/Codex). See CODEX_HANDOFF §19.
+
+> **STATUS: RESEARCH/SPEC SCAFFOLD — superseded by the qimen-dunjia implementation above.**
 > Defines *structure, input/output contract, calculation stages, and fixture
 > requirements* for a 기문둔갑 engine. Contains **no final 排盤 tables/formulas**.
 > Every rule is tagged **CONFIRMED / SCHOOL-DEPENDENT / UNVERIFIED**; anything not
