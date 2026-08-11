@@ -5,6 +5,8 @@ export {
   APP_ERROR_CODES,
   USER_MESSAGE,
   appError,
+  pgCodeOf,
+  pgErrorToAppCode,
   toAppErrorCode,
   userMessage,
 } from './errors';
@@ -22,7 +24,7 @@ export {
 } from './rateLimit';
 export type { RateDecision, RateLimitConfig, UserRateState } from './rateLimit';
 
-export { appErrorEvent, consoleErrorLogger } from './logging';
+export { appErrorEvent, consoleErrorLogger, logDbError } from './logging';
 export type { AppErrorEvent, AppErrorLogger, ErrorSeverity } from './logging';
 
 export { parseStructuredAiResponse } from './aiOutput';

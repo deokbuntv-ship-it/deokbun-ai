@@ -93,6 +93,37 @@ export function appError(
   return { code, requestId: opts?.requestId, cause: opts?.cause };
 }
 
+// Read the technical error code off a thrown Supabase/Postgres error (safe to
+// log; e.g. Postgres SQLSTATE '23505' or PostgREST 'PGRST116'). Never PII.
+export function pgCodeOf(raw: unknown): string | null {
+  const code = (raw as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && code.length > 0 ? code : null;
+}
+
+// Map a raw Supabase/Postgres error to a standard AppErrorCode for logging and
+// (optionally) user messaging. SQLSTATE reference: 23505 unique_violation,
+// 23503 fk_violation, 23502 not_null, 23514 check, 42501 insufficient_privilege
+// (RLS denial), class 08 connection exceptions. PostgREST PGRST301 = bad JWT.
+const PG_CODE_MAP: Record<string, AppErrorCode> = {
+  '23505': 'DUPLICATE_REQUEST',
+  '23503': 'INVALID_INPUT',
+  '23502': 'INVALID_INPUT',
+  '23514': 'INVALID_INPUT',
+  '42501': 'FORBIDDEN',
+  PGRST301: 'AUTH_REQUIRED',
+};
+
+export function pgErrorToAppCode(raw: unknown): AppErrorCode {
+  const code = pgCodeOf(raw);
+  if (code) {
+    if (code in PG_CODE_MAP) return PG_CODE_MAP[code];
+    if (code.startsWith('08')) return 'NETWORK_ERROR'; // connection exception
+  }
+  const message = String((raw as { message?: unknown } | null)?.message ?? '');
+  if (/network|fetch|timeout|connection/i.test(message)) return 'NETWORK_ERROR';
+  return 'DB_ERROR';
+}
+
 // UI helper: always safe to show, never technical.
 export function userMessage(code: AppErrorCode): string {
   return USER_MESSAGE[code];

@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import type { BirthInfoDraft } from '@/features/consultation/types/consultation';
 import type { ConsultationSubjectRecord } from '@/features/consultation/types/subject';
 import { getSupabaseClient } from '@/services/supabase';
@@ -60,7 +61,7 @@ async function listSubjects(): Promise<ConsultationSubjectRecord[]> {
     .order('created_at', { ascending: true });
 
   if (error) {
-    throw error;
+    logDbError(error, 'subject', 'listSubjects');
   }
 
   return ((data as ConsultationSubjectRow[] | null) ?? []).map(toRecord);
@@ -84,7 +85,7 @@ async function createSubject(
     .single();
 
   if (error) {
-    throw error;
+    logDbError(error, 'subject', 'createSubject');
   }
 
   return toRecord(data as ConsultationSubjectRow);
@@ -102,7 +103,7 @@ async function getSubject(
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'subject', 'getSubject');
   }
 
   return data === null ? null : toRecord(data as ConsultationSubjectRow);
@@ -123,7 +124,7 @@ async function updateSubject(
   const { error } = await supabase.from(TABLE).update(row).eq('id', id);
 
   if (error) {
-    throw error;
+    logDbError(error, 'subject', 'updateSubject');
   }
 }
 
@@ -135,7 +136,7 @@ async function deleteSubject(id: string): Promise<void> {
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
 
   if (error) {
-    throw error;
+    logDbError(error, 'subject', 'deleteSubject');
   }
 }
 
@@ -154,7 +155,7 @@ async function setPrimarySubject(targetId: string): Promise<void> {
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'subject', 'setPrimarySubject:findSelf');
   }
 
   const currentSelfId = (data as { id: string } | null)?.id ?? null;
@@ -169,7 +170,7 @@ async function setPrimarySubject(targetId: string): Promise<void> {
       .update({ is_self: false })
       .eq('id', currentSelfId);
     if (clearError) {
-      throw clearError;
+      logDbError(clearError, 'subject', 'setPrimarySubject:clear');
     }
   }
 
@@ -178,7 +179,7 @@ async function setPrimarySubject(targetId: string): Promise<void> {
     .update({ is_self: true })
     .eq('id', targetId);
   if (setError) {
-    throw setError;
+    logDbError(setError, 'subject', 'setPrimarySubject:set');
   }
 }
 

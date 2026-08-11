@@ -6,6 +6,8 @@
 // only small, non-sensitive values; the console adapter logs only the structural
 // fields + requestId for correlation.
 import type { AppErrorCode } from './errors';
+import { pgCodeOf, pgErrorToAppCode } from './errors';
+import { newRequestId } from './requestId';
 
 export type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical';
 
@@ -35,6 +37,28 @@ export function appErrorEvent(
     occurredAt: opts?.occurredAt ?? new Date().toISOString(),
     safeMetadata: opts?.safeMetadata,
   };
+}
+
+// Boundary helper for DB (Supabase) services: map a raw error to the standard
+// Error Contract, LOG it (technical pg code + a fresh requestId, PII-safe), then
+// RE-THROW THE ORIGINAL error so existing callers that inspect the raw error
+// (e.g. `error.code === '23505'`) keep working. Return type `never` — callers
+// can write `if (error) logDbError(error, 'subject', 'createSubject')` and tsc
+// treats the following code as unreachable, exactly like a bare `throw`.
+export function logDbError(
+  raw: unknown,
+  source: string,
+  operation: string,
+): never {
+  const requestId = newRequestId();
+  consoleErrorLogger.log(
+    appErrorEvent(pgErrorToAppCode(raw), source, {
+      requestId,
+      severity: 'error',
+      safeMetadata: { operation, pgCode: pgCodeOf(raw) ?? 'none' },
+    }),
+  );
+  throw raw;
 }
 
 // Default adapter. Logs a single compact line via console — structural fields

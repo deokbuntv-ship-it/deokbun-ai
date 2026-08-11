@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import type {
     BirthInfoDraft,
     ConsultationDraft,
@@ -49,7 +50,7 @@ async function saveDraft(
     .single();
 
   if (error) {
-    throw error;
+    logDbError(error, 'consultation', 'saveDraft');
   }
 
   return { updatedAt: readUpdatedAt(data) };
@@ -65,7 +66,7 @@ async function loadDraft(userId: string): Promise<LoadedConsultationDraft | null
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'consultation', 'loadDraft');
   }
 
   if (data === null) {
@@ -95,7 +96,7 @@ async function clearDraft(userId: string): Promise<SavedConsultationDraft> {
     .single();
 
   if (error) {
-    throw error;
+    logDbError(error, 'consultation', 'clearDraft');
   }
 
   return { updatedAt: readUpdatedAt(data) };
