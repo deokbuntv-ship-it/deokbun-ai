@@ -10,8 +10,8 @@
 //   before this handler runs.
 // - The client only sends `messages`. The MODEL and OUTPUT TOKEN LIMIT are
 //   decided by the server (env/secret), so the client cannot inflate cost.       [#15, #16, #17]
-// - A future Rate Limit / Usage check can be added at the top of this handler
-//   without changing the pipeline.                                               [#13]
+// - A per-user burst Rate Limit runs at the top of this handler (before any LLM
+//   call) using the existing ai_usage_logs table; fail-open, no new infra.       [#13]
 //
 // Logging policy: the success path is silent. Only failure paths log, via
 // `console.error`, and never include secrets, tokens, the Authorization header,
@@ -155,6 +155,63 @@ async function logAiUsage(entry: AiUsageLog): Promise<void> {
   }
 }
 
+// ---- burst rate limiting (Sprint 2-13, directive §2-A) ----------------------
+// Server-side abuse guard: caps sustained per-user request volume in a sliding
+// window BEFORE any paid LLM call. It reuses the EXISTING public.ai_usage_logs
+// table (no new infra / no Redis) — counting this user's chat rows written in
+// the last window. This is NOT a UX quota (free beta is not throttled); it only
+// blunts burst / runaway-cost abuse. Deterministic policy mirrors the pure
+// module src/features/analysis/rateLimit.ts (DEFAULT_RATE_LIMIT). Denials use
+// the standard Error Contract token RATE_LIMITED (→ LLM_RATE_LIMIT client-side).
+//
+// FAIL-OPEN by design: any infra error here must never block a legitimate user,
+// so the guard is skipped (request allowed) on error. Denials are console-logged
+// only and are NOT written to ai_usage_logs — a denial must not feed back into
+// the window count and extend its own block.
+const RATE_WINDOW_MS = (() => {
+  const v = Number(Deno.env.get('CHAT_RATE_WINDOW_MS')?.trim());
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 60_000;
+})();
+const RATE_MAX_REQUESTS = (() => {
+  const v = Number(Deno.env.get('CHAT_RATE_MAX_REQUESTS')?.trim());
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 20;
+})();
+
+type RateVerdict = { limited: false } | { limited: true; retryAfterMs: number };
+
+async function checkBurstRateLimit(
+  userId: string | null,
+  now: number,
+): Promise<RateVerdict> {
+  // No attributable user → the auth wrapper already gated the request; allow.
+  if (!userId) return { limited: false };
+  try {
+    const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+    if (url.length === 0 || serviceRoleKey.length === 0) {
+      return { limited: false };
+    }
+    const admin = createClient(url, serviceRoleKey);
+    const cutoffIso = new Date(now - RATE_WINDOW_MS).toISOString();
+    const { count, error } = await admin
+      .from('ai_usage_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('request_type', 'chat')
+      .gte('created_at', cutoffIso);
+    if (error || count === null) {
+      return { limited: false }; // fail-open on query error
+    }
+    if (count >= RATE_MAX_REQUESTS) {
+      return { limited: true, retryAfterMs: RATE_WINDOW_MS };
+    }
+    return { limited: false };
+  } catch {
+    return { limited: false }; // fail-open on any infra error
+  }
+}
+
 export default {
   fetch: withSupabase(
     { auth: 'user' },
@@ -165,10 +222,27 @@ export default {
       const userId = userIdFromRequest(req);
 
       try {
-        // Future: insert Rate Limit / Usage checks here (#13) before any LLM call.
-
         if (req.method !== 'POST') {
           return Response.json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
+        }
+
+        // Rate Limit (#13, directive §2-A): burst guard BEFORE any paid LLM call.
+        // Fail-open; standard Error Contract token; no ai_usage_logs row written.
+        const rate = await checkBurstRateLimit(userId, startedAt);
+        if (rate.limited) {
+          console.error(
+            '[chat] rate_limited',
+            JSON.stringify({ retryAfterMs: rate.retryAfterMs }),
+          );
+          return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: rate.retryAfterMs },
+            {
+              status: 429,
+              headers: {
+                'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)),
+              },
+            },
+          );
         }
 
         const { apiKey, model, maxOutputTokens } = readServerConfig();
