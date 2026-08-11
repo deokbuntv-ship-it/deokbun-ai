@@ -181,7 +181,7 @@ export default function SubjectHistoryScreen() {
   };
 
   return (
-    <Screen>
+    <Screen frame>
       <Stack gap="xxl" style={{ flex: 1, paddingTop: 24 }}>
         <Stack gap="xs">
           <Text variant="headingLarge">상담 기록</Text>

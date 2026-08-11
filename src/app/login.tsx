@@ -29,7 +29,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen>
+    <Screen frame>
       <Stack style={{ flex: 1, paddingTop: 24 }} align="center" justify="center" gap="lg">
         <Stack gap="xs" align="center">
           <Text variant="headingLarge">덕분AI</Text>

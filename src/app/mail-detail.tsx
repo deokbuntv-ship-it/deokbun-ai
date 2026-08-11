@@ -60,7 +60,7 @@ export default function FortuneMailDetailScreen() {
   };
 
   return (
-    <Screen padded={false}>
+    <Screen padded={false} frame>
       <AppHeader title="운세우편" showBack onBack={handleBack} />
       <ScrollView
         contentContainerStyle={styles.scroll}

@@ -82,7 +82,7 @@ export default function SubjectManseScreen() {
   }, [loadManse]);
 
   const renderStatusCard = (message: string, withRetry: boolean) => (
-    <Screen>
+    <Screen frame>
       <Stack style={{ flex: 1, paddingTop: 24 }} align="center" gap="md">
         <Card>
           <Text variant="bodyMedium" colorToken="textSecondary">
@@ -116,7 +116,7 @@ export default function SubjectManseScreen() {
   const showEditCta = view.aggregateStatus === 'unavailable';
 
   return (
-    <Screen>
+    <Screen frame>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

@@ -153,7 +153,7 @@ export default function SubjectsScreen() {
   };
 
   return (
-    <Screen padded={false}>
+    <Screen padded={false} frame>
       <AppHeader title="분석 대상자 관리" showBack onBack={handleBack} />
       <ScrollView
         contentContainerStyle={styles.scroll}

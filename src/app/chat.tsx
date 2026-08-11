@@ -298,7 +298,7 @@ export default function ChatScreen() {
     messagesHydrationStatus !== 'ready'
   ) {
     return (
-      <Screen padded={false}>
+      <Screen padded={false} frame>
         {header}
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
           <Card>
@@ -313,7 +313,7 @@ export default function ChatScreen() {
 
   if (!isDraftReady) {
     return (
-      <Screen padded={false}>
+      <Screen padded={false} frame>
         {header}
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
           <Card>
@@ -328,7 +328,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <Screen padded={false}>
+    <Screen padded={false} frame>
       {header}
       <View style={styles.container}>
         <ScrollView

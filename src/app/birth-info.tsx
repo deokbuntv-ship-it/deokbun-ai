@@ -407,7 +407,7 @@ export default function BirthInfoScreen() {
             : '대상 정보를 불러오지 못했습니다.';
 
     return (
-      <Screen>
+      <Screen frame>
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center" gap="md">
           <Card>
             <Text variant="bodyMedium" colorToken="textSecondary">
@@ -421,7 +421,7 @@ export default function BirthInfoScreen() {
   }
 
   return (
-    <Screen>
+    <Screen frame>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
