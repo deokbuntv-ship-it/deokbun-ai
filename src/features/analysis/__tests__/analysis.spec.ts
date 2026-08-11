@@ -1,10 +1,9 @@
-// Spec for the engine-external analysis layer (directive §25).
+// Spec for the engine-external analysis layer (directive §25 / §2-G).
 //
-// NOTE: this project has no test RUNNER yet (adding jest-expo/vitest is a
-// dependency decision left to the owner/next session — see CODEX_HANDOFF). These
-// specs are written against the real public API so `tsc --noEmit` verifies they
-// compile and stay type-correct, and any future runner can execute them by
-// calling `runAnalysisSpecs()`. They are NOT imported by app code (not bundled).
+// A minimal runner is now wired (jest + ts-jest; see jest.config.js and the
+// `test` script). This harness stays framework-free — `tsc --noEmit` verifies it
+// compiles and stays type-correct — and analysis.test.ts drives it under jest by
+// calling `runAnalysisSpecs()`. NOT imported by app code (not bundled).
 
 import {
   buildInterpretationContext,

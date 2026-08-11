@@ -1,0 +1,15 @@
+{
+  "//": "Isolated compiler config for ts-jest ONLY (directive §2-G). Does NOT extend the Expo base config — the analysis/domain code under test is pure TS, so this keeps the runner independent of the RN/Expo project settings that TS5011-conflict under ts-jest. The canonical type gate remains `npx tsc --noEmit` on the real tsconfig.json.",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020",
+    "lib": ["es2020"],
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["jest"]
+  }
+}
