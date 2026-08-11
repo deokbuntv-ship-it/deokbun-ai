@@ -27,3 +27,19 @@ export type {
   FortuneTimelineEntry,
 } from './fortuneMail';
 export { FORTUNE_MAIL_FILTERS, fortuneMailService } from './fortuneMail';
+export {
+  canSendDelivery,
+  canTransitionDelivery,
+  planFortuneDelivery,
+  planFortuneGeneration,
+  resolveDeliveryReadiness,
+} from './domain/fortuneJobs';
+export type {
+  DeliveryChannel,
+  DeliveryProviderConfig,
+  DeliveryReadiness,
+  FortuneDeliveryJob,
+  FortuneDeliveryStatus,
+  FortuneGenerationJob,
+  FortuneTokenUsage,
+} from './domain/fortuneJobs';
