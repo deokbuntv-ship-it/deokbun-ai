@@ -151,6 +151,29 @@ export function aggregateUsageCost(
   };
 }
 
+// ---- A3. Pricing repository seam (central config; directive §6) --------------
+// Model prices live in ONE place (a config/table/repository), never hardcoded
+// across the codebase. V1 has NO pricing connected → getPricing returns null →
+// computeCost / aggregateUsageCost yield a null cost (NOT_CONFIGURED, never fake ₩0).
+export interface PricingRepository {
+  getPricing(model: string): ModelPricingConfig | null;
+  list(): ModelPricingConfig[];
+  asMap(): Record<string, ModelPricingConfig>;
+}
+
+export function staticPricingRepository(configs: readonly ModelPricingConfig[]): PricingRepository {
+  const byModel: Record<string, ModelPricingConfig> = {};
+  for (const c of configs) byModel[c.model] = c;
+  return {
+    getPricing: (model) => byModel[model] ?? null,
+    list: () => [...configs],
+    asMap: () => ({ ...byModel }),
+  };
+}
+
+// The V1 default: NO pricing connected. Cost stays null everywhere (truthful).
+export const emptyPricingRepository: PricingRepository = staticPricingRepository([]);
+
 // ---- B. Engine telemetry (metadata only; never birth info / full results) -----
 export type EngineTelemetryEvent = {
   engine: 'saju' | 'ziwei' | 'qimen';
