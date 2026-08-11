@@ -76,6 +76,12 @@ export default function HomeScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [recent, setRecent] = useState<ConversationSummaryItem | null>(null);
   const [mail, setMail] = useState<FortuneMailItem | null>(null);
+  // Time-of-day greeting must be deterministic on first render so the web static
+  // export hydrates without a text mismatch (React #418). Resolve after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -139,7 +145,7 @@ export default function HomeScreen() {
         <View style={styles.wrapper}>
           <Stack gap="xl">
             <Text variant="displayMedium">
-              {greeting()}
+              {mounted ? greeting() : '안녕하세요.'}
               {'\n'}오늘은 무엇이 궁금하세요?
             </Text>
 
