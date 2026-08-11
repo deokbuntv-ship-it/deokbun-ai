@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type {
@@ -116,7 +117,7 @@ async function listFamous(params: FamousListParams): Promise<FamousListItem[]> {
     .range(params.offset, params.offset + params.limit - 1);
 
   if (error) {
-    throw error;
+    logDbError(error, 'famous', 'db');
   }
   return ((data as Row[] | null) ?? []).map(toListItem);
 }
@@ -129,7 +130,7 @@ async function getFamous(id: string): Promise<FamousProfile | null> {
     .eq('id', id)
     .maybeSingle();
   if (error) {
-    throw error;
+    logDbError(error, 'famous', 'db');
   }
   return data === null ? null : toProfile(data as Row);
 }
@@ -142,7 +143,7 @@ async function createFamous(input: FamousInput): Promise<FamousProfile> {
     .select(FULL_COLUMNS)
     .single();
   if (error) {
-    throw error;
+    logDbError(error, 'famous', 'db');
   }
   return toProfile(data as Row);
 }
@@ -151,7 +152,7 @@ async function updateFamous(id: string, input: FamousInput): Promise<void> {
   const supabase = getSupabaseClient();
   const { error } = await supabase.from(TABLE).update(toRow(input)).eq('id', id);
   if (error) {
-    throw error;
+    logDbError(error, 'famous', 'db');
   }
 }
 
@@ -164,7 +165,7 @@ async function archiveFamous(id: string): Promise<void> {
     .update({ status: 'archived', is_public: false })
     .eq('id', id);
   if (error) {
-    throw error;
+    logDbError(error, 'famous', 'db');
   }
 }
 

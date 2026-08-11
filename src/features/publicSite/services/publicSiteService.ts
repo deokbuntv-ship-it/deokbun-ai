@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type {
@@ -53,7 +54,7 @@ async function listContent(
     args.p_search = search;
   }
   const { data, error } = await supabase.rpc('public_list_content', args);
-  if (error) throw error;
+  if (error) logDbError(error, 'public', 'db');
   return ((data as Row[] | null) ?? []).map((row) => ({
     slug: String(row.slug ?? ''),
     title: String(row.title ?? ''),
@@ -74,7 +75,7 @@ async function getContent(slug: string): Promise<PublicContentDetail | null> {
   const { data, error } = await supabase.rpc('public_get_content', {
     p_slug: slug,
   });
-  if (error) throw error;
+  if (error) logDbError(error, 'public', 'db');
   if (data === null || typeof data !== 'object') return null;
   const row = data as Row;
   const famousRaw = row.famous as Row | null;
@@ -112,7 +113,7 @@ async function listFamous(
     p_limit: params.limit,
     p_offset: params.offset,
   });
-  if (error) throw error;
+  if (error) logDbError(error, 'public', 'db');
   return ((data as Row[] | null) ?? []).map((row) => ({
     slug: String(row.slug ?? ''),
     name: String(row.name ?? ''),
@@ -128,7 +129,7 @@ async function getFamous(slug: string): Promise<PublicFamousDetail | null> {
   const { data, error } = await supabase.rpc('public_get_famous', {
     p_slug: slug,
   });
-  if (error) throw error;
+  if (error) logDbError(error, 'public', 'db');
   if (data === null || typeof data !== 'object') return null;
   const row = data as Row;
   return {

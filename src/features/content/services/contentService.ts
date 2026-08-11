@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type {
@@ -131,7 +132,7 @@ async function listContent(
     .range(params.offset, params.offset + params.limit - 1);
 
   if (error) {
-    throw error;
+    logDbError(error, 'content', 'db');
   }
   return ((data as Row[] | null) ?? []).map(toListItem);
 }
@@ -155,7 +156,7 @@ async function getContent(id: string): Promise<ContentItem | null> {
     .eq('id', id)
     .maybeSingle();
   if (error) {
-    throw error;
+    logDbError(error, 'content', 'db');
   }
   return data === null ? null : toItem(data as Row);
 }
@@ -180,7 +181,7 @@ async function createContent(input: ContentInput): Promise<ContentItem> {
     .select(CORE_COLUMNS)
     .single();
   if (error) {
-    throw error;
+    logDbError(error, 'content', 'db');
   }
   return toItem(data as Row);
 }
@@ -197,7 +198,7 @@ async function updateContent(id: string, input: ContentInput): Promise<void> {
   }
   const { error } = await supabase.from(TABLE).update(coreRow(row)).eq('id', id);
   if (error) {
-    throw error;
+    logDbError(error, 'content', 'db');
   }
 }
 
@@ -208,7 +209,7 @@ async function cancelContent(id: string): Promise<void> {
     .update({ status: 'cancelled' })
     .eq('id', id);
   if (error) {
-    throw error;
+    logDbError(error, 'content', 'db');
   }
 }
 
@@ -244,7 +245,7 @@ async function listVersions(
     .order('version', { ascending: false })
     .limit(limit);
   if (error) {
-    throw error;
+    logDbError(error, 'content', 'db');
   }
   return ((data as Row[] | null) ?? []).map(toVersion);
 }

@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import type { Profile } from '@/features/profile/types/profile';
 import { getSupabaseClient } from '@/services/supabase';
 
@@ -34,7 +35,7 @@ async function ensureProfile(
   );
 
   if (error) {
-    throw error;
+    logDbError(error, 'profile', 'db');
   }
 }
 
@@ -48,7 +49,7 @@ async function loadProfile(userId: string): Promise<Profile | null> {
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'profile', 'db');
   }
 
   if (data === null) {
@@ -72,7 +73,7 @@ async function updateDisplayName(
     .eq('id', userId);
 
   if (error) {
-    throw error;
+    logDbError(error, 'profile', 'db');
   }
 }
 

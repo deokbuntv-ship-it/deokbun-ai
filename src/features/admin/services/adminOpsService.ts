@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type {
@@ -63,7 +64,7 @@ async function getDashboardOverview(): Promise<AdminDashboardOverview> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.rpc('admin_dashboard_overview');
   if (error) {
-    throw error;
+    logDbError(error, 'admin', 'db');
   }
   if (data === null || typeof data !== 'object') {
     throw new Error('invalid_overview');
@@ -86,7 +87,7 @@ async function listAiUsage(
   }
   const { data, error } = await supabase.rpc('admin_list_ai_usage', args);
   if (error) {
-    throw error;
+    logDbError(error, 'admin', 'db');
   }
   return ((data as Record<string, unknown>[] | null) ?? []).map(toUsageItem);
 }
@@ -99,7 +100,7 @@ async function getDailyActivity(
     p_days: days,
   });
   if (error) {
-    throw error;
+    logDbError(error, 'admin', 'db');
   }
   const toNum = (v: unknown) =>
     typeof v === 'number' ? v : Number(v) || 0;

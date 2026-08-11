@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type {
@@ -52,7 +53,7 @@ async function listByContent(contentId: string): Promise<ContentPublication[]> {
     .select(COLUMNS)
     .eq('content_id', contentId)
     .order('updated_at', { ascending: false });
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
   return ((data as Row[] | null) ?? []).map(toPublication);
 }
 
@@ -72,7 +73,7 @@ async function recordManualPublish(
     })
     .select(COLUMNS)
     .single();
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
   return toPublication(data as Row);
 }
 
@@ -82,7 +83,7 @@ async function cancelPublication(id: string): Promise<void> {
     .from(TABLE)
     .update({ status: 'cancelled' })
     .eq('id', id);
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
 }
 
 // Persist a scheduled publication (status=scheduled). Execution (pg_cron → Edge)
@@ -102,7 +103,7 @@ async function schedulePublication(
     })
     .select(COLUMNS)
     .single();
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
   return toPublication(data as Row);
 }
 
@@ -114,7 +115,7 @@ async function listScheduled(limit = 100): Promise<ScheduledPublicationItem[]> {
     'admin_list_scheduled_publications',
     { p_limit: limit },
   );
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
   return ((data as Row[] | null) ?? []).map((row) => ({
     id: String(row.id ?? ''),
     contentId: str(row.content_id),

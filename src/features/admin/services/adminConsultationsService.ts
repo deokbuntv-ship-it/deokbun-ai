@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type {
@@ -66,7 +67,7 @@ async function listConsultations(
     p_offset: params.offset,
   });
   if (error) {
-    throw error;
+    logDbError(error, 'admin', 'db');
   }
   return ((data as Record<string, unknown>[] | null) ?? []).map(toListItem);
 }
@@ -79,7 +80,7 @@ async function getConsultation(
     p_conversation_id: conversationId,
   });
   if (error) {
-    throw error;
+    logDbError(error, 'admin', 'db');
   }
   if (data === null || typeof data !== 'object') {
     return null;

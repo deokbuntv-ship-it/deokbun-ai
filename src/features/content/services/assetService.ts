@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 import type { AssetKind, ContentAsset, ManualAssetInput } from '../types';
@@ -49,7 +50,7 @@ async function listByContent(contentId: string): Promise<ContentAsset[]> {
     .select(COLUMNS)
     .eq('content_id', contentId)
     .order('updated_at', { ascending: false });
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
   return ((data as Row[] | null) ?? []).map(toAsset);
 }
 
@@ -67,7 +68,7 @@ async function attachManual(input: ManualAssetInput): Promise<ContentAsset> {
     })
     .select(COLUMNS)
     .single();
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
   return toAsset(data as Row);
 }
 
@@ -77,7 +78,7 @@ async function cancelAsset(id: string): Promise<void> {
     .from(TABLE)
     .update({ status: 'cancelled' })
     .eq('id', id);
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
 }
 
 // Set (or clear) a content item's representative image.
@@ -90,7 +91,7 @@ async function setContentHero(
     .from('content_items')
     .update({ hero_image_url: url })
     .eq('id', contentId);
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
 }
 
 // Set (or clear) a content item's applied video.
@@ -103,7 +104,7 @@ async function setContentVideo(
     .from('content_items')
     .update({ video_url: url })
     .eq('id', contentId);
-  if (error) throw error;
+  if (error) logDbError(error, 'content', 'db');
 }
 
 export const assetService = {
