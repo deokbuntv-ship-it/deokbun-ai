@@ -353,3 +353,31 @@ UI 작업 종료 후 비UI V1.0 작업을 계속 진행(§directive). 전부 로
 | 자미두수 | iztro@2.5.8 (Claude `ziwei/**`) | V1 natal DONE / 학파 DECISION_REQUIRED |
 | 기문둔갑 | qimen-dunjia@2.1.0 (Claude `qimen/**`) | V1 board DONE / 정국 DECISION_REQUIRED |
 | cross-analysis | `analysis/crossAnalysis.ts` | 구조 계약 DONE / polarity 매핑 CODEX |
+
+---
+
+## 20. Claude PRE-CODEX V1.0 NON-ENGINE SPRINT (2026-08-12) — 결과 + Codex/Owner 시작점
+
+엔진(사주/자미/기문) + 모든 UI(consumer/admin) FROZEN. 비-엔진·비-UI backend
+seam·계약·문서만. logDbError·error contract·RLS·auth·chat pipeline 무변경.
+
+**추가/변경 파일 (Claude-owned, 신규 seam):**
+- `src/features/fortune/domain/fortuneJobs.ts` (+`index.ts` re-export, +`__tests__/fortuneJobs.test.ts` 13) — provider-neutral **생성+배달** 오케스트레이션(§3/§4). `planFortuneGeneration`(evaluateFortunePipeline 재사용, ENGINE_NOT_CONNECTED에서 정지, model/token=null), `resolveDeliveryReadiness`(not_configured/provider_not_connected/ready), `planFortuneDelivery`(readiness≠ready→blocked, gen 미생성→pending, else scheduled — **절대 가짜 sent 없음**), `canTransitionDelivery`/`canSendDelivery`(sent/cancelled terminal, 중복 send 차단).
+- `src/features/admin/operational/operationalContracts.ts` — `PricingRepository` seam(getPricing/list/asMap) + `staticPricingRepository` + `emptyPricingRepository`(V1 기본=가격 없음→cost null, **가짜 ₩0 없음**). 기존 computeCost/aggregateUsageCost 그대로. (+`__tests__/pricingRepository.test.ts` 4)
+- `src/features/analysis/__tests__/requestId.test.ts` 4 — requestId 포맷/charset/유일성/PII-free 잠금.
+
+**SQL 아티팩트(owner-apply, additive·idempotent·비파괴):**
+- `docs/FORTUNE_DELIVERY_SETUP.sql` — `fortune_mail`에 delivery_channel(check push/email/in_app)·provider_message_id·delivery_retry_count·delivery_error_code·cached_input_tokens + index. **DROP/TRUNCATE/DELETE 없음.** provider 미선택이라 컬럼은 null 유지.
+
+**문서(신규/갱신):**
+- `docs/ENV_CONTRACT.md` (신규) — 전체 환경변수 계약(CLIENT public vs EDGE secret, required/optional, secret 분류). 실제 값 없음.
+- `docs/RELEASE_READINESS.md` (신규) — 게이트·기능 준비도·Owner 게이트·**native readiness(§17)**.
+- `docs/OWNER_ACTIONS_AND_DECISIONS.md` — 결정 §G(배달 provider, V1=in-app only 권장)·§H(native identifiers)·§I(pricing table) 추가.
+
+**Codex/Owner 미결(이 스프린트가 만든 seam):**
+- **Owner DECISION_REQUIRED**: `ios.bundleIdentifier`/`android.package` 미설정(의도적, 영구 store 정체성 — Claude가 추측 금지). native/EAS 빌드 전 필수. web export는 불필요.
+- **Owner DECISION**: 운세 배달 채널(§G, V1 기본 in-app mailbox), AI 원가 pricing table(§I, 없으면 cost=unknown/token만 표시).
+- **Codex 배선 지점**: fortuneJobs(생성/배달)를 실제 fortune persistence·provider·telemetry에 연결; PricingRepository에 공식 가격표 주입; AdminAuditService/EngineTelemetryRepository 실제 store 연결(현재 no-op/seam).
+**Codex가 덮어쓰면 안 되는 것(추가):** `src/features/fortune/domain/fortuneJobs.ts`, operationalContracts의 PricingRepository seam (Claude-owned).
+
+**게이트:** tsc 0 real errors, jest green(신규 +21), expo export web exit 0, protected zones diff=0. **로컬 커밋만 — remote push 없음.**

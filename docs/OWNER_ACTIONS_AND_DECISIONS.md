@@ -104,6 +104,35 @@ Schedule *persistence* works. Automatic external publishing (pg_cron→Edge) is
 
 ### F. Dynamic-slug SEO prerender scope — see `docs/SEO_NOTES.md` (generateStaticParams).
 
+### G. Fortune delivery provider (오늘의 운세 우편함) — ⛔ NOT DECIDED (V1 default = in-app only)
+The fortune generation + delivery contracts exist and are truthful
+(`src/features/fortune/domain/fortuneJobs.ts`), but **no push/email provider is
+connected**. Until you choose one, delivery stays `not_configured` and the app
+NEVER writes a fake `sent`. Options → tradeoffs:
+- **In-app mailbox only (no external send)** — zero setup, no provider cost. The
+  user sees new fortune mail when they open the app. **Recommended for V1.**
+- **Push (Expo push / FCM+APNs)** — needs native build + device tokens + (iOS)
+  Apple Developer account. Requires §H native identifiers first.
+- **Email (transactional provider)** — needs a provider account + verified sender
+  domain + `*_API_KEY` server secret.
+To activate any external channel later: apply `docs/FORTUNE_DELIVERY_SETUP.sql`
+(additive, owner-apply) and connect a provider behind `resolveDeliveryReadiness`.
+
+### H. Native app identifiers (iOS/Android) — ⛔ DECISION_REQUIRED before any store/native build
+`app.json` currently has **no `ios.bundleIdentifier` and no `android.package`**.
+These are your permanent store identity (reverse-DNS, e.g. `com.yourcompany.deokbunai`)
+and generally cannot be changed after first publish. Claude has intentionally NOT
+set them — this is an owner branding/ownership decision. Web export works without
+them; a native (EAS) build or store submission will fail until they are set. See
+`docs/RELEASE_READINESS.md` §Native.
+
+### I. AI cost pricing table — NOT_CONFIGURED (V1 shows cost = unknown, not ₩0)
+The admin AI-cost view computes cost only from a verified pricing table
+(`PricingRepository`). None is connected, so cost is reported as unknown/partial —
+never a fake ₩0. To show real ₩ costs, supply an official price table
+(provider/model/unit/prices) into `staticPricingRepository`. Token counts are always
+shown; only the ₩ conversion waits on this.
+
 ---
 
 ## 3. Inventories
