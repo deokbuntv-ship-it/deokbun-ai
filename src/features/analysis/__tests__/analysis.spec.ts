@@ -8,12 +8,24 @@
 
 import {
   buildInterpretationContext,
+  checkRateLimit,
+  emptyRateState,
   parseStructuredAiResponse,
+  releaseInFlight,
   resolveEngineAvailability,
   resolveEngineEligibility,
   toAppErrorCode,
   type AnalysisQuestionContext,
 } from '../index';
+import {
+  computeCost,
+  type ModelPricingConfig,
+} from '@/features/admin/operational/operationalContracts';
+import {
+  canTransition,
+  fortuneIdempotencyKey,
+  validateFortuneContent,
+} from '@/features/fortune/domain/fortuneDomain';
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) throw new Error(`ASSERT FAILED: ${msg}`);
@@ -87,6 +99,85 @@ export function runAnalysisSpecs(): { passed: number } {
     assert(structured?.evidence.ziwei.availability === 'missing_birth_time', 'ziwei availability parsed');
     assert(structured?.followUpQuestions.length === 1, 'follow-ups parsed');
   });
+
+  // --- rate limit ---
+  ok(() => {
+    const cfg = { windowMs: 1000, maxRequests: 2, maxConcurrent: 5, seenIdCap: 10 };
+    let s = emptyRateState();
+    const d1 = checkRateLimit(s, 'r1', 1000, cfg);
+    assert(d1.allowed, 'first request allowed');
+    s = d1.state;
+    const d2 = checkRateLimit(s, 'r2', 1100, cfg);
+    assert(d2.allowed, 'second within burst allowed');
+    s = d2.state;
+    const d3 = checkRateLimit(s, 'r3', 1200, cfg);
+    assert(!d3.allowed && d3.code === 'LLM_RATE_LIMIT', 'third exceeds burst → rate limited');
+    // duplicate id
+    const dDup = checkRateLimit(s, 'r1', 1300, cfg);
+    assert(!dDup.allowed && dDup.code === 'DUPLICATE_REQUEST', 'duplicate id blocked');
+    // window expiry re-allows
+    const d4 = checkRateLimit(s, 'r4', 3000, cfg);
+    assert(d4.allowed, 'after window expiry re-allowed');
+  });
+  ok(() => {
+    const cfg = { windowMs: 1000, maxRequests: 100, maxConcurrent: 1, seenIdCap: 10 };
+    const d = checkRateLimit({ ...emptyRateState(), inFlight: 1 }, 'x', 0, cfg);
+    assert(!d.allowed && d.code === 'LLM_RATE_LIMIT', 'concurrent cap blocks');
+  });
+  ok(() => {
+    // isolation: user A's state does not affect user B (separate state objects)
+    const cfg = { windowMs: 1000, maxRequests: 1, maxConcurrent: 5, seenIdCap: 10 };
+    const a = checkRateLimit(emptyRateState(), 'a1', 0, cfg);
+    const b = checkRateLimit(emptyRateState(), 'b1', 0, cfg);
+    assert(a.allowed && b.allowed, 'separate users independent');
+    assert(releaseInFlight(a.state).inFlight === 0, 'release frees slot');
+  });
+
+  // --- fortune domain ---
+  ok(() =>
+    eq(
+      fortuneIdempotencyKey('u1', 's1', { type: 'monthly', year: 2026, month: 8 }),
+      'ftn:u1:s1:monthly:2026-08',
+      'idempotency key deterministic',
+    ),
+  );
+  ok(() =>
+    assert(
+      fortuneIdempotencyKey('u1', 's1', { type: 'monthly', year: 2026, month: 8 }) !==
+        fortuneIdempotencyKey('u1', 's2', { type: 'monthly', year: 2026, month: 8 }),
+      'different subject → different key',
+    ),
+  );
+  ok(() => assert(canTransition('generating', 'generated'), 'valid transition'));
+  ok(() => assert(!canTransition('sent', 'generating'), 'invalid transition blocked'));
+  ok(() => assert(validateFortuneContent({}).valid === false, 'empty content invalid'));
+  ok(() =>
+    assert(
+      validateFortuneContent({ title: 't', summary: 's', content: 'c', schemaVersion: 'v1' }).valid,
+      'complete content valid',
+    ),
+  );
+
+  // --- cost calculator ---
+  ok(() => assert(computeCost({ model: 'x', inputTokens: 1000, outputTokens: 1000 }, null) === null, 'no pricing → null (not fake 0)'));
+  ok(() => {
+    const pricing: ModelPricingConfig = {
+      provider: 'openai',
+      model: 'x',
+      effectiveFrom: '2026-01-01',
+      currency: 'KRW',
+      unit: 'per_1k_tokens',
+      inputUnitPrice: 2,
+      cachedInputUnitPrice: null,
+      outputUnitPrice: 4,
+    };
+    const cost = computeCost({ model: 'x', inputTokens: 1000, outputTokens: 1000 }, pricing);
+    assert(cost !== null && cost.total === 6, 'cost = 2 + 4 per 1k');
+  });
+
+  // --- structured parser edge cases ---
+  ok(() => assert(parseStructuredAiResponse('{ not valid json') === null, 'malformed JSON → null'));
+  ok(() => assert(parseStructuredAiResponse('{"conclusion":"c"}') === null, 'missing evidence → null'));
 
   return { passed };
 }

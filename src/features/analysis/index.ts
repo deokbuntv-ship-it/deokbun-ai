@@ -12,6 +12,19 @@ export type { AppError, AppErrorCode } from './errors';
 
 export { newRequestId } from './requestId';
 
+export {
+  DEFAULT_RATE_LIMIT,
+  OUTPUT_GUARD,
+  boundRecentByChars,
+  checkRateLimit,
+  emptyRateState,
+  releaseInFlight,
+} from './rateLimit';
+export type { RateDecision, RateLimitConfig, UserRateState } from './rateLimit';
+
+export { appErrorEvent, consoleErrorLogger } from './logging';
+export type { AppErrorEvent, AppErrorLogger, ErrorSeverity } from './logging';
+
 export { parseStructuredAiResponse } from './aiOutput';
 export type {
   EngineEvidence,
