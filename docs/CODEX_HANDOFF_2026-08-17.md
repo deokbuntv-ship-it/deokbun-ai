@@ -312,7 +312,7 @@ UI 작업 종료 후 비UI V1.0 작업을 계속 진행(§directive). 전부 로
 - **DECISION_REQUIRED:** canonical 학파(algorithm+yearDivide), LMT/자시 정책(사주와 일치), 필요 시 `astro.config()` 설정 + ruleSetVersion bump.
 - **UNVERIFIED:** 실제 배성/五行局 정확성 — 독립 reference로 **verified golden fixture** 필요(현재는 구조+characterization만). Claude가 정답을 창작하지 않음.
 
-**Codex 검증 항목:** ① 학파 확정 후 iztro config 반영 ② 독립 reference로 fixture 검증 ③ 사주↔자미 干支 boundary 일치 ④ SAJU→prompt 배선과 동일하게 ziwei evidence를 pipeline에 연결(공유경계 — Codex 소관). 
+**Codex 검증 항목:** ① 학파 확정 후 iztro config 반영 ② 독립 reference로 fixture 검증 ③ 사주↔자미 干支 boundary 일치 ④ SAJU→prompt 배선과 동일하게 ziwei evidence를 pipeline에 연결(공유경계 — Codex 소관).
 **Codex가 덮어쓰면 안 되는 것(추가):** `src/features/ziwei/**` (Claude-owned).
 **Owner blocker:** 자미 canonical 학파 결정 + 검증 reference 제공.
 
