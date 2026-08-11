@@ -42,6 +42,15 @@ export {
   resolveEngineAvailability,
   resolveEngineEligibility,
 } from './engineOrchestration';
+
+export { LIFE_DOMAINS, crossAnalyze, crossAnalyzeDomain } from './crossAnalysis';
+export type {
+  Agreement,
+  DomainCross,
+  EngineSignal,
+  LifeDomain,
+  Polarity,
+} from './crossAnalysis';
 export type {
   AnalysisQuestionContext,
   BuildContextInput,
