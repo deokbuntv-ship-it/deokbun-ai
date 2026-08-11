@@ -27,6 +27,35 @@
 - **실 LLM 연결됨**: `supabase/functions/chat`(OpenAI Responses) 배포·검증 완료.
   (구 5절 "실제 LLM 호출 미구현", "Edge Function 없음"은 더 이상 사실 아님.)
 
+### 최신 (2026-08-11) — UI FINAL + ADMIN FINAL + V1.0 Gap Analysis
+
+- **사용자 앱 FINAL UI**: 4-tab Stitch(홈/상담/운세우편함/MY), 7화면. 커밋 `bbbf026`
+  (origin push 완료). 이후 이 구조를 재디자인하지 않는다.
+- **관리자 콘솔 FINAL UI**: 10화면 Stitch. 커밋 `f4d5106 → 01ea59f → 390f8a8`
+  (origin push 완료, HEAD). 관리자 전용 토큰은 `src/features/admin/adminTheme.ts`.
+- **V1.0 Gap 요약 (실제 코드 기준)**: Auth(kakao+google, guard, admin fail-closed)
+  **DONE** · chat Edge(OpenAI Responses, 서버 키, usage 로깅) **DONE** ·
+  대화/상담 persistence **DONE** · 명리(SAJU) 엔진(~10K LOC, golden fixtures)
+  **DONE(단, FROZEN)**. 자미두수/기문둔갑/Cross-analysis = **contract 타입만
+  (MISSING)** · fortune-mail 생성 파이프라인 **MISSING(seam만)** · rate-limit /
+  streaming / 앱 오류 로깅 / 테스트 프레임워크 **MISSING** · lint(eslint 설정 없음)
+  **깨짐(기술부채)**.
+- **⚠️ 소비자 코어 스키마가 repo에 없었음 → 저장**: `profiles`,
+  `consultation_subjects`, `conversations`, `conversation_messages`의 DDL/RLS가
+  out-of-band 적용되어 repo에 없었음(재현성/보안검증 리스크). 코드에서 정확히
+  도출해 `docs/CONSUMER_CORE_SCHEMA.sql`로 저장(멱등·비파괴, **오너가 라이브 DB와
+  대조 후 적용**). 자동 실행되지 않음.
+- **⚠️ Codex ENGINE 경계**: `src/features/interpretation/**`는 FROZEN. 자미두수/
+  기문둔갑/Cross는 규칙 창작·엔진 수정 금지(§18/§55/§65). 이 트랙에서 만들지 않는다.
+- **다음 코드 우선순위(오너 블로커 없이 가능)**: ① SAJU 엔진 결과를
+  `contextSelector`/프롬프트에 주입(제17조; chat 파이프라인은 현재 원시 생년월일
+  문자열만 전달 — 엔진 미연결). ② chat Edge rate-limit(§39). ③ 표준 에러코드 정리.
+  ④ 앱 오류 로깅 seam. (자미두수/기문둔갑/fortune 파이프라인은 엔진/백엔드 그린필드.)
+- **오너 수동 블로커**: `OPENAI_API_KEY`(설정됨)/quota, Supabase 마이그레이션 적용
+  (`CONSUMER_CORE_SCHEMA.sql` + `OWNER_ACTIONS_AND_DECISIONS.md`의 대기 항목),
+  edge 재배포(content-generate/media/video), `GEMINI_API_KEY`, OAuth 콘솔
+  (Kakao KOE205/Google/Naver/Apple), 인증 관리자 육안 QA.
+
 ### 완료(코드+검증) / 완료(코드, USER ACTION 대기)
 
 | 영역 | 상태 |
