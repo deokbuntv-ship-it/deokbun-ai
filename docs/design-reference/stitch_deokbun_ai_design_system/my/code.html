@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>덕분AI - MY</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#eae8e3",
+                      "surface-container-lowest": "#ffffff",
+                      "surface": "#fbf9f4",
+                      "tertiary-fixed": "#ffdcc4",
+                      "on-surface-variant": "#44474c",
+                      "error": "#ba1a1a",
+                      "secondary-container": "#b9e8eb",
+                      "on-error": "#ffffff",
+                      "surface-container": "#f0eee9",
+                      "inverse-surface": "#30312e",
+                      "on-primary-fixed-variant": "#38485a",
+                      "tertiary-container": "#442000",
+                      "outline-variant": "#c4c6cd",
+                      "on-tertiary-fixed-variant": "#703800",
+                      "primary": "#041627",
+                      "secondary-fixed": "#bcebee",
+                      "primary-container": "#1a2b3c",
+                      "surface-tint": "#4f6073",
+                      "on-error-container": "#93000a",
+                      "background": "#fbf9f4",
+                      "primary-fixed": "#d2e4fb",
+                      "on-tertiary-container": "#d8781e",
+                      "secondary": "#386568",
+                      "secondary-fixed-dim": "#a0cfd2",
+                      "inverse-on-surface": "#f2f1ec",
+                      "tertiary-fixed-dim": "#ffb781",
+                      "on-secondary-fixed-variant": "#1f4d50",
+                      "on-secondary-container": "#3d6a6d",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "on-surface": "#1b1c19",
+                      "surface-container-low": "#f5f3ee",
+                      "on-background": "#1b1c19",
+                      "inverse-primary": "#b7c8de",
+                      "on-secondary-fixed": "#002022",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed": "#0b1d2d",
+                      "surface-bright": "#fbf9f4",
+                      "tertiary": "#260f00",
+                      "on-primary-container": "#8192a7",
+                      "surface-container-highest": "#e4e2dd",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#b7c8de",
+                      "on-tertiary-fixed": "#301400",
+                      "surface-dim": "#dbdad5",
+                      "surface-variant": "#e4e2dd",
+                      "outline": "#74777d"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "nav-height": "64px",
+                      "element-gap": "12px",
+                      "gutter": "16px",
+                      "container-margin": "20px",
+                      "section-gap": "32px"
+              },
+              "fontFamily": {
+                      "body-md": ["Pretendard", "sans-serif"],
+                      "display-lg-mobile": ["Pretendard", "sans-serif"],
+                      "display-lg": ["Pretendard", "sans-serif"],
+                      "body-sm": ["Pretendard", "sans-serif"],
+                      "headline-sm": ["Pretendard", "sans-serif"],
+                      "body-lg": ["Pretendard", "sans-serif"],
+                      "label-md": ["Pretendard", "sans-serif"],
+                      "headline-md": ["Pretendard", "sans-serif"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "display-lg-mobile": ["26px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                      "display-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen relative font-body-md text-body-md antialiased flex flex-col items-center">
+<div class="w-full max-w-[480px] min-h-screen bg-surface flex flex-col pb-nav-height relative shadow-sm">
+<!-- TopAppBar -->
+<header class="flex items-center justify-between px-gutter h-nav-height w-full max-w-[480px] mx-auto bg-surface text-primary font-headline-sm text-headline-sm-mobile md:text-headline-sm docked full-width top-0 sticky z-40">
+<div class="flex items-center gap-element-gap">
+<!-- No leading icon specified for basic MY header based on prompt request for simplicity, but maintaining space if needed -->
+</div>
+<h1 class="font-headline-sm text-headline-sm-mobile md:text-headline-sm text-primary font-bold tracking-tight">MY</h1>
+<div class="w-6"></div> <!-- Spacer to balance header if back button was present -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 px-container-margin py-section-gap flex flex-col gap-section-gap">
+<!-- Profile Section -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-container-margin flex items-center justify-between cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-container-margin">
+<div class="w-16 h-16 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A softly lit, warm portrait photograph of an East Asian user avatar placeholder. High quality, professional studio lighting, neutral background, modern corporate feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhGUmxc0oZBSMdIkmFxHmdHPlmFzM-YQk_sdpb2EZbgzSyL-dmsRWCo7v7jIPdpJLw-L3KPOPxIbsHLd2vSf5GzIaYkArjt3tG1hVDbcOzotB6xW_O-_8d7X9-qrvQFeHNMr51JgUoh7_ILnOWGvK9BqOqsSkK67CEEV51nToeiT1MYHmCnOD-ENH59A0SigBSSQah9wAy-_1vUQfNkcPrCrxpP3DWM1CRBR3kPoR9pR2-JcoPehHq"/>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm-mobile text-primary">김덕분</span>
+<span class="text-body-sm text-on-surface-variant">deokbun@example.com</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</section>
+<!-- Menu List: Management -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+<a class="flex items-center justify-between px-container-margin py-4 border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors active:scale-[0.99]" href="#">
+<div class="flex items-center gap-element-gap">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-body-md text-primary">분석 대상자 관리</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</a>
+</section>
+<!-- Menu List: Settings & Legal -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+<a class="flex items-center justify-between px-container-margin py-4 border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors active:scale-[0.99]" href="#">
+<div class="flex items-center gap-element-gap">
+<span class="material-symbols-outlined text-secondary">settings</span>
+<span class="font-body-md text-primary">설정</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</a>
+<a class="flex items-center justify-between px-container-margin py-4 border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors active:scale-[0.99]" href="#">
+<div class="flex items-center gap-element-gap">
+<span class="material-symbols-outlined text-secondary">policy</span>
+<span class="font-body-md text-primary">약관 및 정책</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</a>
+</section>
+<!-- Logout -->
+<div class="mt-4 w-full flex justify-center">
+<button class="font-body-md text-error px-4 py-2 rounded-lg hover:bg-error-container hover:text-on-error-container transition-colors active:scale-95">
+                    로그아웃
+                </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 w-full z-50 flex justify-around items-center h-nav-height bg-surface border-t border-outline-variant max-w-[480px] mx-auto pb-safe">
+<!-- Home (Inactive) -->
+<a class="flex flex-col items-center justify-center text-primary opacity-40 hover:bg-surface-container-low transition-colors w-full h-full active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-label-md">홈</span>
+</a>
+<!-- Counseling (Inactive) -->
+<a class="flex flex-col items-center justify-center text-primary opacity-40 hover:bg-surface-container-low transition-colors w-full h-full active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1">chat_bubble</span>
+<span class="font-label-md text-label-md">상담</span>
+</a>
+<!-- Fortune Inbox (Inactive) -->
+<a class="flex flex-col items-center justify-center text-primary opacity-40 hover:bg-surface-container-low transition-colors w-full h-full active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1">mail</span>
+<span class="font-label-md text-label-md">운세우편함</span>
+</a>
+<!-- MY (Active) -->
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:bg-surface-container-low transition-colors w-full h-full active:scale-95" href="#"><span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">person</span><span class="font-label-md text-label-md">MY</span></a>
+</nav>
+</div>
+</body></html>

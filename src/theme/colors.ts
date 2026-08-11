@@ -13,13 +13,30 @@ const palette = {
   gray900: '#111827',
   blue500: '#3B82F6',
   blue600: '#2563EB',
-  // Indigo/lavender AI accent family + warm ivory (§4 brand direction).
-  indigo400: '#818CF8',
-  indigo500: '#6366F1',
-  indigo600: '#4F46E5',
-  lavender50: '#EEEDFB',
-  lavenderDark: '#26243A',
-  ivory: '#FBFAF8',
+  // ---- Stitch FINAL design system (SSOT: docs/design-reference) ----
+  // "Warm Guidance": warm white, deep navy, muted teal, warm orange.
+  warmWhite: '#F9F7F2', // background (Layer 0)
+  warmSurfaceLow: '#F5F3EE', // subtle tonal elevation
+  warmSurfaceHigh: '#EAE8E3', // selected/tonal
+  borderWarm: '#E5E1D8', // 1px card/nav border
+  navy: '#1A2B3C', // primary (Deep Navy)
+  teal: '#5E8B8E', // secondary (Muted Teal)
+  orange: '#F28C33', // accent (Warm Orange, sparingly)
+  ink: '#1B1C19', // on-surface text
+  inkVariant: '#44474C', // on-surface-variant
+  tealTint: '#EAF3F3', // teal ~10% surface (chips/insight)
+  // dark-scheme derivations (consumer is light-first; keep dark on-hue)
+  navyDark: '#4F6073',
+  tealDark: '#A0CFD2',
+  orangeDark: '#FFB781',
+  warmDarkBg: '#1A1B17',
+  warmDarkElevated: '#24261F',
+  warmDarkSelected: '#2E312A',
+  warmDarkSurface: '#22231E',
+  warmDarkBorder: '#3A3B34',
+  warmDarkText: '#F2F1EC',
+  warmDarkTextVariant: '#C4C6CD',
+  tealTintDark: '#22322F',
   red500: '#EF4444',
   green500: '#22C55E',
   amber500: '#F59E0B',
@@ -38,8 +55,9 @@ export type SemanticColors = {
   textInverse: string;
   primary: string;
   primaryText: string;
-  // Soft lavender/indigo AI accent (§4). `accent` = strong accent (icons/labels),
-  // `accentSurface` = tinted background for AI-emphasis cards/chips.
+  // Stitch: `secondary` = muted teal (calm/secondary actions), `accent` = warm
+  // orange (sparingly — focus/notify), `accentSurface` = teal tint (chips/insight).
+  secondary: string;
   accent: string;
   accentSurface: string;
   success: string;
@@ -48,36 +66,38 @@ export type SemanticColors = {
 };
 
 const lightColors = {
-  background: palette.ivory,
-  backgroundElevated: palette.gray50,
-  backgroundSelected: palette.gray200,
+  background: palette.warmWhite,
+  backgroundElevated: palette.warmSurfaceLow,
+  backgroundSelected: palette.warmSurfaceHigh,
   surface: palette.white,
-  border: palette.gray200,
-  textPrimary: palette.gray900,
-  textSecondary: palette.gray500,
+  border: palette.borderWarm,
+  textPrimary: palette.ink,
+  textSecondary: palette.inkVariant,
   textInverse: palette.white,
-  primary: palette.indigo600,
+  primary: palette.navy,
   primaryText: palette.white,
-  accent: palette.indigo500,
-  accentSurface: palette.lavender50,
+  secondary: palette.teal,
+  accent: palette.orange,
+  accentSurface: palette.tealTint,
   success: palette.green500,
   warning: palette.amber500,
   danger: palette.red500,
 } satisfies SemanticColors;
 
 const darkColors = {
-  background: palette.black,
-  backgroundElevated: palette.gray800,
-  backgroundSelected: palette.gray700,
-  surface: palette.gray900,
-  border: palette.gray700,
-  textPrimary: palette.white,
-  textSecondary: palette.gray400,
-  textInverse: palette.gray900,
-  primary: palette.indigo500,
+  background: palette.warmDarkBg,
+  backgroundElevated: palette.warmDarkElevated,
+  backgroundSelected: palette.warmDarkSelected,
+  surface: palette.warmDarkSurface,
+  border: palette.warmDarkBorder,
+  textPrimary: palette.warmDarkText,
+  textSecondary: palette.warmDarkTextVariant,
+  textInverse: palette.ink,
+  primary: palette.navyDark,
   primaryText: palette.white,
-  accent: palette.indigo400,
-  accentSurface: palette.lavenderDark,
+  secondary: palette.tealDark,
+  accent: palette.orangeDark,
+  accentSurface: palette.tealTintDark,
   success: palette.green500,
   warning: palette.amber500,
   danger: palette.red500,

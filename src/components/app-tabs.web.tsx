@@ -13,8 +13,7 @@ import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-// Web top nav — mirrors the native bottom-tab IA (§2): 홈 · 운세 · AI 상담 ·
-// 인연 · MY. Kept in sync with app-tabs.tsx. 운세 우편함 / records live under MY.
+// Web top nav — mirrors the native 4-tab IA: 홈 · 상담 · 운세우편함 · MY.
 export default function AppTabs() {
   return (
     <Tabs>
@@ -24,14 +23,11 @@ export default function AppTabs() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton>홈</TabButton>
           </TabTrigger>
-          <TabTrigger name="fortune" href="/fortune" asChild>
-            <TabButton>운세</TabButton>
-          </TabTrigger>
           <TabTrigger name="consult" href="/consult" asChild>
-            <TabButton>AI 상담</TabButton>
+            <TabButton>상담</TabButton>
           </TabTrigger>
-          <TabTrigger name="relationship" href="/relationship" asChild>
-            <TabButton>인연</TabButton>
+          <TabTrigger name="inbox" href="/inbox" asChild>
+            <TabButton>운세우편함</TabButton>
           </TabTrigger>
           <TabTrigger name="my" href="/my" asChild>
             <TabButton>MY</TabButton>

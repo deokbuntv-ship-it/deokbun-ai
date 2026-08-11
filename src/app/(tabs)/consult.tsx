@@ -1,201 +1,281 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button } from '@/components/Button';
+import { AppHeader } from '@/components/AppHeader';
 import { Card } from '@/components/Card';
+import { InsightCard } from '@/components/InsightCard';
+import { PersonSelectorSheet } from '@/components/PersonSelectorSheet';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
+import { MaxContentWidth } from '@/constants/theme';
 import {
-    useConsultationDraft,
-    useConsultationSubjects,
-    type ConsultationSubjectRecord,
+  conversationService,
+  type ConversationSummaryItem,
+} from '@/features/chat';
+import {
+  isSavedSubjectId,
+  useConsultationDraft,
+  type BirthInfoDraft,
+  type ConsultationSubject,
 } from '@/features/consultation';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { colors, radius, spacing } from '@/theme';
 
-export default function ConsultScreen() {
+// 02_CONSULTATION_LIST (Stitch _4) — Conversation history for the active subject.
+// 진행 중 상담 (latest) + 이전 상담 내역 + 새 상담 FAB. Distinct from HOME: this is
+// history-centric. Real data via conversationService; subject chosen via 나 ▾.
+type Status = 'loading' | 'ready' | 'error' | 'no-subject';
+
+type StoredSnapshot = {
+  subject: ConsultationSubject | null;
+  birthInfo: BirthInfoDraft | null;
+} | null;
+
+function when(iso: string | null): string {
+  if (!iso) return '';
+  const day = iso.slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  return day === today ? '오늘' : day;
+}
+
+function preview(summary: string | null): string | undefined {
+  if (!summary) return undefined;
+  const t = summary.trim();
+  if (!t) return undefined;
+  return t.length > 70 ? `${t.slice(0, 70)}…` : t;
+}
+
+export default function ConsultationListScreen() {
   const router = useRouter();
-  const { draft, updateSubject, updateBirthInfo } = useConsultationDraft();
-  const { subjects, status, reload } = useConsultationSubjects();
+  const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
 
-  // Refresh the saved-subject list whenever this screen regains focus (e.g.
-  // after adding/editing a subject). The hook's token discards stale responses.
+  const { draft, updateSubject, updateBirthInfo } = useConsultationDraft();
+  const subject = draft.subject;
+  const subjectId =
+    subject && isSavedSubjectId(subject.id) ? subject.id : null;
+
+  const [items, setItems] = useState<ConversationSummaryItem[]>([]);
+  const [status, setStatus] = useState<Status>('loading');
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const loadToken = useRef(0);
+
+  const load = useCallback(() => {
+    if (!subjectId) {
+      setItems([]);
+      setStatus('no-subject');
+      return;
+    }
+    const token = loadToken.current + 1;
+    loadToken.current = token;
+    setStatus('loading');
+    conversationService
+      .listConversationsForSubject(subjectId)
+      .then((rows) => {
+        if (token !== loadToken.current) return;
+        setItems(rows);
+        setStatus('ready');
+      })
+      .catch(() => {
+        if (token !== loadToken.current) return;
+        setStatus('error');
+      });
+  }, [subjectId]);
+
   useFocusEffect(
     useCallback(() => {
-      reload();
-    }, [reload]),
+      load();
+    }, [load]),
   );
 
-  const applySubjectToDraft = (record: ConsultationSubjectRecord) => {
-    updateSubject({
-      id: record.id,
-      displayName: record.displayName,
-      relationship: record.relationship,
-    });
-    updateBirthInfo(record.birthInfo);
-  };
-
-  // "상담 열기" = open/resume this subject's latest conversation (subject-aware
-  // hydration, no startNew). For a different subject we replace the draft
-  // snapshot first; same subject keeps the current draft untouched.
-  const openConsultation = (record: ConsultationSubjectRecord) => {
-    if (draft.subject?.id !== record.id) {
-      applySubjectToDraft(record);
+  const openConversation = (item: ConversationSummaryItem) => {
+    const snap = item.subjectSnapshot as StoredSnapshot;
+    if (snap?.subject && snap?.birthInfo) {
+      updateSubject(snap.subject);
+      updateBirthInfo(snap.birthInfo);
     }
-    router.push('/chat');
+    router.push({ pathname: '/chat', params: { conversationId: item.id } });
   };
 
-  // "새 상담" = explicit new consultation (startNew, fresh empty conversation).
-  // Existing conversations for this subject are preserved in the DB.
-  const startNewConsultation = (record: ConsultationSubjectRecord) => {
-    applySubjectToDraft(record);
+  const startNew = () => {
+    if (!subject) {
+      setSheetVisible(true);
+      return;
+    }
     router.push({ pathname: '/chat', params: { startNew: '1' } });
   };
 
-  const addNewSubject = () => {
-    router.push('/birth-info');
-  };
-
-  // "관리" = edit/delete the saved subject (never confused with opening a chat).
-  const manageSubject = (record: ConsultationSubjectRecord) => {
-    router.push({ pathname: '/birth-info', params: { subjectId: record.id } });
-  };
-
-  // "상담 기록" = view this subject's past conversations (read + open).
-  const openHistory = (record: ConsultationSubjectRecord) => {
-    router.push({
-      pathname: '/subject-history',
-      params: { subjectId: record.id },
-    });
-  };
-
-  // Tapping the card's identity area opens this subject's manse (Four Pillars)
-  // screen. READ ONLY: it does not touch the draft, so "진행 중" / resume / new /
-  // history behavior is unaffected. Separate from the four action buttons.
-  const openManse = (record: ConsultationSubjectRecord) => {
-    router.push({
-      pathname: '/subject-manse',
-      params: { subjectId: record.id },
-    });
-  };
-
-  const renderSubjectList = () => {
-    if (status === 'loading') {
-      return (
-        <Card>
-          <Text variant="bodyMedium" colorToken="textSecondary">
-            대상을 불러오는 중입니다...
-          </Text>
-        </Card>
-      );
-    }
-
-    if (status === 'error') {
-      // Error must never be shown as an empty list.
-      return (
-        <Card>
-          <Stack gap="sm">
-            <Text variant="bodyMedium" colorToken="textSecondary">
-              대상을 불러오지 못했습니다.
-            </Text>
-            <Button label="다시 시도" variant="secondary" onPress={reload} />
-          </Stack>
-        </Card>
-      );
-    }
-
-    if (subjects.length === 0) {
-      return (
-        <Card>
-          <Text variant="bodyMedium" colorToken="textSecondary">
-            저장된 대상이 없습니다.{'\n'}아래에서 새 대상을 추가해 주세요.
-          </Text>
-        </Card>
-      );
-    }
-
-    return subjects.map((subject) => {
-      // "진행 중" reflects only that this subject is the current in-memory draft.
-      // It does NOT imply an existing conversation (no DB lookup here).
-      const isCurrent = draft.subject?.id === subject.id;
-
-      return (
-        <Card key={subject.id}>
-          <Stack gap="sm">
-            <Pressable
-              onPress={() => openManse(subject)}
-              accessibilityRole="button"
-              accessibilityLabel={`${subject.displayName} 만세력 보기`}
-            >
-              <Stack gap="xs">
-                <Stack direction="row" gap="xs" align="center">
-                  <Text variant="bodyLarge">
-                    {subject.displayName}
-                    {subject.isSelf ? ' (본인)' : ''}
-                  </Text>
-                  {isCurrent ? (
-                    <Text variant="bodySmall" colorToken="textSecondary">
-                      · 진행 중
-                    </Text>
-                  ) : null}
-                </Stack>
-                {subject.relationship ? (
-                  <Text variant="bodySmall" colorToken="textSecondary">
-                    {subject.relationship}
-                  </Text>
-                ) : null}
-              </Stack>
-            </Pressable>
-
-            <Stack direction="row" gap="sm" style={styles.actionRow}>
-              <Button label="상담 열기" onPress={() => openConsultation(subject)} />
-              <Button
-                label="새 상담"
-                variant="secondary"
-                onPress={() => startNewConsultation(subject)}
-              />
-              <Button
-                label="관리"
-                variant="secondary"
-                onPress={() => manageSubject(subject)}
-              />
-              <Button
-                label="상담 기록"
-                variant="secondary"
-                onPress={() => openHistory(subject)}
-              />
-            </Stack>
-          </Stack>
-        </Card>
-      );
-    });
-  };
+  const [current, ...previous] = items;
 
   return (
-    <Screen>
-      <Stack gap="xxl" style={{ flex: 1, paddingTop: 24 }}>
-        <Stack gap="xs">
-          <Text variant="displayMedium">AI 상담</Text>
-          <Text variant="bodyMedium" colorToken="textSecondary">
-            무엇이 궁금하세요? 상담할 대상을 선택하면 바로 대화를 시작할 수
-            있어요. "상담 열기"로 최근 상담을 이어가고, "새 상담"으로 새로
-            시작합니다.
-          </Text>
-        </Stack>
+    <Screen padded={false}>
+      <AppHeader
+        title="상담"
+        showSwitcher
+        subjectLabel={subject?.displayName ?? '나'}
+        onSwitcher={() => setSheetVisible(true)}
+      />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.wrapper}>
+          {status === 'no-subject' ? (
+            <Card>
+              <Stack gap="md">
+                <Text variant="bodyMedium" colorToken="textSecondary">
+                  먼저 분석 대상자를 선택해 주세요. 상단의 "나 ▾"에서 대상을 고를
+                  수 있어요.
+                </Text>
+              </Stack>
+            </Card>
+          ) : status === 'loading' ? (
+            <Card>
+              <Text variant="bodyMedium" colorToken="textSecondary">
+                상담 내역을 불러오는 중입니다...
+              </Text>
+            </Card>
+          ) : status === 'error' ? (
+            <Card>
+              <Stack gap="sm">
+                <Text variant="bodyMedium" colorToken="textSecondary">
+                  상담 내역을 불러오지 못했습니다.
+                </Text>
+                <Pressable onPress={load} accessibilityRole="button">
+                  <Text variant="bodyMedium" colorToken="primary">
+                    다시 시도
+                  </Text>
+                </Pressable>
+              </Stack>
+            </Card>
+          ) : items.length === 0 ? (
+            <Card>
+              <Text variant="bodyMedium" colorToken="textSecondary">
+                아직 상담 내역이 없어요. 아래 "새 상담"으로 첫 상담을 시작해
+                보세요.
+              </Text>
+            </Card>
+          ) : (
+            <Stack gap="xl">
+              {/* 진행 중 상담 (most recent) */}
+              <Stack gap="sm">
+                <Text variant="headingMedium">진행 중 상담</Text>
+                <InsightCard
+                  tag={{ label: '최근 대화', tone: 'info' }}
+                  timestamp={when(current.updatedAt)}
+                  title={`${subject?.displayName ?? '나'}님과의 상담`}
+                  body={preview(current.summary)}
+                  onPress={() => openConversation(current)}
+                />
+              </Stack>
 
-        <Stack gap="sm">
-          <Text variant="headingMedium">상담 대상</Text>
-          {renderSubjectList()}
-        </Stack>
+              {/* 이전 상담 내역 */}
+              {previous.length > 0 ? (
+                <Stack gap="sm">
+                  <Text variant="headingMedium">이전 상담 내역</Text>
+                  <View>
+                    {previous.map((item, i) => (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => openConversation(item)}
+                        accessibilityRole="button"
+                        style={[
+                          styles.row,
+                          i > 0
+                            ? { borderTopWidth: 1, borderTopColor: theme.border }
+                            : undefined,
+                        ]}
+                      >
+                        <Stack gap="xs" style={{ flex: 1 }}>
+                          <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+                            {`${subject?.displayName ?? '나'}님 상담`}
+                          </Text>
+                          {preview(item.summary) ? (
+                            <Text
+                              variant="bodySmall"
+                              colorToken="textSecondary"
+                              numberOfLines={1}
+                            >
+                              {preview(item.summary)}
+                            </Text>
+                          ) : null}
+                        </Stack>
+                        <Text variant="bodySmall" colorToken="textSecondary">
+                          {when(item.updatedAt)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </Stack>
+              ) : null}
+            </Stack>
+          )}
+        </View>
+      </ScrollView>
 
-        <Button label="새 대상 추가" onPress={addNewSubject} />
-      </Stack>
+      {/* 새 상담 FAB */}
+      <Pressable
+        onPress={startNew}
+        accessibilityRole="button"
+        accessibilityLabel="새 상담"
+        style={[
+          styles.fab,
+          { backgroundColor: theme.primary, bottom: insets.bottom + 76 },
+        ]}
+      >
+        <Text variant="bodyLarge" colorToken="primaryText" style={styles.fabLabel}>
+          +  새 상담
+        </Text>
+      </Pressable>
+
+      <PersonSelectorSheet
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  actionRow: {
-    flexWrap: 'wrap',
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 120,
+    alignItems: 'center',
+  },
+  wrapper: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    minHeight: 56,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.xl,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  fabLabel: {
+    fontWeight: '700',
   },
 });

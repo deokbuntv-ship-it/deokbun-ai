@@ -23,9 +23,12 @@ export default function RootLayout() {
             <Stack.Screen name="birth-info" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
-            {/* 운세 우편함 — reached from MY as a stack screen; native header
-                supplies the back action. /today redirects into /fortune. */}
-            <Stack.Screen name="records" options={{ title: '운세 우편함' }} />
+            {/* 운세우편 상세 (05) — pushed from 운세우편함; own AppHeader back. */}
+            <Stack.Screen name="mail-detail" options={{ headerShown: false }} />
+            {/* 분석 대상자 관리 (from MY) — subject management; own AppHeader. */}
+            <Stack.Screen name="subjects" options={{ headerShown: false }} />
+            {/* Deep-link compatibility redirects. */}
+            <Stack.Screen name="records" options={{ headerShown: false }} />
             <Stack.Screen name="today" options={{ headerShown: false }} />
             {/* Public content / famous surface (consumer-facing, no auth). */}
             <Stack.Screen name="content/index" options={{ headerShown: false }} />

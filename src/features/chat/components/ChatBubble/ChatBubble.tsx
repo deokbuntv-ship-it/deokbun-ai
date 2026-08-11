@@ -26,7 +26,7 @@ export function ChatBubble({ message }: ChatBubbleProps) {
         <View
           style={[
             styles.assistantBlock,
-            { backgroundColor: theme.backgroundElevated },
+            { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         >
           <Markdown source={message.text} />
@@ -53,9 +53,10 @@ const styles = StyleSheet.create({
   },
   assistantBlock: {
     width: '100%',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.xl,
+    borderWidth: 1,
   },
   userRow: {
     flexDirection: 'row',
@@ -65,6 +66,6 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
   },
 });

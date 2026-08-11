@@ -7,8 +7,10 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { PersonSelectorSheet } from '@/components/PersonSelectorSheet';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -55,7 +57,10 @@ export default function ChatScreen() {
   const params = useLocalSearchParams<{
     startNew?: string;
     conversationId?: string;
+    q?: string;
   }>();
+
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   // Back navigation via real router history. Going back simply unmounts this
   // screen; the conversation is already persisted, so no state is destroyed and
@@ -69,18 +74,6 @@ export default function ChatScreen() {
     }
   };
 
-  const backBar = (
-    <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-      <View style={styles.contentWrapper}>
-        <Button
-          label="← 뒤로"
-          variant="tertiary"
-          onPress={handleBack}
-          style={styles.backButton}
-        />
-      </View>
-    </View>
-  );
   const conversationIdParam =
     typeof params.conversationId === 'string' && params.conversationId.length > 0
       ? params.conversationId
@@ -91,6 +84,7 @@ export default function ChatScreen() {
   const startNewRef = useRef(params.startNew === '1');
   const rootNavState = useRootNavigationState();
   const startNewClearedRef = useRef(false);
+  const qSeededRef = useRef(false);
 
   const { draft, hydrationStatus: draftHydrationStatus, updateSubject, updateBirthInfo } =
     useConsultationDraft();
@@ -194,9 +188,17 @@ export default function ChatScreen() {
       return;
     }
     setMessages([WELCOME_MESSAGE, ...(restoredMessages ?? [])]);
-    setInputText('');
+    // Prefill the composer once from a home/quick-prompt question (never
+    // auto-sent — the user reviews and taps send). UI never calls the LLM.
+    const q = typeof params.q === 'string' ? params.q.trim() : '';
+    if (!qSeededRef.current && q.length > 0) {
+      qSeededRef.current = true;
+      setInputText(q);
+    } else {
+      setInputText('');
+    }
     setIsAuthRequired(false);
-  }, [messagesHydrationStatus, resetToken, restoredMessages]);
+  }, [messagesHydrationStatus, resetToken, restoredMessages, params.q]);
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -279,13 +281,25 @@ export default function ChatScreen() {
     }
   };
 
+  const header = (
+    <AppHeader
+      centerTitle
+      title="AI 상담"
+      showBack
+      onBack={handleBack}
+      showSwitcher
+      subjectLabel={draft.subject?.displayName ?? '나'}
+      onSwitcher={() => setSheetVisible(true)}
+    />
+  );
+
   if (
     draftHydrationStatus !== 'ready' ||
     messagesHydrationStatus !== 'ready'
   ) {
     return (
-      <Screen>
-        {backBar}
+      <Screen padded={false}>
+        {header}
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
           <Card>
             <Text variant="bodyMedium" colorToken="textSecondary">
@@ -299,8 +313,8 @@ export default function ChatScreen() {
 
   if (!isDraftReady) {
     return (
-      <Screen>
-        {backBar}
+      <Screen padded={false}>
+        {header}
         <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
           <Card>
             <Text variant="bodyMedium" colorToken="textSecondary">
@@ -314,8 +328,8 @@ export default function ChatScreen() {
   }
 
   return (
-    <Screen>
-      {backBar}
+    <Screen padded={false}>
+      {header}
       <View style={styles.container}>
         <ScrollView
           ref={scrollViewRef}
@@ -334,7 +348,7 @@ export default function ChatScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.inputArea}>
+        <View style={[styles.inputArea, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={styles.contentWrapper}>
             {isAuthRequired && !isAuthenticated ? (
               <Stack gap="xs" style={styles.loginPrompt}>
@@ -353,19 +367,16 @@ export default function ChatScreen() {
           </View>
         </View>
       </View>
+
+      <PersonSelectorSheet
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    width: '100%',
-    alignItems: 'center',
-    paddingBottom: spacing.xs,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
   container: {
     flex: 1,
   },

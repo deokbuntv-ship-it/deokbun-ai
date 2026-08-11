@@ -40,7 +40,7 @@ export function Chip({
           borderRadius: 999,
           borderWidth: 1,
           borderColor: selected ? theme.primary : theme.border,
-          backgroundColor: selected ? theme.accentSurface : theme.surface,
+          backgroundColor: selected ? theme.primary : theme.surface,
           minHeight: 44,
           alignItems: 'center',
           justifyContent: 'center',
@@ -51,7 +51,7 @@ export function Chip({
     >
       <Text
         variant="bodySmall"
-        colorToken={selected ? 'primary' : 'textPrimary'}
+        colorToken={selected ? 'primaryText' : 'textPrimary'}
         style={{ fontWeight: selected ? '700' : '500' }}
       >
         {label}

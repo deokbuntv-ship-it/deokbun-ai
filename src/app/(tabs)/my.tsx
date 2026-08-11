@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AppHeader } from '@/components/AppHeader';
+import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
@@ -9,114 +11,108 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { colors, radius, spacing } from '@/theme';
 
-// MY — clean, utilitarian account hub (§27). Sections: account · saved people ·
-// records/reports (운세 우편함) · settings · logout. No internal auth IDs. Future
-// surfaces (리포트, 알림) show a truthful 준비 중.
+// 07_MY (Stitch my). Account card → 분석 대상자 관리 → 설정/약관 → 로그아웃.
+// Connected to real auth/subject features; no internal auth IDs are shown.
+// 설정/약관 screens don't exist yet, so they carry a truthful 준비 중 marker.
 export default function MyScreen() {
   const router = useRouter();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
   const { isAuthenticated, authState, signOut } = useAuth();
   const user = authState.user;
+  const name = user?.displayName || user?.email || '사용자';
 
   return (
-    <Screen padded>
+    <Screen padded={false}>
+      <AppHeader title="MY" centerTitle />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.wrapper}>
-          <Stack gap="xl">
-            <Text variant="displayMedium">MY</Text>
-
-            {/* Account — user-facing info only (no internal IDs). */}
+          <Stack gap="lg">
+            {/* Account */}
             {isAuthenticated && user ? (
               <Card>
-                <Stack gap="xs">
-                  <Text variant="bodySmall" colorToken="textSecondary">
-                    계정
-                  </Text>
-                  <Text variant="headingMedium">
-                    {user.displayName || user.email || '사용자'}
-                  </Text>
-                  {user.email ? (
-                    <Text variant="bodySmall" colorToken="textSecondary">
-                      {user.email}
-                    </Text>
-                  ) : null}
+                <Stack direction="row" gap="md" align="center">
+                  <Avatar label={name} size={56} />
+                  <Stack gap="xs" style={styles.flex1}>
+                    <Text variant="headingMedium">{name}</Text>
+                    {user.email ? (
+                      <Text variant="bodyMedium" colorToken="textSecondary">
+                        {user.email}
+                      </Text>
+                    ) : null}
+                  </Stack>
                 </Stack>
               </Card>
             ) : (
               <Card>
                 <Stack gap="md">
                   <Text variant="bodyMedium" colorToken="textSecondary">
-                    로그인하면 저장된 사람과 상담 기록을 저장할 수 있어요.
+                    로그인하면 분석 대상자와 상담 기록을 저장할 수 있어요.
                   </Text>
                   <Button label="로그인하기" onPress={() => router.push('/login')} />
                 </Stack>
               </Card>
             )}
 
-            {/* Saved people (§28) — managed in the consultation hub. */}
-            <Stack gap="sm">
-              <Text variant="headingMedium">저장된 사람</Text>
-              <Stack gap="sm">
-                <Button
-                  label="상담 대상 관리"
-                  variant="secondary"
-                  onPress={() => router.push('/consult')}
-                />
-                <Button
-                  label="새 대상 추가"
-                  variant="secondary"
-                  onPress={() => router.push('/birth-info')}
-                />
-              </Stack>
-            </Stack>
+            {/* 분석 대상자 관리 */}
+            <Card>
+              <Pressable
+                onPress={() => router.push('/subjects')}
+                accessibilityRole="button"
+                style={styles.row}
+              >
+                <Text variant="bodyLarge" style={styles.rowLabel}>
+                  분석 대상자 관리
+                </Text>
+                <Text variant="headingMedium" colorToken="textSecondary">
+                  ›
+                </Text>
+              </Pressable>
+            </Card>
 
-            {/* Records / reports (§34) — 운세 우편함. */}
-            <Stack gap="sm">
-              <Text variant="headingMedium">기록 · 리포트</Text>
-              <Stack gap="sm">
-                <Button
-                  label="운세 우편함"
-                  variant="secondary"
-                  onPress={() => router.push('/records')}
-                />
-              </Stack>
-            </Stack>
-
-            {/* Settings / notifications (§27) — future. */}
-            <Stack gap="sm">
-              <Text variant="headingMedium">알림 · 설정</Text>
-              <Card>
-                <Stack
-                  direction="row"
-                  gap="sm"
-                  align="center"
-                  style={styles.rowBetween}
-                >
-                  <Text variant="bodyMedium">알림 설정</Text>
+            {/* 설정 / 약관 (future) */}
+            <Card>
+              <View>
+                <View style={styles.rowStatic}>
+                  <Text variant="bodyLarge" style={styles.rowLabel}>
+                    설정
+                  </Text>
                   <StatusBadge label="준비 중" tone="neutral" />
-                </Stack>
-              </Card>
-            </Stack>
+                </View>
+                <View style={[styles.rowStatic, { borderTopWidth: 1, borderTopColor: theme.border }]}>
+                  <Text variant="bodyLarge" style={styles.rowLabel}>
+                    약관 및 정책
+                  </Text>
+                  <StatusBadge label="준비 중" tone="neutral" />
+                </View>
+              </View>
+            </Card>
 
+            {/* 로그아웃 */}
             {isAuthenticated ? (
-              <Button
-                label="로그아웃"
-                variant="secondary"
+              <Pressable
                 onPress={() => {
                   void signOut();
                 }}
-              />
+                accessibilityRole="button"
+                style={styles.logout}
+              >
+                <Text variant="bodyLarge" colorToken="danger" style={styles.rowLabel}>
+                  로그아웃
+                </Text>
+              </Pressable>
             ) : null}
 
-            <View style={styles.disclaimer}>
-              <Text variant="caption" colorToken="textSecondary">
-                덕분AI의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
-                의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
-              </Text>
-            </View>
+            <Text variant="caption" colorToken="textSecondary" style={styles.disclaimer}>
+              덕분AI의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
+              의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
+            </Text>
           </Stack>
         </View>
       </ScrollView>
@@ -127,7 +123,8 @@ export default function MyScreen() {
 const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 40,
     alignItems: 'center',
   },
@@ -136,11 +133,34 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  rowBetween: {
+  flex1: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  rowStatic: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 52,
+    paddingVertical: spacing.sm,
+  },
+  rowLabel: {
+    flex: 1,
+    fontWeight: '600',
+  },
+  logout: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    marginTop: spacing.sm,
   },
   disclaimer: {
-    paddingTop: 4,
-    paddingHorizontal: 4,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.none,
   },
 });

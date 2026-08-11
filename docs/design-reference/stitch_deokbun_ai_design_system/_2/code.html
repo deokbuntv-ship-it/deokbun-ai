@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>덕분AI - 운세 상세 리포트</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Pretendard Font (Assuming a standard CDN for demonstration as it's specified in config) -->
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#eae8e3",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#fbf9f4",
+                        "tertiary-fixed": "#ffdcc4",
+                        "on-surface-variant": "#44474c",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#b9e8eb",
+                        "on-error": "#ffffff",
+                        "surface-container": "#f0eee9",
+                        "inverse-surface": "#30312e",
+                        "on-primary-fixed-variant": "#38485a",
+                        "tertiary-container": "#442000",
+                        "outline-variant": "#c4c6cd",
+                        "on-tertiary-fixed-variant": "#703800",
+                        "primary": "#041627",
+                        "secondary-fixed": "#bcebee",
+                        "primary-container": "#1a2b3c",
+                        "surface-tint": "#4f6073",
+                        "on-error-container": "#93000a",
+                        "background": "#fbf9f4",
+                        "primary-fixed": "#d2e4fb",
+                        "on-tertiary-container": "#d8781e",
+                        "secondary": "#386568",
+                        "secondary-fixed-dim": "#a0cfd2",
+                        "inverse-on-surface": "#f2f1ec",
+                        "tertiary-fixed-dim": "#ffb781",
+                        "on-secondary-fixed-variant": "#1f4d50",
+                        "on-secondary-container": "#3d6a6d",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#1b1c19",
+                        "surface-container-low": "#f5f3ee",
+                        "on-background": "#1b1c19",
+                        "inverse-primary": "#b7c8de",
+                        "on-secondary-fixed": "#002022",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#0b1d2d",
+                        "surface-bright": "#fbf9f4",
+                        "tertiary": "#260f00",
+                        "on-primary-container": "#8192a7",
+                        "surface-container-highest": "#e4e2dd",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#b7c8de",
+                        "on-tertiary-fixed": "#301400",
+                        "surface-dim": "#dbdad5",
+                        "surface-variant": "#e4e2dd",
+                        "outline": "#74777d"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "nav-height": "64px",
+                        "element-gap": "12px",
+                        "gutter": "20px", /* Adjusted to Safe Margins guidance */
+                        "container-margin": "20px",
+                        "section-gap": "32px"
+                    },
+                    fontFamily: {
+                        "body-md": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "display-lg-mobile": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "display-lg": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "body-sm": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "headline-sm": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "body-lg": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "label-md": ["'Pretendard Variable'", "Pretendard", "sans-serif"],
+                        "headline-md": ["'Pretendard Variable'", "Pretendard", "sans-serif"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "display-lg-mobile": ["26px", { lineHeight: "1.2", fontWeight: "700" }],
+                        "display-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-sm": ["14px", { lineHeight: "1.5", fontWeight: "400" }],
+                        "headline-sm": ["20px", { lineHeight: "1.4", fontWeight: "600" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "1.0", letterSpacing: "0.02em", fontWeight: "500" }],
+                        "headline-md": ["24px", { lineHeight: "1.3", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Pretendard Variable', Pretendard, sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface flex justify-center min-h-screen w-full antialiased">
+<!-- Mobile Container (Max 480px, Centered) -->
+<div class="w-full max-w-[480px] min-h-screen bg-surface relative flex flex-col shadow-sm border-x border-surface-variant/30">
+<!-- TopAppBar (Detail Screen State - Suppressing BottomNav implies this is a linear/task flow) -->
+<header class="fixed top-0 left-0 right-0 w-full z-50 flex items-center justify-between px-gutter h-nav-height bg-surface/90 backdrop-blur-md max-w-[480px] mx-auto transition-all">
+<button class="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity active:scale-95 group">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+<span class="font-headline-sm text-headline-sm group-hover:-translate-x-1 transition-transform">운세우편</span>
+</button>
+<!-- Optional Right Action (e.g., Share) -->
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">ios_share</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 mt-nav-height px-gutter pt-8 pb-32 flex flex-col gap-section-gap">
+<!-- HERO: One-line summary -->
+<section class="flex flex-col gap-4 animate-fade-in-up">
+<div class="inline-flex items-center gap-2 bg-secondary-container/50 px-3 py-1.5 rounded-full self-start">
+<span class="material-symbols-outlined text-[16px] text-on-secondary-container">auto_awesome</span>
+<span class="font-label-md text-label-md text-on-secondary-container">8월 종합 운세 리포트</span>
+</div>
+<h1 class="font-display-lg-mobile text-display-lg-mobile text-primary tracking-tight break-keep">
+                    새로운 제안이 들어오는 시기, <br/>
+<span class="text-on-tertiary-container relative inline-block">
+                        신중한 검토
+                        <span class="absolute bottom-1 left-0 w-full h-2 bg-tertiary-fixed-dim/40 -z-10 rounded-sm"></span>
+</span>가 필요합니다.
+                </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">
+                    이번 달은 그동안 준비했던 일들이 구체적인 형태로 나타나는 달입니다. 서두르지 말고 내실을 다지세요.
+                </p>
+</section>
+<!-- Category Status (Bento Grid Style) -->
+<section class="grid grid-cols-2 gap-element-gap">
+<!-- Wealth -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-[0_8px_24px_rgba(4,22,39,0.04)] transition-shadow">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-primary">account_balance_wallet</span>
+</div>
+<span class="font-label-md text-label-md text-secondary px-2 py-1 bg-secondary-fixed/30 rounded-lg">안정</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-on-surface-variant">재물운</h3>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">유지 및 방어</p>
+</div>
+</div>
+<!-- Business -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-[0_8px_24px_rgba(4,22,39,0.04)] transition-shadow">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-primary">storefront</span>
+</div>
+<span class="font-label-md text-label-md text-on-tertiary-container px-2 py-1 bg-tertiary-fixed/40 rounded-lg">변화</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-on-surface-variant">사업/직장운</h3>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">새로운 기회</p>
+</div>
+</div>
+<!-- Relationship -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-[0_8px_24px_rgba(4,22,39,0.04)] transition-shadow">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-primary">favorite</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant px-2 py-1 bg-surface-variant/50 rounded-lg">평온</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-on-surface-variant">애정/대인운</h3>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">원만한 관계</p>
+</div>
+</div>
+<!-- Health -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-[0_8px_24px_rgba(4,22,39,0.04)] transition-shadow">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-primary">ecg_heart</span>
+</div>
+<span class="font-label-md text-label-md text-secondary px-2 py-1 bg-secondary-fixed/30 rounded-lg">주의</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-on-surface-variant">건강운</h3>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">피로 누적</p>
+</div>
+</div>
+</section>
+<!-- Important Period Summary Card -->
+<section class="flex flex-col gap-3">
+<h2 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-on-tertiary-container" style="font-variation-settings: 'FILL' 1;">error</span>
+                    핵심 주의 구간
+                </h2>
+<div class="bg-primary text-on-primary rounded-2xl p-6 relative overflow-hidden shadow-[0_12px_24px_rgba(4,22,39,0.15)]">
+<!-- Subtle background decoration -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary-fixed/10 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<div class="flex items-center justify-between mb-4">
+<span class="font-label-md text-label-md bg-white/10 px-3 py-1 rounded-full">8월 7일 ~ 8월 15일</span>
+<span class="material-symbols-outlined text-[24px] opacity-80">calendar_today</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-2">계약 및 큰 지출 신중 검토</h3>
+<p class="font-body-sm text-body-sm text-on-primary/80">
+                            이 시기에는 매력적으로 보이는 제안이 들어올 수 있으나, 이면에 숨겨진 조건이 있을 수 있습니다. 문서 작업 시 꼼꼼한 확인이 필수적입니다.
+                        </p>
+</div>
+</div>
+</section>
+<!-- Timeline (August Full Flow) -->
+<section class="flex flex-col gap-6 pt-4">
+<h2 class="font-headline-sm text-headline-sm text-primary px-1">8월 전체 흐름</h2>
+<div class="relative pl-6 border-l-2 border-surface-variant ml-3 space-y-8">
+<!-- Timeline Item 1 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface border-2 border-surface-variant flex items-center justify-center">
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface-variant">초순 (8.1 - 8.10)</span>
+<h4 class="font-headline-sm text-headline-sm text-primary">정체된 상황의 해소</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">답답했던 일들이 서서히 실마리를 찾기 시작합니다. 주변의 조언을 귀담아들으세요.</p>
+</div>
+</div>
+<!-- Timeline Item 2 (Insight Highlight) -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface border-2 border-on-tertiary-container flex items-center justify-center shadow-[0_0_8px_rgba(216,120,30,0.3)]">
+<div class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></div>
+</div>
+<div class="flex flex-col gap-2 bg-tertiary-fixed/10 p-4 rounded-xl border border-tertiary-fixed-dim/20 -ml-2">
+<span class="font-label-md text-label-md text-on-tertiary-container flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">lightbulb</span>
+                                중순 (8.11 - 8.20)
+                            </span>
+<h4 class="font-headline-sm text-headline-sm text-on-tertiary-container">새로운 인연과 기회</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                                예상치 못한 곳에서 귀인을 만날 수 있습니다. <span class="text-on-tertiary-container font-medium">특히 15일 전후로 들어오는 제안</span>은 긍정적으로 검토해볼 가치가 있습니다.
+                            </p>
+</div>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface border-2 border-surface-variant flex items-center justify-center">
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface-variant">하순 (8.21 - 8.31)</span>
+<h4 class="font-headline-sm text-headline-sm text-primary">성과 수확 및 재정비</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">바쁘게 달려온 만큼 확실한 결과물이 나타납니다. 다음 달을 위해 휴식을 취하며 체력을 보충하세요.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- CTA Fixed Bottom (Primary Button) -->
+<div class="fixed bottom-0 left-0 right-0 w-full z-40 bg-gradient-to-t from-surface via-surface to-transparent pb-8 pt-12 px-gutter max-w-[480px] mx-auto">
+<button class="w-full bg-primary text-on-primary py-4 rounded-2xl font-headline-sm text-headline-sm flex justify-center items-center gap-2 hover:bg-primary-container transition-colors shadow-[0_4px_12px_rgba(4,22,39,0.1)] active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">chat_spark</span>
+                이 운세에 대해 AI에게 물어보기
+            </button>
+</div>
+</div>
+<!-- Tailwind Config injected in head, custom animations not needed for this static report layout unless requested, but subtle CSS animations can enhance the feeling of 'guidance' -->
+<style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+    </style>
+</body></html>
