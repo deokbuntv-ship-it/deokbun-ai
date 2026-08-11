@@ -64,6 +64,93 @@ export function computeCost(
   };
 }
 
+// ---- A2. Usage aggregation (admin AI-cost reporting; directive §10) -----------
+// Groups raw usage rows by model, sums tokens, and prices each model with
+// computeCost. HONEST TOTALS: `total` sums only the models that have a verified
+// price; `complete` is false when ANY model in the set is unpriced — so the admin
+// never sees a total that silently omits unpriced traffic (no fake ₩0). Pure.
+export type UsageRow = {
+  model: string;
+  inputTokens: number;
+  cachedInputTokens?: number;
+  outputTokens: number;
+};
+
+export type UsageModelAggregate = {
+  model: string;
+  requests: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  cost: CostBreakdown | null; // null when the model has no verified pricing
+};
+
+export type UsageAggregate = {
+  byModel: UsageModelAggregate[];
+  totalRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  // Sum of the PRICED models only. `complete` = every model had pricing (and a
+  // single shared currency); otherwise the total is partial and must be labelled.
+  cost: { currency: string; total: number; complete: boolean } | null;
+};
+
+export function aggregateUsageCost(
+  rows: UsageRow[],
+  pricingByModel: Readonly<Record<string, ModelPricingConfig>>,
+): UsageAggregate {
+  const groups = new Map<string, UsageModelAggregate>();
+  for (const row of rows) {
+    const g = groups.get(row.model) ?? {
+      model: row.model,
+      requests: 0,
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+      cost: null,
+    };
+    g.requests += 1;
+    g.inputTokens += row.inputTokens;
+    g.cachedInputTokens += row.cachedInputTokens ?? 0;
+    g.outputTokens += row.outputTokens;
+    groups.set(row.model, g);
+  }
+
+  const byModel = [...groups.values()].map((g) => ({
+    ...g,
+    cost: computeCost(
+      {
+        model: g.model,
+        inputTokens: g.inputTokens,
+        cachedInputTokens: g.cachedInputTokens,
+        outputTokens: g.outputTokens,
+      },
+      pricingByModel[g.model] ?? null,
+    ),
+  }));
+
+  const priced = byModel.filter((m) => m.cost !== null);
+  const currencies = new Set(priced.map((m) => m.cost!.currency));
+  let cost: UsageAggregate['cost'] = null;
+  if (priced.length > 0 && currencies.size === 1) {
+    cost = {
+      currency: [...currencies][0],
+      total: priced.reduce((sum, m) => sum + m.cost!.total, 0),
+      complete: priced.length === byModel.length,
+    };
+  } else if (byModel.length > 0 && priced.length === 0) {
+    cost = null; // nothing priced → cost unknown (never fabricate 0)
+  }
+
+  return {
+    byModel,
+    totalRequests: byModel.reduce((s, m) => s + m.requests, 0),
+    totalInputTokens: byModel.reduce((s, m) => s + m.inputTokens, 0),
+    totalOutputTokens: byModel.reduce((s, m) => s + m.outputTokens, 0),
+    cost,
+  };
+}
+
 // ---- B. Engine telemetry (metadata only; never birth info / full results) -----
 export type EngineTelemetryEvent = {
   engine: 'saju' | 'ziwei' | 'qimen';
