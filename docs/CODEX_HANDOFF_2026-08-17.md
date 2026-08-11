@@ -160,3 +160,64 @@ PII 로그 0. RLS parity는 계속 NEEDS_OWNER_DB_COMPARISON.
 5. fortune 도메인의 idempotency DB unique constraint를 SQL artifact로 작성(live 미적용).
 6. 테스트 러너(jest-expo/vitest) 도입 결정(현재 기술부채) 후 specs 실행.
 (엔진 계산 연결·자미두수/기문둔갑·cross는 Codex 8/17.)
+
+---
+
+## 16. Claude INTEGRATION SPRINT (2026-08-11) — A~G 실제 배선 완료
+
+SPRINT 2의 "CONTINUE FROM HERE" 1~6 + 테스트 러너를 **실제 경로에 배선**했다.
+전부 로컬 커밋(remote push 없음). frozen engine(`src/features/interpretation/**`)
+및 UI 스크린 무변경. 게이트: `npx tsc --noEmit` 0 errors, `expo export --platform web`
+EXIT 0, `npx jest` 12/12.
+
+**커밋 체인(로컬):**
+- `690a192` chore(db): fortune idempotency + draft ownership RLS artifacts (E, F)
+- `1e79c7c` feat(core): error contract + requestId + context bound → chatService (B, C, D)
+- `1ea0174` feat(edge): per-user burst rate limit before LLM call (A)
+- `f0bfd04` feat(core): error contract → subject/consultation DB services (B)
+- `b020351` test(core): minimal jest + ts-jest runner (G)
+- `ea259f9` feat(core): requestId end-to-end client→edge→logs→persistence (C 완결)
+
+**A. Rate limit 배선(chat Edge):** `supabase/functions/chat/index.ts`에
+`checkBurstRateLimit` 추가 — 유료 LLM 호출 전 기존 `ai_usage_logs`(신규 인프라 없음)
+에서 사용자별 최근 창(window) 요청수를 세어 초과 시 429 `RATE_LIMITED`+`Retry-After`.
+정책은 순수 모듈 `rateLimit.ts`(DEFAULT_RATE_LIMIT) 반영. **FAIL-OPEN**(인프라 오류 시
+통과), 거부는 콘솔 로깅만(피드백 루프 방지). `CHAT_RATE_WINDOW_MS`/`CHAT_RATE_MAX_REQUESTS`
+env로 조정. Deno라 tsc 제외 → **오너 `supabase functions deploy chat` 필요**(배포 전 무영향).
+
+**B. Error Contract 배선:** chatService(실패 시 표준 AppErrorEvent 로깅, `errorCode`
+문자열 값은 UI 호환 위해 유지) + subject/consultation DB 서비스(모든 `throw error` →
+`logDbError(raw, source, op)`: 매핑된 AppErrorCode+기술 pg SQLSTATE+requestId를 PII-safe
+로깅 후 **원본 에러 재-throw** → `birth-info.tsx`의 `error.code==='23505'` 분기 등 raw
+소비자 무손상). 신규: `pgErrorToAppCode`/`pgCodeOf`(errors.ts), `logDbError`(logging.ts).
+
+**C. requestId 전파(end-to-end):** client(chatService `newRequestId`) → 결과 반환 +
+실패 로깅 → adapter가 invoke body로 전달 → edge가 sanitize(≤64, `[A-Za-z0-9_-]`, non-PII)
+후 모든 실패 로그 + `ai_usage_logs.request_id`에 저장. 저장은 **telemetry-safe**: 컬럼
+없으면 request_id 없이 재삽입(텔레메트리 무손실). 아티팩트 `docs/AI_USAGE_LOGS_REQUEST_ID.sql`
+(additive/idempotent, 오너 적용, 순서 무관).
+
+**D. Context bounding 배선:** chatService에서 buildPrompt 이전 `boundRecentByChars`로
+recent 대화를 문자수 기준 추가 바운드(기존 message-count 캡 위 defense-in-depth). 시스템/
+컨텍스트/summary 프롬프트는 buildPrompt가 조립하므로 무영향. `boundRecentByChars`는 getText
+셀렉터로 일반화(ChatMessage `.text` / LLM `.content` 모두 지원).
+
+**E/F. DB 아티팩트(live 미적용):** `docs/FORTUNE_MAIL_SETUP.sql`(UNIQUE(idempotency_key)),
+`docs/DRAFT_RLS_SETUP.sql`(M1: WITH CHECK RLS 권장안+대안). 둘 다 owner-apply.
+
+**G. 테스트 러너(이전 BLOCKED → 해제):** jest@29 + ts-jest@29 + @types/jest 설치(레지스트리
+도달 가능, clean install). `jest.config.js`+`tsconfig.jest.json`(Expo base 미상속 →
+ts-jest에서 TS5011/node10-deprecation 회피). `analysis.test.ts` 12 tests(runAnalysisSpecs
+구동 + 이번 스프린트 신규 primitive 네이티브 검증). `**/*.test.ts`는 앱 tsc 게이트에서 제외
+(러너 글로벌은 ts-jest가 타입 인지; 정식 게이트는 `tsc --noEmit` 유지). `npm test` 동작.
+
+**공유 경계(do-not-co-edit) 갱신:** engineOrchestration.ts / contextSelector.ts /
+promptBuilder.ts / chatService.ts에 더해 이제 chat Edge(`supabase/functions/chat/index.ts`),
+supabaseEdgeLLMAdapter.ts, analysis 배럴/errors/logging/rateLimit도 Claude 활성 편집 영역.
+
+**오너 매뉴얼(코드 아님, 배포/DB만):**
+- `supabase functions deploy chat` — A(rate limit) + C(edge requestId 로깅/저장) 활성화.
+- (선택) `docs/AI_USAGE_LOGS_REQUEST_ID.sql` 적용 — request_id 영속화 시작(순서 무관, 안전).
+- (선택) `docs/FORTUNE_MAIL_SETUP.sql` / `docs/DRAFT_RLS_SETUP.sql` — 운세메일/draft RLS.
+- RLS parity는 여전히 NEEDS_OWNER_DB_COMPARISON(CONSUMER_CORE_SCHEMA.sql 대조).
+(엔진 계산 연결·자미두수/기문둔갑·cross normalize는 Codex 소관 — frozen 유지.)
