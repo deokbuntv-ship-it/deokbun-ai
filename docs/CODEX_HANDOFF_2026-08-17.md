@@ -282,3 +282,36 @@ UI 작업 종료 후 비UI V1.0 작업을 계속 진행(§directive). 전부 로
 - SQL artifact 적용: CONSUMER_CORE_SCHEMA / FORTUNE_MAIL_SETUP / DRAFT_RLS_SETUP / AI_USAGE_LOGS_REQUEST_ID (live DB diff 후).
 - 자미두수/기문둔갑 **canonical 학파** 결정 + 검증 reference 제공(엔진 구현 unblock).
 - Native build / 스토어 계정.
+
+---
+
+## 18. Claude ZIWEI REUSE-FIRST IMPLEMENTATION (2026-08-12)
+
+자미두수 계산 기능을 **REUSE-first**로 구축. Core = **iztro@2.5.8**(MIT), Claude-owned
+`src/features/ziwei/**` 모듈로 통합. frozen `interpretation/**` 무변경, UI 무변경.
+
+**BUILD vs REUSE 판정:** `REUSE_WITH_ADAPTER`
+- iztro@2.5.8: MIT · transitive 전부 MIT(dayjs/i18next/lunar-lite/lunar-typescript) · 최근 유지(2026-03) · 순수 JS(Expo/web 번들 확인) · TS 타입 제공 · ko-KR 출력 · 命宮/身宮/12궁/五行局/14主星/四化/大限 커버 · deterministic.
+- reject: 자체 전체 구현(불필요·정확성 검증 부담), 미검증 라이브러리.
+
+**아키텍처(라이브러리 격리):**
+- `adapters/iztroAdapter.ts` — **iztro를 import하는 유일한 파일**. 버전 pin(`IZTRO_VERSION='2.5.8'`, `ZIWEI_RULESET_VERSION='iztro-default@2.5.8'`), narrow raw 타입. 교체 시 이 파일만.
+- `adapters/ziweiInputAdapter.ts` — BirthInfo→ZiweiInput. **RAW 양력 생일**을 Core에 전달(사주 캘린더로 이중정규화 안 함, §8). exact 시간만 계산, 아니면 `missing_birth_time`(가짜 시진 없음).
+- `adapters/ziweiResultAdapter.ts` — iztro astrolabe→`ZiweiChart`(사실 1:1, 四化 flatten).
+- `adapters/ziweiEvidenceAdapter.ts` — `ZiweiChart`→`EngineEvidence`(bounded, **사실만**, 해석 없음, availability 매핑). cross-analysis 계약과 연결 가능.
+- `services/ziweiService.ts` — `computeZiweiChart(birth)` deterministic, availability/error(reason 코드).
+- `validation/ziweiValidation.ts` — 구조 검증(12궁·身宮 1개·五行局 등).
+- `domain/ziweiTypes.ts` — DeokbunAI 자체 타입 + `timeIndexFromHour`.
+
+**커버리지:** 命宮/身宮/12궁/五行局/命主·身主/14主星(+四化)/大限 = iztro 결과를 normalize.
+
+**테스트(17):** timeIndex 매핑, availability gating(가짜 chart 없음), 구조 정확성, **DETERMINISM(바이트 동일)**, 四化 landing, evidence 사실-only, + iztro@2.5.8 **CHARACTERIZATION LOCK**(독립 정확성 주장 아님). 전체 jest 84/84.
+
+**정직성/미결(Owner/Codex):**
+- `docs/ZIWEI_SCHOOL_DIFFERENCES.md`: iztro config 노브(algorithm default/zhongzhou, yearDivide, 四化 table, 윤달 fixLeap, 晚子時, LMT) + DeokbunAI 선택 + Status(CONFIRMED/SCHOOL_DEPENDENT/UNVERIFIED/DECISION_REQUIRED).
+- **DECISION_REQUIRED:** canonical 학파(algorithm+yearDivide), LMT/자시 정책(사주와 일치), 필요 시 `astro.config()` 설정 + ruleSetVersion bump.
+- **UNVERIFIED:** 실제 배성/五行局 정확성 — 독립 reference로 **verified golden fixture** 필요(현재는 구조+characterization만). Claude가 정답을 창작하지 않음.
+
+**Codex 검증 항목:** ① 학파 확정 후 iztro config 반영 ② 독립 reference로 fixture 검증 ③ 사주↔자미 干支 boundary 일치 ④ SAJU→prompt 배선과 동일하게 ziwei evidence를 pipeline에 연결(공유경계 — Codex 소관). 
+**Codex가 덮어쓰면 안 되는 것(추가):** `src/features/ziwei/**` (Claude-owned).
+**Owner blocker:** 자미 canonical 학파 결정 + 검증 reference 제공.

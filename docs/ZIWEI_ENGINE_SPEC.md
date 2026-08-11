@@ -1,6 +1,13 @@
 # 자미두수(紫微斗數) ENGINE — RESEARCH & SPECIFICATION (v0.1, scaffold)
 
-> **STATUS: RESEARCH/SPEC SCAFFOLD — NOT AN IMPLEMENTATION.**
+> **UPDATE (2026-08-12): IMPLEMENTED via REUSE.** The calculation Core is now the
+> MIT library **iztro@2.5.8**, integrated in the Claude-owned module
+> `src/features/ziwei/**` (iztro isolated behind one adapter). This scaffold's
+> "stages/tables" are now the library's responsibility; the outstanding lineage
+> decisions moved to **docs/ZIWEI_SCHOOL_DIFFERENCES.md**. Verified golden fixtures
+> still require independent references (Owner/Codex). See CODEX_HANDOFF §18.
+
+> **STATUS: RESEARCH/SPEC SCAFFOLD — superseded by the iztro implementation above.**
 > This document defines the *structure, input/output contract, calculation
 > stages, and fixture requirements* for a 자미두수 engine. It deliberately does
 > **NOT** contain final placement tables or formulas. Every calculation rule is
