@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI 사용량 · 비용 | 덕분AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d2e4fb",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "tertiary-container": "#451f00",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-surface": "#1b1c1d",
+                        "on-tertiary-fixed": "#301400",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#002020",
+                        "secondary-fixed-dim": "#9cd0d0",
+                        "on-secondary-container": "#386b6b",
+                        "surface-container-high": "#e9e7e9",
+                        "surface": "#fbf9fa",
+                        "tertiary-fixed": "#ffdcc5",
+                        "on-background": "#1b1c1d",
+                        "on-surface-variant": "#44474c",
+                        "outline": "#74777d",
+                        "secondary-container": "#b5e9e9",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "tertiary": "#260f00",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#38485a",
+                        "on-primary-fixed": "#0b1d2d",
+                        "outline-variant": "#c4c6cd",
+                        "on-error": "#ffffff",
+                        "primary": "#041627",
+                        "surface-container": "#efedef",
+                        "surface-container-low": "#f5f3f4",
+                        "on-secondary-fixed-variant": "#194e4e",
+                        "inverse-surface": "#303032",
+                        "on-primary-container": "#8192a7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fbf9fa",
+                        "secondary-fixed": "#b8ecec",
+                        "inverse-on-surface": "#f2f0f2",
+                        "inverse-primary": "#b7c8de",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dbd9db",
+                        "on-tertiary-container": "#db7618",
+                        "primary-container": "#1a2b3c",
+                        "surface-tint": "#4f6073",
+                        "secondary": "#346666",
+                        "primary-fixed-dim": "#b7c8de",
+                        "background": "#fbf9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "24px",
+                        "baseline": "4px",
+                        "sidebar-width": "260px",
+                        "padding-card": "20px",
+                        "container-max-width": "1440px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["'Pretendard Variable'", "Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"],
+                        "label-mono": ["JetBrains Mono", "monospace"],
+                        "body-sm": ["'Pretendard Variable'", "Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"],
+                        "data-table": ["'Pretendard Variable'", "Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"],
+                        "display-lg": ["'Pretendard Variable'", "Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"],
+                        "headline-md": ["'Pretendard Variable'", "Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"],
+                        "title-sm": ["'Pretendard Variable'", "Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "data-table": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- SideNavBar -->
+<nav class="bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container font-body-md text-body-md w-[260px] h-screen fixed left-0 top-0 border-r border-outline-variant flex flex-col h-full py-baseline px-4 z-20">
+<div class="py-6 px-4">
+<h1 class="text-title-sm font-title-sm font-bold text-on-primary flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dataset</span>
+                덕분AI
+            </h1>
+<p class="text-on-primary-container font-body-sm text-body-sm mt-1">관리자 콘솔</p>
+</div>
+<ul class="flex-1 mt-4 space-y-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>대시보드</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>사용자 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span>상담 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span>운세우편 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded bg-secondary-container text-on-secondary-container font-bold opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>AI 사용량 · 비용</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+<span>해석엔진 상태</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>시스템 설정</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim font-body-sm text-body-sm fixed top-0 right-0 w-[calc(100%-260px)] h-16 flex items-center justify-between px-margin-desktop ml-[260px] z-10 border-b border-outline-variant shadow-sm">
+<div class="flex items-center gap-4">
+<span class="text-title-sm font-title-sm font-semibold text-primary">운영 서버</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded text-on-surface font-body-sm text-body-sm focus:outline-none focus:border-primary transition-colors w-80" placeholder="사용자 · 상담 · 운세우편 통합 검색" type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors hover:scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-2 cursor-pointer hover:scale-95 duration-150">
+<span class="material-symbols-outlined text-outline">account_circle</span>
+<span class="font-medium">관리자</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[260px] pt-16 min-h-screen bg-surface-container-lowest p-margin-desktop">
+<div class="max-w-[1440px] mx-auto space-y-6">
+<!-- Page Header -->
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">AI 사용량 · 비용</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">청구 및 사용량 분석</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 bg-surface text-on-surface border border-outline-variant rounded font-body-sm text-body-sm hover:bg-surface-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        보고서 다운로드
+                    </button>
+</div>
+</div>
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- KPI 1 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card">
+<div class="flex justify-between items-start mb-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">오늘 비용</span>
+<span class="material-symbols-outlined text-secondary text-[20px]">today</span>
+</div>
+<div class="font-display-lg text-display-lg font-label-mono text-on-surface tracking-tight mb-1">₩650,200</div>
+<div class="flex items-center gap-1 mt-2">
+<span class="inline-flex items-center bg-error-container/20 text-on-error-container rounded px-1.5 py-0.5 text-label-mono font-label-mono">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span> 12.5%
+                        </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px]">vs 어제</span>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card">
+<div class="flex justify-between items-start mb-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">이번 달 비용</span>
+<span class="material-symbols-outlined text-secondary text-[20px]">calendar_month</span>
+</div>
+<div class="font-display-lg text-display-lg font-label-mono text-on-surface tracking-tight mb-1">₩16,780,500</div>
+<div class="flex items-center gap-1 mt-2">
+<span class="inline-flex items-center bg-secondary-container/30 text-on-secondary-container rounded px-1.5 py-0.5 text-label-mono font-label-mono">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span> 3.2%
+                        </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px]">vs 지난달 동기간</span>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card">
+<div class="flex justify-between items-start mb-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">월 예상 비용</span>
+<span class="material-symbols-outlined text-secondary text-[20px]">trending_up</span>
+</div>
+<div class="font-display-lg text-display-lg font-label-mono text-on-surface tracking-tight mb-1">₩25,120,000</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 67%"></div>
+</div>
+<div class="text-right font-label-mono text-label-mono text-on-surface-variant mt-1">67% 진행됨</div>
+</div>
+<!-- KPI 4 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card">
+<div class="flex justify-between items-start mb-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">상담당 평균 비용</span>
+<span class="material-symbols-outlined text-secondary text-[20px]">calculate</span>
+</div>
+<div class="font-display-lg text-display-lg font-label-mono text-on-surface tracking-tight mb-1">₩56.5</div>
+<div class="flex items-center gap-1 mt-2">
+<span class="inline-flex items-center bg-surface-container-high text-on-surface rounded px-1.5 py-0.5 text-label-mono font-label-mono">
+<span class="material-symbols-outlined text-[14px]">horizontal_rule</span> 0.0%
+                        </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px]">안정적</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Layout for Charts & Settings -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Main Chart: 비용 추이 및 예측 -->
+<div class="lg:col-span-2 bg-surface border border-outline-variant rounded flex flex-col">
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h3 class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">monitoring</span>
+                            비용 추이 및 예측
+                        </h3>
+<div class="flex gap-2">
+<select class="bg-surface border border-outline-variant text-on-surface text-body-sm font-body-sm rounded px-2 py-1 focus:ring-primary focus:border-primary">
+<option>최근 30일</option>
+<option>최근 7일</option>
+<option>올해</option>
+</select>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col relative h-[300px]">
+<!-- Placeholder for Chart -->
+<div class="absolute inset-4 border-l border-b border-outline-variant/50 flex items-end">
+<!-- Y-axis labels -->
+<div class="absolute -left-12 bottom-0 top-0 flex flex-col justify-between items-end py-2 text-[10px] font-label-mono text-outline w-10">
+<span>1M</span>
+<span>750K</span>
+<span>500K</span>
+<span>250K</span>
+<span>0</span>
+</div>
+<!-- Grid lines -->
+<div class="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none">
+<div class="border-t border-outline-variant/30 w-full"></div>
+<div class="border-t border-outline-variant/30 w-full"></div>
+<div class="border-t border-outline-variant/30 w-full"></div>
+<div class="border-t border-outline-variant/30 w-full"></div>
+<div class="border-t border-transparent w-full"></div>
+</div>
+<!-- Mock Bars -->
+<div class="w-full h-full flex items-end justify-between px-2 pt-8">
+<div class="w-8 bg-primary-fixed-dim/60 hover:bg-primary-fixed-dim transition-colors rounded-t cursor-pointer relative group" style="height: 40%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩350,000</div>
+</div>
+<div class="w-8 bg-primary-fixed-dim/60 hover:bg-primary-fixed-dim transition-colors rounded-t cursor-pointer relative group" style="height: 45%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩400,000</div>
+</div>
+<div class="w-8 bg-primary-fixed-dim/60 hover:bg-primary-fixed-dim transition-colors rounded-t cursor-pointer relative group" style="height: 60%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩550,000</div>
+</div>
+<div class="w-8 bg-primary-fixed-dim/60 hover:bg-primary-fixed-dim transition-colors rounded-t cursor-pointer relative group" style="height: 55%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩480,000</div>
+</div>
+<div class="w-8 bg-primary-fixed-dim/60 hover:bg-primary-fixed-dim transition-colors rounded-t cursor-pointer relative group" style="height: 75%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩680,000</div>
+</div>
+<div class="w-8 bg-primary hover:bg-primary/90 transition-colors rounded-t cursor-pointer relative group" style="height: 85%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩800,000</div>
+</div>
+<!-- Prediction -->
+<div class="w-8 bg-surface-container-highest border border-dashed border-outline hover:bg-surface-variant transition-colors rounded-t cursor-pointer relative group" style="height: 90%">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs font-label-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩850,000 (예측)</div>
+</div>
+</div>
+</div>
+<div class="absolute -bottom-6 left-4 right-4 flex justify-between text-[10px] font-label-mono text-outline">
+<span>10/01</span>
+<span>10/05</span>
+<span>10/10</span>
+<span>10/15</span>
+<span>10/20</span>
+<span>10/25 (오늘)</span>
+<span>10/30 (예측)</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-gutter">
+<!-- Donut Chart: 기능별 비용 비중 -->
+<div class="bg-surface border border-outline-variant rounded flex-1 flex flex-col">
+<div class="p-4 border-b border-outline-variant bg-surface-container-low">
+<h3 class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">pie_chart</span>
+                                기능별 비용 비중
+                            </h3>
+</div>
+<div class="p-4 flex-1 flex items-center justify-center relative">
+<!-- CSS Mock Donut -->
+<div class="w-40 h-40 rounded-full border-[16px] border-primary relative flex items-center justify-center shadow-inner" style="border-right-color: var(--color-secondary-container); border-bottom-color: var(--color-tertiary-fixed-dim); transform: rotate(-45deg);">
+<div class="text-center" style="transform: rotate(45deg);">
+<div class="font-headline-md text-headline-md font-label-mono text-on-surface">100%</div>
+<div class="font-label-mono text-[10px] text-outline">총합</div>
+</div>
+</div>
+</div>
+<div class="p-4 pt-0 space-y-2">
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-primary"></span>일반 상담</div>
+<span class="font-label-mono">55%</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-secondary-container"></span>운세우편</div>
+<span class="font-label-mono">30%</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-tertiary-fixed-dim"></span>엔진 해석</div>
+<span class="font-label-mono">15%</span>
+</div>
+</div>
+</div>
+<!-- Alert Settings -->
+<div class="bg-surface border border-outline-variant rounded">
+<div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h3 class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+                                비용 임계값 설정
+                            </h3>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-primary appearance-none cursor-pointer checked:right-0 checked:border-primary-container z-10" id="alert-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-primary-fixed-dim cursor-pointer" for="alert-toggle"></label>
+</div>
+</div>
+<div class="p-4 space-y-4">
+<div>
+<label class="block text-body-sm font-body-sm text-on-surface-variant mb-1">주의 임계값 (₩500,000 / 일)</label>
+<div class="flex items-center">
+<span class="bg-surface-container border border-r-0 border-outline-variant px-3 py-1.5 rounded-l text-on-surface-variant font-label-mono">₩</span>
+<input class="w-full bg-surface border border-outline-variant py-1.5 px-3 rounded-r text-on-surface font-label-mono focus:ring-primary focus:border-primary text-right" type="text" value="500,000"/>
+</div>
+</div>
+<div>
+<label class="block text-body-sm font-body-sm text-on-surface-variant mb-1">위험 임계값 (₩1,000,000 / 일)</label>
+<div class="flex items-center">
+<span class="bg-surface-container border border-r-0 border-outline-variant px-3 py-1.5 rounded-l text-on-error-container font-label-mono">₩</span>
+<input class="w-full bg-surface border border-outline-variant py-1.5 px-3 rounded-r text-on-surface font-label-mono focus:ring-error focus:border-error text-right" type="text" value="1,000,000"/>
+</div>
+</div>
+<button class="w-full mt-2 py-2 bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm border border-outline-variant rounded transition-colors">
+                                저장
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Data Table: 모델별 성능 내역 -->
+<div class="bg-surface border border-outline-variant rounded overflow-hidden">
+<div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h3 class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">table_view</span>
+                        모델별 성능 내역
+                    </h3>
+<button class="text-primary font-body-sm flex items-center gap-1 hover:underline">
+                        전체 보기 <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant text-[12px] font-bold text-on-surface-variant uppercase tracking-wider font-body-sm">
+<th class="p-4">모델</th>
+<th class="p-4 text-right">요청 수</th>
+<th class="p-4 text-right">입력 토큰</th>
+<th class="p-4 text-right">출력 토큰</th>
+<th class="p-4 text-right">총 토큰</th>
+<th class="p-4 text-right">비용 (₩)</th>
+</tr>
+</thead>
+<tbody class="font-data-table text-data-table text-on-surface divide-y divide-outline-variant/50">
+<tr class="hover:bg-surface-container-lowest transition-colors h-[48px]">
+<td class="p-4 flex items-center gap-2 font-label-mono">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                    gpt-4-turbo
+                                </td>
+<td class="p-4 text-right font-label-mono">12,450</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">45.2M</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">12.1M</td>
+<td class="p-4 text-right font-label-mono font-medium">57.3M</td>
+<td class="p-4 text-right font-label-mono font-medium text-primary">420,500</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors h-[48px]">
+<td class="p-4 flex items-center gap-2 font-label-mono">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                    gpt-3.5-turbo
+                                </td>
+<td class="p-4 text-right font-label-mono">45,120</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">120.5M</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">40.2M</td>
+<td class="p-4 text-right font-label-mono font-medium">160.7M</td>
+<td class="p-4 text-right font-label-mono font-medium text-primary">185,200</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors h-[48px]">
+<td class="p-4 flex items-center gap-2 font-label-mono">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+                                    text-embedding-3
+                                </td>
+<td class="p-4 text-right font-label-mono">102,050</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">250.0M</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">-</td>
+<td class="p-4 text-right font-label-mono font-medium">250.0M</td>
+<td class="p-4 text-right font-label-mono font-medium text-primary">44,500</td>
+</tr>
+</tbody>
+<tfoot class="bg-surface-container-highest/30 border-t border-outline-variant font-data-table text-data-table">
+<tr>
+<td class="p-4 font-bold">총합</td>
+<td class="p-4 text-right font-label-mono font-bold">159,620</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">415.7M</td>
+<td class="p-4 text-right font-label-mono text-on-surface-variant">52.3M</td>
+<td class="p-4 text-right font-label-mono font-bold">468.0M</td>
+<td class="p-4 text-right font-label-mono font-bold text-primary">650,200</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+</div>
+</main>
+<style>
+        /* Simple toggle switch CSS for the alert settings */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: var(--color-primary);
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: var(--color-primary-fixed);
+        }
+        .toggle-checkbox {
+            right: 1.25rem;
+            z-index: 1;
+            border-color: var(--color-outline-variant);
+            transition: all 0.3s;
+        }
+        .toggle-label {
+            width: 2.5rem;
+            background-color: var(--color-surface-variant);
+            transition: all 0.3s;
+        }
+    </style>
+</body></html>

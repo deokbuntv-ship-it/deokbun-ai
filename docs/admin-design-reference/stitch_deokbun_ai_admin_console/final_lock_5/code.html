@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>운세우편 관리 - 덕분AI</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d2e4fb",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "tertiary-container": "#451f00",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-surface": "#1b1c1d",
+                        "on-tertiary-fixed": "#301400",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#002020",
+                        "secondary-fixed-dim": "#9cd0d0",
+                        "on-secondary-container": "#386b6b",
+                        "surface-container-high": "#e9e7e9",
+                        "surface": "#fbf9fa",
+                        "tertiary-fixed": "#ffdcc5",
+                        "on-background": "#1b1c1d",
+                        "on-surface-variant": "#44474c",
+                        "outline": "#74777d",
+                        "secondary-container": "#b5e9e9",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "tertiary": "#260f00",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#38485a",
+                        "on-primary-fixed": "#0b1d2d",
+                        "outline-variant": "#c4c6cd",
+                        "on-error": "#ffffff",
+                        "primary": "#041627",
+                        "surface-container": "#efedef",
+                        "surface-container-low": "#f5f3f4",
+                        "on-secondary-fixed-variant": "#194e4e",
+                        "inverse-surface": "#303032",
+                        "on-primary-container": "#8192a7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fbf9fa",
+                        "secondary-fixed": "#b8ecec",
+                        "inverse-on-surface": "#f2f0f2",
+                        "inverse-primary": "#b7c8de",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dbd9db",
+                        "on-tertiary-container": "#db7618",
+                        "primary-container": "#1a2b3c",
+                        "surface-tint": "#4f6073",
+                        "secondary": "#346666",
+                        "primary-fixed-dim": "#b7c8de",
+                        "background": "#fbf9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "24px",
+                        "baseline": "4px",
+                        "sidebar-width": "260px",
+                        "padding-card": "20px",
+                        "container-max-width": "1440px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Pretendard", "sans-serif"],
+                        "label-mono": ["JetBrains Mono"],
+                        "body-sm": ["Pretendard", "sans-serif"],
+                        "data-table": ["Pretendard", "sans-serif"],
+                        "display-lg": ["Pretendard", "sans-serif"],
+                        "headline-md": ["Pretendard", "sans-serif"],
+                        "title-sm": ["Pretendard", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "data-table": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        
+        /* Drawer Animation */
+        .drawer-overlay {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .drawer-panel {
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .drawer-open .drawer-overlay {
+            opacity: 1;
+            visibility: visible;
+        }
+        .drawer-open .drawer-panel {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md overflow-hidden drawer-open">
+<!-- SideNavBar -->
+<nav class="w-[260px] h-screen fixed left-0 top-0 bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container font-body-md text-body-md border-r border-outline-variant flex flex-col py-baseline px-4 z-20">
+<div class="flex items-center gap-3 px-4 py-6">
+<div class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">auto_awesome</span>
+</div>
+<div class="flex flex-col">
+<span class="text-title-sm font-title-sm font-bold text-on-primary leading-tight">덕분AI</span>
+<span class="font-body-sm text-body-sm text-on-primary-fixed-variant leading-tight">관리자 콘솔</span>
+</div>
+</div>
+<ul class="flex-1 mt-4 space-y-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>대시보드</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>사용자 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span>상담 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary-container text-on-secondary-container font-bold opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined icon-fill">mail</span>
+<span>운세우편 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>AI 사용량 · 비용</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+<span>해석엔진 상태</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>시스템 설정</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim font-body-sm text-body-sm border-b border-outline-variant flex items-center justify-between px-margin-desktop ml-[260px] z-10">
+<div class="flex items-center gap-6">
+<span class="text-title-sm font-title-sm font-semibold text-primary">운영 서버</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="pl-9 pr-4 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface text-body-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-64 transition-all hover:border-outline" placeholder="검색..." type="text"/>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors hover:scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-2 pl-4 border-l border-outline-variant cursor-pointer hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined icon-fill">account_circle</span>
+</div>
+<span class="font-medium text-on-surface hidden sm:block">관리자</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas (Background for Drawer) -->
+<main class="ml-[260px] mt-16 p-margin-desktop h-[calc(100vh-64px)] overflow-auto bg-surface-container-low w-[calc(100%-260px)] relative">
+<div class="max-w-[1440px] mx-auto">
+<!-- Simulated Table behind drawer -->
+<div class="mb-6 flex justify-between items-end">
+<div>
+<h1 class="font-headline-md text-headline-md text-on-surface mb-2">운세우편 관리</h1>
+<p class="text-on-surface-variant text-body-sm">생성 및 발송 예약된 운세 우편 목록입니다.</p>
+</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden opacity-50 blur-sm pointer-events-none">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high border-b border-outline-variant">
+<th class="px-4 py-3 font-label-mono text-label-mono text-on-surface uppercase tracking-wider">ID</th>
+<th class="px-4 py-3 font-label-mono text-label-mono text-on-surface uppercase tracking-wider">수신자</th>
+<th class="px-4 py-3 font-label-mono text-label-mono text-on-surface uppercase tracking-wider">유형</th>
+<th class="px-4 py-3 font-label-mono text-label-mono text-on-surface uppercase tracking-wider">상태</th>
+<th class="px-4 py-3 font-label-mono text-label-mono text-on-surface uppercase tracking-wider text-right">예정일시</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest">
+<td class="px-4 py-3 font-label-mono text-label-mono text-on-surface">FTN-29481</td>
+<td class="px-4 py-3 font-data-table text-data-table text-on-surface">김지수 (user_491)</td>
+<td class="px-4 py-3 text-on-surface-variant">월간 운세</td>
+<td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-fixed text-on-primary-fixed">발송 예약</span></td>
+<td class="px-4 py-3 font-label-mono text-label-mono text-on-surface-variant text-right">2023-11-01 08:00</td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest">
+<td class="px-4 py-3 font-label-mono text-label-mono text-on-surface">FTN-29480</td>
+<td class="px-4 py-3 font-data-table text-data-table text-on-surface">이민호 (user_102)</td>
+<td class="px-4 py-3 text-on-surface-variant">신년 운세</td>
+<td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary-container text-on-secondary-container">완료</span></td>
+<td class="px-4 py-3 font-label-mono text-label-mono text-on-surface-variant text-right">2023-10-25 09:30</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Drawer Overlay -->
+<div class="fixed inset-0 bg-on-background/20 z-40 drawer-overlay" id="drawerOverlay" onclick="document.body.classList.remove('drawer-open')"></div>
+<!-- Right Drawer Panel -->
+<div class="fixed top-0 right-0 w-[500px] h-screen bg-surface border-l border-outline-variant shadow-[0_8px_24px_rgba(0,0,0,0.08)] z-50 flex flex-col drawer-panel" id="detailDrawer">
+<!-- Drawer Header -->
+<div class="px-6 py-5 border-b border-outline-variant flex justify-between items-start bg-surface-container-lowest sticky top-0 z-10">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h2 class="font-headline-md text-headline-md text-on-surface font-label-mono text-label-mono">FTN-29481</h2>
+<span class="inline-flex items-center px-2.5 py-1 rounded-sm text-xs font-medium bg-primary-fixed text-on-primary-fixed">
+                        발송 예약
+                    </span>
+</div>
+<p class="text-on-surface-variant font-body-sm text-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">person</span> 김지수 (<span class="font-label-mono text-label-mono">user_491</span>) · 11월 월간 운세
+                </p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-md hover:bg-surface-container-high transition-colors" onclick="document.body.classList.remove('drawer-open')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Content -->
+<div class="flex-1 overflow-y-auto p-6 space-y-8 bg-surface-container-low/30">
+<!-- Metadata Bento Grid -->
+<section>
+<h3 class="font-title-sm text-title-sm text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">analytics</span> 생성 메타데이터
+                </h3>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface border border-outline-variant rounded-lg p-3">
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">Model</span>
+<div class="font-label-mono text-label-mono text-on-surface truncate">gpt-4-turbo-0125</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-lg p-3">
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">Prompt Version</span>
+<div class="font-label-mono text-label-mono text-on-surface truncate">v2.4_monthly_astrology</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-lg p-3">
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">Tokens Used</span>
+<div class="font-label-mono text-label-mono text-on-surface">4,281 <span class="text-on-surface-variant text-[10px] ml-1">(P: 3.1k / C: 1.1k)</span></div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-lg p-3">
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">Est. Cost</span>
+<div class="font-label-mono text-label-mono text-on-surface">$0.062 <span class="text-on-surface-variant text-[10px] ml-1">USD</span></div>
+</div>
+</div>
+</section>
+<!-- Preview Content -->
+<section>
+<h3 class="font-title-sm text-title-sm text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">preview</span> 생성된 운세 요약 (미리보기)
+                </h3>
+<div class="bg-surface border border-outline-variant rounded-xl p-5 relative">
+<!-- Decorative subtle gradient -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary-fixed-dim/20 to-transparent rounded-tr-xl pointer-events-none"></div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed relative z-10">
+                        11월은 지수님에게 새로운 변화의 바람이 부는 시기입니다. 직업적인 면에서 오랫동안 준비해온 프로젝트가 결실을 맺을 가능성이 높으며, 특히 중순 이후 재물운이 상승 곡선을 그립니다.<br/><br/>
+                        다만, 대인관계에서는 오해가 발생할 수 있으니 말을 아끼고 경청하는 자세가 필요합니다. 건강 측면에서는 환절기 호흡기 관리에 유의하시고 가벼운 산책이 에너지를 회복하는 데 큰 도움이 될 것입니다.
+                    </p>
+<div class="mt-4 pt-4 border-t border-outline-variant/50 flex justify-between items-center relative z-10">
+<span class="font-label-mono text-[11px] text-on-surface-variant">생성 소요 시간: 14.2s</span>
+<button class="text-primary hover:text-primary-fixed-dim font-body-sm text-body-sm font-medium flex items-center gap-1 transition-colors">
+                            전체 보기 <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Event Timeline -->
+<section>
+<h3 class="font-title-sm text-title-sm text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">history</span> 이벤트 타임라인
+                </h3>
+<div class="pl-3 relative border-l border-outline-variant/60 ml-2 space-y-6">
+<!-- Timeline Item 1 -->
+<div class="relative">
+<div class="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant ring-4 ring-surface"></div>
+<div class="pl-4">
+<div class="flex items-center gap-2">
+<h4 class="font-data-table text-data-table text-on-surface">생성 요청</h4>
+<span class="font-label-mono text-[10px] text-on-surface-variant">10월 28일 14:00:12</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">시스템 자동 배치 스케줄러에 의해 트리거됨</p>
+</div>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative">
+<div class="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant ring-4 ring-surface"></div>
+<div class="pl-4">
+<div class="flex items-center gap-2">
+<h4 class="font-data-table text-data-table text-on-surface">컨텍스트 수집</h4>
+<span class="font-label-mono text-[10px] text-on-surface-variant">10월 28일 14:00:15</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">사용자 사주 정보 및 과거 상담 내역(3건) 로드 완료</p>
+</div>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative">
+<div class="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant ring-4 ring-surface"></div>
+<div class="pl-4">
+<div class="flex items-center gap-2">
+<h4 class="font-data-table text-data-table text-on-surface">AI 생성 완료</h4>
+<span class="font-label-mono text-[10px] text-on-surface-variant">10월 28일 14:00:29</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">안전성 필터 통과. 품질 스코어: <span class="font-label-mono text-label-mono">0.92</span></p>
+</div>
+</div>
+<!-- Timeline Item 4 (Current) -->
+<div class="relative">
+<div class="absolute -left-[19px] top-1 w-3.5 h-3.5 rounded-full bg-primary ring-4 ring-primary-fixed"></div>
+<div class="pl-4">
+<div class="flex items-center gap-2">
+<h4 class="font-data-table text-data-table text-primary font-semibold">발송 예약됨</h4>
+<span class="font-label-mono text-[10px] text-primary">10월 28일 14:00:30</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">예정일시: <strong class="text-on-surface font-label-mono text-label-mono font-medium">2023-11-01 08:00 KST</strong></p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Drawer Footer (Actions) -->
+<div class="p-4 border-t border-outline-variant bg-surface flex justify-between items-center shrink-0">
+<button class="px-4 py-2 text-error font-body-sm text-body-sm font-medium hover:bg-error-container/20 rounded-md transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">cancel</span> 발송 취소
+            </button>
+<div class="flex gap-2">
+<button class="px-4 py-2 border border-outline-variant text-on-surface font-body-sm text-body-sm font-medium rounded-md hover:bg-surface-container-high transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">refresh</span> 다시 생성
+                </button>
+<button class="px-4 py-2 bg-primary text-on-primary font-body-sm text-body-sm font-medium rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">send</span> 즉시 발송
+                </button>
+</div>
+</div>
+</div>
+</body></html>

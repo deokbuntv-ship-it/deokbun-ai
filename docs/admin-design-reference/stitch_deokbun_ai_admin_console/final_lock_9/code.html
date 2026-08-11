@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deokbun AI - 사용자 관리</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d2e4fb",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "tertiary-container": "#451f00",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-surface": "#1b1c1d",
+                        "on-tertiary-fixed": "#301400",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#002020",
+                        "secondary-fixed-dim": "#9cd0d0",
+                        "on-secondary-container": "#386b6b",
+                        "surface-container-high": "#e9e7e9",
+                        "surface": "#fbf9fa",
+                        "tertiary-fixed": "#ffdcc5",
+                        "on-background": "#1b1c1d",
+                        "on-surface-variant": "#44474c",
+                        "outline": "#74777d",
+                        "secondary-container": "#b5e9e9",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "tertiary": "#260f00",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#38485a",
+                        "on-primary-fixed": "#0b1d2d",
+                        "outline-variant": "#c4c6cd",
+                        "on-error": "#ffffff",
+                        "primary": "#041627",
+                        "surface-container": "#efedef",
+                        "surface-container-low": "#f5f3f4",
+                        "on-secondary-fixed-variant": "#194e4e",
+                        "inverse-surface": "#303032",
+                        "on-primary-container": "#8192a7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fbf9fa",
+                        "secondary-fixed": "#b8ecec",
+                        "inverse-on-surface": "#f2f0f2",
+                        "inverse-primary": "#b7c8de",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dbd9db",
+                        "on-tertiary-container": "#db7618",
+                        "primary-container": "#1a2b3c",
+                        "surface-tint": "#4f6073",
+                        "secondary": "#346666",
+                        "primary-fixed-dim": "#b7c8de",
+                        "background": "#fbf9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "24px",
+                        "baseline": "4px",
+                        "sidebar-width": "260px",
+                        "padding-card": "20px",
+                        "container-max-width": "1440px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Pretendard"],
+                        "label-mono": ["JetBrains Mono"],
+                        "body-sm": ["Pretendard"],
+                        "data-table": ["Pretendard"],
+                        "display-lg": ["Pretendard"],
+                        "headline-md": ["Pretendard"],
+                        "title-sm": ["Pretendard"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "data-table": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen">
+<!-- SideNavBar -->
+<nav class="bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container font-body-md text-body-md w-[260px] h-screen fixed left-0 top-0 border-r border-outline-variant flex flex-col py-baseline px-4 z-50">
+<div class="py-4 px-2 mb-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-[28px] text-on-primary" data-icon="auto_awesome">auto_awesome</span>
+<div>
+<h1 class="text-title-sm font-title-sm font-bold text-on-primary tracking-tight">덕분AI</h1>
+<p class="text-on-primary-container text-xs mt-1">관리자 콘솔</p>
+</div>
+</div>
+<ul class="flex flex-col gap-1 w-full flex-grow">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="dashboard">dashboard</span>
+<span>대시보드</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-secondary-container text-on-secondary-container font-bold opacity-90 transition-opacity hover:bg-primary-fixed-dim/20 w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="group" data-weight="fill" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>사용자 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat_bubble">chat_bubble</span>
+<span>상담 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="mail">mail</span>
+<span>운세우편 관리</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="analytics">analytics</span>
+<span>AI 사용량 · 비용</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings_input_component">settings_input_component</span>
+<span>해석엔진 상태</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors w-full" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span>시스템 설정</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim font-body-sm text-body-sm fixed top-0 right-0 w-[calc(100%-260px)] h-16 border-b border-outline-variant flex items-center justify-between px-margin-desktop ml-[260px] z-40">
+<div class="flex items-center gap-4">
+<div class="text-title-sm font-title-sm font-semibold text-primary">운영 서버</div>
+<div class="relative hidden lg:flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px]" data-icon="search">search</span>
+<input class="bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-9 pr-4 text-sm w-[300px] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-on-surface placeholder:text-on-surface-variant/70 font-body-sm" placeholder="사용자 · 상담 · 운세우편 통합 검색" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors hover:bg-primary-fixed-dim/20 p-2 rounded-full scale-95 duration-150">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<div class="flex items-center gap-2 pl-4 border-l border-outline-variant font-body-sm">
+<span class="text-sm font-medium">관리자</span>
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-[260px] pt-16 min-h-screen">
+<div class="max-w-[1440px] mx-auto p-margin-desktop">
+<!-- Header Section -->
+<div class="flex items-center justify-between mb-8">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-background">사용자 관리</h2>
+<p class="text-on-surface-variant mt-1 font-body-sm">총 <span class="font-bold text-primary font-label-mono">12,458</span>명의 사용자가 등록되어 있습니다.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface border border-outline-variant text-on-surface px-4 py-2 rounded flex items-center gap-2 hover:bg-surface-container-low transition-colors text-sm font-medium font-body-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
+                        CSV 다운로드
+                    </button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded flex items-center gap-2 hover:bg-primary/90 transition-colors text-sm font-medium shadow-sm font-body-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                        사용자 추가
+                    </button>
+</div>
+</div>
+<!-- Content Area (Table & Filters) -->
+<div class="bg-surface border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+<!-- Filter Bar -->
+<div class="p-4 border-b border-outline-variant bg-surface-container-lowest flex flex-wrap gap-4 items-center justify-between">
+<div class="flex gap-3 flex-wrap font-body-sm">
+<select class="bg-surface border border-outline-variant rounded text-sm py-1.5 px-3 focus:ring-primary focus:border-primary">
+<option>상태: 전체</option>
+<option>활성</option>
+<option>비활성</option>
+<option>정지</option>
+</select>
+<select class="bg-surface border border-outline-variant rounded text-sm py-1.5 px-3 focus:ring-primary focus:border-primary">
+<option>가입 방식: 전체</option>
+<option>이메일</option>
+<option>Google</option>
+<option>Apple</option>
+</select>
+<input class="bg-surface border border-outline-variant rounded text-sm py-1.5 px-3 focus:ring-primary focus:border-primary text-on-surface-variant font-label-mono" type="date"/>
+</div>
+<div class="relative w-full max-w-xs lg:hidden font-body-sm">
+<span class="material-symbols-outlined absolute left-3 top-2 text-on-surface-variant text-[18px]" data-icon="search">search</span>
+<input class="bg-surface border border-outline-variant rounded w-full py-1.5 pl-9 pr-3 text-sm focus:ring-primary focus:border-primary" placeholder="사용자 검색" type="text"/>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-[#F1F3F5] text-on-surface-variant font-data-table text-[12px] uppercase tracking-wider border-b border-outline-variant">
+<tr>
+<th class="px-4 py-3 font-semibold">사용자 ID</th>
+<th class="px-4 py-3 font-semibold">사용자명</th>
+<th class="px-4 py-3 font-semibold">이메일</th>
+<th class="px-4 py-3 font-semibold">가입 방식</th>
+<th class="px-4 py-3 font-semibold">가입일</th>
+<th class="px-4 py-3 font-semibold">최근 접속</th>
+<th class="px-4 py-3 font-semibold text-right">대상자 수</th>
+<th class="px-4 py-3 font-semibold text-right">상담 수</th>
+<th class="px-4 py-3 font-semibold text-right">운세우편</th>
+<th class="px-4 py-3 font-semibold text-center">상태</th>
+<th class="px-4 py-3 font-semibold text-center">액션</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant bg-surface font-body-sm text-on-surface">
+<tr class="hover:bg-[#F8F9FA] transition-colors group h-[48px]">
+<td class="px-4 py-2 font-label-mono text-label-mono text-primary font-medium">usr_992x</td>
+<td class="px-4 py-2 font-body-md">김민수</td>
+<td class="px-4 py-2 font-label-mono">alice@example.com</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="mail">mail</span> 이메일
+                                    </div>
+</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-on-surface-variant">2023.10.12 09:30</td>
+<td class="px-4 py-2 text-on-surface-variant text-[12px] font-body-sm">2분 전</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">12</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">45</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">8</td>
+<td class="px-4 py-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-medium bg-[#E6F4EA] text-[#137333] border border-[#137333]/20 font-body-sm">활성</span>
+</td>
+<td class="px-4 py-2 text-center">
+<button class="text-on-surface-variant hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-[#F8F9FA] transition-colors group h-[48px]">
+<td class="px-4 py-2 font-label-mono text-label-mono text-primary font-medium">usr_118p</td>
+<td class="px-4 py-2 font-body-md">이서연</td>
+<td class="px-4 py-2 font-label-mono">bk@corp.net</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="language">language</span> Google
+                                    </div>
+</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-on-surface-variant">2023.11.05 14:15</td>
+<td class="px-4 py-2 text-on-surface-variant text-[12px] font-body-sm">1시간 전</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">3</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">12</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">2</td>
+<td class="px-4 py-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-medium bg-[#E6F4EA] text-[#137333] border border-[#137333]/20 font-body-sm">활성</span>
+</td>
+<td class="px-4 py-2 text-center">
+<button class="text-on-surface-variant hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-[#F8F9FA] transition-colors group h-[48px]">
+<td class="px-4 py-2 font-label-mono text-label-mono text-primary font-medium">usr_442c</td>
+<td class="px-4 py-2 font-body-md">박지훈</td>
+<td class="px-4 py-2 font-label-mono">charlie@test.com</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="phone_iphone">phone_iphone</span> Apple
+                                    </div>
+</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-on-surface-variant">2023.12.01 10:00</td>
+<td class="px-4 py-2 text-on-surface-variant text-[12px] font-body-sm">3일 전</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">0</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">0</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">0</td>
+<td class="px-4 py-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-medium bg-[#FCE8E6] text-[#C5221F] border border-[#C5221F]/20 font-body-sm">정지</span>
+</td>
+<td class="px-4 py-2 text-center">
+<button class="text-on-surface-variant hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-[#F8F9FA] transition-colors group h-[48px]">
+<td class="px-4 py-2 font-label-mono text-label-mono text-primary font-medium">usr_881m</td>
+<td class="px-4 py-2 font-body-md">최유진</td>
+<td class="px-4 py-2 font-label-mono">david.m@example.org</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="mail">mail</span> 이메일
+                                    </div>
+</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-on-surface-variant">2024.01.15 16:45</td>
+<td class="px-4 py-2 text-on-surface-variant text-[12px] font-body-sm">1달 전</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">1</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">2</td>
+<td class="px-4 py-2 font-label-mono text-label-mono text-right">0</td>
+<td class="px-4 py-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-medium bg-[#FEF7E0] text-[#E37400] border border-[#E37400]/20 font-body-sm">비활성</span>
+</td>
+<td class="px-4 py-2 text-center">
+<button class="text-on-surface-variant hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="p-4 border-t border-outline-variant bg-surface flex items-center justify-between text-sm font-body-sm">
+<div class="text-on-surface-variant">
+                        전체 <span class="font-label-mono text-primary font-bold">12,458</span>명 중 <span class="font-label-mono font-bold">1-10</span>명 표시
+                    </div>
+<div class="flex items-center gap-1 font-label-mono">
+<button class="p-1 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="px-3 py-1 border border-primary bg-primary-fixed-dim/20 text-primary font-medium rounded">1</button>
+<button class="px-3 py-1 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low">2</button>
+<button class="px-3 py-1 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low">3</button>
+<span class="px-2 text-on-surface-variant">...</span>
+<button class="px-3 py-1 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low">1246</button>
+<button class="p-1 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[18px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -6,6 +6,9 @@ export { adminOpsService } from './services/adminOpsService';
 
 export { AdminShell } from './components/AdminShell';
 export { AdminSidebar } from './components/AdminSidebar';
+export { AdminTopBar } from './components/AdminTopBar';
+export { KpiCard } from './components/KpiCard';
+export type { KpiTrend } from './components/KpiCard';
 export { AdminGate } from './components/AdminGate';
 export { AdminPageHeader } from './components/AdminPageHeader';
 export { AdminStateView } from './components/AdminStateView';

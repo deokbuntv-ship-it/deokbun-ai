@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>해석엔진 상태 - 덕분AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d2e4fb",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "tertiary-container": "#451f00",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-surface": "#1b1c1d",
+                        "on-tertiary-fixed": "#301400",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#002020",
+                        "secondary-fixed-dim": "#9cd0d0",
+                        "on-secondary-container": "#386b6b",
+                        "surface-container-high": "#e9e7e9",
+                        "surface": "#fbf9fa",
+                        "tertiary-fixed": "#ffdcc5",
+                        "on-background": "#1b1c1d",
+                        "on-surface-variant": "#44474c",
+                        "outline": "#74777d",
+                        "secondary-container": "#b5e9e9",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "tertiary": "#260f00",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#38485a",
+                        "on-primary-fixed": "#0b1d2d",
+                        "outline-variant": "#c4c6cd",
+                        "on-error": "#ffffff",
+                        "primary": "#041627",
+                        "surface-container": "#efedef",
+                        "surface-container-low": "#f5f3f4",
+                        "on-secondary-fixed-variant": "#194e4e",
+                        "inverse-surface": "#303032",
+                        "on-primary-container": "#8192a7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fbf9fa",
+                        "secondary-fixed": "#b8ecec",
+                        "inverse-on-surface": "#f2f0f2",
+                        "inverse-primary": "#b7c8de",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dbd9db",
+                        "on-tertiary-container": "#db7618",
+                        "primary-container": "#1a2b3c",
+                        "surface-tint": "#4f6073",
+                        "secondary": "#346666",
+                        "primary-fixed-dim": "#b7c8de",
+                        "background": "#fbf9fa",
+                        "success": "#2e7d32",
+                        "success-container": "#a5d6a7",
+                        "warning": "#f57f17",
+                        "warning-container": "#fff59d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "24px",
+                        "baseline": "4px",
+                        "sidebar-width": "260px",
+                        "padding-card": "20px",
+                        "container-max-width": "1440px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Pretendard", "sans-serif"],
+                        "label-mono": ["JetBrains Mono", "monospace"],
+                        "body-sm": ["Pretendard", "sans-serif"],
+                        "data-table": ["Pretendard", "sans-serif"],
+                        "display-lg": ["JetBrains Mono", "monospace"],
+                        "headline-md": ["Pretendard", "sans-serif"],
+                        "title-sm": ["Pretendard", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "data-table": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #fbf9fa; color: #1b1c1d; }
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-background text-on-background flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="w-[260px] h-screen fixed left-0 top-0 bg-primary border-r border-outline-variant flex flex-col h-full py-baseline px-4 z-20">
+<div class="flex items-center gap-3 py-6 px-4">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="dashboard">dashboard</span>
+</div>
+<div>
+<h1 class="text-title-sm font-title-sm font-bold text-on-primary">덕분AI</h1>
+<p class="font-label-mono text-label-mono text-on-primary-container">관리자 콘솔</p>
+</div>
+</div>
+<div class="flex-1 mt-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>대시보드
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>사용자 관리
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>상담 관리
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>운세우편 관리
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>AI 사용량 · 비용
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary-container text-on-secondary-container font-bold opacity-90 transition-opacity font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>해석엔진 상태
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>시스템 설정
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[260px] flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-margin-desktop z-10">
+<div class="flex items-center gap-4">
+<h2 class="text-title-sm font-title-sm font-semibold text-primary">운영 서버</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-80 pl-9 pr-4 py-1.5 bg-surface-container-low border-outline-variant rounded-full text-body-sm focus:ring-primary focus:border-primary" placeholder="사용자 · 상담 · 운세우편 통합 검색" type="text"/>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors hover:text-primary"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors hover:text-primary"><span class="material-symbols-outlined" data-icon="account_circle">account_circle</span></button>
+<span class="font-body-sm text-body-sm ml-2">관리자</span>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<main class="flex-1 overflow-y-auto mt-16 p-margin-desktop bg-surface-container-lowest">
+<div class="max-w-container-max-width mx-auto space-y-8">
+<!-- Page Header -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-headline-md font-headline-md text-on-surface">해석엔진 상태</h1>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">AI 운세 및 사주 해석 엔진의 실시간 가동 상태 및 성능 지표입니다.</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface text-on-surface border border-outline-variant rounded-md text-body-sm font-body-sm hover:bg-surface-container-low transition">새로고침</button>
+</div>
+</div>
+<!-- Engine Status Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- 명리 엔진 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-padding-card flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-title-sm font-title-sm text-on-surface">명리 엔진</h3>
+<span class="px-2 py-1 bg-success-container/20 text-success rounded text-[11px] font-bold tracking-wide uppercase border border-success/20">정상</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-display-lg font-display-lg text-on-surface">99.98%</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">성공률</span>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-between text-body-sm font-body-sm text-on-surface-variant">
+<span>처리 시간</span>
+<span class="font-label-mono text-label-mono text-on-surface">120ms</span>
+</div>
+</div>
+<!-- 자미두수 엔진 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-padding-card flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-title-sm font-title-sm text-on-surface">자미두수 엔진</h3>
+<span class="px-2 py-1 bg-success-container/20 text-success rounded text-[11px] font-bold tracking-wide uppercase border border-success/20">정상</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-display-lg font-display-lg text-on-surface">99.94%</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">성공률</span>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-between text-body-sm font-body-sm text-on-surface-variant">
+<span>처리 시간</span>
+<span class="font-label-mono text-label-mono text-on-surface">185ms</span>
+</div>
+</div>
+<!-- 기문둔갑 엔진 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-padding-card flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-title-sm font-title-sm text-on-surface">기문둔갑 엔진</h3>
+<span class="px-2 py-1 bg-success-container/20 text-success rounded text-[11px] font-bold tracking-wide uppercase border border-success/20">정상</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-display-lg font-display-lg text-on-surface">98.2%</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">성공률</span>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-between text-body-sm font-body-sm text-on-surface-variant">
+<span>처리 시간</span>
+<span class="font-label-mono text-label-mono text-on-surface">450ms</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

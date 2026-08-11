@@ -1,108 +1,108 @@
-import { Link, usePathname } from 'expo-router';
+import { Link, usePathname, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
-import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, radius, spacing } from '@/theme';
+import { useAuth } from '@/features/auth';
 
-// Web-only admin sidebar. Available items navigate via expo-router Link; items
-// for unimplemented sections show "준비 중" and are non-interactive. Active state
-// is derived from the current path. No fake data.
-type NavItem = {
-  label: string;
-  href?:
-    | '/admin'
-    | '/admin/users'
-    | '/admin/consultations'
-    | '/admin/ai-usage'
-    | '/admin/famous'
-    | '/admin/content'
-    | '/admin/publications';
-  available: boolean;
-};
+import { adminTheme } from '../adminTheme';
 
-const NAV_ITEMS: NavItem[] = [
-  { label: '대시보드', href: '/admin', available: true },
-  { label: '사용자', href: '/admin/users', available: true },
-  { label: '상담', href: '/admin/consultations', available: true },
-  { label: 'AI 사용량', href: '/admin/ai-usage', available: true },
-  { label: '유명인', href: '/admin/famous', available: true },
-  { label: '콘텐츠', href: '/admin/content', available: true },
-  { label: '발행 현황', href: '/admin/publications', available: true },
+// Admin sidebar (Stitch §8) — deep-navy, fixed 260px. Exactly the 7 operational
+// sections + 도움말 / 로그아웃. Active state uses the teal-tint highlight. Legacy
+// admin routes (famous/content/publications) are NOT deleted — they remain
+// reachable by URL — but are intentionally not shown in the FINAL nav (§8/§12).
+type NavHref =
+  | '/admin'
+  | '/admin/users'
+  | '/admin/consultations'
+  | '/admin/fortune-mail'
+  | '/admin/ai-usage'
+  | '/admin/engine-status'
+  | '/admin/system-settings';
+
+const NAV_ITEMS: { label: string; href: NavHref }[] = [
+  { label: '대시보드', href: '/admin' },
+  { label: '사용자 관리', href: '/admin/users' },
+  { label: '상담 관리', href: '/admin/consultations' },
+  { label: '운세우편 관리', href: '/admin/fortune-mail' },
+  { label: 'AI 사용량 · 비용', href: '/admin/ai-usage' },
+  { label: '해석엔진 상태', href: '/admin/engine-status' },
+  { label: '시스템 설정', href: '/admin/system-settings' },
 ];
 
-function isActive(pathname: string, href?: string): boolean {
-  if (!href) {
-    return false;
-  }
-  // Dashboard is an exact match; section roots match their subtree.
+function isActive(pathname: string, href: string): boolean {
   return href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
 }
 
 export function AdminSidebar() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? colors.dark : colors.light;
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuth();
 
   return (
-    <View
-      style={{
-        width: 220,
-        borderRightWidth: 1,
-        borderRightColor: theme.border,
-        backgroundColor: theme.surface,
-        paddingVertical: spacing.xl,
-        paddingHorizontal: spacing.md,
-      }}
-    >
-      <Stack gap="lg">
-        <Text variant="headingMedium">덕분AI 관리자</Text>
+    <View style={{ width: 260, backgroundColor: adminTheme.sidebarBg, paddingVertical: 24, paddingHorizontal: 16, justifyContent: 'space-between' }}>
+      <View style={{ gap: 24 }}>
+        {/* Brand */}
+        <View style={{ paddingHorizontal: 8, gap: 2 }}>
+          <Text variant="headingMedium" style={{ color: adminTheme.sidebarBrand, fontWeight: '700' }}>
+            덕분AI
+          </Text>
+          <Text variant="bodySmall" style={{ color: adminTheme.sidebarBrandSub }}>
+            관리자 콘솔
+          </Text>
+        </View>
 
-        <Stack gap="xs">
+        {/* Nav */}
+        <View style={{ gap: 4 }}>
           {NAV_ITEMS.map((item) => {
             const active = isActive(pathname, item.href);
-            const rowStyle = {
-              paddingVertical: spacing.sm,
-              paddingHorizontal: spacing.md,
-              borderRadius: radius.md,
-              backgroundColor: active ? theme.backgroundSelected : 'transparent',
-            } as const;
-
-            const label = (
-              <Stack direction="row" gap="xs" align="center">
-                <Text
-                  variant="bodyMedium"
-                  colorToken={item.available ? 'textPrimary' : 'textSecondary'}
-                >
-                  {item.label}
-                </Text>
-                {!item.available ? (
-                  <Text variant="caption" colorToken="textSecondary">
-                    · 준비 중
-                  </Text>
-                ) : null}
-              </Stack>
-            );
-
-            if (item.available && item.href) {
-              return (
-                <Link key={item.label} href={item.href} asChild>
-                  <Pressable style={rowStyle} accessibilityRole="link">
-                    {label}
-                  </Pressable>
-                </Link>
-              );
-            }
-
             return (
-              <View key={item.label} style={rowStyle}>
-                {label}
-              </View>
+              <Link key={item.href} href={item.href} asChild>
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityState={{ selected: active }}
+                  style={{
+                    paddingVertical: 11,
+                    paddingHorizontal: 12,
+                    borderRadius: 6,
+                    backgroundColor: active ? adminTheme.sidebarActiveBg : 'transparent',
+                  }}
+                >
+                  <Text
+                    variant="bodyMedium"
+                    style={{
+                      color: active ? adminTheme.sidebarActiveText : adminTheme.sidebarText,
+                      fontWeight: active ? '700' : '500',
+                    }}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              </Link>
             );
           })}
-        </Stack>
-      </Stack>
+        </View>
+      </View>
+
+      {/* Footer */}
+      <View style={{ gap: 4, borderTopWidth: 1, borderTopColor: adminTheme.sidebarBorder, paddingTop: 16 }}>
+        <View style={{ paddingVertical: 11, paddingHorizontal: 12 }}>
+          <Text variant="bodyMedium" style={{ color: adminTheme.sidebarText, fontWeight: '500' }}>
+            도움말
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            void signOut();
+            router.replace('/login');
+          }}
+          style={{ paddingVertical: 11, paddingHorizontal: 12 }}
+        >
+          <Text variant="bodyMedium" style={{ color: adminTheme.sidebarText, fontWeight: '500' }}>
+            로그아웃
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

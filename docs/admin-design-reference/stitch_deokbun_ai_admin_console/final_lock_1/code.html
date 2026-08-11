@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>덕분AI - 대시보드</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: JetBrains Mono -->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Pretendard Font -->
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#d2e4fb",
+                    "tertiary-fixed-dim": "#ffb783",
+                    "tertiary-container": "#451f00",
+                    "surface-container-highest": "#e4e2e3",
+                    "on-surface": "#1b1c1d",
+                    "on-tertiary-fixed": "#301400",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#e4e2e3",
+                    "on-secondary-fixed": "#002020",
+                    "secondary-fixed-dim": "#9cd0d0",
+                    "on-secondary-container": "#386b6b",
+                    "surface-container-high": "#e9e7e9",
+                    "surface": "#fbf9fa",
+                    "tertiary-fixed": "#ffdcc5",
+                    "on-background": "#1b1c1d",
+                    "on-surface-variant": "#44474c",
+                    "outline": "#74777d",
+                    "secondary-container": "#b5e9e9",
+                    "on-tertiary-fixed-variant": "#713700",
+                    "tertiary": "#260f00",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#38485a",
+                    "on-primary-fixed": "#0b1d2d",
+                    "outline-variant": "#c4c6cd",
+                    "on-error": "#ffffff",
+                    "primary": "#041627",
+                    "surface-container": "#efedef",
+                    "surface-container-low": "#f5f3f4",
+                    "on-secondary-fixed-variant": "#194e4e",
+                    "inverse-surface": "#303032",
+                    "on-primary-container": "#8192a7",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-bright": "#fbf9fa",
+                    "secondary-fixed": "#b8ecec",
+                    "inverse-on-surface": "#f2f0f2",
+                    "inverse-primary": "#b7c8de",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-dim": "#dbd9db",
+                    "on-tertiary-container": "#db7618",
+                    "primary-container": "#1a2b3c",
+                    "surface-tint": "#4f6073",
+                    "secondary": "#346666",
+                    "primary-fixed-dim": "#b7c8de",
+                    "background": "#fbf9fa"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-desktop": "24px",
+                    "baseline": "4px",
+                    "sidebar-width": "260px",
+                    "padding-card": "20px",
+                    "container-max-width": "1440px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-md": ["Pretendard", "sans-serif"],
+                    "label-mono": ["JetBrains Mono", "monospace"],
+                    "body-sm": ["Pretendard", "sans-serif"],
+                    "data-table": ["Pretendard", "sans-serif"],
+                    "display-lg": ["JetBrains Mono", "monospace"],
+                    "headline-md": ["Pretendard", "sans-serif"],
+                    "title-sm": ["Pretendard", "sans-serif"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-mono": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "data-table": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #F8F9FA;
+        }
+        .font-mono-numbers {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar for data density */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c4c6cd; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8192a7; 
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-x-hidden min-h-screen flex">
+<!-- JSON: SideNavBar -->
+<nav class="w-[260px] h-screen fixed left-0 top-0 bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container border-r border-outline-variant flex flex-col py-baseline px-4 z-50">
+<div class="py-6 px-2 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-weight="fill" style="font-variation-settings: 'FILL' 1;">
+                    auto_awesome
+                </span>
+</div>
+<div>
+<div class="text-title-sm font-title-sm font-bold text-on-primary">덕분AI</div>
+<div class="text-body-sm font-body-sm text-on-primary-container opacity-80">관리자 콘솔</div>
+</div>
+</div>
+<div class="flex-1 mt-6 flex flex-col gap-1">
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-secondary-container text-on-secondary-container font-bold opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-on-secondary-container">dashboard</span>
+<span class="font-body-md text-body-md">대시보드</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">group</span>
+<span class="font-body-md text-body-md">사용자 관리</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">chat_bubble</span>
+<span class="font-body-md text-body-md">상담 관리</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">mail</span>
+<span class="font-body-md text-body-md">운세우편 관리</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">analytics</span>
+<span class="font-body-md text-body-md">AI 사용량 · 비용</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">settings_input_component</span>
+<span class="font-body-md text-body-md">해석엔진 상태</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">settings</span>
+<span class="font-body-md text-body-md">시스템 설정</span>
+</a>
+</div>
+<div class="mt-auto pb-4 flex flex-col gap-1 border-t border-outline-variant/30 pt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">help</span>
+<span class="font-body-md text-body-md">도움말</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors" href="#">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">logout</span>
+<span class="font-body-md text-body-md">로그아웃</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[260px] min-h-screen flex flex-col w-full relative">
+<!-- JSON: TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-surface dark:bg-surface-dim border-b border-outline-variant flex items-center justify-between px-margin-desktop z-40">
+<div class="flex items-center">
+<span class="text-title-sm font-title-sm font-semibold text-primary">운영 서버</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="h-9 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-full text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-80 transition-all" placeholder="사용자 · 상담 · 운세우편 통합 검색" type="text"/>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container active:scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-2 pl-2 border-l border-outline-variant">
+<button class="flex items-center gap-2 hover:bg-surface-container py-1 px-2 rounded active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary text-[24px]">account_circle</span>
+<span class="font-body-sm text-body-sm text-primary hidden sm:block">관리자</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 mt-16 p-margin-desktop bg-background max-w-container-max-width mx-auto w-full flex flex-col gap-gutter">
+<div class="flex items-center justify-between mb-2">
+<h1 class="text-headline-md font-headline-md text-on-background">대시보드 (전체 현황)</h1>
+<div class="text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+                    방금 전 업데이트 됨
+                </div>
+</div>
+<!-- KPI Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-gutter">
+<!-- KPI 1 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card flex flex-col gap-2 relative overflow-hidden">
+<div class="text-label-mono font-label-mono text-on-surface-variant uppercase tracking-wider">오늘 활성 사용자</div>
+<div class="text-display-lg font-display-lg text-on-surface flex items-baseline gap-2 font-mono-numbers">
+                        1,284
+                    </div>
+<div class="flex items-center gap-1 text-[12px] font-medium text-[#2E7D32]">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+<span class="font-mono-numbers">+8.4%</span>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card flex flex-col gap-2 relative overflow-hidden">
+<div class="text-label-mono font-label-mono text-on-surface-variant uppercase tracking-wider">오늘 신규 가입</div>
+<div class="text-display-lg font-display-lg text-on-surface flex items-baseline gap-2 font-mono-numbers">
+                        142
+                    </div>
+<div class="flex items-center gap-1 text-[12px] font-medium text-on-surface-variant">
+                        어제 대비 <span class="font-mono-numbers">+12</span>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card flex flex-col gap-2 relative overflow-hidden">
+<div class="text-label-mono font-label-mono text-on-surface-variant uppercase tracking-wider">오늘 AI 상담</div>
+<div class="text-display-lg font-display-lg text-on-surface flex items-baseline gap-2 font-mono-numbers">
+                        3,842
+                    </div>
+<div class="flex items-center gap-1 text-[12px] font-medium text-[#2E7D32]">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+<span class="font-mono-numbers">+12.1%</span>
+</div>
+</div>
+<!-- KPI 4 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card flex flex-col gap-2 relative overflow-hidden xl:col-span-2">
+<div class="text-label-mono font-label-mono text-on-surface-variant uppercase tracking-wider">오늘 AI 비용</div>
+<div class="text-display-lg font-display-lg text-on-surface font-label-mono tracking-tight font-mono-numbers">
+                        ₩184,320
+                    </div>
+<div class="flex items-center gap-1 text-[12px] font-medium text-on-surface-variant">
+                        예상치 범위 내
+                    </div>
+</div>
+<!-- KPI 5 -->
+<div class="bg-surface border border-outline-variant rounded p-padding-card flex flex-col gap-2 relative overflow-hidden">
+<div class="text-label-mono font-label-mono text-on-surface-variant uppercase tracking-wider">AI 상담 성공률</div>
+<div class="text-display-lg font-display-lg text-on-surface flex items-baseline gap-2 font-mono-numbers">
+                        99.2<span class="text-headline-md font-headline-md font-sans">%</span>
+</div>
+<div class="flex items-center gap-1 text-[12px] font-medium text-error">
+                        시스템 오류 <span class="font-mono-numbers">7</span>건
+                    </div>
+</div>
+</div>
+<!-- Secondary Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter mt-2">
+<!-- Alerts Section -->
+<div class="bg-surface border border-outline-variant rounded flex flex-col h-full lg:col-span-1">
+<div class="px-5 py-4 border-b border-outline-variant bg-[#F1F3F5] flex items-center justify-between">
+<div class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[20px]">warning</span>
+                            주요 알림
+                        </div>
+<span class="bg-error-container text-on-error-container text-[12px] font-bold px-2 py-0.5 rounded font-mono-numbers">2</span>
+</div>
+<div class="p-5 flex flex-col gap-3 flex-1 overflow-y-auto max-h-[300px]">
+<div class="p-3 border border-error-container bg-error-container/20 rounded flex gap-3 items-start">
+<span class="material-symbols-outlined text-error mt-0.5">error</span>
+<div>
+<div class="font-body-md text-body-md font-semibold text-on-surface">운세 생성 실패 증가</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mt-1">최근 1시간 내 운세 생성 실패율이 평소 대비 15% 상승했습니다. 해석엔진 API 타임아웃을 확인하세요.</div>
+<div class="text-[11px] text-outline mt-2 font-mono-numbers">10분 전</div>
+</div>
+</div>
+<div class="p-3 border border-tertiary-fixed-dim/30 bg-tertiary-fixed-dim/10 rounded flex gap-3 items-start">
+<span class="material-symbols-outlined text-on-tertiary-container mt-0.5">speed</span>
+<div>
+<div class="font-body-md text-body-md font-semibold text-on-surface">평균 응답 시간 증가</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mt-1">AI 챗봇 평균 응답 시간이 2.4초로 임계치(2.0초) 초과했습니다.</div>
+<div class="text-[11px] text-outline mt-2 font-mono-numbers">45분 전</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Charts Area (Placeholder for structure) -->
+<div class="bg-surface border border-outline-variant rounded flex flex-col lg:col-span-2 h-full">
+<div class="px-5 py-4 border-b border-outline-variant bg-[#F1F3F5] flex items-center justify-between">
+<div class="font-title-sm text-title-sm text-on-surface">사용자 추이 &amp; 시간별 AI 상담</div>
+<div class="flex gap-2">
+<button class="text-[12px] px-2 py-1 bg-surface-container rounded border border-outline-variant text-on-surface">주간</button>
+<button class="text-[12px] px-2 py-1 bg-primary text-on-primary rounded">오늘</button>
+</div>
+</div>
+<div class="p-5 flex-1 flex flex-col gap-4 min-h-[300px]">
+<!-- Simplified visual representation of charts using HTML/CSS -->
+<div class="flex-1 flex items-end gap-2 h-full w-full border-b border-outline-variant pb-2 relative">
+<!-- Y-axis labels -->
+<div class="absolute left-0 top-0 bottom-8 w-8 flex flex-col justify-between text-[10px] text-outline text-right pr-2 font-mono-numbers">
+<span>400</span>
+<span>300</span>
+<span>200</span>
+<span>100</span>
+<span>0</span>
+</div>
+<!-- Bars area -->
+<div class="flex-1 h-full ml-8 flex items-end justify-between px-2 gap-1">
+<!-- Mon -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary-fixed-dim/50 hover:bg-primary-fixed-dim rounded-t h-[40%] transition-all"></div>
+<div class="text-[11px] mt-2 text-on-surface-variant">월</div>
+</div>
+<!-- Tue -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary-fixed-dim/50 hover:bg-primary-fixed-dim rounded-t h-[55%] transition-all"></div>
+<div class="text-[11px] mt-2 text-on-surface-variant">화</div>
+</div>
+<!-- Wed -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary-fixed-dim/50 hover:bg-primary-fixed-dim rounded-t h-[70%] transition-all"></div>
+<div class="text-[11px] mt-2 text-on-surface-variant">수</div>
+</div>
+<!-- Thu -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary-fixed-dim/50 hover:bg-primary-fixed-dim rounded-t h-[65%] transition-all"></div>
+<div class="text-[11px] mt-2 text-on-surface-variant">목</div>
+</div>
+<!-- Fri -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary-fixed-dim/50 hover:bg-primary-fixed-dim rounded-t h-[85%] transition-all"></div>
+<div class="text-[11px] mt-2 text-on-surface-variant">금</div>
+</div>
+<!-- Sat -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary hover:bg-primary/90 rounded-t h-[100%] transition-all relative">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-[10px] px-2 py-1 rounded hidden group-hover:block whitespace-nowrap z-10 font-mono-numbers">토: 384 건</div>
+</div>
+<div class="text-[11px] mt-2 text-primary font-bold">토</div>
+</div>
+<!-- Sun -->
+<div class="flex flex-col items-center w-full group relative">
+<div class="w-full bg-primary-fixed-dim/50 hover:bg-primary-fixed-dim rounded-t h-[30%] transition-all"></div>
+<div class="text-[11px] mt-2 text-on-surface-variant">일</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- System Status & Cost -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter mt-2">
+<!-- System Status -->
+<div class="bg-surface border border-outline-variant rounded flex flex-col h-full">
+<div class="px-5 py-3 border-b border-outline-variant bg-[#F1F3F5]">
+<div class="font-title-sm text-title-sm text-on-surface">시스템 상태</div>
+</div>
+<div class="p-0">
+<table class="w-full text-left border-collapse">
+<tbody>
+<tr class="border-b border-outline-variant/50 hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 text-data-table font-data-table text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">router</span>
+                                        AI 게이트웨이
+                                    </td>
+<td class="py-3 px-5 text-right">
+<span class="inline-flex items-center gap-1.5 bg-[#E8F5E9] text-[#1B5E20] px-2 py-0.5 rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-[#4CAF50]"></span> 정상
+                                        </span>
+</td>
+</tr>
+<tr class="border-b border-outline-variant/50 hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 text-data-table font-data-table text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">security</span>
+                                        인증
+                                    </td>
+<td class="py-3 px-5 text-right">
+<span class="inline-flex items-center gap-1.5 bg-[#E8F5E9] text-[#1B5E20] px-2 py-0.5 rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-[#4CAF50]"></span> 정상
+                                        </span>
+</td>
+</tr>
+<tr class="border-b border-outline-variant/50 hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 text-data-table font-data-table text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">database</span>
+                                        데이터베이스
+                                    </td>
+<td class="py-3 px-5 text-right">
+<span class="inline-flex items-center gap-1.5 bg-[#E8F5E9] text-[#1B5E20] px-2 py-0.5 rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-[#4CAF50]"></span> 정상
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 text-data-table font-data-table text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">memory</span>
+                                        해석엔진들
+                                    </td>
+<td class="py-3 px-5 text-right">
+<span class="inline-flex items-center gap-1.5 bg-[#E8F5E9] text-[#1B5E20] px-2 py-0.5 rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-[#4CAF50]"></span> 정상
+                                        </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Cost Metrics -->
+<div class="bg-surface border border-outline-variant rounded flex flex-col h-full">
+<div class="px-5 py-3 border-b border-outline-variant bg-[#F1F3F5]">
+<div class="font-title-sm text-title-sm text-on-surface">AI 비용 지표</div>
+</div>
+<div class="p-5 flex flex-col gap-6 justify-center flex-1">
+<div class="flex items-center justify-between border-b border-outline-variant/30 pb-4">
+<div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mb-1">이번 달 누적 비용</div>
+<div class="text-headline-md font-headline-md text-on-surface font-label-mono tracking-tight font-mono-numbers">₩2,410,500</div>
+</div>
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-[24px]">payments</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mb-1">월 예상 비용</div>
+<div class="text-headline-md font-headline-md text-on-surface font-label-mono tracking-tight opacity-70 font-mono-numbers">₩3,850,000</div>
+</div>
+<div class="w-full max-w-[120px]">
+<div class="flex justify-between text-[10px] text-on-surface-variant mb-1">
+<span>예산 소진율</span>
+<span class="font-mono-numbers">62%</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-2 overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 62%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

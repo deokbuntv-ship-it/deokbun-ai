@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deokbun AI - 상담 관리 (상세)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#d2e4fb",
+                      "tertiary-fixed-dim": "#ffb783",
+                      "tertiary-container": "#451f00",
+                      "surface-container-highest": "#e4e2e3",
+                      "on-surface": "#1b1c1d",
+                      "on-tertiary-fixed": "#301400",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e3",
+                      "on-secondary-fixed": "#002020",
+                      "secondary-fixed-dim": "#9cd0d0",
+                      "on-secondary-container": "#386b6b",
+                      "surface-container-high": "#e9e7e9",
+                      "surface": "#fbf9fa",
+                      "tertiary-fixed": "#ffdcc5",
+                      "on-background": "#1b1c1d",
+                      "on-surface-variant": "#44474c",
+                      "outline": "#74777d",
+                      "secondary-container": "#b5e9e9",
+                      "on-tertiary-fixed-variant": "#713700",
+                      "tertiary": "#260f00",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#38485a",
+                      "on-primary-fixed": "#0b1d2d",
+                      "outline-variant": "#c4c6cd",
+                      "on-error": "#ffffff",
+                      "primary": "#041627",
+                      "surface-container": "#efedef",
+                      "surface-container-low": "#f5f3f4",
+                      "on-secondary-fixed-variant": "#194e4e",
+                      "inverse-surface": "#303032",
+                      "on-primary-container": "#8192a7",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-bright": "#fbf9fa",
+                      "secondary-fixed": "#b8ecec",
+                      "inverse-on-surface": "#f2f0f2",
+                      "inverse-primary": "#b7c8de",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "surface-dim": "#dbd9db",
+                      "on-tertiary-container": "#db7618",
+                      "primary-container": "#1a2b3c",
+                      "surface-tint": "#4f6073",
+                      "secondary": "#346666",
+                      "primary-fixed-dim": "#b7c8de",
+                      "background": "#fbf9fa"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-desktop": "24px",
+                      "baseline": "4px",
+                      "sidebar-width": "260px",
+                      "padding-card": "20px",
+                      "container-max-width": "1440px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Pretendard", "sans-serif"
+                      ],
+                      "label-mono": [
+                              "JetBrains Mono", "monospace"
+                      ],
+                      "body-sm": [
+                              "Pretendard", "sans-serif"
+                      ],
+                      "data-table": [
+                              "Pretendard", "sans-serif"
+                      ],
+                      "display-lg": [
+                              "Pretendard", "sans-serif"
+                      ],
+                      "headline-md": [
+                              "Pretendard", "sans-serif"
+                      ],
+                      "title-sm": [
+                              "Pretendard", "sans-serif"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-mono": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "data-table": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "title-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-hidden">
+<!-- Shell Container -->
+<div class="flex h-screen w-full">
+<!-- SideNavBar -->
+<nav class="w-[260px] h-screen fixed left-0 top-0 bg-primary border-r border-outline-variant flex flex-col h-full py-baseline px-4 z-20">
+<!-- Brand -->
+<div class="flex items-center gap-3 px-4 py-6 mb-4">
+<div class="w-8 h-8 rounded bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-fixed" data-weight="fill" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h1 class="text-title-sm font-title-sm font-bold text-on-primary tracking-tight">덕분AI</h1>
+<p class="text-[11px] text-primary-fixed-dim uppercase tracking-wider font-medium mt-0.5">관리자 콘솔</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex flex-col gap-1 flex-1">
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="font-body-md text-body-md">대시보드</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="font-body-md text-body-md">사용자 관리</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-secondary-container text-on-secondary-container font-bold opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<span class="font-body-md text-body-md">상담 관리</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+<span class="font-body-md text-body-md">운세우편 관리</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="font-body-md text-body-md">AI 사용량 · 비용</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]">settings_input_component</span>
+<span class="font-body-md text-body-md">해석엔진 상태</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-primary-fixed-variant hover:bg-primary-fixed-dim/10 hover:bg-primary-fixed-dim/20 transition-colors opacity-90 transition-opacity" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-body-md text-body-md">시스템 설정</span>
+</a>
+</div>
+<!-- User Profile (Bottom) -->
+<div class="mt-auto border-t border-primary-fixed-dim/20 pt-4 mb-4 mx-2">
+<div class="flex items-center gap-3 px-2 py-2">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[13px] font-semibold text-on-primary font-label-mono">Admin User</span>
+<span class="text-[11px] text-primary-fixed-dim font-label-mono">admin@deokbun.ai</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[260px] flex flex-col h-screen relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-margin-desktop z-10">
+<div class="flex items-center gap-4">
+<span class="text-title-sm font-title-sm font-semibold text-primary">운영 서버</span>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="text-[13px] text-on-surface-variant flex items-center gap-2">
+<a class="hover:text-primary transition-colors" href="#">상담 관리</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-medium font-label-mono">CON-8472</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-9 h-9 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-primary scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+<span class="text-body-sm font-body-sm text-on-surface-variant">관리자</span>
+<button class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center scale-95 duration-150">
+<span class="material-symbols-outlined text-[18px]">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 mt-16 flex overflow-hidden">
+<!-- Conversation List (Background context, partially obscured by detail panel) -->
+<div class="flex-1 flex flex-col p-margin-desktop bg-surface-container-low overflow-y-auto opacity-50 pointer-events-none">
+<div class="flex justify-between items-end mb-6">
+<div>
+<h2 class="text-headline-md font-headline-md text-on-surface mb-1">상담 관리</h2>
+<p class="text-body-sm font-body-sm text-on-surface-variant">사용자와 AI 해석 엔진 간의 대화 내역을 조회합니다.</p>
+</div>
+</div>
+<!-- Table Skeleton -->
+<div class="bg-surface border border-outline-variant rounded-lg flex-1">
+<div class="h-12 border-b border-outline-variant bg-surface-container-lowest flex items-center px-4">
+<div class="w-1/6 font-label-mono text-label-mono text-on-surface-variant uppercase">상담 ID</div>
+<div class="w-1/6 font-label-mono text-label-mono text-on-surface-variant uppercase">사용자 ID</div>
+<div class="w-1/6 font-label-mono text-label-mono text-on-surface-variant uppercase">상태</div>
+<div class="w-2/6 font-label-mono text-label-mono text-on-surface-variant uppercase">주제</div>
+<div class="w-1/6 font-label-mono text-label-mono text-on-surface-variant uppercase text-right">일시</div>
+</div>
+<div class="h-12 border-b border-outline-variant bg-surface-container-lowest flex items-center px-4 bg-primary-fixed/20">
+<div class="w-1/6 font-label-mono text-label-mono text-primary font-medium">CON-8472</div>
+<div class="w-1/6 font-label-mono text-label-mono">USR-9921</div>
+<div class="w-1/6"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-secondary-container text-on-secondary-container">완료</span></div>
+<div class="w-2/6 font-body-sm text-body-sm truncate pr-4">사주 기반 진로 상담 요청</div>
+<div class="w-1/6 font-label-mono text-label-mono text-right text-on-surface-variant">2023-10-24 14:32</div>
+</div>
+</div>
+</div>
+<!-- Detail Drawer (Side Panel - Overlays from Right) -->
+<aside class="w-[600px] h-full bg-surface border-l border-outline-variant shadow-[-8px_0_24px_rgba(0,0,0,0.08)] flex flex-col z-30 transform transition-transform">
+<!-- Drawer Header -->
+<div class="h-16 border-b border-outline-variant flex items-center justify-between px-6 shrink-0 bg-surface">
+<div class="flex items-center gap-3">
+<h2 class="text-title-sm font-title-sm font-semibold text-on-surface">상담 상세</h2>
+<span class="px-2 py-0.5 rounded text-label-mono font-label-mono bg-surface-container-highest text-on-surface-variant border border-outline-variant">CON-8472</span>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-container transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Content Scrollable -->
+<div class="flex-1 overflow-y-auto">
+<!-- Metadata Section -->
+<div class="p-6 border-b border-outline-variant bg-surface-container-lowest">
+<div class="grid grid-cols-2 gap-y-4 gap-x-8">
+<div>
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">사용자 정보</span>
+<div class="flex items-center gap-2">
+<span class="text-body-sm font-body-sm font-medium text-on-surface">김수현 (<span class="font-label-mono">USR-9921</span>)</span>
+</div>
+</div>
+<div>
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">시작 시간</span>
+<span class="text-body-sm font-label-mono font-medium text-on-surface">2023.10.24 14:32:05 KST</span>
+</div>
+<div>
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">상담 시간</span>
+<span class="text-body-sm font-label-mono font-medium text-on-surface">14분 22초 · 3회 대화</span>
+</div>
+<div>
+<span class="text-[11px] font-label-mono text-on-surface-variant uppercase tracking-wider block mb-1">상담 분류</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-primary-fixed text-on-primary-fixed border border-primary-fixed-dim/30">사주/진로</span>
+</div>
+</div>
+</div>
+<!-- Conversation Viewer -->
+<div class="p-6">
+<h3 class="text-[12px] font-label-mono text-on-surface-variant uppercase tracking-wider mb-4 border-b border-outline-variant pb-2">상담 내용</h3>
+<div class="space-y-6">
+<!-- User Turn 1 -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
+</div>
+<div class="flex-1">
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-4 rounded-tl-none">
+<p class="text-body-md font-body-md text-on-surface leading-relaxed">
+                                                안녕하세요. 내년에 이직을 생각하고 있는데, 제 사주에 직장운이 어떻게 들어와 있는지 궁금합니다. 현재는 IT 기획자로 일하고 있습니다.
+                                            </p>
+</div>
+<div class="mt-1 flex gap-3 text-[11px] text-on-surface-variant font-label-mono">
+<span>14:32:05</span>
+<span>토큰: 42</span>
+</div>
+</div>
+</div>
+<!-- AI Turn 1 -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px] text-on-primary" data-weight="fill" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="flex-1">
+<div class="bg-primary-fixed/10 border border-primary-fixed-dim/30 rounded-lg p-4 rounded-tl-none">
+<p class="text-body-md font-body-md text-on-surface leading-relaxed">
+                                                안녕하세요, 김수현님. 남겨주신 생년월일 정보를 바탕으로 내년(갑진년)의 직장운과 이직운을 분석해 드립니다.<br/><br/>
+                                                현재 기운을 보면, 내년 상반기에는 편관(偏官)의 기운이 강하게 들어옵니다. 이는 새로운 책임이나 도전적인 프로젝트를 맡게 될 가능성을 의미하며, IT 기획자로서 능력을 발휘할 좋은 기회가 될 수 있습니다. 다만, 조직 내 이동이나 변동수(역마)도 함께 보이므로, 현재 직장에서 부서를 이동하거나 이직을 제안받을 확률이 높습니다.<br/><br/>
+                                                이직을 고려하신다면 양력 3월~5월 사이가 가장 유리한 시기로 분석됩니다. 더 자세한 분석을 위해 현재 직장에서 가장 고민되는 부분이 무엇인지 말씀해 주시겠어요?
+                                            </p>
+</div>
+<!-- Debug/Technical Info Panel (Expandable) -->
+<div class="mt-2 bg-surface-container-highest border border-outline-variant rounded p-3 font-label-mono text-[11px] text-on-surface-variant">
+<div class="flex justify-between items-center cursor-pointer mb-2">
+<span class="flex items-center gap-1 font-semibold text-on-surface">
+<span class="material-symbols-outlined text-[14px]">terminal</span> 기술 정보
+                                                </span>
+<span class="material-symbols-outlined text-[14px]">expand_less</span>
+</div>
+<div class="grid grid-cols-2 gap-y-2 mt-2 pt-2 border-t border-outline-variant/50">
+<div><span class="text-outline">모델:</span> <span class="text-on-surface">deokbun-engine-v2.4-ko</span></div>
+<div><span class="text-outline">응답 시간:</span> <span class="text-secondary font-medium">1,245ms</span></div>
+<div><span class="text-outline">토큰 (입력/출력):</span> <span>42 / 218</span></div>
+<div class="truncate"><span class="text-outline">요청 ID:</span> <span class="text-on-surface" title="req-d8f9a2b1-4c7e-4b3d-a9f2">req-d8f9a2b1...</span></div>
+<div class="col-span-2"><span class="text-outline">온도:</span> <span>0.7</span> <span class="text-outline ml-3">Top-P:</span> <span>0.9</span></div>
+</div>
+</div>
+<div class="mt-1 flex gap-3 text-[11px] text-on-surface-variant font-label-mono">
+<span>14:32:06</span>
+<span>토큰: 218</span>
+</div>
+</div>
+</div>
+<!-- User Turn 2 -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
+</div>
+<div class="flex-1">
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-4 rounded-tl-none">
+<p class="text-body-md font-body-md text-on-surface leading-relaxed">
+                                                현재 회사는 연봉은 나쁘지 않지만 업무 강도가 너무 높아서 워라밸이 무너진 상태입니다. 이직할 곳은 워라밸이 좀 더 보장되는 곳이었으면 좋겠어요.
+                                            </p>
+</div>
+<div class="mt-1 flex gap-3 text-[11px] text-on-surface-variant font-label-mono">
+<span>14:35:12</span>
+<span>토큰: 58</span>
+</div>
+</div>
+</div>
+<!-- AI Turn 2 -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px] text-on-primary" data-weight="fill" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="flex-1">
+<div class="bg-primary-fixed/10 border border-primary-fixed-dim/30 rounded-lg p-4 rounded-tl-none">
+<div class="flex items-center justify-center py-4">
+<div class="flex gap-1 items-center">
+<div class="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 150ms"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style="animation-delay: 300ms"></div>
+</div>
+</div>
+</div>
+<div class="mt-1 text-[11px] text-on-surface-variant font-body-sm italic">
+                                            답변 생성 중...
+                                        </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Drawer Footer (Actions) -->
+<div class="p-4 border-t border-outline-variant bg-surface flex justify-end gap-3">
+<button class="px-4 py-2 border border-outline-variant rounded font-body-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors">
+                            로그 내보내기
+                        </button>
+<button class="px-4 py-2 bg-error text-on-error rounded font-body-sm font-medium hover:opacity-90 transition-opacity">
+                            상담 표시
+                        </button>
+</div>
+</aside>
+</main>
+</div>
+</div>
+</body></html>
