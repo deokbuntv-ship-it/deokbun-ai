@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -8,10 +9,55 @@ import {
   AdminPagination,
   AdminSelect,
   AdminStateView,
+  KpiCard,
   adminOpsService,
   type AdminAiUsageItem,
   type AdminColumn,
 } from '@/features/admin';
+import { adminTheme } from '@/features/admin/adminTheme';
+
+// ADMIN_08_AI_COST (Stitch ai_final_lock). Cost KPIs / trend / thresholds require
+// a pricing/settlement contract that is not connected → they render truthful
+// "연결 준비 중" states (no fabricated KRW). The real, connected data below is the
+// LLM usage/error log (token counts). No fake cost values (§9/§10/§27).
+const COST_KPIS = ['오늘 비용', '이번 달 비용', '월 예상 비용', '상담당 평균 비용'];
+
+function AiCostHeader() {
+  return (
+    <Stack gap="md">
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+        {COST_KPIS.map((label) => (
+          <KpiCard key={label} label={label} value="—" sub="비용 데이터 연결 준비 중" />
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+        {/* Cost trend chart shell */}
+        <View style={{ flex: 2, minWidth: 320, backgroundColor: adminTheme.surface, borderWidth: 1, borderColor: adminTheme.border, borderRadius: 8, padding: 20, gap: 8, minHeight: 160, justifyContent: 'center', alignItems: 'center' }}>
+          <Text variant="headingMedium" style={{ color: adminTheme.ink }}>비용 추이 및 예측</Text>
+          <Text variant="bodySmall" style={{ color: adminTheme.inkMuted, textAlign: 'center' }}>
+            비용 추이/예측 차트는 가격 정산 API 연동 후 표시됩니다. 임의의 비용
+            값을 표시하지 않습니다.
+          </Text>
+        </View>
+        {/* Threshold UI (no persistence API → not saved) */}
+        <View style={{ flex: 1, minWidth: 260, backgroundColor: adminTheme.surface, borderWidth: 1, borderColor: adminTheme.border, borderRadius: 8, padding: 20, gap: 10 }}>
+          <Text variant="headingMedium" style={{ color: adminTheme.ink }}>비용 임계값 설정</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>주의 임계값</Text>
+            <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>₩500,000 / 일</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>위험 임계값</Text>
+            <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>₩1,000,000 / 일</Text>
+          </View>
+          <Text variant="caption" style={{ color: adminTheme.warning }}>
+            저장 기능 미연결 — 임계값은 설정 저장 API 연동 후 반영됩니다.
+          </Text>
+        </View>
+      </View>
+    </Stack>
+  );
+}
 
 const TYPE_FILTER_OPTIONS = [
   { value: '', label: '전체' },
@@ -96,9 +142,15 @@ export default function AdminAiUsageScreen() {
   return (
     <Stack gap="xl">
       <AdminPageHeader
-        title="AI 사용량"
-        subtitle="LLM 호출 사용량/오류 로그 (원문 미포함)."
+        title="AI 사용량 · 비용"
+        subtitle="청구 및 사용량 분석. 비용 지표는 정산 연동 후, 사용량 로그는 실데이터입니다."
       />
+
+      <AiCostHeader />
+
+      <Text variant="headingMedium" style={{ color: adminTheme.ink }}>
+        모델별 사용량 로그
+      </Text>
 
       <AdminSelect
         label="유형"
