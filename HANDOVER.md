@@ -55,6 +55,12 @@
   (`CONSUMER_CORE_SCHEMA.sql` + `OWNER_ACTIONS_AND_DECISIONS.md`의 대기 항목),
   edge 재배포(content-generate/media/video), `GEMINI_API_KEY`, OAuth 콘솔
   (Kakao KOE205/Google/Naver/Apple), 인증 관리자 육안 QA.
+- **Pre-Codex 스프린트(2026-08-11) 산출물**: 엔진 외부 계약 레이어
+  `src/features/analysis/**`(에러 계약·request id·structured AI output·엔진
+  오케스트레이션 seam; frozen 엔진 미수정) + `docs/CODEX_HANDOFF_2026-08-17.md`.
+  **원격 미push 로컬 커밋 체인**: `383ea14`(스키마/handover) → `f45a675`(analysis) →
+  (docs 커밋). 사용자 검수 전 push 금지. Codex는 8/17에 `CODEX_HANDOFF` + repo만 읽고
+  `engineOrchestration.ts` seam 뒤에서 SAJU 연결부터 시작.
 
 ### 완료(코드+검증) / 완료(코드, USER ACTION 대기)
 
