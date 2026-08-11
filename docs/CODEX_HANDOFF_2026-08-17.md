@@ -221,3 +221,64 @@ supabaseEdgeLLMAdapter.ts, analysis 배럴/errors/logging/rateLimit도 Claude �
 - (선택) `docs/FORTUNE_MAIL_SETUP.sql` / `docs/DRAFT_RLS_SETUP.sql` — 운세메일/draft RLS.
 - RLS parity는 여전히 NEEDS_OWNER_DB_COMPARISON(CONSUMER_CORE_SCHEMA.sql 대조).
 (엔진 계산 연결·자미두수/기문둔갑·cross normalize는 Codex 소관 — frozen 유지.)
+
+---
+
+## 17. Claude PRE-CODEX NON-UI SPRINT (2026-08-11) — 결과 + GAP + Codex 시작점
+
+UI 작업 종료 후 비UI V1.0 작업을 계속 진행(§directive). 전부 로컬 커밋, remote push
+없음. **사용자/관리자 UI 파일 0 변경, frozen `interpretation/**` 0 변경.**
+
+**이 스프린트 로컬 커밋:**
+- `2d55ebd` test(core): 비UI 회귀 커버리지 12→53 (chatLogic/fortuneDomain/analysisExtra)
+- `e677dfd` feat(core): conversationService 8개 경계에 error contract(logDbError) 배선
+- `32f1a8a` docs+feat: ZIWEI/QIMEN 엔진 SPEC + cross-analysis 구조 계약(+tests) → 59 tests
+
+### V1.0 GAP (코드 기준, 2026-08-11)
+| 영역 | 상태 |
+|---|---|
+| Auth (kakao/google, is_admin RPC) | DONE |
+| User/Profile · Subjects · Draft persistence | DONE |
+| Consultation / Conversation persistence / Memory | DONE (memory windowing 테스트됨) |
+| LLM 호출 (chat Edge, OpenAI Responses) | DONE (배포는 Owner) |
+| Prompt pipeline (gateway/context/memory/promptBuilder/adapter) | DONE |
+| Rate limit / requestId / Error contract / Logging | DONE (edge+services 배선) |
+| Context bounding | DONE (boundRecentByChars 배선+테스트) |
+| **SAJU 엔진** | 엔진 DONE(Codex, frozen; manse/services가 소비) / **prompt 배선 MISSING(CODEX_OWNED)** |
+| SAJU→context→prompt 배선 | **CODEX_REVIEW** (공유경계·제10조 pipeline lock) |
+| 자미두수 / 기문둔갑 엔진 | MISSING → **SPEC 작성됨**(계산규칙 미창작), 구현 CODEX_OWNED |
+| Cross-analysis | 구조 계약 DONE(crossAnalysis.ts) / 실제 대조 규칙 CODEX |
+| Fortune Mail (domain/status/idempotency) | DONE(+테스트) / 생성은 엔진 필요(정지) / 테이블 artifact |
+| Structured AI response 계약 | DONE (parseStructuredAiResponse, fallback 포함, 테스트됨) |
+| Admin backend (pricing/cost/telemetry/audit 계약) | DONE (operationalContracts) |
+| Security | CRITICAL/HIGH/MEDIUM 0 (재확인) |
+| DB/RLS | 코드-도출 artifact 존재 / live parity NEEDS_OWNER_DB_COMPARISON |
+| Testing | Jest 59 tests, 5 suites, green |
+| Native build / Release | 미착수 (Owner/Codex) |
+
+### SAJU integration readiness (§14) — 정확한 seam
+- 엔진 계산 경로: `BirthInfo → src/features/manse/services/{birthInputMapper,manseAdapter,manseService} → interpretation(frozen) → chart`. **존재/동작.**
+- 엔진-외부 컨텍스트 seam: `analysis/engineOrchestration.buildInterpretationContext()` — **존재하나 chat pipeline에서 미호출**, promptBuilder는 engine evidence 미소비.
+- **누락 배선(=Codex 첫 작업 후보 #1):** manse/engine 결과 → `EngineEvidence`(saju) → `buildInterpretationContext` → `promptBuilder` 입력. 이 3파일(contextSelector/promptBuilder/chatService)은 **do-not-co-edit 공유경계**라 Claude가 이번에 건드리지 않음. `ENGINE_CONNECTED.saju`를 true로 바꾸는 것도 이 배선과 함께.
+
+### 자미두수/기문둔갑 (§16–§21)
+- `docs/ZIWEI_ENGINE_SPEC.md`, `docs/QIMEN_ENGINE_SPEC.md`: 입출력 계약 + 계산 STAGE + CONFIRMED/SCHOOL-DEPENDENT/UNVERIFIED 태그 + 학파/윤달/LMT 불확실성 레지스터 + fixture 구조. **계산 표/공식 미포함(창작 금지).**
+- **Fixture(§17/§20) 미작성**: expected 차트/반은 **검증된 reference(Owner/Codex 입력)** 필요 → 구조만 정의. (창작 expected 금지)
+- 구현(§18/§21)은 reference 확보 후 CODEX_OWNED. Claude 구현이 필요하면 `src/features/{ziwei,qimen}-engine-claude/` 분리 경로(frozen 미접촉).
+
+### Codex 첫 작업(8/17, 우선순위)
+1. **SAJU→prompt 배선** (위 seam) — 공유경계 편집 권한은 Codex. `buildInterpretationContext` 실제 호출 + evidence 직렬화 + promptBuilder 입력 + `ENGINE_CONNECTED.saju=true`.
+2. 자미두수/기문둔갑 학파(ruleVersion) 확정 + reference 인용 + fixture 작성 → stage별 구현.
+3. cross-analysis 실제 도메인 대조(엔진 polarity 산출) — 구조 계약(crossAnalysis.ts) 위에.
+
+### Codex가 덮어쓰면 안 되는 것
+- `src/features/analysis/**` (Claude engine-external 계층: errors/logging/rateLimit/requestId/aiOutput/engineOrchestration/crossAnalysis + barrel) — 확장은 협의.
+- `src/features/fortune/domain/fortuneDomain.ts` (Claude domain + 테스트).
+- 테스트: `**/__tests__/*.{spec,test}.ts`, `jest.config.js`, `tsconfig.jest.json`.
+- 승인된 UI(사용자/관리자) — Claude Design/Owner 소관.
+
+### Owner manual blockers (BLOCKED_OWNER, 코드 아님)
+- `supabase functions deploy chat` (rate limit + edge requestId 활성화).
+- SQL artifact 적용: CONSUMER_CORE_SCHEMA / FORTUNE_MAIL_SETUP / DRAFT_RLS_SETUP / AI_USAGE_LOGS_REQUEST_ID (live DB diff 후).
+- 자미두수/기문둔갑 **canonical 학파** 결정 + 검증 reference 제공(엔진 구현 unblock).
+- Native build / 스토어 계정.
