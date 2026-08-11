@@ -99,7 +99,7 @@ export function AppHeader({
     <View style={wrapStyle}>
       <View style={styles.leftGroup}>
         {back}
-        <Text variant="headingLarge" style={styles.title} numberOfLines={1}>
+        <Text variant="headingMedium" style={styles.title} numberOfLines={1}>
           {brand ? '덕분AI' : title}
         </Text>
       </View>

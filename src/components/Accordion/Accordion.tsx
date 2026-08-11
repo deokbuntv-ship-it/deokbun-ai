@@ -37,7 +37,7 @@ export function Accordion({ title, children, defaultOpen = false }: AccordionPro
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: spacing.lg,
-          minHeight: 52,
+          minHeight: 60,
         }}
       >
         <Text variant="bodyLarge" style={{ fontWeight: '600' }}>

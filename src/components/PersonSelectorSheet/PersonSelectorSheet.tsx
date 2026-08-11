@@ -75,7 +75,7 @@ export function PersonSelectorSheet({ visible, onClose }: PersonSelectorSheetPro
             },
           ]}
         >
-          <View style={[styles.handle, { backgroundColor: theme.border }]} />
+          <View style={[styles.handle, { backgroundColor: '#C6C9D0' }]} />
 
           <Stack
             direction="row"
@@ -94,7 +94,7 @@ export function PersonSelectorSheet({ visible, onClose }: PersonSelectorSheetPro
 
           <ScrollView
             style={styles.list}
-            contentContainerStyle={{ gap: spacing.sm }}
+            contentContainerStyle={{ gap: spacing.md }}
             showsVerticalScrollIndicator={false}
           >
             {status === 'loading' ? (
@@ -122,14 +122,14 @@ export function PersonSelectorSheet({ visible, onClose }: PersonSelectorSheetPro
                       styles.row,
                       {
                         borderColor: selected ? theme.primary : theme.border,
-                        borderWidth: selected ? 2 : 1,
+                        borderWidth: selected ? 1.5 : 1,
                         backgroundColor: theme.surface,
                       },
                     ]}
                   >
-                    <Avatar label={subject.displayName} selected={selected} size={40} />
+                    <Avatar label={subject.displayName} selected={selected} size={44} />
                     <Stack gap="xs" style={styles.rowText}>
-                      <Text variant="bodyLarge">
+                      <Text variant="bodyLarge" style={styles.rowName}>
                         {subject.displayName}
                         {subject.isSelf ? ' (본인)' : ''}
                       </Text>
@@ -140,9 +140,14 @@ export function PersonSelectorSheet({ visible, onClose }: PersonSelectorSheetPro
                       ) : null}
                     </Stack>
                     {selected ? (
-                      <Text variant="headingMedium" colorToken="primary">
-                        ⊙
-                      </Text>
+                      <View style={[styles.check, { borderColor: theme.textSecondary }]}>
+                        <Text
+                          variant="bodySmall"
+                          style={{ color: theme.textSecondary, fontWeight: '700' }}
+                        >
+                          ✓
+                        </Text>
+                      </View>
                     ) : null}
                   </Pressable>
                 );
@@ -184,6 +189,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: spacing.sm,
     maxHeight: '80%',
+    // Soft UPWARD shadow so the sheet lifts off the dimmed screen (RN Web maps
+    // shadow* to boxShadow). The shadows token helper only emits downward offsets.
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 12,
   },
   handle: {
     width: 40,
@@ -194,7 +206,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: {
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   sheetTitle: {
     fontWeight: '700',
@@ -206,17 +218,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: radius.xl,
-    minHeight: 64,
+    minHeight: 72,
   },
   rowText: {
     flex: 1,
   },
+  rowName: {
+    fontWeight: '500',
+  },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   addBtn: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     borderRadius: radius.xl,
-    minHeight: 52,
+    minHeight: 62,
     alignItems: 'center',
     justifyContent: 'center',
   },

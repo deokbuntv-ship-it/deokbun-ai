@@ -47,7 +47,7 @@ export function ListRow({
         ) : null}
       </Stack>
       {showChevron ? (
-        <Text variant="headingMedium" colorToken="textSecondary">
+        <Text variant="bodyLarge" style={{ color: '#C6C9D0', fontWeight: '600' }}>
           ›
         </Text>
       ) : null}

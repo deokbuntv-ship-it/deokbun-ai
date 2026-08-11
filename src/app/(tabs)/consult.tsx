@@ -125,7 +125,7 @@ export default function ConsultationListScreen() {
       >
         <View style={styles.wrapper}>
           {status === 'no-subject' ? (
-            <Card>
+            <Card radius="xl">
               <Stack gap="md">
                 <Text variant="bodyMedium" colorToken="textSecondary">
                   먼저 분석 대상자를 선택해 주세요. 상단의 "나 ▾"에서 대상을 고를
@@ -134,13 +134,13 @@ export default function ConsultationListScreen() {
               </Stack>
             </Card>
           ) : status === 'loading' ? (
-            <Card>
+            <Card radius="xl">
               <Text variant="bodyMedium" colorToken="textSecondary">
                 상담 내역을 불러오는 중입니다...
               </Text>
             </Card>
           ) : status === 'error' ? (
-            <Card>
+            <Card radius="xl">
               <Stack gap="sm">
                 <Text variant="bodyMedium" colorToken="textSecondary">
                   상담 내역을 불러오지 못했습니다.
@@ -153,19 +153,21 @@ export default function ConsultationListScreen() {
               </Stack>
             </Card>
           ) : items.length === 0 ? (
-            <Card>
+            <Card radius="xl">
               <Text variant="bodyMedium" colorToken="textSecondary">
                 아직 상담 내역이 없어요. 아래 "새 상담"으로 첫 상담을 시작해
                 보세요.
               </Text>
             </Card>
           ) : (
-            <Stack gap="xl">
+            <Stack gap="xxl">
               {/* 진행 중 상담 (most recent) */}
-              <Stack gap="sm">
-                <Text variant="headingMedium">진행 중 상담</Text>
+              <Stack gap="md">
+                <Text variant="bodyLarge" style={styles.sectionTitle}>
+                  진행 중 상담
+                </Text>
                 <InsightCard
-                  tag={{ label: '최근 대화', tone: 'info' }}
+                  tag={{ label: '최근 대화', tone: 'neutral' }}
                   timestamp={when(current.updatedAt)}
                   title={`${subject?.displayName ?? '나'}님과의 상담`}
                   body={preview(current.summary)}
@@ -175,8 +177,10 @@ export default function ConsultationListScreen() {
 
               {/* 이전 상담 내역 */}
               {previous.length > 0 ? (
-                <Stack gap="sm">
-                  <Text variant="headingMedium">이전 상담 내역</Text>
+                <Stack gap="md">
+                  <Text variant="bodyLarge" style={styles.sectionTitle}>
+                    이전 상담 내역
+                  </Text>
                   <View>
                     {previous.map((item, i) => (
                       <Pressable
@@ -191,12 +195,12 @@ export default function ConsultationListScreen() {
                         ]}
                       >
                         <Stack gap="xs" style={{ flex: 1 }}>
-                          <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+                          <Text style={styles.rowTitle}>
                             {`${subject?.displayName ?? '나'}님 상담`}
                           </Text>
                           {preview(item.summary) ? (
                             <Text
-                              variant="bodySmall"
+                              variant="bodyMedium"
                               colorToken="textSecondary"
                               numberOfLines={1}
                             >
@@ -253,29 +257,38 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
+  sectionTitle: {
+    fontWeight: '700',
+  },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.md,
-    paddingVertical: spacing.md,
-    minHeight: 56,
+    paddingVertical: spacing.lg,
+    minHeight: 68,
+  },
+  rowTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   fab: {
     position: 'absolute',
     right: 20,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.xl,
-    minHeight: 52,
+    paddingHorizontal: 28,
+    minHeight: 58,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   fabLabel: {
+    fontSize: 18,
     fontWeight: '700',
   },
 });

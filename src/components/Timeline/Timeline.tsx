@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 // Vertical timeline (Stitch 05_FORTUNE_DETAIL 월별 흐름). A highlighted node uses
 // the warm-orange accent ring to mark the important/current period. Rendered only
@@ -23,18 +23,20 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
     <View>
       {items.map((item, i) => {
         const last = i === items.length - 1;
-        const dot = item.highlighted ? 14 : 10;
+        const dot = 16;
         return (
           <View key={`${item.period}-${i}`} style={{ flexDirection: 'row', gap: spacing.md }}>
             <View style={{ width: 16, alignItems: 'center' }}>
               <View
                 style={{
-                  width: dot,
-                  height: dot,
+                  width: item.highlighted ? dot : 11,
+                  height: item.highlighted ? dot : 11,
                   borderRadius: dot / 2,
-                  borderWidth: 2,
+                  borderWidth: item.highlighted ? 3 : 2,
                   borderColor: item.highlighted ? theme.accent : theme.border,
-                  backgroundColor: item.highlighted ? theme.accent : theme.surface,
+                  // Highlighted node is a hollow ORANGE RING (bullseye); others are
+                  // hollow gray dots. No filled orange dot (§ Stitch focal look).
+                  backgroundColor: theme.surface,
                   marginTop: 4,
                 }}
               />
@@ -49,14 +51,27 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
                 />
               ) : null}
             </View>
-            <Stack gap="xs" style={{ flex: 1, paddingBottom: last ? 0 : spacing.lg }}>
-              <Text variant="bodySmall" colorToken="textSecondary">
+            <Stack
+              gap="xs"
+              style={{
+                flex: 1,
+                marginBottom: last ? 0 : spacing.lg,
+                // Highlighted entry sits on a warm peach-tinted rounded block.
+                backgroundColor: item.highlighted ? '#F28C3314' : undefined,
+                borderRadius: item.highlighted ? radius.lg : 0,
+                padding: item.highlighted ? spacing.md : 0,
+              }}
+            >
+              <Text
+                variant="bodySmall"
+                style={{ color: item.highlighted ? theme.accent : theme.textSecondary, fontWeight: item.highlighted ? '700' : '400' }}
+              >
                 {item.period}
               </Text>
               <Text
                 variant="bodyLarge"
-                colorToken={item.highlighted ? 'primary' : 'textPrimary'}
-                style={{ fontWeight: '600' }}
+                colorToken={item.highlighted ? 'accent' : 'textPrimary'}
+                style={{ fontWeight: '700' }}
               >
                 {item.title}
               </Text>

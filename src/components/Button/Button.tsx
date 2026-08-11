@@ -1,6 +1,6 @@
 import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, spacing, radius } from '@/theme';
+import { colors, spacing, radius, type RadiusToken } from '@/theme';
 import { Text } from '@/components/Text';
 
 // Button hierarchy (§15): primary (filled brand), secondary (subtle surface),
@@ -12,10 +12,13 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
   label: string;
   variant?: ButtonVariant;
   disabled?: boolean;
+  // Corner radius token. Defaults to 'md' (8) so the admin console — which also
+  // uses Button — is unchanged. Consumer (Stitch) CTAs pass 'lg' (12).
+  radius?: RadiusToken;
   style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ label, variant = 'primary', disabled, style, ...rest }: ButtonProps) {
+export function Button({ label, variant = 'primary', disabled, radius: radiusToken = 'md', style, ...rest }: ButtonProps) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
@@ -41,7 +44,7 @@ export function Button({ label, variant = 'primary', disabled, style, ...rest }:
       style={({ pressed }) => [
         {
           backgroundColor,
-          borderRadius: radius.md,
+          borderRadius: radius[radiusToken],
           paddingVertical: spacing.md,
           paddingHorizontal: variant === 'tertiary' ? spacing.sm : spacing.lg,
           minHeight: 44, // comfortable tap target (§5)

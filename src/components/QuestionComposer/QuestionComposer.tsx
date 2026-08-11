@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { LineIcon } from '@/components/LineIcon';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
@@ -29,18 +30,23 @@ export function QuestionComposer({
 
   return (
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <TextInput
-        style={[styles.input, { color: theme.textPrimary }]}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        value={value}
-        onChangeText={setValue}
-        onSubmitEditing={submit}
-        returnKeyType="send"
-        multiline
-      />
+      <View style={styles.inputRow}>
+        <View style={styles.leadingIcon}>
+          <LineIcon name="chat" size={20} color={theme.textSecondary} />
+        </View>
+        <TextInput
+          style={[styles.input, { color: theme.textPrimary }]}
+          placeholder={placeholder}
+          placeholderTextColor={theme.textSecondary}
+          value={value}
+          onChangeText={setValue}
+          onSubmitEditing={submit}
+          returnKeyType="send"
+          multiline
+        />
+      </View>
       <View style={styles.actionRow}>
-        <Button label="➤  질문하기" onPress={submit} />
+        <Button label="➤  질문하기" onPress={submit} radius="lg" />
       </View>
     </View>
   );
@@ -53,10 +59,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  inputRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+  },
+  leadingIcon: {
+    paddingTop: 2,
+  },
   input: {
+    flex: 1,
     fontSize: 16,
     lineHeight: 24,
-    minHeight: 48,
+    minHeight: 92,
     textAlignVertical: 'top',
   },
   actionRow: {

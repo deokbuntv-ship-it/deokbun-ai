@@ -89,19 +89,19 @@ export default function FortuneInboxScreen() {
             </Stack>
 
             {status === 'loading' ? (
-              <Card>
+              <Card radius="xl">
                 <Text variant="bodyMedium" colorToken="textSecondary">
                   운세우편을 확인하고 있어요.
                 </Text>
               </Card>
             ) : status === 'error' ? (
-              <Card>
+              <Card radius="xl">
                 <Text variant="bodyMedium" colorToken="textSecondary">
                   운세우편을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
                 </Text>
               </Card>
             ) : visible.length === 0 ? (
-              <Card>
+              <Card radius="xl">
                 <Stack gap="sm">
                   <Text variant="headingMedium">아직 도착한 운세우편이 없어요</Text>
                   <Text variant="bodyMedium" colorToken="textSecondary">
@@ -111,7 +111,7 @@ export default function FortuneInboxScreen() {
                 </Stack>
               </Card>
             ) : (
-              <Stack gap="md">
+              <Stack gap="lg">
                 {visible.map((item) => (
                   <InsightCard
                     key={item.id}

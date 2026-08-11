@@ -2,7 +2,7 @@ import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 // Pill chip (§43) for period tabs, quick-entry categories, question prompts, and
 // relationship types. Selected/unselected is obvious (border + tinted surface +
@@ -37,7 +37,7 @@ export function Chip({
         {
           paddingVertical: spacing.sm,
           paddingHorizontal: spacing.md,
-          borderRadius: 999,
+          borderRadius: radius.pill,
           borderWidth: 1,
           borderColor: selected ? theme.primary : theme.border,
           backgroundColor: selected ? theme.primary : theme.surface,
@@ -50,9 +50,9 @@ export function Chip({
       ]}
     >
       <Text
-        variant="bodySmall"
+        variant="bodyMedium"
         colorToken={selected ? 'primaryText' : 'textPrimary'}
-        style={{ fontWeight: selected ? '700' : '500' }}
+        style={{ fontWeight: selected ? '700' : '600', textAlign: 'center' }}
       >
         {label}
       </Text>

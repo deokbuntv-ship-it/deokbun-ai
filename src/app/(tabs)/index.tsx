@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { InsightCard } from '@/components/InsightCard';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { ListRow } from '@/components/ListRow';
 import { PersonSelectorSheet } from '@/components/PersonSelectorSheet';
 import { QuestionComposer } from '@/components/QuestionComposer';
@@ -29,12 +30,12 @@ import { colors } from '@/theme';
 // from real services; fortune mail is empty until the engine ships (no mock).
 
 // Server-replaceable list (not tightly coupled to UI). Later: fetch from server.
-const POPULAR_QUESTIONS: string[] = [
-  '올해 재물운의 흐름이 어떻게 될까?',
-  '이직을 준비하는데 언제가 좋을까?',
-  '올해 나에게 올 가장 큰 변화는?',
-  '새로운 인연을 만날 수 있을까?',
-  '건강 측면에서 조심해야 할 것은?',
+const POPULAR_QUESTIONS: { q: string; icon: LineIconName }[] = [
+  { q: '올해 재물운의 흐름이 어떻게 될까?', icon: 'wallet' },
+  { q: '이직을 준비하는데 언제가 좋을까?', icon: 'briefcase' },
+  { q: '올해 나에게 올 가장 큰 변화는?', icon: 'swap' },
+  { q: '새로운 인연을 만날 수 있을까?', icon: 'heart' },
+  { q: '건강 측면에서 조심해야 할 것은?', icon: 'leaf' },
 ];
 const QUICK_PROMPTS: string[] = [
   '이직하기 좋은 시기가 언제야?',
@@ -153,15 +154,22 @@ export default function HomeScreen() {
 
             <Stack direction="row" gap="sm" style={styles.chipWrap}>
               {QUICK_PROMPTS.map((q) => (
-                <Chip key={q} label={q} onPress={() => startConsult(q)} />
+                <Chip
+                  key={q}
+                  label={q}
+                  onPress={() => startConsult(q)}
+                  style={styles.quickChip}
+                />
               ))}
             </Stack>
 
             {/* 지금 많이 물어보는 질문 (server-replaceable list) */}
-            <Stack gap="xs">
-              <Text variant="headingMedium">지금 많이 물어보는 질문</Text>
+            <Stack gap="md">
+              <Text variant="bodyLarge" style={styles.sectionTitle}>
+                지금 많이 물어보는 질문
+              </Text>
               <View>
-                {POPULAR_QUESTIONS.map((q, i) => (
+                {POPULAR_QUESTIONS.map(({ q, icon }, i) => (
                   <View
                     key={q}
                     style={
@@ -170,29 +178,65 @@ export default function HomeScreen() {
                         : undefined
                     }
                   >
-                    <ListRow label={q} onPress={() => startConsult(q)} />
+                    <ListRow
+                      label={q}
+                      leading={
+                        <LineIcon name={icon} size={20} color={theme.textSecondary} />
+                      }
+                      onPress={() => startConsult(q)}
+                    />
                   </View>
                 ))}
               </View>
             </Stack>
 
             {/* 최근 상담 (real) */}
-            <Stack gap="sm">
-              <Text variant="headingMedium">최근 상담</Text>
+            <Stack gap="md">
+              <Text variant="bodyLarge" style={styles.sectionTitle}>
+                최근 상담
+              </Text>
               {recent ? (
-                <InsightCard
-                  timestamp={formatWhen(recent.updatedAt)}
-                  title={`${subject?.displayName ?? '나'}님 상담`}
-                  body={preview(recent.summary)}
+                <Pressable
                   onPress={() =>
                     router.push({
                       pathname: '/chat',
                       params: { conversationId: recent.id },
                     })
                   }
-                />
+                  accessibilityRole="button"
+                >
+                  <Card radius="xl">
+                    <Stack gap="sm">
+                      <View style={styles.rowBetween}>
+                        <Text
+                          variant="bodyLarge"
+                          style={styles.recentTitle}
+                          numberOfLines={1}
+                        >
+                          {`${subject?.displayName ?? '나'}님 상담`}
+                        </Text>
+                        <Text variant="bodySmall" colorToken="textSecondary">
+                          {formatWhen(recent.updatedAt)}
+                        </Text>
+                      </View>
+                      <View style={styles.rowBetween}>
+                        <Text
+                          variant="bodyMedium"
+                          colorToken="textSecondary"
+                          numberOfLines={1}
+                          style={styles.flex1}
+                        >
+                          {preview(recent.summary) ?? '상담을 이어가 보세요.'}
+                        </Text>
+                        <Text variant="bodyLarge" style={styles.chevron}>
+                          ›
+                        </Text>
+                      </View>
+                    </Stack>
+                  </Card>
+                </Pressable>
               ) : (
-                <Card>
+                <Card radius="xl">
                   <Text variant="bodyMedium" colorToken="textSecondary">
                     아직 상담 내역이 없어요. 위에서 궁금한 점을 물어보세요.
                   </Text>
@@ -201,8 +245,10 @@ export default function HomeScreen() {
             </Stack>
 
             {/* 최근 운세우편 (empty until fortune engine — no mock) */}
-            <Stack gap="sm">
-              <Text variant="headingMedium">최근 운세우편</Text>
+            <Stack gap="md">
+              <Text variant="bodyLarge" style={styles.sectionTitle}>
+                최근 운세우편
+              </Text>
               {mail ? (
                 <InsightCard
                   tag={{ label: mail.category, tone: mail.categoryTone }}
@@ -212,7 +258,7 @@ export default function HomeScreen() {
                   onCta={() => router.push('/inbox')}
                 />
               ) : (
-                <Card>
+                <Card radius="xl">
                   <Stack gap="md">
                     <Text variant="bodyMedium" colorToken="textSecondary">
                       아직 도착한 운세우편이 없어요. 운세 엔진 연결 후 개인화된
@@ -221,6 +267,7 @@ export default function HomeScreen() {
                     <Button
                       label="운세우편함 열기"
                       variant="secondary"
+                      radius="lg"
                       onPress={() => router.push('/inbox')}
                     />
                   </Stack>
@@ -254,5 +301,28 @@ const styles = StyleSheet.create({
   },
   chipWrap: {
     flexWrap: 'wrap',
+  },
+  quickChip: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  recentTitle: {
+    flex: 1,
+    fontWeight: '700',
+  },
+  flex1: {
+    flex: 1,
+  },
+  chevron: {
+    color: '#C6C9D0',
+    fontWeight: '600',
   },
 });

@@ -9,6 +9,8 @@ import { colors, radius, spacing } from '@/theme';
 export type BadgeTone =
   | 'neutral'
   | 'primary'
+  | 'secondary'
+  | 'accent'
   | 'success'
   | 'warning'
   | 'danger'
@@ -22,10 +24,14 @@ function tint(hex: string, alpha: string): string {
 export function StatusBadge({
   label,
   tone = 'neutral',
+  pill = false,
   style,
 }: {
   label: string;
   tone?: BadgeTone;
+  // Full-pill + roomier padding for Stitch consumer surfaces. Default false keeps
+  // the original squared tag used across the (unchanged) admin console.
+  pill?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const scheme = useColorScheme();
@@ -42,7 +48,11 @@ export function StatusBadge({
             ? theme.primary
             : tone === 'info'
               ? theme.primary
-              : theme.textSecondary;
+              : tone === 'secondary'
+                ? theme.secondary
+                : tone === 'accent'
+                  ? theme.accent
+                  : theme.textSecondary;
   const bg = tone === 'neutral' ? theme.backgroundElevated : tint(fg, '1f');
 
   return (
@@ -51,14 +61,14 @@ export function StatusBadge({
         {
           alignSelf: 'flex-start',
           backgroundColor: bg,
-          borderRadius: radius.sm,
-          paddingHorizontal: spacing.sm,
-          paddingVertical: 2,
+          borderRadius: pill ? radius.pill : radius.sm,
+          paddingHorizontal: pill ? spacing.md : spacing.sm,
+          paddingVertical: pill ? 4 : 2,
         },
         style,
       ]}
     >
-      <Text variant="caption" style={{ color: fg, fontWeight: '600' }}>
+      <Text variant={pill ? 'bodySmall' : 'caption'} style={{ color: fg, fontWeight: '600' }}>
         {label}
       </Text>
     </View>

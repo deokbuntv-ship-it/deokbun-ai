@@ -39,7 +39,7 @@ export function InsightCard({
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   const inner = (
-    <Card>
+    <Card radius="xl">
       <Stack gap="sm">
         {tag || timestamp || unread ? (
           <Stack
@@ -49,7 +49,7 @@ export function InsightCard({
             style={{ justifyContent: 'space-between' }}
           >
             <Stack direction="row" gap="sm" align="center">
-              {tag ? <StatusBadge label={tag.label} tone={tag.tone ?? 'neutral'} /> : null}
+              {tag ? <StatusBadge label={tag.label} tone={tag.tone ?? 'neutral'} pill /> : null}
               {timestamp ? (
                 <Text variant="bodySmall" colorToken="textSecondary">
                   {timestamp}
@@ -71,15 +71,17 @@ export function InsightCard({
         <Text
           variant="headingMedium"
           colorToken={muted ? 'textSecondary' : 'textPrimary'}
+          numberOfLines={2}
+          style={{ fontWeight: '700' }}
         >
           {title}
         </Text>
         {body ? (
-          <Text variant="bodyMedium" colorToken="textSecondary">
+          <Text variant="bodyMedium" colorToken="textSecondary" numberOfLines={2}>
             {body}
           </Text>
         ) : null}
-        {ctaLabel ? <Button label={ctaLabel} onPress={onCta} /> : null}
+        {ctaLabel ? <Button label={ctaLabel} onPress={onCta} radius="lg" /> : null}
       </Stack>
     </Card>
   );

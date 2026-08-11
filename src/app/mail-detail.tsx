@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -14,6 +15,18 @@ import { MaxContentWidth } from '@/constants/theme';
 import { fortuneMailService, type FortuneMailDetail } from '@/features/fortune';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
+
+// Pick a decorative monochrome icon for a life-area card from its category label.
+// Presentation only — never implies data the engine did not provide.
+function areaIcon(category: string): LineIconName {
+  if (category.includes('재물') || category.includes('금전')) return 'wallet';
+  if (category.includes('사업') || category.includes('직장') || category.includes('업무'))
+    return 'briefcase';
+  if (category.includes('건강')) return 'leaf';
+  if (category.includes('애정') || category.includes('대인') || category.includes('관계'))
+    return 'heart';
+  return 'sparkle';
+}
 
 // 05_FORTUNE_DETAIL (Stitch _2). 핵심요약 → 영역별 상태 → 핵심 주의 구간 →
 // 월별 흐름 Timeline → "이 운세에 대해 AI에게 물어보기". No numeric scores/stars.
@@ -68,13 +81,13 @@ export default function FortuneMailDetailScreen() {
       >
         <View style={styles.wrapper}>
           {status === 'loading' ? (
-            <Card>
+            <Card radius="xl">
               <Text variant="bodyMedium" colorToken="textSecondary">
                 운세우편을 불러오는 중입니다...
               </Text>
             </Card>
           ) : status !== 'ready' || !detail ? (
-            <Card>
+            <Card radius="xl">
               <Stack gap="sm">
                 <Text variant="headingMedium">운세 엔진 연결 준비 중</Text>
                 <Text variant="bodyMedium" colorToken="textSecondary">
@@ -86,8 +99,11 @@ export default function FortuneMailDetailScreen() {
           ) : (
             <Stack gap="xl">
               {/* 핵심 요약 */}
-              <Stack gap="sm">
-                <StatusBadge label={detail.headerLabel} tone="info" />
+              <Stack gap="md">
+                <View style={styles.heroBadgeRow}>
+                  <LineIcon name="sparkle" size={16} color={theme.secondary} />
+                  <StatusBadge label={detail.headerLabel} tone="secondary" pill />
+                </View>
                 <Text variant="displayMedium">{detail.title}</Text>
                 <Text variant="bodyLarge" colorToken="textSecondary">
                   {detail.summary}
@@ -99,10 +115,17 @@ export default function FortuneMailDetailScreen() {
                 <View style={styles.areaGrid}>
                   {detail.areas.map((area) => (
                     <View key={area.category} style={styles.areaCell}>
-                      <Card>
+                      <Card radius="xl">
                         <Stack gap="sm">
                           <View style={styles.areaTop}>
-                            <StatusBadge label={area.status} tone={area.statusTone} />
+                            <View style={[styles.iconChip, { backgroundColor: theme.backgroundElevated }]}>
+                              <LineIcon
+                                name={areaIcon(area.category)}
+                                size={18}
+                                color={theme.textSecondary}
+                              />
+                            </View>
+                            <StatusBadge label={area.status} tone={area.statusTone} pill />
                           </View>
                           <Text variant="bodySmall" colorToken="textSecondary">
                             {area.category}
@@ -119,16 +142,21 @@ export default function FortuneMailDetailScreen() {
 
               {/* 핵심 주의 구간 */}
               {detail.caution ? (
-                <Stack gap="sm">
-                  <Text variant="headingMedium">핵심 주의 구간</Text>
+                <Stack gap="md">
+                  <View style={styles.sectionTitleRow}>
+                    <LineIcon name="warning" size={18} color={theme.accent} />
+                    <Text variant="headingMedium" style={styles.bold}>
+                      핵심 주의 구간
+                    </Text>
+                  </View>
                   <View style={[styles.cautionCard, { backgroundColor: theme.primary }]}>
-                    <Stack gap="sm">
+                    <Stack gap="md">
                       <View style={styles.periodPill}>
                         <Text variant="bodySmall" colorToken="primaryText" style={styles.bold}>
                           {detail.caution.periodLabel}
                         </Text>
                       </View>
-                      <Text variant="headingMedium" colorToken="primaryText">
+                      <Text variant="headingLarge" colorToken="primaryText" style={styles.bold}>
                         {detail.caution.title}
                       </Text>
                       <Text variant="bodyMedium" colorToken="primaryText" style={styles.dim}>
@@ -142,13 +170,20 @@ export default function FortuneMailDetailScreen() {
               {/* 월별 흐름 Timeline */}
               {detail.timeline.length > 0 ? (
                 <Stack gap="md">
-                  <Text variant="headingMedium">전체 흐름</Text>
+                  <Text variant="headingMedium" style={styles.bold}>
+                    전체 흐름
+                  </Text>
                   <Timeline items={detail.timeline} />
                 </Stack>
               ) : null}
 
               {/* AI 이어서 질문 */}
-              <Button label="이 운세에 대해 AI에게 물어보기" onPress={askAI} />
+              <Button
+                label="이 운세에 대해 AI에게 물어보기"
+                onPress={askAI}
+                radius="lg"
+                style={styles.askCta}
+              />
             </Stack>
           )}
         </View>
@@ -170,34 +205,55 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
+  heroBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   areaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -spacing.xs,
+    marginHorizontal: -6,
   },
   areaCell: {
     width: '50%',
-    padding: spacing.xs,
+    padding: 6,
   },
   areaTop: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  iconChip: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cautionCard: {
     borderRadius: radius.xl,
-    padding: spacing.lg,
+    padding: 20,
   },
   periodPill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
+  },
+  askCta: {
+    minHeight: 56,
   },
   bold: {
     fontWeight: '700',
   },
   dim: {
-    opacity: 0.9,
+    opacity: 0.75,
   },
 });
