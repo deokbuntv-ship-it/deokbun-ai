@@ -3,6 +3,13 @@ export { adminAuthorizationService } from './services/adminAuthorizationService'
 export { adminUsersService } from './services/adminUsersService';
 export { adminConsultationsService } from './services/adminConsultationsService';
 export { adminOpsService } from './services/adminOpsService';
+export { adminFortuneMailService } from './services/adminFortuneMailService';
+export type {
+  AdminFortuneMailDetail,
+  AdminFortuneMailListItem,
+  AdminFortuneMailStatus,
+  AdminFortuneMailTimelineEntry,
+} from './services/adminFortuneMailService';
 
 export { AdminShell } from './components/AdminShell';
 export { AdminSidebar } from './components/AdminSidebar';
@@ -14,6 +21,7 @@ export { AdminTable } from './components/AdminTable';
 export type { AdminTableColumn } from './components/AdminTable';
 export { AdminBadge } from './components/AdminBadge';
 export type { AdminBadgeTone } from './components/AdminBadge';
+export { FortuneMailDetailDrawer } from './components/FortuneMailDetailDrawer';
 export { AdminGate } from './components/AdminGate';
 export { AdminPageHeader } from './components/AdminPageHeader';
 export { AdminStateView } from './components/AdminStateView';
