@@ -57,6 +57,8 @@ export type ChatServiceResult =
   | {
       success: true;
       responseText: string;
+      // Correlation id for tracing/logging this request (optional; additive).
+      requestId?: string;
     }
   | {
       success: false;
@@ -65,4 +67,5 @@ export type ChatServiceResult =
         | 'INVALID_INPUT'
         | 'REQUEST_FAILED'
         | 'AUTH_REQUIRED';
+      requestId?: string;
     };

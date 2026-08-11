@@ -1,3 +1,10 @@
+import {
+  appErrorEvent,
+  boundRecentByChars,
+  consoleErrorLogger,
+  newRequestId,
+  toAppErrorCode,
+} from '@/features/analysis';
 import type { LLMAdapter } from '@/features/chat/adapters/llmAdapter';
 import { chatConfig } from '@/features/chat/config/chatConfig';
 import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
@@ -15,30 +22,44 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
   async function sendMessage(
     input: ChatServiceInput,
   ): Promise<ChatServiceResult> {
+    // One correlation id per request — flows into failure logs and back to the
+    // caller. The existing public `errorCode` values are preserved (the UI keeps
+    // working); logging maps them to the standard AppErrorCode.
+    const requestId = newRequestId();
+    const logFailure = (
+      errorCode: 'NOT_CONFIGURED' | 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED',
+      severity: 'warning' | 'error',
+    ) => {
+      consoleErrorLogger.log(
+        appErrorEvent(toAppErrorCode(errorCode), 'chat', { requestId, severity }),
+      );
+    };
+
     const trimmedUserMessage = input.userMessage.trim();
 
     if (trimmedUserMessage.length === 0) {
-      return { success: false, errorCode: 'INVALID_INPUT' };
+      return { success: false, errorCode: 'INVALID_INPUT', requestId };
     }
 
     const gatewayResult = evaluateMessage(trimmedUserMessage);
 
     if (gatewayResult.type === 'INVALID_INPUT') {
-      return { success: false, errorCode: 'INVALID_INPUT' };
+      return { success: false, errorCode: 'INVALID_INPUT', requestId };
     }
 
     if (gatewayResult.type === 'LOCAL_RESPONSE') {
-      return { success: true, responseText: gatewayResult.text };
+      return { success: true, responseText: gatewayResult.text, requestId };
     }
 
     if (!authGuard()) {
-      return { success: false, errorCode: 'AUTH_REQUIRED' };
+      logFailure('AUTH_REQUIRED', 'warning');
+      return { success: false, errorCode: 'AUTH_REQUIRED', requestId };
     }
 
     const selectedContext = selectConsultationContext(input.draft);
 
     if (selectedContext === null) {
-      return { success: false, errorCode: 'INVALID_INPUT' };
+      return { success: false, errorCode: 'INVALID_INPUT', requestId };
     }
 
     const memoryResult = computeConversationMemory(
@@ -46,10 +67,19 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
       input.conversationMemory,
     );
 
+    // Defense-in-depth context bound: memory already caps by message COUNT; this
+    // additionally caps by characters so one very long turn can't blow the prompt
+    // budget. Keeps the most-recent turns (directive §2-D). Additive, backward-
+    // compatible — no change to the frozen engine or prompt shape.
+    const boundedRecentMessages = boundRecentByChars(
+      memoryResult.recentMessages,
+      (m) => m.text,
+    );
+
     const promptMessages = buildPrompt({
       selectedContext,
       conversationSummary: memoryResult.existingSummary,
-      recentMessages: memoryResult.recentMessages,
+      recentMessages: boundedRecentMessages,
       currentUserMessage: trimmedUserMessage,
     });
 
@@ -61,9 +91,10 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
         temperature: chatConfig.temperature,
       });
 
-      return { success: true, responseText: response.text };
+      return { success: true, responseText: response.text, requestId };
     } catch {
-      return { success: false, errorCode: 'REQUEST_FAILED' };
+      logFailure('REQUEST_FAILED', 'error');
+      return { success: false, errorCode: 'REQUEST_FAILED', requestId };
     }
   }
 

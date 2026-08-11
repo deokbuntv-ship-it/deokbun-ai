@@ -92,10 +92,13 @@ export const OUTPUT_GUARD = {
   maxMessages: 40, // hard cap on messages forwarded
 } as const;
 
-// Bound a list of message contents to a character budget, keeping the MOST RECENT
-// (LLM context relevance). Pure; no tokenizer dependency (directive §2-I / §19).
-export function boundRecentByChars<T extends { content: string }>(
+// Bound a list of messages to a character budget, keeping the MOST RECENT (LLM
+// context relevance). `getText` reads the text field (message shapes differ:
+// ChatMessage uses `.text`, LLM messages use `.content`). Pure; no tokenizer
+// dependency (directive §2-I / §19).
+export function boundRecentByChars<T>(
   messages: T[],
+  getText: (m: T) => string,
   maxChars: number = OUTPUT_GUARD.maxContextChars,
   maxCount: number = OUTPUT_GUARD.maxMessages,
 ): T[] {
@@ -103,7 +106,7 @@ export function boundRecentByChars<T extends { content: string }>(
   const kept: T[] = [];
   let total = 0;
   for (let i = capped.length - 1; i >= 0; i -= 1) {
-    const len = capped[i].content.length;
+    const len = getText(capped[i]).length;
     if (total + len > maxChars && kept.length > 0) break;
     kept.push(capped[i]);
     total += len;
