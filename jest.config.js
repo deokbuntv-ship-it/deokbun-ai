@@ -15,6 +15,12 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
+    // .ts/.tsx AND .js/.jsx — the latter so ESM-only node_modules that ship no
+    // CJS build (e.g. qimen-dunjia) can be transpiled to CJS for the CJS runner.
+    '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
   },
+  // By default jest ignores node_modules for transformation. The 자미/기문 Cores
+  // are ESM; allow the qimen Core (ESM) through so its `import`/`export` are
+  // transpiled. (iztro ships a CJS build, so it does not need this.)
+  transformIgnorePatterns: ['/node_modules/(?!(?:qimen-dunjia)/)'],
 };
