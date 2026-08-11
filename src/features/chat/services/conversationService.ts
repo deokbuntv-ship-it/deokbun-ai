@@ -1,3 +1,4 @@
+import { logDbError } from '@/features/analysis';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import { getSupabaseClient } from '@/services/supabase';
 
@@ -75,7 +76,7 @@ async function createConversation(
     .single();
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
 
   const id = (data as { id?: string } | null)?.id;
@@ -110,7 +111,7 @@ async function saveMessage(
   );
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
 }
 
@@ -124,7 +125,7 @@ async function loadMessages(conversationId: string): Promise<ChatMessage[]> {
     .order('seq', { ascending: true });
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
 
   return ((rows as ConversationMessageRow[] | null) ?? []).map((row) => ({
@@ -161,7 +162,7 @@ async function loadLatestConversation(): Promise<LoadedConversation | null> {
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
   if (data === null) {
     return null;
@@ -187,7 +188,7 @@ async function loadLatestConversationForSubject(
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
   if (data === null) {
     return null;
@@ -210,7 +211,7 @@ async function loadConversationById(
     .maybeSingle();
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
   if (data === null) {
     return null;
@@ -233,7 +234,7 @@ async function listConversationsForSubject(
     .order('updated_at', { ascending: false });
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
 
   return (
@@ -274,7 +275,7 @@ async function saveSummary(
     .eq('id', conversationId);
 
   if (error) {
-    throw error;
+    logDbError(error, 'conversation', 'persist');
   }
 }
 
