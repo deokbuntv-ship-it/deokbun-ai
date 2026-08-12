@@ -23,6 +23,9 @@ export default function RootLayout() {
             <Stack.Screen name="birth-info" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
+            {/* Provider-neutral OAuth return route (web popup completion; native
+                intercepts the deep link and never mounts this). */}
+            <Stack.Screen name="login-callback" options={{ headerShown: false }} />
             {/* 운세우편 상세 (05) — pushed from 운세우편함; own AppHeader back. */}
             <Stack.Screen name="mail-detail" options={{ headerShown: false }} />
             {/* 분석 대상자 관리 (from MY) — subject management; own AppHeader. */}
