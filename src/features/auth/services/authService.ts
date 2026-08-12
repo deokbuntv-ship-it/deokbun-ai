@@ -3,6 +3,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 
+import { signInWithNaverBridge } from '@/features/auth/naver/naverAuthService';
 import { resolveSupabaseProvider } from '@/features/auth/services/authProviders';
 import type { AuthFailureReason } from '@/features/auth/errors/authErrors';
 import type { AuthProviderId } from '@/features/auth/types/auth';
@@ -74,9 +75,13 @@ async function signInWithSupabaseOAuth(
 async function signInWithProvider(
 	providerId: AuthProviderId,
 ): Promise<AuthActionResult> {
-	// kakao/google → built-in Supabase providers; naver → Supabase Custom OAuth
-	// provider (custom:naver). All share the SAME OAuth flow below; only the
-	// resolved provider id differs. See services/authProviders.ts.
+	// naver → trusted edge bridge (Naver is not a Supabase provider; see
+	// naver/naverAuthService). kakao/google → built-in Supabase providers via the
+	// shared signInWithOAuth flow below. apple → unsupported (not enabled).
+	if (providerId === 'naver') {
+		return signInWithNaverBridge();
+	}
+
 	const resolution = resolveSupabaseProvider(providerId);
 
 	if (!resolution.supported) {

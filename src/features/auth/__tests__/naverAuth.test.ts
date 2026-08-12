@@ -15,15 +15,15 @@ import {
   type AuthFailureReason,
   type AuthOutcomeCode,
 } from '../errors/authErrors';
-import {
-  NAVER_CUSTOM_PROVIDER_DEFAULT,
-  naverCustomProvider,
-  resolveSupabaseProvider,
-} from '../services/authProviders';
+import { resolveSupabaseProvider } from '../services/authProviders';
 import { resolveIdentityCollision } from '../services/authIdentity';
 import { resolveOAuthReturn } from '../services/oauthReturn';
-
-const ENV_KEY = 'EXPO_PUBLIC_NAVER_SUPABASE_PROVIDER';
+import {
+  buildNaverAuthorizeUrl,
+  parseNaverCallback,
+  statesMatch,
+} from '../naver/naverOAuth';
+import { normalizeNaverProfile } from '../naver/naverProfile';
 
 describe('resolveSupabaseProvider (directive §6 — provider abstraction)', () => {
   it('keeps kakao/google on their built-in Supabase providers (unchanged)', () => {
@@ -37,11 +37,9 @@ describe('resolveSupabaseProvider (directive §6 — provider abstraction)', () 
     });
   });
 
-  it('routes naver through the Supabase Custom OAuth provider (custom:naver)', () => {
-    expect(resolveSupabaseProvider('naver')).toEqual({
-      supported: true,
-      supabaseProvider: 'custom:naver',
-    });
+  it('does NOT treat naver as a Supabase provider (it uses the edge bridge)', () => {
+    // PATH A is dead — Supabase custom OAuth2 cannot map Naver's nested userinfo.
+    expect(resolveSupabaseProvider('naver')).toEqual({ supported: false });
   });
 
   it('reports apple (declared but not enabled) as unsupported', () => {
@@ -49,33 +47,99 @@ describe('resolveSupabaseProvider (directive §6 — provider abstraction)', () 
   });
 });
 
-describe('naverCustomProvider (env override, custom: prefix enforced)', () => {
-  const original = process.env[ENV_KEY];
-  afterEach(() => {
-    if (original === undefined) delete process.env[ENV_KEY];
-    else process.env[ENV_KEY] = original;
+describe('buildNaverAuthorizeUrl (PATH B — public client_id, no secret)', () => {
+  const url = buildNaverAuthorizeUrl({
+    clientId: 'CID',
+    redirectUri: 'https://www.deokbunai.com/login-callback',
+    state: 'st8/te+value',
   });
-
-  it('defaults to custom:naver when unset', () => {
-    delete process.env[ENV_KEY];
-    expect(naverCustomProvider()).toBe(NAVER_CUSTOM_PROVIDER_DEFAULT);
-    expect(naverCustomProvider()).toBe('custom:naver');
+  it('targets Naver authorize with response_type=code + client_id', () => {
+    expect(url.startsWith('https://nid.naver.com/oauth2.0/authorize?')).toBe(true);
+    expect(url).toContain('response_type=code');
+    expect(url).toContain('client_id=CID');
   });
-
-  it('honours a valid custom: override', () => {
-    process.env[ENV_KEY] = 'custom:naver_kr';
-    expect(naverCustomProvider()).toBe('custom:naver_kr');
+  it('percent-encodes redirect_uri and state (no raw special chars)', () => {
+    expect(url).toContain(
+      'redirect_uri=https%3A%2F%2Fwww.deokbunai.com%2Flogin-callback',
+    );
+    expect(url).toContain('state=st8%2Fte%2Bvalue');
   });
-
-  it('forces the custom: prefix so it can never point at a built-in provider', () => {
-    process.env[ENV_KEY] = 'kakao'; // an attacker-ish value w/o the prefix
-    expect(naverCustomProvider()).toBe('custom:kakao');
-    expect(naverCustomProvider().startsWith('custom:')).toBe(true);
+  it('never contains a secret field', () => {
+    expect(url).not.toMatch(/client_secret/i);
   });
+});
 
-  it('falls back to the default on blank/whitespace override', () => {
-    process.env[ENV_KEY] = '   ';
-    expect(naverCustomProvider()).toBe('custom:naver');
+describe('parseNaverCallback (code/state/deny extraction, runtime-safe)', () => {
+  it('extracts code + state on success', () => {
+    expect(
+      parseNaverCallback('https://x/login-callback?code=abc&state=xyz'),
+    ).toEqual({ ok: true, code: 'abc', state: 'xyz' });
+  });
+  it('reports DENIED when the user declines', () => {
+    const r = parseNaverCallback('https://x/login-callback?error=access_denied&state=xyz');
+    expect(r).toMatchObject({ ok: false, reason: 'DENIED', error: 'access_denied' });
+  });
+  it('reports MISSING_CODE when code is absent', () => {
+    expect(parseNaverCallback('https://x/login-callback?state=xyz')).toEqual({
+      ok: false,
+      reason: 'MISSING_CODE',
+    });
+  });
+  it('reports MISSING_STATE when state is absent', () => {
+    expect(parseNaverCallback('https://x/login-callback?code=abc')).toEqual({
+      ok: false,
+      reason: 'MISSING_STATE',
+    });
+  });
+});
+
+describe('statesMatch (CSRF state round-trip)', () => {
+  it('matches identical non-empty states', () => {
+    expect(statesMatch('a1b2c3', 'a1b2c3')).toBe(true);
+  });
+  it('rejects mismatches, length diffs, and empty/absent', () => {
+    expect(statesMatch('a1b2c3', 'a1b2c4')).toBe(false);
+    expect(statesMatch('abc', 'abcd')).toBe(false);
+    expect(statesMatch('', '')).toBe(false);
+    expect(statesMatch(null, 'x')).toBe(false);
+    expect(statesMatch('x', undefined)).toBe(false);
+  });
+});
+
+describe('normalizeNaverProfile (nested response.id; email optional)', () => {
+  it('extracts the nested id/email/name on a success response', () => {
+    const r = normalizeNaverProfile({
+      resultcode: '00',
+      message: 'success',
+      response: { id: '32742776', email: 'a@naver.com', name: '오픈' },
+    });
+    expect(r).toEqual({
+      ok: true,
+      profile: { naverId: '32742776', email: 'a@naver.com', name: '오픈' },
+    });
+  });
+  it('tolerates a missing email (user declined) — email null, still ok', () => {
+    const r = normalizeNaverProfile({ resultcode: '00', response: { id: '99' } });
+    expect(r).toEqual({ ok: true, profile: { naverId: '99', email: null, name: null } });
+  });
+  it('fails on a non-success resultcode', () => {
+    expect(
+      normalizeNaverProfile({ resultcode: '024', message: 'auth fail', response: {} }),
+    ).toEqual({ ok: false, reason: 'BAD_RESPONSE' });
+  });
+  it('fails when the nested id is missing', () => {
+    expect(normalizeNaverProfile({ resultcode: '00', response: { email: 'a@b.c' } })).toEqual({
+      ok: false,
+      reason: 'MISSING_ID',
+    });
+  });
+  it('fails on malformed / non-object input', () => {
+    expect(normalizeNaverProfile(null)).toEqual({ ok: false, reason: 'BAD_RESPONSE' });
+    expect(normalizeNaverProfile('nope')).toEqual({ ok: false, reason: 'BAD_RESPONSE' });
+    expect(normalizeNaverProfile({ resultcode: '00' })).toEqual({
+      ok: false,
+      reason: 'BAD_RESPONSE',
+    });
   });
 });
 
@@ -208,21 +272,36 @@ describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)'
   });
 });
 
-describe('secret-exposure scan (directive §21 — no client-side secrets)', () => {
+describe('secret-exposure scan (directive §10/§21 — no client-side secrets)', () => {
+  // All client-bundle auth source (incl. the new Naver bridge client). These MAY
+  // discuss secrets in comments, so the scan targets concrete EXPOSURE patterns
+  // (env reads / edge-only APIs / hardcoded tokens), never prose.
   const clientFacing = [
     '../services/authProviders.ts',
     '../services/authService.ts',
     '../services/authIdentity.ts',
+    '../services/oauthReturn.ts',
     '../errors/authErrors.ts',
+    '../naver/naverConfig.ts',
+    '../naver/naverOAuth.ts',
+    '../naver/naverProfile.ts',
+    '../naver/naverAuthService.ts',
   ];
 
-  it('never references a client secret / service_role in client auth source', () => {
+  it('never reads or embeds a secret / service_role in client auth source', () => {
     clientFacing.forEach((rel) => {
       const src = fs.readFileSync(path.join(__dirname, rel), 'utf8');
-      expect(src).not.toMatch(/CLIENT_SECRET/);
-      expect(src).not.toMatch(/client_secret/);
-      expect(src).not.toMatch(/service_role/i);
-      expect(src).not.toMatch(/SERVICE_ROLE/);
+      // A secret must never live under the client-exposed EXPO_PUBLIC_ prefix.
+      expect(src).not.toMatch(/EXPO_PUBLIC_[A-Z0-9_]*SECRET/);
+      // The client must never READ a *_SECRET / *_SERVICE_ROLE env value,
+      expect(src).not.toMatch(/process\.env\.[A-Z0-9_]*SECRET/);
+      expect(src).not.toMatch(/process\.env\.[A-Z0-9_]*SERVICE_ROLE/);
+      // use the edge-only Deno.env API or the service_role key,
+      expect(src).not.toMatch(/Deno\.env/);
+      expect(src).not.toMatch(/SERVICE_ROLE_KEY/);
+      // or hardcode a secret-looking token.
+      expect(src).not.toMatch(/sk-[A-Za-z0-9]{12,}/);
+      expect(src).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/);
     });
   });
 });
