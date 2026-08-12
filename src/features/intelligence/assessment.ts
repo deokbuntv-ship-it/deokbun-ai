@@ -141,18 +141,33 @@ export function assembleFailClosed(
   };
 }
 
-const REAL_LEVELS: readonly AssessmentLevel[] = [
-  'very_strong', 'strong', 'moderate', 'weak', 'very_weak',
+// Committal evaluative levels — each asserts a graded or CONFLICTING conclusion that
+// only a wired ruleset (Codex polarity/strength classification) can produce. `mixed`
+// is included: it means conflicting support-vs-counter signals, which presupposes the
+// classification step ran. The non-committal levels (`not_applicable`, `insufficient`,
+// `rules_not_connected`) assert ABSENCE of an evaluation and may arise structurally
+// with no ruleset — they are intentionally NOT gated.
+const EVALUATIVE_LEVELS: readonly AssessmentLevel[] = [
+  'very_strong', 'strong', 'moderate', 'weak', 'very_weak', 'mixed',
 ];
 
-// Fail-closed INVARIANT (§44): an item that claims a real evaluation level MUST
-// carry a connected ruleset version. A `rules_not_connected` ruleset with a real
-// level is a fabricated assessment and is rejected.
+// A ruleset counts as "connected" ONLY if it names a real, non-sentinel version.
+// Positive allow-list (not a deny-list against one string): an empty / blank /
+// sentinel / non-string (undefined at runtime from a DB row) version is NOT
+// connected, so it can never carry an evaluative level.
+function isConnectedRuleset(rulesetVersion: string): boolean {
+  const v = typeof rulesetVersion === 'string' ? rulesetVersion.trim() : '';
+  return v.length > 0 && v !== ASSESSMENT_RULESET_NOT_CONNECTED;
+}
+
+// Fail-closed INVARIANT (§44): an item that claims a committal evaluative level MUST
+// carry a CONNECTED ruleset version. Any evaluative level without one — including a
+// `mixed` verdict or a blank/placeholder rulesetVersion — is a fabricated assessment
+// and is rejected.
 export function isValidAssessmentItem(item: AssessmentItem): boolean {
   if (!ASSESSMENT_AXES.includes(item.axisKey)) return false;
-  const claimsRealLevel = REAL_LEVELS.includes(item.level);
-  if (claimsRealLevel && item.rulesetVersion === ASSESSMENT_RULESET_NOT_CONNECTED) {
-    return false; // fabricated: real level without a connected ruleset
+  if (EVALUATIVE_LEVELS.includes(item.level) && !isConnectedRuleset(item.rulesetVersion)) {
+    return false; // fabricated: an evaluative conclusion with no connected ruleset
   }
   // support/counter refs must be disjoint (an evidence can't be both).
   const support = new Set(item.supportingEvidenceRefs);

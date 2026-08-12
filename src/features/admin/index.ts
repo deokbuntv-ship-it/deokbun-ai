@@ -10,6 +10,13 @@ export type {
   AdminFortuneMailStatus,
   AdminFortuneMailTimelineEntry,
 } from './services/adminFortuneMailService';
+export { adminIntelligenceService } from './services/adminIntelligenceService';
+export type {
+  AdminIntelligenceRunListItem,
+  AdminIntelligenceRunDetail,
+  AdminAssessmentRow,
+  AdminOutcomeRow,
+} from './services/adminIntelligenceService';
 
 export { AdminShell } from './components/AdminShell';
 export { AdminSidebar } from './components/AdminSidebar';

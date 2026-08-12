@@ -27,6 +27,12 @@ Already applied per your report: `ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`,
    (read-only pipeline view for `/admin/publications`; no execution).
 6. `docs/admin/DASHBOARD_TRENDS_SETUP.sql` — `admin_daily_activity` RPC
    (real 30-day trend charts on `/admin`; charts show unavailable until applied).
+7. `docs/CONSULTATION_INTELLIGENCE_DB.sql` — **HOLD / do NOT apply yet.** Creates the
+   Consultation Intelligence tables (runs / assessment_items / quality_reviews /
+   user_feedback / outcomes) + RLS + admin Inspector RPCs. No application code writes
+   these until the engine→assessment pipeline (Codex) ships — applying now just makes
+   empty tables. Apply together with that pipeline. Idempotent/additive; safe to
+   re-read. See `docs/CONSULTATION_INTELLIGENCE_V1.md`.
 
 ### B. Edge deploy (CMD / terminal)
 ```bash

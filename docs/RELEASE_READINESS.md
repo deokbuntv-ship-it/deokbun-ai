@@ -27,6 +27,7 @@ environmental (stale Metro type-gen); regenerate per `memory/router-dts-regen`.
 | Fortune generation + delivery contracts | ✅ contracts | Owner §G: choose delivery provider; apply delivery SQL |
 | Admin AI-cost aggregation | ✅ logic | Owner §I: supply pricing table (else cost = unknown) |
 | Content/Image/Video/Famous pipelines | ✅ code | Owner: deploy edges + apply SQL (see OWNER_ACTIONS) |
+| Consultation Intelligence (evidence/assessment/quality/outcome) | ✅ contracts (foundation) | Codex: evidence→assessment ruleset + wiring; Owner: apply `CONSULTATION_INTELLIGENCE_DB.sql` when pipeline ships (HOLD). Fail-closed until then — no fabricated assessments. |
 | Consumer UI + Admin UI | ✅ (owned by Design track) | — |
 | Web deployment (Vercel + www.deokbunai.com) | ✅ live | Owner: set `EXPO_PUBLIC_PUBLIC_BASE_URL` in Vercel for canonical/SEO |
 | Web OAuth callback (`/login-callback`) | ✅ route added | works for google/kakao/naver; served as static `login-callback.html` |

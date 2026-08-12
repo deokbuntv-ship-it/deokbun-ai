@@ -417,3 +417,50 @@ memory/bounding → `buildPrompt(...)` → adapter. **No engine is called.**
 
 ### 21.5 Frozen / out of scope
 `interpretation/**` (SAJU calc/calendar/fixtures) — consume only via `getManseView`/public exports; engine rules, 학파/정국, LMT/자시, cross-analysis polarity — Owner/Codex decisions; `ziwei/**`,`qimen/**` internals — reuse public `compute*`/`to*Evidence`; Naver/Google/Kakao auth + visual design — untouched. **Shared do-not-co-edit files: `engineOrchestration.ts`, `contextSelector.ts`, `promptBuilder.ts`, `chatService.ts`** (this wiring is Codex-owned).
+
+---
+
+## 22. CONSULTATION INTELLIGENCE V1.0 (2026-08-13) — Codex handoff
+
+> Claude built the pure data/contract foundation (`src/features/intelligence/**`,
+> 19 tests, tsc 0). It defines WHAT a consultation trace / assessment / quality /
+> outcome record looks like. It deliberately contains **no evidence→assessment
+> rules** — that mapping is 역학 domain logic and is **Codex-owned**. Full picture:
+> `docs/CONSULTATION_INTELLIGENCE_V1.md`.
+
+### 22.1 What Claude delivered (reuse — don't recreate)
+- Contracts: EvidenceRecord (provenance), AssessmentItem (15 axes; level/direction/
+  confidence separate; supporting vs counter refs; per-engine contributions),
+  ConsultationCase (references-only trace), QualityReview, UserFeedback,
+  ConsultationOutcome. Barrel: `@/features/intelligence`.
+- Fail-closed helpers: `assembleFailClosed(axis, contributions)` → `rules_not_connected`;
+  `isValidAssessmentItem` REJECTS a real level (strong/weak/…) while `rulesetVersion
+  === ASSESSMENT_RULESET_NOT_CONNECTED`. **This guard is the safety net — keep it.**
+- Reuses `@/features/analysis` (`EngineEvidence`, `LifeDomain`, `Agreement`,
+  `EngineKind`) — the same facts-only evidence the §21 wiring produces.
+- Storage artifact `docs/CONSULTATION_INTELLIGENCE_DB.sql` (OWNER_APPLY / HOLD) +
+  admin read seam `adminIntelligenceService` (`connected:false` until wired).
+
+### 22.2 The exact missing logic (Codex)
+1. **Evidence → Assessment mapping** — the real ruleset: which engine evidence
+   maps to which axis, at what `level`/`direction`/`confidence`, and whether a piece
+   of evidence is **supporting** or **counter**. Produce a real `rulesetVersion`
+   (e.g. `saju-wealth@1.0`) — the moment a real version is set, `isValidAssessmentItem`
+   permits a real level. This is 역학 polarity/strength → **CODEX_OWNER, not Claude.**
+2. **Timing** — populate `AssessmentTiming` from engine timing facts (기문/대운/세운);
+   no astrology timing rules live in `intelligence/**`.
+3. **Cross-engine reconciliation** — map the existing `crossAnalysis` agreement
+   (aligned/complementary/conflicting/insufficient) onto `AssessmentAgreement`; decide
+   how conflicting engines resolve a level (or stay `mixed`).
+4. **Wiring** — after the §21 engine→prompt wire lands, emit an `EvidenceRecord`
+   per engine and a `ConsultationCase` per answered message (references only, no PII).
+   `buildConsultationCase` is the assembly point.
+5. **Golden fixtures** — assessment fixtures for representative charts (as with the
+   engine fixtures). Owner canonical 학파/정국 still gates ACCURACY, not the contract.
+
+### 22.3 Frozen / out of scope (unchanged from §21 + additions)
+- `src/features/intelligence/**` **contracts + fail-closed validators** are Claude-owned;
+  Codex adds the ruleset/wiring that FEEDS them, does not weaken the guards.
+- No fake numeric score anywhere (§45). No auto-learning / engine-rule mutation from
+  feedback or outcomes (§7/§31). Historical immutability: re-evaluation = NEW run.
+- `docs/CONSULTATION_INTELLIGENCE_DB.sql` is **owner-apply** — never auto-apply.

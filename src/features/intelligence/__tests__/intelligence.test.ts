@@ -54,6 +54,9 @@ describe('evidence ledger — provenance + immutability (§8/§9)', () => {
   it('rejects a record missing provenance version', () => {
     expect(isValidEvidenceRecord({ ...rec, provenance: { ...rec.provenance, engineVersion: '' } })).toBe(false);
   });
+  it("rejects a record with no schema version (its own version provenance is gated too)", () => {
+    expect(isValidEvidenceRecord({ ...rec, schemaVersion: '' })).toBe(false);
+  });
 });
 
 describe('assessment — FAIL-CLOSED, no fabrication (§44/§45)', () => {
@@ -83,6 +86,18 @@ describe('assessment — FAIL-CLOSED, no fabrication (§44/§45)', () => {
   });
   it('validator ACCEPTS a real level only with a connected ruleset', () => {
     expect(isValidAssessmentItem({ ...item, level: 'strong', rulesetVersion: 'saju-wealth@1.0' })).toBe(true);
+  });
+  it('REJECTS a `mixed` verdict without a connected ruleset (mixed = classified polarity)', () => {
+    // mixed presupposes support-vs-counter classification → needs a wired ruleset.
+    expect(isValidAssessmentItem({ ...item, level: 'mixed' })).toBe(false);
+    expect(isValidAssessmentItem({ ...item, level: 'mixed', rulesetVersion: 'saju-wealth@1.0' })).toBe(true);
+  });
+  it('is fail-CLOSED against blank/placeholder rulesetVersion (positive allow-list)', () => {
+    // A real level must carry a genuinely connected ruleset — not '' / whitespace.
+    expect(isValidAssessmentItem({ ...item, level: 'strong', rulesetVersion: '' })).toBe(false);
+    expect(isValidAssessmentItem({ ...item, level: 'strong', rulesetVersion: '   ' })).toBe(false);
+    // a runtime-missing version (DB row) must not fail open either.
+    expect(isValidAssessmentItem({ ...item, level: 'strong', rulesetVersion: undefined as unknown as string })).toBe(false);
   });
   it('validator rejects support/counter refs that overlap', () => {
     expect(isValidAssessmentItem({ ...item, supportingEvidenceRefs: ['x'], counterEvidenceRefs: ['x'] })).toBe(false);

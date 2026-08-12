@@ -71,6 +71,8 @@ export function isValidEvidenceRecord(r: EvidenceRecord): boolean {
     r.provenance.engineVersion.length > 0 &&
     r.provenance.engineRulesetVersion.length > 0 &&
     r.availability === r.evidence.availability &&
+    typeof r.schemaVersion === 'string' &&
+    r.schemaVersion.length > 0 &&
     typeof r.createdAt === 'string' &&
     r.createdAt.length > 0
   );
