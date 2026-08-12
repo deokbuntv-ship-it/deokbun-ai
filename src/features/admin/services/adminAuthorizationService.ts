@@ -10,17 +10,25 @@ import type { AdminResolvedStatus } from '../types';
 // FAIL CLOSED: if the function is missing (not yet applied), errors, or returns
 // anything other than an explicit `true`, this resolves to 'unavailable' /
 // 'not_admin' — it NEVER resolves to 'admin' on failure.
+// Pure fail-closed interpretation of the is_admin() RPC result (unit-testable,
+// no client mock). Only an explicit boolean `true` is 'admin'; any error →
+// 'unavailable'; anything else (false/null/non-true) → 'not_admin'.
+export function resolveAdminStatus(result: {
+  data: unknown;
+  error: unknown;
+}): AdminResolvedStatus {
+  if (result.error) return 'unavailable';
+  return result.data === true ? 'admin' : 'not_admin';
+}
+
 async function checkAdminAuthority(): Promise<AdminResolvedStatus> {
   const supabase = getSupabaseClient();
 
   try {
     const { data, error } = await supabase.rpc('is_admin');
-    if (error) {
-      // Missing function / permission / transport error → cannot confirm → closed.
-      return 'unavailable';
-    }
-    return data === true ? 'admin' : 'not_admin';
+    return resolveAdminStatus({ data, error });
   } catch {
+    // Missing function / permission / transport / thrown error → cannot confirm.
     return 'unavailable';
   }
 }
