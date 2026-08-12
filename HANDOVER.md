@@ -66,6 +66,20 @@ Owner-away 자율 세션. 9-dimension 코드 인벤토리(24 findings / 18 AUTO_
 - **CODEX**: 정규화 컨텍스트의 `warnings`/per-engine `availability`를 live 프롬프트에 배선
   (엔진 연결) — `docs/CODEX_HANDOFF_2026-08-17.md` 범위.
 
+### 최신 (2026-08-13) — PRE-CODEX INTEGRATION READINESS (autonomous · docs+1 fix)
+
+핵심 사용자 흐름을 코드 기준으로 끝까지 추적: **LOGIN→HOME→CONSULT→PERSON→BIRTH→CHAT→
+persistence→HISTORY = 완전 연결됨(코드 수정 불필요)**. 새 안전 코드 여지는 거의 소진 —
+남은 실질 가치는 Codex/Owner 통합 인수인계 문서로 산출.
+- **코드 1건**: `docs/CONSUMER_CORE_SCHEMA.sql`에 누락된 `seq` 정렬 컬럼 추가(재현성 drift;
+  라이브 무변경, from-scratch 재빌드용). commit `5300c3f`.
+- **신규 문서**: `docs/DATABASE_RUNBOOK.md`(오너용 SQL 적용 순서/검증/UNKNOWN 파리티 — 특히
+  **DRAFT_RLS 보안 검증 우선**) · `docs/CHAT_EDGE_FAILURE_CONTRACT.md`(에러코드 세분화 =
+  OWNER_PREVIEW_VALIDATE) · `CODEX_HANDOFF_2026-08-17.md §21`(엔진→프롬프트 배선 정밀 지도).
+- **DEFER(라이브/배포 검증 필요)**: 채팅 edge 에러코드 세분화, 공개 `[slug]` generateStaticParams.
+- **CODEX**: 엔진 결과를 live 프롬프트에 배선(§21) — 공유경계 4파일; 엔진 규칙/학파 무관.
+- gates all green(tsc 0 · jest 178 · expo export 0). LOCAL commit만.
+
 - **브랜치**: `admin/master-operations-content` (origin 동기화, working tree clean).
   `main` 미변경. Codex ENGINE(`src/features/interpretation/**`)은 **FROZEN — 이 트랙에서 변경 0**.
 - **실 LLM 연결됨**: `supabase/functions/chat`(OpenAI Responses) 배포·검증 완료.

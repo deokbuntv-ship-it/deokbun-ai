@@ -381,3 +381,39 @@ seam·계약·문서만. logDbError·error contract·RLS·auth·chat pipeline �
 **Codex가 덮어쓰면 안 되는 것(추가):** `src/features/fortune/domain/fortuneJobs.ts`, operationalContracts의 PricingRepository seam (Claude-owned).
 
 **게이트:** tsc 0 real errors, jest green(신규 +21), expo export web exit 0, protected zones diff=0. **로컬 커밋만 — remote push 없음.**
+
+---
+
+## 21. ENGINE → LIVE PROMPT WIRING (2026-08-13) — precise Codex handoff
+
+> Scope: how SAJU / 자미두수 / 기문둔갑 outputs reach the live LLM prompt — the seam
+> that already exists, the exact missing wire, what stays frozen. **No engine-rule,
+> calendar, or cross-analysis polarity logic here** — only the plumbing between
+> existing engine outputs and the prompt (AI_CONSTITUTION 제17조).
+
+### 21.1 Current pipeline (what runs) — engine NOT invoked
+`chatService.sendMessage`: `selectConsultationContext(draft)` (raw strings) →
+memory/bounding → `buildPrompt(...)` → adapter. **No engine is called.**
+`buildInterpretationContext` is invoked only by `analysis/__tests__/analysis.spec.ts`;
+`contextSelector.ts` imports zero engine modules.
+
+### 21.2 The seam that already exists (reuse — don't recreate)
+- `analysis/engineOrchestration.ts`: `AnalysisQuestionContext`, `resolveEngineAvailability(ctx,kind)` (downgrades to `engine_not_connected` while `ENGINE_CONNECTED[kind]===false`), `buildInterpretationContext(input)` → `NormalizedInterpretationContext` (`engines: Record<kind, EngineEnvelope{kind, availability, fact?}>` + `warnings[]`), `ENGINE_CONNECTED = {saju:false,ziwei:false,qimen:false}`.
+- `analysis/aiOutput.ts`: `EngineEvidence = {availability, summary?, detail?}`.
+- `ziwei/adapters/ziweiEvidenceAdapter.ts` `toZiweiEvidence`, `qimen/adapters/qimenEvidenceAdapter.ts` `toQimenEvidence` (facts-only). Ziwei/Qimen `computeZiweiChart`/`computeQimenBoard` are pure + availability-carrying.
+- SAJU consumer entry: `manse/services/manseService.ts` `getManseView(record)` (wraps the frozen `executeSajuFromBirthInput`).
+
+### 21.3 The exact missing wire (Codex — all in the shared-boundary files)
+- **A. contextSelector / a new chatService step:** build `AnalysisQuestionContext` from the draft (`hasSubject`, `birthDateKnown`, `birthTimeKnown = birthInfo.birthTimeAccuracy==='exact'`, `isTimingQuestion` = a **product-level, non-engine** classification of the user message). Then actually run the engines (`getManseView`, `computeZiweiChart`, `computeQimenBoard`) → each to `EngineEvidence`.
+- **B. SAJU → `EngineEvidence` adapter (missing):** ziwei/qimen have theirs; add the symmetric SAJU adapter (facts-only 4주/오행·십신; honor `missing_birth_time` — no fabricated 시주, §13). Place engine-side.
+- **C. engineOrchestration:** populate `EngineEnvelope.fact` (or add `evidence?: EngineEvidence`) from the adapters (values come from engines, nothing invented); reconcile `resolveEngineAvailability` with the *real* engine-result availability; flip `ENGINE_CONNECTED` per engine only together with the wiring.
+- **D. promptBuilder:** extend `PromptBuildInput` to carry the `NormalizedInterpretationContext`; `buildContextMessage` renders bounded evidence **truthfully** (미연결/시간 정보 없음/해당 없음 for non-`available` engines). Keep message order (system→context→summary?→recent→user); the `promptBuilder.test.ts` role-sequence + `analysis.spec.ts` invariants (no fabricated fact, warnings surface) must be updated **deliberately**.
+- **E. chatService:** insert the engine-run + `buildInterpretationContext` step between `selectConsultationContext` and `buildPrompt`; keep auth-guard/gateway/memory/bounding order intact (제10조).
+
+### 21.4 Open design decisions for Codex
+- `EngineEnvelope.fact:unknown` vs the prompt/UI `EngineEvidence{availability,summary?,detail?}` — decide storage (`fact` vs explicit field) + the availability reconciliation.
+- `isTimingQuestion` classifier — product-level message classification (non-engine) needed to build the context.
+- Ziwei/Qimen ACCURACY still gated on Owner canonical 학파/정국 + verified fixtures (docs/ZIWEI_SCHOOL_DIFFERENCES.md, QIMEN_SCHOOL_DIFFERENCES.md) — that gates correctness, NOT the wiring above.
+
+### 21.5 Frozen / out of scope
+`interpretation/**` (SAJU calc/calendar/fixtures) — consume only via `getManseView`/public exports; engine rules, 학파/정국, LMT/자시, cross-analysis polarity — Owner/Codex decisions; `ziwei/**`,`qimen/**` internals — reuse public `compute*`/`to*Evidence`; Naver/Google/Kakao auth + visual design — untouched. **Shared do-not-co-edit files: `engineOrchestration.ts`, `contextSelector.ts`, `promptBuilder.ts`, `chatService.ts`** (this wiring is Codex-owned).
