@@ -1,7 +1,10 @@
+import type { Provider } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 
+import { resolveSupabaseProvider } from '@/features/auth/services/authProviders';
+import type { AuthFailureReason } from '@/features/auth/errors/authErrors';
 import type { AuthProviderId } from '@/features/auth/types/auth';
 import { getSupabaseClient } from '@/services/supabase';
 
@@ -13,18 +16,11 @@ export type AuthActionResult =
 		}
 	| {
 			success: false;
-			reason:
-				| 'CANCELLED'
-				| 'NOT_SUPPORTED'
-				| 'OAUTH_URL_MISSING'
-				| 'SESSION_MISSING'
-				| 'REQUEST_FAILED';
+			reason: AuthFailureReason;
 		};
 
-type SupabaseOAuthProvider = 'kakao' | 'google';
-
 async function signInWithSupabaseOAuth(
-	provider: SupabaseOAuthProvider,
+	provider: Provider,
 ): Promise<AuthActionResult> {
 	const supabase = getSupabaseClient();
 	const redirectTo = makeRedirectUri({ path: 'login-callback' });
@@ -78,11 +74,16 @@ async function signInWithSupabaseOAuth(
 async function signInWithProvider(
 	providerId: AuthProviderId,
 ): Promise<AuthActionResult> {
-	if (providerId === 'kakao' || providerId === 'google') {
-		return signInWithSupabaseOAuth(providerId);
+	// kakao/google → built-in Supabase providers; naver → Supabase Custom OAuth
+	// provider (custom:naver). All share the SAME OAuth flow below; only the
+	// resolved provider id differs. See services/authProviders.ts.
+	const resolution = resolveSupabaseProvider(providerId);
+
+	if (!resolution.supported) {
+		return { success: false, reason: 'NOT_SUPPORTED' };
 	}
 
-	return { success: false, reason: 'NOT_SUPPORTED' };
+	return signInWithSupabaseOAuth(resolution.supabaseProvider);
 }
 
 async function signOut(): Promise<void> {
