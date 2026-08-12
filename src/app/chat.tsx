@@ -161,8 +161,14 @@ export default function ChatScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // The auth-gate must read LIVE auth state. useRef captures its initial value only
+  // once, so the chat service reads this ref, refreshed every render — otherwise a
+  // login that happens while this screen stays mounted would not lift the gate.
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
+
   const chatServiceRef = useRef(
-    createChatService(supabaseEdgeLLMAdapter, () => isAuthenticated),
+    createChatService(supabaseEdgeLLMAdapter, () => isAuthenticatedRef.current),
   );
 
   // After the root navigation is actually ready (never during mount), drop the
