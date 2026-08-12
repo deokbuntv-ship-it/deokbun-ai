@@ -68,6 +68,7 @@ async function listConsultations(
   });
   if (error) {
     logDbError(error, 'admin', 'db');
+    throw error; // surface the outage so the screen's error+retry state renders
   }
   return ((data as Record<string, unknown>[] | null) ?? []).map(toListItem);
 }

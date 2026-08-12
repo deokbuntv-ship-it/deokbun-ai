@@ -88,6 +88,7 @@ async function listAiUsage(
   const { data, error } = await supabase.rpc('admin_list_ai_usage', args);
   if (error) {
     logDbError(error, 'admin', 'db');
+    throw error; // surface the outage so the screen's error+retry state renders
   }
   return ((data as Record<string, unknown>[] | null) ?? []).map(toUsageItem);
 }
@@ -101,6 +102,7 @@ async function getDailyActivity(
   });
   if (error) {
     logDbError(error, 'admin', 'db');
+    throw error; // dashboard catches this → honest "trends unavailable" (not empty chart)
   }
   const toNum = (v: unknown) =>
     typeof v === 'number' ? v : Number(v) || 0;
