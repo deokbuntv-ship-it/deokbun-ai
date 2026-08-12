@@ -73,3 +73,27 @@ Constraints: **NO arbitrary JWT minting** (only the official generateLink+verify
 ## 7. Status
 
 **CODE_READY_OWNER_CONFIG_REQUIRED.** Client path B is implemented + tested; real Naver login requires Owner console config (Naver app + Supabase custom provider) and cannot be E2E-verified without it. Path C is designed and ready to build if B's config test fails.
+
+## 8. E2E test plan (§26) — run AFTER Owner config (Step 1–3 in OWNER_ACTIONS §6)
+
+All of these are **BLOCKED_OWNER** until the Naver app + Supabase custom provider
+are configured; they cannot be executed by Claude (no live Naver credentials).
+
+| # | Scenario | Expected |
+|---|---|---|
+| A | New Naver user signs in (web) | Supabase session created; `auth.users.id` set; profile row upserted; lands on `/` |
+| B | Logout → sign in again with Naver | Same `auth.users.id`; no duplicate profile |
+| C | Browser refresh / app relaunch | Session restored via `getSession`; stays authenticated |
+| D | Naver user who DECLINED email | Login still succeeds; keyed on Naver `response.id`; email null tolerated |
+| E | Naver email == existing google/kakao/email account | NOT auto-merged — `link_required` / distinct account per Supabase linking-off setting |
+| F | User cancels the Naver OAuth popup | `AUTH_CANCELLED` (soft notice, no error banner); no session |
+| G | Naver/provider returns an error | `AUTH_PROVIDER_ERROR` friendly message; no raw error surfaced; no session |
+| H | Callback mismatch / missing tokens | `AUTH_SESSION_FAILED`; no partial/fake session |
+| I | Authenticated Naver user opens Subjects | RLS allows own rows (`auth.uid() = owner`); works like kakao/google |
+| J | Authenticated Naver user opens a Consultation | Chat/consultation works (edge `verify_jwt` accepts the session) |
+| K | Logout → open a protected resource | Blocked (unauthenticated); auth guard redirects to login |
+
+**B-vs-C gate:** if scenario A fails because Supabase cannot map Naver's
+`/v1/nid/me` (`response.id`) profile, switch to path C (build the `naver-auth` edge
+bridge per §5). Native scenarios additionally require the `deokbunai://` build
+(identifiers decided).
