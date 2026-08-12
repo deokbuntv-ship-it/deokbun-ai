@@ -103,13 +103,18 @@ email/raw profile (only failure stage markers). CORS `*` is not the trust bounda
 - **Scaling note:** the edge finds users via paginated `listUsers` (bounded scan;
   no `getUserByEmail` in GoTrue) — fine for V1 user counts.
 
-## 7. Status — CODE_READY_OWNER_CONFIG_REQUIRED
+## 7. Status — ✅ PRODUCTION E2E VERIFIED (2026-08-12)
 
-Client bridge + edge function are **source-complete and unit-tested** (pure logic).
-Real Naver login is NOT E2E-verifiable by Claude — it needs the Owner to: register
-the Naver app, deploy `naver-auth`, set `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` Edge
-secrets, set `EXPO_PUBLIC_NAVER_CLIENT_ID` (Vercel), and add the redirect URL. See
-OWNER_ACTIONS §6.
+Naver login is **live and end-to-end verified in Production** (`https://www.deokbunai.com`,
+2026-08-12): 네이버 버튼 → 인증/동의 → OAuth callback → `/login-callback` → `naver-auth`
+edge → **Supabase 세션 생성 → 로그인 성공**. Owner setup complete: Naver app registered,
+`naver-auth` deployed, `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` Edge secrets set,
+`EXPO_PUBLIC_NAVER_CLIENT_ID` in Vercel, app callback URL registered. Two Vercel
+static-serving fixes were required and applied: `outputDirectory=dist` (`753af6d`) and
+`cleanUrls:true` (`0693e07`). **The Naver client + edge code is complete and frozen —
+do not modify it without cause.** Remaining optional: native (iOS/Android) login is
+gated on `ios.bundleIdentifier`/`android.package` (currently web-only); official green
+Naver button branding (see NAVER_LOGIN_UI_HANDOFF.md).
 
 ## 8. E2E test plan — run AFTER Owner deploy + config (BLOCKED_OWNER)
 

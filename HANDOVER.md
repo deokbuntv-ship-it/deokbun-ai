@@ -22,6 +22,26 @@
 > ⚠️ 아래 1~20절은 2026-08-07 `main` 기준(관리자/실 LLM 이전)이며 일부는
 > 이 0절로 **대체**되었다. 최신 사실은 이 0절을 우선한다.
 
+### 최신 (2026-08-12) — 네이버 로그인 **PRODUCTION E2E VERIFIED** ✅
+
+- **네이버 아이디로 로그인 = 운영 검증 완료** (`https://www.deokbunai.com`, 2026-08-12).
+  실제 E2E 성공: 네이버 버튼 노출 → 네이버 인증/동의 → OAuth callback 복귀 →
+  `/login-callback` 처리 → `naver-auth` Edge Function 정상 → **Supabase 세션 생성 → 로그인 성공**.
+- **아키텍처 = 트러스티드 Edge 브리지** (Naver는 Supabase provider가 아님 — nested
+  `/v1/nid/me` `response.id`를 Supabase custom OAuth2가 매핑 불가, 검증됨). 흐름:
+  App → Naver authorize(공개 client_id + CSRF state) → `/login-callback` → `naver-auth`
+  edge(코드 교환[client_secret 서버 전용] → `/v1/nid/me` → 이메일 필수 fail-closed →
+  takeover guard → `generateLink(magiclink)`→`verifyOtp`) → `setSession`.
+  상세: `docs/NAVER_LOGIN_ARCHITECTURE.md`.
+- **Google/Kakao 무변경**(동일 built-in flow). 로그인 화면 3-provider 운영 반영.
+- **운영 배포 이슈 2건 해결(`vercel.json`)**: 루트 `/` 404 → `outputDirectory=dist` 고정
+  (`753af6d`); `/login-callback?code=…` 404 → `cleanUrls:true`(`0693e07`).
+- **Owner 시크릿 완료**: `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET`를 Edge secret으로 등록
+  (`SERVER_NOT_CONFIGURED` 해소). `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`는 자동 주입.
+- **네이버 인증 코드/Edge는 완료·동결** — 불필요한 수정 금지.
+- 남은 선택사항: 네이티브(iOS/Android) 로그인은 `ios.bundleIdentifier`/`android.package`
+  결정 후 가능(현재 **web-only**), 네이버 버튼 공식 그린 브랜딩은 선택(`docs/NAVER_LOGIN_UI_HANDOFF.md`).
+
 - **브랜치**: `admin/master-operations-content` (origin 동기화, working tree clean).
   `main` 미변경. Codex ENGINE(`src/features/interpretation/**`)은 **FROZEN — 이 트랙에서 변경 0**.
 - **실 LLM 연결됨**: `supabase/functions/chat`(OpenAI Responses) 배포·검증 완료.

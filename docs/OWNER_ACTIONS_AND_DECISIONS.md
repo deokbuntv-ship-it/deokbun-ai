@@ -229,10 +229,15 @@ no overflow) and a real Markdown rendering bug was found + fixed.
 
 ## 6. NAVER LOGIN — OWNER SETUP (네이버 아이디로 로그인)
 
-Client + Edge code are source-complete (a **trusted edge bridge** — Naver cannot be
-a Supabase provider, verified). Real login needs YOUR setup below. Full design:
-`docs/NAVER_LOGIN_ARCHITECTURE.md`. Secret VALUES are never shown to or handled by
-Claude. Do these in order.
+> ✅ **DONE — PRODUCTION E2E VERIFIED (2026-08-12).** All steps below were completed
+> and Naver login works live on `https://www.deokbunai.com` (Naver app registered,
+> `naver-auth` deployed, `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` secrets set,
+> `EXPO_PUBLIC_NAVER_CLIENT_ID` in Vercel). The steps are retained below as a
+> reference/runbook. Nothing further required for web.
+
+Client + Edge code are a **trusted edge bridge** (Naver cannot be a Supabase
+provider, verified). Full design: `docs/NAVER_LOGIN_ARCHITECTURE.md`. Secret VALUES
+are never shown to or handled by Claude.
 
 ### Step 1 — Register the app at Naver Developers
 - **WHAT:** create a Naver Login application.

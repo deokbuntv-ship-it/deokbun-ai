@@ -30,7 +30,7 @@ environmental (stale Metro type-gen); regenerate per `memory/router-dts-regen`.
 | Consumer UI + Admin UI | ✅ (owned by Design track) | — |
 | Web deployment (Vercel + www.deokbunai.com) | ✅ live | Owner: set `EXPO_PUBLIC_PUBLIC_BASE_URL` in Vercel for canonical/SEO |
 | Web OAuth callback (`/login-callback`) | ✅ route added | works for google/kakao/naver; served as static `login-callback.html` |
-| Naver login | ✅ client + edge bridge (source-complete) | Owner: Naver console + deploy `naver-auth` + secrets (OWNER_ACTIONS §6) |
+| Naver login | ✅ **PRODUCTION E2E VERIFIED** (2026-08-12, web) | none — live; native gated on identifiers |
 
 ## Owner actions gating release
 See `docs/OWNER_ACTIONS_AND_DECISIONS.md`. Summary of hard gates:
