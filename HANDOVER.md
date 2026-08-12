@@ -42,6 +42,30 @@
 - 남은 선택사항: 네이티브(iOS/Android) 로그인은 `ios.bundleIdentifier`/`android.package`
   결정 후 가능(현재 **web-only**), 네이버 버튼 공식 그린 브랜딩은 선택(`docs/NAVER_LOGIN_UI_HANDOFF.md`).
 
+### 최신 (2026-08-12) — V1.0 AUTO_SAFE HARDENING PASS (autonomous · LOCAL_VERIFIED)
+
+Owner-away 자율 세션. 9-dimension 코드 인벤토리(24 findings / 18 AUTO_SAFE / P0 0)
+후 **안전한 항목만** 구현. 엔진(SAJU/ZIWEI/QIMEN)·Naver·시각 디자인 **무변경**.
+게이트 all green: `tsc` 0 · `jest` **178/178 (20 suites)** · `npm ls` clean · `expo export` 0.
+로컬 commit만(미push).
+
+- **테스트 추가(순수/통합, 보안경계 잠금)**: `chatService` 로그인-전-LLM 게이트(제12조 —
+  미인증 실제질문 시 유료 adapter 호출 0)·`buildPrompt` 조립순서(제10조/제15조)·
+  `mapSupabaseUser`·`requireAuthenticatedUser`·`resolveAdminStatus`(admin fail-closed).
+- **버그 수정**: 채팅 in-chat auth-gate **stale-closure**(로그인 후에도 게이트가 안 풀릴 수
+  있던 문제) → 매 렌더 갱신 ref. (`chat.tsx`, 기능 wiring, 시각 무변경)
+- **신뢰성**: admin list/activity 서비스가 RPC 오류를 **빈 배열로 삼켜** 장애가 "데이터 없음"
+  으로 보이던 것 → `re-throw`(화면의 기존 error+retry 상태 노출). detail 함수는 무변경.
+- **정리**: 스타터 잔여 `/explore` 라우트 제거 · `subject-history`/`subject-manse` 루트 Stack
+  등록 · `robots.txt`의 `Sitemap:` 디렉티브를 sitemap 생성기에서 방출.
+- **상태**: **LOCAL_VERIFIED**(프로덕션 미검증). commit은 origin 대비 로컬 ahead.
+- **DEFER(오너/배포 검증 필요, 임의 미적용)**: ① 공개 동적 라우트 `generateStaticParams`
+  (SEO — `expo export` 빌드동작 변경이라 배포 검증 필요) ② 채팅 edge 에러코드 세분화
+  (`RATE_LIMITED`/`SERVER_NOT_CONFIGURED` — Supabase 에러형상 라이브 검증 필요) ③ `chatConfig`
+  미사용 `requestTimeoutMs`/`retryCount`(의도 확인 필요).
+- **CODEX**: 정규화 컨텍스트의 `warnings`/per-engine `availability`를 live 프롬프트에 배선
+  (엔진 연결) — `docs/CODEX_HANDOFF_2026-08-17.md` 범위.
+
 - **브랜치**: `admin/master-operations-content` (origin 동기화, working tree clean).
   `main` 미변경. Codex ENGINE(`src/features/interpretation/**`)은 **FROZEN — 이 트랙에서 변경 0**.
 - **실 LLM 연결됨**: `supabase/functions/chat`(OpenAI Responses) 배포·검증 완료.
