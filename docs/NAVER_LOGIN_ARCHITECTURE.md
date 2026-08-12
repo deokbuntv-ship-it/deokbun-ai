@@ -1,99 +1,130 @@
 # DeokbunAI — Naver Login Architecture (V1.0)
 
-> Naver Login Authentication Sprint (directive §4). How 네이버 아이디로 로그인 plugs
-> into the EXISTING Supabase auth stack. Verified against official docs
-> (supabase.com/docs, developers.naver.com, docs.expo.dev/versions/v57.0.0).
-> DeokbunAI user id stays `auth.users.id` for every provider. No engine/UI change.
+> How 네이버 아이디로 로그인 integrates with the existing Supabase auth stack.
+> Verified against official docs (supabase.com/docs + auth-js/auth source,
+> developers.naver.com, docs.expo.dev/versions/v57.0.0). DeokbunAI user id stays
+> `auth.users.id` for every provider. No engine/UI-design change; google/kakao
+> untouched.
 
-## 0. Official capability verdict (§3)
+## 0. Capability verdict (verified) — Supabase CANNOT consume Naver directly
 
-| Question | Finding (official) |
+| Question | Finding (official / source-verified) |
 |---|---|
-| Built-in Supabase `naver` provider? | **No.** Kakao/Google are built-in; Naver is absent from the provider set. |
-| `signInWithIdToken` supports Naver? | **No** (accepts google/apple/azure/facebook/kakao — Naver is not among them). |
-| Naver OIDC-compliant? | **No — plain OAuth 2.0 only.** No `id_token`, no discovery/issuer, no request-time `scope`; identity comes from a separate profile API (`/v1/nid/me`), nested under `response.id`. |
-| ⇒ Supabase **generic OIDC** custom provider? | **Cannot consume Naver** (needs a standard `id_token`/issuer). |
-| ⇒ Supabase **custom OAuth2** provider (path B)? | Officially available; supply Naver authorize/token/userinfo URLs. **RISK (config-time, UNVERIFIED):** whether Supabase's OAuth2 mode can map Naver's non-standard nested `/v1/nid/me` (`response.id`, not `sub`). |
-| ⇒ Trusted edge bridge (path C)? | **Guaranteed.** Edge exchanges code→token→profile, then Supabase Admin API + `generateLink`+`verifyOtp` to mint a real session. |
+| Built-in Supabase `naver` provider? | **No** (kakao/google are built-in; naver absent). |
+| `signInWithIdToken` supports Naver? | **No** (google/apple/azure/facebook/kakao only). |
+| Naver OIDC-compliant? | **No — plain OAuth 2.0** (no `id_token`/issuer/discovery; identity via `/v1/nid/me`, nested under `response.id`). So Supabase generic-**OIDC** custom provider can't consume it. |
+| Supabase **custom OAuth2** provider (issuer-less)? | The mode EXISTS, but it reads identity from the **TOP LEVEL** of the userinfo JSON (`sub`/`email`). Naver nests everything under `response.*`; Supabase's `applyAttributeMapping` does **flat single-key lookups only** (no nested paths), and the top-level `id→sub` remap is itself unmerged (open issue #2519). Result: **`missing provider id` error → NOT VIABLE.** |
+| ⇒ Decision | **Trusted edge bridge** (`naver-auth` Edge Function). This is the officially-supported fallback for a provider Supabase can't natively integrate. |
 
-## 1. Decision — B first, C as the ready fallback
+> ⚠️ Correction of earlier drafts: a previous version of this doc proposed wiring
+> Naver as a Supabase **custom OAuth2 provider** (`custom:naver`). That approach is
+> **abandoned** — verified non-viable because of the nested-userinfo blocker above.
+> The Owner's "Dashboard forces an Issuer URL" observation is a red herring; the
+> real blocker is the userinfo shape, not the issuer.
 
-**Attempt B (Supabase Custom OAuth2 provider) first**, because it costs zero code/secret-handling/deploy and reuses the exact kakao/google flow:
-- Naver is configured in the **Supabase Dashboard** as a custom OAuth2 provider named `naver` (invoked as `custom:naver`).
-- Naver's `client_id`/`client_secret` live **only in the Supabase Dashboard** — Supabase performs the code exchange server-side. **Our app never touches a Naver secret** (identical trust model to kakao/google today).
-- Client code is already implemented (see §3) and calls `signInWithOAuth({ provider: 'custom:naver' })`.
-
-**If B fails the userinfo mapping at config time** (a real possibility given Naver's nested response), **fall back to C** — a trusted `service_role` edge bridge (designed in §5, not yet built per directive §17 "only if required"). The Owner determines B-vs-C by configuring and smoke-testing the custom provider (see OWNER_ACTIONS §Naver).
-
-## 2. User-identity model (unchanged)
+## 1. Architecture — App → Naver → naver-auth Edge → Supabase session
 
 ```
-Naver → OAuth2 → (Supabase custom provider OR edge bridge) → Supabase Auth session
-      → auth.users.id  ← THE DeokbunAI user id (RLS, profiles, subjects, consultations)
+App (signInWithNaverBridge)
+  → open Naver authorize (public client_id + CSRF state) via WebBrowser
+  → Naver redirects to /login-callback with ?code&state
+  → client validates state, POSTs {code,state} to the naver-auth Edge Function
+      Edge (verify_jwt=false; service_role + client_secret edge-only):
+        validate → code→token (client_secret) → GET /v1/nid/me
+        → normalize (response.id / email) → EMAIL REQUIRED (else fail closed)
+        → find-or-create user (takeover guard) → naver_id in app_metadata
+        → admin.generateLink(magiclink) → auth.verifyOtp → session
+      returns { access_token, refresh_token }
+  → client supabase.auth.setSession(...)  → normal Supabase session
+      → auth.users.id  ← THE DeokbunAI user id (RLS, profiles, subjects, chat)
 ```
-- The **DeokbunAI user id is always `auth.users.id`.** Naver's `response.id` (a per-app stable unique identifier, returned as a string — the correct account key) is stored ONLY as identity/`app_metadata` — never used as the app user id, never in a separate user table.
-- Profile creation reuses `profileService.ensureProfile` (idempotent upsert keyed by `auth.users.id`, stores only `{id, display_name}` — never email/tokens). No provider-specific profile table.
 
-## 3. Client code (path B — implemented, committed)
+Session mint uses the ONLY officially-supported server path — there is **no
+`admin.createSession`**; `generateLink(magiclink) → verifyOtp` returns a real,
+refreshable session. **No hand-minted JWTs.**
 
-All additive, isolated to `src/features/auth/**`; kakao/google behaviour unchanged:
+## 2. Identity + email policy (§4/§10)
 
-| File | Role |
-|---|---|
-| `services/authProviders.ts` | PURE `resolveSupabaseProvider(id)` — kakao/google→built-in, naver→`custom:naver` (slug overridable, `custom:` prefix enforced). |
-| `services/authService.ts` | `signInWithProvider` routes ALL providers through the SAME flow: `signInWithOAuth` → `WebBrowser.openAuthSessionAsync` → parse tokens → `setSession`. Only the resolved provider id differs. |
-| `errors/authErrors.ts` | Auth outcome vocabulary + Korean messages, normalized INTO the app Error Contract (reuses NETWORK_ERROR/FORBIDDEN/AUTH_REQUIRED). |
-| `services/authIdentity.ts` | `resolveIdentityCollision` — never auto-merge by email (§10). |
-| `context/AuthContext.tsx` | **Unchanged** — provider-neutral; reacts to `onAuthStateChange`/`setSession`. |
+- **DeokbunAI user id = `auth.users.id`** always. Naver `response.id` (per-app
+  unique string) is stored ONLY in `app_metadata.naver_id` — never the app user id.
+- **No auto-merge by email (takeover guard):** `decideNaverLink` →
+  `create` (new email) / `proceed` (same naver_id returning) / **`conflict` → 403**
+  (email belongs to a different account). A colliding email is BLOCKED, never
+  silently logged in.
+- **Email REQUIRED:** GoTrue rejects email-less `createUser`, and `generateLink`
+  magiclink needs an email. A Naver user who declined email **fails closed (422
+  EMAIL_REQUIRED)** — NO fabricated `naver_x@…` email. The Owner should request the
+  email item in the Naver console so this path succeeds.
+- Profile reuses idempotent `profileService.ensureProfile` (`{id, display_name}`
+  only; never email/tokens).
 
-## 4. Callback + state/CSRF (§15/§16) — path B
+## 3. Code map
 
-- **CSRF/state + PKCE** are handled by **Supabase's OAuth pipeline** (PKCE is default for custom providers). We do NOT hand-roll weak state validation.
-- **Callback parsing** reuses the existing `authService` code (`QueryParams.getQueryParams` → `access_token`/`refresh_token` → `setSession`). No new callback code for path B.
-- **Redirect URIs** (Expo SDK 57, confirmed): web = `window.location`-based; native = `deokbunai://login-callback`. Values to allow-list are in OWNER_ACTIONS.
-- **Naver Callback URL** registered in the Naver console = **Supabase's callback** `https://olvkpaldrwvtexxpoaag.supabase.co/auth/v1/callback` (Supabase, not the app, is Naver's redirect target in path B).
+| Layer | File | Role |
+|---|---|---|
+| Client pure | `naver/naverConfig.ts` | public `client_id` reader (EXPO_PUBLIC), authorize/function names |
+| Client pure | `naver/naverOAuth.ts` | `buildNaverAuthorizeUrl`, `parseNaverCallback`, `statesMatch` (runtime-safe, tested) |
+| Client pure | `naver/naverProfile.ts` | `normalizeNaverProfile` contract (nested `response.id`, email-optional) — tested |
+| Client pure | `naver/naverIdentity.ts` | `decideNaverLink` takeover guard — tested |
+| Client I/O | `naver/naverAuthService.ts` | `signInWithNaverBridge`: crypto state → WebBrowser → parse+validate → invoke edge → `setSession` |
+| Routing | `services/authService.ts` | naver → bridge; kakao/google → built-in `signInWithOAuth` (unchanged) |
+| Edge | `supabase/functions/naver-auth/index.ts` | the trusted bridge (mirrors the two pure contracts inline; self-contained deploy) |
+| Errors | `errors/authErrors.ts` | outcome vocabulary + Korean messages, normalized into the app Error Contract |
 
-## 5. Path C fallback design (edge bridge) — NOT built yet (§17)
+## 4. Callback + CSRF (§15/§16)
 
-Only if B's userinfo mapping fails. Sketch (all server-side secrets; `verify_jwt=false` since the user has no Supabase JWT yet at login):
-1. Client opens Naver `authorize` (client_id, redirect_uri=edge/app callback, crypto-safe `state`) via WebBrowser.
-2. Naver redirects with `code`+`state`; client posts them to a `naver-auth` edge function.
-3. Edge verifies `state`, exchanges `code`→token at `/oauth2.0/token` using `NAVER_CLIENT_SECRET` (server-only), fetches `/v1/nid/me`.
-4. Edge keys on `response.id`: `admin.listUsers`/lookup → `admin.createUser({ email?, email_confirm:true, app_metadata:{ provider:'naver', naver_id } })` or `admin.updateUserById` to link; applies `resolveIdentityCollision` (no auto-merge).
-5. Edge `admin.generateLink({ type:'magiclink', email })` → `auth.verifyOtp({ token_hash, type:'email' })` → returns `access_token`+`refresh_token`; client `setSession`.
+- **State/CSRF:** client generates a crypto-random `state` (`expo-crypto`), validates
+  the returned state (`statesMatch`) before calling the edge; the edge forwards
+  `state` to Naver's token endpoint, which rejects a mismatch. No weak hand-rolled
+  check bypassing this.
+- **Web callback:** reuses the provider-neutral `src/app/login-callback.tsx`
+  (generates `login-callback.html`) — `WebBrowser` returns `code&state` to the
+  opener; the route just completes/closes the popup. No token parsing in the route.
+- **Redirect target:** the Naver Callback URL registered in the Naver console =
+  `https://www.deokbunai.com/login-callback` (the app), NOT Supabase's callback
+  (in the bridge model Naver redirects to the app, and the edge does the exchange).
 
-Constraints: **NO arbitrary JWT minting** (only the official generateLink+verifyOtp path); **service_role never reaches the client**; email may be absent (key on `response.id`, `proceed_no_email`).
+## 5. Security (§10)
 
-## 6. Readiness / gates
+`client_secret` + `service_role` are edge-only (`Deno.env`), never in the client
+bundle (enforced by a jest exposure scan). No logging of code/tokens/hashed_token/
+email/raw profile (only failure stage markers). CORS `*` is not the trust boundary
+(the Naver code exchange is). Fixed app-controlled redirect (no attacker redirect).
 
-- **Web:** works today with `ios.bundleIdentifier`/`android.package` unset (web redirect uses `window.location`). Production domain confirmed: **https://www.deokbunai.com**. The static-web callback gap is **now CLOSED** — a provider-neutral `src/app/login-callback.tsx` route is implemented (generates `dist/login-callback.html`) so the OAuth popup completes + closes; it is token-free (the opener still does `setSession`). Shared by google/kakao/naver.
-- **Native:** blocked until `ios.bundleIdentifier`/`android.package` are decided (needed to build a binary that registers `deokbunai://`). OWNER_DECISION_REQUIRED (see RELEASE_READINESS §Native).
-- **Scopes (§9):** request ONLY the unique identifier (+ email as an optional item). Do NOT request birthday/gender/age/mobile. Birth info stays in the Subjects/BirthInfo flow (user-entered), never from Naver.
+## 6. Readiness
 
-## 7. Status
+- **Web:** works with identifiers unset (redirect uses `window.location`). Domain
+  live: **https://www.deokbunai.com**. `/login-callback` route present.
+- **Native:** blocked until `ios.bundleIdentifier`/`android.package` are decided
+  (Naver web-OAuth to a `deokbunai://` scheme is also not a standard Naver web
+  callback) — web-first. OWNER_DECISION_REQUIRED.
+- **Scopes (§9):** request ONLY 이용자 고유 식별자 + email (optional item). NOT
+  birthday/gender/age/mobile. Birth info stays in the Subjects flow.
+- **Scaling note:** the edge finds users via paginated `listUsers` (bounded scan;
+  no `getUserByEmail` in GoTrue) — fine for V1 user counts.
 
-**CODE_READY_OWNER_CONFIG_REQUIRED.** Client path B is implemented + tested; real Naver login requires Owner console config (Naver app + Supabase custom provider) and cannot be E2E-verified without it. Path C is designed and ready to build if B's config test fails.
+## 7. Status — CODE_READY_OWNER_CONFIG_REQUIRED
 
-## 8. E2E test plan (§26) — run AFTER Owner config (Step 1–3 in OWNER_ACTIONS §6)
+Client bridge + edge function are **source-complete and unit-tested** (pure logic).
+Real Naver login is NOT E2E-verifiable by Claude — it needs the Owner to: register
+the Naver app, deploy `naver-auth`, set `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` Edge
+secrets, set `EXPO_PUBLIC_NAVER_CLIENT_ID` (Vercel), and add the redirect URL. See
+OWNER_ACTIONS §6.
 
-All of these are **BLOCKED_OWNER** until the Naver app + Supabase custom provider
-are configured; they cannot be executed by Claude (no live Naver credentials).
+## 8. E2E test plan — run AFTER Owner deploy + config (BLOCKED_OWNER)
 
 | # | Scenario | Expected |
 |---|---|---|
-| A | New Naver user signs in (web) | Supabase session created; `auth.users.id` set; profile row upserted; lands on `/` |
-| B | Logout → sign in again with Naver | Same `auth.users.id`; no duplicate profile |
-| C | Browser refresh / app relaunch | Session restored via `getSession`; stays authenticated |
-| D | Naver user who DECLINED email | Login still succeeds; keyed on Naver `response.id`; email null tolerated |
-| E | Naver email == existing google/kakao/email account | NOT auto-merged — `link_required` / distinct account per Supabase linking-off setting |
-| F | User cancels the Naver OAuth popup | `AUTH_CANCELLED` (soft notice, no error banner); no session |
-| G | Naver/provider returns an error | `AUTH_PROVIDER_ERROR` friendly message; no raw error surfaced; no session |
-| H | Callback mismatch / missing tokens | `AUTH_SESSION_FAILED`; no partial/fake session |
-| I | Authenticated Naver user opens Subjects | RLS allows own rows (`auth.uid() = owner`); works like kakao/google |
-| J | Authenticated Naver user opens a Consultation | Chat/consultation works (edge `verify_jwt` accepts the session) |
-| K | Logout → open a protected resource | Blocked (unauthenticated); auth guard redirects to login |
+| A | New Naver user (email provided) signs in on web | edge creates user; session; lands `/` |
+| B | Logout → sign in again | same `auth.users.id` (proceed via naver_id); no dup |
+| C | Browser refresh / relaunch | session restored (`getSession`) |
+| D | Naver user who DECLINED email | **fails closed** (422 EMAIL_REQUIRED) — no fake email |
+| E | Naver email == existing google/kakao account | **403 ACCOUNT_CONFLICT** — blocked, no takeover |
+| F | Cancel the Naver popup | `AUTH_CANCELLED` soft notice; no session |
+| G | Naver/provider error or bad state | friendly error; no raw error/token; no session |
+| H | Missing code / CSRF state mismatch | rejected; no partial session |
+| I | Authenticated Naver user opens Subjects | RLS allows own rows (like kakao/google) |
+| J | Authenticated Naver user opens a Consultation | chat edge accepts the session |
+| K | Logout → protected resource | blocked; guard redirects to login |
 
-**B-vs-C gate:** if scenario A fails because Supabase cannot map Naver's
-`/v1/nid/me` (`response.id`) profile, switch to path C (build the `naver-auth` edge
-bridge per §5). Native scenarios additionally require the `deokbunai://` build
-(identifiers decided).
+Native scenarios additionally require the `deokbunai://` build (identifiers decided).

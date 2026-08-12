@@ -15,7 +15,7 @@
 | `EXPO_PUBLIC_SUPABASE_URL` | required | Supabase project URL | yes (public) |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | required | Supabase anon/publishable key (RLS-guarded) | yes (designed public) |
 | `EXPO_PUBLIC_PUBLIC_BASE_URL` | optional | canonical base URL for public web (OG/sitemap) | yes |
-| `EXPO_PUBLIC_NAVER_SUPABASE_PROVIDER` | optional | Supabase Custom OAuth provider slug for Naver (default `custom:naver`) | yes (non-secret slug) |
+| `EXPO_PUBLIC_NAVER_CLIENT_ID` | optional | Naver Login **Client ID** (public — appears in the authorize URL) for the edge-bridge flow | yes (public, non-secret) |
 | `EXPO_OS` | auto | Expo-provided platform tag | yes |
 
 > ⚠️ NEVER put `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, or any secret under
@@ -30,6 +30,8 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | required | edge-only privileged DB writes (usage logs, admin ops) |
 | `SUPABASE_URL` | required | Supabase URL for the edge admin client |
 | `GEMINI_API_KEY` / `GOOGLE_API_KEY` | optional | Gemini/Veo (premium content/video) — only if that path is enabled |
+| `NAVER_CLIENT_ID` | required for Naver login | Naver Login Client ID (edge token exchange) |
+| `NAVER_CLIENT_SECRET` | required for Naver login | Naver Login Client **Secret** — server-only token exchange (`naver-auth` edge) |
 
 ### Non-secret config (tuning; safe defaults in code)
 | Variable | Default (code) | Purpose |
@@ -45,23 +47,19 @@
 
 ## NAVER LOGIN (네이버 아이디로 로그인)
 
-Naver is not a Supabase built-in provider. See docs/NAVER_LOGIN_ARCHITECTURE.md.
+Naver is not a Supabase provider (its nested `/v1/nid/me` userinfo can't be mapped
+by Supabase custom OAuth2 — verified). Login uses a **trusted edge bridge**
+(`naver-auth`). See docs/NAVER_LOGIN_ARCHITECTURE.md.
 
-**Path B (primary — Supabase Custom OAuth2 provider):** Naver's credentials are
-configured in the **Supabase Dashboard**, NOT in this repo. The app has **no Naver
-secret** — Supabase performs the code exchange, exactly like kakao/google.
-| Where | Variable / value | Secret? |
+| Where | Variable | Secret? |
 |---|---|---|
-| Supabase Dashboard (custom provider `naver`) | Naver Client ID + Client Secret + authorize/token/userinfo URLs | secret — Dashboard only, never in repo |
-| App (optional) | `EXPO_PUBLIC_NAVER_SUPABASE_PROVIDER` (slug, default `custom:naver`) | no (public, non-secret) |
+| App (Vercel/EXPO_PUBLIC) | `EXPO_PUBLIC_NAVER_CLIENT_ID` — Naver Client **ID** (appears in the authorize URL) | no (public) |
+| Edge secret | `NAVER_CLIENT_ID` — Client ID (edge token exchange) | server-only |
+| Edge secret | `NAVER_CLIENT_SECRET` — Client **Secret** | secret — edge-only, never `EXPO_PUBLIC_*`, never in repo |
 
-**Path C (fallback — edge bridge, ONLY if B's userinfo mapping fails):** a
-`naver-auth` Edge Function would then need these SERVER secrets (never client,
-never `EXPO_PUBLIC_*`):
-| Variable | Req? (path C only) | Purpose |
-|---|---|---|
-| `NAVER_CLIENT_ID` | required | Naver app Client ID (edge token exchange) |
-| `NAVER_CLIENT_SECRET` | required | Naver app Client Secret — server-only token exchange |
+The Naver Client **Secret** exists ONLY as an Edge secret. `SUPABASE_URL` +
+`SUPABASE_SERVICE_ROLE_KEY` (auto-injected) are used by the `naver-auth` edge to
+create the user + mint the session.
 
 > Data minimization (§9): request ONLY the Naver unique identifier (+ email as an
 > optional item). Never request birthday/gender/age/mobile — birth info is

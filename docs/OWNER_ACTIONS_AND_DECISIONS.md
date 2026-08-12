@@ -229,8 +229,10 @@ no overflow) and a real Markdown rendering bug was found + fixed.
 
 ## 6. NAVER LOGIN — OWNER SETUP (네이버 아이디로 로그인)
 
-The client code is done (path B). Real Naver login needs YOUR console setup below.
-Full design: `docs/NAVER_LOGIN_ARCHITECTURE.md`. Do these in order.
+Client + Edge code are source-complete (a **trusted edge bridge** — Naver cannot be
+a Supabase provider, verified). Real login needs YOUR setup below. Full design:
+`docs/NAVER_LOGIN_ARCHITECTURE.md`. Secret VALUES are never shown to or handled by
+Claude. Do these in order.
 
 ### Step 1 — Register the app at Naver Developers
 - **WHAT:** create a Naver Login application.
@@ -239,56 +241,54 @@ Full design: `docs/NAVER_LOGIN_ARCHITECTURE.md`. Do these in order.
 - **CLICK STEPS:**
   1. 애플리케이션 이름: e.g. `DeokbunAI`.
   2. 사용 API → select **네이버 로그인**.
-  3. **제공 정보 선택 (권한):** check ONLY **이용자 고유 식별자** (unique id). You MAY
-     add **이메일 주소** as 추가(optional). **Do NOT check 생일/성별/연령대/휴대전화번호**
+  3. **제공 정보 선택 (권한):** check **이용자 고유 식별자** AND **이메일 주소**
+     (email is **REQUIRED** — the bridge creates the Supabase user from the email;
+     without it login fails closed). **Do NOT check 생일/성별/연령대/휴대전화번호**
      (data minimization — the app never needs them; birth info is entered in-app).
   4. **로그인 오픈 API 서비스 환경:** add **PC웹** (and 모바일웹 if used).
      - **네이버아이디로로그인 Callback URL** (up to 5): paste
-       `https://olvkpaldrwvtexxpoaag.supabase.co/auth/v1/callback`
-       (this is Supabase's callback — Supabase, not the app, is Naver's redirect
-       target in path B).
+       `https://www.deokbunai.com/login-callback`
+       (the **app** — Naver redirects to the app; the edge does the code exchange).
      - **서비스 URL:** `https://www.deokbunai.com` (protocol/port are ignored; domain only).
 - **WHAT VALUE IS SHOWN:** after 등록, the app's 개요 page shows **Client ID** and
   **Client Secret**.
 - **WHAT TO COPY:** the Client ID and Client Secret.
-- **EXPECTED RESULT:** an active Naver Login app with the Supabase callback registered.
+- **EXPECTED RESULT:** an active Naver Login app with the app callback registered.
 
-### Step 2 — Add Naver as a Supabase Custom OAuth2 provider
-- **WHAT:** wire Naver into Supabase Auth as a **custom OAuth2** provider.
-- **WHY:** Naver is not built-in and not OIDC, so it uses the custom OAuth2 path;
-  Supabase then does the token exchange (your app never handles the Naver secret).
-- **WHERE:** Supabase Dashboard → Authentication → Providers → **Custom OAuth/OIDC**.
-  Follow the official page: https://supabase.com/docs/guides/auth/custom-oauth-providers
-- **VALUES TO PASTE** (choose **OAuth2** mode, NOT OIDC — Naver has no id_token):
-  - Provider name/slug: **`naver`** (the app calls it as `custom:naver`).
-  - Authorization URL: `https://nid.naver.com/oauth2.0/authorize`
-  - Token URL: `https://nid.naver.com/oauth2.0/token`
-  - User info URL: `https://openapi.naver.com/v1/nid/me`
-  - Client ID / Client Secret: from Step 1.
-- **EXPECTED RESULT:** `custom:naver` is selectable; sign-in redirects to Naver.
+### Step 2 — Deploy the naver-auth Edge Function + set its secrets
+- **WHAT:** deploy the trusted bridge and give it the Naver credentials (server-only).
+- **WHY:** the edge does the Naver code exchange + Supabase session mint; the Naver
+  Client Secret must live ONLY here (never in the client).
+- **WHERE:** your terminal (Supabase CLI).
+- **STEPS:**
+  1. Set the Naver secrets (paste your Step-1 values in place of `…`; never committed):
+     ```bash
+     npx supabase secrets set NAVER_CLIENT_ID=… NAVER_CLIENT_SECRET=… --project-ref olvkpaldrwvtexxpoaag
+     ```
+  2. Deploy the function:
+     ```bash
+     npx supabase functions deploy naver-auth --project-ref olvkpaldrwvtexxpoaag
+     ```
+- **EXPECTED RESULT:** `naver-auth` is live (verify_jwt=false; visible under Functions).
 
-### Step 3 — Allow-list the app redirect URLs + keep linking OFF
-- **WHERE:** Supabase Dashboard → Authentication → URL Configuration → **Redirect URLs**.
-- **PASTE:** `https://www.deokbunai.com/login-callback` (web prod — confirmed
-  domain), `http://localhost:8081/login-callback` (web dev — confirm your Metro
-  port), `deokbunai://login-callback` (native, after identifiers decided).
-- **NOTE:** the `/login-callback` page is now built into the web app (static
-  `login-callback.html` is generated), so the popup returns and closes cleanly —
-  no Vercel rewrite needed.
-- **ALSO:** keep **automatic account linking OFF** (manual linking) so Supabase never
-  merges accounts by matching email (account-takeover safety, §10).
-- **EXPECTED RESULT:** the app returns cleanly from the OAuth popup.
+### Step 3 — Set the client's PUBLIC Naver client_id in Vercel
+- **WHAT:** the app builds the Naver authorize URL with the public client_id.
+- **WHERE:** Vercel → Project → Settings → **Environment Variables**.
+- **ADD:** `EXPO_PUBLIC_NAVER_CLIENT_ID` = your Naver **Client ID** → **redeploy**.
+  (This is PUBLIC/non-secret — it appears in the authorize URL. Do **NOT** put the
+  Naver Client **Secret** here; the secret lives only in the edge from Step 2.)
+- **EXPECTED RESULT:** the “네이버로 시작하기” flow can open Naver’s login page.
 
-### Step 4 — Smoke test → decide B vs C
-- **NEXT CLAUDE ACTION / DECISION GATE:** sign in with Naver on web.
-  - ✅ **If it works** → done (path B). Report success.
-  - ❌ **If Supabase can't map Naver's profile** (Naver nests identity under
-    `response.id`, not a standard `sub` — this is the known risk): tell Claude
-    "**Naver path B failed userinfo mapping**". Claude then builds **path C** (the
-    `naver-auth` edge bridge, already designed) which needs `NAVER_CLIENT_ID` /
-    `NAVER_CLIENT_SECRET` set as Supabase secrets.
+### Step 4 — Smoke test
+- Sign in with Naver on `https://www.deokbunai.com` using a **new** account (email
+  consented).
+  - ✅ Lands logged in → done.
+  - ❌ Check the `naver-auth` logs (Supabase → Functions → Logs):
+    - `EMAIL_REQUIRED` → the Naver app isn’t returning email → re-check Step 1.3 + user consent.
+    - `ACCOUNT_CONFLICT` → that email already has a google/kakao/email account → use the original method (by design — no auto-merge).
+    - `SERVER_NOT_CONFIGURED` → secrets not set (Step 2).
 
-### DECISION — Native identifiers still gate native Naver login
-Web Naver login works with identifiers unset. **Native** Naver login is blocked
-until `ios.bundleIdentifier`/`android.package` are decided (§H above) and a native
-build registers `deokbunai://`.
+### DECISION — Native identifiers still gate NATIVE Naver login
+Web Naver login works with identifiers unset. **Native** is blocked until
+`ios.bundleIdentifier`/`android.package` are decided (§H above) + a `deokbunai://`
+build.

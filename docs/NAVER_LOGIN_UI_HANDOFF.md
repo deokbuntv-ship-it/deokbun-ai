@@ -7,8 +7,8 @@
 
 ## 1. What is already wired (no logic work needed)
 
-- `signInWithProvider('naver')` is fully implemented (path B via Supabase Custom
-  OAuth). A button only needs to call the existing handler:
+- `signInWithProvider('naver')` is fully implemented (trusted edge bridge — see
+  docs/NAVER_LOGIN_ARCHITECTURE.md). A button only needs to call the existing handler:
   ```tsx
   <Button label="네이버로 시작하기" onPress={() => handleLogin('naver')} disabled={isSigningIn} />
   ```
