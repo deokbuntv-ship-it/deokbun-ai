@@ -3,5 +3,7 @@ Allow: /
 Disallow: /admin
 
 # Public content/famous pages are crawlable (web.output="static" + per-page
-# <Head> metadata). Admin is disallowed. A generated sitemap is a future step
-# (dynamic content/famous slugs must be enumerated at export time).
+# <Head> metadata). Admin is disallowed.
+# The `Sitemap:` directive is written by scripts/generate-sitemap.mjs at build time
+# (only when EXPO_PUBLIC_PUBLIC_BASE_URL is set, so no fake domain is emitted).
+# This committed file is the fallback used when that step has not run.

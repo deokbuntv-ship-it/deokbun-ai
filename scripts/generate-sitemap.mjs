@@ -96,3 +96,9 @@ writeFileSync(join(outDir, 'sitemap.xml'), xml, 'utf8');
 console.log(
   `[sitemap] wrote public/sitemap.xml (${content.length} content + ${famous.length} famous).`,
 );
+
+// Also emit robots.txt WITH the absolute Sitemap directive (base URL known here).
+// Keeps the rules identical to the committed fallback + points crawlers at the map.
+const robots = `User-agent: *\nAllow: /\nDisallow: /admin\n\nSitemap: ${base}/sitemap.xml\n`;
+writeFileSync(join(outDir, 'robots.txt'), robots, 'utf8');
+console.log(`[sitemap] wrote public/robots.txt (Sitemap: ${base}/sitemap.xml).`);
