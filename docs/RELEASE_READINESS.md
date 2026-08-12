@@ -43,7 +43,7 @@ See `docs/OWNER_ACTIONS_AND_DECISIONS.md`. Summary of hard gates:
 ## Web deployment readiness (OWNER-AWAY sprint)
 - **Domain live:** apex `deokbunai.com` → 308 → `https://www.deokbunai.com` (Production), via Vercel + Gabia DNS (Owner-configured).
 - **Supabase env in Vercel:** `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set (confirmed by Owner).
-- **Web OAuth:** uses `window.location` for the redirect (no base-URL var needed); `/login-callback` is a real static page now, so the popup completes/closes. Supabase Redirect URLs must include `https://www.deokbunai.com/login-callback` (OWNER_ACTIONS §6 Step 3).
+- **Web OAuth:** uses `window.location` for the redirect (no base-URL var needed); `/login-callback` is a real static page now, so the popup completes/closes. For **google/kakao** (Supabase built-in OAuth), the Supabase **Redirect URLs** allow-list (Dashboard → Authentication → URL Configuration) must include `https://www.deokbunai.com/login-callback`. Naver uses the edge bridge and does not rely on Supabase Redirect URLs.
 - **Canonical/SEO:** set `EXPO_PUBLIC_PUBLIC_BASE_URL=https://www.deokbunai.com` in Vercel to enable canonical/OG/sitemap (graceful/omitted until then — no fake domain). Not required for OAuth.
 - **No `vercel.json`:** intentionally none — a broad SPA rewrite would override per-page SEO HTML. Static per-route files (incl. `login-callback.html`) are served directly.
 

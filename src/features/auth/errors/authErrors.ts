@@ -20,7 +20,8 @@ export type AuthFailureReason =
 
 // Normalized, user-facing auth outcomes. AUTH_CANCELLED is a benign user-initiated
 // abort (soft notice, not an error banner — see isSilentOutcome). AUTH_ACCOUNT_
-// CONFLICT is emitted by the identity-collision policy (see authIdentity.ts).
+// CONFLICT corresponds to the edge takeover guard (naver/naverIdentity.decideNaverLink
+// → the naver-auth edge returns ACCOUNT_CONFLICT when an email belongs to another account).
 export type AuthOutcomeCode =
   | 'AUTH_CANCELLED'
   | 'AUTH_CONFIG_REQUIRED'

@@ -16,7 +16,6 @@ import {
   type AuthOutcomeCode,
 } from '../errors/authErrors';
 import { resolveSupabaseProvider } from '../services/authProviders';
-import { resolveIdentityCollision } from '../services/authIdentity';
 import { resolveOAuthReturn } from '../services/oauthReturn';
 import {
   buildNaverAuthorizeUrl,
@@ -197,70 +196,6 @@ describe('auth error normalization (directive §20 — reuse existing contract)'
   });
 });
 
-describe('resolveIdentityCollision (directive §10 — never auto-merge by email)', () => {
-  it('proceeds for a returning (already-linked) Naver identity', () => {
-    expect(
-      resolveIdentityCollision({
-        naverEmail: 'a@example.com',
-        existingProvidersForEmail: ['google'],
-        naverAlreadyLinked: true,
-      }),
-    ).toEqual({ action: 'proceed', reason: 'ALREADY_LINKED' });
-  });
-
-  it('proceeds keyed on the Naver id when Naver provides no email', () => {
-    expect(
-      resolveIdentityCollision({
-        naverEmail: null,
-        existingProvidersForEmail: [],
-        naverAlreadyLinked: false,
-      }),
-    ).toEqual({ action: 'proceed_no_email' });
-  });
-
-  it('proceeds as a brand-new user when no account owns the email', () => {
-    expect(
-      resolveIdentityCollision({
-        naverEmail: 'new@example.com',
-        existingProvidersForEmail: [],
-        naverAlreadyLinked: false,
-      }),
-    ).toEqual({ action: 'proceed', reason: 'NEW_USER' });
-  });
-
-  it('proceeds when the matching account is itself a Naver identity', () => {
-    expect(
-      resolveIdentityCollision({
-        naverEmail: 'same@example.com',
-        existingProvidersForEmail: ['custom:naver'],
-        naverAlreadyLinked: false,
-      }),
-    ).toEqual({ action: 'proceed', reason: 'ALREADY_LINKED' });
-  });
-
-  it('requires explicit linking (no auto-merge) when email matches a google account', () => {
-    expect(
-      resolveIdentityCollision({
-        naverEmail: 'dup@example.com',
-        existingProvidersForEmail: ['google'],
-        naverAlreadyLinked: false,
-      }),
-    ).toEqual({ action: 'link_required', conflictingProviders: ['google'] });
-  });
-
-  it('lists every conflicting non-naver provider for the collision', () => {
-    const decision = resolveIdentityCollision({
-      naverEmail: 'dup@example.com',
-      existingProvidersForEmail: ['google', 'email', 'custom:naver'],
-      naverAlreadyLinked: false,
-    });
-    expect(decision.action).toBe('link_required');
-    if (decision.action === 'link_required') {
-      expect(decision.conflictingProviders).toEqual(['google', 'email']);
-    }
-  });
-});
-
 describe('decideNaverLink (edge account-takeover guard, directive §10)', () => {
   it('creates a fresh user when no account owns the email', () => {
     expect(decideNaverLink(null, 'nav-1')).toEqual({ action: 'create' });
@@ -301,7 +236,6 @@ describe('secret-exposure scan (directive §10/§21 — no client-side secrets)'
   const clientFacing = [
     '../services/authProviders.ts',
     '../services/authService.ts',
-    '../services/authIdentity.ts',
     '../services/oauthReturn.ts',
     '../errors/authErrors.ts',
     '../naver/naverConfig.ts',

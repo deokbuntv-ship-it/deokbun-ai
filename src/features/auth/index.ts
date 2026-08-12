@@ -7,7 +7,7 @@ export type { AuthProviderId, AuthState, AuthStatus, AuthUser } from './types/au
 export { resolveSupabaseProvider } from './services/authProviders';
 export type { SupabaseProviderResolution } from './services/authProviders';
 
-// Naver login (PATH B — trusted edge bridge). See docs/NAVER_LOGIN_ARCHITECTURE.md.
+// Naver login (trusted edge bridge). See docs/NAVER_LOGIN_ARCHITECTURE.md.
 export { isNaverLoginConfigured } from './naver/naverConfig';
 export {
   buildNaverAuthorizeUrl,
@@ -31,11 +31,4 @@ export type { AuthFailureReason, AuthOutcomeCode } from './errors/authErrors';
 // Shared OAuth return-route navigation (provider-neutral; used by /login-callback).
 export { resolveOAuthReturn } from './services/oauthReturn';
 export type { OAuthReturnDestination } from './services/oauthReturn';
-
-// Identity / account-collision policy (directive §10 — never auto-merge by email).
-export { resolveIdentityCollision } from './services/authIdentity';
-export type {
-  IdentityCollisionDecision,
-  IdentityCollisionInput,
-} from './services/authIdentity';
 
