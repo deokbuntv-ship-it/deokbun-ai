@@ -10,7 +10,7 @@
 | Question | Finding (official) |
 |---|---|
 | Built-in Supabase `naver` provider? | **No.** Kakao/Google are built-in; Naver is absent from the provider set. |
-| `signInWithIdToken` supports Naver? | **No** (accepts google/apple/azure/facebook/kakao/keycloak only). |
+| `signInWithIdToken` supports Naver? | **No** (accepts google/apple/azure/facebook/kakao — Naver is not among them). |
 | Naver OIDC-compliant? | **No — plain OAuth 2.0 only.** No `id_token`, no discovery/issuer, no request-time `scope`; identity comes from a separate profile API (`/v1/nid/me`), nested under `response.id`. |
 | ⇒ Supabase **generic OIDC** custom provider? | **Cannot consume Naver** (needs a standard `id_token`/issuer). |
 | ⇒ Supabase **custom OAuth2** provider (path B)? | Officially available; supply Naver authorize/token/userinfo URLs. **RISK (config-time, UNVERIFIED):** whether Supabase's OAuth2 mode can map Naver's non-standard nested `/v1/nid/me` (`response.id`, not `sub`). |
@@ -31,7 +31,7 @@
 Naver → OAuth2 → (Supabase custom provider OR edge bridge) → Supabase Auth session
       → auth.users.id  ← THE DeokbunAI user id (RLS, profiles, subjects, consultations)
 ```
-- The **DeokbunAI user id is always `auth.users.id`.** Naver's `response.id` (a per-app INT64 unique serial, the correct stable key) is stored ONLY as identity/`app_metadata` — never used as the app user id, never in a separate user table.
+- The **DeokbunAI user id is always `auth.users.id`.** Naver's `response.id` (a per-app stable unique identifier, returned as a string — the correct account key) is stored ONLY as identity/`app_metadata` — never used as the app user id, never in a separate user table.
 - Profile creation reuses `profileService.ensureProfile` (idempotent upsert keyed by `auth.users.id`, stores only `{id, display_name}` — never email/tokens). No provider-specific profile table.
 
 ## 3. Client code (path B — implemented, committed)
