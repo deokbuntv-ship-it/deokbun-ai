@@ -30,6 +30,9 @@ export default function RootLayout() {
             <Stack.Screen name="mail-detail" options={{ headerShown: false }} />
             {/* 분석 대상자 관리 (from MY) — subject management; own AppHeader. */}
             <Stack.Screen name="subjects" options={{ headerShown: false }} />
+            {/* 대상자 상담 이력 / 만세력 (pushed from subjects); own AppHeader. */}
+            <Stack.Screen name="subject-history" options={{ headerShown: false }} />
+            <Stack.Screen name="subject-manse" options={{ headerShown: false }} />
             {/* Deep-link compatibility redirects. */}
             <Stack.Screen name="records" options={{ headerShown: false }} />
             <Stack.Screen name="today" options={{ headerShown: false }} />
