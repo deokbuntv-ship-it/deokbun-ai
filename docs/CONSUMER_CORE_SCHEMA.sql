@@ -99,7 +99,14 @@ create table if not exists public.conversation_messages (
   role              text not null check (role in ('user', 'assistant', 'system')),
   content           text not null,
   client_message_id text not null,
-  created_at        timestamptz not null default now()
+  created_at        timestamptz not null default now(),
+  -- Monotonic ordering column the app read path depends on: conversationService
+  -- reads `.order('seq')` and admin_get_consultation (ADMIN_03) returns m.seq. It
+  -- exists on the LIVE table but was missing from this reproducibility artifact.
+  -- `create table if not exists` is a no-op on the live DB, so this only fixes a
+  -- from-scratch rebuild. OWNER/DEV: confirm the exact live definition via
+  -- `\d public.conversation_messages` before relying on this file for a rebuild.
+  seq               bigint generated always as identity
 );
 create unique index if not exists conversation_messages_conv_client_uniq
   on public.conversation_messages (conversation_id, client_message_id);
