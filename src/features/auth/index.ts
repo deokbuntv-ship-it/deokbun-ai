@@ -19,6 +19,10 @@ export {
 } from './errors/authErrors';
 export type { AuthFailureReason, AuthOutcomeCode } from './errors/authErrors';
 
+// Shared OAuth return-route navigation (provider-neutral; used by /login-callback).
+export { resolveOAuthReturn } from './services/oauthReturn';
+export type { OAuthReturnDestination } from './services/oauthReturn';
+
 // Identity / account-collision policy (directive §10 — never auto-merge by email).
 export { resolveIdentityCollision } from './services/authIdentity';
 export type {

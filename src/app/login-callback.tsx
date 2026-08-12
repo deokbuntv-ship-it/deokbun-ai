@@ -6,6 +6,7 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth';
+import { resolveOAuthReturn } from '@/features/auth/services/oauthReturn';
 
 // Provider-neutral OAuth return route (google / kakao / naver all share it).
 //
@@ -29,12 +30,11 @@ export default function LoginCallbackScreen() {
   const { authState } = useAuth();
 
   useEffect(() => {
-    if (authState.status === 'authenticated') {
-      router.replace('/');
-    } else if (authState.status === 'unauthenticated') {
-      router.replace('/login');
+    const destination = resolveOAuthReturn(authState.status);
+    if (destination !== null) {
+      router.replace(destination);
     }
-    // 'loading' → wait; in the popup flow this window closes before this resolves.
+    // null ('loading') → wait; in the popup flow this window closes first.
   }, [authState.status, router]);
 
   return (

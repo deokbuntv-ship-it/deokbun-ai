@@ -21,6 +21,7 @@ import {
   resolveSupabaseProvider,
 } from '../services/authProviders';
 import { resolveIdentityCollision } from '../services/authIdentity';
+import { resolveOAuthReturn } from '../services/oauthReturn';
 
 const ENV_KEY = 'EXPO_PUBLIC_NAVER_SUPABASE_PROVIDER';
 
@@ -192,6 +193,18 @@ describe('resolveIdentityCollision (directive §10 — never auto-merge by email
     if (decision.action === 'link_required') {
       expect(decision.conflictingProviders).toEqual(['google', 'email']);
     }
+  });
+});
+
+describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)', () => {
+  it('sends an authenticated return to home', () => {
+    expect(resolveOAuthReturn('authenticated')).toBe('/');
+  });
+  it('sends an unauthenticated return (cancel/error/failed session) back to login', () => {
+    expect(resolveOAuthReturn('unauthenticated')).toBe('/login');
+  });
+  it('stays put while auth state is still loading (popup closes first)', () => {
+    expect(resolveOAuthReturn('loading')).toBeNull();
   });
 });
 
