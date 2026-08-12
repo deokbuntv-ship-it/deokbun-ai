@@ -16,6 +16,8 @@ export {
 } from './naver/naverOAuth';
 export { normalizeNaverProfile } from './naver/naverProfile';
 export type { NaverProfile, NaverProfileResult } from './naver/naverProfile';
+export { decideNaverLink } from './naver/naverIdentity';
+export type { NaverLinkDecision } from './naver/naverIdentity';
 
 // Auth error normalization (directive §20 — normalizes into the app Error Contract).
 export {

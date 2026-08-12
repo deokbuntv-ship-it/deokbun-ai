@@ -41,3 +41,12 @@ verify_jwt = true
 [functions.video-status]
 enabled = true
 verify_jwt = true
+
+# NAVER LOGIN bridge (PATH B). Naver is not a Supabase provider, so this trusted
+# function does the Naver code exchange + Supabase session mint. It runs BEFORE the
+# user has a Supabase session, so JWT verification MUST be off (its trust is the
+# Naver code exchange + state, not a Supabase JWT). Needs NAVER_CLIENT_ID /
+# NAVER_CLIENT_SECRET as Edge secrets (USER ACTION). Never logs code/tokens.
+[functions.naver-auth]
+enabled = true
+verify_jwt = false

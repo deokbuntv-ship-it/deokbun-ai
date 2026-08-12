@@ -24,6 +24,7 @@ import {
   statesMatch,
 } from '../naver/naverOAuth';
 import { normalizeNaverProfile } from '../naver/naverProfile';
+import { decideNaverLink } from '../naver/naverIdentity';
 
 describe('resolveSupabaseProvider (directive §6 — provider abstraction)', () => {
   it('keeps kakao/google on their built-in Supabase providers (unchanged)', () => {
@@ -260,6 +261,27 @@ describe('resolveIdentityCollision (directive §10 — never auto-merge by email
   });
 });
 
+describe('decideNaverLink (edge account-takeover guard, directive §10)', () => {
+  it('creates a fresh user when no account owns the email', () => {
+    expect(decideNaverLink(null, 'nav-1')).toEqual({ action: 'create' });
+  });
+  it('proceeds for the SAME returning Naver identity', () => {
+    expect(
+      decideNaverLink({ id: 'u1', appMetadataNaverId: 'nav-1' }, 'nav-1'),
+    ).toEqual({ action: 'proceed', userId: 'u1' });
+  });
+  it('BLOCKS (conflict) when the email belongs to a non-naver account — no takeover', () => {
+    expect(
+      decideNaverLink({ id: 'u2', appMetadataNaverId: null }, 'nav-1'),
+    ).toEqual({ action: 'conflict' });
+  });
+  it('BLOCKS (conflict) when the email is a different Naver identity', () => {
+    expect(
+      decideNaverLink({ id: 'u3', appMetadataNaverId: 'nav-OTHER' }, 'nav-1'),
+    ).toEqual({ action: 'conflict' });
+  });
+});
+
 describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)', () => {
   it('sends an authenticated return to home', () => {
     expect(resolveOAuthReturn('authenticated')).toBe('/');
@@ -285,6 +307,7 @@ describe('secret-exposure scan (directive §10/§21 — no client-side secrets)'
     '../naver/naverConfig.ts',
     '../naver/naverOAuth.ts',
     '../naver/naverProfile.ts',
+    '../naver/naverIdentity.ts',
     '../naver/naverAuthService.ts',
   ];
 
