@@ -66,7 +66,7 @@ Constraints: **NO arbitrary JWT minting** (only the official generateLink+verify
 
 ## 6. Readiness / gates
 
-- **Web:** works today with `ios.bundleIdentifier`/`android.package` unset (web redirect uses `window.location`). **Gap:** static-web needs a `src/app/login-callback.tsx` route to run `maybeCompleteAuthSession()` — this is frozen consumer-UI (Claude Design handoff, affects kakao/google web equally). See NAVER_LOGIN_UI_HANDOFF.
+- **Web:** works today with `ios.bundleIdentifier`/`android.package` unset (web redirect uses `window.location`). Production domain confirmed: **https://www.deokbunai.com**. The static-web callback gap is **now CLOSED** — a provider-neutral `src/app/login-callback.tsx` route is implemented (generates `dist/login-callback.html`) so the OAuth popup completes + closes; it is token-free (the opener still does `setSession`). Shared by google/kakao/naver.
 - **Native:** blocked until `ios.bundleIdentifier`/`android.package` are decided (needed to build a binary that registers `deokbunai://`). OWNER_DECISION_REQUIRED (see RELEASE_READINESS §Native).
 - **Scopes (§9):** request ONLY the unique identifier (+ email as an optional item). Do NOT request birthday/gender/age/mobile. Birth info stays in the Subjects/BirthInfo flow (user-entered), never from Naver.
 

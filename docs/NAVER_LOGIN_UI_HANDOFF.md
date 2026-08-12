@@ -45,12 +45,15 @@ Claude Code must NOT invent a Naver logo/color; use Naver's official assets.
   branded button image — whichever the Design system prefers — but the Naver
   brand color/logo rules above take precedence for the Naver control specifically.
 
-## 4. Related non-visual gap (route, not styling)
+## 4. Related route (now implemented — restyle optional)
 
-- **`src/app/login-callback.tsx` does not exist.** For **web (static export)** the
-  OAuth redirect target `/login-callback` must resolve to a page that runs
-  `WebBrowser.maybeCompleteAuthSession()` to close the popup. This affects
-  kakao/google web equally (pre-existing), not just Naver. Because it is a route
-  file under the frozen `src/app/**`, Claude Code did not create it — Design/owner
-  should add a minimal `login-callback` route. Native does not require it
-  (the auth session intercepts `deokbunai://login-callback`).
+- **`src/app/login-callback.tsx` now EXISTS** (added by Claude Code as a
+  provider-neutral, token-free infrastructure route). It runs
+  `WebBrowser.maybeCompleteAuthSession()` so the web OAuth popup completes + closes,
+  and shows a neutral "로그인 처리 중입니다…" loading state using the existing
+  `Screen`/`Stack`/`Text` primitives. Shared by google/kakao/naver; native
+  intercepts the deep link and never mounts it.
+- **Design action (optional):** if the design system wants a branded loading state
+  on this transient page, restyle the body of `login-callback.tsx` only — do NOT
+  add token parsing or navigation logic (that stays in `resolveOAuthReturn` /
+  `authService`).

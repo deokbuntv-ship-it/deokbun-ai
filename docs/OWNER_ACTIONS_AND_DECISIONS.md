@@ -41,11 +41,15 @@ npx supabase functions deploy video-status --project-ref olvkpaldrwvtexxpoaag
 `GEMINI_API_KEY` — see §2B).
 `famous-suggest` is already deployed; redeploy only if you change its code.
 
-### C. Environment variables (optional, enables canonical URLs + sitemap)
-Client-safe (not secret). Set in your env / `.env`:
-- `EXPO_PUBLIC_PUBLIC_BASE_URL` = your production site origin (e.g. `https://…`).
-  Until set: canonical URLs are omitted and the sitemap generator skips (no fake
-  domain — intended).
+### C. Environment variables (enables canonical URLs + sitemap + OG)
+Client-safe (not secret). Production domain is now confirmed: **https://www.deokbunai.com**.
+- **Vercel** → Project → Settings → Environment Variables → add
+  `EXPO_PUBLIC_PUBLIC_BASE_URL` = `https://www.deokbunai.com` (Production; also
+  Preview if desired) → **redeploy** (EXPO_PUBLIC_* is inlined at build time).
+- Until set: canonical URLs are omitted and the sitemap generator skips (no fake
+  domain — intended). This does NOT affect OAuth (OAuth uses `window.location`).
+- `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are already
+  set in Vercel (confirmed).
 
 ### D. Sitemap (before a production web export, after C)
 ```bash
@@ -243,7 +247,7 @@ Full design: `docs/NAVER_LOGIN_ARCHITECTURE.md`. Do these in order.
        `https://olvkpaldrwvtexxpoaag.supabase.co/auth/v1/callback`
        (this is Supabase's callback — Supabase, not the app, is Naver's redirect
        target in path B).
-     - **서비스 URL:** your site domain (protocol/port are ignored; domain only).
+     - **서비스 URL:** `https://www.deokbunai.com` (protocol/port are ignored; domain only).
 - **WHAT VALUE IS SHOWN:** after 등록, the app's 개요 page shows **Client ID** and
   **Client Secret**.
 - **WHAT TO COPY:** the Client ID and Client Secret.
@@ -265,9 +269,12 @@ Full design: `docs/NAVER_LOGIN_ARCHITECTURE.md`. Do these in order.
 
 ### Step 3 — Allow-list the app redirect URLs + keep linking OFF
 - **WHERE:** Supabase Dashboard → Authentication → URL Configuration → **Redirect URLs**.
-- **PASTE:** `http://localhost:8081/login-callback` (web dev — confirm your Metro
-  port), `https://<your-production-domain>/login-callback` (web prod),
-  `deokbunai://login-callback` (native).
+- **PASTE:** `https://www.deokbunai.com/login-callback` (web prod — confirmed
+  domain), `http://localhost:8081/login-callback` (web dev — confirm your Metro
+  port), `deokbunai://login-callback` (native, after identifiers decided).
+- **NOTE:** the `/login-callback` page is now built into the web app (static
+  `login-callback.html` is generated), so the popup returns and closes cleanly —
+  no Vercel rewrite needed.
 - **ALSO:** keep **automatic account linking OFF** (manual linking) so Supabase never
   merges accounts by matching email (account-takeover safety, §10).
 - **EXPECTED RESULT:** the app returns cleanly from the OAuth popup.

@@ -28,6 +28,9 @@ environmental (stale Metro type-gen); regenerate per `memory/router-dts-regen`.
 | Admin AI-cost aggregation | ✅ logic | Owner §I: supply pricing table (else cost = unknown) |
 | Content/Image/Video/Famous pipelines | ✅ code | Owner: deploy edges + apply SQL (see OWNER_ACTIONS) |
 | Consumer UI + Admin UI | ✅ (owned by Design track) | — |
+| Web deployment (Vercel + www.deokbunai.com) | ✅ live | Owner: set `EXPO_PUBLIC_PUBLIC_BASE_URL` in Vercel for canonical/SEO |
+| Web OAuth callback (`/login-callback`) | ✅ route added | works for google/kakao/naver; served as static `login-callback.html` |
+| Naver login | ✅ client path B | Owner: Naver console + Supabase custom provider (OWNER_ACTIONS §6) |
 
 ## Owner actions gating release
 See `docs/OWNER_ACTIONS_AND_DECISIONS.md`. Summary of hard gates:
@@ -36,6 +39,13 @@ See `docs/OWNER_ACTIONS_AND_DECISIONS.md`. Summary of hard gates:
 2. SQL artifacts applied in order (`docs/OWNER_ACTIONS_AND_DECISIONS.md` §1A, §3C).
 3. Native identifiers (below) — required for any native/store build.
 4. Delivery provider (§G) + pricing table (§I) — optional; app is truthful without.
+
+## Web deployment readiness (OWNER-AWAY sprint)
+- **Domain live:** apex `deokbunai.com` → 308 → `https://www.deokbunai.com` (Production), via Vercel + Gabia DNS (Owner-configured).
+- **Supabase env in Vercel:** `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set (confirmed by Owner).
+- **Web OAuth:** uses `window.location` for the redirect (no base-URL var needed); `/login-callback` is a real static page now, so the popup completes/closes. Supabase Redirect URLs must include `https://www.deokbunai.com/login-callback` (OWNER_ACTIONS §6 Step 3).
+- **Canonical/SEO:** set `EXPO_PUBLIC_PUBLIC_BASE_URL=https://www.deokbunai.com` in Vercel to enable canonical/OG/sitemap (graceful/omitted until then — no fake domain). Not required for OAuth.
+- **No `vercel.json`:** intentionally none — a broad SPA rewrite would override per-page SEO HTML. Static per-route files (incl. `login-callback.html`) are served directly.
 
 ## Native readiness (§17) — ⛔ DECISION_REQUIRED, not yet set
 - `app.json`: `name`/`slug`=DeokbunAI, `scheme`=deokbunai, `version`=1.0.0. Icons set.
