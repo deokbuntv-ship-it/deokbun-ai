@@ -229,6 +229,28 @@ describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)'
   });
 });
 
+describe('login screen provider wiring (regression lock — source-level)', () => {
+  // No RN render harness in this repo (tests are pure/fs-based), so this locks the
+  // login.tsx wiring at the source level: all three providers present + naver added,
+  // each via the shared generic handler. Guards against accidental button removal.
+  const src = fs.readFileSync(path.join(__dirname, '../../../app/login.tsx'), 'utf8');
+
+  it('wires naver through the existing generic handler', () => {
+    expect(src).toMatch(/handleLogin\('naver'\)/);
+    expect(src).toContain('네이버로 시작하기');
+  });
+
+  it('keeps kakao + google wired (no regression)', () => {
+    expect(src).toMatch(/handleLogin\('kakao'\)/);
+    expect(src).toMatch(/handleLogin\('google'\)/);
+  });
+
+  it('reuses the shared Button component + isSigningIn disabled state', () => {
+    // naver button reuses the same <Button ... disabled={isSigningIn}> pattern.
+    expect(src).toMatch(/label="네이버로 시작하기"[\s\S]*disabled=\{isSigningIn\}/);
+  });
+});
+
 describe('secret-exposure scan (directive §10/§21 — no client-side secrets)', () => {
   // All client-bundle auth source (incl. the new Naver bridge client). These MAY
   // discuss secrets in comments, so the scan targets concrete EXPOSURE patterns

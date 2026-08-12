@@ -5,15 +5,23 @@
 > (`signInWithProvider('naver')`), but did NOT add a button or alter any styling.
 > This doc lists ONLY the official requirements Design needs to place the button.
 
-## 1. What is already wired (no logic work needed)
+## 1. What is already wired
 
 - `signInWithProvider('naver')` is fully implemented (trusted edge bridge — see
-  docs/NAVER_LOGIN_ARCHITECTURE.md). A button only needs to call the existing handler:
+  docs/NAVER_LOGIN_ARCHITECTURE.md).
+- **The Naver button is now IN `login.tsx`** (added after the Google button),
+  reusing the shared `<Button>` + `disabled={isSigningIn}` exactly like kakao/google:
   ```tsx
   <Button label="네이버로 시작하기" onPress={() => handleLogin('naver')} disabled={isSigningIn} />
   ```
-  `login.tsx` already has `handleLogin(providerId)` and imports `AuthProviderId`
-  (which includes `'naver'`). This mirrors the existing kakao/google buttons.
+  It uses the **default Button style** (functional wiring only — NO custom styling
+  applied yet). Kakao/Google are unchanged.
+
+## 1b. Remaining Design follow-up — official Naver branding (optional)
+
+The button currently looks like the other social buttons (neutral). Applying Naver's
+official green branding (§2 below) is a **visual-only** follow-up owned by Design;
+change ONLY the Naver button's appearance — do not touch its `onPress`/handler.
 - Optional: per-outcome error text is available via
   `authOutcomeMessage(code)` + `isSilentOutcome(code)` from `@/features/auth`
   (a cancelled login should show NO error banner). The screen currently shows one

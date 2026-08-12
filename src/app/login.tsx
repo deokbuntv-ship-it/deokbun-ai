@@ -50,6 +50,15 @@ export default function LoginScreen() {
           disabled={isSigningIn}
         />
 
+        {/* Naver login — reuses the existing Button + generic handler (no custom
+            styling yet). Official green Naver branding is a follow-up in
+            docs/NAVER_LOGIN_UI_HANDOFF.md. */}
+        <Button
+          label="네이버로 시작하기"
+          onPress={() => handleLogin('naver')}
+          disabled={isSigningIn}
+        />
+
         {errorText ? (
           <Text variant="bodySmall" colorToken="danger">
             {errorText}
