@@ -220,3 +220,68 @@ with your OAuth credentials.
 Until (A) or (B): UI/UX MASTER SPRINT is **NOT COMPLETE** (authenticated screens
 un-inspected). All no-auth screens are QA'd (public/home/login/birth-info/consult @375,
 no overflow) and a real Markdown rendering bug was found + fixed.
+
+---
+
+## 6. NAVER LOGIN — OWNER SETUP (네이버 아이디로 로그인)
+
+The client code is done (path B). Real Naver login needs YOUR console setup below.
+Full design: `docs/NAVER_LOGIN_ARCHITECTURE.md`. Do these in order.
+
+### Step 1 — Register the app at Naver Developers
+- **WHAT:** create a Naver Login application.
+- **WHY:** to obtain a Client ID + Client Secret and register the callback.
+- **WHERE:** https://developers.naver.com → 로그인 → **Application → 애플리케이션 등록**.
+- **CLICK STEPS:**
+  1. 애플리케이션 이름: e.g. `DeokbunAI`.
+  2. 사용 API → select **네이버 로그인**.
+  3. **제공 정보 선택 (권한):** check ONLY **이용자 고유 식별자** (unique id). You MAY
+     add **이메일 주소** as 추가(optional). **Do NOT check 생일/성별/연령대/휴대전화번호**
+     (data minimization — the app never needs them; birth info is entered in-app).
+  4. **로그인 오픈 API 서비스 환경:** add **PC웹** (and 모바일웹 if used).
+     - **네이버아이디로로그인 Callback URL** (up to 5): paste
+       `https://olvkpaldrwvtexxpoaag.supabase.co/auth/v1/callback`
+       (this is Supabase's callback — Supabase, not the app, is Naver's redirect
+       target in path B).
+     - **서비스 URL:** your site domain (protocol/port are ignored; domain only).
+- **WHAT VALUE IS SHOWN:** after 등록, the app's 개요 page shows **Client ID** and
+  **Client Secret**.
+- **WHAT TO COPY:** the Client ID and Client Secret.
+- **EXPECTED RESULT:** an active Naver Login app with the Supabase callback registered.
+
+### Step 2 — Add Naver as a Supabase Custom OAuth2 provider
+- **WHAT:** wire Naver into Supabase Auth as a **custom OAuth2** provider.
+- **WHY:** Naver is not built-in and not OIDC, so it uses the custom OAuth2 path;
+  Supabase then does the token exchange (your app never handles the Naver secret).
+- **WHERE:** Supabase Dashboard → Authentication → Providers → **Custom OAuth/OIDC**.
+  Follow the official page: https://supabase.com/docs/guides/auth/custom-oauth-providers
+- **VALUES TO PASTE** (choose **OAuth2** mode, NOT OIDC — Naver has no id_token):
+  - Provider name/slug: **`naver`** (the app calls it as `custom:naver`).
+  - Authorization URL: `https://nid.naver.com/oauth2.0/authorize`
+  - Token URL: `https://nid.naver.com/oauth2.0/token`
+  - User info URL: `https://openapi.naver.com/v1/nid/me`
+  - Client ID / Client Secret: from Step 1.
+- **EXPECTED RESULT:** `custom:naver` is selectable; sign-in redirects to Naver.
+
+### Step 3 — Allow-list the app redirect URLs + keep linking OFF
+- **WHERE:** Supabase Dashboard → Authentication → URL Configuration → **Redirect URLs**.
+- **PASTE:** `http://localhost:8081/login-callback` (web dev — confirm your Metro
+  port), `https://<your-production-domain>/login-callback` (web prod),
+  `deokbunai://login-callback` (native).
+- **ALSO:** keep **automatic account linking OFF** (manual linking) so Supabase never
+  merges accounts by matching email (account-takeover safety, §10).
+- **EXPECTED RESULT:** the app returns cleanly from the OAuth popup.
+
+### Step 4 — Smoke test → decide B vs C
+- **NEXT CLAUDE ACTION / DECISION GATE:** sign in with Naver on web.
+  - ✅ **If it works** → done (path B). Report success.
+  - ❌ **If Supabase can't map Naver's profile** (Naver nests identity under
+    `response.id`, not a standard `sub` — this is the known risk): tell Claude
+    "**Naver path B failed userinfo mapping**". Claude then builds **path C** (the
+    `naver-auth` edge bridge, already designed) which needs `NAVER_CLIENT_ID` /
+    `NAVER_CLIENT_SECRET` set as Supabase secrets.
+
+### DECISION — Native identifiers still gate native Naver login
+Web Naver login works with identifiers unset. **Native** Naver login is blocked
+until `ios.bundleIdentifier`/`android.package` are decided (§H above) and a native
+build registers `deokbunai://`.
