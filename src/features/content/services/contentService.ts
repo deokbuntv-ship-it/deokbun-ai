@@ -133,6 +133,7 @@ async function listContent(
 
   if (error) {
     logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return ((data as Row[] | null) ?? []).map(toListItem);
 }
@@ -157,6 +158,7 @@ async function getContent(id: string): Promise<ContentItem | null> {
     .maybeSingle();
   if (error) {
     logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return data === null ? null : toItem(data as Row);
 }
@@ -182,6 +184,7 @@ async function createContent(input: ContentInput): Promise<ContentItem> {
     .single();
   if (error) {
     logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return toItem(data as Row);
 }
@@ -199,6 +202,7 @@ async function updateContent(id: string, input: ContentInput): Promise<void> {
   const { error } = await supabase.from(TABLE).update(coreRow(row)).eq('id', id);
   if (error) {
     logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
 }
 
@@ -210,6 +214,7 @@ async function cancelContent(id: string): Promise<void> {
     .eq('id', id);
   if (error) {
     logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
 }
 
@@ -246,6 +251,7 @@ async function listVersions(
     .limit(limit);
   if (error) {
     logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return ((data as Row[] | null) ?? []).map(toVersion);
 }

@@ -118,6 +118,7 @@ async function listFamous(params: FamousListParams): Promise<FamousListItem[]> {
 
   if (error) {
     logDbError(error, 'famous', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return ((data as Row[] | null) ?? []).map(toListItem);
 }
@@ -131,6 +132,7 @@ async function getFamous(id: string): Promise<FamousProfile | null> {
     .maybeSingle();
   if (error) {
     logDbError(error, 'famous', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return data === null ? null : toProfile(data as Row);
 }
@@ -144,6 +146,7 @@ async function createFamous(input: FamousInput): Promise<FamousProfile> {
     .single();
   if (error) {
     logDbError(error, 'famous', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
   return toProfile(data as Row);
 }
@@ -153,6 +156,7 @@ async function updateFamous(id: string, input: FamousInput): Promise<void> {
   const { error } = await supabase.from(TABLE).update(toRow(input)).eq('id', id);
   if (error) {
     logDbError(error, 'famous', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
 }
 
@@ -166,6 +170,7 @@ async function archiveFamous(id: string): Promise<void> {
     .eq('id', id);
   if (error) {
     logDbError(error, 'famous', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
   }
 }
 

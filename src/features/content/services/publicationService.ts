@@ -53,7 +53,10 @@ async function listByContent(contentId: string): Promise<ContentPublication[]> {
     .select(COLUMNS)
     .eq('content_id', contentId)
     .order('updated_at', { ascending: false });
-  if (error) logDbError(error, 'content', 'db');
+  if (error) {
+    logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
+  }
   return ((data as Row[] | null) ?? []).map(toPublication);
 }
 
@@ -73,7 +76,10 @@ async function recordManualPublish(
     })
     .select(COLUMNS)
     .single();
-  if (error) logDbError(error, 'content', 'db');
+  if (error) {
+    logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
+  }
   return toPublication(data as Row);
 }
 
@@ -83,7 +89,10 @@ async function cancelPublication(id: string): Promise<void> {
     .from(TABLE)
     .update({ status: 'cancelled' })
     .eq('id', id);
-  if (error) logDbError(error, 'content', 'db');
+  if (error) {
+    logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
+  }
 }
 
 // Persist a scheduled publication (status=scheduled). Execution (pg_cron → Edge)
@@ -103,7 +112,10 @@ async function schedulePublication(
     })
     .select(COLUMNS)
     .single();
-  if (error) logDbError(error, 'content', 'db');
+  if (error) {
+    logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
+  }
   return toPublication(data as Row);
 }
 
@@ -115,7 +127,10 @@ async function listScheduled(limit = 100): Promise<ScheduledPublicationItem[]> {
     'admin_list_scheduled_publications',
     { p_limit: limit },
   );
-  if (error) logDbError(error, 'content', 'db');
+  if (error) {
+    logDbError(error, 'content', 'db');
+    throw error; // surface the outage — never show a false success / empty on failure
+  }
   return ((data as Row[] | null) ?? []).map((row) => ({
     id: String(row.id ?? ''),
     contentId: str(row.content_id),
