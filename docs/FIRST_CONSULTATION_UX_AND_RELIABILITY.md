@@ -96,13 +96,10 @@ apply, OAuth console (Kakao KOE205/Google). See `docs/OWNER_ACTIONS_AND_DECISION
 ## Known limitations (recorded by the second-pass red-team; not fixed here)
 - `S2A-FINDING-1`: temp-subject consultations are not findable in 최근 상담 (promote on
   first authenticated send — follow-up).
-- `S2A-FINDING-3` (session expiry mid-send): a truly-dead session (expired refresh token)
-  returns a generic edge error → `REQUEST_FAILED` (recoverable) rather than `AUTH_REQUIRED`.
-  It self-corrects: `authGuard` reads LIVE auth state, so once Supabase's auth listener
-  flips to signed-out, the next 다시 시도 returns `AUTH_REQUIRED` → login → resume (the
-  question is staged then). A crisper fix maps the edge 401 to `AUTH_REQUIRED` directly
-  (needs the adapter to surface HTTP status) — deferred to avoid touching the verified
-  error contract.
+- ~~`S2A-FINDING-3` (session expiry mid-send)~~ **RESOLVED in Sprint 2B**: the adapter now
+  detects the edge 401 and throws `LLMRequestError{authError:true}`; `chatService` maps it
+  to `AUTH_REQUIRED` → question preserved → login → resume. Only 401 is treated as auth
+  (403/5xx/network stay `REQUEST_FAILED`, §16). See `docs/BETA_PRODUCTION_READINESS.md`.
 - `S2A-FINDING-4` (retry idempotency): 다시 시도 does not duplicate the bubble or re-persist,
   but each attempt uses a fresh requestId, so a response that succeeded server-side yet
   failed client-side (rare) could re-charge tokens on retry. A client→edge idempotency key

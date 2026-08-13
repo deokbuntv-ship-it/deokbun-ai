@@ -6,6 +6,11 @@
 
 > 📌 전체 V1.0 상태의 단일 기준선: [`DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
 > (production 검증 매트릭스 · readiness % · launch blockers). 이 문서는 그 하위 상세다.
+> 운영/배포 준비(env·edge·DB/RLS·observability·failure matrix·smoke runbook)는
+> [`BETA_PRODUCTION_READINESS.md`](BETA_PRODUCTION_READINESS.md) (Sprint 2B) 참조.
+>
+> **Sprint 2B 갱신 (2026-08-14):** 관리자 write false-success 제거(서비스가 실패 시 throw →
+> 화면 에러 표시); 세션 만료(edge 401) → `AUTH_REQUIRED` 정규화 → 로그인·재개. `jest` 247.
 
 ## Quality gates (local, this branch)
 | Gate | Command | State |

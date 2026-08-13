@@ -26,6 +26,20 @@
 > [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
 > — 이 §0의 여러 갱신을 하나로 통합한 최신 문서. 상태 판단은 SSOT를 우선한다.
 
+### 최신 (2026-08-14) — Sprint 2B: 운영·관리자·프로덕션 하드닝 (Codex 입장 정리)
+- **관리자 write 무결성**: content/famous/publication 서비스가 DB 실패를 삼키지 않고 **throw** →
+  기존 화면 `.catch`가 실제 오류 표시(false-success/null-crash 제거, 16곳). 참조 패턴 `e67254e`.
+- **세션 만료 정규화**: edge 401 → `LLMRequestError{authError}` → chatService **AUTH_REQUIRED**
+  → 질문 보존·로그인·재개(§14–16). (401만; 403/5xx/네트워크는 과분류 안 함.)
+- **프로덕션 준비 인벤토리**: [`docs/BETA_PRODUCTION_READINESS.md`](docs/BETA_PRODUCTION_READINESS.md)
+  — env 33개·edge 7개·DB/RLS(전 테이블 RLS 아티팩트 OK, apply=OWNER_VERIFY)·observability
+  (paid path 강함: latency/token/error-code/model/requestId)·failure matrix·smoke runbook·
+  **Codex 1B 입장 계약**. 게이트: `tsc` 0 · `jest` **247** · `expo export` 0. 미push.
+- **Codex 1B 대기 지점(유일)**: engine grounding — `chatService`의 `GROUNDING_UNAVAILABLE`을 실제
+  `ConsultationGrounding`로 교체(`CODEX_HANDOFF §23`). 그 외 주변 인프라는 READY.
+- Bounded 잔여: S2A-F1(temp-subject 검색성), OBS-SEAM(prompt-version/conversation_id/원격 error sink),
+  retry 서버 idempotency(edge dedup on requestId) — 모두 follow-up로 기록.
+
 ### 최신 (2026-08-14) — Sprint 1A: 상담 Prompt Foundation (Claude Code)
 - 독립 리뷰 #1 지적(system prompt = 1줄 placeholder) 해결: `src/features/chat/prompts/**`에
   실제 **Consultation Prompt Architecture** 구축 — 헌장(계산기≠해석자·불확실성·시기경계·안전·
