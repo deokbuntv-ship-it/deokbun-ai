@@ -469,3 +469,58 @@ memory/bounding → `buildPrompt(...)` → adapter. **No engine is called.**
 - No fake numeric score anywhere (§45). No auto-learning / engine-rule mutation from
   feedback or outcomes (§7/§31). Historical immutability: re-evaluation = NEW run.
 - `docs/CONSULTATION_INTELLIGENCE_DB.sql` is **owner-apply** — never auto-apply.
+
+---
+
+## 23. SPRINT 1A → 1B: consultation prompt seam (2026-08-14) — precise Codex handoff
+
+> Claude Code (Sprint 1A) replaced the placeholder consultation prompt with a real
+> Consultation Prompt Architecture and a **fail-closed grounding seam**. The prompt now
+> ENFORCES "interpret, don't calculate." Your job (Sprint 1B) is to compute engine facts
+> and hand them to that seam — **not** to touch the prompt/policy text or invent a
+> contract. Full context: `docs/CONSULTATION_PROMPT_ARCHITECTURE.md`. This refines §21.
+
+### 23.1 The seam you fill (single integration point)
+- **Type:** `ConsultationGrounding` (`src/features/chat/prompts/grounding.ts`). Hand:
+  `{ status: 'available', evidence: { myungri, ziwei, qimen }, assessmentSummary?, engineVersion?, assessmentVersion? }`.
+- **`evidence` reuses `EngineEvidence`** (`@/features/analysis`): `{ availability, summary?, detail? }`
+  per engine. Facts-only; `summary` is what the model relays. Honor `missing_birth_time`
+  / `not_applicable` / `engine_not_connected` truthfully — the renderer already surfaces them.
+- **Where to inject:** `chatService.sendMessage` currently sets `const grounding = GROUNDING_UNAVAILABLE;`
+  (grounded:false). Replace that with a real grounding built from the engines, keeping the
+  pipeline order (gateway→auth→context→memory→**grounding**→prompt→adapter, §76). `buildPrompt`
+  already accepts `grounding` and renders it — do not change `promptBuilder.ts`.
+
+### 23.2 Expected input → output you must produce
+- **Input:** the consultation draft's subject birth info (`getManseView`, `computeZiweiChart`,
+  `computeQimenBoard`) + an `AnalysisQuestionContext` (see §21.3) + `birthTimeAccuracy`.
+- **Output per engine:** an `EngineEvidence` (facts-only 4주/오행·십신 for SAJU; 명궁/주요 성계 for
+  ziwei; 국/용신 for qimen). The **SAJU→EngineEvidence adapter is still MISSING** (§21.3-B) —
+  build it engine-side (ziwei/qimen already have `to*Evidence`).
+- **`assessmentSummary` (optional):** a categorical natural-language line from your verified
+  ruleset (§22). **Never a numeric score** — the constitution + tests forbid "재물운 83점".
+
+### 23.3 Error behavior (fail-closed — do NOT regress)
+- If an engine can't compute, set its `EngineEvidence.availability` accordingly and leave
+  `summary` empty — the prompt flags it honestly. Do **not** fabricate a summary.
+- If you introduce an engine-*grounded* mode and evidence is missing, surface a typed
+  grounding-unavailable state to the user (§52/§53) — never silently fall back to
+  `GROUNDING_UNAVAILABLE` and answer as a generic LLM under a "grounded" label.
+- Flip `grounded:true` in `ChatServiceResult.meta` only when real evidence is attached.
+
+### 23.4 Protected files (Claude-owned — do NOT co-edit; extend via the seam only)
+`consultationPolicy.ts` (constitution/policy TEXT), `consultationMode.ts`,
+`grounding.ts` (the CONTRACT + renderer — you may add engine-side producers, not change
+the shape), `promptBuilder.ts`, `consultationPrompt.test.ts`. **Shared file you WILL edit:**
+`chatService.ts` (the grounding-build step) and `chatArchitecture.ts` only if a new
+optional field is genuinely needed (additive).
+
+### 23.5 Tests that must stay green
+`src/features/chat/prompts/__tests__/consultationPrompt.test.ts` (grounding fail-closed,
+injection boundary, no fabricated calc/timing/score) and `promptBuilder.test.ts`
+(assembly order). When you wire real evidence, ADD tests that `available` grounding
+reaches the prompt — do not weaken the fail-closed assertions.
+
+### 23.6 Out of scope for you here
+Prompt wording, response structure, uncertainty phrasing, mode classification, versioning
+— all Claude-owned. Semantic correctness / 학파·정국 / golden fixtures remain your zone (§21.5, §22).

@@ -26,6 +26,18 @@
 > [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
 > — 이 §0의 여러 갱신을 하나로 통합한 최신 문서. 상태 판단은 SSOT를 우선한다.
 
+### 최신 (2026-08-14) — Sprint 1A: 상담 Prompt Foundation (Claude Code)
+- 독립 리뷰 #1 지적(system prompt = 1줄 placeholder) 해결: `src/features/chat/prompts/**`에
+  실제 **Consultation Prompt Architecture** 구축 — 헌장(계산기≠해석자·불확실성·시기경계·안전·
+  주입저항) + 모드별 응답정책 + **fail-closed grounding seam**(엔진 미연결 시 계산 조작 금지) +
+  prompt versioning + 응답 메타(traceability). 기존 UI/adapter **무변경**(backward-compatible).
+- **엔진 의미론/실배선은 만들지 않음** — Codex Sprint 1B(`CODEX_HANDOFF §23`). 정확 상태:
+  `CONSULTATION_PROMPT_READY` · `ENGINE_INTEGRATION_SEAM_READY` ·
+  `ENGINE_GROUNDED_LIVE_CONSULTATION_NOT_YET`.
+- 적대적 2차 검토(red-team)로 HIGH 2건(프로필 필드 system 주입, 근거 없을 때 해석 조작) 등
+  수정·테스트 잠금. 게이트: `tsc` 0 · `jest` **227/227** · `expo export` 0. 상세:
+  [`docs/CONSULTATION_PROMPT_ARCHITECTURE.md`](docs/CONSULTATION_PROMPT_ARCHITECTURE.md). 미push.
+
 ### 최신 (2026-08-14) — SSOT 통합 + Consultation Intelligence 기반
 - **Repository-wide 통합 감사** 후 `docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md` 신설
   (12개 도메인 인벤토리 · production 검증 매트릭스 · readiness %). ARCHITECTURE/
