@@ -227,6 +227,19 @@ describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)'
   it('stays put while auth state is still loading (popup closes first)', () => {
     expect(resolveOAuthReturn('loading')).toBeNull();
   });
+  it('resumes an authenticated user to a SAFE internal returnTo (§9/§28)', () => {
+    expect(resolveOAuthReturn('authenticated', '/chat')).toBe('/chat');
+    expect(resolveOAuthReturn('authenticated', '/chat?q=x')).toBe('/chat?q=x');
+  });
+  it('ignores an unsafe returnTo and falls back to home (no open redirect, §15/§52)', () => {
+    expect(resolveOAuthReturn('authenticated', 'https://evil.example')).toBe('/');
+    expect(resolveOAuthReturn('authenticated', '//evil.example')).toBe('/');
+    expect(resolveOAuthReturn('authenticated', 'javascript:alert(1)')).toBe('/');
+    expect(resolveOAuthReturn('authenticated', 'chat')).toBe('/'); // not absolute
+  });
+  it('never honours returnTo when not authenticated', () => {
+    expect(resolveOAuthReturn('unauthenticated', '/chat')).toBe('/login');
+  });
 });
 
 describe('login screen provider wiring (regression lock — source-level)', () => {

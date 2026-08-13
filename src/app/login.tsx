@@ -6,6 +6,7 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth, type AuthProviderId } from '@/features/auth';
+import { consumePendingReturnTo } from '@/features/consultation';
 
 const SIGN_IN_FAILED_MESSAGE = '로그인에 실패했습니다. 다시 시도해 주세요.';
 
@@ -21,7 +22,11 @@ export default function LoginScreen() {
     const success = await signInWithProvider(providerId);
 
     if (success) {
-      router.replace('/');
+      // Authentication is an interruption, not a reset (§9): resume the consultation
+      // the user was in, not always Home. returnTo is a pre-validated internal route
+      // (open-redirect-safe, §12/§52); default Home when there is nothing to resume.
+      const returnTo = consumePendingReturnTo();
+      router.replace(returnTo ?? '/');
       return;
     }
 

@@ -7,6 +7,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth';
 import { resolveOAuthReturn } from '@/features/auth/services/oauthReturn';
+import { peekPendingConsultationIntent } from '@/features/consultation';
 
 // Provider-neutral OAuth return route (google / kakao / naver all share it).
 //
@@ -30,11 +31,15 @@ export default function LoginCallbackScreen() {
   const { authState } = useAuth();
 
   useEffect(() => {
-    const destination = resolveOAuthReturn(authState.status);
+    // Peek (do not consume) the resume route so the opener window (login.tsx) remains
+    // the single consumer in the popup flow; this only matters on a direct/full-page
+    // landing where this route IS the main window.
+    const returnTo = peekPendingConsultationIntent()?.returnTo;
+    const destination = resolveOAuthReturn(authState.status, returnTo);
     if (destination !== null) {
       router.replace(destination);
     }
-    // null ('loading') → wait; in the popup flow this window closes first.
+    // null ('loading') → wait; in the web popup flow this window closes first.
   }, [authState.status, router]);
 
   return (
