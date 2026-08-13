@@ -21,9 +21,18 @@ import { colors, radius, spacing } from '@/theme';
 type PersonSelectorSheetProps = {
   visible: boolean;
   onClose: () => void;
+  // true when the sheet was opened to START a consultation (proceed to chat on select);
+  // false/omitted when used as the header subject-switcher (just apply + close). This is
+  // an explicit signal, NOT inferred from global pending state, so switching a subject
+  // can never be misrouted into a new consultation. §21/§28.
+  startConsultationOnSelect?: boolean;
 };
 
-export function PersonSelectorSheet({ visible, onClose }: PersonSelectorSheetProps) {
+export function PersonSelectorSheet({
+  visible,
+  onClose,
+  startConsultationOnSelect = false,
+}: PersonSelectorSheetProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
@@ -46,6 +55,11 @@ export function PersonSelectorSheet({ visible, onClose }: PersonSelectorSheetPro
     });
     updateBirthInfo(record.birthInfo);
     onClose();
+    // Proceed into chat only when the sheet was opened to start a consultation; chat
+    // consumes any pending question. The header switcher just applies + closes. §28.
+    if (startConsultationOnSelect) {
+      router.push({ pathname: '/chat', params: { startNew: '1' } });
+    }
   };
 
   const addSubject = () => {

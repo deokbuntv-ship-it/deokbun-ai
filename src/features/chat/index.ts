@@ -35,4 +35,10 @@ export type {
 } from './services/conversationService';
 export { useConversationPersistence } from './hooks/useConversationPersistence';
 export type { MessagesHydrationStatus } from './hooks/useConversationPersistence';
+export { mapConsultationError } from './consultationErrors';
+export type {
+    ConsultationErrorCode,
+    ConsultationErrorKind,
+    ConsultationErrorView,
+} from './consultationErrors';
 

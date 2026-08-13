@@ -19,7 +19,11 @@ import {
   conversationService,
   type ConversationSummaryItem,
 } from '@/features/chat';
-import { isSavedSubjectId, useConsultationDraft } from '@/features/consultation';
+import {
+  isSavedSubjectId,
+  setPendingConsultationIntent,
+  useConsultationDraft,
+} from '@/features/consultation';
 import { fortuneMailService, type FortuneMailItem } from '@/features/fortune';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors } from '@/theme';
@@ -75,6 +79,9 @@ export default function HomeScreen() {
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   const [sheetVisible, setSheetVisible] = useState(false);
+  // Distinguish opening the person sheet to START a consultation vs. to SWITCH the
+  // active subject (header), so selecting a person only routes to chat in the former.
+  const [sheetForConsult, setSheetForConsult] = useState(false);
   const [recent, setRecent] = useState<ConversationSummaryItem | null>(null);
   const [mail, setMail] = useState<FortuneMailItem | null>(null);
   // Time-of-day greeting must be deterministic on first render so the web static
@@ -121,14 +128,17 @@ export default function HomeScreen() {
   // Start a (new) consultation with an optional prefilled question. UI never
   // calls the LLM — this only navigates into the chat screen.
   const startConsult = (question: string) => {
+    // The question rides the EPHEMERAL store (never the URL — it is sensitive, §20) and
+    // is consumed by chat. This covers both the has-subject and no-subject paths.
+    if (question.trim().length > 0) {
+      setPendingConsultationIntent({ question });
+    }
     if (!subject) {
+      setSheetForConsult(true);
       setSheetVisible(true);
       return;
     }
-    router.push({
-      pathname: '/chat',
-      params: question ? { q: question, startNew: '1' } : { startNew: '1' },
-    });
+    router.push({ pathname: '/chat', params: { startNew: '1' } });
   };
 
   return (
@@ -137,7 +147,10 @@ export default function HomeScreen() {
         brand
         showSwitcher
         subjectLabel={subject?.displayName ?? '나'}
-        onSwitcher={() => setSheetVisible(true)}
+        onSwitcher={() => {
+          setSheetForConsult(false);
+          setSheetVisible(true);
+        }}
       />
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -280,6 +293,7 @@ export default function HomeScreen() {
 
       <PersonSelectorSheet
         visible={sheetVisible}
+        startConsultationOnSelect={sheetForConsult}
         onClose={() => setSheetVisible(false)}
       />
     </Screen>

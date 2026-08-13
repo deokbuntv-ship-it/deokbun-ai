@@ -20,12 +20,16 @@ import {
     ChatBubble,
     ChatInput,
     createChatService,
+    mapConsultationError,
     supabaseEdgeLLMAdapter,
     useConversationPersistence,
     type ChatMessage,
+    type ConsultationErrorView,
 } from '@/features/chat';
 import {
+    consumePendingQuestion,
     isSavedSubjectId,
+    setPendingConsultationIntent,
     useConsultationDraft,
     type BirthInfoDraft,
     type ConsultationSubject,
@@ -41,12 +45,6 @@ const WELCOME_MESSAGE: ChatMessage = {
   text: WELCOME_MESSAGE_TEXT,
 };
 
-const ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT =
-  '현재 AI 상담 기능을 준비하고 있습니다.\n잠시 후 다시 시도해 주세요.';
-
-const AUTH_REQUIRED_MESSAGE_TEXT =
-  'AI 상담을 이용하려면 로그인이 필요합니다.\n아래 "로그인하기" 버튼을 눌러 로그인해 주세요.';
-
 function createMessageId(role: ChatMessage['role']): string {
   return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -57,7 +55,6 @@ export default function ChatScreen() {
   const params = useLocalSearchParams<{
     startNew?: string;
     conversationId?: string;
-    q?: string;
   }>();
 
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -157,7 +154,14 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isAuthRequired, setIsAuthRequired] = useState(false);
+  // Inline, actionable error (auth / recoverable / blocked) instead of a fake assistant
+  // bubble. `lastAttemptRef` holds the failed question + its context so "다시 시도" can
+  // re-send the SAME message without duplicating the user bubble or its persistence (§30/§37).
+  const [sendError, setSendError] = useState<ConsultationErrorView | null>(null);
+  const lastAttemptRef = useRef<{ text: string; context: ChatMessage[] } | null>(null);
+  // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
+  // same-frame double-tap cannot start two sends (§30/§e).
+  const isSendingRef = useRef(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -194,17 +198,22 @@ export default function ChatScreen() {
       return;
     }
     setMessages([WELCOME_MESSAGE, ...(restoredMessages ?? [])]);
-    // Prefill the composer once from a home/quick-prompt question (never
-    // auto-sent — the user reviews and taps send). UI never calls the LLM.
-    const q = typeof params.q === 'string' ? params.q.trim() : '';
+    // Prefill the composer once from the question preserved across the person-sheet /
+    // birth-info / login journey (§28) — NEVER auto-sent (§29). The question rides the
+    // ephemeral store, not the URL (§20). Only for a FRESH consultation: opening an
+    // existing conversation by id must not resurface a pending question.
+    const q =
+      !qSeededRef.current && conversationIdParam === undefined
+        ? (consumePendingQuestion() ?? '')
+        : '';
     if (!qSeededRef.current && q.length > 0) {
       qSeededRef.current = true;
       setInputText(q);
     } else {
       setInputText('');
     }
-    setIsAuthRequired(false);
-  }, [messagesHydrationStatus, resetToken, restoredMessages, params.q]);
+    setSendError(null);
+  }, [messagesHydrationStatus, resetToken, restoredMessages, conversationIdParam]);
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -212,8 +221,52 @@ export default function ChatScreen() {
     });
   };
 
+  // Send `text` with the given prior-message context. Used by both the first send and
+  // the retry, so a recoverable retry re-sends the SAME message WITHOUT adding a second
+  // user bubble or re-persisting it (§30/§37). (It cannot double-PERSIST or duplicate the
+  // bubble; true end-to-end idempotency against a succeeded-server-but-failed-client
+  // response would need a request key — tracked as a follow-up.) Login-before-LLM is
+  // unchanged — the service gates on auth and returns AUTH_REQUIRED before any adapter
+  // call, and authGuard reads LIVE auth state so an expired session re-gates on retry (§57).
+  const runSend = async (text: string, context: ChatMessage[]) => {
+    setIsSending(true);
+    try {
+      const result = await chatServiceRef.current.sendMessage({
+        userMessage: text,
+        draft,
+        messages: context,
+        conversationMemory,
+      });
+
+      if (result.success) {
+        const assistantMessage: ChatMessage = {
+          id: createMessageId('assistant'),
+          role: 'assistant',
+          text: result.responseText,
+        };
+        setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+        persistMessage(assistantMessage);
+        setSendError(null);
+        lastAttemptRef.current = null;
+      } else {
+        const view = mapConsultationError(result.errorCode);
+        if (result.errorCode === 'AUTH_REQUIRED') {
+          // Preserve the question + resume route so login returns here, not Home (§9/§28).
+          setPendingConsultationIntent({ question: text, returnTo: '/chat' });
+        }
+        setSendError(view);
+        lastAttemptRef.current = view.canRetry ? { text, context } : null;
+      }
+
+      scrollToEnd();
+    } finally {
+      setIsSending(false);
+      isSendingRef.current = false;
+    }
+  };
+
   const handleSend = async () => {
-    if (isSending) {
+    if (isSendingRef.current) {
       return;
     }
 
@@ -223,6 +276,7 @@ export default function ChatScreen() {
       return;
     }
 
+    isSendingRef.current = true; // lock synchronously, before any state update/await
     const previousMessages = messages;
 
     const userMessage: ChatMessage = {
@@ -233,58 +287,27 @@ export default function ChatScreen() {
 
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setInputText('');
+    setSendError(null);
     scrollToEnd();
     persistMessage(userMessage);
 
-    setIsSending(true);
+    await runSend(trimmedInput, previousMessages);
+  };
 
-    try {
-      const result = await chatServiceRef.current.sendMessage({
-        userMessage: trimmedInput,
-        draft,
-        messages: previousMessages,
-        conversationMemory,
-      });
-
-      if (result.success) {
-        const assistantMessage: ChatMessage = {
-          id: createMessageId('assistant'),
-          role: 'assistant',
-          text: result.responseText,
-        };
-
-        setMessages((currentMessages) => [
-          ...currentMessages,
-          assistantMessage,
-        ]);
-        persistMessage(assistantMessage);
-      } else {
-        if (result.errorCode === 'AUTH_REQUIRED') {
-          setIsAuthRequired(true);
-        }
-
-        const errorText =
-          result.errorCode === 'AUTH_REQUIRED'
-            ? AUTH_REQUIRED_MESSAGE_TEXT
-            : ADAPTER_NOT_CONFIGURED_MESSAGE_TEXT;
-
-        const assistantMessage: ChatMessage = {
-          id: createMessageId('assistant'),
-          role: 'assistant',
-          text: errorText,
-        };
-
-        // Error placeholders are intentionally NOT persisted.
-        setMessages((currentMessages) => [
-          ...currentMessages,
-          assistantMessage,
-        ]);
-      }
-
-      scrollToEnd();
-    } finally {
-      setIsSending(false);
+  // "다시 시도" for a recoverable failure — re-sends the same question with its original
+  // context. No new user bubble / no re-persist, so retry can never duplicate a message
+  // or double the token cost.
+  const handleRetry = async () => {
+    if (isSendingRef.current) {
+      return;
     }
+    const attempt = lastAttemptRef.current;
+    if (attempt === null) {
+      return;
+    }
+    isSendingRef.current = true; // lock synchronously (mirror handleSend)
+    setSendError(null);
+    await runSend(attempt.text, attempt.context);
   };
 
   const header = (
@@ -356,13 +379,25 @@ export default function ChatScreen() {
 
         <View style={[styles.inputArea, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={styles.contentWrapper}>
-            {isAuthRequired && !isAuthenticated ? (
-              <Stack gap="xs" style={styles.loginPrompt}>
-                <Button
-                  label="로그인하기"
-                  onPress={() => router.push('/login')}
-                />
-              </Stack>
+            {sendError ? (
+              <Card style={styles.errorCard}>
+                <Stack gap="sm">
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    {sendError.message}
+                  </Text>
+                  {sendError.kind === 'auth' && !isAuthenticated ? (
+                    <Button label="로그인하기" onPress={() => router.push('/login')} />
+                  ) : null}
+                  {sendError.canRetry ? (
+                    <Button
+                      label="다시 시도"
+                      variant="secondary"
+                      onPress={handleRetry}
+                      disabled={isSending}
+                    />
+                  ) : null}
+                </Stack>
+              </Card>
             ) : null}
             <ChatInput
               value={inputText}
@@ -402,7 +437,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  loginPrompt: {
+  errorCard: {
     marginBottom: spacing.sm,
   },
 });
