@@ -23,3 +23,13 @@ export {
     createTempSubjectId, isSavedSubjectId, isTempSubjectId
 } from './types/subject';
 
+export {
+    clearPendingConsultationIntent,
+    consumePendingQuestion,
+    consumePendingReturnTo,
+    isSafeReturnTo,
+    peekPendingConsultationIntent,
+    setPendingConsultationIntent,
+} from './pendingConsultationIntent';
+export type { PendingConsultationIntent } from './pendingConsultationIntent';
+
