@@ -45,6 +45,12 @@ export function selectConsultationContext(
   const birthDate = `${birthInfo.birthYear}.${birthInfo.birthMonth}.${birthInfo.birthDay}`;
   const birthTimeSummary = buildBirthTimeSummary(birthInfo);
   const birthPlace = birthInfo.birthPlace.trim();
+  const birthTimeAccuracy: 'exact' | 'approximate' | 'unknown' =
+    birthInfo.birthTimeAccuracy === 'exact'
+      ? 'exact'
+      : birthInfo.birthTimeAccuracy === 'approximate'
+        ? 'approximate'
+        : 'unknown';
 
   return {
     subjectDisplayName,
@@ -52,5 +58,6 @@ export function selectConsultationContext(
     birthDate,
     birthTimeSummary,
     birthPlace,
+    birthTimeAccuracy,
   };
 }

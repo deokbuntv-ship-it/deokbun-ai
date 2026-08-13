@@ -9,6 +9,9 @@ import type { LLMAdapter } from '@/features/chat/adapters/llmAdapter';
 import { chatConfig } from '@/features/chat/config/chatConfig';
 import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
+import { classifyConsultationMode } from '@/features/chat/prompts/consultationMode';
+import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
+import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
 import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import type {
@@ -76,11 +79,22 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
       (m) => m.text,
     );
 
+    // Response-shaping mode + grounding. Grounding is fail-closed UNAVAILABLE until Codex
+    // wires the deterministic engines (§12) — the prompt then forbids fabricated
+    // calculation rather than silently answering as a generic LLM (§53).
+    const mode = classifyConsultationMode(
+      trimmedUserMessage,
+      boundedRecentMessages.length > 0 || memoryResult.existingSummary !== null,
+    );
+    const grounding = GROUNDING_UNAVAILABLE;
+
     const promptMessages = buildPrompt({
       selectedContext,
       conversationSummary: memoryResult.existingSummary,
       recentMessages: boundedRecentMessages,
       currentUserMessage: trimmedUserMessage,
+      grounding,
+      mode,
     });
 
     try {
@@ -92,7 +106,16 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
         requestId, // forwarded to the edge for end-to-end correlation
       });
 
-      return { success: true, responseText: response.text, requestId };
+      return {
+        success: true,
+        responseText: response.text,
+        requestId,
+        meta: {
+          promptVersion: CONSULTATION_PROMPT_VERSION,
+          mode,
+          grounded: grounding.status === 'available',
+        },
+      };
     } catch {
       logFailure('REQUEST_FAILED', 'error');
       return { success: false, errorCode: 'REQUEST_FAILED', requestId };

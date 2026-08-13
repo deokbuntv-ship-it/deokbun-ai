@@ -1,4 +1,6 @@
 import type { ConsultationDraft } from '@/features/consultation';
+import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
+import type { ConsultationMode } from '@/features/chat/prompts/consultationMode';
 import type { ChatMessage } from './chat';
 
 export type LLMMessageRole = 'system' | 'user' | 'assistant';
@@ -14,6 +16,9 @@ export type SelectedConsultationContext = {
   birthDate: string;
   birthTimeSummary: string;
   birthPlace: string;
+  // Birth-time certainty, so the prompt can honor the birth-time-unknown / approximate
+  // policy (§23/§24) without fabricating a 시주. Optional for backward compatibility.
+  birthTimeAccuracy?: 'exact' | 'approximate' | 'unknown';
 };
 
 export type PromptBuildInput = {
@@ -21,6 +26,31 @@ export type PromptBuildInput = {
   conversationSummary: string | null;
   recentMessages: ChatMessage[];
   currentUserMessage: string;
+  // Deterministic engine grounding (Codex integration seam, §12). Optional — defaults
+  // to GROUNDING_UNAVAILABLE (fail-closed: interpret only the stated birth facts).
+  grounding?: ConsultationGrounding;
+  // Response-shaping mode (§14). Optional — defaults to classifying currentUserMessage.
+  mode?: ConsultationMode;
+};
+
+// Response contract seam (§33/§37). The LLM answer stays a natural-language string
+// (backward-compatible with the current UI + parseStructuredAiResponse fallback); this
+// metadata makes a consultation TRACEABLE (which prompt/mode/grounding produced it) for
+// Consultation-Intelligence and future evaluation. `model`/`engineVersion` are filled
+// when the edge/Codex supply them.
+export type ConsultationResponseMetadata = {
+  promptVersion: string;
+  mode: ConsultationMode;
+  grounded: boolean;
+  model?: string | null;
+  engineVersion?: string | null;
+  assessmentVersion?: string | null;
+};
+
+export type ConsultationResponse = {
+  answer: string;
+  followUpSuggestions?: string[];
+  metadata?: ConsultationResponseMetadata;
 };
 
 export type LLMRequest = {
@@ -62,6 +92,8 @@ export type ChatServiceResult =
       responseText: string;
       // Correlation id for tracing/logging this request (optional; additive).
       requestId?: string;
+      // Prompt/mode/grounding traceability (optional; additive — the UI ignores it).
+      meta?: ConsultationResponseMetadata;
     }
   | {
       success: false;
