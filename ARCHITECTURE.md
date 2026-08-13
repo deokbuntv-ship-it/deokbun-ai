@@ -8,6 +8,13 @@
 >
 > 기준 커밋: `87ec6e8` · 작성일: 2026-08-07
 
+> ⚠️ **SUPERSEDED / STALE (2026-08-07 스냅샷).** 이 문서는 `87ec6e8` 시점 상태이며
+> 이후 구현(supabase/functions 7종 · 실 LLM Edge 어댑터 · SAJU/Ziwei/Qimen 엔진 ·
+> /admin 콘솔 · Naver 로그인 운영검증 · jest 200 테스트)이 **반영되지 않았다.** 이 문서의
+> `[계획]`/미구현/"~20%" 표기는 더 이상 사실이 아니다. **현재 실제 상태의 단일 기준선:
+> [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md).**
+> 충돌 시 코드 → SSOT를 우선한다.
+
 ------------------------------------------------------------
 
 ## 시스템 전체 구조

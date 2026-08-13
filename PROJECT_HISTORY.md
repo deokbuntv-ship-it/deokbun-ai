@@ -1,5 +1,11 @@
 # PROJECT_HISTORY.md
 
+> ⚠️ **SUPERSEDED / STALE (2026-08-07 스냅샷).** 설계 의도/역사 기록으로는 유효하지만,
+> "현재 진행률 ~20%", "실 LLM/Edge/DB 미구현", "kakao만 구현·/login dead route" 등
+> **상태 서술은 낡았다** (이후 대부분 구현됨). 현재 실제 상태의 단일 기준선:
+> [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md).
+> 충돌 시 코드 → SSOT를 우선한다.
+
 > DeokbunAI 프로젝트 개발 역사 문서
 >
 > 이 문서는 단순한 변경 이력이 아니다. **"왜 현재 구조가 만들어졌는가"**를 기록한다.

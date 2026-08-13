@@ -6,6 +6,9 @@ ACTIONS you run now, (2) OWNER DECISIONS (cost/lock-in — no default chosen),
 
 ---
 
+> 📌 전체 V1.0 상태 + Owner Action 요약의 단일 기준선:
+> [`DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md) §22.
+
 ## 1. USER ACTION QUEUE (run now)
 
 ### A. Supabase SQL Editor (paste file contents, run)

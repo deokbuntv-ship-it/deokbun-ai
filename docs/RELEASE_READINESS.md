@@ -4,6 +4,9 @@
 > what is code-complete vs. what still needs an **Owner action** or **Codex** before
 > a real release. No fabricated "done". Date context: pre-Codex-return (2026-08-17).
 
+> 📌 전체 V1.0 상태의 단일 기준선: [`DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
+> (production 검증 매트릭스 · readiness % · launch blockers). 이 문서는 그 하위 상세다.
+
 ## Quality gates (local, this branch)
 | Gate | Command | State |
 |---|---|---|

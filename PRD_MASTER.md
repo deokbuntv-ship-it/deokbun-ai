@@ -1,5 +1,12 @@
 # PRD_MASTER.md
 
+> ⚠️ **상태 서술 부분 STALE (2026-08-07 기준).** 제품 요구사항(무엇을 만들 것인가)으로는
+> 유효하지만, "현재 어디까지 왔는가" 서술과 §1 메타데이터는 낡았다: `ARCHITECTURE.md`·
+> `PROJECT_HISTORY.md`·`AI_CONSTITUTION.md`는 **이제 Repo에 존재**하고, "Backend 0%/
+> Database 0%/supabase 디렉터리 없음/테스트 프레임워크 MISSING"도 **더 이상 사실이 아니다**
+> (Edge 7종·실 LLM·엔진·jest 200 테스트 존재). 현재 실제 구현 상태의 단일 기준선:
+> [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md).
+
 > DeokbunAI 최상위 제품 요구사항 문서 (Master Product Requirements Document)
 >
 > 이 문서는 DeokbunAI의 장기 기준 명세서다. 현재 구현 정리 문서가 아니라

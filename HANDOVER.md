@@ -22,6 +22,21 @@
 > ⚠️ 아래 1~20절은 2026-08-07 `main` 기준(관리자/실 LLM 이전)이며 일부는
 > 이 0절로 **대체**되었다. 최신 사실은 이 0절을 우선한다.
 
+> 📌 **전체 V1.0 상태의 단일 기준선(SSOT):**
+> [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
+> — 이 §0의 여러 갱신을 하나로 통합한 최신 문서. 상태 판단은 SSOT를 우선한다.
+
+### 최신 (2026-08-14) — SSOT 통합 + Consultation Intelligence 기반
+- **Repository-wide 통합 감사** 후 `docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md` 신설
+  (12개 도메인 인벤토리 · production 검증 매트릭스 · readiness %). ARCHITECTURE/
+  PROJECT_HISTORY/PRD_MASTER에 SUPERSEDED 배너 부착.
+- **Consultation Intelligence 기반**(`src/features/intelligence/**`, `1da8083`+`cf2fe7e`)
+  — 순수 계약+검증 22 테스트, **live 미배선**(Codex), SQL은 HOLD(owner-apply).
+- **게이트 갱신:** `jest` **200/200 (21 suites)** (이전 §0의 178/178은 낡음) · `tsc` 0 ·
+  `expo export` 0. HEAD `cf2fe7e`.
+- **최상위 미해결(SSOT §27):** 엔진→프롬프트 live 배선(Codex #1) · LLM/DB 프로덕션 검증(Owner)
+  · 첫 상담 auth-friction(Design).
+
 ### 최신 (2026-08-12) — 네이버 로그인 **PRODUCTION E2E VERIFIED** ✅
 
 - **네이버 아이디로 로그인 = 운영 검증 완료** (`https://www.deokbunai.com`, 2026-08-12).

@@ -5,6 +5,11 @@
 > 브랜치: `admin/master-operations-content`. 원격 동기 HEAD = `390f8a8`.
 > **원격 미push 로컬 커밋**: `383ea14`(스키마/handover) → `f45a675`(analysis 계약) →
 > (이 문서 커밋). 사용자 검수 전 push 금지.
+>
+> 📌 **갱신 (2026-08-14):** 위 "원격 HEAD `390f8a8`"·미push 체인 서술은 낡음 — 현재
+> HEAD = `cf2fe7e`. 테스트 러너 "없음"(§13)도 낡음 — jest 200 테스트 존재. Codex 작업의
+> 현재 우선순위/상태는 [`DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
+> §23 참조. 본 문서의 §21(엔진→프롬프트)·§22(Intelligence) 기술 내용 자체는 유효하다.
 
 ---
 
