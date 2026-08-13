@@ -3,6 +3,7 @@
 // are injected (no network, no mocks), and a spy adapter lets us assert whether the
 // paid path was reached.
 import { unconfiguredLLMAdapter, type LLMAdapter } from '@/features/chat/adapters/llmAdapter';
+import { LLMRequestError } from '@/features/chat/adapters/llmError';
 import { createChatService, type AuthGuard } from '@/features/chat/services/chatService';
 import type { ChatServiceInput } from '@/features/chat/types/chatArchitecture';
 
@@ -88,6 +89,31 @@ describe('createChatService — login-before-LLM gate + boundaries', () => {
 
   it('an adapter failure maps to REQUEST_FAILED and never throws to the caller', async () => {
     const r = await createChatService(unconfiguredLLMAdapter, allow).sendMessage(
+      input('올해 재물운은 어때?'),
+    );
+    expect(r).toMatchObject({ success: false, errorCode: 'REQUEST_FAILED' });
+  });
+
+  it('an authed request whose session expired (edge 401) normalises to AUTH_REQUIRED (§14/§15)', async () => {
+    const authExpiredAdapter: LLMAdapter = {
+      async generateResponse() {
+        throw new LLMRequestError('LLM request failed.', { authError: true });
+      },
+    };
+    // allow() = the client still believes it is authenticated; the SERVER rejected it.
+    const r = await createChatService(authExpiredAdapter, allow).sendMessage(
+      input('올해 재물운은 어때?'),
+    );
+    expect(r).toMatchObject({ success: false, errorCode: 'AUTH_REQUIRED' });
+  });
+
+  it('a non-auth LLMRequestError stays REQUEST_FAILED (do not over-classify, §16)', async () => {
+    const genericAdapter: LLMAdapter = {
+      async generateResponse() {
+        throw new LLMRequestError('LLM response was empty.');
+      },
+    };
+    const r = await createChatService(genericAdapter, allow).sendMessage(
       input('올해 재물운은 어때?'),
     );
     expect(r).toMatchObject({ success: false, errorCode: 'REQUEST_FAILED' });

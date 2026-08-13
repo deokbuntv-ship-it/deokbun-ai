@@ -1,3 +1,4 @@
+import { LLMRequestError, isAuthTransportError } from '@/features/chat/adapters/llmError';
 import type { LLMAdapter } from '@/features/chat/adapters/llmAdapter';
 import type {
     LLMRequest,
@@ -27,13 +28,17 @@ export const supabaseEdgeLLMAdapter: LLMAdapter = {
     });
 
     if (error) {
-      throw new Error('LLM request failed.');
+      // A 401 means the session expired/invalid → surface as an auth error so the client
+      // routes to login+resume rather than an endless "다시 시도" (§14–§16).
+      throw new LLMRequestError('LLM request failed.', {
+        authError: isAuthTransportError(error),
+      });
     }
 
     const text = (data as { text?: unknown } | null)?.text;
 
     if (typeof text !== 'string' || text.trim().length === 0) {
-      throw new Error('LLM response was empty.');
+      throw new LLMRequestError('LLM response was empty.');
     }
 
     return { text };

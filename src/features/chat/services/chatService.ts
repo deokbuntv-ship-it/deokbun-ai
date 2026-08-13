@@ -6,6 +6,7 @@ import {
   toAppErrorCode,
 } from '@/features/analysis';
 import type { LLMAdapter } from '@/features/chat/adapters/llmAdapter';
+import { isAuthLLMError } from '@/features/chat/adapters/llmError';
 import { chatConfig } from '@/features/chat/config/chatConfig';
 import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
@@ -116,7 +117,13 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
           grounded: grounding.status === 'available',
         },
       };
-    } catch {
+    } catch (error) {
+      // Normalise an expired/invalid session (edge 401) to AUTH_REQUIRED so the client
+      // preserves the question and resumes after login, rather than looping on retry (§15).
+      if (isAuthLLMError(error)) {
+        logFailure('AUTH_REQUIRED', 'warning');
+        return { success: false, errorCode: 'AUTH_REQUIRED', requestId };
+      }
       logFailure('REQUEST_FAILED', 'error');
       return { success: false, errorCode: 'REQUEST_FAILED', requestId };
     }
