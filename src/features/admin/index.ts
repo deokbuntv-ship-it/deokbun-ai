@@ -28,6 +28,7 @@ export { AdminTable } from './components/AdminTable';
 export type { AdminTableColumn } from './components/AdminTable';
 export { AdminBadge } from './components/AdminBadge';
 export type { AdminBadgeTone } from './components/AdminBadge';
+export { AssessmentMatrix } from './components/AssessmentMatrix';
 export { FortuneMailDetailDrawer } from './components/FortuneMailDetailDrawer';
 export { AdminGate } from './components/AdminGate';
 export { AdminPageHeader } from './components/AdminPageHeader';
