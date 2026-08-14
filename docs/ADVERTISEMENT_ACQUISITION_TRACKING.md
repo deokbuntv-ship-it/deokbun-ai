@@ -48,6 +48,13 @@ UI `src/app/admin/ads/*`.
 Idempotency (§26): a unique index `(user_id, event_type)` on the one-time milestones — a
 duplicated signup/first-consultation is impossible at the DB level.
 
+**Ordering safety:** the attribution row and the conversion events are two unordered writes
+at first auth. The forward triggers set `signup_at`/`first_consultation_at` when attribution
+already exists; a **backfill trigger** on `user_acquisition_attribution` INSERT adopts any
+already-present event timestamps for the opposite order. Together they make the analytics
+anchors reliable regardless of which write commits first (fixes a race the adversarial pass
+caught).
+
 ## First-consultation definition (§25)
 The single server-authoritative point is the chat Edge Function success (it writes
 `ai_usage_logs status='success' request_type='chat'` with the verified JWT `user_id`). The

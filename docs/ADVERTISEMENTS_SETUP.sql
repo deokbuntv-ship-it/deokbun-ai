@@ -167,63 +167,38 @@ drop trigger if exists trg_ad_on_birth_info on public.consultation_subjects;
 create trigger trg_ad_on_birth_info after insert on public.consultation_subjects
   for each row execute function public.ad_on_birth_info();
 
+-- BACKFILL (fixes the attribution/conversion ORDERING RACE): the attribution row and the
+-- conversion events (signup / first_consultation) are two independent, unordered writes at
+-- first auth. The forward triggers above set signup_at/first_consultation_at only when the
+-- attribution row already exists; this AFTER INSERT trigger covers the opposite order by
+-- adopting any conversion-event timestamps that already exist when attribution lands. With
+-- both, signup_at/first_consultation_at are reliable regardless of order.
+create or replace function public.ad_backfill_attribution()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  update public.user_acquisition_attribution ua
+    set signup_at = coalesce(ua.signup_at, (
+          select min(e.created_at) from public.ad_tracking_events e
+          where e.user_id = new.user_id and e.event_type = 'signup')),
+        first_consultation_at = coalesce(ua.first_consultation_at, (
+          select min(e.created_at) from public.ad_tracking_events e
+          where e.user_id = new.user_id and e.event_type = 'first_consultation'))
+    where ua.user_id = new.user_id;
+  return new;
+end $$;
+drop trigger if exists trg_ad_backfill_attribution on public.user_acquisition_attribution;
+create trigger trg_ad_backfill_attribution after insert on public.user_acquisition_attribution
+  for each row execute function public.ad_backfill_attribution();
+
 -- ---- 5. Admin performance RPC (is_admin()-gated, aggregate only) -------------
 -- Returns per-ad counts. Retention (D1/D7/D30) = user had a successful chat usage at
 -- >= signup + N days (rolling-return survival window; see
 -- docs/ADVERTISEMENT_ACQUISITION_TRACKING.md). Aggregate only — no user PII (§45).
-create or replace function public.admin_ad_performance(p_from timestamptz default null, p_to timestamptz default null)
-returns table (
-  ad_id uuid, clicks bigint, unique_visitors bigint, birth_info bigint,
-  signups bigint, first_consultations bigint, d1 bigint, d7 bigint, d30 bigint
+-- SINGLE definition — plpgsql, is_admin()-gated in the body (a non-admin gets an exception,
+-- never rows), so no unguarded variant of this function can exist (§14).
+create or replace function public.admin_ad_performance(
+  p_from timestamptz default null, p_to timestamptz default null
 )
-language sql stable security definer set search_path = public as $$
-  with a as (
-    select id from public.advertisements
-  ),
-  clk as (
-    select e.ad_id, count(*) as clicks, count(distinct e.visitor_id) as uniq
-    from public.ad_tracking_events e
-    where e.event_type = 'ad_click'
-      and (p_from is null or e.created_at >= p_from)
-      and (p_to is null or e.created_at <= p_to)
-    group by e.ad_id
-  ),
-  att as (   -- users attributed to each ad, with their signup + activity
-    select ua.first_ad_id as ad_id, ua.user_id, ua.signup_at, ua.first_consultation_at
-    from public.user_acquisition_attribution ua
-    where ua.first_ad_id is not null
-  ),
-  act as (   -- retention: latest-N activity flags per attributed user
-    select att.ad_id, att.user_id,
-      bool_or(l.created_at >= att.signup_at + interval '1 day')  as r1,
-      bool_or(l.created_at >= att.signup_at + interval '7 day')  as r7,
-      bool_or(l.created_at >= att.signup_at + interval '30 day') as r30
-    from att
-    left join public.ai_usage_logs l
-      on l.user_id = att.user_id and l.status = 'success' and l.request_type = 'chat'
-    where att.signup_at is not null
-    group by att.ad_id, att.user_id
-  )
-  select
-    a.id as ad_id,
-    coalesce(clk.clicks, 0) as clicks,
-    coalesce(clk.uniq, 0) as unique_visitors,
-    coalesce((select count(*) from att where att.ad_id = a.id and exists (
-      select 1 from public.ad_tracking_events e
-      where e.user_id = att.user_id and e.event_type = 'birth_info_completed')), 0) as birth_info,
-    coalesce((select count(*) from att where att.ad_id = a.id and att.signup_at is not null), 0) as signups,
-    coalesce((select count(*) from att where att.ad_id = a.id and att.first_consultation_at is not null), 0) as first_consultations,
-    coalesce((select count(*) from act where act.ad_id = a.id and act.r1), 0) as d1,
-    coalesce((select count(*) from act where act.ad_id = a.id and act.r7), 0) as d7,
-    coalesce((select count(*) from act where act.ad_id = a.id and act.r30), 0) as d30
-  from a
-  left join clk on clk.ad_id = a.id;
-$$;
-revoke all on function public.admin_ad_performance(timestamptz, timestamptz) from public;
-grant execute on function public.admin_ad_performance(timestamptz, timestamptz) to authenticated;
-
--- Guard: the RPC body itself must refuse non-admins. Wrap the grant with an is_admin gate.
-create or replace function public.admin_ad_performance(p_from timestamptz, p_to timestamptz)
 returns table (
   ad_id uuid, clicks bigint, unique_visitors bigint, birth_info bigint,
   signups bigint, first_consultations bigint, d1 bigint, d7 bigint, d30 bigint
@@ -236,7 +211,9 @@ begin
   return query
     with a as (select id from public.advertisements),
     clk as (
-      select e.ad_id, count(*) as clicks, count(distinct e.visitor_id) as uniq
+      -- unique_visitors is NULL when no click carried a reliable visitor id (§18 — never a
+      -- fabricated 0/"고유 방문자"); nullif turns the all-NULL-id case into NULL.
+      select e.ad_id, count(*) as clicks, nullif(count(distinct e.visitor_id), 0) as uniq
       from public.ad_tracking_events e
       where e.event_type = 'ad_click'
         and (p_from is null or e.created_at >= p_from)
@@ -256,7 +233,7 @@ begin
       where att.signup_at is not null
       group by att.ad_id, att.user_id)
     select a.id,
-      coalesce(clk.clicks,0), coalesce(clk.uniq,0),
+      coalesce(clk.clicks,0), clk.uniq,   -- unique_visitors may be NULL (hidden) — never coalesced to 0
       coalesce((select count(*) from att where att.ad_id=a.id and exists(
         select 1 from public.ad_tracking_events e where e.user_id=att.user_id and e.event_type='birth_info_completed')),0),
       coalesce((select count(*) from att where att.ad_id=a.id and att.signup_at is not null),0),
