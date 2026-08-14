@@ -83,3 +83,33 @@ export type {
   OutcomeConfidence,
   ConsultationOutcome,
 } from './outcome';
+
+// Presentation (Sprint 3A) — label maps + fail-closed view adapters (Claude-owned UI;
+// no semantics computed). The seam that renders Codex's data without a UI rewrite.
+export {
+  AXIS_LABELS,
+  LEVEL_LABELS,
+  LEVEL_TONES,
+  EVALUATIVE_LEVELS,
+  DIRECTION_LABELS,
+  DIRECTION_ARROWS,
+  CONFIDENCE_LABELS,
+  AGREEMENT_LABELS,
+  AVAILABILITY_LABELS,
+  AVAILABILITY_TONES,
+  ENGINE_LABELS,
+} from './presentation/labels';
+export type { LabelTone } from './presentation/labels';
+export {
+  toConsumerAssessmentView,
+  toAdminAssessmentRow,
+} from './presentation/assessmentView';
+export type {
+  ConsumerAssessmentTile,
+  ConsumerAssessmentView,
+  AdminAssessmentRow,
+} from './presentation/assessmentView';
+// NOTE: React components (AssessmentSummary/AssessmentTile) are intentionally NOT
+// re-exported here — this barrel is imported by the pure (node) jest suites, so it must
+// stay free of react-native imports. Import components directly from
+// '@/features/intelligence/components/AssessmentSummary'.
