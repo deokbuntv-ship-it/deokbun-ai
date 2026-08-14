@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AcquisitionBridge } from '@/features/ads/acquisition/AcquisitionBridge';
 import { AuthProvider } from '@/features/auth';
 import { ConsultationDraftProvider } from '@/features/consultation';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -18,6 +19,9 @@ export default function RootLayout() {
         <ConsultationDraftProvider>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
           <AnimatedSplashOverlay />
+          {/* Additive, fail-closed ad-acquisition capture (Sprint 3B). Renders nothing;
+              organic (no ?ad=) visitors are unaffected. */}
+          <AcquisitionBridge />
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="birth-info" options={{ headerShown: false }} />

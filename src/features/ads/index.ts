@@ -39,6 +39,7 @@ export {
   TRACKING_QUERY_PARAM,
   isUsableOrigin,
   buildTrackingUrl,
+  isValidAdCheckUrl,
   parseTrackingCodeFromQuery,
 } from './trackingUrl';
 

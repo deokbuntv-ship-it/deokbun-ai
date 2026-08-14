@@ -35,6 +35,20 @@ export function buildTrackingUrl(
   return `${base}/?${TRACKING_QUERY_PARAM}=${encodeURIComponent(code)}`;
 }
 
+/**
+ * Validate an operator-entered 광고 확인 링크 (§40) — the external posted-content URL. Must
+ * be http(s) with a host; rejects javascript:/data:/relative/other schemes so the admin
+ * "광고 확인" open is a safe external navigation (§40/§51). Empty is allowed (unpublished).
+ */
+export function isValidAdCheckUrl(value: string | null | undefined): boolean {
+  if (value === null || value === undefined || value === '') return true; // optional
+  if (typeof value !== 'string') return false;
+  if (!/^https?:\/\//i.test(value)) return false;
+  const rest = value.replace(/^https?:\/\//i, '');
+  const host = rest.split('/')[0].split('?')[0];
+  return host.length > 0 && !host.includes(' ');
+}
+
 /** Extract a valid `?ad=` code from a raw query string / URLSearchParams-like input. */
 export function parseTrackingCodeFromQuery(search: string | null | undefined): string | null {
   if (typeof search !== 'string' || search.length === 0) return null;

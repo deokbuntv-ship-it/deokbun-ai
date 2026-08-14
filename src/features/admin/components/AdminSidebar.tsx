@@ -15,6 +15,7 @@ type NavHref =
   | '/admin/users'
   | '/admin/consultations'
   | '/admin/consultation-intelligence'
+  | '/admin/ads'
   | '/admin/fortune-mail'
   | '/admin/ai-usage'
   | '/admin/engine-status'
@@ -25,6 +26,7 @@ const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '사용자 관리', href: '/admin/users' },
   { label: '상담 관리', href: '/admin/consultations' },
   { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
+  { label: '광고', href: '/admin/ads' },
   { label: '운세우편 관리', href: '/admin/fortune-mail' },
   { label: 'AI 사용량 · 비용', href: '/admin/ai-usage' },
   { label: '해석엔진 상태', href: '/admin/engine-status' },
