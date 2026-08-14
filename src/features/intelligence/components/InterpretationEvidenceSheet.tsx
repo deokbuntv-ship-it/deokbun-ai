@@ -35,6 +35,8 @@ function ScopeRow({ label, state, tone }: { label: string; state: string; tone: 
 }
 
 export function InterpretationEvidenceSheet({ grounding }: { grounding: ConsultationGrounding }) {
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
   const view = toExplainabilityView(grounding);
 
   if (view.status === 'unavailable') {
@@ -84,7 +86,7 @@ export function InterpretationEvidenceSheet({ grounding }: { grounding: Consulta
           </Text>
         )}
 
-        <View style={{ height: 1, backgroundColor: colors.light.border, opacity: 0.4 }} />
+        <View style={{ height: 1, backgroundColor: theme.border, opacity: 0.4 }} />
 
         <Stack gap="xs">
           <Text variant="bodySmall" colorToken="textSecondary">

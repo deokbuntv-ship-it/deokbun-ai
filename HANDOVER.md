@@ -26,7 +26,24 @@
 > [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
 > — 이 §0의 여러 갱신을 하나로 통합한 최신 문서. 상태 판단은 SSOT를 우선한다.
 
-### 최신 (2026-08-14) — Sprint 3A: Consultation Intelligence 프레젠테이션 시맨 (Golden Flow v3)
+### 최신 (2026-08-14) — Sprint 3A-B: Consultation Intelligence UI 완성 (Golden Flow v3 + Admin Inspector)
+- Sprint 3A의 시맨 위에 **Claude 소유 UI 전량**을 완성(fail-closed). 커밋 `687762e`(어댑터
+  +18 테스트) / `605372e`(컴포넌트 + 어드민 인스펙터 라우트). **push 안 함.**
+- 신규 어댑터(pure): `presentation/{evidenceView,crossAnalysisView,intelligenceViews,assessmentDetailView}.ts`
+  — 엔진 근거 5-상태 구분·미합산·미검증 유지·활용된 관점만 노출. `presentation2.test.ts`로 잠금.
+- Consumer(`intelligence/components`, **경로 import**): `StructuredConsultationResult`(Golden
+  Flow v3 하이브리드 + 점진적 공개), `ConsultationStateNotice`(7개 진실 상태),
+  `ConfidenceIndicator`/`InterpretationEvidenceSheet`/`AssessmentDetailSheet`/`FollowUpSuggestions`/
+  `MemoryConfirmation`/`UserFeedbackControl`(canPersist:false — 가짜 저장 없음).
+- Admin: `/admin/consultation-intelligence` 라우트(사이드바 "상담 인텔리전스") + `ConsultationInspector`
+  (근거→어세스먼트→교차→그라운딩→응답→평가→피드백→휴먼리뷰→결과), `isConnected()` 게이트 →
+  `NOT_CONNECTED_INSPECTOR`(가짜 케이스 없음).
+- 게이트: `tsc` 0 · `jest` **277**(26 스위트) · `expo export` 0. MOCK/시크릿 스캔 0.
+- **LIVE 렌더를 막는 3개 시맨(Codex):** (1) 챗 메시지에 structured-result 부착 계약 없음 →
+  Consumer 컴포넌트는 의도적으로 미마운트(소스 조작 금지 §37), (2) `AssessmentItem.summary` 부재,
+  (3) admin 시맨(`getRun`)이 thin subset 반환 → 풀 트레이스로 확장 필요. 상세: CODEX_HANDOFF §25.
+
+### 이전 (2026-08-14) — Sprint 3A: Consultation Intelligence 프레젠테이션 시맨 (Golden Flow v3)
 - 확정 디자인(`design-handoff/golden-flow-v3` — 시블링 클론)을 코드로 옮기는 첫 단계:
   **fail-closed 프레젠테이션 시맨**을 구축(§70). Claude 소유 라벨 맵 + 어댑터,
   역학/품질 의미론은 UI가 계산하지 않음(Codex 소유).

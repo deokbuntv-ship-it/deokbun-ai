@@ -546,3 +546,41 @@ producers/seam return populated `AssessmentItem[]` / `EngineEvidence`.
   input → Assessment `AssessmentItem` output → Consumer `toConsumerAssessmentView` / Admin
   `toAdminAssessmentRow` consumers → tests in `intelligence/__tests__/presentation.test.ts`
   must stay green (they lock the fail-closed invariants).
+
+## 25. SPRINT 3A-B: full Consultation Intelligence UI is ready (2026-08-14)
+Sprint 3A-B completed the Claude-owned UI over EVERY intelligence entity — fail-closed,
+gate-green (tsc 0, jest 277/277, expo web export exit 0), local commits `687762e` (adapters
++18 tests) / `605372e` (components + admin inspector route). No push. The UI renders these
+ViewModels; when you wire real data, **no component rewrite** is needed (§70).
+
+**New adapters you now target** (all in `src/features/intelligence/presentation`, pure,
+locked by `__tests__/presentation2.test.ts` — keep green):
+- `evidenceView`: `toGroundingView(ConsultationGrounding)` / `toEngineEvidenceView` — the
+  5 availability states MUST stay distinct; `toExplainabilityView` shows ONLY engines whose
+  evidence is `available` as "활용된 관점" (never all three). Feed these by replacing
+  `GROUNDING_UNAVAILABLE` in `chatService` with a real `ConsultationGrounding{status:'available',
+  evidence:{myungri,ziwei,qimen}}` (already the §23 task) — the admin `EngineEvidencePanel`/
+  `GroundingSummary` and consumer `InterpretationEvidenceSheet` then populate automatically.
+- `crossAnalysisView.toCrossAnalysisView(DomainCross[])` — produce `DomainCross[]` from
+  `crossAnalyze(...)`; signals are rendered per-engine and MUST NOT be merged into a score.
+- `intelligenceViews`: `toEvaluationView(QualityReview)` (set `evaluatorVersion` ≠
+  `not_connected` + `overall`/`dimensions` to light up), `toOutcomeView`, `toFeedbackView`,
+  `toHumanReviewView`.
+
+**Three seams that block LIVE rendering (your decisions):**
+1. **Structured-result attachment (blocks consumer).** No chat-message field carries a
+   `StructuredConsultationViewModel` or its source (`AssessmentItem[]` + `ConsultationGrounding`
+   + LLM prose sections). Define how a structured result attaches to a message; the chat
+   screen then mounts `<StructuredConsultationResult vm={…}/>`. (Do NOT fabricate a source —
+   the component is intentionally NOT mounted until a real one exists.)
+2. **`AssessmentItem.summary`** — still no per-tile meaning-sentence source (carried from §24).
+3. **Admin seam enrichment (blocks admin live runs).** `adminIntelligenceService.getRun()`
+   returns `AdminIntelligenceRunDetail` (thin `AdminAssessmentRow`/`AdminOutcomeRow` subsets),
+   not the full domain objects `ConsultationInspector` consumes (`AssessmentItem`,
+   `ConsultationGrounding`, `DomainCross[]`, `QualityReview`, `UserFeedback`,
+   `ConsultationOutcome`). Return the full trace (or a `ConsultationCase`) + flip
+   `INTELLIGENCE_INSPECTOR_CONNECTED`, then pass it to `<ConsultationInspector connected data={…}/>`.
+   Route already live at `/admin/consultation-intelligence` (renders `NOT_CONNECTED_INSPECTOR`).
+
+**Do NOT change:** the adapter ViewModel shapes, the fail-closed invariants, or the
+`intelligence/index.ts` barrel's react-native-free purity (components import by path).
