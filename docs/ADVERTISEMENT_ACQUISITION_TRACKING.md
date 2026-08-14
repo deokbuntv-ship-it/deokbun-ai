@@ -56,19 +56,21 @@ UI `src/app/admin/ads/*`.
 Idempotency (§26): a unique index `(user_id, event_type)` on the one-time milestones — a
 duplicated signup/first-consultation is impossible at the DB level.
 
-**New-account gate (the signup rule):** a pre-existing user must **NEVER** be counted as a
-signup just because their attribution row was created (that would inflate signup, understate
-CAC, and contaminate cohorts). The rule is **server-trusted + deterministic** — canonical spec
-in `signupEligibility.ts` (`isNewAccountSignup`), mirrored by the `ad_reconcile_attribution`
-SQL trigger:
+**New-account gate (the signup rule) — FAIL-CLOSED, evidence-backed:** a pre-existing user
+must **NEVER** be counted as a signup, and a signup must be backed by trusted server evidence.
+Canonical spec in `signupEligibility.ts` (`isNewAccountSignup`), mirrored exactly by the
+`ad_reconcile_attribution` SQL trigger:
 
-- Compare the JWT-verified **`auth.users.created_at`** (immutable) to the **server-recorded
-  ad-click time** (min `ad_click.created_at` for this visitor). **created_at ≥ click ⇒ NEW
-  account** (born from this ad-driven session) ⇒ signup. **created_at < click ⇒ pre-existing**
-  ⇒ attribution only, no signup.
-- Fallback (rare: the click event wasn't persisted): new iff `created_at` is within **30 min**
-  of the attribution flush — a documented, test-covered window (`SIGNUP_FALLBACK_WINDOW_MS`).
-- A client-supplied "isNewUser" is never trusted. `signup_at` anchors on `created_at`.
+> **SIGNUP = the JWT-verified account is genuinely new AND a server-recorded `ad_click` exists
+> for the attribution AND `auth.users.created_at ≥ that ad_click.created_at`.**
+
+- **created_at ≥ server click ⇒ NEW account** (born from this ad-driven session) ⇒ signup.
+  **created_at < click ⇒ pre-existing** ⇒ attribution only, no signup.
+- **Missing trusted click evidence means NO signup attribution.** Missing `created_at` → no
+  signup. There is **no** inference from attribution time, no time window, no client
+  timestamps, and no client `isNewUser` flag. We prefer an undercount from missing telemetry
+  over contaminating CAC/conversion with an inferred acquisition.
+- Both inputs are **server** timestamps. `signup_at` anchors on `created_at`.
 
 **Cohort consistency:** because a pre-existing user is not a signup, their later birth /
 first-consultation is **also** excluded from the funnel — the downstream milestone triggers

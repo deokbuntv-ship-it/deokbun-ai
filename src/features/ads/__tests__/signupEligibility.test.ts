@@ -1,75 +1,55 @@
-// Sprint 3B rev 3 — acquisition SIGNUP-eligibility semantic (§9). A pre-existing user must
-// NEVER be counted as a new signup just because their ad attribution row was created.
+// Sprint 3B rev 4 — acquisition SIGNUP eligibility (FAIL-CLOSED, evidence-backed, §16).
+// SIGNUP requires trusted server evidence: a genuinely-new account AND a server-recorded
+// ad_click AND created_at >= click. Missing evidence → NO signup (prefer undercount over
+// contaminated CAC). No time window, no client timestamps, no client isNewUser.
 import { captureAcquisition, clearAcquisition, peekAcquisition } from '../acquisition/acquisitionContext';
 import { encodeTrackingCode } from '../trackingCode';
-import { isNewAccountSignup, SIGNUP_FALLBACK_WINDOW_MS } from '../signupEligibility';
+import { isNewAccountSignup } from '../signupEligibility';
 
 const iso = (ms: number) => new Date(ms).toISOString();
 const T0 = Date.parse('2026-06-01T00:00:00Z'); // long-ago account creation
 const CLICK = Date.parse('2026-08-14T09:00:00Z');
-const FLUSH = Date.parse('2026-08-14T09:00:20Z'); // attribution ~20s after click
 
-describe('signup eligibility — pre-existing user is NEVER a signup (§1/§2/§5)', () => {
-  it('EXISTING user (created 2026-06-01) clicks ad 2026-08-14 → NO signup', () => {
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(T0), adClickAt: iso(CLICK), attributionAt: iso(FLUSH) }),
-    ).toBe(false);
+describe('signup eligibility — fail-closed, evidence-backed (§16)', () => {
+  it('new account + trusted click (created AFTER click) => signup TRUE', () => {
+    expect(isNewAccountSignup({ accountCreatedAt: iso(CLICK + 12_000), adClickAt: iso(CLICK) })).toBe(true);
   });
 
-  it('NEW user: account created DURING the ad session (after the click) → signup YES (§6)', () => {
-    const accountCreated = CLICK + 12_000; // account born 12s after the ad click (OAuth completes)
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(accountCreated), adClickAt: iso(CLICK), attributionAt: iso(FLUSH) }),
-    ).toBe(true);
+  it('existing account + trusted click (created BEFORE click) => FALSE', () => {
+    expect(isNewAccountSignup({ accountCreatedAt: iso(T0), adClickAt: iso(CLICK) })).toBe(false);
   });
 
-  it('boundary: account created exactly AT the click → signup YES (inclusive)', () => {
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(CLICK), adClickAt: iso(CLICK), attributionAt: iso(FLUSH) }),
-    ).toBe(true);
+  it('MISSING click => FALSE (no inference — fail-closed)', () => {
+    expect(isNewAccountSignup({ accountCreatedAt: iso(CLICK + 12_000), adClickAt: null })).toBe(false);
   });
 
-  it('boundary: account created 1ms BEFORE the click → NO signup (pre-existing)', () => {
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(CLICK - 1), adClickAt: iso(CLICK), attributionAt: iso(FLUSH) }),
-    ).toBe(false);
+  it('MISSING account created_at => FALSE', () => {
+    expect(isNewAccountSignup({ accountCreatedAt: null, adClickAt: iso(CLICK) })).toBe(false);
   });
 
-  it('EXISTING user later clicks ANOTHER ad → still NO signup (created_at predates the new click)', () => {
+  it('exact boundary created_at == click_at => TRUE (inclusive)', () => {
+    expect(isNewAccountSignup({ accountCreatedAt: iso(CLICK), adClickAt: iso(CLICK) })).toBe(true);
+  });
+
+  it('created_at 1ms BEFORE click => FALSE', () => {
+    expect(isNewAccountSignup({ accountCreatedAt: iso(CLICK - 1), adClickAt: iso(CLICK) })).toBe(false);
+  });
+
+  it('existing user later clicks ANOTHER ad => FALSE (created_at predates the new click)', () => {
     const laterClick = Date.parse('2026-09-01T00:00:00Z');
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(T0), adClickAt: iso(laterClick), attributionAt: iso(laterClick + 5000) }),
-    ).toBe(false);
+    expect(isNewAccountSignup({ accountCreatedAt: iso(T0), adClickAt: iso(laterClick) })).toBe(false);
+  });
+
+  it('never accepts a client timestamp path — only (accountCreatedAt, adClickAt) exist', () => {
+    // The function signature carries no attributionAt / window / isNewUser — enforced by types.
+    const anyFn = isNewAccountSignup as unknown as (p: Record<string, unknown>) => boolean;
+    expect(anyFn({ accountCreatedAt: null, adClickAt: null })).toBe(false);
   });
 });
 
-describe('signup eligibility — fallback when NO ad_click was recorded (§4, documented window)', () => {
-  it('brand-new account within the fallback window → signup YES', () => {
-    const created = FLUSH - 60_000; // created 1min before flush
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(created), adClickAt: null, attributionAt: iso(FLUSH) }),
-    ).toBe(true);
-  });
-  it('long-standing account (created months ago) → NO signup even in fallback', () => {
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(T0), adClickAt: null, attributionAt: iso(FLUSH) }),
-    ).toBe(false);
-  });
-  it('account created just OUTSIDE the fallback window → NO signup', () => {
-    const created = FLUSH - (SIGNUP_FALLBACK_WINDOW_MS + 1000);
-    expect(
-      isNewAccountSignup({ accountCreatedAt: iso(created), adClickAt: null, attributionAt: iso(FLUSH) }),
-    ).toBe(false);
-  });
-  it('unknown account age → conservative NO signup (never fabricate)', () => {
-    expect(isNewAccountSignup({ accountCreatedAt: null, adClickAt: iso(CLICK), attributionAt: iso(FLUSH) })).toBe(false);
-  });
-});
-
-// The remaining §9 scenarios (repeated login → no duplicate signup; repeated ad click →
-// first-touch preserved; existing user later click → no first-touch overwrite) are enforced by
-// the DB (unique index on signup event) + the client first-touch store. The store half:
-describe('first-touch store — repeated ad click preserves the first touch (§9)', () => {
+// §16: repeated login → no duplicate signup, and later ad → no first-touch overwrite. The
+// DB enforces signup dedup via a unique index; the client store enforces first-touch:
+describe('first-touch store — repeated ad click preserves the first touch (§16)', () => {
   const CODE_A = encodeTrackingCode(Uint8Array.from([1, 1, 1, 1, 1, 1, 1, 1]));
   const CODE_B = encodeTrackingCode(Uint8Array.from([2, 2, 2, 2, 2, 2, 2, 2]));
   beforeEach(() => clearAcquisition());

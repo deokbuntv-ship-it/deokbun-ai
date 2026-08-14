@@ -139,12 +139,14 @@ create policy attribution_select_own on public.user_acquisition_attribution for 
 --       first-consultation), so the forward triggers below + this together are race-free.
 --
 -- NEW-ACCOUNT RULE (mirrors src/features/ads/signupEligibility.ts — keep in sync):
---   A pre-existing user must NEVER be counted as a signup just because their attribution row
---   was created. The signal is server-trusted: auth.users.created_at (immutable) compared to
---   the SERVER-recorded ad-click time (min ad_click.created_at for this visitor). If the
---   account was created AT/AFTER the ad click → NEW → signup. If it predates the click →
---   pre-existing → attribution only, NO signup. Fallback (no recorded click): created within
---   30 min of the attribution flush. A client-supplied "isNewUser" is never trusted (§3).
+--   FAIL-CLOSED + EVIDENCE-BACKED. A signup requires ALL of: (1) a JWT-verified account,
+--   (2) a SERVER-recorded ad_click for this attribution's visitor, and (3)
+--   auth.users.created_at >= that ad_click.created_at (account born at/after the click →
+--   new). A pre-existing user (created before the click) gets attribution but NO signup.
+--   MISSING account created_at → NO signup. MISSING server-recorded click → NO signup — we
+--   do NOT infer a signup from attribution time, any time window, client timestamps, or a
+--   client "isNewUser" flag (§14). We prefer an undercount from missing telemetry over
+--   contaminating CAC/conversion with an inferred acquisition.
 create or replace function public.ad_reconcile_attribution()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -165,10 +167,8 @@ begin
       set first_touch_at = v_click where user_id = new.user_id;
   end if;
 
-  v_is_new := v_created is not null and (
-       (v_click is not null and v_created >= v_click)                 -- born at/after the click
-    or (v_click is null and v_created >= now() - interval '30 minutes')  -- fallback (no click)
-  );
+  -- SIGNUP requires trusted click evidence AND account-born-at/after-click. No click → NO signup.
+  v_is_new := v_created is not null and v_click is not null and v_created >= v_click;
 
   -- (a) SIGNUP — new accounts only (§1/§2/§5/§6). Existing users: attribution kept, no signup.
   if v_is_new then
