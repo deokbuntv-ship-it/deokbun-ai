@@ -26,6 +26,22 @@
 > [`docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md`](docs/DEOKBUNAI_V1_SINGLE_SOURCE_OF_TRUTH.md)
 > — 이 §0의 여러 갱신을 하나로 통합한 최신 문서. 상태 판단은 SSOT를 우선한다.
 
+### 최신 (2026-08-14) — Sprint 3A: Consultation Intelligence 프레젠테이션 시맨 (Golden Flow v3)
+- 확정 디자인(`design-handoff/golden-flow-v3` — 시블링 클론)을 코드로 옮기는 첫 단계:
+  **fail-closed 프레젠테이션 시맨**을 구축(§70). Claude 소유 라벨 맵 + 어댑터,
+  역학/품질 의미론은 UI가 계산하지 않음(Codex 소유).
+- 신규: `src/features/intelligence/presentation/{labels,assessmentView}.ts` (한국어 라벨 +
+  fail-closed 어댑터: 평가 레벨만 타일, `insufficient`≠낮음, ▲근거/▼반대근거 미합산, 숫자 점수
+  없음), `components/AssessmentSummary.tsx`(Consumer), `admin/components/AssessmentMatrix.tsx`.
+  테스트 +12 (fail-closed 불변식 잠금). 게이트: `tsc` 0 · `jest` **259** · `expo export` 0.
+- **엔티티 5-상태 감사** + Codex 핸드오프: [`docs/CONSULTATION_INTELLIGENCE_UI.md`](docs/CONSULTATION_INTELLIGENCE_UI.md).
+  핵심: 계약은 대부분 존재(SCHEMA), **live write 전무**(엔진/룰셋 = Codex), admin read =
+  connected:false 시맨. UI는 Assessment 프레젠테이션 기반만 구현.
+- 발견한 계약 갭: `AssessmentItem`에 사용자 노출 `summary` 필드 없음(타일 의미 문장 소스 부재) →
+  Codex/계약 결정 필요(UI 임의 생성 금지, §8). CODEX_HANDOFF §24.
+- **남은 UI(연속작업)**: Golden Flow v3 화면 리스킨 + Consumer 상세/근거/피드백 + Admin
+  Inspector 라우트/패널 전체 — 동일 시맨 위에서 mechanical.
+
 ### 최신 (2026-08-14) — Sprint 2B: 운영·관리자·프로덕션 하드닝 (Codex 입장 정리)
 - **관리자 write 무결성**: content/famous/publication 서비스가 DB 실패를 삼키지 않고 **throw** →
   기존 화면 `.catch`가 실제 오류 표시(false-success/null-crash 제거, 16곳). 참조 패턴 `e67254e`.

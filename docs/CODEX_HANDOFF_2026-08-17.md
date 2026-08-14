@@ -524,3 +524,25 @@ reaches the prompt — do not weaken the fail-closed assertions.
 ### 23.6 Out of scope for you here
 Prompt wording, response structure, uncertainty phrasing, mode classification, versioning
 — all Claude-owned. Semantic correctness / 학파·정국 / golden fixtures remain your zone (§21.5, §22).
+
+---
+
+## 24. SPRINT 3A: Assessment presentation seam is ready (2026-08-14)
+
+Claude built the fail-closed **presentation seam** (`intelligence/presentation/{labels,
+assessmentView}.ts` + `AssessmentSummary`/`AssessmentTile`/`AssessmentMatrix`). When you
+wire engines → evidence → assessment, the UI renders WITHOUT a rewrite — just make the
+producers/seam return populated `AssessmentItem[]` / `EngineEvidence`.
+
+- **Do NOT change** `labels.ts` / `assessmentView.ts` shape or the fail-closed rules
+  (evaluative-level-only tiles, insufficient≠low, ▲supporting/▼counter never summed, no
+  numeric). Add engine-side producers that FEED them.
+- **Contract gap to resolve:** `AssessmentItem` has no user-facing `summary` string, so the
+  consumer tile's "meaning sentence" has no source. Add an optional `summary` to
+  `AssessmentItem` (ruleset fills it) OR source it from the LLM response — the UI must not
+  fabricate it (§8). Also extend `adminIntelligenceService`'s `AdminAssessmentRow` to carry
+  direction/agreement/timing (or return full `AssessmentItem`s) for the admin matrix.
+- Per-item for each engine (명리/자미/기문): expected `EngineEvidence{availability,summary}`
+  input → Assessment `AssessmentItem` output → Consumer `toConsumerAssessmentView` / Admin
+  `toAdminAssessmentRow` consumers → tests in `intelligence/__tests__/presentation.test.ts`
+  must stay green (they lock the fail-closed invariants).
