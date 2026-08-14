@@ -45,6 +45,8 @@ export {
 
 export { DAY_MS, RETENTION_DAYS, isRetainedAtDay } from './retention';
 
+export { SIGNUP_FALLBACK_WINDOW_MS, isNewAccountSignup } from './signupEligibility';
+
 export {
   computeAdFunnelCounts,
   emptyFunnelCounts,

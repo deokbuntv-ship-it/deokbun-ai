@@ -134,40 +134,77 @@ create policy attribution_select_own on public.user_acquisition_attribution for 
 -- ---- 4. Conversion recording (server-trusted, §50) --------------------------
 -- The attribution row is the ANCHOR. It is created ONLY by the JWT-verified ad-track edge
 -- (so a client can never forge it). Its INSERT fires this reconcile, which:
---   (a) records SIGNUP (= this ad-attributed user just authenticated) + signup_at, and
+--   (a) records SIGNUP *only for a genuinely NEW account*, and
 --   (b) adopts any activity that already happened BEFORE attribution landed (birth /
 --       first-consultation), so the forward triggers below + this together are race-free.
+--
+-- NEW-ACCOUNT RULE (mirrors src/features/ads/signupEligibility.ts — keep in sync):
+--   A pre-existing user must NEVER be counted as a signup just because their attribution row
+--   was created. The signal is server-trusted: auth.users.created_at (immutable) compared to
+--   the SERVER-recorded ad-click time (min ad_click.created_at for this visitor). If the
+--   account was created AT/AFTER the ad click → NEW → signup. If it predates the click →
+--   pre-existing → attribution only, NO signup. Fallback (no recorded click): created within
+--   30 min of the attribution flush. A client-supplied "isNewUser" is never trusted (§3).
 create or replace function public.ad_reconcile_attribution()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_created timestamptz;   -- auth.users.created_at (JWT-verified account)
+  v_click   timestamptz;   -- server-recorded first ad_click time for this visitor
+  v_is_new  boolean;
 begin
-  -- (a) signup: the acquired user is authenticated now (JWT-verified by the edge).
-  insert into public.ad_tracking_events (event_type, user_id)
-  values ('signup', new.user_id)
-  on conflict do nothing;
-  update public.user_acquisition_attribution
-    set signup_at = coalesce(signup_at, now())
-    where user_id = new.user_id;
-
-  -- (b1) birth info already completed before attribution landed?
-  if exists (select 1 from public.consultation_subjects s where s.user_id = new.user_id) then
-    insert into public.ad_tracking_events (event_type, user_id)
-    values ('birth_info_completed', new.user_id)
-    on conflict do nothing;
+  select u.created_at into v_created from auth.users u where u.id = new.user_id;
+  if new.first_visitor_id is not null then
+    select min(e.created_at) into v_click
+      from public.ad_tracking_events e
+      where e.event_type = 'ad_click' and e.visitor_id = new.first_visitor_id;
   end if;
 
-  -- (b2) a successful consultation already happened before attribution landed?
-  if exists (
-    select 1 from public.ai_usage_logs l
-    where l.user_id = new.user_id and l.status = 'success' and l.request_type = 'chat'
-  ) then
+  -- first_touch_at reflects the real (server-recorded) ad-click time when we have it.
+  if v_click is not null then
+    update public.user_acquisition_attribution
+      set first_touch_at = v_click where user_id = new.user_id;
+  end if;
+
+  v_is_new := v_created is not null and (
+       (v_click is not null and v_created >= v_click)                 -- born at/after the click
+    or (v_click is null and v_created >= now() - interval '30 minutes')  -- fallback (no click)
+  );
+
+  -- (a) SIGNUP — new accounts only (§1/§2/§5/§6). Existing users: attribution kept, no signup.
+  if v_is_new then
     insert into public.ad_tracking_events (event_type, user_id)
-    values ('first_consultation', new.user_id)
+    values ('signup', new.user_id)
     on conflict do nothing;
     update public.user_acquisition_attribution
-      set first_consultation_at = coalesce(first_consultation_at, (
-        select min(l.created_at) from public.ai_usage_logs l
-        where l.user_id = new.user_id and l.status = 'success' and l.request_type = 'chat'))
+      set signup_at = coalesce(signup_at, v_created)   -- anchor retention on account creation
       where user_id = new.user_id;
+  end if;
+
+  -- Downstream funnel milestones are recorded ONLY for the newly-acquired cohort (v_is_new),
+  -- so a pre-existing user who clicked an ad never contaminates birth/first-consult/CPA either
+  -- (owner directive — existing users must not contaminate acquisition cohorts).
+  if v_is_new then
+    -- (b1) birth info already completed before attribution landed?
+    if exists (select 1 from public.consultation_subjects s where s.user_id = new.user_id) then
+      insert into public.ad_tracking_events (event_type, user_id)
+      values ('birth_info_completed', new.user_id)
+      on conflict do nothing;
+    end if;
+
+    -- (b2) a successful consultation already happened before attribution landed?
+    if exists (
+      select 1 from public.ai_usage_logs l
+      where l.user_id = new.user_id and l.status = 'success' and l.request_type = 'chat'
+    ) then
+      insert into public.ad_tracking_events (event_type, user_id)
+      values ('first_consultation', new.user_id)
+      on conflict do nothing;
+      update public.user_acquisition_attribution
+        set first_consultation_at = coalesce(first_consultation_at, (
+          select min(l.created_at) from public.ai_usage_logs l
+          where l.user_id = new.user_id and l.status = 'success' and l.request_type = 'chat'))
+        where user_id = new.user_id;
+    end if;
   end if;
   return new;
 end $$;
@@ -181,8 +218,11 @@ create trigger trg_ad_reconcile_attribution after insert on public.user_acquisit
 create or replace function public.ad_on_chat_success()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
+  -- Only the newly-acquired cohort (attribution row WITH a recorded signup) contributes to the
+  -- funnel — a pre-existing user who clicked an ad never counts (signup_at is null for them).
   if new.status = 'success' and new.request_type = 'chat' and new.user_id is not null
-     and exists (select 1 from public.user_acquisition_attribution ua where ua.user_id = new.user_id) then
+     and exists (select 1 from public.user_acquisition_attribution ua
+                 where ua.user_id = new.user_id and ua.signup_at is not null) then
     insert into public.ad_tracking_events (event_type, user_id)
     values ('first_consultation', new.user_id)
     on conflict do nothing;                     -- unique index → only the FIRST success counts
@@ -202,8 +242,10 @@ create trigger trg_ad_on_chat_success after insert on public.ai_usage_logs
 create or replace function public.ad_on_birth_info()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
+  -- Newly-acquired cohort only (attribution WITH a recorded signup) — see ad_on_chat_success.
   if new.user_id is not null
-     and exists (select 1 from public.user_acquisition_attribution ua where ua.user_id = new.user_id) then
+     and exists (select 1 from public.user_acquisition_attribution ua
+                 where ua.user_id = new.user_id and ua.signup_at is not null) then
     insert into public.ad_tracking_events (event_type, user_id)
     values ('birth_info_completed', new.user_id)
     on conflict do nothing;

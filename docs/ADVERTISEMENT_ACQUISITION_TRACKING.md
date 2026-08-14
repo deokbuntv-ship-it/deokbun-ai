@@ -40,7 +40,7 @@ UI `src/app/admin/ads/*`.
 | Milestone | Definition (NOT screen entry) | Write path (server-trusted, §50) |
 |---|---|---|
 | `ad_click` | Landing with a valid `?ad=CODE` | `ad-track` edge, service_role (rate-limited, bot-filtered §53) |
-| `signup` | The ad-attributed user **authenticated** (their first-touch attribution row was created by the JWT-verified `ad-track` edge). An existing member's re-login does NOT create a new attribution row → no new signup (§24). | attribution INSERT (edge, JWT-verified) → trigger `ad_reconcile_attribution` |
+| `signup` | A **genuinely NEW account** acquired by the ad — `auth.users.created_at` is at/after the server-recorded ad-click time. A **pre-existing** member who clicks an ad gets attribution but is **NEVER** counted as a signup; a routine re-login never creates a new attribution row either. | attribution INSERT (edge, JWT-verified) → trigger `ad_reconcile_attribution` (new-account gate) |
 | `birth_info_completed` | A committed `consultation_subjects` INSERT (real save, §23), for an ad-attributed user | trigger `ad_on_birth_info` (+ reconcile backfill) |
 | `first_consultation` | FIRST `ai_usage_logs` row `status='success', request_type='chat'` per user (real LLM consultation, NOT chat entry, NOT the LOCAL_RESPONSE canned path, §25), for an ad-attributed user | trigger `ad_on_chat_success` (+ reconcile backfill) |
 | `d1 / d7 / d30` | Derived at read time — see below | RPC `admin_ad_performance` |
@@ -56,14 +56,30 @@ UI `src/app/admin/ads/*`.
 Idempotency (§26): a unique index `(user_id, event_type)` on the one-time milestones — a
 duplicated signup/first-consultation is impossible at the DB level.
 
-**Known V1 semantic (honest):** signup credit attaches to the *first time an ad's attribution
-row is created for a user*. For a brand-new user this is exactly their signup. In the rare
-case where a **pre-existing organic member** later clicks an ad and authenticates, that first
-ad-touch creates their first attribution row and is counted as that ad's signup (first-touch
-convention) — with `signup_at` = that later auth time. This never counts a routine re-login
-(no new attribution row → no signup, §24); we accept the pre-existing-member edge case because
-production has no reliable per-user "created_at/new-user" signal (`profiles` is absent) and
-first-touch attribution conventionally credits the first ad touch.
+**New-account gate (the signup rule):** a pre-existing user must **NEVER** be counted as a
+signup just because their attribution row was created (that would inflate signup, understate
+CAC, and contaminate cohorts). The rule is **server-trusted + deterministic** — canonical spec
+in `signupEligibility.ts` (`isNewAccountSignup`), mirrored by the `ad_reconcile_attribution`
+SQL trigger:
+
+- Compare the JWT-verified **`auth.users.created_at`** (immutable) to the **server-recorded
+  ad-click time** (min `ad_click.created_at` for this visitor). **created_at ≥ click ⇒ NEW
+  account** (born from this ad-driven session) ⇒ signup. **created_at < click ⇒ pre-existing**
+  ⇒ attribution only, no signup.
+- Fallback (rare: the click event wasn't persisted): new iff `created_at` is within **30 min**
+  of the attribution flush — a documented, test-covered window (`SIGNUP_FALLBACK_WINDOW_MS`).
+- A client-supplied "isNewUser" is never trusted. `signup_at` anchors on `created_at`.
+
+**Cohort consistency:** because a pre-existing user is not a signup, their later birth /
+first-consultation is **also** excluded from the funnel — the downstream milestone triggers
+fire only for an attribution row that already carries a recorded `signup_at`. So the whole
+funnel (clicks → **new signups** → birth → first-consult → D1/D7/D30) measures the newly-
+acquired cohort; `clicks` is the only step that includes pre-existing users' ad clicks.
+
+Examples — existing user (created 2026-06-01) clicks an ad 2026-08-14 → attribution YES,
+signup **NO**. New user clicks an ad, creates the account via OAuth, attribution links after
+auth → signup **YES** (once). Repeated login / repeated ad click → no duplicate signup, first
+touch preserved.
 
 **Ordering safety (race-free by construction):** the **attribution row is the single anchor**.
 Its INSERT (by the edge, at first auth) fires `ad_reconcile_attribution`, which records signup
