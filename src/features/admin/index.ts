@@ -29,6 +29,22 @@ export type { AdminTableColumn } from './components/AdminTable';
 export { AdminBadge } from './components/AdminBadge';
 export type { AdminBadgeTone } from './components/AdminBadge';
 export { AssessmentMatrix } from './components/AssessmentMatrix';
+// Consultation Intelligence inspector panels (Sprint 3A-B) — fail-closed.
+export {
+  ConsultationInspector,
+  NOT_CONNECTED_INSPECTOR,
+  EngineEvidencePanel,
+  GroundingSummary,
+  CrossAnalysisPanel,
+  EvaluationSummary,
+  FeedbackPanel,
+  HumanReviewPanel,
+  OutcomePanel,
+} from './components/intelligence';
+export type {
+  InspectorContext,
+  ConsultationInspectorData,
+} from './components/intelligence';
 export { FortuneMailDetailDrawer } from './components/FortuneMailDetailDrawer';
 export { AdminGate } from './components/AdminGate';
 export { AdminPageHeader } from './components/AdminPageHeader';
