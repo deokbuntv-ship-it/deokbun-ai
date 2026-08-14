@@ -42,19 +42,31 @@ where schemaname='public' and tablename='consultation_drafts';
 **If 0 rows / RLS off:** apply `docs/DRAFT_RLS_SETUP.sql` (idempotent), then re-verify. **Priority.**
 
 ### B2. `docs/CONSUMER_CORE_SCHEMA.sql` — the 4 core consumer tables
-`profiles`, `consultation_subjects`, `conversations`, `conversation_messages` — the tables exist and the app works, so **do NOT blindly re-run the whole file** against production; it is reconciliation scaffolding. (A `seq` ordering column was recently added to the artifact to match the live table — see the DEV note in the file.) **Owner action: none** unless a developer asks for a specific check:
+⚠️ **CORRECTION (verified live 2026-08-14):** this file was previously assumed applied, but a
+read-only production probe (`docs/ADVERTISEMENTS_DIAGNOSTIC.sql`) found **`public.profiles` and
+`public.set_updated_at()` do NOT exist in production**, while `consultation_subjects` +
+`conversations` DO. So the "4 tables were applied together" assumption is FALSE — they were
+applied piecemeal, and `profiles` + the shared `set_updated_at()` trigger fn were never run.
+The app still "works" because auth uses `auth.users` and the client-side `profileService.
+ensureProfile` silently logs-and-swallows its error when `profiles` is absent (display names
+just aren't persisted). **This is a pre-existing gap to reconcile separately — do NOT create
+`profiles` as a side effect of another feature.** Verify each table individually:
 ```sql
 select tablename, rowsecurity from pg_tables
 where schemaname='public'
   and tablename in ('profiles','consultation_subjects','conversations','conversation_messages');
 ```
-**Expect:** all four `rowsecurity = true`. If any false, flag to a developer.
+**Reality:** `profiles` returns 0 rows (absent); the other three exist with `rowsecurity=true`.
+Do NOT blindly re-run the whole file; if `profiles` is needed, apply only its table+trigger
+after a developer review (it also needs a self-contained or restored `set_updated_at()`).
 
 ### B3. `docs/AI_USAGE_LOGS_REQUEST_ID.sql` — optional, safe anytime
 Adds a nullable `request_id` tracing column to `ai_usage_logs`. The app falls back automatically whether or not it is applied. Post-check: `select column_name from information_schema.columns where table_name='ai_usage_logs' and column_name='request_id';` → 1 row after applying.
 
 ## C. HOLD — do NOT run yet (feature not built)
 `docs/FORTUNE_MAIL_SETUP.sql` and `docs/FORTUNE_DELIVERY_SETUP.sql` create fortune-mailbox tables that **no app code uses yet** (the admin fortune screen shows an empty "준비 중" state). Apply only when the fortune pipeline ships AND delivery Decision G (`OWNER_ACTIONS_AND_DECISIONS.md`) is made. Additive/safe when that time comes.
+
+`docs/ADVERTISEMENTS_SETUP.sql` (Sprint 3B, rev 2 — **production-schema-aligned**) creates the ad/acquisition tables (`advertisements`, `ad_tracking_events`, `user_acquisition_attribution`) + admin RLS + server-trusted conversion triggers + `admin_ad_performance` RPC. **Self-contained** — defines its own `ads_set_updated_at()`, does NOT depend on `profiles` or the shared `set_updated_at()`; signup is anchored on the JWT-verified `ad-track` edge's attribution insert. Prereqs (already applied): `is_admin()`, `ai_usage_logs`, `consultation_subjects`. Idempotent, non-destructive, safe to re-run. **Admin ad CRUD works once this is applied**; full funnel/CAC also needs the `ad-track` Edge Function deployed (`[functions.ad-track] verify_jwt=false`). Until then the 광고 성과 screen shows a truthful "집계 준비 중" state. Read-only pre-check: `docs/ADVERTISEMENTS_DIAGNOSTIC.sql`. (A first apply attempt on 2026-08-14 failed harmlessly at the old `set_updated_at()` dependency and left **nothing** behind — rev 2 fixes that root cause.)
 
 ## D. Already applied — do not re-run
 Per your report: `admin/ADMIN_SETUP`, `ADMIN_02..05`, `CONTENT_01`, `PUBLIC_SETUP`, `PUBLICATION_SETUP`, `CONTENT_ASSETS_SETUP`, `CONTENT_05_07_SETUP`, `FAMOUS_AI_SETUP`. RLS on all is correct (admin-only via `is_admin()`; public read only through curated published-only RPCs).

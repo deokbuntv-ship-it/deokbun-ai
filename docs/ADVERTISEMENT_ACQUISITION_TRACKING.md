@@ -40,20 +40,38 @@ UI `src/app/admin/ads/*`.
 | Milestone | Definition (NOT screen entry) | Write path (server-trusted, §50) |
 |---|---|---|
 | `ad_click` | Landing with a valid `?ad=CODE` | `ad-track` edge, service_role (rate-limited, bot-filtered §53) |
-| `birth_info_completed` | A committed `consultation_subjects` INSERT (real save, §23) | trigger `ad_on_birth_info` |
-| `signup` | A `profiles` row inserted (new authenticated user; existing-user login is NOT a signup, §24) | trigger `ad_on_signup` |
-| `first_consultation` | FIRST `ai_usage_logs` row `status='success', request_type='chat'` per user (real LLM consultation, NOT chat entry, NOT the LOCAL_RESPONSE canned path, §25) | trigger `ad_on_chat_success` |
+| `signup` | The ad-attributed user **authenticated** (their first-touch attribution row was created by the JWT-verified `ad-track` edge). An existing member's re-login does NOT create a new attribution row → no new signup (§24). | attribution INSERT (edge, JWT-verified) → trigger `ad_reconcile_attribution` |
+| `birth_info_completed` | A committed `consultation_subjects` INSERT (real save, §23), for an ad-attributed user | trigger `ad_on_birth_info` (+ reconcile backfill) |
+| `first_consultation` | FIRST `ai_usage_logs` row `status='success', request_type='chat'` per user (real LLM consultation, NOT chat entry, NOT the LOCAL_RESPONSE canned path, §25), for an ad-attributed user | trigger `ad_on_chat_success` (+ reconcile backfill) |
 | `d1 / d7 / d30` | Derived at read time — see below | RPC `admin_ad_performance` |
+
+> **Production-schema note (verified live 2026-08-14):** `public.profiles` and
+> `public.set_updated_at()` do NOT exist in production — they live only in the never-applied
+> `CONSUMER_CORE_SCHEMA.sql`. So signup is anchored on the **attribution row insert** (created
+> only by the JWT-verified `ad-track` edge over `auth.users` identity), NOT a `profiles`
+> trigger, and the migration defines its own `ads_set_updated_at()`. No `auth.users` trigger
+> is created. Only `is_admin()`, `ai_usage_logs`, `consultation_subjects` (all present) are
+> required.
 
 Idempotency (§26): a unique index `(user_id, event_type)` on the one-time milestones — a
 duplicated signup/first-consultation is impossible at the DB level.
 
-**Ordering safety:** the attribution row and the conversion events are two unordered writes
-at first auth. The forward triggers set `signup_at`/`first_consultation_at` when attribution
-already exists; a **backfill trigger** on `user_acquisition_attribution` INSERT adopts any
-already-present event timestamps for the opposite order. Together they make the analytics
-anchors reliable regardless of which write commits first (fixes a race the adversarial pass
-caught).
+**Known V1 semantic (honest):** signup credit attaches to the *first time an ad's attribution
+row is created for a user*. For a brand-new user this is exactly their signup. In the rare
+case where a **pre-existing organic member** later clicks an ad and authenticates, that first
+ad-touch creates their first attribution row and is counted as that ad's signup (first-touch
+convention) — with `signup_at` = that later auth time. This never counts a routine re-login
+(no new attribution row → no signup, §24); we accept the pre-existing-member edge case because
+production has no reliable per-user "created_at/new-user" signal (`profiles` is absent) and
+first-touch attribution conventionally credits the first ad touch.
+
+**Ordering safety (race-free by construction):** the **attribution row is the single anchor**.
+Its INSERT (by the edge, at first auth) fires `ad_reconcile_attribution`, which records signup
++ `signup_at` and adopts any birth/consultation activity that happened *before* attribution
+landed. The two forward triggers (`ad_on_birth_info`, `ad_on_chat_success`) are guarded by
+`exists(attribution)` and handle the normal *after*-attribution case. Because attribution is
+created at first auth (before any consultation) and signup is co-written with it, there is no
+cross-writer ordering race, and only ad-attributed users generate funnel events (privacy §52).
 
 ## First-consultation definition (§25)
 The single server-authoritative point is the chat Edge Function success (it writes
@@ -95,15 +113,22 @@ user-agent is used only transiently for crawler filtering, then dropped. Only ca
 count / timestamp columns; no name/email/birth/question text in the ad tables.
 
 ## Database — migration status
-`docs/ADVERTISEMENTS_SETUP.sql` — **ARTIFACT / HOLD, owner-apply only** (idempotent,
-non-destructive). Three tables + admin-CRUD RLS + append-only telemetry (no client policies) +
-first-touch attribution + server-trusted conversion triggers + `admin_ad_performance` RPC.
+`docs/ADVERTISEMENTS_SETUP.sql` (rev 2, production-schema-aligned) — **ARTIFACT / HOLD,
+owner-apply only** (idempotent, non-destructive, safe to re-run). Self-contained
+`ads_set_updated_at()`; three tables + admin-CRUD RLS + append-only telemetry (no client
+policies) + first-touch attribution + server-trusted conversion triggers (signup via the
+attribution/edge anchor, first-consult/birth via ai_usage_logs/consultation_subjects) +
+`admin_ad_performance` RPC. **Prereqs (ALL already applied in prod): `is_admin()`,
+`ai_usage_logs`, `consultation_subjects`.** No `profiles` / `set_updated_at()` dependency.
 **Not applied to production by this sprint** (§36/§67). `supabase/functions/ad-track` is
 **owner-deploy** (add `[functions.ad-track] verify_jwt=false` to `supabase/config.toml`).
+Read-only state check: `docs/ADVERTISEMENTS_DIAGNOSTIC.sql`.
 
 ## Production activation steps (owner)
-1. Review + apply `docs/ADVERTISEMENTS_SETUP.sql` in the Supabase SQL editor (prereqs:
-   `is_admin()`, `profiles`, `ai_usage_logs`, `consultation_subjects`, `set_updated_at()`).
+0. (Optional) Re-run `docs/ADVERTISEMENTS_DIAGNOSTIC.sql` to confirm the clean slate.
+1. Review + apply `docs/ADVERTISEMENTS_SETUP.sql` in the Supabase SQL editor. Prereqs
+   `is_admin()` + `ai_usage_logs` + `consultation_subjects` are already present; the file is
+   otherwise self-contained (no `profiles`, no shared `set_updated_at()`).
 2. Deploy the `ad-track` Edge Function; add `[functions.ad-track] verify_jwt=false` to
    `supabase/config.toml`.
 3. Set `EXPO_PUBLIC_PUBLIC_BASE_URL` to the production origin (build-time) and redeploy the

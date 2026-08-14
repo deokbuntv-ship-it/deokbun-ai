@@ -2,39 +2,55 @@
 -- DeokbunAI — Advertisement & Acquisition Tracking schema  (ARTIFACT — owner-apply)
 -- =============================================================================
 -- Backs src/features/ads/** (Advertisement admin CRUD, tracking events, first-touch
--- attribution, funnel + CAC/CPA analytics). Sprint 3B.
+-- attribution, funnel + CAC/CPA analytics). Sprint 3B (rev 2 — production-schema-aligned).
 --
 -- ⚠️ ARTIFACT ONLY — NOT auto-applied. Additive + idempotent + non-destructive
---   (create if not exists; drop policy if exists + recreate). NO DROP TABLE /
---   TRUNCATE / DELETE. Owner applies in the Supabase SQL editor after review.
+--   (create if not exists; create or replace; drop policy/trigger if exists + recreate).
+--   NO DROP TABLE / TRUNCATE / DELETE. Safe to re-run. Owner applies in the Supabase SQL
+--   editor after review.
 --
--- ⚠️ HOLD: the app's admin CRUD (advertisements) works as soon as THIS file's
---   `advertisements` table + policies exist. The tracking pipeline (ad_tracking_events,
---   attribution, triggers, admin_ad_performance) additionally requires the
---   `ad-track` Edge Function (supabase/functions/ad-track) to be deployed. Until then
---   the app's performance screen shows a truthful "집계 준비 중" state (fail-closed).
+-- ⚠️ HOLD: admin CRUD (advertisements) works as soon as THIS file is applied. The tracking
+--   pipeline (events/attribution/triggers/RPC) also needs the `ad-track` Edge Function
+--   (supabase/functions/ad-track) deployed. Until then the app's performance screen shows a
+--   truthful "집계 준비 중" state (fail-closed).
+--
+-- PRODUCTION SCHEMA ALIGNMENT (verified live 2026-08-14 via docs/ADVERTISEMENTS_DIAGNOSTIC.sql):
+--   Present in prod: public.is_admin(), auth.users, public.ai_usage_logs
+--     (status/request_type/user_id), public.consultation_subjects (user_id).
+--   NOT present in prod: public.profiles, public.set_updated_at().
+--   → This file therefore (a) defines its OWN ads_set_updated_at() — no shared-fn dependency;
+--     (b) does NOT create or depend on public.profiles; (c) records the SIGNUP milestone from
+--     the attribution-row insert (created only by the JWT-verified `ad-track` edge), NOT from
+--     a profiles/auth.users trigger. No auth-schema trigger is created.
 --
 -- RLS model:
 --   * advertisements     — ADMIN-ONLY CRUD, gated by public.is_admin(). No anon/user access.
---   * ad_tracking_events — append-only telemetry. RLS enabled, NO client policies:
---                          the ONLY writer is the `ad-track` Edge Function via the
---                          service role (bypasses RLS). Admins read via the RPC below.
---                          → an anonymous ad_click is NOT an anon-insert RLS policy
---                            (that would let anyone forge/spam rows); it is a validated,
---                            rate-limited service-role insert in the edge function.
+--   * ad_tracking_events — append-only telemetry. RLS enabled, NO client policies: the ONLY
+--     writer is the `ad-track` Edge Function (service role) + the SECURITY DEFINER triggers
+--     below. Admins read via the RPC. Anonymous ad_click is a validated, rate-limited,
+--     service-role insert in the edge — NOT an anon-insert RLS policy.
 --   * user_acquisition_attribution — one row per acquired user, first-touch. RLS enabled;
---                          the owner may read their own row; writes are server-side only
---                          (edge / trigger via service role). No client insert policy.
---   * server-trusted conversions — signup / first_consultation / birth_info_completed are
---                          recorded by AFTER INSERT triggers on profiles / ai_usage_logs /
---                          consultation_subjects (NOT by client assertions, §50), each
---                          idempotent via a unique index (one row per user per milestone).
---   * PII-minimal (§45/§52): no name/email/birth/free-text-question columns; visitor_id is
---                          an anonymous random id; raw IP / full user-agent are NOT stored.
--- Requires: public.is_admin() (docs/admin/ADMIN_SETUP.sql); public.profiles,
---   public.ai_usage_logs, public.consultation_subjects; public.set_updated_at()
---   (docs/CONSUMER_CORE_SCHEMA.sql).
+--     owner may read their own row; writes are server-side only (edge). No client write policy.
+--   * SERVER-TRUSTED conversions (§50): a client can NEVER assert a conversion.
+--       - signup            = the attribution INSERT (edge, JWT-verified user) fires
+--                             ad_reconcile_attribution → records the signup event + signup_at.
+--       - first_consultation= trigger on the FIRST successful chat ai_usage_logs row per user.
+--       - birth_info        = trigger on a committed consultation_subjects INSERT.
+--     Each is idempotent via a unique index; the reconcile trigger + the two forward triggers
+--     together make the anchors reliable regardless of write order (no race).
+--   * PII-minimal (§45/§52): no name/email/birth/question columns; visitor_id is an anon
+--     random id; raw IP / full user-agent are NOT stored.
+-- Requires (ALL already applied in prod): public.is_admin() (docs/admin/ADMIN_SETUP.sql);
+--   public.ai_usage_logs; public.consultation_subjects. (No profiles / set_updated_at dep.)
 -- =============================================================================
+
+-- ---- 0. Self-contained updated_at trigger fn (ads-scoped; does NOT touch the shared one) --
+create or replace function public.ads_set_updated_at()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
 
 -- ---- 1. advertisements (admin-managed primary entity) -----------------------
 create table if not exists public.advertisements (
@@ -59,7 +75,7 @@ create table if not exists public.advertisements (
 
 drop trigger if exists trg_advertisements_updated_at on public.advertisements;
 create trigger trg_advertisements_updated_at before update on public.advertisements
-  for each row execute function public.set_updated_at();
+  for each row execute function public.ads_set_updated_at();
 
 alter table public.advertisements enable row level security;
 drop policy if exists advertisements_admin_all on public.advertisements;
@@ -87,7 +103,7 @@ create unique index if not exists ad_tracking_events_once_uniq
   where event_type in ('birth_info_completed','signup','first_consultation') and user_id is not null;
 
 alter table public.ad_tracking_events enable row level security;
--- NO client policies. Only the service role (edge function) writes; admins read via RPC.
+-- NO client policies. Only the service role (edge) + SECURITY DEFINER triggers write; admins read via RPC.
 
 -- ---- 3. user_acquisition_attribution (first-touch, one per user) ------------
 create table if not exists public.user_acquisition_attribution (
@@ -98,7 +114,7 @@ create table if not exists public.user_acquisition_attribution (
   first_touch_at timestamptz,
   latest_ad_id uuid references public.advertisements(id) on delete set null,   -- optional (§20)
   latest_touch_at timestamptz,
-  signup_at timestamptz,
+  signup_at timestamptz,                 -- set by ad_reconcile_attribution at row insert (= first auth)
   first_consultation_at timestamptz,
   schema_version text not null default 'ads@1.0.0',
   created_at timestamptz not null default now(),
@@ -107,42 +123,72 @@ create table if not exists public.user_acquisition_attribution (
 
 drop trigger if exists trg_attribution_updated_at on public.user_acquisition_attribution;
 create trigger trg_attribution_updated_at before update on public.user_acquisition_attribution
-  for each row execute function public.set_updated_at();
+  for each row execute function public.ads_set_updated_at();
 
 alter table public.user_acquisition_attribution enable row level security;
 drop policy if exists attribution_select_own on public.user_acquisition_attribution;
 create policy attribution_select_own on public.user_acquisition_attribution for select
   using (user_id = auth.uid() or public.is_admin());
--- writes are server-side only (edge / triggers via service role) — no client insert/update policy.
+-- writes are server-side only (edge, service role) — no client insert/update policy.
 
--- ---- 4. Server-trusted conversion triggers (§50) ----------------------------
--- SIGNUP: a profiles row is inserted exactly once per new user (client ensureProfile).
-create or replace function public.ad_on_signup()
+-- ---- 4. Conversion recording (server-trusted, §50) --------------------------
+-- The attribution row is the ANCHOR. It is created ONLY by the JWT-verified ad-track edge
+-- (so a client can never forge it). Its INSERT fires this reconcile, which:
+--   (a) records SIGNUP (= this ad-attributed user just authenticated) + signup_at, and
+--   (b) adopts any activity that already happened BEFORE attribution landed (birth /
+--       first-consultation), so the forward triggers below + this together are race-free.
+create or replace function public.ad_reconcile_attribution()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
+  -- (a) signup: the acquired user is authenticated now (JWT-verified by the edge).
   insert into public.ad_tracking_events (event_type, user_id)
-  values ('signup', new.id)
+  values ('signup', new.user_id)
   on conflict do nothing;
   update public.user_acquisition_attribution
     set signup_at = coalesce(signup_at, now())
-    where user_id = new.id;
+    where user_id = new.user_id;
+
+  -- (b1) birth info already completed before attribution landed?
+  if exists (select 1 from public.consultation_subjects s where s.user_id = new.user_id) then
+    insert into public.ad_tracking_events (event_type, user_id)
+    values ('birth_info_completed', new.user_id)
+    on conflict do nothing;
+  end if;
+
+  -- (b2) a successful consultation already happened before attribution landed?
+  if exists (
+    select 1 from public.ai_usage_logs l
+    where l.user_id = new.user_id and l.status = 'success' and l.request_type = 'chat'
+  ) then
+    insert into public.ad_tracking_events (event_type, user_id)
+    values ('first_consultation', new.user_id)
+    on conflict do nothing;
+    update public.user_acquisition_attribution
+      set first_consultation_at = coalesce(first_consultation_at, (
+        select min(l.created_at) from public.ai_usage_logs l
+        where l.user_id = new.user_id and l.status = 'success' and l.request_type = 'chat'))
+      where user_id = new.user_id;
+  end if;
   return new;
 end $$;
-drop trigger if exists trg_ad_on_signup on public.profiles;
-create trigger trg_ad_on_signup after insert on public.profiles
-  for each row execute function public.ad_on_signup();
+drop trigger if exists trg_ad_reconcile_attribution on public.user_acquisition_attribution;
+create trigger trg_ad_reconcile_attribution after insert on public.user_acquisition_attribution
+  for each row execute function public.ad_reconcile_attribution();
 
--- FIRST_CONSULTATION: first successful chat usage per user (server-authoritative).
+-- FIRST_CONSULTATION (normal case): first successful chat usage per acquired user.
+-- Guarded by attribution existence so ONLY ad-attributed users generate funnel events
+-- (privacy-minimal, §52); the reconcile above covers the rare before-attribution case.
 create or replace function public.ad_on_chat_success()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if new.status = 'success' and new.request_type = 'chat' and new.user_id is not null then
+  if new.status = 'success' and new.request_type = 'chat' and new.user_id is not null
+     and exists (select 1 from public.user_acquisition_attribution ua where ua.user_id = new.user_id) then
     insert into public.ad_tracking_events (event_type, user_id)
     values ('first_consultation', new.user_id)
-    on conflict do nothing;   -- unique index → only the FIRST success records the milestone
+    on conflict do nothing;                     -- unique index → only the FIRST success counts
     if found then
       update public.user_acquisition_attribution
-        set first_consultation_at = coalesce(first_consultation_at, now())
+        set first_consultation_at = coalesce(first_consultation_at, new.created_at)
         where user_id = new.user_id;
     end if;
   end if;
@@ -152,11 +198,12 @@ drop trigger if exists trg_ad_on_chat_success on public.ai_usage_logs;
 create trigger trg_ad_on_chat_success after insert on public.ai_usage_logs
   for each row execute function public.ad_on_chat_success();
 
--- BIRTH_INFO_COMPLETED: a committed consultation_subjects insert (real save, §23).
+-- BIRTH_INFO_COMPLETED (normal case): a committed consultation_subjects insert (real save, §23).
 create or replace function public.ad_on_birth_info()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if new.user_id is not null then
+  if new.user_id is not null
+     and exists (select 1 from public.user_acquisition_attribution ua where ua.user_id = new.user_id) then
     insert into public.ad_tracking_events (event_type, user_id)
     values ('birth_info_completed', new.user_id)
     on conflict do nothing;
@@ -166,29 +213,6 @@ end $$;
 drop trigger if exists trg_ad_on_birth_info on public.consultation_subjects;
 create trigger trg_ad_on_birth_info after insert on public.consultation_subjects
   for each row execute function public.ad_on_birth_info();
-
--- BACKFILL (fixes the attribution/conversion ORDERING RACE): the attribution row and the
--- conversion events (signup / first_consultation) are two independent, unordered writes at
--- first auth. The forward triggers above set signup_at/first_consultation_at only when the
--- attribution row already exists; this AFTER INSERT trigger covers the opposite order by
--- adopting any conversion-event timestamps that already exist when attribution lands. With
--- both, signup_at/first_consultation_at are reliable regardless of order.
-create or replace function public.ad_backfill_attribution()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  update public.user_acquisition_attribution ua
-    set signup_at = coalesce(ua.signup_at, (
-          select min(e.created_at) from public.ad_tracking_events e
-          where e.user_id = new.user_id and e.event_type = 'signup')),
-        first_consultation_at = coalesce(ua.first_consultation_at, (
-          select min(e.created_at) from public.ad_tracking_events e
-          where e.user_id = new.user_id and e.event_type = 'first_consultation'))
-    where ua.user_id = new.user_id;
-  return new;
-end $$;
-drop trigger if exists trg_ad_backfill_attribution on public.user_acquisition_attribution;
-create trigger trg_ad_backfill_attribution after insert on public.user_acquisition_attribution
-  for each row execute function public.ad_backfill_attribution();
 
 -- ---- 5. Admin performance RPC (is_admin()-gated, aggregate only) -------------
 -- Returns per-ad counts. Retention (D1/D7/D30) = user had a successful chat usage at
@@ -250,4 +274,5 @@ grant execute on function public.admin_ad_performance(timestamptz, timestamptz) 
 -- select tablename, rowsecurity from pg_tables
 --   where schemaname='public' and tablename in
 --   ('advertisements','ad_tracking_events','user_acquisition_attribution');
--- Expect rowsecurity = true for all three.
+-- Expect rowsecurity = true for all three. Then re-run docs/ADVERTISEMENTS_DIAGNOSTIC.sql —
+-- every ad_* object should now report present.
