@@ -95,9 +95,26 @@ export {
   DIRECTION_ARROWS,
   CONFIDENCE_LABELS,
   AGREEMENT_LABELS,
+  APPLICABILITY_LABELS,
   AVAILABILITY_LABELS,
   AVAILABILITY_TONES,
   ENGINE_LABELS,
+  GROUNDING_REASON_LABELS,
+  CROSS_AGREEMENT_LABELS,
+  CROSS_AGREEMENT_TONES,
+  POLARITY_LABELS,
+  POLARITY_TONES,
+  QUALITY_STATUS_LABELS,
+  QUALITY_STATUS_TONES,
+  QUALITY_DIMENSION_LABELS,
+  REVIEW_STATUS_LABELS,
+  OUTCOME_TYPE_LABELS,
+  OUTCOME_SOURCE_LABELS,
+  OUTCOME_VERIFICATION_LABELS,
+  OUTCOME_VERIFICATION_TONES,
+  OUTCOME_CONFIDENCE_LABELS,
+  FEEDBACK_VERDICT_LABELS,
+  FEEDBACK_REASON_LABELS,
 } from './presentation/labels';
 export type { LabelTone } from './presentation/labels';
 export {
@@ -109,6 +126,48 @@ export type {
   ConsumerAssessmentView,
   AdminAssessmentRow,
 } from './presentation/assessmentView';
+export {
+  toConsumerAssessmentDetail,
+  toAdminAssessmentDetail,
+} from './presentation/assessmentDetailView';
+export type {
+  ConsumerAssessmentDetail,
+  AdminAssessmentDetail,
+  EngineContributionView,
+} from './presentation/assessmentDetailView';
+export {
+  toEngineEvidenceView,
+  toGroundingView,
+  toExplainabilityView,
+} from './presentation/evidenceView';
+export type {
+  EngineKey,
+  EngineEvidenceView,
+  GroundingView,
+  ExplainabilityView,
+} from './presentation/evidenceView';
+export { toCrossAnalysisView } from './presentation/crossAnalysisView';
+export type {
+  CrossSignalView,
+  CrossDomainView,
+  CrossAnalysisView,
+} from './presentation/crossAnalysisView';
+export {
+  toEvaluationView,
+  toHumanReviewView,
+  toFeedbackView,
+  feedbackControlState,
+  toOutcomeView,
+  toOutcomeListView,
+} from './presentation/intelligenceViews';
+export type {
+  EvaluationDimensionRow,
+  EvaluationView,
+  HumanReviewView,
+  FeedbackView,
+  FeedbackControlState,
+  OutcomeRowView,
+} from './presentation/intelligenceViews';
 // NOTE: React components (AssessmentSummary/AssessmentTile) are intentionally NOT
 // re-exported here — this barrel is imported by the pure (node) jest suites, so it must
 // stay free of react-native imports. Import components directly from
