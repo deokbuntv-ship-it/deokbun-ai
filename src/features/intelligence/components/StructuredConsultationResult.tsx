@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
@@ -15,40 +14,42 @@ import { FollowUpSuggestions } from './FollowUpSuggestions';
 import { InterpretationEvidenceSheet } from './InterpretationEvidenceSheet';
 import { UserFeedbackControl } from './UserFeedbackControl';
 
-// Golden Flow v3 — the Structured Consultation Result (§6/§7/§15). Composes the approved
-// result hierarchy over REAL contract fields only. Every prose section (core summary,
-// disposition, interpretation, strengths, cautions, domain, future flow) is a caller-
-// provided string sourced from the LLM response — this component NEVER fabricates
-// interpretation copy (§6). A section with no source is simply omitted. Categorical
-// evaluation comes from `assessment` (fail-closed); explainability from `grounding`.
+// Golden Flow V4 — the Structured Consultation Result. Composes the approved answer-first
+// hierarchy over REAL contract fields only. Every prose section (core summary, disposition,
+// interpretation, strengths, cautions, domain, future flow) is a caller-provided string
+// sourced from the LLM response — this component NEVER fabricates interpretation copy. A
+// section with no source is simply omitted (fail-closed). Categorical evaluation comes from
+// `assessment` (fail-closed); explainability from `grounding`.
 //
-// PROGRESSIVE DISCLOSURE (§15): the initial view prioritises core → assessment →
-// current flow → core interpretation. Everything else expands behind 더 자세히 보기.
-// This is a hybrid (chat + structured result) — it lives inside the chat, and the
-// free-form composer stays outside it (§6/§18).
+// LONG-FORM LOCK (docs/GOLDEN_FLOW_V4_UX.md §0): long-form is a core value. The one-sentence
+// core is ORIENTATION only — it never shortens the answer. The detailed interpretation
+// (핵심 해석 + 강점 + 주의점 + 영역별 해석 + 앞으로의 흐름) renders **EXPANDED by default**; it is
+// NEVER hidden behind "더 자세히 보기". Progressive disclosure / collapse is reserved for
+// technical evidence + methodology, which live in the Explainability sheet ("왜 이렇게
+// 해석했나요?"). The hybrid free-form composer stays outside this component.
 
 export type StructuredConsultationViewModel = {
-  // 1 — one-line core summary (from the LLM). '' → omitted.
+  // 1 — one-line core conclusion (orientation, from the LLM). '' → omitted.
   coreSummary?: string;
-  // 2 — 기본 성향
+  // 2 — 기본 성향 / current context
   disposition?: string;
   // 3 — Assessment (fail-closed ConsumerAssessmentView)
   assessment: ConsumerAssessmentView;
   // 4 — current flow / 현재 흐름
   currentFlow?: string;
-  // 5 — core interpretation
+  // 5 — core interpretation (long-form; expanded)
   coreInterpretation?: string;
-  // 7 — strengths
+  // 5b — strengths (long-form; expanded)
   strengths?: string[];
-  // 8 — cautions
+  // 5c — cautions (long-form; expanded)
   cautions?: string[];
-  // 9 — domain-specific interpretation
+  // 5d — domain-specific interpretation (long-form; expanded)
   domainInterpretation?: { title: string; body: string }[];
-  // 10 — future flow
+  // 5e — future flow / 앞으로의 흐름 (long-form; expanded)
   futureFlow?: string;
-  // 11 — Explainability source
+  // 6 — Explainability source (evidence/methodology — the ONLY collapsible layer)
   grounding: ConsultationGrounding;
-  // 12 — recommended follow-up questions (helpers only)
+  // 7 — recommended follow-up questions (helpers only; arise from a rich answer)
   followUps?: string[];
   // Whole-result truthful state (conflict/partial/failure/…); overrides the body.
   state?: ConsultationState;
@@ -61,7 +62,7 @@ function Section({ title, body }: { title: string; body?: string }) {
       <Text variant="bodySmall" colorToken="textSecondary">
         {title}
       </Text>
-      <Text variant="bodyMedium" style={{ lineHeight: 22 }}>
+      <Text variant="bodyMedium" style={{ lineHeight: 23 }}>
         {body}
       </Text>
     </Stack>
@@ -80,7 +81,7 @@ function BulletList({ title, items, glyphColor }: { title: string; items?: strin
           <Text variant="bodyMedium" style={{ color: glyphColor }}>
             ·
           </Text>
-          <Text variant="bodyMedium" style={{ flex: 1, lineHeight: 22 }}>
+          <Text variant="bodyMedium" style={{ flex: 1, lineHeight: 23 }}>
             {it}
           </Text>
         </View>
@@ -102,15 +103,13 @@ export function StructuredConsultationResult({
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
-  const [expanded, setExpanded] = useState(false);
 
-  // A whole-result truthful state replaces the body — never a fabricated reading (§13).
+  // A whole-result truthful state replaces the body — never a fabricated reading.
   if (vm.state) {
     return <ConsultationStateNotice state={vm.state} onRetry={onRetry} />;
   }
 
-  const hasDetail =
-    !!vm.coreInterpretation ||
+  const hasDetailedLongForm =
     (vm.strengths?.length ?? 0) > 0 ||
     (vm.cautions?.length ?? 0) > 0 ||
     (vm.domainInterpretation?.length ?? 0) > 0 ||
@@ -118,7 +117,7 @@ export function StructuredConsultationResult({
 
   return (
     <Stack gap="lg">
-      {/* 1 — core summary (lead) */}
+      {/* 1 — core conclusion (orientation only; never a replacement for the long answer) */}
       {vm.coreSummary ? (
         <Card radius="xl">
           <Text variant="bodyLarge" style={{ fontWeight: '700', lineHeight: 26 }}>
@@ -127,14 +126,14 @@ export function StructuredConsultationResult({
         </Card>
       ) : null}
 
-      {/* 2 — disposition */}
+      {/* 2 — disposition / current context */}
       {vm.disposition ? (
         <Card radius="xl">
           <Section title="기본 성향" body={vm.disposition} />
         </Card>
       ) : null}
 
-      {/* 3 — Assessment summary (fail-closed) */}
+      {/* 3 — Assessment summary (fail-closed, categorical) */}
       <AssessmentSummary view={vm.assessment} />
 
       {/* 4 — current flow */}
@@ -144,46 +143,33 @@ export function StructuredConsultationResult({
         </Card>
       ) : null}
 
-      {/* 5 — core interpretation (always in initial view) */}
+      {/* 5 — core interpretation: the primary long-form answer, EXPANDED (§0) */}
       {vm.coreInterpretation ? (
         <Card radius="xl">
           <Section title="핵심 해석" body={vm.coreInterpretation} />
         </Card>
       ) : null}
 
-      {/* 6 — 더 자세히 보기 (progressive disclosure) */}
-      {hasDetail ? (
-        <>
-          {!expanded ? (
-            <Pressable
-              onPress={() => setExpanded(true)}
-              accessibilityRole="button"
-              accessibilityLabel="더 자세히 보기"
-              style={{ alignSelf: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.lg }}
-            >
-              <Text variant="bodyMedium" style={{ color: theme.secondary, fontWeight: '700' }}>
-                더 자세히 보기 ▾
-              </Text>
-            </Pressable>
-          ) : (
-            <Card radius="xl">
-              <Stack gap="lg">
-                <BulletList title="강점" items={vm.strengths} glyphColor={theme.secondary} />
-                <BulletList title="주의할 점" items={vm.cautions} glyphColor={theme.accent} />
-                {vm.domainInterpretation?.map((d, i) => (
-                  <Section key={i} title={d.title} body={d.body} />
-                ))}
-                <Section title="앞으로의 흐름" body={vm.futureFlow} />
-              </Stack>
-            </Card>
-          )}
-        </>
+      {/* 5b–5e — detailed long-form (강점/주의점/영역별/앞으로의 흐름): EXPANDED by default (§0).
+          NEVER behind "더 자세히 보기" — this is the substance of the consultation. */}
+      {hasDetailedLongForm ? (
+        <Card radius="xl">
+          <Stack gap="lg">
+            <BulletList title="강점" items={vm.strengths} glyphColor={theme.secondary} />
+            <BulletList title="주의할 점" items={vm.cautions} glyphColor={theme.accent} />
+            {vm.domainInterpretation?.map((d, i) => (
+              <Section key={i} title={d.title} body={d.body} />
+            ))}
+            <Section title="앞으로의 흐름" body={vm.futureFlow} />
+          </Stack>
+        </Card>
       ) : null}
 
-      {/* 11 — Explainability */}
+      {/* 6 — Explainability (evidence/methodology — the only optional/collapsible depth) */}
       <InterpretationEvidenceSheet grounding={vm.grounding} />
 
-      {/* 12 — recommended follow-ups (helpers only; composer stays external §18) */}
+      {/* 7 — recommended follow-ups (helpers; composer stays external). They arise from a
+          rich answer's new curiosity — never from withholding interpretation. */}
       {vm.followUps && onSelectFollowUp ? (
         <FollowUpSuggestions suggestions={vm.followUps} onSelect={onSelectFollowUp} />
       ) : null}

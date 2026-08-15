@@ -41,9 +41,14 @@ const POPULAR_QUESTIONS: { q: string; icon: LineIconName }[] = [
   { q: '새로운 인연을 만날 수 있을까?', icon: 'heart' },
   { q: '건강 측면에서 조심해야 할 것은?', icon: 'leaf' },
 ];
+// V4 §13 breadth: whole-flow · diagnostic · timing · decision · relationship — demonstrates
+// the range of questions, not a catalog of fortune products. Copy-only (server-replaceable).
 const QUICK_PROMPTS: string[] = [
+  '올해 전체 흐름이 궁금해',
+  '요즘 일이 자꾸 꼬이는 이유가 있을까?',
   '이직하기 좋은 시기가 언제야?',
-  '올해 재물운은 어때?',
+  '사업을 확장해도 될까?',
+  '연애 흐름은 어때?',
 ];
 
 function greeting(): string {

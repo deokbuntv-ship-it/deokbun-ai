@@ -34,6 +34,11 @@ import {
     type BirthInfoDraft,
     type ConsultationSubject,
 } from '@/features/consultation';
+import {
+    ConsultationLoading,
+    StructuredConsultationResult,
+} from '@/features/intelligence/components';
+import { computeAnswerAnchorOffset } from '@/features/chat/scrollAnchor';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
@@ -213,12 +218,33 @@ export default function ChatScreen() {
       setInputText('');
     }
     setSendError(null);
+    // Returning conversation → land on the latest message; a new consultation stays at the top
+    // (§G). This is the ONLY auto-scroll-to-end — new answers anchor to their START instead.
+    if ((restoredMessages?.length ?? 0) > 0) {
+      scrollRestoredToEnd();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messagesHydrationStatus, resetToken, restoredMessages, conversationIdParam]);
 
-  const scrollToEnd = () => {
-    requestAnimationFrame(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    });
+  // One-shot anchor target: the id of the newest message whose START the viewport should
+  // align to once it lays out (§G). Set on send (user's own message) and on a new answer.
+  const pendingAnchorRef = useRef<string | null>(null);
+
+  // Land a RETURNING conversation on its latest message (only when there is restored history).
+  // A NEW consultation starts at the top (welcome). Called once per (re)seed. NOT tied to
+  // onContentSizeChange, so a new answer never yanks the viewport to the bottom (§G).
+  const scrollRestoredToEnd = () => {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      }),
+    );
+  };
+
+  // Anchor the viewport near the START of a message, given its layout Y within the content
+  // Stack (§G, FROZEN). Never scrollToEnd for an assistant answer.
+  const anchorMessageToStart = (layoutY: number) => {
+    scrollViewRef.current?.scrollTo({ y: computeAnswerAnchorOffset(layoutY), animated: true });
   };
 
   // Send `text` with the given prior-message context. Used by both the first send and
@@ -242,12 +268,16 @@ export default function ChatScreen() {
         const assistantMessage: ChatMessage = {
           id: createMessageId('assistant'),
           role: 'assistant',
+          // Plain text today. When the backend attaches a structured result, it renders via
+          // <StructuredConsultationResult>; the client never fabricates it (P0-1 / CODEX seam).
           text: result.responseText,
         };
         setMessages((currentMessages) => [...currentMessages, assistantMessage]);
         persistMessage(assistantMessage);
         setSendError(null);
         lastAttemptRef.current = null;
+        // Anchor the viewport to the START of the new answer (§G) — NOT the bottom.
+        pendingAnchorRef.current = assistantMessage.id;
       } else {
         const view = mapConsultationError(result.errorCode);
         if (result.errorCode === 'AUTH_REQUIRED') {
@@ -256,23 +286,24 @@ export default function ChatScreen() {
         }
         setSendError(view);
         lastAttemptRef.current = view.canRetry ? { text, context } : null;
+        // The error card is fixed above the composer (always visible) — no scroll needed.
       }
-
-      scrollToEnd();
     } finally {
       setIsSending(false);
       isSendingRef.current = false;
     }
   };
 
-  const handleSend = async () => {
+  // Send `rawText` as a new user message. Shared by the composer and by follow-up chips (§7)
+  // so both go through the exact same proven send path (auth gate, idempotent retry, persist).
+  const submitQuestion = async (rawText: string) => {
     if (isSendingRef.current) {
       return;
     }
 
-    const trimmedInput = inputText.trim();
+    const trimmed = rawText.trim();
 
-    if (trimmedInput.length === 0) {
+    if (trimmed.length === 0) {
       return;
     }
 
@@ -282,16 +313,28 @@ export default function ChatScreen() {
     const userMessage: ChatMessage = {
       id: createMessageId('user'),
       role: 'user',
-      text: trimmedInput,
+      text: trimmed,
     };
 
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setInputText('');
     setSendError(null);
-    scrollToEnd();
+    // Anchor to the user's own message start (question at top, loading below) (§G).
+    pendingAnchorRef.current = userMessage.id;
     persistMessage(userMessage);
 
-    await runSend(trimmedInput, previousMessages);
+    await runSend(trimmed, previousMessages);
+  };
+
+  const handleSend = () => {
+    void submitQuestion(inputText);
+  };
+
+  // Follow-up chip tap (§7). Reuses the send path; the free composer always stays available.
+  // Wired for the V3 FollowUpSuggestions inside a structured result — only fires when the
+  // backend has attached one (CODEX seam), so it is inert until then.
+  const handleSelectFollowUp = (question: string) => {
+    void submitQuestion(question);
   };
 
   // "다시 시도" for a recoverable failure — re-sends the same question with its original
@@ -360,19 +403,36 @@ export default function ChatScreen() {
     <Screen padded={false} frame>
       {header}
       <View style={styles.container}>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messageScroll}
-          contentContainerStyle={styles.messageScrollContent}
-          onContentSizeChange={() => {
-            scrollViewRef.current?.scrollToEnd({ animated: false });
-          }}
-        >
+        <ScrollView ref={scrollViewRef} style={styles.messageScroll} contentContainerStyle={styles.messageScrollContent}>
           <View style={styles.contentWrapper}>
             <Stack gap="sm">
               {messages.map((message) => (
-                <ChatBubble key={message.id} message={message} />
+                <View
+                  key={message.id}
+                  onLayout={(e) => {
+                    // When this is the pending anchor (newest user/assistant message), align the
+                    // viewport to its START once it has laid out (§G, FROZEN) — never the bottom.
+                    if (pendingAnchorRef.current === message.id) {
+                      pendingAnchorRef.current = null;
+                      anchorMessageToStart(e.nativeEvent.layout.y);
+                    }
+                  }}
+                >
+                  {message.role === 'assistant' && message.structuredResult ? (
+                    // V4 fail-closed seam: render the structured result ONLY when the backend
+                    // attached one. Never fabricated client-side (CODEX seam, P0-1).
+                    <StructuredConsultationResult
+                      vm={message.structuredResult}
+                      onSelectFollowUp={handleSelectFollowUp}
+                      onRetry={handleRetry}
+                    />
+                  ) : (
+                    <ChatBubble message={message} />
+                  )}
+                </View>
               ))}
+              {/* One honest analysis state — no fake engine stages (§H/§10). */}
+              {isSending ? <ConsultationLoading /> : null}
             </Stack>
           </View>
         </ScrollView>

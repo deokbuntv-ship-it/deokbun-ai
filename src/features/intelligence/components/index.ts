@@ -5,6 +5,7 @@
 export { AssessmentSummary, AssessmentTile } from './AssessmentSummary';
 export { AssessmentDetailSheet } from './AssessmentDetailSheet';
 export { ConfidenceIndicator } from './ConfidenceIndicator';
+export { ConsultationLoading } from './ConsultationLoading';
 export { ConsultationStateNotice } from './ConsultationStateNotice';
 export type { ConsultationState } from './ConsultationStateNotice';
 export { FollowUpSuggestions } from './FollowUpSuggestions';
