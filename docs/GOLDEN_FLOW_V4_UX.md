@@ -13,6 +13,40 @@
 
 ---
 
+## 0. LOCKED PRODUCT RULE — LONG-FORM CONSULTATION IS A CORE VALUE
+
+**Long-form, detailed, personalized interpretation is a defining DeokbunAI value. "Answer-first"
+and "one-sentence core" are ORIENTATION devices — they must NEVER be read as shortening the
+actual consultation, collapsing the substance, or withholding useful interpretation to
+manufacture follow-up engagement.** Follow-up curiosity must arise *because the detailed answer
+was rich*, not because it was cut short.
+
+**Canonical answer hierarchy (V4-locked — supersedes any narrower reading of §3/§4):**
+1. **Immediate core conclusion** — one sentence, orientation only (not the answer).
+2. **Long, detailed, personalized interpretation** — the substance; **expanded by default.**
+   (disposition / current context, the core interpretation prose, 강점, 주의점, 영역별 해석,
+   앞으로의 흐름 — rendered as readable long-form, NOT hidden behind a toggle.)
+3. **Structured assessment / important themes** — scannable tiles alongside the prose.
+4. **Timing / deeper analysis** — when the backend supports it.
+5. **Explainability / evidence** — behind "왜 이렇게 해석했나요?".
+6. **Contextual follow-up questions** — chips.
+7. **Free-text conversation continues.**
+
+**Progressive disclosure is reserved MAINLY for technical evidence, secondary methodology, and
+optional deeper detail — NOT for the core long-form interpretation.** Do not over-collapse the
+consultation.
+
+**Long-answer readability requirements** (the desired reaction: *"내용이 정말 자세한데 읽기는
+편하다."*): substantial information density preserved · headings + strong hierarchy · short
+readable paragraphs · generous whitespace + visual rhythm · **core interpretation stays
+expanded** · restrained bold · no giant decorative headings inside the conversation · no
+card-wall after every answer (§17). Density lives in *depth of text*, not in dashboard chrome.
+
+**FROZEN — new-answer scroll:** the viewport anchors near the **START** of the newly generated
+answer; it never jumps to the absolute bottom (full spec §G).
+
+---
+
 ## A. V3 → V4 UX AUDIT (evidence-grounded)
 
 **Key finding up front:** V3 built a complete, correct, fail-closed *presentation layer*
@@ -85,13 +119,16 @@ Format per finding: **Problem → Why it matters → V4 correction → User impa
 - Problem: a plain LLM paragraph mixes answer + interpretation + (sometimes) mechanics.
 - Why: the user must get "무슨 말인지" before "왜" and before "무슨 근거" (§4). A single blob
   forces them to read everything to find the point.
-- V4 correction: the structured result’s Layer 1 (one-sentence core conclusion) + Layer 2
-  (core interpretation, expandable) + Layer 3 (Explainability sheet) enforce the layering
-  structurally. Requires the backend to return the answer *segmented* (core / interpretation /
-  detail), or Claude Code renders whatever segments exist and collapses the rest.
-- User impact: "무슨 말인지 알겠다" in the first second (§30.1).
-- Implementation impact: backend segments the response (core/interpretation/detail); fail-closed
-  to a single readable block if only prose is available.
+- V4 correction: Layer 1 (one-sentence core) **orients**; Layer 2 (the long detailed
+  interpretation) is the **substance and stays EXPANDED** (§0); Layer 3 (Explainability/
+  evidence) is the *optional* collapse. Requires the backend to return the answer *segmented*
+  (core / long-interpretation / evidence), or Claude Code renders whatever segments exist —
+  fail-closed to a single readable long block if only prose is available. **The one-sentence
+  core never replaces or shortens the long-form answer (§0).**
+- User impact: "무슨 말인지 알겠다" in the first second **AND** "내용이 정말 자세한데 읽기는
+  편하다" (§30.1 + §0).
+- Implementation impact: backend segments the response (core / long-interpretation / evidence);
+  fail-closed to a single readable long block. Layer 2 is never hidden behind a toggle.
 
 **P1-3 · Explainability entry ("왜 이렇게 해석했나요?") is unreachable in the live flow.**
 - Problem: `InterpretationEvidenceSheet` exists (only-used-engines, 근거 일치도 hidden when
@@ -220,12 +257,22 @@ The single most important screen (§3). Default-visible hierarchy, top → botto
 │  │  지금은 새 판을 벌이기보다 …                                   │  │
 │  ├──────────────────────────────────────────────────────────────┤  │
 │  │  핵심 해석                                                     │  │  5 · CORE INTERPRETATION
-│  │  명리와 자미두수가 함께 가리키는 건 … (conversational prose)   │  │    readable, short paragraphs
+│  │  명리와 자미두수가 함께 가리키는 건 …                          │  │    LONG-FORM, EXPANDED by default
+│  │  (여러 문단의 상세하고 개인화된 해석 — 짧은 문단 + 여백)       │  │    headings · short paragraphs · rhythm
+│  │                                                                │  │
+│  │  강점                                                          │  │  5b · 강점 (EXPANDED)
+│  │  추진력과 사람을 끌어모으는 힘이 …                              │  │
+│  │  주의점                                                        │  │  5c · 주의점 (EXPANDED)
+│  │  다만 지금 벌이면 관리 부담이 …                                 │  │
+│  │  영역별 해석                                                   │  │  5d · 영역별 해석 (EXPANDED)
+│  │  · 사업 …   · 재물 …   · 관계 …                                 │  │
+│  │  앞으로의 흐름                                                 │  │  5e · 앞으로의 흐름 (EXPANDED)
+│  │  하반기로 갈수록 …                                              │  │
 │  │                                                                │  │
 │  │  왜 이렇게 해석했나요?  ›                                       │  │  6 · EXPLAINABILITY ENTRY (quiet)
 │  ├──────────────────────────────────────────────────────────────┤  │
-│  │                    더 자세히 보기  ▾                           │  │  7 · PROGRESSIVE DISCLOSURE CTA
-│  └──────────────────────────────────────────────────────────────┘  │    (강점/주의점/영역별/앞으로의 흐름)
+│  │        (선택) 더 깊은 근거 · 방법론 보기  ▾                     │  │  7 · PROGRESSIVE DISCLOSURE — EVIDENCE/
+│  └──────────────────────────────────────────────────────────────┘  │    METHODOLOGY ONLY (never the answer)
 │                                                                      │
 │  이어서 물어볼 수 있어요                                            │  FOLLOW-UPS (chips, horizontal)
 │  [ 재물운은? ] [ 2027년은? ] [ 월별로 볼래 ]                        │
@@ -238,7 +285,11 @@ The single most important screen (§3). Default-visible hierarchy, top → botto
 Notes: everything above maps 1:1 to `StructuredConsultationViewModel`
 (`coreSummary`/`disposition`/`assessment`/`currentFlow`/`coreInterpretation`/`grounding`/
 `strengths`/`cautions`/`domainInterpretation`/`futureFlow`/`followUps`). Sections with no
-data are omitted (fail-closed) — never a placeholder.
+data are omitted (fail-closed) — never a placeholder. **PER §0 (locked):** the interpretation
+substance — `coreInterpretation` + `strengths` + `cautions` + `domainInterpretation` +
+`futureFlow` — renders **EXPANDED**, with headings + short paragraphs + whitespace. The
+`더 자세히 보기`/collapse affordance is reserved for **technical evidence / secondary methodology
+/ optional deeper detail**, NOT for the long-form answer. Do not over-collapse the consultation.
 
 ---
 
@@ -272,8 +323,11 @@ data are omitted (fail-closed) — never a placeholder.
 
 ## F. INTERACTION NOTES
 
-- **Progressive disclosure** is *within* an answer (더 자세히 보기 expands strengths/cautions/
-  domain/future). The user never picks an "analysis level" (§8).
+- **Progressive disclosure** (§0): the long-form interpretation — core interpretation, 강점,
+  주의점, 영역별 해석, 앞으로의 흐름 — renders **EXPANDED by default**. The collapse affordance is
+  reserved for **technical evidence / secondary methodology / optional deeper detail**, not the
+  answer. Never withhold interpretation to manufacture a follow-up; follow-ups emerge because a
+  *rich* answer creates new curiosity. The user never picks an "analysis level" (§8).
 - **Follow-up chips** prefill+send; the free composer is always available and is the primary
   path (§7). Chips are horizontally scrollable, thumb-height (≥44px).
 - **Explainability** is a bottom sheet (thumb-friendly), opened from a quiet inline link — not a
@@ -283,11 +337,12 @@ data are omitted (fail-closed) — never a placeholder.
 
 ---
 
-## G. SCROLL BEHAVIOR SPECIFICATION (fixes P0-2)
+## G. SCROLL BEHAVIOR SPECIFICATION (fixes P0-2) — **FROZEN**
 
-**Rule (§9):** when a *new assistant answer* is appended, scroll so the **top of that answer's
-container** aligns near the top of the viewport (a small `TOP_GAP`, e.g. 12–16px), so the user
-reads from its first line. Do **not** `scrollToEnd`.
+**Rule (§9, FROZEN):** when a *new assistant answer* is appended, the viewport **anchors near
+the START of the newly generated answer** — the **top of that answer's container** aligns near
+the top of the viewport (a small `TOP_GAP`, e.g. 12–16px), so the user reads from its first
+line. It **never jumps to the absolute bottom.** Do **not** `scrollToEnd` for assistant answers.
 
 - While the **user** sends their own message → follow to bottom (their bubble should be visible)
   — that's expected and desired.
@@ -413,14 +468,22 @@ Already implemented (Sprint 2A `pendingConsultationIntent`); V4 keeps it and spe
 > Format: **UI · Required · Optional · Loading · Empty · Error · Interaction · Backend dep ·
 > Fail-closed.** All components already exist unless marked (NEW).
 
-**StructuredConsultationResult** (built)
-- UI: the answer-first first result (§3). · Required: `assessment` (ConsumerAssessmentView),
-  `grounding`. · Optional: `coreSummary`, `disposition`, `currentFlow`, `coreInterpretation`,
-  `strengths`, `cautions`, `domainInterpretation`, `futureFlow`, `followUps`, `state`. ·
-  Loading: parent shows `<ConsultationLoading/>`. · Empty: sections with no data are omitted. ·
-  Error: `state` → `ConsultationStateNotice`. · Interaction: 더 자세히 보기 expands; chips send;
-  explainability trigger opens sheet. · Backend dep: the whole VM comes from the chat edge’s
-  structured result. · Fail-closed: no VM → render plain text (P0-1 backward-compat).
+**StructuredConsultationResult** (built — **requires a V4 adjustment per §0**)
+- UI: the answer-first first result (§3), long-form (§0). · Required: `assessment`
+  (ConsumerAssessmentView), `grounding`. · Optional: `coreSummary`, `disposition`,
+  `currentFlow`, `coreInterpretation`, `strengths`, `cautions`, `domainInterpretation`,
+  `futureFlow`, `followUps`, `state`. · Loading: parent shows `<ConsultationLoading/>`. · Empty:
+  sections with no data are omitted. · Error: `state` → `ConsultationStateNotice`. ·
+  Interaction: the long-form interpretation (`coreInterpretation` + `strengths` + `cautions` +
+  `domainInterpretation` + `futureFlow`) renders **EXPANDED**; chips send; the explainability
+  trigger opens the sheet; the collapse affordance covers only evidence/methodology. · Backend
+  dep: the whole VM comes from the chat edge’s structured result. · Fail-closed: no VM → render
+  plain text (P0-1 backward-compat).
+- ⚠️ **CONFLICT TO RESOLVE (see §P):** the component as built in Sprint 3A-B collapses
+  `strengths`/`cautions`/`domainInterpretation`/`futureFlow` behind `더 자세히 보기`. Under §0
+  that over-collapses the consultation. V4 change: render those **expanded** by default; move
+  the collapse to evidence/methodology only. Small, contained edit to
+  `intelligence/components/StructuredConsultationResult.tsx`.
 
 **ChatMessage rendering** (chat.tsx — MODIFY)
 - UI: user bubble vs assistant answer. · Required: `text`. · Optional (NEW):
@@ -451,6 +514,27 @@ Backend dep: `memoryCandidate`. Fail-closed: no candidate → not shown.
 
 ---
 
+## P. CONFLICTS RESOLVED AGAINST §0 (long-form lock)
+
+The §0 long-form lock revealed and resolves these tensions in the earlier V4 draft:
+
+- **Over-collapse (resolved).** The earlier §D/§F draft and the *built*
+  `StructuredConsultationResult` place `strengths`/`cautions`/`domainInterpretation`/
+  `futureFlow` behind `더 자세히 보기`. → **V4 rule:** those are the long-form answer and render
+  **expanded**; the collapse affordance covers only technical evidence / secondary methodology /
+  optional deeper detail. Component edit required (small, contained).
+- **"Expandable" core interpretation (resolved).** P1-2 previously said "core interpretation,
+  expandable". → **V4 rule:** the core interpretation is **expanded**, never toggle-hidden.
+- **Follow-up rationale (clarified).** Chips must arise from a *rich* answer's new curiosity —
+  never by withholding interpretation to manufacture engagement.
+- **No new conflicts** with the other frozen principles: answer-first (Layer 1 orients, still
+  first), progressive deepening (still emerges from conversation), assessment-as-categorical,
+  dynamic Qimen, fail-closed states, scroll-to-start. The one-sentence core and long-form
+  answer are complementary, not competing — density lives in the depth of text, readability in
+  headings/short paragraphs/whitespace (§0/§17).
+
+---
+
 ## §31 — REQUIRED FINAL LISTS
 
 ### 1. What stayed FROZEN from V3
@@ -463,13 +547,16 @@ Backend dep: `memoryCandidate`. Fail-closed: no candidate → not shown.
   visual direction + `@/theme` tokens. · All built components + their fail-closed contracts.
 
 ### 2. What CHANGED in V4
-- **Mount** the structured first result in the live chat (P0-1). · **Scroll to the start of a
-  new answer**, not the bottom (P0-2). · **Follow-up chips** after answers, composer always
-  present (P0-3). · **Explainability trigger** wired into live answers (P1-3). · **Answer-first
-  segmentation** enforced structurally (P1-2). · Assessment tile ready for a one-line `summary`
-  (P1-1). · One honest **ConsultationLoading** component (P2-4). · Broader **home examples**
-  (P2-1). · **Memory confirmation** wired on a backend candidate (P2-2). · Complete the
-  degraded-state set (§H).
+- **Long-form lock (§0):** the detailed interpretation (core interpretation + 강점/주의점/영역별/
+  앞으로의 흐름) renders **EXPANDED**; progressive disclosure is reserved for evidence/methodology
+  only; the one-sentence core orients, never shortens (uncollapse the built component, §P). ·
+  **Mount** the structured first result in the live chat (P0-1). · **Scroll anchors to the START
+  of a new answer**, never the bottom (P0-2, FROZEN). · **Follow-up chips** that arise from a
+  rich answer, composer always present (P0-3). · **Explainability trigger** wired into live
+  answers (P1-3). · **Answer-first orientation** (Layer 1 orients, Layer 2 stays expanded) (P1-2).
+  · Assessment tile ready for a one-line `summary` (P1-1). · One honest **ConsultationLoading**
+  (P2-4). · Broader **home examples** (P2-1). · **Memory confirmation** on a backend candidate
+  (P2-2). · Complete the degraded-state set (§H).
 
 ### 3. Why each material change was necessary
 - P0-1: without the structured result the app is a chatbot wrapper — it fails §30's core
@@ -489,12 +576,14 @@ Backend dep: `memoryCandidate`. Fail-closed: no candidate → not shown.
   `CONSULTATION_INTELLIGENCE_UI.md`.)*
 
 ### 5. Changes Claude Code can implement IMMEDIATELY (no backend)
-- **Scroll-to-start-of-answer** (P0-2) — pure frontend, testable. · **ConsultationLoading**
-  copy/component (P2-4). · **Home example breadth** (P2-1) — copy. · The **rendering switch**
-  (`structuredResult ? StructuredConsultationResult : text`) can be added now, fail-closed to
-  text until the backend populates it — mounting the pipeline safely ahead of data. · Wire the
-  **Explainability/Assessment-detail/Memory** components to *open* from a structured answer (they
-  render fail-closed states until real data arrives).
+- **Scroll-to-start-of-answer** (P0-2) — pure frontend, testable. · **Uncollapse the long-form
+  sections** in `StructuredConsultationResult` (expand core interpretation + strengths/cautions/
+  domain/future; move collapse to evidence/methodology) — contained component edit (§0/§P). ·
+  **ConsultationLoading** copy/component (P2-4). · **Home example breadth** (P2-1) — copy. · The
+  **rendering switch** (`structuredResult ? StructuredConsultationResult : text`) can be added
+  now, fail-closed to text until the backend populates it — mounting the pipeline safely ahead
+  of data. · Wire the **Explainability/Assessment-detail/Memory** components to *open* from a
+  structured answer (they render fail-closed states until real data arrives).
 
 ### 6. Remaining UX RISKS before production
 - **Data readiness:** all P0/P1 comprehension wins depend on the backend emitting the structured
