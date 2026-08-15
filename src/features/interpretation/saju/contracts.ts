@@ -173,9 +173,29 @@ export type SajuFourPillarsCalculationIdentity = SajuCalculationIdentity & {
   hourRuleVersion: SajuHourPillarRuleDescriptor['ruleVersion'];
 };
 
+/**
+ * Explicit Saju year/month BOUNDARY attribution (立春 year, 12 Jie month). Distinct from
+ * `productRule`, which describes the sexagenary + Five-Tiger STEM/BRANCH arithmetic (that math
+ * needs no solar longitude); this records how the birth instant is MAPPED to a Saju year/month.
+ */
+export type SajuYearMonthAttributionProvenance = {
+  ruleId: string;
+  ruleVersion: string;
+  yearBoundary: 'START_OF_SPRING_IPCHUN';
+  monthBoundary: 'TWELVE_JIE_JIEQI';
+  solarTerm: {
+    provider: 'lunar-javascript';
+    providerVersion: string;
+    adapterRuleVersion: string;
+    solarTermRuleVersion: string;
+    boundaryPrecision: 'MINUTE';
+  };
+};
+
 export type SajuFourPillarsProvenance = {
   normalizedBirthFingerprint: string;
   productRule: SajuPillarRuleProfile;
+  yearMonthAttributionRule: SajuYearMonthAttributionProvenance;
   dayRule: SajuDayPillarRuleDescriptor;
   hourRule: SajuHourPillarRuleDescriptor;
   calendarDatasetVersion: string;
@@ -192,6 +212,7 @@ export type SajuFourPillarsUnavailableReason =
   | { code: 'NORMALIZED_INPUT_INCONSISTENT' }
   | { code: 'PRODUCT_RULE_VIOLATION' }
   | { code: 'INVALID_CALCULATION_IDENTITY' }
+  | { code: 'YEAR_MONTH_ATTRIBUTION_FAILED'; attributionReason: string }
   | { code: 'CORE_CALCULATION_FAILED'; coreErrorCode: SexagenaryValidationErrorCode };
 
 type SajuFourPillarsAvailableResult = {

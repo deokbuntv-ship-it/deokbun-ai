@@ -260,6 +260,16 @@ export type {
   HourPillarGoldenFixture,
 } from './saju/fixtures/hourPillarGoldenFixtures';
 export { calculateFourPillars } from './saju/fourPillars';
+export {
+  DEOKBUNAI_SAJU_YEAR_MONTH_ATTRIBUTION_V1_RULE,
+  JIE_TERM_TO_SAJU_MONTH_ORDINAL,
+  resolveSajuYearAndMonth,
+} from './saju/sajuTemporalAttribution';
+export type {
+  SajuYearMonthAttribution,
+  SajuYearMonthAttributionErrorCode,
+  SajuYearMonthAttributionResult,
+} from './saju/sajuTemporalAttribution';
 export type {
   SajuFourPillars,
   SajuFourPillarsCalculationIdentity,

@@ -50,6 +50,14 @@ export {
 } from './services/calculateTimeAxis';
 export { natalContextFromFourPillars } from './services/natalContext';
 export {
+  calculateSewoonForInstant,
+  calculateWolwoonForInstant,
+  resolveSajuTemporalForInstant,
+  type SajuTemporalForInstant,
+  type SewoonForInstantInput,
+  type WolwoonForInstantInput,
+} from './services/luckForInstant';
+export {
   buildRelationsToNatal,
   buildTenGodProfile,
   isEarthlyBranch,

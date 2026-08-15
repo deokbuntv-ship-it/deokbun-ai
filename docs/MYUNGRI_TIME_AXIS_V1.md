@@ -3,7 +3,15 @@
 > **Status: `READY_FOR_CODEX_REVIEW`.** A frozen V1 candidate for the 원국 → 대운 → 세운 → 월운
 > deterministic time-axis, built ON TOP of the frozen SAJU engine (ENGINE-12) — reuse-first,
 > facts-only, fail-closed. **No engine was rebuilt; no rule was invented.** Claude-owned,
-> engine-external (`src/features/myungri/**`); the frozen `interpretation/**` was not modified.
+> engine-external (`src/features/myungri/**`).
+>
+> **UPDATE — Saju year/month BOUNDARY FIX (Codex-accepted):** the natal year pillar now rolls at
+> **立春** and the month pillar at the twelve **節(Jie)** (was: lunar calendar year/month — a
+> confirmed bug). This is a targeted correction inside `interpretation/saju/**` reusing the
+> ENGINE-12 solar-term runtime (no new calendar engine). Golden lock: solar `2024-01-03` = lunar
+> `2023-11-22` → **癸卯 / 甲子 / 丙寅**. 세운 attribution now rolls at 立春 and 월운 at Jie via
+> `calculateSewoonForInstant` / `calculateWolwoonForInstant` — superseding the earlier "year-label
+> only / sub-year 立春 out of scope" limitation in §8. See `MYUNGRI_YEAR_MONTH_BOUNDARY_FIX.md`.
 
 ## 0. What this delivers (owner directive A–L)
 

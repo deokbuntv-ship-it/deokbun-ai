@@ -8,7 +8,6 @@ import type {
 import { calculateDayPillar } from './dayPillar';
 import { calculateFourPillars } from './fourPillars';
 import { calculateHourPillar } from './hourPillar';
-import { calculateMonthPillar, calculateYearPillar } from './pillars';
 import type {
   SajuFourPillarsCalculationInput,
   SajuFourPillarsResult,
@@ -214,25 +213,20 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
 
     if (fixture.time.accuracy === 'EXACT' && input.normalized.calendar.status === 'RESOLVED') {
       const calendar = input.normalized.calendar;
-      const year = calculateYearPillar(calendar.lunarDate.year);
       const day = calculateDayPillar(calendar.gregorianDate);
-      if (!year.ok || !day.ok || result.status !== 'COMPLETE') {
+      if (!day.ok || result.status !== 'COMPLETE') {
         exactCrossValidationMismatches += 1;
       } else {
-        const month = calculateMonthPillar(
-          year.value,
-          calendar.lunarDate.month as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12,
-        );
         const hour = calculateHourPillar({
           dayStem: day.value.stem,
           localTime: fixture.time.localTime,
         });
         exactCrossValidations += 1;
+        // Year/month are validated against the fixture's 立春/Jie golden expectation above; here we
+        // independently re-derive only the unchanged DAY + HOUR cores (year/month attribution moved
+        // to the solar-term layer and is no longer a lunar-calendar re-derivation).
         if (
-          !month.ok ||
           !hour.ok ||
-          result.pillars.year.index !== year.value.index ||
-          result.pillars.month.index !== month.value.index ||
           result.pillars.day.index !== day.value.index ||
           result.pillars.hour.status !== 'AVAILABLE' ||
           result.pillars.hour.pillar.index !== hour.value.index
@@ -445,7 +439,9 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
       result.provenance.hourRule.timeBasis !== 'LOCAL_CIVIL_TIME' ||
       result.provenance.hourRule.dayBoundary !== 'CIVIL_MIDNIGHT' ||
       result.provenance.productRule.trueSolarTimeRule !== 'DO_NOT_APPLY' ||
-      result.provenance.productRule.solarTermRole !== 'NOT_USED_FOR_YEAR_OR_MONTH_PILLARS'
+      result.provenance.productRule.solarTermRole !== 'NOT_USED_FOR_YEAR_OR_MONTH_PILLARS' ||
+      result.provenance.yearMonthAttributionRule.yearBoundary !== 'START_OF_SPRING_IPCHUN' ||
+      result.provenance.yearMonthAttributionRule.monthBoundary !== 'TWELVE_JIE_JIEQI'
     ) {
       failures.push('Product Rule provenance regression failed.');
     }

@@ -1,8 +1,18 @@
-import { compareGregorianDates } from '../calendar/civilDay';
-import type { TimezoneResolution } from '../contracts/normalization';
+import { compareGregorianDates, gregorianToCivilDayOrdinal } from '../calendar/civilDay';
+import type {
+  CalendarResolution,
+  CivilLocalBirthTime,
+  TimezoneResolution,
+} from '../contracts/normalization';
 import { DEOKBUNAI_SAJU_DAY_V1_RULE, calculateDayPillar } from './dayPillar';
 import { DEOKBUNAI_SAJU_HOUR_V1_RULE, calculateHourPillar } from './hourPillar';
-import { calculateYearMonthPillars } from './pillars';
+import { calculateMonthPillar, calculateYearPillar } from './pillars';
+import { LUNAR_JS_SOLAR_TERM_ADAPTER } from '../solarTerm/lunarJsSolarTermProvider';
+import type { LunarJsSolarTermAdapter } from '../solarTerm/lunarJsSolarTermAdapter';
+import {
+  DEOKBUNAI_SAJU_YEAR_MONTH_ATTRIBUTION_V1_RULE,
+  resolveSajuYearAndMonth,
+} from './sajuTemporalAttribution';
 import type {
   ExactLocalCivilTime,
   SajuFourPillarsCalculationIdentity,
@@ -12,6 +22,40 @@ import type {
   SajuFourPillarsResult,
   SexagenaryPillar,
 } from './contracts';
+
+const SECONDS_PER_DAY = 86_400;
+const UNIX_EPOCH_DAY = gregorianToCivilDayOrdinal({ year: 1970, month: 1, day: 1 });
+/** Asia/Seoul standard offset (KST = UTC+9), the V1-only zone; used only when no resolved offset. */
+const ASIA_SEOUL_STANDARD_OFFSET_SECONDS = 32_400;
+
+/**
+ * Reference UTC instant for the 立春/Jie attribution, derived from the CIVIL date + time (the
+ * source of truth) and the resolved offset — NOT from timezone.candidate.utcEpochSeconds (which is
+ * not always populated). Exact birth time is used when available; otherwise a canonical local noon
+ * is used so the year/month remain resolvable for time-unknown births (correct except on a Jie
+ * boundary DATE, which is genuinely ambiguous without a time — see docs).
+ */
+function birthReferenceEpochSeconds(
+  calendar: Extract<CalendarResolution, { status: 'RESOLVED' }>,
+  civilLocal: CivilLocalBirthTime,
+  timezone: TimezoneResolution,
+): number {
+  const date = calendar.gregorianDate;
+  let hour = 12;
+  let minute = 0;
+  let second = 0;
+  if (civilLocal.accuracy === 'EXACT') {
+    hour = civilLocal.time.hour;
+    minute = civilLocal.time.minute;
+    second = civilLocal.time.second ?? 0;
+  }
+  const offsetSeconds =
+    timezone.status === 'RESOLVED' && 'resolvedOffsetSeconds' in timezone
+      ? timezone.resolvedOffsetSeconds
+      : ASIA_SEOUL_STANDARD_OFFSET_SECONDS;
+  const dayCount = gregorianToCivilDayOrdinal(date) - UNIX_EPOCH_DAY;
+  return dayCount * SECONDS_PER_DAY + hour * 3_600 + minute * 60 + second - offsetSeconds;
+}
 
 function unavailable(
   input: SajuFourPillarsCalculationInput,
@@ -86,6 +130,7 @@ function resolveHour(
 
 export function calculateFourPillars(
   input: SajuFourPillarsCalculationInput,
+  solarTermAdapter: LunarJsSolarTermAdapter = LUNAR_JS_SOLAR_TERM_ADAPTER,
 ): SajuFourPillarsResult {
   if (
     input.normalizedBirthFingerprint.trim().length === 0 ||
@@ -113,16 +158,35 @@ export function calculateFourPillars(
     return unavailable(input, { code: 'NORMALIZED_DATE_MISMATCH' });
   }
 
-  const yearMonth = calculateYearMonthPillars({
-    lunarYear: calendar.lunarDate.year,
-    lunarMonth: calendar.lunarDate.month as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12,
-    lunarMonthKind: calendar.lunarDate.lunarMonthKind,
-    ruleProfile: input.ruleProfile,
-  });
-  if (!yearMonth.ok) {
+  // CORRECTED ATTRIBUTION: Saju YEAR by 立春, Saju MONTH by the twelve 節 (Jie) — NOT the lunar
+  // calendar year/month. The sexagenary + Five-Tiger STEM/BRANCH arithmetic below is unchanged.
+  const referenceEpochSeconds = birthReferenceEpochSeconds(
+    calendar,
+    civilLocal,
+    input.normalized.timezone,
+  );
+  const attribution = resolveSajuYearAndMonth(referenceEpochSeconds, solarTermAdapter);
+  if (!attribution.ok) {
+    return unavailable(input, {
+      code: 'YEAR_MONTH_ATTRIBUTION_FAILED',
+      attributionReason: attribution.error.code,
+    });
+  }
+  const yearPillar = calculateYearPillar(attribution.value.sajuYear);
+  if (!yearPillar.ok) {
     return unavailable(input, {
       code: 'CORE_CALCULATION_FAILED',
-      coreErrorCode: yearMonth.error.code,
+      coreErrorCode: yearPillar.error.code,
+    });
+  }
+  const monthPillar = calculateMonthPillar(
+    yearPillar.value,
+    attribution.value.jieMonthOrdinal as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12,
+  );
+  if (!monthPillar.ok) {
+    return unavailable(input, {
+      code: 'CORE_CALCULATION_FAILED',
+      coreErrorCode: monthPillar.error.code,
     });
   }
 
@@ -146,6 +210,7 @@ export function calculateFourPillars(
   const provenance: SajuFourPillarsProvenance = {
     normalizedBirthFingerprint: input.normalizedBirthFingerprint,
     productRule: input.ruleProfile,
+    yearMonthAttributionRule: DEOKBUNAI_SAJU_YEAR_MONTH_ATTRIBUTION_V1_RULE,
     dayRule: DEOKBUNAI_SAJU_DAY_V1_RULE,
     hourRule: DEOKBUNAI_SAJU_HOUR_V1_RULE,
     calendarDatasetVersion: calendar.calendarDatasetVersion,
@@ -153,8 +218,8 @@ export function calculateFourPillars(
     engineRuleSetVersion: input.engineRuleSetVersion,
   };
   const pillars = {
-    year: yearMonth.value.year,
-    month: yearMonth.value.month,
+    year: yearPillar.value,
+    month: monthPillar.value,
     day: day.value,
     hour,
   };
