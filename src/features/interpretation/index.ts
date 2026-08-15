@@ -326,6 +326,32 @@ export {
   STEM_YIN_YANG,
 } from './saju/derived/rules';
 export { calculateSajuDerivedFacts } from './saju/derived/calculateDerivedFacts';
+export type {
+  SajuDirectFiveElementObservation,
+  SajuDirectFiveElementSlot,
+  SajuFiveElementCounts,
+  SajuFiveElementDistribution,
+  SajuFiveElementDistributionError,
+  SajuFiveElementDistributionInput,
+  SajuFiveElementDistributionResult,
+  SajuFiveElementDistributionRuleVersions,
+  SajuFiveElementDistributionSourceRuleVersions,
+} from './saju/distribution/contracts';
+export {
+  DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_VERSION,
+  SAJU_DIRECT_FIVE_ELEMENT_SLOTS,
+  SAJU_FIVE_ELEMENT_KEYS,
+} from './saju/distribution/contracts';
+export {
+  calculateFiveElementDistribution,
+  DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION_V1_RULE_VERSIONS,
+} from './saju/distribution/calculateFiveElementDistribution';
+export {
+  FIVE_ELEMENT_DISTRIBUTION_GOLDEN_FIXTURES,
+} from './saju/fixtures/fiveElementDistributionGoldenFixtures';
+export type {
+  FiveElementDistributionGoldenFixture,
+} from './saju/fixtures/fiveElementDistributionGoldenFixtures';
 export {
   EARTHLY_BRANCH_LABELS,
   FIVE_ELEMENT_LABELS,
@@ -358,3 +384,63 @@ export {
 } from './timezone/historicalTimezoneResolver';
 export { ASIA_SEOUL_GOLDEN_FIXTURES } from './timezone/fixtures/asiaSeoulGoldenFixtures';
 export type { AsiaSeoulGoldenFixture } from './timezone/fixtures/asiaSeoulGoldenFixtures';
+export type {
+  SolarTermDefinition,
+  SolarTermId,
+  SolarTermKind,
+} from './solarTerm/contracts';
+export {
+  getSolarTermDefinition,
+  JIE_SOLAR_TERM_IDS,
+  SOLAR_TERM_DEFINITIONS,
+  SOLAR_TERM_IDS,
+} from './solarTerm/termDefinitions';
+export {
+  createLunarJsSolarTermAdapter,
+  DEOKBUNAI_SOLAR_TERM_V1_POLICY,
+  LUNAR_JS_SOLAR_TERM_PROVIDER_PIN,
+} from './solarTerm/lunarJsSolarTermAdapter';
+export type {
+  CanonicalSolarTermInstant,
+  LunarJsPublicApi,
+  LunarJsSolarTermAdapter,
+  LunarJsSolarTermAdapterErrorCode,
+  LunarJsSolarTermAdapterInput,
+  LunarJsSolarTermAdapterResult,
+  SolarTermBoundaryDirection,
+  SolarTermCivilSecond,
+} from './solarTerm/lunarJsSolarTermAdapter';
+export { LUNAR_JS_SOLAR_TERM_GOLDEN_FIXTURES } from './solarTerm/fixtures/lunarJsSolarTermGoldenFixtures';
+export type { LunarJsSolarTermGoldenFixture } from './solarTerm/fixtures/lunarJsSolarTermGoldenFixtures';
+export { validateLunarJsSolarTermAdapter } from './solarTerm/lunarJsSolarTermAdapterValidation';
+export type {
+  LunarJsSolarTermAdapterValidationReport,
+  LunarJsSolarTermGoldenResult,
+} from './solarTerm/lunarJsSolarTermAdapterValidation';
+export { INDEPENDENT_SOLAR_TERM_FIXTURES } from './solarTerm/fixtures/independentSolarTermFixtures';
+export type { IndependentSolarTermFixture } from './solarTerm/fixtures/independentSolarTermFixtures';
+export { validateLunarJsSolarTermV1 } from './solarTerm/lunarJsSolarTermV1Validation';
+export type {
+  IndependentSolarTermValidationResult,
+  LunarJsSolarTermV1ValidationReport,
+} from './solarTerm/lunarJsSolarTermV1Validation';
+export { LUNAR_JS_SOLAR_TERM_ADAPTER } from './solarTerm/lunarJsSolarTermProvider';
+export { calculateSajuDaewoon } from './saju/daewoon/calculateDaewoon';
+export {
+  DEOKBUNAI_DAEWOON_V1_RULE,
+} from './saju/daewoon/contracts';
+export type {
+  DaewoonAmbiguousReason,
+  DaewoonCycle,
+  DaewoonDirection,
+  DaewoonProvenance,
+  DaewoonStartOffset,
+  DaewoonStartTiming,
+  DaewoonUnavailableReason,
+  SajuDaewoonCalculationInput,
+  SajuDaewoonResult,
+} from './saju/daewoon/contracts';
+export { DAEWOON_GOLDEN_FIXTURES } from './saju/daewoon/fixtures/daewoonGoldenFixtures';
+export type { DaewoonGoldenFixture } from './saju/daewoon/fixtures/daewoonGoldenFixtures';
+export { validateSajuDaewoon } from './saju/daewoon/validation';
+export type { SajuDaewoonValidationReport } from './saju/daewoon/validation';
