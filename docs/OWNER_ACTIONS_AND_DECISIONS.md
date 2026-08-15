@@ -56,9 +56,35 @@ Client-safe (not secret). Production domain is now confirmed: **https://www.deok
   `EXPO_PUBLIC_PUBLIC_BASE_URL` = `https://www.deokbunai.com` (Production; also
   Preview if desired) → **redeploy** (EXPO_PUBLIC_* is inlined at build time).
 - Until set: canonical URLs are omitted and the sitemap generator skips (no fake
-  domain — intended). This does NOT affect OAuth (OAuth uses `window.location`).
+  domain — intended).
+- **UPDATED (OAuth redirect fix):** google/kakao OAuth now ALSO uses
+  `EXPO_PUBLIC_PUBLIC_BASE_URL` on web — the client pins `redirect_to` to
+  `${base}/login-callback` instead of `window.location.origin`, so it always matches
+  the one allowlisted canonical URL (see §E below). (Previously OAuth relied on
+  `window.location`; that is why an apex/www/preview origin mismatch could send the
+  post-consent redirect to the Supabase Site URL = localhost.)
 - `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are already
   set in Vercel (confirmed).
+
+### C-bis. Supabase Auth URLs — ⚠️ REQUIRED to fix google/kakao → localhost redirect
+Google/Kakao go through Supabase's `/auth/v1/callback`, which redirects the browser to
+the client `redirect_to` ONLY if it is in the **Redirect URLs** allowlist — otherwise it
+falls back to the **Site URL** (dev default `http://localhost:3000`). This is why Naver
+(a direct edge-bridge return, not via Supabase) worked while google/kakao went to
+localhost. **Supabase Dashboard → Authentication → URL Configuration:**
+- **Site URL** = `https://www.deokbunai.com` (NOT localhost).
+- **Redirect URLs** allowlist — add:
+  - `https://www.deokbunai.com/login-callback`
+  - `https://www.deokbunai.com/**` (covers deep links / query variants)
+  - keep `http://localhost:8081/**` (or your Expo web dev port) for local dev only.
+- **Google** (Supabase → Authentication → Providers → Google): the Authorized redirect
+  URI in Google Cloud Console must be the Supabase callback
+  `https://<project-ref>.supabase.co/auth/v1/callback` (unchanged — Supabase-managed).
+- **Kakao** (Providers → Kakao): Redirect URI in Kakao Developers =
+  `https://<project-ref>.supabase.co/auth/v1/callback`; verify Kakao consent returns to
+  Supabase (then Supabase → the allowlisted `www.deokbunai.com/login-callback`).
+- After changing these, no redeploy is needed (Supabase config is live).
+- **Do NOT change any Naver setting** — Naver is unaffected (edge bridge, direct return).
 
 ### D. Sitemap (before a production web export, after C)
 ```bash

@@ -2,11 +2,17 @@ import type { Provider } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 
 import { signInWithNaverBridge } from '@/features/auth/naver/naverAuthService';
+import {
+	LOGIN_CALLBACK_PATH,
+	resolveConfiguredWebRedirect,
+} from '@/features/auth/services/authRedirect';
 import { resolveSupabaseProvider } from '@/features/auth/services/authProviders';
 import type { AuthFailureReason } from '@/features/auth/errors/authErrors';
 import type { AuthProviderId } from '@/features/auth/types/auth';
+import { getPublicBaseUrl } from '@/features/publicSite/publicUrl';
 import { getSupabaseClient } from '@/services/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -24,7 +30,13 @@ async function signInWithSupabaseOAuth(
 	provider: Provider,
 ): Promise<AuthActionResult> {
 	const supabase = getSupabaseClient();
-	const redirectTo = makeRedirectUri({ path: 'login-callback' });
+	// Production hardening: on web with a configured canonical origin
+	// (EXPO_PUBLIC_PUBLIC_BASE_URL), PIN redirect_to to `${base}/login-callback` so Supabase's
+	// callback never falls back to the dashboard Site URL (localhost). Native + local dev use
+	// expo makeRedirectUri (app scheme / actual dev origin). See authRedirect.ts.
+	const redirectTo =
+		resolveConfiguredWebRedirect(getPublicBaseUrl(), Platform.OS === 'web') ??
+		makeRedirectUri({ path: LOGIN_CALLBACK_PATH });
 
 	const { data, error } = await supabase.auth.signInWithOAuth({
 		provider,
