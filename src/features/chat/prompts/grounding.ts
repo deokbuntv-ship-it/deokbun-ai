@@ -223,20 +223,31 @@ export function renderGroundingContext(grounding: ConsultationGrounding): string
   if (grounding.assessmentSummary) {
     lines.push(`【종합 판단(근거 기반)】 ${grounding.assessmentSummary}`);
   }
-  // Engine-attribution discipline (§20/§21): each fact belongs to its own engine — never relabel
-  // one engine's evidence as another's.
-  if (myungriAvailable && ziweiAvailable) {
+  const qimenAvailable = grounding.evidence.qimen.availability === 'available';
+
+  // Engine-attribution discipline (§20/§21/§14): each fact belongs to its own engine — never relabel,
+  // and NEVER auto-claim multi-engine agreement (V1 has no formal cross-engine consensus algorithm).
+  if ((myungriAvailable && ziweiAvailable) || qimenAvailable) {
     lines.push(
-      '【엔진 구분】 명리 근거와 자미두수 근거는 각각 어느 엔진에서 나왔는지 구분해 설명하십시오.',
-      '한 엔진의 근거를 다른 엔진의 근거라고 말하지 마십시오. 명리는 立春·12절 기준, 자미두수는 자체 음력월',
-      '기준이라 월주 간지 등이 다를 수 있는데 이는 계산 오류가 아니라 관례 차이이니 한쪽을 다른 쪽으로 덮어쓰지',
-      '마십시오. 두 엔진이 실제로 같은 방향을 가리킬 때만 조심스럽게 그렇게 언급하되, 단지 둘 다 제공됐다는',
-      "이유로 '두 학문이 완전히 일치한다'고 단정하지 말고 각 관점을 별도로 설명하십시오.",
+      '【엔진 구분】 명리·자미두수·기문둔갑 근거는 각각 어느 엔진에서 나왔는지 구분해 설명하십시오. 한 엔진의',
+      '근거를 다른 엔진의 근거라고 말하지 마십시오. 명리는 출생 기준(立春·12절), 자미두수는 출생 기준(음력월),',
+      '기문둔갑은 질문 시점 기준(상황판)이라 계산 기준이 서로 다릅니다 — 이는 계산 오류가 아니라 기준/관례 차이',
+      "이니 한쪽을 다른 쪽으로 덮어쓰지 마십시오. 실제로 같은 방향일 때만 조심스럽게 언급하고, 여럿이 제공됐다는",
+      "이유만으로 '두 학문/세 학문이 완전히 일치한다'고 단정하지 말고 각 관점을 별도로 설명하십시오.",
+    );
+  }
+  if (qimenAvailable) {
+    lines.push(
+      '【기문둔갑 안내】 기문둔갑 근거는 질문을 제출한 시점(Asia/Seoul)의 상황판이며 출생 명식이 아닙니다.',
+      '이 상황판을 근거로 특정 장기 연도(예: 2028년)를 확정 예측하지 말고, 질문 시점의 국세(상황)로만 설명하십시오.',
     );
   }
   lines.push(
     "'미연결'·'해당 없음'·'출생시간 정보 없음'·'계산 실패'로 표시된 항목은 근거가 없는 것이므로,",
-    '그 부분을 지어내지 말고 한계를 밝히십시오. 기문둔갑은 사용하지 않았으므로 언급하지 마십시오.',
+    '그 부분을 지어내지 말고 한계를 밝히십시오.',
   );
+  if (!qimenAvailable) {
+    lines.push('기문둔갑 근거가 제공되지 않았으므로(해당 없음/미연결/계산 실패) 기문둔갑을 사용했다고 말하지 마십시오.');
+  }
   return lines.join('\n');
 }

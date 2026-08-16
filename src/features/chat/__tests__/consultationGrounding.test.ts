@@ -55,7 +55,7 @@ describe('SAJU grounding — golden E2E (2024-01-03)', () => {
     expect(z.sections?.some((s) => s.label === '명반 기준')).toBe(true);
     expect(z.sections?.some((s) => s.label === '근거·한계')).toBe(true);
     expect(z.hasTimingEvidence).toBe(false); // natal only → does NOT unlock futureFlow
-    expect(g.evidence.qimen.availability).toBe('engine_not_connected');
+    expect(g.evidence.qimen.availability).toBe('not_applicable'); // no timing question passed → Qimen not applicable
     expect(g.engineVersion).toBeTruthy();
   });
 

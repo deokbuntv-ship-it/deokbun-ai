@@ -80,7 +80,7 @@ describe('structured consultation pipeline — end to end', () => {
       expect(vm.grounding.evidence.myungri.summary).toContain('丙寅');
       expect(vm.grounding.evidence.ziwei.availability).toBe('available'); // Ziwei now wired (dual-engine)
       expect(vm.grounding.evidence.ziwei.summary).toContain('命宮');
-      expect(vm.grounding.evidence.qimen.availability).toBe('engine_not_connected'); // Qimen stays unconnected
+      expect(vm.grounding.evidence.qimen.availability).toBe('not_applicable'); // natal question → Qimen not applicable
     }
     expect(vm.assessment.status).toBe('unavailable'); // fail-closed, no fabricated 15-axis score
     expect(r.responseText).toContain('일간'); // readable plain-text mirror for persistence

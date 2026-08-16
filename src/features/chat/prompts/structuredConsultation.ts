@@ -241,9 +241,9 @@ function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
 function hasEngineOrConsensusViolation(text: string, grounding: ConsultationGrounding): boolean {
   const ziweiAvailable = grounding.status === 'available' && grounding.evidence.ziwei.availability === 'available';
   const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
-  if (!ziweiAvailable && ZIWEI_USE.test(text)) return true; // false Ziwei use when unconnected
-  if (!qimenAvailable && QIMEN_USE.test(text)) return true; // false Qimen use when unconnected
-  if (!(ziweiAvailable && qimenAvailable) && MULTI_ENGINE_CONSENSUS.test(text)) return true; // fake 3-학문 일치
+  if (!ziweiAvailable && ZIWEI_USE.test(text)) return true; // false Ziwei use when unavailable/not-applicable
+  if (!qimenAvailable && QIMEN_USE.test(text)) return true; // false Qimen use when unavailable/not-applicable
+  if (MULTI_ENGINE_CONSENSUS.test(text)) return true; // "세 학문 일치" never grounded in V1 (no formal cross-map)
   if (CROSS_ENGINE_CONSENSUS.test(text)) return true; // fake Saju↔Ziwei full consensus (no V1 cross-map)
   if (FORBIDDEN_THEORY.test(text)) return true; // 신강/신약/용신/격국/12운성/12신살 as computed fact
   return false;

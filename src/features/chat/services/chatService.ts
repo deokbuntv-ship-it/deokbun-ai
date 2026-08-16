@@ -33,9 +33,13 @@ import type { ConsultationDraft } from '@/features/consultation';
 
 export type AuthGuard = () => boolean;
 
-/** Produces deterministic engine grounding for a draft. Injected in production (SAJU wired);
- *  omitted → grounding stays fail-closed UNAVAILABLE (backward-compatible default). */
-export type GroundingBuilder = (draft: ConsultationDraft) => Promise<ConsultationGrounding>;
+/** Produces deterministic engine grounding for a draft + the current question (the question drives
+ *  Qimen question-time activation). Injected in production; omitted → grounding stays fail-closed
+ *  UNAVAILABLE (backward-compatible default). */
+export type GroundingBuilder = (
+  draft: ConsultationDraft,
+  question?: string,
+) => Promise<ConsultationGrounding>;
 
 export function createChatService(
   adapter: LLMAdapter,
@@ -112,8 +116,8 @@ export function createChatService(
     if (buildGrounding) {
       try {
         // toSafeGrounding (§6): a structurally malformed grounding degrades to UNAVAILABLE and
-        // never reaches the prompt as trusted facts.
-        grounding = toSafeGrounding(await buildGrounding(input.draft));
+        // never reaches the prompt as trusted facts. The trimmed question drives Qimen activation.
+        grounding = toSafeGrounding(await buildGrounding(input.draft, trimmedUserMessage));
       } catch {
         grounding = GROUNDING_UNAVAILABLE;
       }

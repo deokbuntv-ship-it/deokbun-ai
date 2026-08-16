@@ -201,8 +201,8 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 |---|---|---|---|---|---|
 | **SAJU / Myungri** (in-repo, **FROZEN `7c7ed82`** — Codex `APPROVED_FREEZE`) | ✅ E2E_LOCAL — 立春 year / 12-Jie month + 십신·지장간·오행·관계·대운·세운·월운·시간축·대운십신·통근투간·월령득령 | ✅ **CONNECTED** (`toSajuEvidence` → `buildConsultationGrounding` → chatService) | 464 tests (+ grounding E2E: Solar/Lunar equivalence + fail-closed) | ✅ **grounding path** | ❌ |
 | **Ziwei** (iztro `2.5.8`, MIT) | ✅ FUNCTIONAL_LOCAL — iztro-default@2.5.8, ko-KR, fixLeap | ✅ **CONNECTED** (`toZiweiEvidence` → structured sections → `buildConsultationGrounding`) | ziwei tests + evidence sections + dual-engine E2E | ✅ **grounding path (dual-engine)** | ❌ |
-| **Qimen** (qimen-dunjia) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toQimenEvidence`) — not wired to grounding | qimen tests | ❌ (Sprint 3) | ❌ |
-| Orchestration/cross-analysis seam | — | ◐ SAJU+Ziwei live (dual); cross = per-engine, no fake consensus | analysis + dual-engine tests | `ENGINE_CONNECTED={saju:true, ziwei:true, qimen:false}` | ❌ |
+| **Qimen** (qimen-dunjia `2.1.0`, MIT, 時家·拆補法) | ✅ FUNCTIONAL_LOCAL | ✅ **CONNECTED** (`toQimenEvidence` → sections → grounding, QUESTION-TIME) | qimen tests + evidence sections + tri-engine E2E | ✅ **grounding path (question-time, activation-gated)** | ❌ |
+| Orchestration/cross-analysis seam | — | ◐ SAJU+Ziwei+Qimen live; cross = per-engine, no fake consensus | analysis + dual/tri-engine tests | `ENGINE_CONNECTED={saju:true, ziwei:true, qimen:true}` | ❌ |
 
 - **Semantic/astrological correctness is `BLOCKED_OWNER`/Codex** (golden fixtures + 학파/정국
   canon required; `ZIWEI_ENGINE_SPEC.md`/`QIMEN_ENGINE_SPEC.md` are marked "RESEARCH/SPEC

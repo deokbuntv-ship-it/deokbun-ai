@@ -95,8 +95,15 @@ export function runAnalysisSpecs(): { passed: number } {
   ok(() =>
     eq(
       resolveEngineAvailability({ ...withSubject, isTimingQuestion: true }, 'qimen'),
-      'engine_not_connected',
-      'qimen eligible but unwired',
+      'available',
+      'qimen eligible (timing question) and wired',
+    ),
+  );
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, isTimingQuestion: false }, 'qimen'),
+      'not_applicable',
+      'qimen not applicable for a non-timing question',
     ),
   );
 

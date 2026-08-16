@@ -123,7 +123,7 @@ describe('five dual-engine consultation scenarios (§38)', () => {
     if (g?.status === 'available') {
       expect(g.evidence.myungri.availability).toBe('available');
       expect(g.evidence.ziwei.availability).toBe('available');
-      expect(g.evidence.qimen.availability).toBe('engine_not_connected');
+      expect(g.evidence.qimen.availability).toBe('not_applicable'); // these 5 are natal questions → Qimen not applicable
     } else {
       throw new Error('expected available dual grounding');
     }

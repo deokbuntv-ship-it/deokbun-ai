@@ -43,9 +43,11 @@ import {
   toZiweiBirthInput,
   toZiweiEvidence,
 } from '@/features/ziwei';
+import { computeQimenBoard, toQimenEvidence } from '@/features/qimen';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
+import { resolveQimenActivation } from '@/features/chat/selectors/qimenActivation';
 
 export type SajuGroundingDeps = {
   digestProvider: DigestProvider;
@@ -54,8 +56,8 @@ export type SajuGroundingDeps = {
   nowEpochSeconds?: number;
 };
 
-const ENGINE_NOT_CONNECTED: EngineEvidence = { availability: 'engine_not_connected' };
 const MYUNGRI_UNAVAILABLE: EngineEvidence = { availability: 'calculation_failed' };
+const QIMEN_NOT_APPLICABLE: EngineEvidence = { availability: 'not_applicable' };
 
 /**
  * Ziwei evidence for the draft's birth. Independent of the Saju range. Fail-closed: any throw or
@@ -65,6 +67,21 @@ const MYUNGRI_UNAVAILABLE: EngineEvidence = { availability: 'calculation_failed'
 export function buildZiweiEvidence(birthInfo: BirthInfoDraft): EngineEvidence {
   try {
     return toZiweiEvidence(computeZiweiChartMemoized(toZiweiBirthInput(birthInfo)));
+  } catch {
+    return MYUNGRI_UNAVAILABLE; // { availability: 'calculation_failed' }
+  }
+}
+
+/**
+ * Qimen evidence for the CURRENT consultation question (Qimen V1, §1/§2/§13). Question-time based: it
+ * runs ONLY for a timing/decision question, using the question instant (Asia/Seoul) — never the birth.
+ * Non-timing question → not_applicable. Unsupported 節氣/input or a provider throw → fail-closed
+ * (never a fabricated board, never crashes the consultation). No question text → not_applicable.
+ */
+export function buildQimenEvidence(question: string | undefined, questionEpochSeconds: number): EngineEvidence {
+  if (!question || question.trim().length === 0) return QIMEN_NOT_APPLICABLE;
+  try {
+    return toQimenEvidence(computeQimenBoard(resolveQimenActivation(question, questionEpochSeconds)));
   } catch {
     return MYUNGRI_UNAVAILABLE; // { availability: 'calculation_failed' }
   }
@@ -163,15 +180,21 @@ async function buildMyungriEvidence(
 export async function buildConsultationGrounding(
   draft: ConsultationDraft,
   deps: SajuGroundingDeps,
+  question?: string,
 ): Promise<ConsultationGrounding> {
   if (draft.subject === null || draft.birthInfo === null) {
     return GROUNDING_UNAVAILABLE;
   }
   const withBirth = draft as ConsultationDraft & { birthInfo: BirthInfoDraft };
+  const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1000);
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode).
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
   const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(withBirth, deps);
+  // Qimen is QUESTION-TIME based: it consumes the current question + instant, NOT the birth. It is
+  // supplementary (not_applicable for natal questions) and never makes the grounding available on its
+  // own — the natal spine (Saju/Ziwei) governs availability (§13/§14).
+  const qimen = buildQimenEvidence(question, now);
 
   const groundingAvailable = myungri.availability === 'available' || ziwei.availability === 'available';
   if (!groundingAvailable) {
@@ -180,15 +203,15 @@ export async function buildConsultationGrounding(
 
   return {
     status: 'available',
-    evidence: { myungri, ziwei, qimen: ENGINE_NOT_CONNECTED },
+    evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
     engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
   };
 }
 
-/** Bind the deps once (production) → a `(draft) => grounding` the chat service can await. */
+/** Bind the deps once (production) → a `(draft, question?) => grounding` the chat service can await. */
 export function createSajuGroundingBuilder(
   deps: SajuGroundingDeps,
-): (draft: ConsultationDraft) => Promise<ConsultationGrounding> {
-  return (draft) => buildConsultationGrounding(draft, deps);
+): (draft: ConsultationDraft, question?: string) => Promise<ConsultationGrounding> {
+  return (draft, question) => buildConsultationGrounding(draft, deps, question);
 }
