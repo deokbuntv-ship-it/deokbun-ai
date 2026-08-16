@@ -210,15 +210,17 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 - **SAJU (2026-08-16), Ziwei (Ziwei V1), and Qimen (Qimen V1, question-time) are now wired** — all three
   run in the consultation path (dual-/tri-engine, with honest SAJU-only / Ziwei-only / Qimen-not-applicable
   degraded modes). **Do not change engine semantics (§19).**
-- **LLM grounding trust boundary — `SERVER_TRUST_BOUNDARY_BLOCKED` (2026-08-16, Qimen closure).** The
-  deterministic grounding for all three engines is built **client-side** (`buildConsultationGrounding`) and
-  forwarded by `supabaseEdgeLLMAdapter` to Edge `chat`, which validates only message *shape* and relays to
-  OpenAI. The fail-closed states + civil-date + claim/consensus guards are **honest-client integrity**, NOT
-  a server boundary — a modified client could still send fabricated facts. A real server boundary (server
-  recomputes/signs grounding) is **unresolved**: blocked by no-deploy + no-Deno runtime + empty
-  `supabase/migrations/` (no server birth source) + the frozen engine not being Deno-importable without
-  breaking the `7c7ed82` freeze. Analysis + minimal owner path: `docs/CODEX_QIMEN_FULL_PRODUCT_REVIEW.md`
-  (Closure → PART C).
+- **LLM grounding trust boundary — server-owned (2026-08-17, Server-Trust sprint). Status
+  `READY_FOR_CODEX_SERVER_TRUST_BOUNDARY_REVIEW` + `EDGE_RUNTIME_NOT_EXECUTED` + `OWNER_ACTION_REQUIRED`.**
+  The deterministic grounding for all three engines is now (re)built by the **server**: the production
+  client (`createServerConsultationService`) posts inputs only (birth INPUT + question + untrusted turns);
+  the Edge `chat` recomputes grounding (`buildServerConsultation`), owns the Qimen question time (receipt
+  time) + activation + availability, builds the system prompt, calls OpenAI, and validates output. A
+  modified client can no longer fabricate facts/availability/provenance/consensus (adversarially tested,
+  Node). **Not deploy-verified:** the Deno/Supabase CLIs are absent in the build workspace, so engine
+  execution inside the Edge is `EDGE_RUNTIME_NOT_EXECUTED` (owner deploy + runtime-verify + apply
+  `supabase/migrations/…_consumer_birth_profiles.sql`). Detail: `docs/CODEX_SERVER_TRUST_BOUNDARY_REVIEW.md`.
+  (Supersedes the 2026-08-16 `SERVER_TRUST_BOUNDARY_BLOCKED` note.)
 
 ### 11b. SAJU product integration (2026-08-16) — honest status
 

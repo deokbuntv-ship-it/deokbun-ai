@@ -118,6 +118,13 @@ this environment's constraints, and not faked.
 
 ### PART C — SERVER TRUST BOUNDARY: `SERVER_TRUST_BOUNDARY_BLOCKED`
 
+> **SUPERSEDED (2026-08-17).** This blocker was subsequently CLOSED by the Server-Trust sprint: the server
+> now rebuilds the deterministic grounding from inputs (`buildServerConsultation` + Edge rewrite +
+> RLS profile migration + client migration). The analysis below is retained as the record of why it was
+> blocked at Qimen-closure time. Current state: `READY_FOR_CODEX_SERVER_TRUST_BOUNDARY_REVIEW` +
+> `EDGE_RUNTIME_NOT_EXECUTED` — see `docs/CODEX_SERVER_TRUST_BOUNDARY_REVIEW.md`.
+
+
 **Finding (confirmed accurate).** The deterministic grounding is built in the **client**
 (`buildConsultationGrounding`) and the resulting system messages are sent by `supabaseEdgeLLMAdapter` to
 Edge `chat`, which validates only message *shape* (`isValidMessages`: array of `{role, content}`) and

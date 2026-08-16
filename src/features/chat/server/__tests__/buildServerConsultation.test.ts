@@ -112,3 +112,24 @@ describe('buildServerConsultation — question time is SERVER-owned (§10)', () 
     if (r.ok) expect(r.groundingMeta.engines.qimen).toBe('not_applicable');
   });
 });
+
+describe('buildServerConsultation — §24 server E2E degraded modes', () => {
+  it('C: a timing question at an unsupported 節氣 → Qimen calculation_failed, SAJU+Ziwei survive', async () => {
+    // KST 2026-06-01 10:00 → 小满 (the provider throws → fail-closed calculation_failed).
+    const now = Math.floor(Date.UTC(2026, 5, 1, 1, 0, 0) / 1000);
+    const { deps } = capturingDeps(GOOD_ANSWER, { nowEpochSeconds: now });
+    const r = await buildServerConsultation(baseRequest({ question: '지금 이 계약을 진행해도 될까요?' }), deps);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.groundingMeta.grounded).toBe(true); // still grounded on the natal spine
+    expect(r.groundingMeta.engines.myungri).toBe('available');
+    expect(r.groundingMeta.engines.qimen).not.toBe('available'); // Qimen degraded, consultation survives
+  });
+
+  it('E: invalid birth input → INVALID_INPUT (no grounding, no LLM call)', async () => {
+    const { deps, sent } = capturingDeps(GOOD_ANSWER);
+    const r = await buildServerConsultation(baseRequest({ birthInput: { birthYear: '' } as never }), deps);
+    expect(r.ok).toBe(false);
+    expect(sent).toHaveLength(0); // never reached the LLM
+  });
+});
