@@ -172,7 +172,9 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
         : null;
     const lines = dw.cycles.slice(0, 10).map((c) => {
       const marker = bundle.activeCycleOrdinal != null && c.ordinal === bundle.activeCycleOrdinal ? '〈현재〉 ' : '';
-      return `${marker}${c.startAgeInclusive}~${c.endAgeInclusive}세 ${gz(c.tenGods)} ${tg(c.tenGods.stemTenGod)}`;
+      // Preserve the FULL Daewoon ten-god profile (Codex FIX B): 천간 + 지지 정기 + 지장간 십신.
+      const hidden = c.tenGods.hiddenStemTenGods.map((h) => `${stemH(h.stem)}(${role(h.role)}·${tg(h.tenGod)})`).join(' ');
+      return `${marker}${c.startAgeInclusive}~${c.endAgeInclusive}세 ${gz(c.tenGods)} 천간${tg(c.tenGods.stemTenGod)}/지지${tg(c.tenGods.branchMainTenGod)} 지장간 ${hidden}`;
     });
     sections.push({ label: `대운(+대운십신)${direction ? ` · ${direction}` : ''}`, lines });
   }
@@ -210,7 +212,7 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
 
   const hasTimingEvidence = hasDaewoon || (se?.capability === 'AVAILABLE') || (wo?.capability === 'AVAILABLE');
 
-  // structured timing anchors (allowlist for timing validation — Codex pipeline FIX #2)
+  // structured timing anchors (allowlist for timing validation — Codex pipeline FIX #2 + FIX A)
   const anchorYears = new Set<number>();
   if (typeof bundle.birthGregorianYear === 'number') anchorYears.add(bundle.birthGregorianYear);
   if (se?.capability === 'AVAILABLE') anchorYears.add(se.targetYear);
@@ -222,16 +224,39 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
       max: dw.cycles[dw.cycles.length - 1].endAgeInclusive,
     };
   }
-  const timingAnchors: EngineEvidenceTimingAnchors = { years: [...anchorYears].sort((a, b) => a - b), daewoonAgeSpan };
+  const timingAnchors: EngineEvidenceTimingAnchors = {
+    years: [...anchorYears].sort((a, b) => a - b),
+    referenceYear: se?.capability === 'AVAILABLE' ? se.targetYear : null, // resolves 올해/내년/내후년
+    daewoonAgeSpan,
+    hasMonthlyEvidence: wo?.capability === 'AVAILABLE', // gates 이번 달 / 다음 달
+  };
 
-  // 근거·한계 (provenance + limitations) — 立春/12-Jie + every reused ruleVersion + time-axis provenance
+  // 근거·한계 — 立春/12-Jie provenance + every reused ruleVersion + the ACTUAL assumptions/limitations
+  // arrays produced by each time-axis result (Codex FIX B §3-2/3-3/3-4 — real values, not handcrafted).
+  const meta = (r: unknown): { rule?: string; a: readonly string[]; l: readonly string[] } => {
+    const o = r as { capability?: string; ruleVersion?: string; assumptions?: readonly string[]; limitations?: readonly string[] } | null;
+    if (!o || o.capability !== 'AVAILABLE') return { a: [], l: [] };
+    return { rule: o.ruleVersion, a: o.assumptions ?? [], l: o.limitations ?? [] };
+  };
+  const ruleVersions = [`product=${provenance.productRule.ruleVersion}`, `tenGods=${derivedFacts.ruleVersions.tenGods}`];
+  const assumptions = new Set<string>();
+  const limitations = new Set<string>();
+  for (const [name, r] of [['대운십신', dw], ['세운', se], ['월운', wo], ['시간축', ax], ['월령', mc], ['통근투간', rt]] as const) {
+    const m = meta(r);
+    if (m.rule) ruleVersions.push(`${name}=${m.rule}`);
+    m.a.forEach((x) => assumptions.add(x));
+    m.l.forEach((x) => limitations.add(x));
+  }
   const provLines = [
     `엔진 SAJU · 년주=${provenance.yearMonthAttributionRule.yearBoundary} · 월주=${provenance.yearMonthAttributionRule.monthBoundary}`,
-    `ruleVersion ${provenance.productRule.ruleVersion} · 십신 ${derivedFacts.ruleVersions.tenGods}`,
+    `ruleVersions ${ruleVersions.join(' · ')}`,
   ];
-  if (se?.capability === 'AVAILABLE') provLines.push(`세운 규칙 ${se.ruleVersion}`);
-  if (wo?.capability === 'AVAILABLE') provLines.push(`월운 규칙 ${wo.ruleVersion}`);
-  if (ax?.capability === 'AVAILABLE') provLines.push(`시간축 규칙 ${ax.ruleVersion} · 대운 방향/나이는 ENGINE-12 소유(재계산 아님)`);
+  if (ax && ax.capability === 'AVAILABLE') {
+    const p = ax.provenance;
+    provLines.push(`도출 근거 년월주=${p.yearMonthPillarRuleVersion} 십신=${p.tenGodRuleVersion} 지장간=${p.hiddenStemRuleVersion} 관계=${p.relationRuleVersion} · 대운 방향/나이는 ENGINE-12 소유(재계산 아님)`);
+  }
+  if (assumptions.size > 0) provLines.push(`가정: ${[...assumptions].join(', ')}`);
+  if (limitations.size > 0) provLines.push(`한계(계산): ${[...limitations].join(', ')}`);
   provLines.push(fourPillars.hour.status === 'AVAILABLE' ? '시주 확정' : '시주 미상(시간 의존 해석 제한)');
   provLines.push('강약/용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지)');
   sections.push({ label: '근거·한계', lines: provLines });

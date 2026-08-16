@@ -161,16 +161,24 @@ function mainBodyText(p: ParsedStructuredConsultation): string {
     .join('\n');
 }
 
-// ── evidence-derived timing anchors (Codex pipeline FIX #2) ───────────────────────────
-type TimingAnchors = { years: Set<number>; ageMin: number | null; ageMax: number | null };
+// ── evidence-derived timing anchors (Codex pipeline FIX #2 + FIX A) ───────────────────
+type TimingAnchors = {
+  years: Set<number>;
+  referenceYear: number | null;
+  ageMin: number | null;
+  ageMax: number | null;
+  hasMonthly: boolean;
+};
 
 function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
-  const anchors: TimingAnchors = { years: new Set(), ageMin: null, ageMax: null };
+  const anchors: TimingAnchors = { years: new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== 'available') return anchors;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
     if (!ta) continue;
     for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
+    if (typeof ta.referenceYear === 'number' && anchors.referenceYear === null) anchors.referenceYear = ta.referenceYear;
+    if (ta.hasMonthlyEvidence === true) anchors.hasMonthly = true;
     if (ta.daewoonAgeSpan) {
       anchors.ageMin = anchors.ageMin === null ? ta.daewoonAgeSpan.min : Math.min(anchors.ageMin, ta.daewoonAgeSpan.min);
       anchors.ageMax = anchors.ageMax === null ? ta.daewoonAgeSpan.max : Math.max(anchors.ageMax, ta.daewoonAgeSpan.max);
@@ -179,17 +187,50 @@ function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
   return anchors;
 }
 
-// A specific Gregorian year ("2029년") or age ("120세") NOT covered by the evidence anchors is an
-// unsupported/fabricated timing claim. Relative language (올해/내년/향후 몇 년) carries no 4-digit year
-// and is intentionally NOT flagged.
+// FIX A — relative-definite year terms resolved against the reference (current 세운) year.
+const RELATIVE_YEAR: readonly [RegExp, number][] = [
+  [/내후년/, 2],
+  [/내년|명년/, 1],
+  [/올해|금년/, 0],
+];
+
+// A SPECIFIC period NOT covered by the evidence anchors is an unsupported/fabricated timing claim.
+// Covers: explicit "YYYY년"; relative-definite years (올해/내년/내후년) via referenceYear; numeric relative
+// offsets ("3년 뒤/후"); relative months (이번 달/다음 달) via monthly-evidence presence; and ages/decades/
+// life-stages via the Daewoon age span. VAGUE, non-specific language (향후 몇 년, 앞으로, 조만간, 언젠가)
+// carries no resolvable period and is intentionally NOT flagged (§2).
 function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
+  const yearOK = (y: number): boolean => anchors.years.has(y);
+
+  // explicit Gregorian year
   for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년/g)) {
-    if (!anchors.years.has(Number(m[1]))) return true;
+    if (!yearOK(Number(m[1]))) return true;
   }
-  if (anchors.ageMin !== null && anchors.ageMax !== null) {
+  // relative-definite year (올해/내년/내후년)
+  for (const [re, off] of RELATIVE_YEAR) {
+    if (re.test(text) && (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off))) return true;
+  }
+  // numeric relative offset "N년 뒤/후" (specific). Vague "몇 년/여러 해" has no digit → not matched.
+  for (const m of text.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) {
+    const off = Number(m[1]);
+    if (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off)) return true;
+  }
+  // relative months — no NEXT-month evidence is ever computed; the current month needs 월운 evidence.
+  if (/(다음\s*달|담\s*달|이듬\s*달|다음달)/.test(text)) return true;
+  if (/(이번\s*달|이달|금월|이번달)/.test(text) && !anchors.hasMonthly) return true;
+
+  // ages / decades / life-stages: with NO Daewoon age span, ANY age claim is unsupported (fail-closed).
+  const hasSpan = anchors.ageMin !== null && anchors.ageMax !== null;
+  const AGE_REF = /\d{1,3}\s*(?:세|살)|[1-9]0\s*대|중년|장년|노년|말년|청년|초년/;
+  if (AGE_REF.test(text) && !hasSpan) return true;
+  if (hasSpan) {
     for (const m of text.matchAll(/(\d{1,3})\s*(?:세|살)/g)) {
       const a = Number(m[1]);
-      if (a < anchors.ageMin || a > anchors.ageMax) return true;
+      if (a < (anchors.ageMin as number) || a > (anchors.ageMax as number)) return true;
+    }
+    for (const m of text.matchAll(/([1-9])0\s*대/g)) {
+      const lo = Number(m[1]) * 10; // a decade fully outside the Daewoon span is unsupported
+      if (lo + 9 < (anchors.ageMin as number) || lo > (anchors.ageMax as number)) return true;
     }
   }
   return false;

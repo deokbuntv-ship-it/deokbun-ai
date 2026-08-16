@@ -79,4 +79,61 @@
 32. **Owner actions (do NOT do now):** deploy Supabase Edge `chat` + set `OPENAI_API_KEY` (server-side); then a
     logged-in live consultation / Solar-Lunar / timing / Ziwei test. Code+tests complete against the mock boundary.
 33. **Commit hash:** this local closure commit (SHA in `git log -1`) — local only. No push / deploy / DB migration.
-34. **Final status:** `READY_FOR_CODEX_MYUNGRI_PIPELINE_FINAL_CLOSURE_REVIEW`.
+34. **Final status:** (superseded by PATCH #2 below).
+
+---
+
+# PATCH #2 — Codex re-review of `90f3875` (NEEDS_TARGETED_FIX → 3 remaining findings)
+
+Codex re-review: **Finding 1 (semantic rejection/raw leak) PASS, Finding 4 (Solar/Lunar equivalence)
+PASS.** Frozen calc still PASS. 3 material findings closed here as integration-only fixes. Starting
+HEAD `90f3875` → ending = this PATCH #2 commit. Frozen `interpretation/**` still byte-identical to
+`7c7ed82`; Ziwei `02f1382` preserved; Qimen still disconnected.
+
+## FIX A — relative / age / month timing (Finding 2 refinement)
+
+Explicit years were gated, but relative/age claims slipped through. Now the evidence carries a
+`referenceYear` (current 세운 year) + `hasMonthlyEvidence` flag alongside `years` + `daewoonAgeSpan`,
+and `hasUnsupportedTiming` resolves:
+- **Relative-definite years** 올해(=ref)/내년(ref+1)/내후년(ref+2) and numeric **"N년 뒤/후"** → the
+  resolved year must be in `years`, else unsupported. (`referenceYear=null` ⇒ any relative year fails.)
+- **Months**: "다음 달/이듬 달" is never evidence-backed (no next-month 월운 computed) → reject; "이번 달"
+  requires `hasMonthlyEvidence`.
+- **Ages / decades / life-stages** (N세·N0대·중년/장년/노년/말년/청년/초년): with **no** Daewoon age span →
+  ANY age claim fails-closed; with a span → numeric ages / decades outside the span fail.
+- **Vague** language (향후 몇 년, 앞으로, 조만간) carries no resolvable period and is intentionally allowed.
+Applied to every user-facing field: core prose → SEMANTIC_REJECTED; futureFlow → stripped; followUp →
+that chip removed. Tests: `pipelineClosure.test.ts` "PATCH#2 FIX A" (13 assertions incl. the §9 matrix).
+
+## FIX B — complete deterministic evidence preservation (Finding 3)
+
+- **Daewoon ten-gods**: the 대운 lines now serialize the FULL `PillarTenGodProfile` — 천간 십신 **+ 지지
+  정기 십신 + 지장간(여기/중기/정기) 십신** — not stem-only. (Reads the already-computed profile; no recompute.)
+- **Provenance / assumptions / limitations**: the `근거·한계` section now serializes the ACTUAL arrays
+  from each result object (대운십신/세운/월운/시간축/월령/통근투간 `ruleVersion`, `assumptions`, `limitations`)
+  + the time-axis `provenance` lineage (yearMonthPillar/tenGod/hiddenStem/relation ruleVersions) — real
+  values, deduped, not handcrafted summaries.
+- **Prompt-delivery proof**: `pipelineClosure.test.ts` "PATCH#2 FIX B" runs the real 1990-08-15 chart
+  through buildConsultationGrounding→renderGroundingContext and asserts the PROMPT contains Daewoon
+  direction, start/end age, `〈현재〉` active cycle, 지지 + 지장간 ten-gods, `시간축 연결`, `ruleVersions`,
+  `도출 근거`, `가정:`, `한계(계산):`, 세운, 월운.
+
+## FIX C — strict runtime grounding + direct buildPrompt fail-closed (Finding 5)
+
+- `isValidTimingAnchors` now also validates `referenceYear` (number|null), `hasMonthlyEvidence`
+  (boolean), and rejects `daewoonAgeSpan` with **min > max** (startAge>endAge). `toSafeGrounding` now
+  also type-checks `assessmentSummary` / `assessmentVersion`. Adversarial matrix extended in
+  "PATCH#2 FIX C" (invalid referenceYear, span order, non-number years, bad monthly flag, malformed
+  assessmentSummary, + the valid case) on top of the existing null/enum/section/consistency cases.
+- **Direct buildPrompt** now calls `toSafeGrounding` at its own boundary (not only chatService), so a
+  malformed grounding handed straight to `buildPrompt` degrades to fail-closed UNAVAILABLE and never
+  throws — proven by "FIX 5 — a grounding builder that returns malformed grounding does NOT crash".
+
+## PATCH #2 gates
+
+- Full Jest **49 suites / 541 tests PASS** (was 523 → +18; zero regression).
+- TypeScript: 0 in changed files (11 pre-existing route-union errors only). Expo web export OK.
+  npm ls OK. git diff --check clean. No secrets. Frozen `interpretation/**` identical to `7c7ed82`.
+- Finding 1 + Finding 4 regressions re-verified green (semantic-rejection + Solar/Lunar equivalence tests).
+- **Final status:** `READY_FOR_CODEX_MYUNGRI_PIPELINE_FINAL_RE_REVIEW`. Persistence still DEFERRED_MINOR.
+  Owner action unchanged (deploy edge `chat` + `OPENAI_API_KEY`).

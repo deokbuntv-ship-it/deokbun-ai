@@ -110,11 +110,14 @@ function isValidSections(v: unknown): boolean {
 function isValidTimingAnchors(v: unknown): boolean {
   if (v === undefined) return true;
   if (v === null || typeof v !== 'object') return false;
-  const o = v as { years?: unknown; daewoonAgeSpan?: unknown };
+  const o = v as { years?: unknown; referenceYear?: unknown; daewoonAgeSpan?: unknown; hasMonthlyEvidence?: unknown };
   if (!Array.isArray(o.years) || !o.years.every((y) => typeof y === 'number' && Number.isFinite(y))) return false;
+  if (o.referenceYear !== undefined && o.referenceYear !== null && (typeof o.referenceYear !== 'number' || !Number.isFinite(o.referenceYear))) return false;
+  if (o.hasMonthlyEvidence !== undefined && typeof o.hasMonthlyEvidence !== 'boolean') return false;
   if (o.daewoonAgeSpan !== undefined && o.daewoonAgeSpan !== null) {
     const s = o.daewoonAgeSpan as { min?: unknown; max?: unknown };
-    if (typeof s !== 'object' || typeof s.min !== 'number' || typeof s.max !== 'number') return false;
+    if (s === null || typeof s !== 'object' || typeof s.min !== 'number' || typeof s.max !== 'number') return false;
+    if (!Number.isFinite(s.min) || !Number.isFinite(s.max) || s.min > s.max) return false; // startAge>endAge is invalid
   }
   return true;
 }
@@ -154,6 +157,12 @@ export function toSafeGrounding(g: ConsultationGrounding | null | undefined): Co
     return GROUNDING_UNAVAILABLE;
   }
   if (g.engineVersion !== undefined && g.engineVersion !== null && typeof g.engineVersion !== 'string') {
+    return GROUNDING_UNAVAILABLE;
+  }
+  if (g.assessmentSummary !== undefined && g.assessmentSummary !== null && typeof g.assessmentSummary !== 'string') {
+    return GROUNDING_UNAVAILABLE;
+  }
+  if (g.assessmentVersion !== undefined && g.assessmentVersion !== null && typeof g.assessmentVersion !== 'string') {
     return GROUNDING_UNAVAILABLE;
   }
   return g;

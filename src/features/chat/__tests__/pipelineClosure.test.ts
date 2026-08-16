@@ -68,12 +68,19 @@ const input = (userMessage: string, d: ConsultationDraft): ChatServiceInput => (
 // A well-formed available grounding with explicit timing anchors, for unit-level classifier tests.
 const groundingWith = (o: {
   hasTiming?: boolean; ziwei?: string; qimen?: string; years?: number[];
+  referenceYear?: number | null; ageSpan?: { min: number; max: number } | null; hasMonthly?: boolean;
 } = {}): ConsultationGrounding => ({
   status: 'available',
   evidence: {
     myungri: {
       availability: 'available', summary: '사주 …', sections: [{ label: '명식', lines: ['년 癸卯'] }],
-      hasTimingEvidence: o.hasTiming ?? true, timingAnchors: { years: o.years ?? [2024, 2026], daewoonAgeSpan: { min: 2, max: 92 } },
+      hasTimingEvidence: o.hasTiming ?? true,
+      timingAnchors: {
+        years: o.years ?? [2024, 2026],
+        referenceYear: o.referenceYear === undefined ? 2026 : o.referenceYear,
+        daewoonAgeSpan: o.ageSpan === undefined ? { min: 2, max: 92 } : o.ageSpan,
+        hasMonthlyEvidence: o.hasMonthly ?? true,
+      },
     },
     ziwei: { availability: (o.ziwei ?? 'engine_not_connected') as never },
     qimen: { availability: (o.qimen ?? 'engine_not_connected') as never },
@@ -271,5 +278,106 @@ describe('§9 adversarial — summary-only + malformed JSON', () => {
     if (!r.success) return;
     expect(r.structuredResult).toBeUndefined();
     expect(r.responseText).toBe('그냥 평범한 문장 답변입니다.');
+  });
+});
+
+// ── PATCH #2 · FIX A — relative + age/month timing (Codex re-review §9) ────────────────
+describe('PATCH#2 FIX A — relative timing / age / month claims', () => {
+  const kind = (over: Record<string, unknown>, g = groundingWith({})) => classifyConsultationOutput(structuredJson(over), g).kind;
+
+  it('"내년" with NO next-year evidence → rejected; WITH next-year evidence → accepted', () => {
+    expect(kind({ coreInterpretation: `${LONG} 내년에 큰 재물운이 들어옵니다.` })).toBe('SEMANTIC_REJECTED');
+    expect(kind({ coreInterpretation: `${LONG} 내년에 큰 재물운이 들어옵니다.` }, groundingWith({ years: [2024, 2026, 2027] }))).toBe('ACCEPTED');
+  });
+  it('"내후년" unsupported → rejected', () => {
+    expect(kind({ coreInterpretation: `${LONG} 내후년에 전환점이 옵니다.` })).toBe('SEMANTIC_REJECTED');
+  });
+  it('"올해" (= reference year, in anchors) → accepted', () => {
+    expect(kind({ coreInterpretation: `${LONG} 올해는 무난하게 흘러갑니다.` })).toBe('ACCEPTED');
+  });
+  it('numeric relative offset "3년 뒤" not in anchors → rejected', () => {
+    expect(kind({ coreInterpretation: `${LONG} 3년 뒤에 큰 변화가 옵니다.` })).toBe('SEMANTIC_REJECTED');
+  });
+  it('age claim with NO Daewoon age span → rejected (fail-closed)', () => {
+    expect(kind({ coreInterpretation: `${LONG} 45세부터 크게 달라집니다.` }, groundingWith({ ageSpan: null }))).toBe('SEMANTIC_REJECTED');
+  });
+  it('age claim WITHIN the Daewoon span → accepted; OUTSIDE → rejected', () => {
+    expect(kind({ coreInterpretation: `${LONG} 45세 무렵 안정됩니다.` })).toBe('ACCEPTED'); // span 2~92
+    expect(kind({ coreInterpretation: `${LONG} 120세에 정점을 찍습니다.` })).toBe('SEMANTIC_REJECTED');
+  });
+  it('"중년 이후" / "40대" without age span → rejected; with span → accepted', () => {
+    expect(kind({ coreInterpretation: `${LONG} 중년 이후 흐름이 좋아집니다.` }, groundingWith({ ageSpan: null }))).toBe('SEMANTIC_REJECTED');
+    expect(kind({ coreInterpretation: `${LONG} 중년 이후 흐름이 좋아집니다.` })).toBe('ACCEPTED');
+    expect(kind({ coreInterpretation: `${LONG} 40대에 자리를 잡습니다.` })).toBe('ACCEPTED'); // 40-49 within 2~92
+  });
+  it('"다음 달" never supported; "이번 달" needs 월운 evidence', () => {
+    expect(kind({ coreInterpretation: `${LONG} 다음 달에 반드시 큰 계약이 성사됩니다.` })).toBe('SEMANTIC_REJECTED');
+    expect(kind({ coreInterpretation: `${LONG} 이번 달은 무난한 흐름입니다.` })).toBe('ACCEPTED');
+    expect(kind({ coreInterpretation: `${LONG} 이번 달은 무난한 흐름입니다.` }, groundingWith({ hasMonthly: false }))).toBe('SEMANTIC_REJECTED');
+  });
+  it('unsupported timing in domainInterpretation / strengths / cautions → rejected', () => {
+    expect(kind({ domainInterpretation: [{ title: '재물', body: '2033년에 크게 법니다.' }] })).toBe('SEMANTIC_REJECTED');
+    expect(kind({ strengths: ['2040년에 정점을 찍습니다'] })).toBe('SEMANTIC_REJECTED');
+    expect(kind({ cautions: ['2038년을 조심하십시오'] })).toBe('SEMANTIC_REJECTED');
+  });
+  it('unsupported timing in futureFlow → stripped (still accepted); in followUp → that chip removed', () => {
+    const fut = classifyConsultationOutput(structuredJson({ futureFlow: '2031년에 정점입니다.' }), groundingWith({}));
+    expect(fut.kind).toBe('ACCEPTED');
+    if (fut.kind === 'ACCEPTED') expect(fut.result.futureFlow).toBeUndefined();
+    const fu = classifyConsultationOutput(structuredJson({ followUps: ['내후년 재물운을 볼까요?', '성격을 더 볼까요?'] }), groundingWith({}));
+    if (fu.kind === 'ACCEPTED') expect(fu.result.followUps).toEqual(['성격을 더 볼까요?']);
+    else throw new Error('expected accepted');
+  });
+  it('VAGUE relative language (향후 몇 년, 앞으로) is NOT flagged', () => {
+    expect(kind({ coreInterpretation: `${LONG} 앞으로 몇 년은 꾸준함이 중요합니다.` })).toBe('ACCEPTED');
+    expect(kind({ futureFlow: '향후 몇 년은 안정적인 편입니다.' })).toBe('ACCEPTED');
+  });
+});
+
+// ── PATCH #2 · FIX B — full deterministic evidence reaches the PROMPT ─────────────────
+describe('PATCH#2 FIX B — complete evidence in the rendered prompt', () => {
+  it('1990 birth: prompt carries full Daewoon ten-gods + direction + active cycle + provenance + assumptions + limitations', async () => {
+    // 1990-08-15 14:00: in the frozen Saju range, exact time → Daewoon available; age ≈ 36 → an active cycle exists.
+    const g = await buildConsultationGrounding(draft({ birthYear: '1990', birthMonth: '8', birthDay: '15', birthHour: '14' }), deps);
+    if (g.status !== 'available') throw new Error('expected available');
+    const ctx = renderGroundingContext(g);
+    expect(/대운.*(순행|역행)/.test(ctx)).toBe(true); // direction
+    expect(ctx).toContain('세 '); // start~end age range
+    expect(ctx).toContain('〈현재〉'); // active Daewoon cycle (age ~36 falls in a cycle)
+    expect(ctx).toContain('지지'); // branch/main-qi ten-god (full profile, not stem-only)
+    expect(ctx).toContain('지장간'); // hidden-stem ten-gods
+    expect(ctx).toContain('시간축 연결'); // connected axis relations
+    expect(ctx).toContain('ruleVersions'); // provenance
+    expect(ctx).toContain('도출 근거'); // time-axis provenance lineage
+    expect(ctx).toContain('가정:'); // real assumptions preserved
+    expect(ctx).toContain('한계(계산):'); // real limitations preserved
+    expect(ctx).toContain('세운');
+    expect(ctx).toContain('월운');
+  });
+});
+
+// ── PATCH #2 · FIX C — extended strict-grounding adversarial matrix ───────────────────
+describe('PATCH#2 FIX C — grounding matrix (referenceYear / span order / assessmentSummary)', () => {
+  const bad = (myungri: unknown): ConsultationGrounding =>
+    ({ status: 'available', evidence: { myungri, ziwei: { availability: 'engine_not_connected' }, qimen: { availability: 'engine_not_connected' } } } as unknown as ConsultationGrounding);
+  const base = { availability: 'available', summary: 's', sections: [{ label: 'x', lines: ['y'] }] };
+
+  it('invalid referenceYear type → UNAVAILABLE', () => {
+    expect(toSafeGrounding(bad({ ...base, timingAnchors: { years: [2026], referenceYear: 'soon' } })).status).toBe('unavailable');
+  });
+  it('startAge > endAge in daewoonAgeSpan → UNAVAILABLE', () => {
+    expect(toSafeGrounding(bad({ ...base, timingAnchors: { years: [2026], daewoonAgeSpan: { min: 90, max: 10 } } })).status).toBe('unavailable');
+  });
+  it('years not a number array → UNAVAILABLE', () => {
+    expect(toSafeGrounding(bad({ ...base, timingAnchors: { years: ['2026'] } })).status).toBe('unavailable');
+  });
+  it('hasMonthlyEvidence wrong type → UNAVAILABLE', () => {
+    expect(toSafeGrounding(bad({ ...base, timingAnchors: { years: [2026], hasMonthlyEvidence: 'yes' } })).status).toBe('unavailable');
+  });
+  it('malformed assessmentSummary → UNAVAILABLE', () => {
+    expect(toSafeGrounding({ status: 'available', assessmentSummary: 42, evidence: { myungri: base, ziwei: { availability: 'engine_not_connected' }, qimen: { availability: 'engine_not_connected' } } } as unknown as ConsultationGrounding).status).toBe('unavailable');
+  });
+  it('valid anchors (referenceYear + span + monthly) → AVAILABLE', () => {
+    expect(toSafeGrounding(bad({ ...base, timingAnchors: { years: [2024, 2026], referenceYear: 2026, daewoonAgeSpan: { min: 2, max: 92 }, hasMonthlyEvidence: true } })).status).toBe('available');
   });
 });

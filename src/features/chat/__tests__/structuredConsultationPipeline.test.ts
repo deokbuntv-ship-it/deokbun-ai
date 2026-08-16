@@ -35,7 +35,7 @@ const structuredJson = (over: Record<string, unknown> = {}): string =>
       { title: '일·직업·사업', body: '직업적으로는 전문성을 축적하는 흐름이 강합니다.' },
       { title: '재물', body: '재물은 급등보다 꾸준한 축적형입니다.' },
     ],
-    followUps: ['언제 사업 확장이 유리한가요?', '올해와 내년 중 어느 쪽이 더 중요한가요?'],
+    followUps: ['언제 사업 확장이 유리한가요?', '사업 확장은 어떤 방식이 좋을까요?'],
     ...over,
   });
 const STRUCTURED = structuredJson();

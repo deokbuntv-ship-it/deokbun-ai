@@ -29,10 +29,14 @@ export type EngineEvidenceSection = {
 // `years` (and outside the Daewoon age span) is an unsupported/fabricated timing claim. Facts only;
 // never widened by the LLM.
 export type EngineEvidenceTimingAnchors = {
-  /** Gregorian years the evidence actually covers (current 세운/월운 target years). */
+  /** Gregorian years the evidence actually covers (current 세운/월운 target years + birth year). */
   years: number[];
+  /** The current 사주(세운) year — resolves RELATIVE claims (올해/내년/내후년/N년 뒤). null ⇒ none. */
+  referenceYear?: number | null;
   /** Inclusive age span covered by the Daewoon cycles, when available. */
   daewoonAgeSpan?: { min: number; max: number } | null;
+  /** true when the current-month 월운 evidence exists — gates 이번 달 / 다음 달 claims. */
+  hasMonthlyEvidence?: boolean;
 };
 
 export type EngineEvidence = {

@@ -5,7 +5,7 @@ import type {
 } from '@/features/chat/types/chatArchitecture';
 import { classifyConsultationMode } from './consultationMode';
 import { buildResponsePolicy, SYSTEM_CONSTITUTION } from './consultationPolicy';
-import { GROUNDING_UNAVAILABLE, renderGroundingContext } from './grounding';
+import { renderGroundingContext, toSafeGrounding } from './grounding';
 import { STRUCTURED_OUTPUT_INSTRUCTION } from './structuredConsultation';
 
 // Consultation prompt composition (directive §8). Layers, in order:
@@ -76,7 +76,9 @@ function buildContextMessage(input: PromptBuildInput): string {
     input.recentMessages.length > 0 ||
     (input.conversationSummary !== null && input.conversationSummary.trim().length > 0);
   const mode = input.mode ?? classifyConsultationMode(input.currentUserMessage, hasHistory);
-  const grounding = input.grounding ?? GROUNDING_UNAVAILABLE;
+  // Codex FIX C §5: sanitize at the buildPrompt boundary so a DIRECT caller (bypassing chatService's
+  // guard) can never hand malformed grounding to the renderer — it degrades to fail-closed UNAVAILABLE.
+  const grounding = toSafeGrounding(input.grounding ?? null);
 
   return [
     buildSubjectBlock(input.selectedContext, grounding.status === 'available'),
