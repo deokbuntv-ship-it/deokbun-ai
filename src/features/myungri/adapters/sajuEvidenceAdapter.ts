@@ -2,10 +2,16 @@
 //
 // CONVERTER ONLY (sprint §3): never calculates. Reads already-computed frozen facts + Myungri fact
 // modules and FORMATS them into labeled sections the grounding renderer delivers to the prompt.
-// Preserves EVERYTHING computed upstream (Codex FIX #1): 명식·십신·지장간·오행·관계(합충형파해/삼합/방합)·
-// 통근·투간·월령/득령·대운·대운십신·세운·월운 + provenance(立春/12-Jie + ruleVersions) + limitations.
-// Transparency(투간) is serialized as a first-class section (Codex FIX #2). No interpretation.
-import type { EngineEvidence, EngineEvidenceAvailability, EngineEvidenceSection } from '@/features/analysis';
+// Preserves EVERYTHING computed upstream: 명식·십신·지장간·오행·관계(합충형파해/삼합/방합)·통근·투간·
+// 월령/득령·대운(방향·시작/종료 나이·현재 대운·대운십신)·세운(+원국관계)·월운(+원국관계·세운관계)·
+// 원국↔대운↔세운↔월운 연결(교차 합충형파해·삼합/방합) + provenance(立春/12-Jie + ruleVersions) +
+// per-layer assumptions/limitations + structured timing anchors. No interpretation.
+import type {
+  EngineEvidence,
+  EngineEvidenceAvailability,
+  EngineEvidenceSection,
+  EngineEvidenceTimingAnchors,
+} from '@/features/analysis';
 import {
   EARTHLY_BRANCH_LABELS,
   FIVE_ELEMENT_LABELS,
@@ -15,9 +21,11 @@ import {
   type EarthlyBranch,
   type FiveElement,
   type HeavenlyStem,
+  type SajuDaewoonResult,
   type SajuDerivedPillarAnnotation,
   type SajuEngineResult,
   type SajuFourPillars,
+  type SajuPillarPosition,
   type SexagenaryPillar,
 } from '@/features/interpretation';
 import type { DaewoonTenGodsResult } from '../services/daewoonTenGods';
@@ -29,16 +37,30 @@ import type {
   BranchSetRelationKind,
   StemRelationKind,
 } from '../rules/pillarRelations';
-import type { SewoonResult, WolwoonResult } from '../domain/contracts';
+import type {
+  MyungriTimeAxisResult,
+  RelationsToNatal,
+  SewoonResult,
+  TimeAxisLayer,
+  WolwoonResult,
+} from '../domain/contracts';
 
 export type SajuEvidenceBundle = {
   engineResult: SajuEngineResult;
   natalRelations?: NatalRelationsResult | null;
   monthCommand?: MonthCommandResult | null;
   rooting?: RootingTransparencyResult | null;
+  /** Raw ENGINE-12 Daewoon (for direction + start/end age). Facts are read, never recomputed. */
+  daewoon?: SajuDaewoonResult | null;
   daewoonTenGods?: DaewoonTenGodsResult | null;
+  /** Ordinal of the Daewoon cycle active at the current age, when deterministically resolvable. */
+  activeCycleOrdinal?: number | null;
   sewoon?: SewoonResult | null;
   wolwoon?: WolwoonResult | null;
+  /** Connected 원국↔대운↔세운↔월운 axis (cross-layer relations). */
+  timeAxis?: MyungriTimeAxisResult | null;
+  /** Gregorian birth year — an allowed timing anchor (so "2024년생" is not flagged unsupported). */
+  birthGregorianYear?: number | null;
 };
 
 const stemH = (s: HeavenlyStem): string => HEAVENLY_STEM_LABELS[s].hanja;
@@ -56,6 +78,11 @@ const BRANCH_REL: Record<BranchPairRelationKind, string> = {
 const SET_REL: Record<BranchSetRelationKind, string> = {
   BRANCH_THREE_HARMONY: '삼합', BRANCH_DIRECTIONAL_UNION: '방합', BRANCH_THREE_PUNISHMENT: '삼형',
 };
+const POS: Record<SajuPillarPosition, string> = { YEAR: '년', MONTH: '월', DAY: '일', HOUR: '시' };
+const LAYER: Record<TimeAxisLayer, string> = {
+  NATAL_YEAR: '년주', NATAL_MONTH: '월주', NATAL_DAY: '일주', NATAL_HOUR: '시주',
+  DAEWOON: '대운', SEWOON: '세운', WOLWOON: '월운',
+};
 
 function hourText(hour: SajuFourPillars['hour']): string {
   return hour.status === 'AVAILABLE' ? gz(hour.pillar) : '미상';
@@ -66,6 +93,12 @@ function pillarLabel(p: SexagenaryPillar): string {
 function pillarTenGodLine(name: string, p: SajuDerivedPillarAnnotation): string {
   const hidden = p.branch.hiddenStems.map((h) => `${stemH(h.stem)}(${role(h.role)}·${tg(h.tenGod)})`).join(' ');
   return `${name}주: 천간 ${tg(p.stem.tenGod)} / 지지 ${el(p.branch.element)} 지장간 ${hidden}`;
+}
+function relationsToNatalText(rel: RelationsToNatal): string {
+  const parts: string[] = [];
+  for (const s of rel.stem) parts.push(`${POS[s.position]}간 ${STEM_REL[s.relation.kind]}`);
+  for (const b of rel.branch) parts.push(`${POS[b.position]}지 ${BRANCH_REL[b.relation.kind]}`);
+  return parts.join(', ');
 }
 
 function mapAvailability(result: SajuEngineResult): EngineEvidenceAvailability {
@@ -101,7 +134,7 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
   if (derivedFacts.pillars.hour) tgLines.push(pillarTenGodLine('시', derivedFacts.pillars.hour));
   sections.push({ label: '십신·지장간', lines: tgLines });
 
-  // 관계 (natal relations) — FIX #1
+  // 관계 (natal relations)
   const nr = bundle.natalRelations;
   if (nr) {
     const relLines: string[] = [];
@@ -111,7 +144,7 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     sections.push({ label: '원국 관계(합충형파해·삼합/방합)', lines: relLines.length ? relLines : ['특이 관계 없음'] });
   }
 
-  // 통근 (rooting) + 투간 (transparency) — FIX #2 (transparency was previously discarded)
+  // 통근 (rooting) + 투간 (transparency)
   const rt = bundle.rooting;
   if (rt && rt.capability === 'AVAILABLE') {
     const rooted = rt.rooting.filter((r) => r.isRooted).map((r) => `${stemH(r.stem)}(${r.roots.map((x) => branchH(x.branch)).join(',')})`);
@@ -129,36 +162,81 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     });
   }
 
-  // 대운 (+ 대운십신), 세운, 월운 — TIME
+  // 대운 (방향 + 시작/종료 나이 + 현재 대운 + 대운십신)
   const dw = bundle.daewoonTenGods;
   const hasDaewoon = !!dw && dw.capability === 'AVAILABLE';
   if (dw && dw.capability === 'AVAILABLE') {
-    sections.push({
-      label: '대운(+대운십신)',
-      lines: dw.cycles.slice(0, 10).map((c) => `${c.startAgeInclusive}세~ ${gz(c.tenGods)} ${tg(c.tenGods.stemTenGod)}`),
+    const direction =
+      bundle.daewoon && bundle.daewoon.capability === 'AVAILABLE'
+        ? bundle.daewoon.direction === 'FORWARD' ? '순행' : '역행'
+        : null;
+    const lines = dw.cycles.slice(0, 10).map((c) => {
+      const marker = bundle.activeCycleOrdinal != null && c.ordinal === bundle.activeCycleOrdinal ? '〈현재〉 ' : '';
+      return `${marker}${c.startAgeInclusive}~${c.endAgeInclusive}세 ${gz(c.tenGods)} ${tg(c.tenGods.stemTenGod)}`;
     });
+    sections.push({ label: `대운(+대운십신)${direction ? ` · ${direction}` : ''}`, lines });
   }
+
+  // 세운 · 월운 (+ 원국관계 / 세운관계)
   const se = bundle.sewoon;
   const wo = bundle.wolwoon;
   const timeLines: string[] = [];
-  if (se && se.capability === 'AVAILABLE') timeLines.push(`세운 ${se.targetYear}: ${gz(se.pillar)} ${tg(se.tenGods.stemTenGod)}`);
-  if (wo && wo.capability === 'AVAILABLE') timeLines.push(`월운 ${wo.targetYear}·${wo.lunarMonth}월: ${gz(wo.pillar)} ${tg(wo.tenGods.stemTenGod)}`);
+  if (se && se.capability === 'AVAILABLE') {
+    const rel = relationsToNatalText(se.relationsToNatal);
+    timeLines.push(`세운 ${se.targetYear}: ${gz(se.pillar)} ${tg(se.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ''}`);
+  }
+  if (wo && wo.capability === 'AVAILABLE') {
+    const rel = relationsToNatalText(wo.relationsToNatal);
+    const sewoonRel = [
+      wo.relationToSewoon.stem ? STEM_REL[wo.relationToSewoon.stem.kind] : '',
+      ...wo.relationToSewoon.branch.map((b) => BRANCH_REL[b.kind]),
+    ].filter(Boolean).join(',');
+    timeLines.push(
+      `월운 ${wo.targetYear}·${wo.lunarMonth}월: ${gz(wo.pillar)} ${tg(wo.tenGods.stemTenGod)}` +
+        `${rel ? ` · 원국관계 ${rel}` : ''}${sewoonRel ? ` · 세운관계 ${sewoonRel}` : ''}`,
+    );
+  }
   if (timeLines.length) sections.push({ label: '세운·월운', lines: timeLines });
+
+  // 원국 ↔ 대운 ↔ 세운 ↔ 월운 connected time-axis (cross-layer relations, facts only)
+  const ax = bundle.timeAxis;
+  if (ax && ax.capability === 'AVAILABLE') {
+    const axisLines: string[] = [];
+    for (const r of ax.crossLayerStemRelations) axisLines.push(`${LAYER[r.from]}↔${LAYER[r.to]} ${STEM_REL[r.relation.kind]}`);
+    for (const r of ax.crossLayerBranchRelations) axisLines.push(`${LAYER[r.from]}↔${LAYER[r.to]} ${BRANCH_REL[r.relation.kind]}`);
+    for (const s of ax.branchSetRelations) axisLines.push(`${SET_REL[s.kind]} ${s.branches.map(branchH).join('')}`);
+    sections.push({ label: '시간축 연결(원국↔대운↔세운↔월운)', lines: axisLines.length ? axisLines : ['현재 교차 관계 없음'] });
+  }
 
   const hasTimingEvidence = hasDaewoon || (se?.capability === 'AVAILABLE') || (wo?.capability === 'AVAILABLE');
 
-  // 근거·한계 (provenance + limitations) — provenance survives to grounding (FIX #1/#3, §16)
-  sections.push({
-    label: '근거·한계',
-    lines: [
-      `엔진 SAJU · 년주=${provenance.yearMonthAttributionRule.yearBoundary} · 월주=${provenance.yearMonthAttributionRule.monthBoundary}`,
-      `ruleVersion ${provenance.productRule.ruleVersion} · 십신 ${derivedFacts.ruleVersions.tenGods}`,
-      fourPillars.hour.status === 'AVAILABLE' ? '시주 확정' : '시주 미상(시간 의존 해석 제한)',
-      '강약/용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지)',
-    ],
-  });
+  // structured timing anchors (allowlist for timing validation — Codex pipeline FIX #2)
+  const anchorYears = new Set<number>();
+  if (typeof bundle.birthGregorianYear === 'number') anchorYears.add(bundle.birthGregorianYear);
+  if (se?.capability === 'AVAILABLE') anchorYears.add(se.targetYear);
+  if (wo?.capability === 'AVAILABLE') anchorYears.add(wo.targetYear);
+  let daewoonAgeSpan: EngineEvidenceTimingAnchors['daewoonAgeSpan'] = null;
+  if (dw && dw.capability === 'AVAILABLE' && dw.cycles.length > 0) {
+    daewoonAgeSpan = {
+      min: dw.cycles[0].startAgeInclusive,
+      max: dw.cycles[dw.cycles.length - 1].endAgeInclusive,
+    };
+  }
+  const timingAnchors: EngineEvidenceTimingAnchors = { years: [...anchorYears].sort((a, b) => a - b), daewoonAgeSpan };
+
+  // 근거·한계 (provenance + limitations) — 立春/12-Jie + every reused ruleVersion + time-axis provenance
+  const provLines = [
+    `엔진 SAJU · 년주=${provenance.yearMonthAttributionRule.yearBoundary} · 월주=${provenance.yearMonthAttributionRule.monthBoundary}`,
+    `ruleVersion ${provenance.productRule.ruleVersion} · 십신 ${derivedFacts.ruleVersions.tenGods}`,
+  ];
+  if (se?.capability === 'AVAILABLE') provLines.push(`세운 규칙 ${se.ruleVersion}`);
+  if (wo?.capability === 'AVAILABLE') provLines.push(`월운 규칙 ${wo.ruleVersion}`);
+  if (ax?.capability === 'AVAILABLE') provLines.push(`시간축 규칙 ${ax.ruleVersion} · 대운 방향/나이는 ENGINE-12 소유(재계산 아님)`);
+  provLines.push(fourPillars.hour.status === 'AVAILABLE' ? '시주 확정' : '시주 미상(시간 의존 해석 제한)');
+  provLines.push('강약/용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지)');
+  sections.push({ label: '근거·한계', lines: provLines });
 
   const summary = `사주 ${gz(fourPillars.year)}·${gz(fourPillars.month)}·${gz(fourPillars.day)}·${hourText(fourPillars.hour)} / 일간 ${stemH(fourPillars.day.stem)}`;
   const detail = sections.map((s) => `[${s.label}] ${s.lines.join(' | ')}`).join('\n');
-  return { availability, summary, detail, sections, hasTimingEvidence };
+  return { availability, summary, detail, sections, hasTimingEvidence, timingAnchors };
 }

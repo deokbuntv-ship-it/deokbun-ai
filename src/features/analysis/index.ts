@@ -32,6 +32,7 @@ export type {
   EngineEvidence,
   EngineEvidenceAvailability,
   EngineEvidenceSection,
+  EngineEvidenceTimingAnchors,
   StructuredAiResponse,
 } from './aiOutput';
 

@@ -33,19 +33,32 @@ function sanitizeContextValue(raw: string, maxLen = 80): string {
   return collapsed.length > maxLen ? `${collapsed.slice(0, maxLen)}…` : collapsed;
 }
 
-function buildSubjectBlock(ctx: SelectedConsultationContext): string {
-  // Codex FIX #5: label the calendar of the RAW birth date so the LLM never guesses. The canonical
-  // Four Pillars in 【계산 근거】 are the authoritative deterministic basis (identical for the same
-  // instant whether entered as 양력 or 음력).
+function buildSubjectBlock(ctx: SelectedConsultationContext, groundingAvailable: boolean): string {
   const calendarLabel = ctx.inputCalendar === 'LUNAR' ? '음력' : '양력';
   const lines = [
     '[상담 대상]',
     `대상: ${sanitizeContextValue(ctx.subjectDisplayName)}`,
     `성별: ${ctx.gender}`,
-    `생년월일: ${ctx.birthDate} (${calendarLabel} 입력) — 확정 명식은 아래 【계산 근거】 기준`,
-    `출생시간: ${ctx.birthTimeSummary}`,
-    `출생지: ${sanitizeContextValue(ctx.birthPlace)}`,
   ];
+  if (groundingAvailable) {
+    // Codex pipeline FIX #4: with a deterministic 명식 present, the CANONICAL identity for reasoning
+    // is the confirmed 사주 in 【계산 근거】 — identical for the same birth instant whether entered as
+    // 양력 or 음력. The raw input date/calendar is kept ONLY as NON-reasoning audit metadata (clearly
+    // marked), so a Solar vs Lunar entry of the SAME person can never split the LLM reasoning payload.
+    lines.push(
+      '생년월일: 아래 【계산 근거】의 확정 명식(년/월/일/시 간지)을 기준으로 하며, 같은 출생 순간이면 양력·음력 입력과 무관하게 동일합니다.',
+      `출생시간: ${ctx.birthTimeSummary}`,
+      `출생지: ${sanitizeContextValue(ctx.birthPlace)}`,
+      `※ 입력 원본(참고용, 비추론): ${ctx.birthDate} (${calendarLabel})`,
+    );
+  } else {
+    // No deterministic 명식 → the raw labeled date is all we have; the model must not fabricate a chart.
+    lines.push(
+      `생년월일: ${ctx.birthDate} (${calendarLabel} 입력)`,
+      `출생시간: ${ctx.birthTimeSummary}`,
+      `출생지: ${sanitizeContextValue(ctx.birthPlace)}`,
+    );
+  }
   // Birth-time-unknown / approximate policy (§23/§24): make the limit explicit so the
   // model does not fabricate a 시주 or treat an approximate time as exact.
   if (ctx.birthTimeAccuracy === 'unknown') {
@@ -66,7 +79,7 @@ function buildContextMessage(input: PromptBuildInput): string {
   const grounding = input.grounding ?? GROUNDING_UNAVAILABLE;
 
   return [
-    buildSubjectBlock(input.selectedContext),
+    buildSubjectBlock(input.selectedContext, grounding.status === 'available'),
     '',
     renderGroundingContext(grounding),
     '',

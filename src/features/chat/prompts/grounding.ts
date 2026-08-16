@@ -86,24 +86,77 @@ function renderEngine(label: string, ev: EngineEvidence): string {
   return `- ${label}: ${AVAILABILITY_LABEL[ev.availability]}`;
 }
 
-// Codex FIX #6 — runtime guard used before prompt construction: a structurally malformed
-// grounding degrades to fail-closed UNAVAILABLE rather than reaching the LLM as trusted facts.
-export function toSafeGrounding(g: ConsultationGrounding | null | undefined): ConsultationGrounding {
-  if (!g || (g.status !== 'available' && g.status !== 'unavailable')) return GROUNDING_UNAVAILABLE;
-  if (g.status === 'unavailable') return g;
-  const ev = g.evidence;
-  const ok =
-    ev &&
-    typeof ev === 'object' &&
-    isEngineEvidence(ev.myungri) &&
-    isEngineEvidence(ev.ziwei) &&
-    isEngineEvidence(ev.qimen);
-  return ok ? g : GROUNDING_UNAVAILABLE;
+// Codex pipeline FIX #5 — STRICT runtime guard used before prompt construction. A structurally
+// malformed grounding degrades to fail-closed UNAVAILABLE rather than reaching the LLM as trusted
+// facts. This validates the FULL shape (availability enum, summary/section/timing shapes, unavailable
+// reason enum, engineVersion type, and connected-engine consistency) — not just "availability is a string".
+const AVAILABILITY_VALUES: readonly EngineEvidence['availability'][] = [
+  'available', 'not_applicable', 'missing_birth_time', 'engine_not_connected', 'calculation_failed',
+];
+const UNAVAILABLE_REASON_VALUES: readonly GroundingUnavailableReason[] = [
+  'engine_not_connected', 'birth_time_unknown', 'calculation_failed', 'not_applicable',
+];
+
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === 'string');
+}
+function isValidSections(v: unknown): boolean {
+  if (v === undefined) return true;
+  if (!Array.isArray(v)) return false;
+  return v.every(
+    (s) => s !== null && typeof s === 'object' && typeof (s as { label?: unknown }).label === 'string' && isStringArray((s as { lines?: unknown }).lines),
+  );
+}
+function isValidTimingAnchors(v: unknown): boolean {
+  if (v === undefined) return true;
+  if (v === null || typeof v !== 'object') return false;
+  const o = v as { years?: unknown; daewoonAgeSpan?: unknown };
+  if (!Array.isArray(o.years) || !o.years.every((y) => typeof y === 'number' && Number.isFinite(y))) return false;
+  if (o.daewoonAgeSpan !== undefined && o.daewoonAgeSpan !== null) {
+    const s = o.daewoonAgeSpan as { min?: unknown; max?: unknown };
+    if (typeof s !== 'object' || typeof s.min !== 'number' || typeof s.max !== 'number') return false;
+  }
+  return true;
+}
+function isValidEngineEvidence(v: unknown): v is EngineEvidence {
+  if (v === null || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  if (typeof o.availability !== 'string' || !(AVAILABILITY_VALUES as readonly string[]).includes(o.availability)) return false;
+  if (o.summary !== undefined && typeof o.summary !== 'string') return false;
+  if (o.detail !== undefined && typeof o.detail !== 'string') return false;
+  if (o.hasTimingEvidence !== undefined && typeof o.hasTimingEvidence !== 'boolean') return false;
+  if (!isValidSections(o.sections)) return false;
+  if (!isValidTimingAnchors(o.timingAnchors)) return false;
+  // Consistency: an 'available' engine MUST carry a usable fact (summary or ≥1 section) — an empty
+  // "available" is a mis-wire and must not be trusted as grounding.
+  if (o.availability === 'available') {
+    const hasSummary = typeof o.summary === 'string' && o.summary.trim().length > 0;
+    const hasSections = Array.isArray(o.sections) && o.sections.length > 0;
+    if (!hasSummary && !hasSections) return false;
+  }
+  return true;
 }
 
-function isEngineEvidence(v: unknown): v is EngineEvidence {
-  const o = v as { availability?: unknown } | null;
-  return o !== null && typeof o === 'object' && typeof o.availability === 'string';
+export function toSafeGrounding(g: ConsultationGrounding | null | undefined): ConsultationGrounding {
+  if (!g || typeof g !== 'object' || typeof (g as { status?: unknown }).status !== 'string') return GROUNDING_UNAVAILABLE;
+  if (g.status === 'unavailable') {
+    return (UNAVAILABLE_REASON_VALUES as readonly string[]).includes(g.reason) ? g : GROUNDING_UNAVAILABLE;
+  }
+  if (g.status !== 'available') return GROUNDING_UNAVAILABLE;
+  const ev = g.evidence as EngineEvidenceTriplet | undefined;
+  if (
+    !ev ||
+    typeof ev !== 'object' ||
+    !isValidEngineEvidence(ev.myungri) ||
+    !isValidEngineEvidence(ev.ziwei) ||
+    !isValidEngineEvidence(ev.qimen)
+  ) {
+    return GROUNDING_UNAVAILABLE;
+  }
+  if (g.engineVersion !== undefined && g.engineVersion !== null && typeof g.engineVersion !== 'string') {
+    return GROUNDING_UNAVAILABLE;
+  }
+  return g;
 }
 
 /**

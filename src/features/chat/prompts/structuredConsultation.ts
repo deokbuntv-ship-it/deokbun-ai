@@ -129,7 +129,7 @@ export function isSubstantiveLongForm(p: ParsedStructuredConsultation): boolean 
 import type { ConsultationGrounding } from './grounding';
 
 const ZIWEI_USE = /자미두수\s*(로\s*보|로\s*분석|를\s*보면|에\s*따르면|\s*분석|\s*결과|\s*명반|\s*차트|\s*상)/;
-const QIMEN_USE = /(기문둔갑\s*(으로\s*보|으로\s*분석|을\s*보면|에\s*따르면|\s*분석|\s*결과|까지|도\s*(함께|같이|보|분석))|기문\s*국)/;
+const QIMEN_USE = /(기문둔갑\s*(으로\s*보|으로\s*분석|을\s*보면|에\s*따르면|\s*분석|\s*결과|까지|도\s*(함께|같이|보|분석))|기문(둔갑)?\s*국)/;
 const MULTI_ENGINE_CONSENSUS =
   /(세\s*(가지\s*)?학문|세\s*가지\s*역학|3\s*(개|가지)\s*(학문|엔진)|세\s*엔진)[^\n]{0,12}(일치|합치|같은\s*결론|동의|공통|모두)/;
 // Saju↔Ziwei STRONG full-consensus claim. V1 produces NO deterministic cross-engine domain mapping
@@ -141,48 +141,153 @@ const CROSS_ENGINE_CONSENSUS =
 const FORBIDDEN_THEORY =
   /((당신[은는]?\s*)?신강[한\s]*(사주|입니다|합니다|이에요)|(당신[은는]?\s*)?신약[한\s]*(사주|입니다|합니다|이에요)|용신(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정)\S|격국(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정)\S|(12|십이)\s*운성|(12|십이)\s*신살)/;
 
-function allText(p: ParsedStructuredConsultation): string {
+function coreProseFields(p: ParsedStructuredConsultation): string[] {
   return [
     p.coreSummary,
     p.disposition,
     p.coreInterpretation,
-    p.futureFlow,
     ...(p.strengths ?? []),
     ...(p.cautions ?? []),
     ...(p.domainInterpretation ?? []).map((d) => `${d.title} ${d.body}`),
-  ]
+  ].filter((x): x is string => typeof x === 'string');
+}
+
+// The MAIN answer body (core prose + futureFlow). An engine/consensus/theory violation HERE makes
+// the whole answer unusable. followUps are validated SEPARATELY (a single bad suggestion is dropped,
+// not the whole answer) — Codex pipeline FIX #2/§7.
+function mainBodyText(p: ParsedStructuredConsultation): string {
+  return [...coreProseFields(p), p.futureFlow]
     .filter((x): x is string => typeof x === 'string')
     .join('\n');
 }
 
+// ── evidence-derived timing anchors (Codex pipeline FIX #2) ───────────────────────────
+type TimingAnchors = { years: Set<number>; ageMin: number | null; ageMax: number | null };
+
+function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
+  const anchors: TimingAnchors = { years: new Set(), ageMin: null, ageMax: null };
+  if (grounding.status !== 'available') return anchors;
+  for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const ta = ev.timingAnchors;
+    if (!ta) continue;
+    for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
+    if (ta.daewoonAgeSpan) {
+      anchors.ageMin = anchors.ageMin === null ? ta.daewoonAgeSpan.min : Math.min(anchors.ageMin, ta.daewoonAgeSpan.min);
+      anchors.ageMax = anchors.ageMax === null ? ta.daewoonAgeSpan.max : Math.max(anchors.ageMax, ta.daewoonAgeSpan.max);
+    }
+  }
+  return anchors;
+}
+
+// A specific Gregorian year ("2029년") or age ("120세") NOT covered by the evidence anchors is an
+// unsupported/fabricated timing claim. Relative language (올해/내년/향후 몇 년) carries no 4-digit year
+// and is intentionally NOT flagged.
+function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
+  for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년/g)) {
+    if (!anchors.years.has(Number(m[1]))) return true;
+  }
+  if (anchors.ageMin !== null && anchors.ageMax !== null) {
+    for (const m of text.matchAll(/(\d{1,3})\s*(?:세|살)/g)) {
+      const a = Number(m[1]);
+      if (a < anchors.ageMin || a > anchors.ageMax) return true;
+    }
+  }
+  return false;
+}
+
+// Engine-use / consensus / unsupported-theory violation on a piece of text, given the CURRENT engine
+// availability. Shared by the structured validator AND the raw-text safety scan (FIX #1).
+function hasEngineOrConsensusViolation(text: string, grounding: ConsultationGrounding): boolean {
+  const ziweiAvailable = grounding.status === 'available' && grounding.evidence.ziwei.availability === 'available';
+  const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
+  if (!ziweiAvailable && ZIWEI_USE.test(text)) return true; // false Ziwei use when unconnected
+  if (!qimenAvailable && QIMEN_USE.test(text)) return true; // false Qimen use when unconnected
+  if (!(ziweiAvailable && qimenAvailable) && MULTI_ENGINE_CONSENSUS.test(text)) return true; // fake 3-학문 일치
+  if (CROSS_ENGINE_CONSENSUS.test(text)) return true; // fake Saju↔Ziwei full consensus (no V1 cross-map)
+  if (FORBIDDEN_THEORY.test(text)) return true; // 신강/신약/용신/격국/12운성/12신살 as computed fact
+  return false;
+}
+
+/** A single semantic safety scan (engine + consensus + theory + unsupported timing) over any text. */
+export function hasSemanticViolation(text: string, grounding: ConsultationGrounding): boolean {
+  return hasEngineOrConsensusViolation(text, grounding) || hasUnsupportedTiming(text, timingAnchorsOf(grounding));
+}
+
 /**
- * Reconcile the parsed structured output with the deterministic grounding:
- *  - false Ziwei/Qimen use or multi-engine "consensus" while those engines are unconnected → reject.
- *  - explicit unsupported-theory assertions (신강/신약/용신/격국/12운성/12신살) presented as fact → reject.
- *  - `futureFlow` present but NO timing evidence (Daewoon/Sewoon/Wolwoon) → drop it (never fabricate timing).
- * Returns the (possibly futureFlow-stripped) result, or null to force the plain-text fallback.
+ * Reconcile the parsed structured output with the deterministic grounding. Returns the cleaned result,
+ * or null when a SEMANTIC safety violation makes it unusable:
+ *  - false Ziwei/Qimen use, multi-engine or Saju↔Ziwei "consensus", unsupported theory (any field
+ *    incl. followUps) → reject (null).
+ *  - unsupported specific timing (연도/나이 not in evidence anchors) in a CORE prose field → reject.
+ *  - `futureFlow` with no timing evidence OR an unsupported period → dropped (never fabricated timing).
+ *  - followUps asserting unsupported timing or an unconnected-engine/theory claim → individually dropped.
  */
 export function validateStructuredAgainstGrounding(
   parsed: ParsedStructuredConsultation,
   grounding: ConsultationGrounding,
 ): ParsedStructuredConsultation | null {
-  const ziweiAvailable = grounding.status === 'available' && grounding.evidence.ziwei.availability === 'available';
-  const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
   const hasTiming = grounding.status === 'available' && grounding.evidence.myungri.hasTimingEvidence === true;
-  const text = allText(parsed);
+  const anchors = timingAnchorsOf(grounding);
 
-  if (!ziweiAvailable && ZIWEI_USE.test(text)) return null; // FIX #9
-  if (!qimenAvailable && QIMEN_USE.test(text)) return null; // FIX #9
-  if (!(ziweiAvailable && qimenAvailable) && MULTI_ENGINE_CONSENSUS.test(text)) return null; // FIX #9
-  // No deterministic cross-engine mapping in V1 → reject a STRONG Saju↔Ziwei full-consensus claim
-  // even when both engines ARE available (§23/§40). Per-engine separation is the required behavior.
-  if (CROSS_ENGINE_CONSENSUS.test(text)) return null;
-  if (FORBIDDEN_THEORY.test(text)) return null; // FIX #10
+  // (1) Engine/consensus/theory violation in the MAIN body (core prose + futureFlow) → reject whole.
+  if (hasEngineOrConsensusViolation(mainBodyText(parsed), grounding)) return null;
 
-  if (parsed.futureFlow && !hasTiming) {
-    return { ...parsed, futureFlow: undefined }; // FIX #8 — no timing evidence → no factual timing
+  // (2) Unsupported specific period inside CORE prose (a year cannot be safely excised from prose) → reject.
+  if (hasUnsupportedTiming(coreProseFields(parsed).join('\n'), anchors)) return null;
+
+  // (3) futureFlow: needs timing evidence AND every period it names must be evidence-supported.
+  let futureFlow = parsed.futureFlow;
+  if (futureFlow && (!hasTiming || hasUnsupportedTiming(futureFlow, anchors))) futureFlow = undefined;
+
+  // (4) followUps: drop any that carry an unsupported period or an unconnected-engine/theory claim.
+  const cleanedFollowUps = (parsed.followUps ?? []).filter(
+    (f) => !hasUnsupportedTiming(f, anchors) && !hasEngineOrConsensusViolation(f, grounding),
+  );
+
+  return {
+    ...parsed,
+    futureFlow,
+    followUps: cleanedFollowUps.length > 0 ? cleanedFollowUps : undefined,
+  };
+}
+
+// ── FIX #1: typed outcome so SEMANTIC rejection never leaks the raw model text ────────────────
+// A safe generic message shown when the model output is semantically unsafe. NEVER a fabricated
+// interpretation — it simply asks the user to retry. The raw (unsafe) text is discarded.
+export const SEMANTIC_REJECTION_MESSAGE =
+  '죄송합니다. 이번 답변을 근거에 맞게 안전하게 정리하지 못했습니다. 질문을 조금 바꾸어 다시 여쭤봐 주시겠어요?';
+
+export type ConsultationOutcome =
+  | { kind: 'ACCEPTED'; result: ParsedStructuredConsultation }
+  | { kind: 'STRUCTURAL_FALLBACK'; text: string }
+  | { kind: 'SEMANTIC_REJECTED'; reason: string };
+
+/**
+ * Classify a raw LLM response for safe rendering (Codex pipeline FIX #1). Distinguishes:
+ *  - ACCEPTED           → valid structured long-form that passed grounding validation.
+ *  - STRUCTURAL_FALLBACK → not the structured schema, but the raw prose is semantically SAFE to show.
+ *  - SEMANTIC_REJECTED   → a safety/evidence violation (false engine, fake consensus, unsupported theory
+ *                          or timing). The raw text is NEVER shown; the caller uses a safe message.
+ * The critical property: a semantic violation in EITHER the structured JSON OR the raw prose blocks
+ * the raw text from ever reaching the user as a fallback.
+ */
+export function classifyConsultationOutput(
+  rawText: string,
+  grounding: ConsultationGrounding,
+): ConsultationOutcome {
+  const parsed = parseStructuredConsultation(rawText);
+  if (parsed) {
+    const validated = validateStructuredAgainstGrounding(parsed, grounding);
+    return validated
+      ? { kind: 'ACCEPTED', result: validated }
+      : { kind: 'SEMANTIC_REJECTED', reason: 'structured_semantic_violation' };
   }
-  return parsed;
+  // Not the structured schema → candidate for a plain-text fallback, but ONLY if the raw prose itself
+  // is semantically safe. A false-engine/consensus/theory claim or an unsupported period → reject.
+  if (hasSemanticViolation(rawText, grounding)) {
+    return { kind: 'SEMANTIC_REJECTED', reason: 'raw_semantic_violation' };
+  }
+  return { kind: 'STRUCTURAL_FALLBACK', text: rawText };
 }
 
 /** A readable plain-text rendering (for message persistence + the non-structured fallback). */

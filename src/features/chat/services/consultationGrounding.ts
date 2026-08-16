@@ -28,12 +28,14 @@ import {
 import {
   calculateDaewoonTenGods,
   calculateMonthCommand,
+  calculateMyungriTimeAxis,
   calculateNatalRelations,
   calculateRootingTransparency,
   calculateSewoonForInstant,
   calculateWolwoonForInstant,
   natalContextFromFourPillars,
   toSajuEvidence,
+  type MyungriStemAndBranch,
 } from '@/features/myungri';
 import {
   ZIWEI_RULESET_VERSION,
@@ -107,14 +109,48 @@ async function buildMyungriEvidence(
   const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: now });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
 
+  // Current age + ACTIVE 대운 cycle (Codex FIX #3). The Gregorian birth year comes from the SAME
+  // lunar→solar authority Ziwei uses (consistent), and the current 사주 year is the 세운 targetYear.
+  // Age is only used to MARK which already-computed cycle is current — no cycle is recomputed.
+  const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
+  const currentSajuYear = sewoon.capability === 'AVAILABLE' ? sewoon.targetYear : null;
+  const currentAge =
+    Number.isFinite(solarBirthYear) && currentSajuYear !== null ? currentSajuYear - solarBirthYear : null;
+
+  let activeCycleOrdinal: number | null = null;
+  let activeDaewoonPillar: MyungriStemAndBranch | null = null;
+  if (daewoon.capability === 'AVAILABLE' && currentAge !== null) {
+    const active = daewoon.cycles.find((c) => currentAge >= c.startAgeInclusive && currentAge <= c.endAgeInclusive);
+    if (active) {
+      activeCycleOrdinal = active.ordinal;
+      activeDaewoonPillar = { stem: active.pillar.stem, branch: active.pillar.branch };
+    }
+  }
+
+  // Connected 원국↔대운↔세운↔월운 axis (Codex FIX #3) — reuses the existing time-axis service
+  // (which internally reuses the frozen 세운/월운 pillar rules); facts only, no new calc.
+  const timeAxis =
+    sewoon.capability === 'AVAILABLE'
+      ? calculateMyungriTimeAxis({
+          natal,
+          daewoonPillar: activeDaewoonPillar,
+          targetYear: sewoon.targetYear,
+          lunarMonth: wolwoon.capability === 'AVAILABLE' ? wolwoon.lunarMonth : null,
+        })
+      : null;
+
   const evidence = toSajuEvidence({
     engineResult,
     natalRelations,
     monthCommand,
     rooting,
+    daewoon,
     daewoonTenGods,
+    activeCycleOrdinal,
     sewoon: sewoon.capability === 'AVAILABLE' ? sewoon : null,
     wolwoon: wolwoon.capability === 'AVAILABLE' ? wolwoon : null,
+    timeAxis,
+    birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null,
   });
   return { evidence, engineVersion: engineResult.engine.ruleSetVersion };
 }

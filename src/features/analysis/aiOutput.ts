@@ -24,6 +24,17 @@ export type EngineEvidenceSection = {
   lines: string[];
 };
 
+// Structured timing anchors DERIVED from the deterministic evidence (Codex FIX #2). The validator
+// uses these as the ALLOWLIST for any specific period the LLM asserts — a Gregorian year not in
+// `years` (and outside the Daewoon age span) is an unsupported/fabricated timing claim. Facts only;
+// never widened by the LLM.
+export type EngineEvidenceTimingAnchors = {
+  /** Gregorian years the evidence actually covers (current 세운/월운 target years). */
+  years: number[];
+  /** Inclusive age span covered by the Daewoon cycles, when available. */
+  daewoonAgeSpan?: { min: number; max: number } | null;
+};
+
 export type EngineEvidence = {
   availability: EngineEvidenceAvailability;
   summary?: string; // present only when availability === 'available'
@@ -34,6 +45,9 @@ export type EngineEvidence = {
   // Additive (Codex FIX #8): true when real timing facts (Daewoon/Sewoon/Wolwoon) are present —
   // gates whether the LLM's `futureFlow` may be accepted as factual timing content.
   hasTimingEvidence?: boolean;
+  // Additive (Codex pipeline FIX #2): structured allowlist of the specific periods the evidence
+  // covers, so timing validation gates ALL user-facing fields (not just futureFlow) against real data.
+  timingAnchors?: EngineEvidenceTimingAnchors;
 };
 
 export type StructuredAiResponse = {
