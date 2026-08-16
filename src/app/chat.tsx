@@ -19,15 +19,13 @@ import { useAuth } from '@/features/auth';
 import {
     ChatBubble,
     ChatInput,
-    createChatService,
-    createSajuGroundingBuilder,
+    createServerConsultationService,
     mapConsultationError,
-    supabaseEdgeLLMAdapter,
+    supabaseEdgeConsultationAdapter,
     useConversationPersistence,
     type ChatMessage,
     type ConsultationErrorView,
 } from '@/features/chat';
-import { expoCryptoDigestProvider } from '@/features/manse/services/digestProvider';
 import {
     consumePendingQuestion,
     isSavedSubjectId,
@@ -178,12 +176,14 @@ export default function ChatScreen() {
   const isAuthenticatedRef = useRef(isAuthenticated);
   isAuthenticatedRef.current = isAuthenticated;
 
+  // Server Trust Boundary (Server-Trust sprint): the PRODUCTION chat path sends inputs only. The Edge
+  // recomputes the deterministic grounding, builds the system prompt, calls the LLM, and validates — the
+  // client is authoritative for nothing. (The local grounding pipeline `createChatService` is retained
+  // only for offline/preview + as the shared-logic test harness.)
   const chatServiceRef = useRef(
-    createChatService(
-      supabaseEdgeLLMAdapter,
+    createServerConsultationService(
+      supabaseEdgeConsultationAdapter,
       () => isAuthenticatedRef.current,
-      // Deterministic SAJU/Myungri grounding (frozen engine → EngineEvidence → prompt).
-      createSajuGroundingBuilder({ digestProvider: expoCryptoDigestProvider }),
     ),
   );
 

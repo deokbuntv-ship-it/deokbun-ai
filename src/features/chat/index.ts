@@ -18,6 +18,9 @@ export type {
 export { unconfiguredLLMAdapter } from './adapters/llmAdapter';
 export type { LLMAdapter } from './adapters/llmAdapter';
 export { supabaseEdgeLLMAdapter } from './adapters/supabaseEdgeLLMAdapter';
+export { supabaseEdgeConsultationAdapter } from './adapters/supabaseEdgeConsultationAdapter';
+export { supabaseEdgeSummaryAdapter } from './adapters/supabaseEdgeSummaryAdapter';
+export type { SummaryTransport } from './adapters/supabaseEdgeSummaryAdapter';
 export { chatConfig } from './config/chatConfig';
 export { evaluateMessage } from './gateway/AIGateway';
 export type { GatewayResult } from './gateway/AIGateway';
@@ -27,6 +30,11 @@ export { buildSummaryPrompt } from './prompts/summaryPromptBuilder';
 export { selectConsultationContext } from './selectors/contextSelector';
 export { createChatService } from './services/chatService';
 export type { AuthGuard, GroundingBuilder } from './services/chatService';
+export { createServerConsultationService } from './services/createServerConsultationService';
+export type {
+  ConsultationTransport,
+  ConsultationTransportResult,
+} from './services/consultationTransport';
 export {
   buildConsultationGrounding,
   createSajuGroundingBuilder,

@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/features/auth';
-import { supabaseEdgeLLMAdapter } from '@/features/chat/adapters/supabaseEdgeLLMAdapter';
-import { chatConfig } from '@/features/chat/config/chatConfig';
+import { supabaseEdgeSummaryAdapter } from '@/features/chat/adapters/supabaseEdgeSummaryAdapter';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
-import { buildSummaryPrompt } from '@/features/chat/prompts/summaryPromptBuilder';
 import {
   conversationService,
   type ConversationSubjectSnapshot,
@@ -294,23 +292,17 @@ export function useConversationPersistence(
           break;
         }
 
-        let summaryText: string;
-        try {
-          const promptMessages = buildSummaryPrompt(
-            result.existingSummary,
-            result.messagesToSummarize,
-          );
-          const response = await supabaseEdgeLLMAdapter.generateResponse({
-            model: chatConfig.defaultModel,
-            messages: promptMessages,
-            maxOutputTokens: chatConfig.maxOutputTokens,
-            temperature: chatConfig.temperature,
-          });
-          summaryText = response.text;
-        } catch {
-          // Generation failed → keep existing summary/checkpoint.
+        // Summary prompt is now built + generated SERVER-side (Server-Trust §20): the client sends only
+        // the raw turns + prior summary; the Edge authors the summary prompt. null → generation failed,
+        // keep the existing summary/checkpoint.
+        const generatedSummary = await supabaseEdgeSummaryAdapter.summarize(
+          result.existingSummary,
+          result.messagesToSummarize,
+        );
+        if (generatedSummary === null) {
           break;
         }
+        const summaryText: string = generatedSummary;
 
         // Discard if the conversation context changed while generating.
         if (
