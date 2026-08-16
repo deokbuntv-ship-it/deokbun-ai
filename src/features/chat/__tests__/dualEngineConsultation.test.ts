@@ -10,6 +10,7 @@ import { renderGroundingContext } from '@/features/chat/prompts/grounding';
 import { createChatService } from '@/features/chat/services/chatService';
 import {
   buildConsultationGrounding,
+  buildZiweiEvidence,
   createSajuGroundingBuilder,
 } from '@/features/chat/services/consultationGrounding';
 import type { ChatServiceInput } from '@/features/chat/types/chatArchitecture';
@@ -256,5 +257,25 @@ describe('Ziwei-only degraded mode through the STRICT chatService pipeline (§17
     if (g?.status !== 'available') throw new Error('expected available (Ziwei-only)');
     expect(g.evidence.myungri.availability).toBe('calculation_failed'); // Saju spine out of 1970–2050 range
     expect(g.evidence.ziwei.availability).toBe('available'); // Ziwei-only survived the strict AVAILABLE-shape check
+  });
+});
+
+// ── Codex PART A4 — impossible civil date fails closed in the production grounding path ─
+describe('impossible civil date → Ziwei fails closed in grounding (PART A4)', () => {
+  it('Solar 2024-02-30 → Ziwei evidence is NOT available (never a trusted chart)', () => {
+    const birthInfo = (draft({ birthMonth: '2', birthDay: '30' }) as unknown as { birthInfo: never }).birthInfo;
+    const ev = buildZiweiEvidence(birthInfo);
+    expect(ev.availability).not.toBe('available');
+    expect(ev.summary).toBeUndefined(); // no fabricated facts from the impossible date
+  });
+  it('Solar 2024-02-30 → full grounding does not crash; the impossible date is never trusted Ziwei facts', async () => {
+    const g = await buildConsultationGrounding(draft({ birthMonth: '2', birthDay: '30' }), deps);
+    // Saju also rejects the impossible date, so grounding is unavailable — but the key invariant is that
+    // Ziwei never surfaces the impossible date as available/trusted facts, and nothing throws.
+    if (g.status === 'available') {
+      expect(g.evidence.ziwei.availability).not.toBe('available');
+    } else {
+      expect(g.status).toBe('unavailable');
+    }
   });
 });

@@ -186,7 +186,33 @@ iztro is a local library (no external send); no birth payload logged in the evid
 never fabricates trusted Ziwei evidence (grounding is built server-path in chatService); no secret in
 the Ziwei code; model output passes `classifyConsultationOutput` before render.
 
+## Closure patch (Codex review of `3f904df` → NEEDS_TARGETED_FIX, 2 material defects)
+
+Architecture PASSED; 2 localized defects closed. Provider/profile/frozen-Myungri unchanged.
+
+- **PART A — strict civil-date validation.** `resolveZiweiInput` (ziweiInputAdapter) now runs a pure,
+  deterministic Gregorian validity guard (proleptic leap rule, no `Date`, no calendar engine): month
+  1–12, day ≥ 1, day ≤ real days-in-month. An impossible date → `unsupported_case` (never silently
+  rolled over: 2024-02-30 does NOT become 2024-03-01, never a trusted chart). `toZiweiBirthInput`'s
+  lunar path also hardened: a **failed** lunar conversion (lunar-javascript throws on a bad month/day)
+  no longer falls back to treating the raw lunar Y/M/D as solar — it returns an invalid month so the
+  Gregorian guard fails closed. (No lunar validator invented; lunar-javascript's own throw is reused.)
+  Verified: 2024-02-29/2023-02-28/2024-04-30/2024-01-31 valid; 2024-02-30/2023-02-29/2024-04-31/
+  2024-01-32/month-0/month-13/day-0 → unsupported_case; malformed lunar (month 13, day 31) → not
+  available; Solar/Lunar equivalence + leap-month preserved. Production-grounding: Solar 2024-02-30 →
+  `buildZiweiEvidence` not available (no fabricated facts), grounding does not crash.
+- **PART B — validation-honesty wording.** The evidence `근거·한계` no longer implies 命宮/五行局 are
+  independently verified. Corrected classification: **only the 干支 calendar foundation** (일·시·년) is
+  INDEPENDENTLY_VALIDATED (cross-checked vs lunar-javascript); 命宮·身宮·五行局·命主·身主·궁/성계 배치·四化 are
+  **PROVIDER_DETERMINISTIC_CHARACTERIZATION_LOCKED** (iztro default @2.5.8), NOT independently
+  cross-validated (「특성 고정」). Added an honest limitation describing the ACTUAL code path: the hour is
+  mapped raw to 时辰 (0–12) with **no timezone / LMT / true-solar-time** adjustment. Tests assert the
+  corrected classification reaches the grounding and the old overstated "verified" wording is gone.
+- Files: `ziweiInputAdapter.ts`, `ziweiBirthMapper.ts`, `ziweiEvidenceAdapter.ts` + NEW
+  `ziweiDateValidation.test.ts` + `dualEngineConsultation.test.ts` (PART A4). Full Jest 50 suites / 572.
+  Frozen `interpretation/**` identical to `7c7ed82`. Qimen disconnected.
+
 ## STATUS
 
-`READY_FOR_CODEX_ZIWEI_FULL_PRODUCT_REVIEW`. Baseline `02f1382` → continuation atop `ee3be57`. Qimen NOT
-connected. Deferred Myungri theory NOT started.
+`READY_FOR_CODEX_ZIWEI_CLOSURE_REVIEW`. Baseline `02f1382` → closure atop `3f904df`. Qimen NOT connected.
+Deferred Myungri theory NOT started.

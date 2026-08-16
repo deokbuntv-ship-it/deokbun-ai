@@ -89,8 +89,12 @@ function provenanceLines(chart: ZiweiChart): string[] {
     // Assumptions — the REAL deterministic assumptions of the Ziwei calculation (parity with the Saju
     // evidence's 가정: line). These are provider/profile facts, not fabricated interpretation.
     '가정: exact 시진(출생 시간) 필요 · fixLeap=true(윤달 처리) · 별·四化 배치는 provider(iztro default 학파) 소유(재계산 아님).',
+    // Validation HONESTY (Codex PART B): the calendar/干支 foundation is independently cross-checked, but
+    // palace/star/五行局 placements are provider-characterization-locked — NOT independently verified.
+    '검증 범위: 일·시·년 간지(달력 기반)만 독립 오라클(lunar-javascript)로 교차 검증됨. 명궁·신궁·오행국·명주·신주·궁/성계 배치·四化는 iztro default 학파 기준의 결정론적 provider 계산이며 제2 권위 오라클로 독립 검증된 것이 아닙니다(특성 고정, characterization-locked).',
     '역법 관례: 자미두수는 자체 음력월 간지를 사용하므로, 명리(立春·12절 기준)와 월주 간지 표기가 다를 수 있습니다 — 계산 오류가 아니라 학문별 관례 차이입니다.',
-    '한계: 명궁·오행국·일간지 기반은 검증되었으나, 개별 성계/四化 배치는 iztro default 학파 기준이며 완전 독립 검증된 것은 아닙니다.',
+    // Honest limitation of the actual code path: raw local hour → 时辰, no timezone/LMT/true-solar-time.
+    '한계: 시(時)는 입력 시각을 그대로 时辰(0~12)에 매핑하며 타임존/지방시(LMT)/진태양시 보정을 적용하지 않습니다(현재 구현 기준). 개별 성계/四化 배치의 절대 정확도는 학파에 의존합니다.',
   ];
 }
 

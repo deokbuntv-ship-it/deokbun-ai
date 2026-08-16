@@ -41,7 +41,10 @@ function resolveSolarYmd(b: ZiweiBirthSource): { year: string; month: string; da
     const solar = Lunar.fromYmd(y, signedMonth, d).getSolar();
     return { year: String(solar.getYear()), month: String(solar.getMonth()), day: String(solar.getDay()) };
   } catch {
-    return raw; // conversion failed → engine fail-closes on the raw values
+    // Impossible LUNAR date (lunar-javascript throws for a bad month/day). Do NOT fall back to the raw
+    // lunar Y/M/D as if solar — they can coincidentally form a valid Gregorian date. Return an invalid
+    // month so the engine's Gregorian validator fails closed (unsupported_case) (Codex PART A/A2).
+    return { year: b.birthYear, month: '0', day: b.birthDay };
   }
 }
 
