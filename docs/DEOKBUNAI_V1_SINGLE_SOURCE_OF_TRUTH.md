@@ -200,16 +200,17 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 | Engine | Calc | Adapter→EngineEvidence | Tests/Fixtures | Live-wired to prompt | Prod |
 |---|---|---|---|---|---|
 | **SAJU / Myungri** (in-repo, **FROZEN `7c7ed82`** — Codex `APPROVED_FREEZE`) | ✅ E2E_LOCAL — 立春 year / 12-Jie month + 십신·지장간·오행·관계·대운·세운·월운·시간축·대운십신·통근투간·월령득령 | ✅ **CONNECTED** (`toSajuEvidence` → `buildConsultationGrounding` → chatService) | 464 tests (+ grounding E2E: Solar/Lunar equivalence + fail-closed) | ✅ **grounding path** | ❌ |
-| **Ziwei** (iztro) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toZiweiEvidence`) — not wired to grounding | ziwei tests | ❌ (Sprint 2) | ❌ |
+| **Ziwei** (iztro `2.5.8`, MIT) | ✅ FUNCTIONAL_LOCAL — iztro-default@2.5.8, ko-KR, fixLeap | ✅ **CONNECTED** (`toZiweiEvidence` → structured sections → `buildConsultationGrounding`) | ziwei tests + evidence sections + dual-engine E2E | ✅ **grounding path (dual-engine)** | ❌ |
 | **Qimen** (qimen-dunjia) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toQimenEvidence`) — not wired to grounding | qimen tests | ❌ (Sprint 3) | ❌ |
-| Orchestration/cross-analysis seam | — | ◐ SAJU-only live; cross sees 1 engine | analysis tests | `ENGINE_CONNECTED={saju:true, ziwei:false, qimen:false}` | ❌ |
+| Orchestration/cross-analysis seam | — | ◐ SAJU+Ziwei live (dual); cross = per-engine, no fake consensus | analysis + dual-engine tests | `ENGINE_CONNECTED={saju:true, ziwei:true, qimen:false}` | ❌ |
 
 - **Semantic/astrological correctness is `BLOCKED_OWNER`/Codex** (golden fixtures + 학파/정국
   canon required; `ZIWEI_ENGINE_SPEC.md`/`QIMEN_ENGINE_SPEC.md` are marked "RESEARCH/SPEC
   SCAFFOLD").
-- **SAJU is now wired (2026-08-16)** — the frozen engine runs in the consultation path; the
-  Ziwei/Qimen wire (`toZiweiEvidence`/`toQimenEvidence` → grounding) remains a *known, deliberate*
-  Sprint 2/3 handoff, not a regression. **Do not change engine semantics (§19).**
+- **SAJU (2026-08-16) and Ziwei (Ziwei V1) are now wired** — both run in the consultation path
+  (dual-engine, with honest SAJU-only / Ziwei-only degraded modes). The **Qimen** wire
+  (`toQimenEvidence` → grounding) remains a *known, deliberate* Sprint 3 handoff, not a regression.
+  **Do not change engine semantics (§19).**
 
 ### 11b. SAJU product integration (2026-08-16) — honest status
 
@@ -230,9 +231,29 @@ Myungri facts → toSajuEvidence (converter) → buildConsultationGrounding → 
 | `SAJU_FOLLOW_UP` | **CONNECTED** — contextual `followUps` from the parsed result → `onSelectFollowUp` → `submitQuestion` (same conversation, subject/grounding preserved). |
 | `ASSESSMENT` / `CROSS_ANALYSIS` | SAJU-only evidence; assessment **fail-closed** (`toConsumerAssessmentView([])` → not-connected, no fabricated 15-axis score); **no "3-학문 일치"** (ziwei/qimen unconnected) |
 
-Deferred (recorded, do NOT start here): structuredResult/followUps schema wiring; Ziwei→grounding
-(Sprint 2); Qimen→grounding (Sprint 3, timing questions only); SAJU+Ziwei+Qimen cross-analysis
-(Sprint 4). Detail: `docs/SAJU_INTEGRATION_SPRINT.md`.
+Deferred (recorded, do NOT start here): Qimen→grounding (Sprint 3, timing questions only);
+deterministic SAJU+Ziwei cross-analysis domain mapping (Sprint 4). Detail: `docs/SAJU_INTEGRATION_SPRINT.md`.
+
+### 11c. Ziwei (자미두수) V1 product integration — `READY_FOR_CODEX_ZIWEI_FULL_PRODUCT_REVIEW`
+
+The existing iztro Ziwei engine is connected to the live consultation **alongside** the frozen SAJU
+engine (dual-engine). Chain: `draft.birthInfo → toZiweiBirthInput (lunar→solar via lunar-javascript)
+→ computeZiweiChartMemoized (iztro, unchanged) → toZiweiEvidence (+ structured sections) →
+buildConsultationGrounding (SAJU + Ziwei) → prompt → structured consultation`.
+
+| Stage | Status |
+|---|---|
+| `ZIWEI_CALC` | **FUNCTIONAL_LOCAL** — iztro `2.5.8` (MIT), `iztro-default@2.5.8`, fixLeap, ko-KR (engine unchanged) |
+| `ZIWEI_INPUT` | **CONNECTED** — exact time required (else `missing_birth_time`); lunar→solar via lunar-javascript (leap = negative month); Solar/Lunar equivalent births → identical evidence |
+| `ZIWEI_EVIDENCE` (`toZiweiEvidence`) | **CONNECTED** — facts-only sections (명반 기준·12궁·四化·근거·한계); provenance + Saju↔Ziwei convention note + characterization limitation; `hasTimingEvidence:false` (natal only) |
+| `ZIWEI_GROUNDING` / orchestration | **CONNECTED** — `ENGINE_CONNECTED.ziwei=true`; dual / SAJU-only / **Ziwei-only** (pre-1970, iztro wider range) / both-unavailable; fail-closed, no fabrication |
+| `ZIWEI_PROMPT` | **CONNECTED** — both engines' sections rendered + **엔진 구분** attribution + convention discipline + qimen 미연결 |
+| `CLAIM_VALIDATION` | **CONNECTED** — Ziwei claim allowed only when available; Qimen claim / "세 학문 일치" / **strong Saju↔Ziwei full-consensus** rejected (V1 has no deterministic cross-map); forbidden theory rejected |
+| `ZIWEI_LLM` / live | **CODE_COMPLETE / OWNER_ACTION** — same edge `chat` + `OPENAI_API_KEY` as SAJU |
+
+**QIMEN stays disconnected** — no "기문둔갑 사용"/"세 학문 일치" claims. No new score system; cross-analysis
+is per-engine separation (§22 insufficient_evidence is the honest default). Detail + Codex checklist:
+`docs/CODEX_ZIWEI_FULL_PRODUCT_REVIEW.md`.
 
 ### 11a. Myungri V1 deterministic freeze — `APPROVED_FREEZE` (canonical commit `7c7ed82`)
 

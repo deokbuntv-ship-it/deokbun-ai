@@ -47,7 +47,14 @@ describe('SAJU grounding — golden E2E (2024-01-03)', () => {
     expect(m.detail).toContain('투간'); // FIX #2 — transparency no longer discarded
     expect(m.sections?.some((s) => s.label === '투간')).toBe(true);
     expect(m.hasTimingEvidence).toBe(true); // Daewoon/Sewoon/Wolwoon present
-    expect(g.evidence.ziwei.availability).toBe('engine_not_connected');
+    // Ziwei is now WIRED (exact birth time) → dual-engine grounding with its own facts.
+    const z = g.evidence.ziwei;
+    expect(z.availability).toBe('available');
+    expect(z.summary).toContain('命宮');
+    expect(z.summary).toContain('五行局');
+    expect(z.sections?.some((s) => s.label === '명반 기준')).toBe(true);
+    expect(z.sections?.some((s) => s.label === '근거·한계')).toBe(true);
+    expect(z.hasTimingEvidence).toBe(false); // natal only → does NOT unlock futureFlow
     expect(g.evidence.qimen.availability).toBe('engine_not_connected');
     expect(g.engineVersion).toBeTruthy();
   });
@@ -80,13 +87,24 @@ describe('SAJU grounding — golden E2E (2024-01-03)', () => {
     expect(g.evidence.myungri.summary).toContain('미상'); // 시주 미상
     expect(g.evidence.myungri.detail).toContain('시주 미상');
     expect(g.evidence.myungri.summary).toContain('癸卯');
+    // SAJU-only degraded mode (§39A): Ziwei needs an EXACT time → missing_birth_time, not fabricated.
+    expect(g.evidence.ziwei.availability).toBe('missing_birth_time');
   });
 });
 
 describe('SAJU grounding — fail-closed (§16): no fabricated evidence', () => {
-  it('unsupported date (2051) → grounding UNAVAILABLE', async () => {
+  it('out-of-Saju-range (2051) + EXACT time → Ziwei-only grounding (§18): myungri failed, ziwei available', async () => {
     const g = await build(draft({ birthYear: '2051' }));
-    expect(g.status).toBe('unavailable');
+    expect(g.status).toBe('available'); // iztro supports 2051; the frozen Saju range does not
+    if (g.status !== 'available') return;
+    expect(g.evidence.myungri.availability).toBe('calculation_failed'); // Saju spine unavailable, not fabricated
+    expect(g.evidence.ziwei.availability).toBe('available'); // Ziwei-only degraded mode
+    expect(g.evidence.ziwei.summary).toContain('命宮');
+  });
+
+  it('out-of-Saju-range (2051) + UNKNOWN time → BOTH engines unavailable → grounding UNAVAILABLE', async () => {
+    const g = await build(draft({ birthYear: '2051', birthTimeAccuracy: 'unknown', birthHour: null, birthMinute: null }));
+    expect(g.status).toBe('unavailable'); // neither engine produced facts → nothing fabricated
   });
 
   // (Same-UTC-minute boundary ties are proven at the resolver level in sajuBoundaryFix.test.ts

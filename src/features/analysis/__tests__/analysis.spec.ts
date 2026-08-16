@@ -74,14 +74,29 @@ export function runAnalysisSpecs(): { passed: number } {
   );
   ok(() => eq(resolveEngineEligibility({ ...withSubject, hasSubject: false }, 'saju'), 'not_applicable', 'no subject'));
 
-  // --- SAJU is now WIRED (consultation grounding path) → effective availability is 'available';
-  //     an eligible-but-unwired engine still downgrades to engine_not_connected (ziwei) ---
+  // --- SAJU and ZIWEI are now WIRED (consultation grounding path) → effective availability is
+  //     'available' when eligible; an eligible-but-time-unknown ziwei stays missing_birth_time;
+  //     qimen remains unwired (downgrades to engine_not_connected when eligible) ---
   ok(() => eq(resolveEngineAvailability(withSubject, 'saju'), 'available', 'saju eligible and wired'));
   ok(() =>
     eq(
       resolveEngineAvailability({ ...withSubject, birthTimeKnown: true }, 'ziwei'),
+      'available',
+      'ziwei eligible and wired',
+    ),
+  );
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, birthTimeKnown: false }, 'ziwei'),
+      'missing_birth_time',
+      'ziwei without birth time → missing_birth_time (never fabricated)',
+    ),
+  );
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, isTimingQuestion: true }, 'qimen'),
       'engine_not_connected',
-      'ziwei eligible but unwired',
+      'qimen eligible but unwired',
     ),
   );
 

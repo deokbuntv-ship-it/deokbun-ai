@@ -14,8 +14,10 @@ export const STRUCTURED_OUTPUT_INSTRUCTION = [
   '[출력 형식 — 구조화 JSON]',
   '이번 답변은 아래 JSON 객체 하나로만 출력하십시오. JSON 앞뒤에 다른 설명 문장을 붙이지 마십시오.',
   '모든 문자열은 자연스러운 한국어 상담 문장입니다. 근거 없는 점수·등급·별점·확률·시점을 만들지',
-  '마십시오. 사용되지 않은 자미두수/기문둔갑을 사용했다고 말하지 말고, 신강·신약·용신·격국·12운성·',
-  '12신살을 계산된 사실처럼 단정하지 마십시오.',
+  '마십시오. 제공되지 않은 엔진(예: 기문둔갑)을 사용했다고 말하지 마십시오. 명리와 자미두수 근거가',
+  '함께 제공되면 각 관점을 어느 엔진에서 나왔는지 구분해 설명하고, 실제로 같은 방향일 때만 조심스럽게',
+  "언급하되 '두 학문이 완전히 일치한다'처럼 근거 없는 합의를 단정하지 마십시오. 신강·신약·용신·격국·",
+  '12운성·12신살을 계산된 사실처럼 단정하지 마십시오.',
   '{',
   '  "coreSummary": "한 줄 핵심(방향 제시용, 본문을 대체하지 않음)",',
   '  "disposition": "기본 성향 요약(선택)",',
@@ -127,9 +129,15 @@ export function isSubstantiveLongForm(p: ParsedStructuredConsultation): boolean 
 import type { ConsultationGrounding } from './grounding';
 
 const ZIWEI_USE = /자미두수\s*(로\s*보|로\s*분석|를\s*보면|에\s*따르면|\s*분석|\s*결과|\s*명반|\s*차트|\s*상)/;
-const QIMEN_USE = /(기문둔갑\s*(으로\s*보|으로\s*분석|을\s*보면|에\s*따르면|\s*분석|\s*결과)|기문\s*국)/;
+const QIMEN_USE = /(기문둔갑\s*(으로\s*보|으로\s*분석|을\s*보면|에\s*따르면|\s*분석|\s*결과|까지|도\s*(함께|같이|보|분석))|기문\s*국)/;
 const MULTI_ENGINE_CONSENSUS =
   /(세\s*(가지\s*)?학문|세\s*가지\s*역학|3\s*(개|가지)\s*(학문|엔진)|세\s*엔진)[^\n]{0,12}(일치|합치|같은\s*결론|동의|공통|모두)/;
+// Saju↔Ziwei STRONG full-consensus claim. V1 produces NO deterministic cross-engine domain mapping
+// (§22 — insufficient_evidence is the honest default), so an ABSOLUTE "두 학문이 완전히 일치/모두 …"
+// claim is never grounded and is rejected (§23/§40). SOFT per-engine or "비슷한 방향" language is
+// intentionally NOT matched (§21 permits it): the strong adverb / bare-"일치합니다" / "모두 …" gates below.
+const CROSS_ENGINE_CONSENSUS =
+  /(두\s*학문|두\s*관점)[^\n]{0,12}(완전히|모두|정확히|똑같이|전부)\s*(일치|합치|동일|같)|두\s*학문[^\n]{0,6}일치(합니다|한다|하고|하며)|(사주(와|랑|과|·)\s*자미두수|자미두수(와|랑|과|·)\s*사주)[^\n]{0,16}모두[^\n]{0,14}(일치|동일|강하|좋|많|뛰어|같)/;
 const FORBIDDEN_THEORY =
   /((당신[은는]?\s*)?신강[한\s]*(사주|입니다|합니다|이에요)|(당신[은는]?\s*)?신약[한\s]*(사주|입니다|합니다|이에요)|용신(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정)\S|격국(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정)\S|(12|십이)\s*운성|(12|십이)\s*신살)/;
 
@@ -166,6 +174,9 @@ export function validateStructuredAgainstGrounding(
   if (!ziweiAvailable && ZIWEI_USE.test(text)) return null; // FIX #9
   if (!qimenAvailable && QIMEN_USE.test(text)) return null; // FIX #9
   if (!(ziweiAvailable && qimenAvailable) && MULTI_ENGINE_CONSENSUS.test(text)) return null; // FIX #9
+  // No deterministic cross-engine mapping in V1 → reject a STRONG Saju↔Ziwei full-consensus claim
+  // even when both engines ARE available (§23/§40). Per-engine separation is the required behavior.
+  if (CROSS_ENGINE_CONSENSUS.test(text)) return null;
   if (FORBIDDEN_THEORY.test(text)) return null; // FIX #10
 
   if (parsed.futureFlow && !hasTiming) {

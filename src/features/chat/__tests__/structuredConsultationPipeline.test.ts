@@ -78,7 +78,9 @@ describe('structured consultation pipeline — end to end', () => {
       expect(vm.grounding.evidence.myungri.summary).toContain('癸卯');
       expect(vm.grounding.evidence.myungri.summary).toContain('甲子');
       expect(vm.grounding.evidence.myungri.summary).toContain('丙寅');
-      expect(vm.grounding.evidence.ziwei.availability).toBe('engine_not_connected');
+      expect(vm.grounding.evidence.ziwei.availability).toBe('available'); // Ziwei now wired (dual-engine)
+      expect(vm.grounding.evidence.ziwei.summary).toContain('命宮');
+      expect(vm.grounding.evidence.qimen.availability).toBe('engine_not_connected'); // Qimen stays unconnected
     }
     expect(vm.assessment.status).toBe('unavailable'); // fail-closed, no fabricated 15-axis score
     expect(r.responseText).toContain('일간'); // readable plain-text mirror for persistence
@@ -116,9 +118,11 @@ describe('structured consultation pipeline — end to end', () => {
     }
   });
 
-  it('fail-closed: unsupported birth (2051) → structuredResult grounding UNAVAILABLE (no fabricated facts) (§21)', async () => {
+  it('fail-closed: unsupported birth (2051) + unknown time → BOTH engines unavailable → grounding UNAVAILABLE (§21)', async () => {
+    // 2051 is out of the frozen Saju range AND unknown time makes Ziwei missing_birth_time → neither
+    // engine produces facts, so nothing is fabricated and the grounding is unavailable.
     const svc = createChatService(adapterReturning(STRUCTURED), allow, groundingBuilder);
-    const r = await svc.sendMessage(input('풀이', draft({ birthYear: '2051' })));
+    const r = await svc.sendMessage(input('풀이', draft({ birthYear: '2051', birthTimeAccuracy: 'unknown', birthHour: null, birthMinute: null })));
     if (!r.success) throw new Error('unexpected');
     expect(r.structuredResult?.grounding.status).toBe('unavailable');
   });

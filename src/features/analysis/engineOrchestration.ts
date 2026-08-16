@@ -26,13 +26,14 @@ export const FROZEN_ENGINE_ID: Record<EngineKind, 'SAJU' | 'ZIWEI' | 'QIMEN'> = 
 };
 
 // Whether each discipline is currently wired into the app pipeline.
-// SAJU is CONNECTED (2026-08-16): the frozen Saju/Myungri engine runs in the consultation
-// grounding path (chat/services/consultationGrounding.ts → chatService), producing real
-// EngineEvidence. ZIWEI/QIMEN remain false — calculators exist but are not yet wired into
-// grounding (Sprint 2/3, sprint §17). Do not flip a flag without a real, tested path.
+// SAJU is CONNECTED (2026-08-16) and ZIWEI is CONNECTED (Ziwei V1): both the frozen Saju/Myungri
+// engine and the iztro-based Ziwei engine run in the consultation grounding path
+// (chat/services/consultationGrounding.ts → chatService), producing real EngineEvidence (dual-
+// engine, with honest Saju-only / Ziwei-only degraded modes). QIMEN remains false — its
+// calculator is not wired into grounding (sprint §28). Do not flip a flag without a real, tested path.
 export const ENGINE_CONNECTED: Record<EngineKind, boolean> = {
   saju: true,
-  ziwei: false,
+  ziwei: true,
   qimen: false,
 };
 
