@@ -129,9 +129,22 @@ export function isSubstantiveLongForm(p: ParsedStructuredConsultation): boolean 
 import type { ConsultationGrounding } from './grounding';
 
 const ZIWEI_USE = /자미두수\s*(로\s*보|로\s*분석|를\s*보면|에\s*따르면|\s*분석|\s*결과|\s*명반|\s*차트|\s*상)/;
-const QIMEN_USE = /(기문둔갑\s*(으로\s*보|으로\s*분석|을\s*보면|에\s*따르면|\s*분석|\s*결과|까지|도\s*(함께|같이|보|분석))|기문(둔갑)?\s*국)/;
-const MULTI_ENGINE_CONSENSUS =
-  /(세\s*(가지\s*)?학문|세\s*가지\s*역학|3\s*(개|가지)\s*(학문|엔진)|세\s*엔진)[^\n]{0,12}(일치|합치|같은\s*결론|동의|공통|모두)/;
+// Qimen-derived fact reference. Bounded: 기문/기문둔갑 as a source-of-facts (에서/결과/국/으로 보면/…) OR
+// unambiguous Qimen-specific fact terms (값부/값사/值符/值使/八門/九星/八神/九宮/현재 국). The ambiguous bare
+// Korean forms (구성/팔신) are intentionally NOT matched — only the hanja + Qimen romanizations, so ordinary
+// Korean prose is not falsely flagged (Codex PART B2).
+const QIMEN_USE = /기문(둔갑)?\s*(에서|에는|으로\s*보|으로\s*분석|을\s*보면|를\s*보면|\s*보면|에\s*따르면|\s*분석|\s*결과|\s*국|\s*상|\s*판|까지|도\s*(함께|같이|보|분석))|기문\s*국|값부|값사|值符|值使|八門|九星|八神|九宮|현재\s*국세?/;
+// A formal three-engine CONSENSUS claim (Codex PART B4). V1 has NO deterministic cross-engine map, so a
+// strong "all-agree" claim is never grounded. Bounded by concept, not one exact phrase: a consensus
+// PREDICATE co-occurring with a three-engine reference (a "세 학문/엔진/관점" count OR the three names
+// enumerated). Separate sourced perspectives (no agreement predicate) are NOT matched (§B5).
+const CONSENSUS_PRED = /(완전히\s*)?(일치|합치|동일|같은\s*결론|같은\s*결과|공통\s*(결론|점)|모두\s*(같|동일|확정|일치)|전부\s*(같|동일)|한목소리|100\s*%?\s*(동일|일치))/;
+const ENGINE_TRIPLE = /(세\s*(가지\s*)?(학문|역학|엔진|관점)|3\s*(개|가지)\s*(학문|엔진|관점)|세\s*엔진)/;
+const THREE_ENGINE_NAMES = /(명리|사주)[^\n]{0,24}자미(두수)?[^\n]{0,24}기문(둔갑)?|기문(둔갑)?[^\n]{0,24}자미(두수)?[^\n]{0,24}(명리|사주)/;
+function hasMultiEngineConsensus(text: string): boolean {
+  if (!CONSENSUS_PRED.test(text)) return false; // no agreement claim → separate perspectives are fine
+  return ENGINE_TRIPLE.test(text) || THREE_ENGINE_NAMES.test(text);
+}
 // Saju↔Ziwei STRONG full-consensus claim. V1 produces NO deterministic cross-engine domain mapping
 // (§22 — insufficient_evidence is the honest default), so an ABSOLUTE "두 학문이 완전히 일치/모두 …"
 // claim is never grounded and is rejected (§23/§40). SOFT per-engine or "비슷한 방향" language is
@@ -243,7 +256,7 @@ function hasEngineOrConsensusViolation(text: string, grounding: ConsultationGrou
   const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
   if (!ziweiAvailable && ZIWEI_USE.test(text)) return true; // false Ziwei use when unavailable/not-applicable
   if (!qimenAvailable && QIMEN_USE.test(text)) return true; // false Qimen use when unavailable/not-applicable
-  if (MULTI_ENGINE_CONSENSUS.test(text)) return true; // "세 학문 일치" never grounded in V1 (no formal cross-map)
+  if (hasMultiEngineConsensus(text)) return true; // formal 3-engine consensus never grounded in V1 (no cross-map)
   if (CROSS_ENGINE_CONSENSUS.test(text)) return true; // fake Saju↔Ziwei full consensus (no V1 cross-map)
   if (FORBIDDEN_THEORY.test(text)) return true; // 신강/신약/용신/격국/12운성/12신살 as computed fact
   return false;

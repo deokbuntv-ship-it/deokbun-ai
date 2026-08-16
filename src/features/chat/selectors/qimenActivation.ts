@@ -16,9 +16,19 @@ const FLOW = /(어떻게\s*(흘러갈|풀릴|진행|전개|될까|되어갈|흐�
 const ACTION_NOUN = /(투자|계약|이직|전직|창업|이사|매매|매수|매도|입찰|합격|고백|연락|협상|소송|오픈|출시|런칭|사업|시험|승진|응시|담판|매입)/;
 const ACTION_VERB = /(해도|할까|하는\s*게|하면|해야|하지\s*마|지금|언제|이번\s*(달|주)|괜찮|좋을까|유리|말까|될까|가능|어떨까|봐도)/;
 
+// A question about INHERENT disposition ("어떤 성향/성격/타고난 …") is natal even when it ambiently says
+// "지금 / 이번 달" — there those words mean "as I am now", not a decision instant. This suppresses ONLY an
+// ambient TIMING trigger; a real decision/choice/flow/action still activates (checked first). Codex PART E.
+const NATAL_INTENT = /(타고난|천성|본성|기질|성향|성격)/;
+
 function isTiming(q: string): boolean {
-  if (DECISION.test(q) || TIMING.test(q) || CHOICE.test(q) || FLOW.test(q)) return true;
-  return ACTION_NOUN.test(q) && ACTION_VERB.test(q);
+  // Unambiguous decision / choice / flow, or an action-noun + verb pairing → always Qimen, even if the
+  // sentence also contains disposition words ("투자 성향대로 밀어붙여도 될까?").
+  if (DECISION.test(q) || CHOICE.test(q) || FLOW.test(q)) return true;
+  if (ACTION_NOUN.test(q) && ACTION_VERB.test(q)) return true;
+  // Only an ambient TIMING word remains — activate unless the question is really about natal disposition.
+  if (TIMING.test(q)) return !NATAL_INTENT.test(q);
+  return false;
 }
 
 /**
