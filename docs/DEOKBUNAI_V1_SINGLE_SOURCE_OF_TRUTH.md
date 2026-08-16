@@ -207,10 +207,18 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 - **Semantic/astrological correctness is `BLOCKED_OWNER`/Codex** (golden fixtures + 학파/정국
   canon required; `ZIWEI_ENGINE_SPEC.md`/`QIMEN_ENGINE_SPEC.md` are marked "RESEARCH/SPEC
   SCAFFOLD").
-- **SAJU (2026-08-16) and Ziwei (Ziwei V1) are now wired** — both run in the consultation path
-  (dual-engine, with honest SAJU-only / Ziwei-only degraded modes). The **Qimen** wire
-  (`toQimenEvidence` → grounding) remains a *known, deliberate* Sprint 3 handoff, not a regression.
-  **Do not change engine semantics (§19).**
+- **SAJU (2026-08-16), Ziwei (Ziwei V1), and Qimen (Qimen V1, question-time) are now wired** — all three
+  run in the consultation path (dual-/tri-engine, with honest SAJU-only / Ziwei-only / Qimen-not-applicable
+  degraded modes). **Do not change engine semantics (§19).**
+- **LLM grounding trust boundary — `SERVER_TRUST_BOUNDARY_BLOCKED` (2026-08-16, Qimen closure).** The
+  deterministic grounding for all three engines is built **client-side** (`buildConsultationGrounding`) and
+  forwarded by `supabaseEdgeLLMAdapter` to Edge `chat`, which validates only message *shape* and relays to
+  OpenAI. The fail-closed states + civil-date + claim/consensus guards are **honest-client integrity**, NOT
+  a server boundary — a modified client could still send fabricated facts. A real server boundary (server
+  recomputes/signs grounding) is **unresolved**: blocked by no-deploy + no-Deno runtime + empty
+  `supabase/migrations/` (no server birth source) + the frozen engine not being Deno-importable without
+  breaking the `7c7ed82` freeze. Analysis + minimal owner path: `docs/CODEX_QIMEN_FULL_PRODUCT_REVIEW.md`
+  (Closure → PART C).
 
 ### 11b. SAJU product integration (2026-08-16) — honest status
 
@@ -231,8 +239,10 @@ Myungri facts → toSajuEvidence (converter) → buildConsultationGrounding → 
 | `SAJU_FOLLOW_UP` | **CONNECTED** — contextual `followUps` from the parsed result → `onSelectFollowUp` → `submitQuestion` (same conversation, subject/grounding preserved). |
 | `ASSESSMENT` / `CROSS_ANALYSIS` | SAJU-only evidence; assessment **fail-closed** (`toConsumerAssessmentView([])` → not-connected, no fabricated 15-axis score); **no "3-학문 일치"** (ziwei/qimen unconnected) |
 
-Deferred (recorded, do NOT start here): Qimen→grounding (Sprint 3, timing questions only);
-deterministic SAJU+Ziwei cross-analysis domain mapping (Sprint 4). Detail: `docs/SAJU_INTEGRATION_SPRINT.md`.
+Deferred (recorded, do NOT start here): ~~Qimen→grounding (Sprint 3, timing questions only)~~ **DONE**
+(Qimen V1 wired question-time, see §11 + `CODEX_QIMEN_FULL_PRODUCT_REVIEW.md`); deterministic SAJU+Ziwei
+cross-analysis domain mapping (Sprint 4). Detail: `docs/SAJU_INTEGRATION_SPRINT.md`. (This 11b section is
+the SAJU-sprint snapshot; "ziwei/qimen unconnected" in the row above was true then, superseded by 11c + §11.)
 
 ### 11c. Ziwei (자미두수) V1 product integration — `READY_FOR_CODEX_ZIWEI_FULL_PRODUCT_REVIEW`
 
