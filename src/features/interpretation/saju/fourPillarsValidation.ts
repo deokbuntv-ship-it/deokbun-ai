@@ -431,15 +431,15 @@ export function validateFourPillarsInvariants(): FourPillarsValidationReport {
     const result = calculateFourPillars(base);
     if (
       result.status === 'UNAVAILABLE' ||
-      result.provenance.productRule.yearPillarRule !== 'LUNAR_YEAR' ||
-      result.provenance.productRule.monthPillarRule !== 'LUNAR_MONTH' ||
+      result.provenance.productRule.yearPillarRule !== 'SOLAR_TERM_START_OF_SPRING' ||
+      result.provenance.productRule.monthPillarRule !== 'SOLAR_TERM_TWELVE_JIE' ||
       result.provenance.productRule.leapMonthRule !== 'LEAP_MONTH_SAME_ORDINAL' ||
       result.provenance.dayRule.calendarBasis !== 'GREGORIAN_CIVIL_DATE' ||
       result.provenance.dayRule.dayBoundary !== 'CIVIL_MIDNIGHT' ||
       result.provenance.hourRule.timeBasis !== 'LOCAL_CIVIL_TIME' ||
       result.provenance.hourRule.dayBoundary !== 'CIVIL_MIDNIGHT' ||
       result.provenance.productRule.trueSolarTimeRule !== 'DO_NOT_APPLY' ||
-      result.provenance.productRule.solarTermRole !== 'NOT_USED_FOR_YEAR_OR_MONTH_PILLARS' ||
+      result.provenance.productRule.solarTermRole !== 'USED_FOR_YEAR_AND_MONTH_PILLARS' ||
       result.provenance.yearMonthAttributionRule.yearBoundary !== 'START_OF_SPRING_IPCHUN' ||
       result.provenance.yearMonthAttributionRule.monthBoundary !== 'TWELVE_JIE_JIEQI'
     ) {

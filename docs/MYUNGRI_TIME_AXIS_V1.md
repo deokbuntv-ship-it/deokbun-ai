@@ -5,7 +5,7 @@
 > facts-only, fail-closed. **No engine was rebuilt; no rule was invented.** Claude-owned,
 > engine-external (`src/features/myungri/**`).
 >
-> **UPDATE — Saju year/month BOUNDARY FIX (Codex-accepted):** the natal year pillar now rolls at
+> **UPDATE — Saju year/month BOUNDARY FIX (`READY_FOR_CODEX_RE_REVIEW`):** the natal year pillar now rolls at
 > **立春** and the month pillar at the twelve **節(Jie)** (was: lunar calendar year/month — a
 > confirmed bug). This is a targeted correction inside `interpretation/saju/**` reusing the
 > ENGINE-12 solar-term runtime (no new calendar engine). Golden lock: solar `2024-01-03` = lunar

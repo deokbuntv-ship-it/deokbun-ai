@@ -249,3 +249,79 @@ describe('§9 Daewoon consumes the CORRECTED natal year/month pillars', () => {
     expect(gz(dw.cycles[0].pillar)).toBe('癸亥');
   });
 });
+
+// The first Jie strictly after `fromEpoch`, as a UTC instant — used to hit exact boundary minutes.
+function nextTermEpoch(fromEpoch: number): number {
+  const r = LUNAR_JS_SOLAR_TERM_ADAPTER.resolve({
+    birthInstant: { kind: 'UTC_INSTANT', epochSeconds: fromEpoch },
+    direction: 'FORWARD',
+  });
+  if (!r.ok) throw new Error('term resolve failed');
+  return r.value.normalizedUtcInstant.epochSeconds;
+}
+
+describe('Codex FIX 1 — same-UTC-minute boundary tie → AMBIGUOUS', () => {
+  it('reference exactly at 立春 (and +20s, same minute) → AMBIGUOUS_BOUNDARY_MINUTE', () => {
+    const ipchun = nextTermEpoch(kst(2024, 1, 20)); // 立春 2024
+    for (const epoch of [ipchun, ipchun + 20]) {
+      const r = resolveSajuYearAndMonth(epoch, LUNAR_JS_SOLAR_TERM_ADAPTER);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error.code).toBe('AMBIGUOUS_BOUNDARY_MINUTE');
+    }
+  });
+  it('representative monthly Jie (驚蟄) minute → AMBIGUOUS', () => {
+    const jie = nextTermEpoch(kst(2024, 2, 20)); // 驚蟄 2024
+    const r = resolveSajuYearAndMonth(jie, LUNAR_JS_SOLAR_TERM_ADAPTER);
+    if (!r.ok) expect(r.error.code).toBe('AMBIGUOUS_BOUNDARY_MINUTE');
+    else throw new Error('expected ambiguous');
+  });
+  it('a non-boundary minute resolves normally', () => {
+    expect(resolveSajuYearAndMonth(kst(2024, 3, 20, 10, 0), LUNAR_JS_SOLAR_TERM_ADAPTER).ok).toBe(true);
+  });
+});
+
+describe('Codex FIX 2 — unknown/approximate time on a boundary date → AMBIGUOUS (never noon-forced)', () => {
+  it('resolver: unknown time on the 立春 date', () => {
+    const r = resolveSajuYearAndMonth(kst(2024, 2, 4, 12), LUNAR_JS_SOLAR_TERM_ADAPTER, { timeIsKnown: false });
+    if (!r.ok) expect(r.error.code).toBe('AMBIGUOUS_UNKNOWN_TIME_ON_BOUNDARY_DATE');
+    else throw new Error('expected ambiguous');
+  });
+  it('fourPillars: 2024-02-04 (立春 date) + UNKNOWN time → UNAVAILABLE (fail-closed)', () => {
+    const r = calculateFourPillars(
+      buildInput({ year: 2024, month: 2, day: 4 }, { accuracy: 'UNKNOWN', date: { year: 2024, month: 2, day: 4 } }),
+    );
+    expect(r.status).toBe('UNAVAILABLE');
+    if (r.status === 'UNAVAILABLE') expect(r.reason.code).toBe('YEAR_MONTH_ATTRIBUTION_FAILED');
+  });
+  it('non-boundary date + unknown time stays safe (PARTIAL with year/month)', () => {
+    const r = calculateFourPillars(
+      buildInput({ year: 2024, month: 1, day: 3 }, { accuracy: 'UNKNOWN', date: { year: 2024, month: 1, day: 3 } }),
+    );
+    expect(r.status).toBe('PARTIAL');
+  });
+});
+
+describe('Codex FIX 3 — supported range 1970-01-01 … 2050-12-31', () => {
+  it('1969 and 2051 → UNSUPPORTED_DATE_RANGE; 2024 resolves', () => {
+    const y1969 = resolveSajuYearAndMonth(kst(1969, 6, 1), LUNAR_JS_SOLAR_TERM_ADAPTER);
+    const y2051 = resolveSajuYearAndMonth(kst(2051, 6, 1), LUNAR_JS_SOLAR_TERM_ADAPTER);
+    if (!y1969.ok) expect(y1969.error.code).toBe('UNSUPPORTED_DATE_RANGE');
+    else throw new Error('1969 must be unsupported');
+    if (!y2051.ok) expect(y2051.error.code).toBe('UNSUPPORTED_DATE_RANGE');
+    else throw new Error('2051 must be unsupported');
+    expect(resolveSajuYearAndMonth(kst(2024, 6, 1), LUNAR_JS_SOLAR_TERM_ADAPTER).ok).toBe(true);
+  });
+});
+
+describe('Codex FIX 4 — provenance matches the 立春/12-Jie runtime', () => {
+  it('productRule declares SOLAR_TERM year/month + v2; golden pillars unchanged', () => {
+    const r = calculateFourPillars(buildInput({ year: 2024, month: 1, day: 3 }, exact(2024, 1, 3)));
+    if (r.status === 'UNAVAILABLE') throw new Error('unavailable');
+    expect(r.provenance.productRule.yearPillarRule).toBe('SOLAR_TERM_START_OF_SPRING');
+    expect(r.provenance.productRule.monthPillarRule).toBe('SOLAR_TERM_TWELVE_JIE');
+    expect(r.provenance.productRule.solarTermRole).toBe('USED_FOR_YEAR_AND_MONTH_PILLARS');
+    expect(r.provenance.productRule.ruleVersion).toBe('deokbunai.saju-pillar-rules.v2');
+    const p = pillars(r);
+    expect([gz(p.year), gz(p.month), gz(p.day)]).toEqual(['癸卯', '甲子', '丙寅']);
+  });
+});

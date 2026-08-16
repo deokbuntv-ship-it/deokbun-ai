@@ -99,3 +99,31 @@ to reach Daewoon (§9 test), Sewoon using Jan 1 / Wolwoon using lunar rollover (
 
 ## 18. Commit
 Local only (no push/deploy/DB). Hash recorded in the session report.
+
+---
+
+## Codex re-review — 4 TARGETED FIXES applied (status: `READY_FOR_CODEX_RE_REVIEW`)
+
+Applied on top of the boundary fix, reusing ENGINE-12 policy only (no new theory/calendar/OSS).
+The 立春/12-Jie basis is treated as approved and is NOT reopened. ADOPT 3종 (`d256b51`) preserved.
+
+- **FIX 1 — boundary-minute tie:** a reference within the SAME UTC minute as a 立春/Jie boundary
+  (incl. exactly AT a term) → `AMBIGUOUS_BOUNDARY_MINUTE` (fail-closed), never forced to a side.
+  Detected via a forward probe from one minute earlier (getPrevJie/getNextJie only return neighbours).
+- **FIX 2 — unknown/approximate time on a boundary DATE:** if a 立春/Jie falls on the reference date
+  and the time is not EXACT → `AMBIGUOUS_UNKNOWN_TIME_ON_BOUNDARY_DATE` (never noon-forced). A
+  boundary-free date keeps the existing safe calculation.
+- **FIX 3 — supported range:** `resolveSajuYearAndMonth` now explicitly enforces ENGINE-12's
+  1970-01-01…2050-12-31 (KST date) → `UNSUPPORTED_DATE_RANGE` for 1969/2051, covering natal +
+  Sewoon/Wolwoon-instant (all share the resolver).
+- **FIX 4 — provenance/runtime consistency:** `DEOKBUNAI_SAJU_V1_RULE_PROFILE` corrected to
+  `yearPillarRule: SOLAR_TERM_START_OF_SPRING`, `monthPillarRule: SOLAR_TERM_TWELVE_JIE`,
+  `solarTermRole: USED_FOR_YEAR_AND_MONTH_PILLARS`, ruleVersion bumped `…saju-pillar-rules.v2`
+  (stale LUNAR_* removed). `isSupportedRuleProfile` + validation harness updated. EngineEvidence now
+  attaches a `SAJU.EVIDENCE.YEAR_MONTH_ATTRIBUTION` RULE node so the year/month facts point to the
+  立春/Jie attribution provenance.
+
+Regression added (+8): 立春/Jie minute → ambiguous; boundary-date+unknown-time → ambiguous;
+non-boundary safe; 1969/2051 unsupported; provenance = SOLAR_TERM + v2 with golden pillars unchanged.
+Full suite **43 suites / 457 tests PASS**; expo web export OK. `interpretation/**` boundary logic is
+the re-review target; ADOPT 3종 untouched and green.

@@ -20,12 +20,12 @@ function isSupportedRuleProfile(profile: SajuPillarRuleProfile): boolean {
   return (
     profile.ruleId === DEOKBUNAI_SAJU_V1_RULE_PROFILE.ruleId &&
     profile.ruleVersion === DEOKBUNAI_SAJU_V1_RULE_PROFILE.ruleVersion &&
-    profile.yearPillarRule === 'LUNAR_YEAR' &&
-    profile.monthPillarRule === 'LUNAR_MONTH' &&
+    profile.yearPillarRule === 'SOLAR_TERM_START_OF_SPRING' &&
+    profile.monthPillarRule === 'SOLAR_TERM_TWELVE_JIE' &&
     profile.leapMonthRule === 'LEAP_MONTH_SAME_ORDINAL' &&
     profile.dayBoundaryRule === 'CIVIL_MIDNIGHT' &&
     profile.trueSolarTimeRule === 'DO_NOT_APPLY' &&
-    profile.solarTermRole === 'NOT_USED_FOR_YEAR_OR_MONTH_PILLARS'
+    profile.solarTermRole === 'USED_FOR_YEAR_AND_MONTH_PILLARS'
   );
 }
 

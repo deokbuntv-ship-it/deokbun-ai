@@ -47,6 +47,7 @@ const EVIDENCE_IDS = {
   input: 'SAJU.EVIDENCE.NORMALIZED_BIRTH',
   calendar: 'SAJU.EVIDENCE.CALENDAR',
   productRule: 'SAJU.EVIDENCE.PRODUCT_RULE',
+  yearMonthAttribution: 'SAJU.EVIDENCE.YEAR_MONTH_ATTRIBUTION',
   dayRule: 'SAJU.EVIDENCE.DAY_RULE',
   hourRule: 'SAJU.EVIDENCE.HOUR_RULE',
   year: 'SAJU.EVIDENCE.YEAR_PILLAR',
@@ -239,6 +240,14 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
       factIds: [factIds.year, factIds.month],
     },
     {
+      // year/month pillars are attributed by 立春 / the twelve 節 — the authoritative boundary rule.
+      id: EVIDENCE_IDS.yearMonthAttribution,
+      kind: 'RULE',
+      ruleId: output.provenance.yearMonthAttributionRule.ruleId,
+      ruleVersion: output.provenance.yearMonthAttributionRule.ruleVersion,
+      factIds: [factIds.year, factIds.month],
+    },
+    {
       id: EVIDENCE_IDS.dayRule,
       kind: 'RULE',
       ruleId: output.provenance.dayRule.ruleId,
@@ -260,6 +269,7 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
         EVIDENCE_IDS.productRule,
+        EVIDENCE_IDS.yearMonthAttribution,
       ],
     },
     {
@@ -270,6 +280,7 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
         EVIDENCE_IDS.productRule,
+        EVIDENCE_IDS.yearMonthAttribution,
       ],
     },
     {

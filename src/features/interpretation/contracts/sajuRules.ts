@@ -1,16 +1,20 @@
 import type { EngineDescriptor } from './engine';
 
 export const DEOKBUNAI_SAJU_V1_RULE_ID = 'DEOKBUNAI_SAJU_V1' as const;
+// v2: year/month pillars are attributed by 立春 / the twelve 節 (Jie), matching the runtime since
+// the boundary fix. (v1 declared LUNAR_YEAR/LUNAR_MONTH — that metadata was stale.)
 export const DEOKBUNAI_SAJU_V1_RULE_VERSION =
-  'deokbunai.saju-pillar-rules.v1' as const;
+  'deokbunai.saju-pillar-rules.v2' as const;
 
-export type SajuYearPillarRule = 'LUNAR_YEAR';
-export type SajuMonthPillarRule = 'LUNAR_MONTH';
+/** Saju YEAR pillar boundary = 立春 (start of 寅월). */
+export type SajuYearPillarRule = 'SOLAR_TERM_START_OF_SPRING';
+/** Saju MONTH pillar boundary = the twelve monthly 節 (Jie). */
+export type SajuMonthPillarRule = 'SOLAR_TERM_TWELVE_JIE';
 export type SajuLeapMonthRule = 'LEAP_MONTH_SAME_ORDINAL';
 export type SajuDayBoundaryRule = 'CIVIL_MIDNIGHT';
 export type SajuTrueSolarTimeRule = 'DO_NOT_APPLY';
 export type SajuSolarTermRole =
-  'NOT_USED_FOR_YEAR_OR_MONTH_PILLARS';
+  'USED_FOR_YEAR_AND_MONTH_PILLARS';
 
 export type SajuPillarRuleProfile = {
   ruleId: typeof DEOKBUNAI_SAJU_V1_RULE_ID;
@@ -26,12 +30,12 @@ export type SajuPillarRuleProfile = {
 export const DEOKBUNAI_SAJU_V1_RULE_PROFILE: SajuPillarRuleProfile = {
   ruleId: DEOKBUNAI_SAJU_V1_RULE_ID,
   ruleVersion: DEOKBUNAI_SAJU_V1_RULE_VERSION,
-  yearPillarRule: 'LUNAR_YEAR',
-  monthPillarRule: 'LUNAR_MONTH',
+  yearPillarRule: 'SOLAR_TERM_START_OF_SPRING',
+  monthPillarRule: 'SOLAR_TERM_TWELVE_JIE',
   leapMonthRule: 'LEAP_MONTH_SAME_ORDINAL',
   dayBoundaryRule: 'CIVIL_MIDNIGHT',
   trueSolarTimeRule: 'DO_NOT_APPLY',
-  solarTermRole: 'NOT_USED_FOR_YEAR_OR_MONTH_PILLARS',
+  solarTermRole: 'USED_FOR_YEAR_AND_MONTH_PILLARS',
 };
 
 export type SajuMonthEarthlyBranch =
@@ -63,11 +67,15 @@ export type LunarMonthOrdinal =
   | 12;
 
 /**
- * The future Sexagenary Core consumes normalized lunar values only. It must
- * not perform calendar conversion or consult solar terms.
+ * Pure Sexagenary + Five-Tiger ARITHMETIC core. It consumes an ALREADY-ATTRIBUTED canonical Saju
+ * year label + Saju month ordinal (寅월=1) and never performs attribution / calendar conversion /
+ * solar-term work itself — the 立春/Jie attribution happens upstream. Field names are historical;
+ * the values are the canonical (solar-term-attributed) year/month, not lunar-calendar values.
  */
 export type SajuYearMonthPillarCalculationInput = {
+  /** Canonical Saju year label (立春-attributed upstream). */
   lunarYear: number;
+  /** Canonical Saju month ordinal 寅월=1 … 丑월=12 (Jie-attributed upstream). */
   lunarMonth: LunarMonthOrdinal;
   lunarMonthKind: 'REGULAR' | 'LEAP';
   ruleProfile: SajuPillarRuleProfile;

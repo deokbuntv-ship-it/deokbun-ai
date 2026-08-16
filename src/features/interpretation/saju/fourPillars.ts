@@ -165,7 +165,11 @@ export function calculateFourPillars(
     civilLocal,
     input.normalized.timezone,
   );
-  const attribution = resolveSajuYearAndMonth(referenceEpochSeconds, solarTermAdapter);
+  // Only an EXACT birth time can be placed on either side of a same-day 立春/Jie boundary; unknown
+  // or approximate time on a boundary date fails closed (never noon-forced) inside the resolver.
+  const attribution = resolveSajuYearAndMonth(referenceEpochSeconds, solarTermAdapter, {
+    timeIsKnown: civilLocal.accuracy === 'EXACT',
+  });
   if (!attribution.ok) {
     return unavailable(input, {
       code: 'YEAR_MONTH_ATTRIBUTION_FAILED',
