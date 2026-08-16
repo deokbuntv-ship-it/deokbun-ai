@@ -26,11 +26,12 @@ export const FROZEN_ENGINE_ID: Record<EngineKind, 'SAJU' | 'ZIWEI' | 'QIMEN'> = 
 };
 
 // Whether each discipline is currently wired into the app pipeline.
-// Codex flips these on 2026-08-17 as engines are connected. (SAJU calc exists in
-// the frozen engine but is not yet called from contextSelector; ZIWEI/QIMEN
-// calculators are not implemented.)
+// SAJU is CONNECTED (2026-08-16): the frozen Saju/Myungri engine runs in the consultation
+// grounding path (chat/services/consultationGrounding.ts → chatService), producing real
+// EngineEvidence. ZIWEI/QIMEN remain false — calculators exist but are not yet wired into
+// grounding (Sprint 2/3, sprint §17). Do not flip a flag without a real, tested path.
 export const ENGINE_CONNECTED: Record<EngineKind, boolean> = {
-  saju: false,
+  saju: true,
   ziwei: false,
   qimen: false,
 };

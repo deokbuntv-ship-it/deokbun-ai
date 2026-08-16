@@ -12,17 +12,26 @@ import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
 import { classifyConsultationMode } from '@/features/chat/prompts/consultationMode';
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
-import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
+import { GROUNDING_UNAVAILABLE, type ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import type {
     ChatServiceInput,
     ChatServiceResult,
 } from '@/features/chat/types/chatArchitecture';
+import type { ConsultationDraft } from '@/features/consultation';
 
 export type AuthGuard = () => boolean;
 
-export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
+/** Produces deterministic engine grounding for a draft. Injected in production (SAJU wired);
+ *  omitted → grounding stays fail-closed UNAVAILABLE (backward-compatible default). */
+export type GroundingBuilder = (draft: ConsultationDraft) => Promise<ConsultationGrounding>;
+
+export function createChatService(
+  adapter: LLMAdapter,
+  authGuard: AuthGuard,
+  buildGrounding?: GroundingBuilder,
+) {
   async function sendMessage(
     input: ChatServiceInput,
   ): Promise<ChatServiceResult> {
@@ -87,7 +96,16 @@ export function createChatService(adapter: LLMAdapter, authGuard: AuthGuard) {
       trimmedUserMessage,
       boundedRecentMessages.length > 0 || memoryResult.existingSummary !== null,
     );
-    const grounding = GROUNDING_UNAVAILABLE;
+    // Deterministic SAJU grounding when a builder is injected. Fail-closed: any producer error
+    // falls back to UNAVAILABLE so the consultation never breaks and never fabricates (§6/§16).
+    let grounding = GROUNDING_UNAVAILABLE;
+    if (buildGrounding) {
+      try {
+        grounding = await buildGrounding(input.draft);
+      } catch {
+        grounding = GROUNDING_UNAVAILABLE;
+      }
+    }
 
     const promptMessages = buildPrompt({
       selectedContext,

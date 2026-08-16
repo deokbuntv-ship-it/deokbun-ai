@@ -52,6 +52,7 @@ export {
   type MyungriTimeAxisInput,
 } from './services/calculateTimeAxis';
 export { natalContextFromFourPillars } from './services/natalContext';
+export { toSajuEvidence, type SajuEvidenceBundle } from './adapters/sajuEvidenceAdapter';
 export {
   calculateSewoonForInstant,
   calculateWolwoonForInstant,

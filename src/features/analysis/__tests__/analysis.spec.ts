@@ -74,8 +74,16 @@ export function runAnalysisSpecs(): { passed: number } {
   );
   ok(() => eq(resolveEngineEligibility({ ...withSubject, hasSubject: false }, 'saju'), 'not_applicable', 'no subject'));
 
-  // --- effective availability downgrades to engine_not_connected while unwired ---
-  ok(() => eq(resolveEngineAvailability(withSubject, 'saju'), 'engine_not_connected', 'saju eligible but unwired'));
+  // --- SAJU is now WIRED (consultation grounding path) → effective availability is 'available';
+  //     an eligible-but-unwired engine still downgrades to engine_not_connected (ziwei) ---
+  ok(() => eq(resolveEngineAvailability(withSubject, 'saju'), 'available', 'saju eligible and wired'));
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, birthTimeKnown: true }, 'ziwei'),
+      'engine_not_connected',
+      'ziwei eligible but unwired',
+    ),
+  );
 
   // --- normalized context: no fabricated facts, warnings surface ---
   ok(() => {

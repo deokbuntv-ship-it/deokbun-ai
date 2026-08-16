@@ -199,18 +199,37 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 
 | Engine | Calc | Adapter→EngineEvidence | Tests/Fixtures | Live-wired to prompt | Prod |
 |---|---|---|---|---|---|
-| **SAJU / Myungri** (in-repo, **FROZEN `7c7ed82`** — Codex `APPROVED_FREEZE`) | ✅ E2E_LOCAL — 立春 year / 12-Jie month + 십신·지장간·오행·관계·대운·세운·월운·시간축·대운십신·통근투간·월령득령 | ❌ **adapter missing** (`myungri`→EngineEvidence slot — deferred, do NOT start) | 457 tests (golden + independent + boundary + ADOPT) | ❌ | ❌ |
-| **Ziwei** (iztro) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toZiweiEvidence`) | ziwei tests | ❌ | ❌ |
-| **Qimen** (qimen-dunjia) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toQimenEvidence`) | qimen tests | ❌ | ❌ |
-| Orchestration/cross-analysis seam | — | ◐ SCAFFOLDED, no non-test caller | analysis tests | ❌ (`ENGINE_CONNECTED={all:false}`) | ❌ |
+| **SAJU / Myungri** (in-repo, **FROZEN `7c7ed82`** — Codex `APPROVED_FREEZE`) | ✅ E2E_LOCAL — 立春 year / 12-Jie month + 십신·지장간·오행·관계·대운·세운·월운·시간축·대운십신·통근투간·월령득령 | ✅ **CONNECTED** (`toSajuEvidence` → `buildConsultationGrounding` → chatService) | 464 tests (+ grounding E2E: Solar/Lunar equivalence + fail-closed) | ✅ **grounding path** | ❌ |
+| **Ziwei** (iztro) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toZiweiEvidence`) — not wired to grounding | ziwei tests | ❌ (Sprint 2) | ❌ |
+| **Qimen** (qimen-dunjia) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toQimenEvidence`) — not wired to grounding | qimen tests | ❌ (Sprint 3) | ❌ |
+| Orchestration/cross-analysis seam | — | ◐ SAJU-only live; cross sees 1 engine | analysis tests | `ENGINE_CONNECTED={saju:true, ziwei:false, qimen:false}` | ❌ |
 
 - **Semantic/astrological correctness is `BLOCKED_OWNER`/Codex** (golden fixtures + 학파/정국
   canon required; `ZIWEI_ENGINE_SPEC.md`/`QIMEN_ENGINE_SPEC.md` are marked "RESEARCH/SPEC
   SCAFFOLD").
-- **The missing wire is documented** in `CODEX_HANDOFF_2026-08-17.md §21` (exact seam:
-  contextSelector → run engines → EngineEvidence → orchestration → promptBuilder). This is
-  a *known, deliberate Codex handoff*, not an accidental regression. **Do not change
-  engine semantics (§19).**
+- **SAJU is now wired (2026-08-16)** — the frozen engine runs in the consultation path; the
+  Ziwei/Qimen wire (`toZiweiEvidence`/`toQimenEvidence` → grounding) remains a *known, deliberate*
+  Sprint 2/3 handoff, not a regression. **Do not change engine semantics (§19).**
+
+### 11b. SAJU product integration (2026-08-16) — honest status
+
+The frozen Saju/Myungri engine is connected to the live consultation, ending "engine exists but
+consultation doesn't use it." Real production chain:
+`draft.birthInfo → toSajuEngineInput → executeSajuFromBirthInput (frozen) → SajuEngineResult +
+Myungri facts → toSajuEvidence (converter) → buildConsultationGrounding → chatService → promptBuilder`.
+
+| Stage | Status |
+|---|---|
+| `SAJU_CALC` | **FROZEN** (`7c7ed82`) |
+| `SAJU_EVIDENCE` (`toSajuEvidence`) | **CONNECTED** — facts-only converter (4주·일간·오행·십신·지장간·월령/득령·통근/투간·대운·대운십신·当年 세운/월운 + 立春/12-Jie provenance) |
+| `SAJU_GROUNDING` | **CONNECTED** — fail-closed (unsupported/ambiguous/unknown-time-on-boundary → `unavailable`, no fabrication) |
+| `SAJU_PROMPT` | **CONNECTED** — `promptBuilder` renders the facts; LLM interprets, does not calculate |
+| `STRUCTURED_RESULT` (`ChatMessage.structuredResult`) | **NOT_CONNECTED** — prompt does not yet request the JSON schema; `parseStructuredAiResponse` fallback stays null (plain-text render). Next task. |
+| `ASSESSMENT` / `CROSS_ANALYSIS` | SAJU-only evidence available; **no fabricated 15-axis scores / no "3-학문 일치"** (ziwei/qimen unconnected) |
+
+Deferred (recorded, do NOT start here): structuredResult/followUps schema wiring; Ziwei→grounding
+(Sprint 2); Qimen→grounding (Sprint 3, timing questions only); SAJU+Ziwei+Qimen cross-analysis
+(Sprint 4). Detail: `docs/SAJU_INTEGRATION_SPRINT.md`.
 
 ### 11a. Myungri V1 deterministic freeze — `APPROVED_FREEZE` (canonical commit `7c7ed82`)
 

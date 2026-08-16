@@ -26,7 +26,12 @@ export { buildPrompt } from './prompts/promptBuilder';
 export { buildSummaryPrompt } from './prompts/summaryPromptBuilder';
 export { selectConsultationContext } from './selectors/contextSelector';
 export { createChatService } from './services/chatService';
-export type { AuthGuard } from './services/chatService';
+export type { AuthGuard, GroundingBuilder } from './services/chatService';
+export {
+  buildConsultationGrounding,
+  createSajuGroundingBuilder,
+  type SajuGroundingDeps,
+} from './services/consultationGrounding';
 export { conversationService } from './services/conversationService';
 export type {
     ConversationSubjectSnapshot,

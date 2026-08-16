@@ -20,12 +20,14 @@ import {
     ChatBubble,
     ChatInput,
     createChatService,
+    createSajuGroundingBuilder,
     mapConsultationError,
     supabaseEdgeLLMAdapter,
     useConversationPersistence,
     type ChatMessage,
     type ConsultationErrorView,
 } from '@/features/chat';
+import { expoCryptoDigestProvider } from '@/features/manse/services/digestProvider';
 import {
     consumePendingQuestion,
     isSavedSubjectId,
@@ -177,7 +179,12 @@ export default function ChatScreen() {
   isAuthenticatedRef.current = isAuthenticated;
 
   const chatServiceRef = useRef(
-    createChatService(supabaseEdgeLLMAdapter, () => isAuthenticatedRef.current),
+    createChatService(
+      supabaseEdgeLLMAdapter,
+      () => isAuthenticatedRef.current,
+      // Deterministic SAJU/Myungri grounding (frozen engine → EngineEvidence → prompt).
+      createSajuGroundingBuilder({ digestProvider: expoCryptoDigestProvider }),
+    ),
   );
 
   // After the root navigation is actually ready (never during mount), drop the
