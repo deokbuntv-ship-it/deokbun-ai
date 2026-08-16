@@ -18,6 +18,9 @@ export type {
 } from './rules/pillarRelations';
 
 export {
+  DEOKBUNAI_MYUNGRI_DAEWOON_TEN_GODS_V1_RULE,
+  DEOKBUNAI_MYUNGRI_MONTH_COMMAND_V1_RULE,
+  DEOKBUNAI_MYUNGRI_ROOTING_TRANSPARENCY_V1_RULE,
   DEOKBUNAI_MYUNGRI_SEWOON_V1_RULE,
   DEOKBUNAI_MYUNGRI_TIME_AXIS_V1_RULE,
   DEOKBUNAI_MYUNGRI_WOLWOON_V1_RULE,
@@ -57,6 +60,29 @@ export {
   type SewoonForInstantInput,
   type WolwoonForInstantInput,
 } from './services/luckForInstant';
+export {
+  calculateDaewoonTenGods,
+  type DaewoonCycleTenGods,
+  type DaewoonTenGodsInput,
+  type DaewoonTenGodsResult,
+  type DaewoonTenGodsUnavailableReason,
+} from './services/daewoonTenGods';
+export {
+  calculateRootingTransparency,
+  type HiddenStemTransparency,
+  type RootingMatch,
+  type RootingTransparencyResult,
+  type RootingTransparencyUnavailableReason,
+  type StemRooting,
+} from './services/rootingTransparency';
+export {
+  calculateMonthCommand,
+  type MonthCommandResult,
+  type MonthCommandStatus,
+  type MonthCommandUnavailableReason,
+  type Season,
+  type SeasonalPhase,
+} from './services/monthCommand';
 export {
   buildRelationsToNatal,
   buildTenGodProfile,

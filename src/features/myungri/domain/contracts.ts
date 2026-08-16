@@ -35,6 +35,21 @@ export const DEOKBUNAI_MYUNGRI_TIME_AXIS_V1_RULE = {
   ruleVersion: 'deokbunai.myungri-time-axis.v1',
 } as const;
 
+export const DEOKBUNAI_MYUNGRI_DAEWOON_TEN_GODS_V1_RULE = {
+  ruleId: 'DEOKBUNAI_MYUNGRI_DAEWOON_TEN_GODS_V1',
+  ruleVersion: 'deokbunai.myungri-daewoon-ten-gods.v1',
+} as const;
+
+export const DEOKBUNAI_MYUNGRI_ROOTING_TRANSPARENCY_V1_RULE = {
+  ruleId: 'DEOKBUNAI_MYUNGRI_ROOTING_TRANSPARENCY_V1',
+  ruleVersion: 'deokbunai.myungri-rooting-transparency.v1',
+} as const;
+
+export const DEOKBUNAI_MYUNGRI_MONTH_COMMAND_V1_RULE = {
+  ruleId: 'DEOKBUNAI_MYUNGRI_MONTH_COMMAND_V1',
+  ruleVersion: 'deokbunai.myungri-month-command.v1',
+} as const;
+
 /** Provenance carried by every Myungri time-axis fact — records every reused frozen ruleVersion. */
 export type MyungriProvenance = {
   /** The frozen SAJU V1 rule whose year/month pillar functions 세운/월운 reuse verbatim. */
