@@ -393,6 +393,8 @@ describe('PATCH#3 FIX #1 — ENGINE-12 Daewoon ordinal/provenance/assumptions/li
     expect(ctx).toContain('대운 도출(ENGINE-12)'); // provenance line present
     expect(ctx).toContain('YANG_MALE_YIN_FEMALE_FORWARD'); // direction rule basis
     expect(ctx).toContain('lunar-javascript'); // solar-term provider identity
+    expect(ctx).toContain('deokbunai.solar-term-lunarjs-adapter.v1'); // adapterRuleVersion (A1)
+    expect(ctx).toContain('FIXED_UTC_PLUS_08'); // sourceTimeBasis (A1)
     expect(ctx).toContain('THREE_DAYS_OF_SOLAR_TERM_INTERVAL_EQUALS_ONE_SYMBOLIC_YEAR'); // ENGINE-12 assumption
     expect(ctx).toContain('ROUNDED_START_AGE_IS_PRESENTATION_GRADE_NOT_ASTRONOMICAL_PRECISION'); // rounded-age limitation
     expect(ctx).toContain('SAME_UTC_MINUTE_AS_A_JIE_BOUNDARY_IS_AMBIGUOUS'); // boundary-ambiguity limitation
@@ -441,5 +443,36 @@ describe('PATCH#3 FIX #2 — strict AVAILABLE shape / referenceYear / age-span m
     expect(st({ ...okBase, timingAnchors: { years: [1800] } })).toBe('unavailable'); // out of sanity range
     expect(st({ ...okBase, timingAnchors: { years: [2026.5] } })).toBe('unavailable'); // fractional year
     expect(st({ ...okBase, timingAnchors: { years: ['2026'] } })).toBe('unavailable'); // non-number
+  });
+});
+
+// ── PATCH #4 · A2 — exact frozen 1970–2050 supported year range ───────────────────────
+describe('PATCH#4 A2 — exact 1970–2050 runtime year range', () => {
+  const okBase = { availability: 'available', summary: 's', sections: [{ label: '명식', lines: ['년 癸卯'] }] };
+  const st = (myungri: unknown) =>
+    toSafeGrounding({ status: 'available', evidence: { myungri, ziwei: { availability: 'engine_not_connected' }, qimen: { availability: 'engine_not_connected' } } } as unknown as ConsultationGrounding).status;
+  const withRef = (referenceYear: unknown) => st({ ...okBase, timingAnchors: { years: [2026], referenceYear } });
+  const withYears = (years: unknown) => st({ ...okBase, timingAnchors: { years } });
+
+  it('referenceYear boundary: 1969 fail, 1970/2026/2050 valid, 2051 fail', () => {
+    expect(withRef(1969)).toBe('unavailable');
+    expect(withRef(1970)).toBe('available');
+    expect(withRef(2026)).toBe('available');
+    expect(withRef(2050)).toBe('available');
+    expect(withRef(2051)).toBe('unavailable');
+    expect(withRef(2026.5)).toBe('unavailable');
+    expect(withRef(NaN)).toBe('unavailable');
+    expect(withRef(Infinity)).toBe('unavailable');
+    expect(withRef(-1)).toBe('unavailable');
+    expect(withRef('2026')).toBe('unavailable');
+  });
+  it('timing years boundary: [1969] fail, [1970]/[2026,2027]/[2050] valid, [2051] fail', () => {
+    expect(withYears([1969])).toBe('unavailable');
+    expect(withYears([1970])).toBe('available');
+    expect(withYears([2026, 2027])).toBe('available');
+    expect(withYears([2050])).toBe('available');
+    expect(withYears([2051])).toBe('unavailable');
+    expect(withYears([2026.5])).toBe('unavailable');
+    expect(withYears(['2026'])).toBe('unavailable');
   });
 });

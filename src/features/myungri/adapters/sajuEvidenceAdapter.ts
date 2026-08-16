@@ -258,8 +258,9 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
   // basis + provider identity) — the real source values, not a handcrafted summary (Codex FIX #1 §2-2).
   if (bundle.daewoon && bundle.daewoon.capability === 'AVAILABLE') {
     const dp = bundle.daewoon.provenance;
+    const tz = dp.timezoneDataVersion ? ` · tzdata ${dp.timezoneDataVersion}` : '';
     provLines.push(
-      `대운 도출(ENGINE-12) ${dp.ruleId}@${dp.ruleVersion} · 방향 ${dp.directionRule} · 진행 ${dp.progressionRule} · 간격 ${dp.intervalRule} · 시작나이 ${dp.startOffsetRule} · 반올림 ${dp.roundingRule} · 절기 ${dp.solarTerm.provider}@${dp.solarTerm.providerVersion}/${dp.solarTerm.solarTermRuleVersion} · 경계 ${dp.solarTerm.canonicalBoundaryPrecision}`,
+      `대운 도출(ENGINE-12) ${dp.ruleId}@${dp.ruleVersion} · 방향 ${dp.directionRule} · 진행 ${dp.progressionRule} · 간격 ${dp.intervalRule} · 시작나이 ${dp.startOffsetRule} · 반올림 ${dp.roundingRule} · 절기 ${dp.solarTerm.provider}@${dp.solarTerm.providerVersion}/${dp.solarTerm.solarTermRuleVersion}(adapter ${dp.solarTerm.adapterRuleVersion}) · 시간기준 ${dp.solarTerm.sourceTimeBasis} · 경계 ${dp.solarTerm.canonicalBoundaryPrecision}${tz}`,
     );
   }
   if (ax && ax.capability === 'AVAILABLE') {

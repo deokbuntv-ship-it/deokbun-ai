@@ -98,9 +98,13 @@ const UNAVAILABLE_REASON_VALUES: readonly GroundingUnavailableReason[] = [
 ];
 
 const isNonEmptyString = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0;
-// A plausible birth/consultation year — finite INTEGER in a sanity range (rejects 2026.5 / -1 / NaN /
-// Infinity). A schema guard, NOT a calendar rule; the frozen engine owns the real supported range.
-const isPlausibleYear = (v: unknown): boolean => typeof v === 'number' && Number.isInteger(v) && v >= 1900 && v <= 2100;
+// The frozen product-supported year range, mirrored as a runtime schema guard (Codex A2):
+// V1_SUPPORTED_BIRTH_RANGE_1970_01_01_THROUGH_2050_12_31. Reuses the product policy — NOT a new
+// calendar rule — so a timing year outside 1970–2050 (or 2026.5 / -1 / NaN / Infinity / string) fails closed.
+const SUPPORTED_YEAR_MIN = 1970;
+const SUPPORTED_YEAR_MAX = 2050;
+const isPlausibleYear = (v: unknown): boolean =>
+  typeof v === 'number' && Number.isInteger(v) && v >= SUPPORTED_YEAR_MIN && v <= SUPPORTED_YEAR_MAX;
 
 function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === 'string');

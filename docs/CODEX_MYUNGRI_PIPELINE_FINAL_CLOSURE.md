@@ -193,5 +193,39 @@ covers §15 cases 1–20.
   No secrets. Frozen `interpretation/**` identical to `7c7ed82`. Ziwei + dual-engine + Solar/Lunar +
   semantic-rejection + relative-timing regressions all green.
 - **Finding 3: FIXED. Finding 5: FIXED.** No material computed-but-dropped evidence remains.
-- **Final status:** `READY_FOR_CODEX_MYUNGRI_PIPELINE_CLOSURE_FINAL_REVIEW`. Persistence still
-  DEFERRED_MINOR. Owner action unchanged (deploy edge `chat` + `OPENAI_API_KEY`).
+- **Final status:** (superseded by PATCH #4 below).
+
+---
+
+# PATCH #4 — Codex absolute-final 2-point closure (atop `e913913`)
+
+Frozen `interpretation/**` still byte-identical to `7c7ed82`; Ziwei preserved; Qimen disconnected.
+
+## A1 — complete ENGINE-12 Daewoon provenance
+
+The `대운 도출(ENGINE-12)` line previously dropped three fields still emitted upstream. Now serialized
+from the real `DaewoonProvenance` object: **`adapterRuleVersion`** (`deokbunai.solar-term-lunarjs-adapter.v1`),
+**`sourceTimeBasis`** (`FIXED_UTC_PLUS_08`), and **`timezoneDataVersion`** (conditional — rendered as
+`tzdata …` only when present). Together with the already-present ruleId/ruleVersion/direction/progression/
+interval/start-offset/rounding/solar-term-provider/solar-term-ruleVersion/boundary-precision, the full
+provenance object now reaches the prompt. Proven by `pipelineClosure.test.ts` "PATCH#3 FIX #1" (extended
+to assert `deokbunai.solar-term-lunarjs-adapter.v1` + `FIXED_UTC_PLUS_08`). No recompute.
+
+## A2 — exact 1970–2050 runtime year range
+
+`isPlausibleYear` narrowed from the 1900–2100 sanity bound to the **frozen product policy
+`V1_SUPPORTED_BIRTH_RANGE_1970_01_01_THROUGH_2050_12_31`** (`SUPPORTED_YEAR_MIN=1970`,
+`SUPPORTED_YEAR_MAX=2050`). Applied uniformly to `referenceYear` and every `years[]` item. 1969/2051 now
+fail closed; 1970/2026/2050 valid; 2026.5/NaN/Infinity/-1/string still fail. NOT a new calendar rule —
+it mirrors the existing product-supported range. Matrix: `pipelineClosure.test.ts` "PATCH#4 A2" (boundary
+cases for referenceYear + years).
+
+## PATCH #4 gates
+
+- Full Jest **49 suites / 549 tests PASS** (was 547 → +2; zero regression). tsc 11 pre-existing route
+  errors only. Expo web export OK. npm ls OK. git diff --check clean. No secrets. Frozen identical to
+  `7c7ed82`. Ziwei + dual-engine + Solar/Lunar + semantic-rejection + relative/age-timing + strict-shape
+  regressions green.
+- **A1: FIXED. A2: FIXED.** No material provenance field dropped; runtime range matches the frozen policy.
+- **Final status:** `READY_FOR_CODEX_MYUNGRI_ABSOLUTE_FINAL_REVIEW`. Persistence still DEFERRED_MINOR.
+  Owner action unchanged (deploy edge `chat` + `OPENAI_API_KEY`).
