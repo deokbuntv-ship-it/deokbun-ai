@@ -19,19 +19,26 @@ const NOW = Math.floor(Date.UTC(2026, 5, 1) / 1000);
 const groundingBuilder = createSajuGroundingBuilder({ digestProvider, nowEpochSeconds: NOW });
 const allow = () => true;
 
-const STRUCTURED = JSON.stringify({
-  coreSummary: '차분하지만 추진력 있는 흐름입니다.',
-  disposition: '내면은 신중하고 계획적입니다.',
-  coreInterpretation: '당신의 일간을 중심으로 보면 … (충분히 긴 개인화된 본문)',
-  strengths: ['끈기', '분석력'],
-  cautions: ['과로에 주의'],
-  domainInterpretation: [
-    { title: '일·직업·사업', body: '직업적으로는 …' },
-    { title: '재물', body: '재물의 흐름은 …' },
-  ],
-  futureFlow: '대운 흐름상 …',
-  followUps: ['언제 사업 확장이 유리한가요?', '올해와 내년 중 어느 쪽이 더 중요한가요?'],
-});
+// A long-form structured answer (coreInterpretation is substantial — passes the substance gate).
+const LONG_CORE =
+  '당신의 일간을 중심으로 보면 전반적으로 차분하면서도 필요한 순간에는 추진력을 내는 균형형입니다. ' +
+  '월지의 기운과 십신 배치를 함께 보면, 꾸준히 쌓아 올리는 방식이 잘 맞고 조급하게 결과를 좇을 때 ' +
+  '오히려 흐름이 흐트러지기 쉽습니다. 관계에서는 신뢰를 바탕으로 오래가는 인연을 만드는 편입니다.';
+const structuredJson = (over: Record<string, unknown> = {}): string =>
+  JSON.stringify({
+    coreSummary: '차분하지만 추진력 있는 흐름입니다.',
+    disposition: '내면은 신중하고 계획적입니다.',
+    coreInterpretation: LONG_CORE,
+    strengths: ['끈기', '분석력'],
+    cautions: ['과로에 주의'],
+    domainInterpretation: [
+      { title: '일·직업·사업', body: '직업적으로는 전문성을 축적하는 흐름이 강합니다.' },
+      { title: '재물', body: '재물은 급등보다 꾸준한 축적형입니다.' },
+    ],
+    followUps: ['언제 사업 확장이 유리한가요?', '올해와 내년 중 어느 쪽이 더 중요한가요?'],
+    ...over,
+  });
+const STRUCTURED = structuredJson();
 
 const adapterReturning = (text: string): LLMAdapter => ({
   async generateResponse() {
@@ -116,20 +123,23 @@ describe('structured consultation pipeline — end to end', () => {
     expect(r.structuredResult?.grounding.status).toBe('unavailable');
   });
 
-  it('five real consultation scenarios all populate structuredResult (§20)', async () => {
-    const svc = createChatService(adapterReturning(STRUCTURED), allow, groundingBuilder);
-    const questions = [
-      '제 성격과 타고난 강점은 무엇인가요?',
-      '직업과 사업운을 자세히 봐주세요.',
-      '재물운과 돈이 들어오는 흐름을 알려주세요.',
-      '앞으로의 흐름은 어떤가요?',
-      '그럼 언제가 가장 중요한 시기인가요?',
+  it('five real consultation scenarios — DISTINCT grounded structuredResults (§12/§20)', async () => {
+    const scenarios: { q: string; json: string; expectText?: string; expectFuture?: boolean }[] = [
+      { q: '제 성격과 타고난 강점은 무엇인가요?', json: structuredJson({ strengths: ['공감력', '인내심'] }), expectText: '공감력' },
+      { q: '직업과 사업운을 자세히 봐주세요.', json: structuredJson({ domainInterpretation: [{ title: '일·직업·사업', body: '리더십이 발휘되는 직군이 유리합니다.' }] }), expectText: '리더십' },
+      { q: '재물운과 돈이 들어오는 흐름을 알려주세요.', json: structuredJson({ domainInterpretation: [{ title: '재물', body: '중년 이후 축적이 강해지는 흐름입니다.' }] }), expectText: '축적' },
+      { q: '앞으로의 흐름은 어떤가요?', json: structuredJson({ futureFlow: '대운 흐름상 향후 몇 년은 안정적으로 상승하는 편입니다.' }), expectFuture: true },
+      { q: '그럼 언제가 가장 중요한 시기인가요?', json: structuredJson({ futureFlow: '세운 기준 올해가 하나의 분기점으로 보입니다.' }), expectFuture: true },
     ];
-    for (const q of questions) {
-      const r = await svc.sendMessage(input(q, draft()));
-      if (!r.success) throw new Error(`failed: ${q}`);
+    for (const s of scenarios) {
+      const svc = createChatService(adapterReturning(s.json), allow, groundingBuilder);
+      const r = await svc.sendMessage(input(s.q, draft()));
+      if (!r.success) throw new Error(`failed: ${s.q}`);
       expect(r.structuredResult).toBeDefined();
       expect(r.meta?.grounded).toBe(true);
+      if (s.expectText) expect(r.responseText).toContain(s.expectText);
+      // futureFlow accepted because the grounding carries 대운/세운/월운 timing evidence (FIX #8).
+      if (s.expectFuture) expect(r.structuredResult?.futureFlow).toBeTruthy();
     }
   });
 });

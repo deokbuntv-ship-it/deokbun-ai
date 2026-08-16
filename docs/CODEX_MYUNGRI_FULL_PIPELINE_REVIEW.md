@@ -81,6 +81,30 @@ Live LLM answers require (nothing else blocks the pipeline):
    a specific date with no basis; an app crash; a raw JSON blob shown instead of a formatted card.
 9. **If no answer appears:** the LLM edge/key is likely not configured — see OWNER_ACTION_REQUIRED.
 
+## Codex NEEDS_TARGETED_FIX — closure table (integration-only; frozen engine untouched)
+
+| # | Finding | Status | Code / Test |
+|---|---|---|---|
+| 1 | EngineEvidence drops facts | **FIXED** | `sajuEvidenceAdapter.ts` structured `sections` (명식·십신·지장간·오행·관계·통근·투간·월령/득령·대운·세운·월운·근거) + `natalRelations.ts`; `consultationGrounding.test.ts` |
+| 2 | Provenance missing | **FIXED** | `sections['근거·한계']` (立春/12-Jie + ruleVersions); `structuredValidation.test.ts` prompt test |
+| 3 | Fail-closed structured validation (runtime) | **FIXED** | `toSafeGrounding` (grounding.ts) called in `chatService`; `structuredValidation.test.ts` |
+| 4 | Grounding detail omitted by renderer | **FIXED** | `renderEngine` now emits `sections`; `structuredValidation.test.ts` |
+| 5 | Prompt detail omitted | **FIXED** | sections reach the prompt; §16/§17 prompt test asserts 대운/세운/투간/관계/provenance |
+| 6 | Structured substance gate too weak | **FIXED** | `isSubstantiveLongForm` (coreSummary + long coreInterpretation + supporting) |
+| 7 | Timing validation (futureFlow w/o evidence) | **FIXED** | `validateStructuredAgainstGrounding` + `EngineEvidence.hasTimingEvidence` |
+| 8 | Solar/Lunar prompt divergence | **FIXED** | `inputCalendar` label + identical grounding; `structuredValidation.test.ts` equivalence test |
+| 9 | Scenario tests weak (canned) | **FIXED** | `structuredConsultationPipeline.test.ts` distinct per-scenario mocks + content assertions |
+| 10 | False engine / theory claims | **FIXED** | `validateStructuredAgainstGrounding` narrow patterns (residual risk documented below) |
+| 11 | Persisted structuredResult (minor) | **DEFERRED_MINOR** | conversation persistence stores plain text; restoring the VM needs a persistence-schema change (VM + grounding serialization, backwards-compat) — out of this integration sprint's safe scope. Live render works; only reload loses the card. |
+| — | Transparency (투간) discarded | **FIXED** | `sajuEvidenceAdapter` serializes `rooting.transparency` as its own section |
+| — | Response metadata engineVersion | **FIXED** | `chatService` sets `meta.engineVersion` from grounding |
+
+**Residual risk (documented, §11):** false-claim validation uses narrow high-precision patterns, not
+a general NL classifier — subtle phrasings inside free-text interpretation rely primarily on the
+prompt instruction, and a rejected result still shows plain text (the false claim isn't regenerated
+away, only un-blessed as a structured card). The prompt (SYSTEM_CONSTITUTION + STRUCTURED_OUTPUT_INSTRUCTION)
+remains the first defense.
+
 ## NOT started (per directive — Codex reviews next; do not infer these are done)
 
 Ziwei→grounding (Sprint 2) · Qimen→grounding (Sprint 3) · cross-analysis (Sprint 4) · 신강신약/용신/

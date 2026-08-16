@@ -20,6 +20,10 @@ export type SelectedConsultationContext = {
   // Birth-time certainty, so the prompt can honor the birth-time-unknown / approximate
   // policy (§23/§24) without fabricating a 시주. Optional for backward compatibility.
   birthTimeAccuracy?: 'exact' | 'approximate' | 'unknown';
+  // Which calendar the RAW birthDate label is in (Codex FIX #5). The deterministic grounding uses
+  // the canonical (立春/Jie) Four Pillars regardless; this only disambiguates the display label so
+  // the LLM never guesses which calendar the raw date is.
+  inputCalendar?: 'SOLAR' | 'LUNAR';
 };
 
 export type PromptBuildInput = {

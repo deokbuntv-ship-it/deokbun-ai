@@ -31,6 +31,7 @@ export { parseStructuredAiResponse } from './aiOutput';
 export type {
   EngineEvidence,
   EngineEvidenceAvailability,
+  EngineEvidenceSection,
   StructuredAiResponse,
 } from './aiOutput';
 

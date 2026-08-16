@@ -17,10 +17,23 @@ export type EngineEvidenceAvailability =
   | 'engine_not_connected'
   | 'calculation_failed';
 
+// A labeled deterministic fact section (natal / relations / timing / provenance / limitations).
+// Machine-readable structure so grounding delivers facts to the prompt without a single opaque blob.
+export type EngineEvidenceSection = {
+  label: string;
+  lines: string[];
+};
+
 export type EngineEvidence = {
   availability: EngineEvidenceAvailability;
   summary?: string; // present only when availability === 'available'
   detail?: string;
+  // Additive (Codex FIX #1/#3/#4): structured fact sections carried to the prompt. When present,
+  // the grounding renderer emits these instead of only the one-line summary.
+  sections?: EngineEvidenceSection[];
+  // Additive (Codex FIX #8): true when real timing facts (Daewoon/Sewoon/Wolwoon) are present —
+  // gates whether the LLM's `futureFlow` may be accepted as factual timing content.
+  hasTimingEvidence?: boolean;
 };
 
 export type StructuredAiResponse = {

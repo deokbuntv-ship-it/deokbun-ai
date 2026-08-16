@@ -41,8 +41,12 @@ describe('SAJU grounding — golden E2E (2024-01-03)', () => {
     expect(m.summary).toContain('癸卯'); // 년주 (立春-based → prev year)
     expect(m.summary).toContain('甲子'); // 월주 (子월)
     expect(m.summary).toContain('丙寅'); // 일주
-    expect(m.detail).toContain('출처'); // provenance survives (§5)
+    expect(m.detail).toContain('근거·한계'); // provenance section survives (§5)
     expect(m.detail).toContain('START_OF_SPRING_IPCHUN');
+    expect(m.detail).toContain('통근');
+    expect(m.detail).toContain('투간'); // FIX #2 — transparency no longer discarded
+    expect(m.sections?.some((s) => s.label === '투간')).toBe(true);
+    expect(m.hasTimingEvidence).toBe(true); // Daewoon/Sewoon/Wolwoon present
     expect(g.evidence.ziwei.availability).toBe('engine_not_connected');
     expect(g.evidence.qimen.availability).toBe('engine_not_connected');
     expect(g.engineVersion).toBeTruthy();
@@ -73,7 +77,8 @@ describe('SAJU grounding — golden E2E (2024-01-03)', () => {
     const g = await build(draft({ birthTimeAccuracy: 'unknown', birthHour: null, birthMinute: null }));
     expect(g.status).toBe('available');
     if (g.status !== 'available') return;
-    expect(g.evidence.myungri.summary).toContain('시 미상');
+    expect(g.evidence.myungri.summary).toContain('미상'); // 시주 미상
+    expect(g.evidence.myungri.detail).toContain('시주 미상');
     expect(g.evidence.myungri.summary).toContain('癸卯');
   });
 });

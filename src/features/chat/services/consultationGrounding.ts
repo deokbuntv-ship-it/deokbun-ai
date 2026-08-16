@@ -20,6 +20,7 @@ import {
 import {
   calculateDaewoonTenGods,
   calculateMonthCommand,
+  calculateNatalRelations,
   calculateRootingTransparency,
   calculateSewoonForInstant,
   calculateWolwoonForInstant,
@@ -71,6 +72,7 @@ export async function buildConsultationGrounding(
   // SUCCESS or PARTIAL (시주 미상) → derive the Myungri facts from the frozen chart (no new calc).
   const fourPillars = engineResult.output.fourPillars;
   const natal = natalContextFromFourPillars(fourPillars);
+  const natalRelations = calculateNatalRelations(natal);
   const monthCommand = calculateMonthCommand(natal);
   const rooting = calculateRootingTransparency(natal);
   const daewoon = calculateSajuDaewoon(
@@ -88,6 +90,7 @@ export async function buildConsultationGrounding(
 
   const myungri = toSajuEvidence({
     engineResult,
+    natalRelations,
     monthCommand,
     rooting,
     daewoonTenGods,

@@ -34,11 +34,15 @@ function sanitizeContextValue(raw: string, maxLen = 80): string {
 }
 
 function buildSubjectBlock(ctx: SelectedConsultationContext): string {
+  // Codex FIX #5: label the calendar of the RAW birth date so the LLM never guesses. The canonical
+  // Four Pillars in 【계산 근거】 are the authoritative deterministic basis (identical for the same
+  // instant whether entered as 양력 or 음력).
+  const calendarLabel = ctx.inputCalendar === 'LUNAR' ? '음력' : '양력';
   const lines = [
     '[상담 대상]',
     `대상: ${sanitizeContextValue(ctx.subjectDisplayName)}`,
     `성별: ${ctx.gender}`,
-    `생년월일: ${ctx.birthDate}`,
+    `생년월일: ${ctx.birthDate} (${calendarLabel} 입력) — 확정 명식은 아래 【계산 근거】 기준`,
     `출생시간: ${ctx.birthTimeSummary}`,
     `출생지: ${sanitizeContextValue(ctx.birthPlace)}`,
   ];

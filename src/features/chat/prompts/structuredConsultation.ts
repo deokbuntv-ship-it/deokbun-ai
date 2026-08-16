@@ -96,9 +96,81 @@ export function parseStructuredConsultation(text: string): ParsedStructuredConsu
     followUps: strArray(o.followUps),
   };
 
-  // Substance gate (§13): a valid structured consultation must carry the main body. If the model
-  // returned an empty/degenerate object, fall back to plain text rather than render an empty card.
-  if (!parsed.coreInterpretation && !parsed.coreSummary) return null;
+  // Substance gate (Codex FIX #6 / §8): a valid structured consultation must be LONG-FORM, not a
+  // one-liner. Require BOTH the orientation (coreSummary) AND a substantive core interpretation,
+  // with enough additional body to justify structured rendering. Summary-only / too-shallow → null
+  // → safe plain-text fallback (no empty card).
+  if (!isSubstantiveLongForm(parsed)) return null;
+  return parsed;
+}
+
+const MIN_CORE_INTERPRETATION_CHARS = 120;
+
+/** Long-form product gate: coreSummary + a substantive coreInterpretation (+ some supporting body). */
+export function isSubstantiveLongForm(p: ParsedStructuredConsultation): boolean {
+  if (!p.coreSummary || !p.coreInterpretation) return false;
+  if (p.coreInterpretation.length < MIN_CORE_INTERPRETATION_CHARS) return false;
+  // At least one supporting section beyond the core body (강점/주의점/영역별/앞으로의 흐름/기본 성향).
+  const hasSupporting =
+    (p.strengths?.length ?? 0) > 0 ||
+    (p.cautions?.length ?? 0) > 0 ||
+    (p.domainInterpretation?.length ?? 0) > 0 ||
+    !!p.futureFlow ||
+    !!p.disposition;
+  return hasSupporting;
+}
+
+// ── Grounding-aware validation (Codex FIX #8/#9/#10) ─────────────────────────────────
+// Second defensive layer AFTER the prompt instruction. NARROW, high-precision patterns — NOT a
+// general NL classifier (§10/§11). Residual risk (subtle phrasings) is mitigated by the prompt and
+// documented for Codex. A violation → null → plain-text fallback (never blessed as a structured card).
+import type { ConsultationGrounding } from './grounding';
+
+const ZIWEI_USE = /자미두수\s*(로\s*보|로\s*분석|를\s*보면|에\s*따르면|\s*분석|\s*결과|\s*명반|\s*차트|\s*상)/;
+const QIMEN_USE = /(기문둔갑\s*(으로\s*보|으로\s*분석|을\s*보면|에\s*따르면|\s*분석|\s*결과)|기문\s*국)/;
+const MULTI_ENGINE_CONSENSUS =
+  /(세\s*(가지\s*)?학문|세\s*가지\s*역학|3\s*(개|가지)\s*(학문|엔진)|세\s*엔진)[^\n]{0,12}(일치|합치|같은\s*결론|동의|공통|모두)/;
+const FORBIDDEN_THEORY =
+  /((당신[은는]?\s*)?신강[한\s]*(사주|입니다|합니다|이에요)|(당신[은는]?\s*)?신약[한\s]*(사주|입니다|합니다|이에요)|용신(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정)\S|격국(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정)\S|(12|십이)\s*운성|(12|십이)\s*신살)/;
+
+function allText(p: ParsedStructuredConsultation): string {
+  return [
+    p.coreSummary,
+    p.disposition,
+    p.coreInterpretation,
+    p.futureFlow,
+    ...(p.strengths ?? []),
+    ...(p.cautions ?? []),
+    ...(p.domainInterpretation ?? []).map((d) => `${d.title} ${d.body}`),
+  ]
+    .filter((x): x is string => typeof x === 'string')
+    .join('\n');
+}
+
+/**
+ * Reconcile the parsed structured output with the deterministic grounding:
+ *  - false Ziwei/Qimen use or multi-engine "consensus" while those engines are unconnected → reject.
+ *  - explicit unsupported-theory assertions (신강/신약/용신/격국/12운성/12신살) presented as fact → reject.
+ *  - `futureFlow` present but NO timing evidence (Daewoon/Sewoon/Wolwoon) → drop it (never fabricate timing).
+ * Returns the (possibly futureFlow-stripped) result, or null to force the plain-text fallback.
+ */
+export function validateStructuredAgainstGrounding(
+  parsed: ParsedStructuredConsultation,
+  grounding: ConsultationGrounding,
+): ParsedStructuredConsultation | null {
+  const ziweiAvailable = grounding.status === 'available' && grounding.evidence.ziwei.availability === 'available';
+  const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
+  const hasTiming = grounding.status === 'available' && grounding.evidence.myungri.hasTimingEvidence === true;
+  const text = allText(parsed);
+
+  if (!ziweiAvailable && ZIWEI_USE.test(text)) return null; // FIX #9
+  if (!qimenAvailable && QIMEN_USE.test(text)) return null; // FIX #9
+  if (!(ziweiAvailable && qimenAvailable) && MULTI_ENGINE_CONSENSUS.test(text)) return null; // FIX #9
+  if (FORBIDDEN_THEORY.test(text)) return null; // FIX #10
+
+  if (parsed.futureFlow && !hasTiming) {
+    return { ...parsed, futureFlow: undefined }; // FIX #8 — no timing evidence → no factual timing
+  }
   return parsed;
 }
 

@@ -54,6 +54,10 @@ export {
 export { natalContextFromFourPillars } from './services/natalContext';
 export { toSajuEvidence, type SajuEvidenceBundle } from './adapters/sajuEvidenceAdapter';
 export {
+  calculateNatalRelations,
+  type NatalRelationsResult,
+} from './services/natalRelations';
+export {
   calculateSewoonForInstant,
   calculateWolwoonForInstant,
   resolveSajuTemporalForInstant,

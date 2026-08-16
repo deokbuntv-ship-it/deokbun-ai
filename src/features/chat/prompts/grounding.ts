@@ -64,16 +64,46 @@ const UNAVAILABLE_REASON_LABEL: Record<GroundingUnavailableReason, string> = {
 };
 
 function renderEngine(label: string, ev: EngineEvidence): string {
-  const summary = ev.summary?.trim();
-  if (ev.availability === 'available' && summary) {
-    return `- ${label}(제공됨): ${summary}`;
-  }
-  // Fail-closed against a mis-wire: `available` with no usable summary is NOT grounding.
-  // Do not let the model treat an empty "제공됨" as facts it may elaborate on.
   if (ev.availability === 'available') {
+    // Codex FIX #3/#4: deliver the FULL structured fact sections to the prompt (not only a
+    // one-line summary). Malformed sections are skipped defensively (no throw at prompt time).
+    const sections = Array.isArray(ev.sections)
+      ? ev.sections.filter(
+          (s) => s && typeof s.label === 'string' && Array.isArray(s.lines) && s.lines.length > 0,
+        )
+      : [];
+    if (sections.length > 0) {
+      const body = sections
+        .map((s) => `  · ${s.label}: ${s.lines.filter((l) => typeof l === 'string').join(' | ')}`)
+        .join('\n');
+      return `- ${label}(제공됨):\n${body}`;
+    }
+    const summary = ev.summary?.trim();
+    if (summary) return `- ${label}(제공됨): ${summary}`;
+    // Fail-closed against a mis-wire: `available` with no usable facts is NOT grounding.
     return `- ${label}: 제공됨(요약 없음 — 근거로 쓸 내용이 없으므로 지어내지 마십시오)`;
   }
   return `- ${label}: ${AVAILABILITY_LABEL[ev.availability]}`;
+}
+
+// Codex FIX #6 — runtime guard used before prompt construction: a structurally malformed
+// grounding degrades to fail-closed UNAVAILABLE rather than reaching the LLM as trusted facts.
+export function toSafeGrounding(g: ConsultationGrounding | null | undefined): ConsultationGrounding {
+  if (!g || (g.status !== 'available' && g.status !== 'unavailable')) return GROUNDING_UNAVAILABLE;
+  if (g.status === 'unavailable') return g;
+  const ev = g.evidence;
+  const ok =
+    ev &&
+    typeof ev === 'object' &&
+    isEngineEvidence(ev.myungri) &&
+    isEngineEvidence(ev.ziwei) &&
+    isEngineEvidence(ev.qimen);
+  return ok ? g : GROUNDING_UNAVAILABLE;
+}
+
+function isEngineEvidence(v: unknown): v is EngineEvidence {
+  const o = v as { availability?: unknown } | null;
+  return o !== null && typeof o === 'object' && typeof o.availability === 'string';
 }
 
 /**

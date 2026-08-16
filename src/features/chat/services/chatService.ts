@@ -12,11 +12,16 @@ import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
 import { classifyConsultationMode } from '@/features/chat/prompts/consultationMode';
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
-import { GROUNDING_UNAVAILABLE, type ConsultationGrounding } from '@/features/chat/prompts/grounding';
+import {
+  GROUNDING_UNAVAILABLE,
+  toSafeGrounding,
+  type ConsultationGrounding,
+} from '@/features/chat/prompts/grounding';
 import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import {
   composeConsultationText,
   parseStructuredConsultation,
+  validateStructuredAgainstGrounding,
 } from '@/features/chat/prompts/structuredConsultation';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
@@ -106,7 +111,9 @@ export function createChatService(
     let grounding = GROUNDING_UNAVAILABLE;
     if (buildGrounding) {
       try {
-        grounding = await buildGrounding(input.draft);
+        // toSafeGrounding (§6): a structurally malformed grounding degrades to UNAVAILABLE and
+        // never reaches the prompt as trusted facts.
+        grounding = toSafeGrounding(await buildGrounding(input.draft));
       } catch {
         grounding = GROUNDING_UNAVAILABLE;
       }
@@ -130,23 +137,27 @@ export function createChatService(
         requestId, // forwarded to the edge for end-to-end correlation
       });
 
-      // Parse the LLM's structured long-form. Success → a validated view model (parsed
-      // interpretation + the deterministic grounding + fail-closed assessment) and a readable
-      // plain-text mirror; malformed/prose → no structuredResult, raw text fallback (§13).
+      // Parse → grounding-aware validation (timing gate + false-engine/theory rejection). A valid
+      // result → view model (parsed + deterministic grounding + fail-closed assessment) + readable
+      // plain-text mirror; malformed/prose/rejected → no structuredResult, raw text fallback (§13).
       const parsed = parseStructuredConsultation(response.text);
-      const structuredResult = parsed
-        ? buildStructuredConsultationResult(parsed, grounding)
+      const validated = parsed ? validateStructuredAgainstGrounding(parsed, grounding) : null;
+      const structuredResult = validated
+        ? buildStructuredConsultationResult(validated, grounding)
         : undefined;
+      const engineVersion =
+        grounding.status === 'available' ? grounding.engineVersion ?? null : null;
 
       return {
         success: true,
-        responseText: parsed ? composeConsultationText(parsed) : response.text,
+        responseText: validated ? composeConsultationText(validated) : response.text,
         ...(structuredResult ? { structuredResult } : {}),
         requestId,
         meta: {
           promptVersion: CONSULTATION_PROMPT_VERSION,
           mode,
           grounded: grounding.status === 'available',
+          ...(engineVersion ? { engineVersion } : {}),
         },
       };
     } catch (error) {
