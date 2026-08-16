@@ -52,6 +52,8 @@ describe('toZiweiEvidence — structured sections (§35)', () => {
     const text = prov?.lines.join(' ') ?? '';
     expect(text).toContain('iztro');
     expect(text).toContain('iztro-default@2.5.8'); // ruleSetVersion pinned
+    expect(text).toContain('가정:'); // deterministic assumptions (parity with Saju evidence)
+    expect(text).toContain('fixLeap'); // real leap-month policy assumption
     expect(text).toContain('관례'); // Saju↔Ziwei month-干支 convention difference (not a bug)
     expect(text).toContain('한계'); // star/四化 characterization limitation stated honestly
   });

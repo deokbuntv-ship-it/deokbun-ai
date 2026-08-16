@@ -83,6 +83,7 @@ describe('dual-engine grounding → prompt (§36/§37)', () => {
     expect(ctx).toContain('命宮'); // ZIWEI fact
     expect(ctx).toContain('五行局');
     expect(ctx).toContain('관례'); // Saju↔Ziwei month-干支 convention difference note (§8/§41)
+    expect(ctx).toContain('fixLeap'); // Ziwei deterministic assumptions reach the prompt (가정)
     expect(ctx).toContain('엔진 구분'); // per-engine attribution discipline (§21)
     expect(ctx).toContain('기문둔갑'); // present as a labeled row…
     expect(ctx).toContain('미연결'); // …explicitly NOT connected (§28)
@@ -232,5 +233,28 @@ describe('follow-up loop (§30)', () => {
     const g = follow.structuredResult?.grounding;
     if (g?.status !== 'available') throw new Error('expected available');
     expect(g.evidence.ziwei.availability).toBe('available'); // re-grounded, not reused conversation text
+  });
+});
+
+// ── PART B — Ziwei-only survives the raised strict-grounding bar (patch #3/#4) ─────────
+describe('Ziwei-only degraded mode through the STRICT chatService pipeline (§17)', () => {
+  it('pre-1970 birth: Saju out of range → Ziwei-only structuredResult (strict toSafeGrounding accepts it)', async () => {
+    const ziweiMock = JSON.stringify({
+      coreSummary: '자미두수 명반 중심으로 본 성향입니다.',
+      coreInterpretation:
+        '자미두수 명반에서는 명궁의 주성과 오행국이 전반적인 기질을 보여 줍니다. 차분하면서도 필요한 순간에는 ' +
+        '추진력을 내는 균형형으로, 꾸준히 축적하는 방식이 잘 맞습니다. 관계에서는 신뢰를 바탕으로 오래가는 인연을 만드는 편입니다.',
+      strengths: ['끈기', '통찰력'],
+      followUps: ['자미두수 명궁을 더 자세히 볼까요?'],
+    });
+    const svc = createChatService(adapterReturning(ziweiMock), allow, groundingBuilder);
+    const r = await svc.sendMessage(input('제 성격을 봐주세요.', draft({ birthYear: '1965', birthMonth: '6', birthDay: '15' })));
+    if (!r.success) throw new Error('unexpected');
+    expect(r.structuredResult).toBeDefined(); // strict grounding did NOT wrongly degrade Ziwei-only
+    expect(r.meta?.grounded).toBe(true);
+    const g = r.structuredResult?.grounding;
+    if (g?.status !== 'available') throw new Error('expected available (Ziwei-only)');
+    expect(g.evidence.myungri.availability).toBe('calculation_failed'); // Saju spine out of 1970–2050 range
+    expect(g.evidence.ziwei.availability).toBe('available'); // Ziwei-only survived the strict AVAILABLE-shape check
   });
 });

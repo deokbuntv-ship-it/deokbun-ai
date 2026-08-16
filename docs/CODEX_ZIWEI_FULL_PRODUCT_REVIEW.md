@@ -154,6 +154,39 @@ consensus rejection (above). No fabricated cross-engine consensus.
 Live LLM answers still require (nothing else blocks the pipeline): deploy Supabase Edge `chat` + set
 `OPENAI_API_KEY` (server-side) + a logged-in user. All code/tests are complete against the mock LLM boundary.
 
+## Continuation (post-Myungri-closure verification)
+
+The Myungri pipeline closure patches (`e913913` … `ee3be57`) raised the shared integration bar; Ziwei
+was **preserved unchanged** through all of them (`git diff 02f1382 HEAD -- src/features/ziwei` was empty
+before this continuation). This continuation re-verified Ziwei against the raised bar and added the one
+genuine parity item:
+
+- **Assumptions parity**: `toZiweiEvidence`'s `근거·한계` section now carries an explicit `가정:` line —
+  the REAL deterministic Ziwei assumptions (exact 시진 required · `fixLeap=true` leap-month policy ·
+  star/四化 placement owned by iztro default 학파, not recomputed · ko-KR output). Matches the Saju
+  evidence's `가정:` line; no calculation change. Reaches the prompt (`dualEngineConsultation` §37 asserts
+  `fixLeap`; `ziweiEvidenceSections` asserts `가정:`/`fixLeap`).
+- **Strict-grounding compatibility (patch #3/#4)**: real Ziwei evidence (non-empty summary + usable
+  sections) passes the stricter `toSafeGrounding`; **Ziwei-only** degraded mode survives it end-to-end
+  through chatService (new `dualEngineConsultation` test: pre-1970 birth → Saju `calculation_failed`,
+  Ziwei `available`, `structuredResult` produced, `grounded=true`).
+- **No timing anchors from Ziwei**: `hasTimingEvidence:false`, no `timingAnchors` (natal only; 大限
+  excluded from V1) — so the Saju 1970–2050 timing-year gate is unaffected by Ziwei.
+- Regression: Ziwei focused/golden/evidence/cache + dual-engine + degraded + false-claim + convention +
+  Solar/Lunar all green; full Jest 49 suites / 550 tests.
+
+## Performance / cache (verified)
+
+`computeZiweiChartMemoized` (bounded FIFO, key = gender|solar-date|hour) is local pure iztro calc —
+negligible vs. LLM latency; key isolates per birth profile (no wrong-user leakage). No new cache infra.
+
+## Security (verified)
+
+iztro is a local library (no external send); no birth payload logged in the evidence path; the client
+never fabricates trusted Ziwei evidence (grounding is built server-path in chatService); no secret in
+the Ziwei code; model output passes `classifyConsultationOutput` before render.
+
 ## STATUS
 
-`READY_FOR_CODEX_ZIWEI_FULL_PRODUCT_REVIEW`. Qimen NOT connected. Deferred Myungri theory NOT started.
+`READY_FOR_CODEX_ZIWEI_FULL_PRODUCT_REVIEW`. Baseline `02f1382` → continuation atop `ee3be57`. Qimen NOT
+connected. Deferred Myungri theory NOT started.

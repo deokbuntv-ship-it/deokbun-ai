@@ -85,7 +85,10 @@ function palaceLines(chart: ZiweiChart): string[] {
 
 function provenanceLines(chart: ZiweiChart): string[] {
   return [
-    `엔진 자미두수(${chart.library}@${chart.libraryVersion}) · 규칙 ${chart.ruleSetVersion}`,
+    `엔진 자미두수(${chart.library}@${chart.libraryVersion}) · 규칙 ${chart.ruleSetVersion} · 출력 ko-KR`,
+    // Assumptions — the REAL deterministic assumptions of the Ziwei calculation (parity with the Saju
+    // evidence's 가정: line). These are provider/profile facts, not fabricated interpretation.
+    '가정: exact 시진(출생 시간) 필요 · fixLeap=true(윤달 처리) · 별·四化 배치는 provider(iztro default 학파) 소유(재계산 아님).',
     '역법 관례: 자미두수는 자체 음력월 간지를 사용하므로, 명리(立春·12절 기준)와 월주 간지 표기가 다를 수 있습니다 — 계산 오류가 아니라 학문별 관례 차이입니다.',
     '한계: 명궁·오행국·일간지 기반은 검증되었으나, 개별 성계/四化 배치는 iztro default 학파 기준이며 완전 독립 검증된 것은 아닙니다.',
   ];
