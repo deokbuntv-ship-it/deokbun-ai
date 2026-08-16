@@ -1,11 +1,11 @@
 # DeokbunAI Myungri Engine V1 — Connected Time-Axis (세운 · 월운 · 관계)
 
-> **Status: `READY_FOR_CODEX_REVIEW`.** A frozen V1 candidate for the 원국 → 대운 → 세운 → 월운
+> **Status: `APPROVED_FREEZE` (Codex, canonical commit `7c7ed82`) — see `MYUNGRI_V1_FREEZE.md`.** The 원국 → 대운 → 세운 → 월운
 > deterministic time-axis, built ON TOP of the frozen SAJU engine (ENGINE-12) — reuse-first,
 > facts-only, fail-closed. **No engine was rebuilt; no rule was invented.** Claude-owned,
 > engine-external (`src/features/myungri/**`).
 >
-> **UPDATE — Saju year/month BOUNDARY FIX (`READY_FOR_CODEX_RE_REVIEW`):** the natal year pillar now rolls at
+> **UPDATE — Saju year/month BOUNDARY FIX (`APPROVED_FREEZE`, `7c7ed82`):** the natal year pillar now rolls at
 > **立春** and the month pillar at the twelve **節(Jie)** (was: lunar calendar year/month — a
 > confirmed bug). This is a targeted correction inside `interpretation/saju/**` reusing the
 > ENGINE-12 solar-term runtime (no new calendar engine). Golden lock: solar `2024-01-03` = lunar

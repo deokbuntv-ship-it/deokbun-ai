@@ -102,7 +102,7 @@ Local only (no push/deploy/DB). Hash recorded in the session report.
 
 ---
 
-## Codex re-review — 4 TARGETED FIXES applied (status: `READY_FOR_CODEX_RE_REVIEW`)
+## Codex re-review — 4 TARGETED FIXES applied (status: `APPROVED_FREEZE`, canonical `7c7ed82`)
 
 Applied on top of the boundary fix, reusing ENGINE-12 policy only (no new theory/calendar/OSS).
 The 立春/12-Jie basis is treated as approved and is NOT reopened. ADOPT 3종 (`d256b51`) preserved.

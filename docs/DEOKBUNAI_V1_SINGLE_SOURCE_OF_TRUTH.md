@@ -199,7 +199,7 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 
 | Engine | Calc | Adapter→EngineEvidence | Tests/Fixtures | Live-wired to prompt | Prod |
 |---|---|---|---|---|---|
-| **SAJU** (in-repo, frozen) | ✅ E2E_LOCAL (~10K LOC) | ❌ **adapter missing** (`myungri` slot) | tests via analysis; golden fixtures internal | ❌ | ❌ |
+| **SAJU / Myungri** (in-repo, **FROZEN `7c7ed82`** — Codex `APPROVED_FREEZE`) | ✅ E2E_LOCAL — 立春 year / 12-Jie month + 십신·지장간·오행·관계·대운·세운·월운·시간축·대운십신·통근투간·월령득령 | ❌ **adapter missing** (`myungri`→EngineEvidence slot — deferred, do NOT start) | 457 tests (golden + independent + boundary + ADOPT) | ❌ | ❌ |
 | **Ziwei** (iztro) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toZiweiEvidence`) | ziwei tests | ❌ | ❌ |
 | **Qimen** (qimen-dunjia) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toQimenEvidence`) | qimen tests | ❌ | ❌ |
 | Orchestration/cross-analysis seam | — | ◐ SCAFFOLDED, no non-test caller | analysis tests | ❌ (`ENGINE_CONNECTED={all:false}`) | ❌ |
@@ -211,6 +211,22 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
   contextSelector → run engines → EngineEvidence → orchestration → promptBuilder). This is
   a *known, deliberate Codex handoff*, not an accidental regression. **Do not change
   engine semantics (§19).**
+
+### 11a. Myungri V1 deterministic freeze — `APPROVED_FREEZE` (canonical commit `7c7ed82`)
+
+Codex final review (2026-08-16) returned **`APPROVED_FREEZE`** for the Myungri deterministic
+CALC layer at **`7c7ed82f9dcabad034795919f6103ef562d0a6bb`**. Freeze record + Codex's 12-point
+PASS checklist: `docs/MYUNGRI_V1_FREEZE.md`. Detail: `MYUNGRI_TIME_AXIS_V1.md`,
+`MYUNGRI_YEAR_MONTH_BOUNDARY_FIX.md`.
+
+**Frozen (deterministic, fail-closed, facts-only):** natal Four Pillars · canonical year(立春)/
+month(12 Jie) attribution · ten gods · hidden stems · five-element facts/distribution · pillar
+relations (합충형파해·삼합·방합) · Daewoon (ENGINE-12) · Sewoon · Wolwoon · 원국↔대운↔세운↔월운
+time-axis · Daewoon ten-gods · rooting/transparency (통근/투간) · month-command / 득령 input facts.
+
+**Deferred / separately scoped (NOT in the freeze, do NOT start here):** EngineEvidence adapter +
+live-wiring (§11 above) · 신강신약 verdict · 용신 · 격국 · 12운성 · 12신살. **Do NOT reopen:**
+calendar / Solar-Term / 立春·12-Jie / Daewoon theory / new-OSS research (all settled & frozen).
 
 ## 12. Consultation Intelligence
 
