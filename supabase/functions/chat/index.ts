@@ -1,34 +1,35 @@
-// DeokbunAI — Chat Edge Function
+// DeokbunAI — Chat Edge Function  (Server Trust Boundary — Server-Trust sprint)
 //
-// This is the ONLY place a real LLM provider is called (server trust boundary).
+// This is the ONLY place a real LLM provider is called AND — as of the server-trust sprint — the ONLY
+// place the authoritative deterministic grounding is built. The client is authoritative for NOTHING
+// deterministic (§7/§8): it sends birth INPUT + a question + untrusted prior turns. The SERVER recomputes
+// every fact, builds the grounding + system prompt, calls OpenAI, validates the output, and returns a
+// bounded result. A modified client can no longer fabricate SAJU/Ziwei/Qimen facts, availability,
+// provenance, or "세 학문 일치" consensus.
 //
 // Principles enforced here:
-// - OpenAI API key lives only in server secrets (never in the client).           [Sprint 2-19 #1, #6]
-// - Only authenticated Supabase users may call this function.                     [#3, #4]
-//   Auth uses the recommended `withSupabase({ auth: 'user' })` wrapper with the
-//   platform-level `verify_jwt = true`; unauthenticated requests are rejected
-//   before this handler runs.
-// - The client only sends `messages`. The MODEL and OUTPUT TOKEN LIMIT are
-//   decided by the server (env/secret), so the client cannot inflate cost.       [#15, #16, #17]
-// - A per-user burst Rate Limit runs at the top of this handler (before any LLM
-//   call) using the existing ai_usage_logs table; fail-open, no new infra.       [#13]
+// - OpenAI API key lives only in server secrets (never in the client).
+// - Only authenticated Supabase users may call this function (`withSupabase({ auth: 'user' })`,
+//   platform `verify_jwt = true`).
+// - The client CANNOT send messages/grounding/system prompts. The server builds them from input.        [§8]
+// - The question time (Qimen + current-year 세운/월운) is the SERVER receipt time, not the client clock.  [§10]
+// - The model + output-token limit are server-decided.
+// - Per-user burst rate limit runs before any paid LLM call, reusing ai_usage_logs.
 //
-// Logging policy: the success path is silent. Only failure paths log, via
-// `console.error`, and never include secrets, tokens, the Authorization header,
-// the user JWT, the request body, or the full OpenAI response body — only a
-// stage marker, HTTP status, or exception name/message.
-//
-// Runtime: Supabase Edge Functions (Deno). This file is intentionally excluded
-// from the app's TypeScript project (see tsconfig `exclude`) and is never bundled
-// by Metro — it runs only on Supabase.
+// Runtime: Supabase Edge Functions (Deno). Excluded from the app tsconfig; never bundled by Metro. It
+// imports the app's runtime-neutral orchestrator via the sibling deno.json import map ('@/' → src).
+// NOTE: engine execution under Deno is UNVERIFIED in this workspace (no deno/supabase CLI) —
+// EDGE_RUNTIME_NOT_EXECUTED; the orchestrator logic itself is verified under Node/Jest.
 
 import { withSupabase } from 'npm:@supabase/server';
 import { createClient } from 'npm:@supabase/supabase-js';
 
-type ChatMessage = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-};
+import { buildServerConsultation } from '@/features/chat/server';
+import type { TrustedBirthResolution } from '@/features/chat/server';
+import { buildSummaryPrompt } from '@/features/chat/prompts/summaryPromptBuilder';
+import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
+import type { ChatMessage } from '@/features/chat/types/chat';
+import type { BirthInfoDraft } from '@/features/consultation';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5-mini';
@@ -37,77 +38,125 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 800;
 function readServerConfig() {
   const apiKey = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
   const model = Deno.env.get('LLM_MODEL')?.trim() || DEFAULT_MODEL;
-
   const rawMaxOutputTokens = Deno.env.get('LLM_MAX_OUTPUT_TOKENS')?.trim();
-  const parsedMaxOutputTokens = Number(rawMaxOutputTokens);
+  const parsed = Number(rawMaxOutputTokens);
   const maxOutputTokens =
-    Number.isFinite(parsedMaxOutputTokens) && parsedMaxOutputTokens > 0
-      ? Math.floor(parsedMaxOutputTokens)
-      : DEFAULT_MAX_OUTPUT_TOKENS;
-
+    Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_MAX_OUTPUT_TOKENS;
   return { apiKey, model, maxOutputTokens };
 }
 
-function isValidMessages(value: unknown): value is ChatMessage[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every(
-      (message) =>
-        message !== null &&
-        typeof message === 'object' &&
-        (message.role === 'system' ||
-          message.role === 'user' ||
-          message.role === 'assistant') &&
-        typeof message.content === 'string',
-    )
-  );
-}
+// Deno-native DigestProvider (Web Crypto). Byte-identical hex to the app's Node provider
+// (createHash('sha256').update(x,'utf8').digest('hex')) so the frozen engine's fingerprint is stable.
+const denoDigestProvider = {
+  async sha256Utf8(input: string): Promise<string> {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  },
+};
 
-// Extract assistant text from the raw Responses API JSON.
-// The raw HTTP response exposes an `output` array; the assistant text lives in a
-// `message` item's `output_text` content parts. `output_text` at the top level
-// is an SDK convenience and may be absent in the raw payload, so it is only a
-// fallback here.
 function extractText(payload: unknown): string {
   const output = (payload as { output?: unknown } | null)?.output;
-
   if (Array.isArray(output)) {
     const parts: string[] = [];
-
     for (const item of output) {
       if (item?.type === 'message' && Array.isArray(item.content)) {
         for (const contentPart of item.content) {
-          if (
-            contentPart?.type === 'output_text' &&
-            typeof contentPart.text === 'string'
-          ) {
+          if (contentPart?.type === 'output_text' && typeof contentPart.text === 'string') {
             parts.push(contentPart.text);
           }
         }
       }
     }
-
     const joined = parts.join('').trim();
-    if (joined.length > 0) {
-      return joined;
-    }
+    if (joined.length > 0) return joined;
   }
-
   const convenience = (payload as { output_text?: unknown } | null)?.output_text;
-  if (typeof convenience === 'string' && convenience.trim().length > 0) {
-    return convenience.trim();
-  }
-
+  if (typeof convenience === 'string' && convenience.trim().length > 0) return convenience.trim();
   return '';
 }
 
-// ---- AI usage logging (ADMIN-04) --------------------------------------------
-// Fail-safe, server-side only. Writes public.ai_usage_logs via the service_role
-// key (auto-injected into Edge Functions). It NEVER blocks or fails the chat
-// response — every path swallows its own errors. The user id is read from the
-// already-verified JWT `sub` claim (no extra network call). Only raw usage is
-// stored; no cost/price calculation happens here.
+// The one outbound provider call, shared by the consultation + summary paths. Throws OpenAIFault (with a
+// stable code) on any transport/HTTP fault so callers can map it uniformly.
+class OpenAIFault extends Error {
+  code: string;
+  constructor(code: string) {
+    super(code);
+    this.name = 'OpenAIFault';
+    this.code = code;
+  }
+}
+async function callOpenAI(
+  messages: LLMMessage[],
+  cfg: { apiKey: string; model: string; maxOutputTokens: number },
+): Promise<{ text: string; usage: Record<string, unknown> }> {
+  let providerResponse: Response;
+  try {
+    providerResponse = await fetch(OPENAI_RESPONSES_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: cfg.model, input: messages, max_output_tokens: cfg.maxOutputTokens }),
+    });
+  } catch {
+    throw new OpenAIFault('OPENAI_FETCH_FAILED');
+  }
+  if (!providerResponse.ok) throw new OpenAIFault(`OPENAI_${providerResponse.status}`);
+  const payload = await providerResponse.json();
+  const usage = (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
+  return { text: extractText(payload), usage };
+}
+
+// ---- trusted profile resolution (§9/§25) ------------------------------------
+// Map a server-owned consumer_birth_profiles row → BirthInfoDraft. Because the Edge uses the
+// service_role client (which BYPASSES RLS), the owner check below is REQUIRED, not optional.
+function rowToBirthInfo(row: Record<string, unknown>): BirthInfoDraft {
+  const s = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+  return {
+    displayName: s(row.display_name),
+    gender: (row.gender as BirthInfoDraft['gender']) ?? null,
+    calendarType: (row.calendar_type as BirthInfoDraft['calendarType']) ?? null,
+    lunarMonthType: (row.lunar_month_type as BirthInfoDraft['lunarMonthType']) ?? null,
+    birthYear: s(row.birth_year),
+    birthMonth: s(row.birth_month),
+    birthDay: s(row.birth_day),
+    birthTimeAccuracy: (row.birth_time_accuracy as BirthInfoDraft['birthTimeAccuracy']) ?? null,
+    birthHour: s(row.birth_hour),
+    birthMinute: s(row.birth_minute),
+    approximateTimePeriod: (row.approximate_time_period as BirthInfoDraft['approximateTimePeriod']) ?? null,
+    birthPlace: s(row.birth_place),
+  };
+}
+
+function makeResolveTrustedBirth(
+  userId: string | null,
+  admin: ReturnType<typeof createClient> | null,
+): (subjectProfileId: string) => Promise<TrustedBirthResolution> {
+  return async (subjectProfileId: string) => {
+    if (!userId || !admin) return { status: 'FORBIDDEN' };
+    try {
+      const { data, error } = await admin
+        .from('consumer_birth_profiles')
+        .select('*')
+        .eq('id', subjectProfileId)
+        .maybeSingle();
+      if (error || !data) return { status: 'NOT_FOUND' };
+      // Service role bypasses RLS → verify ownership in code (defense in depth, §25).
+      if ((data as { owner_user_id?: unknown }).owner_user_id !== userId) return { status: 'FORBIDDEN' };
+      return {
+        status: 'RESOLVED',
+        birthInfo: rowToBirthInfo(data as Record<string, unknown>),
+        subjectLabel:
+          ((data as { subject_label?: string | null }).subject_label ??
+            (data as { display_name?: string | null }).display_name) ?? null,
+      };
+    } catch {
+      return { status: 'NOT_FOUND' }; // fail closed
+    }
+  };
+}
+
+// ---- AI usage logging -------------------------------------------------------
 type AiUsageLog = {
   user_id: string | null;
   model: string | null;
@@ -119,22 +168,15 @@ type AiUsageLog = {
   status: 'success' | 'error';
   error_code: string | null;
 };
-
 function toNullableInt(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? Math.trunc(value)
-    : null;
+  return typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : null;
 }
-
-// Accept only a short, safe correlation id from the client (never PII by
-// contract; still sanitized here to prevent log injection / oversized values).
 function sanitizeRequestId(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (trimmed.length === 0 || trimmed.length > 64) return null;
   return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : null;
 }
-
 function userIdFromRequest(req: Request): string | null {
   try {
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -148,31 +190,19 @@ function userIdFromRequest(req: Request): string | null {
     return null;
   }
 }
-
-async function logAiUsage(
-  entry: AiUsageLog,
-  requestId: string | null,
-): Promise<void> {
+function adminClient(): ReturnType<typeof createClient> | null {
+  const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (url.length === 0 || serviceRoleKey.length === 0) return null;
+  return createClient(url, serviceRoleKey);
+}
+async function logAiUsage(entry: AiUsageLog, requestId: string | null): Promise<void> {
   try {
-    const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-    const serviceRoleKey =
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
-    if (url.length === 0 || serviceRoleKey.length === 0) {
-      return;
-    }
-    const admin = createClient(url, serviceRoleKey);
-
-    // Persist the correlation id when we have one. The `request_id` column is
-    // optional (see docs/AI_USAGE_LOGS_REQUEST_ID.sql — owner-apply): if it does
-    // not exist yet, the insert errors and we FALL BACK to inserting without it,
-    // so usage telemetry is never lost pre-migration.
+    const admin = adminClient();
+    if (!admin) return;
     if (requestId) {
-      const { error } = await admin
-        .from('ai_usage_logs')
-        .insert({ ...entry, request_id: requestId });
-      if (!error) {
-        return;
-      }
+      const { error } = await admin.from('ai_usage_logs').insert({ ...entry, request_id: requestId });
+      if (!error) return;
     }
     await admin.from('ai_usage_logs').insert(entry);
   } catch {
@@ -180,19 +210,7 @@ async function logAiUsage(
   }
 }
 
-// ---- burst rate limiting (Sprint 2-13, directive §2-A) ----------------------
-// Server-side abuse guard: caps sustained per-user request volume in a sliding
-// window BEFORE any paid LLM call. It reuses the EXISTING public.ai_usage_logs
-// table (no new infra / no Redis) — counting this user's chat rows written in
-// the last window. This is NOT a UX quota (free beta is not throttled); it only
-// blunts burst / runaway-cost abuse. Deterministic policy mirrors the pure
-// module src/features/analysis/rateLimit.ts (DEFAULT_RATE_LIMIT). Denials use
-// the standard Error Contract token RATE_LIMITED (→ LLM_RATE_LIMIT client-side).
-//
-// FAIL-OPEN by design: any infra error here must never block a legitimate user,
-// so the guard is skipped (request allowed) on error. Denials are console-logged
-// only and are NOT written to ai_usage_logs — a denial must not feed back into
-// the window count and extend its own block.
+// ---- burst rate limiting ----------------------------------------------------
 const RATE_WINDOW_MS = (() => {
   const v = Number(Deno.env.get('CHAT_RATE_WINDOW_MS')?.trim());
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 60_000;
@@ -201,23 +219,12 @@ const RATE_MAX_REQUESTS = (() => {
   const v = Number(Deno.env.get('CHAT_RATE_MAX_REQUESTS')?.trim());
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 20;
 })();
-
 type RateVerdict = { limited: false } | { limited: true; retryAfterMs: number };
-
-async function checkBurstRateLimit(
-  userId: string | null,
-  now: number,
-): Promise<RateVerdict> {
-  // No attributable user → the auth wrapper already gated the request; allow.
+async function checkBurstRateLimit(userId: string | null, now: number): Promise<RateVerdict> {
   if (!userId) return { limited: false };
   try {
-    const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-    const serviceRoleKey =
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
-    if (url.length === 0 || serviceRoleKey.length === 0) {
-      return { limited: false };
-    }
-    const admin = createClient(url, serviceRoleKey);
+    const admin = adminClient();
+    if (!admin) return { limited: false };
     const cutoffIso = new Date(now - RATE_WINDOW_MS).toISOString();
     const { count, error } = await admin
       .from('ai_usage_logs')
@@ -225,23 +232,42 @@ async function checkBurstRateLimit(
       .eq('user_id', userId)
       .eq('request_type', 'chat')
       .gte('created_at', cutoffIso);
-    if (error || count === null) {
-      return { limited: false }; // fail-open on query error
-    }
-    if (count >= RATE_MAX_REQUESTS) {
-      return { limited: true, retryAfterMs: RATE_WINDOW_MS };
-    }
+    if (error || count === null) return { limited: false };
+    if (count >= RATE_MAX_REQUESTS) return { limited: true, retryAfterMs: RATE_WINDOW_MS };
     return { limited: false };
   } catch {
-    return { limited: false }; // fail-open on any infra error
+    return { limited: false };
   }
 }
+
+// ---- request contract (§7) --------------------------------------------------
+// The client sends ONLY untrusted inputs. No messages / grounding / system prompt.
+//   mode 'consultation' (default): birthInput + question + untrusted turns → server grounds + answers.
+//   mode 'summary': existingSummary + raw turns → the SERVER builds the summary prompt (§20).
+type ConsultationRequestBody = {
+  mode?: 'consultation' | 'summary';
+  subjectProfileId?: string | null;
+  birthInput?: unknown;
+  subjectLabel?: string | null;
+  question?: unknown;
+  conversationContext?: unknown;
+  requestMetadata?: { clientQuestionTimeEpoch?: number | null; requestId?: string | null } | null;
+  // summary mode only
+  existingSummary?: unknown;
+  turns?: unknown;
+};
+
+const REASON_STATUS: Record<string, number> = {
+  INVALID_INPUT: 400,
+  SUBJECT_FORBIDDEN: 403,
+  SUBJECT_NOT_FOUND: 404,
+  LLM_FAILED: 502,
+};
 
 export default {
   fetch: withSupabase(
     { auth: 'user' },
     async (req: Request, _ctx: unknown): Promise<Response> => {
-      // `stage` is tracked so an unhandled exception can be attributed to a step.
       let stage = 'auth_completed';
       const startedAt = Date.now();
       const userId = userIdFromRequest(req);
@@ -251,172 +277,142 @@ export default {
           return Response.json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
         }
 
-        // Rate Limit (#13, directive §2-A): burst guard BEFORE any paid LLM call.
-        // Fail-open; standard Error Contract token; no ai_usage_logs row written.
         const rate = await checkBurstRateLimit(userId, startedAt);
         if (rate.limited) {
-          console.error(
-            '[chat] rate_limited',
-            JSON.stringify({ retryAfterMs: rate.retryAfterMs }),
-          );
+          console.error('[chat] rate_limited', JSON.stringify({ retryAfterMs: rate.retryAfterMs }));
           return Response.json(
             { error: 'RATE_LIMITED', retryAfterMs: rate.retryAfterMs },
-            {
-              status: 429,
-              headers: {
-                'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)),
-              },
-            },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
           );
         }
 
         const { apiKey, model, maxOutputTokens } = readServerConfig();
-
         if (apiKey.length === 0) {
-          // Missing secret — do not leak configuration details to the client.
           console.error('[chat] server_not_configured');
           return Response.json({ error: 'SERVER_NOT_CONFIGURED' }, { status: 500 });
         }
 
-        let body: unknown;
+        let body: ConsultationRequestBody;
         try {
-          body = await req.json();
+          body = (await req.json()) as ConsultationRequestBody;
         } catch {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
-
-        const messages = (body as { messages?: unknown } | null)?.messages;
-        if (!isValidMessages(messages)) {
+        if (body === null || typeof body !== 'object') {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
 
-        // Client correlation id (directive §2-C): trace one request across
-        // client → edge logs → usage persistence. Optional + sanitized + non-PII.
-        const requestId = sanitizeRequestId(
-          (body as { requestId?: unknown } | null)?.requestId,
+        const cfg = { apiKey, model, maxOutputTokens };
+
+        // Summary mode (§20): the SERVER builds the summary prompt from the raw turns — the client never
+        // authors it. A generic compression call: no grounding, no birth facts, no structured result.
+        if (body.mode === 'summary') {
+          stage = 'summary_request';
+          const rawTurns = Array.isArray(body.turns) ? body.turns : [];
+          const chatTurns: ChatMessage[] = rawTurns
+            .filter(
+              (t: unknown): t is { role: 'user' | 'assistant'; content: string } =>
+                t !== null &&
+                typeof t === 'object' &&
+                ((t as { role?: unknown }).role === 'user' || (t as { role?: unknown }).role === 'assistant') &&
+                typeof (t as { content?: unknown }).content === 'string',
+            )
+            .map((t, i) => ({ id: `s-${i}`, role: t.role, text: t.content }));
+          if (chatTurns.length === 0) {
+            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          }
+          const existingSummary = typeof body.existingSummary === 'string' ? body.existingSummary : null;
+          try {
+            const r = await callOpenAI(buildSummaryPrompt(existingSummary, chatTurns), cfg);
+            if (r.text.trim().length === 0) return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
+            return Response.json({ text: r.text });
+          } catch {
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+        }
+
+        if (typeof body.question !== 'string') {
+          return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+
+        const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
+
+        // The single outbound trust exit. Captures usage for logging; throws on provider fault so the
+        // orchestrator maps it to LLM_FAILED (and we log the specific code here).
+        let capturedUsage: Record<string, unknown> = {};
+        let llmErrorCode: string | null = null;
+        const callLLM = async (messages: LLMMessage[]): Promise<string> => {
+          stage = 'openai_request';
+          try {
+            const r = await callOpenAI(messages, cfg);
+            capturedUsage = r.usage;
+            stage = 'response_parse';
+            return r.text;
+          } catch (e) {
+            llmErrorCode = e instanceof OpenAIFault ? e.code : 'LLM_FAILED';
+            console.error('[chat] openai_fault', JSON.stringify({ stage, requestId, code: llmErrorCode }));
+            throw e;
+          }
+        };
+
+        stage = 'server_consultation';
+        const result = await buildServerConsultation(
+          {
+            subjectProfileId: body.subjectProfileId ?? null,
+            birthInput: body.birthInput as BirthInfoDraft,
+            subjectLabel: body.subjectLabel ?? null,
+            question: body.question,
+            conversationContext: Array.isArray(body.conversationContext)
+              ? (body.conversationContext as { role: 'user' | 'assistant'; content: string }[])
+              : undefined,
+            requestMetadata: {
+              clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
+              requestId,
+            },
+          },
+          {
+            digestProvider: denoDigestProvider,
+            nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
+            callLLM,
+            resolveTrustedBirth: makeResolveTrustedBirth(userId, adminClient()),
+          },
         );
 
-        stage = 'openai_request';
-
-        let providerResponse: Response;
-        try {
-          providerResponse = await fetch(OPENAI_RESPONSES_URL, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model, // server-decided (#15, #17)
-              input: messages,
-              max_output_tokens: maxOutputTokens, // server-enforced (#16, #17)
-            }),
-          });
-        } catch (fetchError) {
-          // Network/transport failure before any HTTP status was received.
-          console.error(
-            '[chat] openai_fetch_threw',
-            JSON.stringify({
-              stage,
+        if (!result.ok) {
+          const status = REASON_STATUS[result.reason] ?? 500;
+          if (result.reason === 'LLM_FAILED') {
+            await logAiUsage(
+              {
+                user_id: userId, model, request_type: 'chat',
+                input_tokens: null, output_tokens: null, total_tokens: null,
+                latency_ms: Date.now() - startedAt, status: 'error',
+                error_code: llmErrorCode ?? 'LLM_FAILED',
+              },
               requestId,
-              name: (fetchError as Error)?.name ?? 'UnknownError',
-              message: (fetchError as Error)?.message ?? String(fetchError),
-            }),
-          );
-          await logAiUsage(
-            {
-              user_id: userId,
-              model,
-              request_type: 'chat',
-              input_tokens: null,
-              output_tokens: null,
-              total_tokens: null,
-              latency_ms: Date.now() - startedAt,
-              status: 'error',
-              error_code: 'OPENAI_FETCH_FAILED',
-            },
-            requestId,
-          );
-          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+            );
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+          return Response.json({ error: result.reason }, { status });
         }
 
-        if (!providerResponse.ok) {
-          // Fault tracking: HTTP status ONLY (e.g. 429 billing/quota, 401, 5xx).
-          // Never forward the provider's error body/URL/token to the client (#20).
-          console.error(
-            '[chat] openai_error_status',
-            JSON.stringify({ status: providerResponse.status, requestId }),
-          );
-          await logAiUsage(
-            {
-              user_id: userId,
-              model,
-              request_type: 'chat',
-              input_tokens: null,
-              output_tokens: null,
-              total_tokens: null,
-              latency_ms: Date.now() - startedAt,
-              status: 'error',
-              error_code: `OPENAI_${providerResponse.status}`,
-            },
-            requestId,
-          );
-          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
-        }
-
-        stage = 'response_parse';
-
-        let payload: unknown;
-        try {
-          payload = await providerResponse.json();
-        } catch {
-          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
-        }
-
-        const text = extractText(payload);
-
-        if (text.length === 0) {
-          // Fault tracking: no assistant text parsed (marker only, no content).
-          console.error('[chat] empty_response', JSON.stringify({ requestId }));
-          await logAiUsage(
-            {
-              user_id: userId,
-              model,
-              request_type: 'chat',
-              input_tokens: null,
-              output_tokens: null,
-              total_tokens: null,
-              latency_ms: Date.now() - startedAt,
-              status: 'error',
-              error_code: 'EMPTY_RESPONSE',
-            },
-            requestId,
-          );
-          return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
-        }
-
-        // Success: record raw usage (tokens are provider-reported; no cost calc).
-        const usage =
-          (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
         await logAiUsage(
           {
-            user_id: userId,
-            model,
-            request_type: 'chat',
-            input_tokens: toNullableInt(usage.input_tokens),
-            output_tokens: toNullableInt(usage.output_tokens),
-            total_tokens: toNullableInt(usage.total_tokens),
-            latency_ms: Date.now() - startedAt,
-            status: 'success',
-            error_code: null,
+            user_id: userId, model, request_type: 'chat',
+            input_tokens: toNullableInt(capturedUsage.input_tokens),
+            output_tokens: toNullableInt(capturedUsage.output_tokens),
+            total_tokens: toNullableInt(capturedUsage.total_tokens),
+            latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
           },
           requestId,
         );
 
-        return Response.json({ text });
+        // Bounded response (§17): server-validated text + optional structured view-model + safe meta.
+        return Response.json({
+          text: result.text,
+          ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
+          groundingMeta: result.groundingMeta,
+        });
       } catch (error) {
-        // Fault tracking: capture the failing stage + exception identity, then
-        // re-throw to preserve the platform's EDGE_FUNCTION_ERROR behavior.
         console.error(
           '[chat] unhandled_exception',
           JSON.stringify({

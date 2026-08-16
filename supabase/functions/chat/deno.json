@@ -1,0 +1,9 @@
+{
+  "//": "Server-Trust sprint §5/§6 — Deno import map so the Edge can import the app's runtime-neutral consultation orchestrator + engines. '@/' → repo src (prefix map); the three engine deps resolve via Deno npm compat at their pinned versions. If this CLI version does not auto-detect a per-function deno.json, the owner adds `import_map = \"./functions/chat/deno.json\"` under [functions.chat] in config.toml (OWNER_ACTION). Engine Deno execution is UNVERIFIED here (no deno/supabase CLI) — EDGE_RUNTIME_NOT_EXECUTED.",
+  "imports": {
+    "@/": "../../../src/",
+    "iztro": "npm:iztro@2.5.8",
+    "lunar-javascript": "npm:lunar-javascript@1.7.7",
+    "qimen-dunjia/dist/qimen.min.js": "npm:qimen-dunjia@2.1.0/dist/qimen.min.js"
+  }
+}
