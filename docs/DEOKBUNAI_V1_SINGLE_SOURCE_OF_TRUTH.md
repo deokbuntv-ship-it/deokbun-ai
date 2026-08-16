@@ -223,9 +223,12 @@ Myungri facts → toSajuEvidence (converter) → buildConsultationGrounding → 
 | `SAJU_CALC` | **FROZEN** (`7c7ed82`) |
 | `SAJU_EVIDENCE` (`toSajuEvidence`) | **CONNECTED** — facts-only converter (4주·일간·오행·십신·지장간·월령/득령·통근/투간·대운·대운십신·当年 세운/월운 + 立春/12-Jie provenance) |
 | `SAJU_GROUNDING` | **CONNECTED** — fail-closed (unsupported/ambiguous/unknown-time-on-boundary → `unavailable`, no fabrication) |
-| `SAJU_PROMPT` | **CONNECTED** — `promptBuilder` renders the facts; LLM interprets, does not calculate |
-| `STRUCTURED_RESULT` (`ChatMessage.structuredResult`) | **NOT_CONNECTED** — prompt does not yet request the JSON schema; `parseStructuredAiResponse` fallback stays null (plain-text render). Next task. |
-| `ASSESSMENT` / `CROSS_ANALYSIS` | SAJU-only evidence available; **no fabricated 15-axis scores / no "3-학문 일치"** (ziwei/qimen unconnected) |
+| `SAJU_PROMPT` | **CONNECTED** — `promptBuilder` renders the facts + requests the structured schema; LLM interprets, does not calculate |
+| `SAJU_LLM` | **CODE_COMPLETE / OWNER_ACTION** — `supabaseEdgeLLMAdapter` → edge `chat` (holds the OpenAI key server-side). Live calls need the edge deployed + `OPENAI_API_KEY` secret. Boundary integration-tested with a mock. |
+| `STRUCTURED_RESULT` (`ChatMessage.structuredResult`) | **CONNECTED** — `parseStructuredConsultation` (backend validate) → `buildStructuredConsultationResult` → `chatService` → assistant message → `StructuredConsultationResult` render. Malformed/prose → plain-text fallback (no crash). |
+| `SAJU_LIVE_CHAT` | **CONNECTED** — `chat.tsx` renders `StructuredConsultationResult` when `structuredResult` present (else `ChatBubble`); long-form EXPANDED; answer-start anchor preserved. |
+| `SAJU_FOLLOW_UP` | **CONNECTED** — contextual `followUps` from the parsed result → `onSelectFollowUp` → `submitQuestion` (same conversation, subject/grounding preserved). |
+| `ASSESSMENT` / `CROSS_ANALYSIS` | SAJU-only evidence; assessment **fail-closed** (`toConsumerAssessmentView([])` → not-connected, no fabricated 15-axis score); **no "3-학문 일치"** (ziwei/qimen unconnected) |
 
 Deferred (recorded, do NOT start here): structuredResult/followUps schema wiring; Ziwei→grounding
 (Sprint 2); Qimen→grounding (Sprint 3, timing questions only); SAJU+Ziwei+Qimen cross-analysis

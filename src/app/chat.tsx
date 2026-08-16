@@ -275,9 +275,10 @@ export default function ChatScreen() {
         const assistantMessage: ChatMessage = {
           id: createMessageId('assistant'),
           role: 'assistant',
-          // Plain text today. When the backend attaches a structured result, it renders via
-          // <StructuredConsultationResult>; the client never fabricates it (P0-1 / CODEX seam).
+          // The service parses/validates the LLM's structured long-form; when present it renders
+          // via <StructuredConsultationResult>, else `text` (plain fallback). Never client-fabricated.
           text: result.responseText,
+          ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
         };
         setMessages((currentMessages) => [...currentMessages, assistantMessage]);
         persistMessage(assistantMessage);

@@ -6,6 +6,7 @@ import type {
 import { classifyConsultationMode } from './consultationMode';
 import { buildResponsePolicy, SYSTEM_CONSTITUTION } from './consultationPolicy';
 import { GROUNDING_UNAVAILABLE, renderGroundingContext } from './grounding';
+import { STRUCTURED_OUTPUT_INSTRUCTION } from './structuredConsultation';
 
 // Consultation prompt composition (directive §8). Layers, in order:
 //   m[0] system: SYSTEM_CONSTITUTION      — static, mode-independent hard rules (cacheable)
@@ -66,6 +67,8 @@ function buildContextMessage(input: PromptBuildInput): string {
     renderGroundingContext(grounding),
     '',
     buildResponsePolicy(mode, grounding.status === 'available'),
+    '',
+    STRUCTURED_OUTPUT_INSTRUCTION,
   ].join('\n');
 }
 

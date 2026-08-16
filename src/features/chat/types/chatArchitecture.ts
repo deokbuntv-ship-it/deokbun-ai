@@ -1,6 +1,7 @@
 import type { ConsultationDraft } from '@/features/consultation';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationMode } from '@/features/chat/prompts/consultationMode';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
 import type { ChatMessage } from './chat';
 
 export type LLMMessageRole = 'system' | 'user' | 'assistant';
@@ -90,6 +91,9 @@ export type ChatServiceResult =
   | {
       success: true;
       responseText: string;
+      // Validated structured long-form result (sprint §14). Present when the LLM returned the
+      // structured schema and it parsed; absent → the UI renders `responseText` (plain fallback).
+      structuredResult?: StructuredConsultationViewModel;
       // Correlation id for tracing/logging this request (optional; additive).
       requestId?: string;
       // Prompt/mode/grounding traceability (optional; additive — the UI ignores it).

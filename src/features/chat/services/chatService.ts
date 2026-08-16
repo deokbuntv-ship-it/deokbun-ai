@@ -14,6 +14,11 @@ import { classifyConsultationMode } from '@/features/chat/prompts/consultationMo
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { GROUNDING_UNAVAILABLE, type ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
+import {
+  composeConsultationText,
+  parseStructuredConsultation,
+} from '@/features/chat/prompts/structuredConsultation';
+import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import type {
     ChatServiceInput,
@@ -125,9 +130,18 @@ export function createChatService(
         requestId, // forwarded to the edge for end-to-end correlation
       });
 
+      // Parse the LLM's structured long-form. Success → a validated view model (parsed
+      // interpretation + the deterministic grounding + fail-closed assessment) and a readable
+      // plain-text mirror; malformed/prose → no structuredResult, raw text fallback (§13).
+      const parsed = parseStructuredConsultation(response.text);
+      const structuredResult = parsed
+        ? buildStructuredConsultationResult(parsed, grounding)
+        : undefined;
+
       return {
         success: true,
-        responseText: response.text,
+        responseText: parsed ? composeConsultationText(parsed) : response.text,
+        ...(structuredResult ? { structuredResult } : {}),
         requestId,
         meta: {
           promptVersion: CONSULTATION_PROMPT_VERSION,
