@@ -135,5 +135,63 @@ that chip removed. Tests: `pipelineClosure.test.ts` "PATCH#2 FIX A" (13 assertio
 - TypeScript: 0 in changed files (11 pre-existing route-union errors only). Expo web export OK.
   npm ls OK. git diff --check clean. No secrets. Frozen `interpretation/**` identical to `7c7ed82`.
 - Finding 1 + Finding 4 regressions re-verified green (semantic-rejection + Solar/Lunar equivalence tests).
-- **Final status:** `READY_FOR_CODEX_MYUNGRI_PIPELINE_FINAL_RE_REVIEW`. Persistence still DEFERRED_MINOR.
-  Owner action unchanged (deploy edge `chat` + `OPENAI_API_KEY`).
+- **Final status:** (superseded by PATCH #3 below).
+
+---
+
+# PATCH #3 — Codex re-review of `2eb5cec` (NEEDS_TARGETED_FIX → 2 remaining findings)
+
+Codex re-review: Findings 1/2/4 + direct-buildPrompt + scenarios + follow-up + gates **PASS**. Only
+Finding 3 (raw ENGINE-12 Daewoon metadata) and Finding 5 (strict AVAILABLE shape) remained. Both closed
+here, integration-only. Frozen `interpretation/**` still byte-identical to `7c7ed82`; Ziwei `02f1382`
+preserved; Qimen still disconnected.
+
+## FIX #1 (Finding 3) — raw ENGINE-12 Daewoon metadata preserved to the prompt
+
+Root cause: `bundle.daewoon` (the raw `SajuDaewoonResult`) was passed to the adapter but only
+`.direction` was read; its `.cycles[].ordinal`, `.provenance`, `.assumptions`, `.limitations` were
+dropped. Now:
+- **Cycle ordinal**: 대운 lines render `제{ordinal}대운` from the canonical `DaewoonCycle.ordinal`
+  (verbatim; never renumbered from array position).
+- **ENGINE-12 provenance**: a dedicated `근거·한계` line serializes the real `DaewoonProvenance` object —
+  `ruleId@ruleVersion` + directionRule (`YANG_MALE_YIN_FEMALE_FORWARD`) + progression/interval/
+  start-offset/rounding rules + solar-term provider (`lunar-javascript@1.7.7`/`deokbunai.solar-term.v1`)
+  + boundary precision.
+- **Assumptions / limitations**: `bundle.daewoon` is now part of the meta-collection loop, so its raw
+  `assumptions[]` (`THREE_DAYS_OF_SOLAR_TERM_INTERVAL_EQUALS_ONE_SYMBOLIC_YEAR`, …) and `limitations[]`
+  (`ROUNDED_START_AGE_IS_PRESENTATION_GRADE_NOT_ASTRONOMICAL_PRECISION`,
+  `SAME_UTC_MINUTE_AS_A_JIE_BOUNDARY_IS_AMBIGUOUS`, `V1_SUPPORTED_BIRTH_RANGE_1970_01_01_THROUGH_2050_12_31`)
+  fold into the `가정:` / `한계(계산):` lines — Codex's expected supported-range / boundary-ambiguity /
+  rounded-age-precision limitations. No recompute; the values are read from the frozen result object.
+- **Prompt-delivery proof**: `pipelineClosure.test.ts` "PATCH#3 FIX #1" runs the real 1990-08-15 chart
+  through renderGroundingContext and asserts all of the above are in the rendered prompt.
+
+### Evidence completeness table
+
+| Daewoon field | Status |
+|---|---|
+| cycle ordinal | **CONNECTED_TO_PROMPT** (`제{ordinal}대운`) |
+| ENGINE-12 provenance | **CONNECTED_TO_PROMPT** (`대운 도출(ENGINE-12) …` line) |
+| ENGINE-12 assumptions | **CONNECTED_TO_PROMPT** (`가정:` line) |
+| ENGINE-12 limitations | **CONNECTED_TO_PROMPT** (`한계(계산):` line) |
+
+## FIX #2 (Finding 5) — strict AVAILABLE shape validation
+
+`isValidEngineEvidence` now requires, for `availability === 'available'`: a **non-empty summary AND**
+`hasUsableSections` (≥1 section, each with a non-empty label + ≥1 non-empty-trimmed line). Half-shaped
+"available" (summary-only, sections-only, empty label, empty/whitespace lines) → fail-closed UNAVAILABLE.
+`isValidTimingAnchors` now enforces integer + sanity-range on `years` and `referenceYear` (rejects
+2026.5 / -1 / NaN / Infinity), and integer + `min ≥ 0` + `max ≥ 0` + `min ≤ max` on `daewoonAgeSpan`
+(rejects fractional / negative / reversed). `assessmentSummary`/`assessmentVersion` type-checks retained.
+Direct-buildPrompt safety (Finding via §11) retained. Matrix: `pipelineClosure.test.ts` "PATCH#3 FIX #2"
+covers §15 cases 1–20.
+
+## PATCH #3 gates
+
+- Full Jest **49 suites / 547 tests PASS** (was 541 → +6; zero regression). TypeScript 0 in changed
+  files (11 pre-existing route errors only). Expo web export OK. npm ls OK. git diff --check clean.
+  No secrets. Frozen `interpretation/**` identical to `7c7ed82`. Ziwei + dual-engine + Solar/Lunar +
+  semantic-rejection + relative-timing regressions all green.
+- **Finding 3: FIXED. Finding 5: FIXED.** No material computed-but-dropped evidence remains.
+- **Final status:** `READY_FOR_CODEX_MYUNGRI_PIPELINE_CLOSURE_FINAL_REVIEW`. Persistence still
+  DEFERRED_MINOR. Owner action unchanged (deploy edge `chat` + `OPENAI_API_KEY`).

@@ -24,7 +24,7 @@ const groundingWith = (o: {
 }): ConsultationGrounding => ({
   status: 'available',
   evidence: {
-    myungri: { availability: 'available', summary: '사주 …', hasTimingEvidence: o.hasTiming ?? true },
+    myungri: { availability: 'available', summary: '사주 …', sections: [{ label: '명식', lines: ['년 癸卯'] }], hasTimingEvidence: o.hasTiming ?? true },
     ziwei: { availability: o.ziwei ?? 'engine_not_connected' },
     qimen: { availability: o.qimen ?? 'engine_not_connected' },
   },

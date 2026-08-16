@@ -97,27 +97,47 @@ const UNAVAILABLE_REASON_VALUES: readonly GroundingUnavailableReason[] = [
   'engine_not_connected', 'birth_time_unknown', 'calculation_failed', 'not_applicable',
 ];
 
+const isNonEmptyString = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0;
+// A plausible birth/consultation year — finite INTEGER in a sanity range (rejects 2026.5 / -1 / NaN /
+// Infinity). A schema guard, NOT a calendar rule; the frozen engine owns the real supported range.
+const isPlausibleYear = (v: unknown): boolean => typeof v === 'number' && Number.isInteger(v) && v >= 1900 && v <= 2100;
+
 function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === 'string');
 }
-function isValidSections(v: unknown): boolean {
+// Type-shape check (valid on ANY availability): sections, if present, is an array of {label, lines[]}.
+function isValidSectionsShape(v: unknown): boolean {
   if (v === undefined) return true;
   if (!Array.isArray(v)) return false;
   return v.every(
     (s) => s !== null && typeof s === 'object' && typeof (s as { label?: unknown }).label === 'string' && isStringArray((s as { lines?: unknown }).lines),
   );
 }
+// CONTENT check required for AVAILABLE: ≥1 section, each with a non-empty label + ≥1 non-empty line
+// (rejects sections=[] / empty label / lines=[] / whitespace-only lines) — Codex FIX #2 §9.
+function hasUsableSections(v: unknown): boolean {
+  if (!Array.isArray(v) || v.length === 0) return false;
+  return v.every((s) => {
+    if (s === null || typeof s !== 'object') return false;
+    const o = s as { label?: unknown; lines?: unknown };
+    if (!isNonEmptyString(o.label)) return false;
+    if (!Array.isArray(o.lines) || o.lines.length === 0) return false;
+    return o.lines.every((l) => isNonEmptyString(l));
+  });
+}
 function isValidTimingAnchors(v: unknown): boolean {
   if (v === undefined) return true;
   if (v === null || typeof v !== 'object') return false;
   const o = v as { years?: unknown; referenceYear?: unknown; daewoonAgeSpan?: unknown; hasMonthlyEvidence?: unknown };
-  if (!Array.isArray(o.years) || !o.years.every((y) => typeof y === 'number' && Number.isFinite(y))) return false;
-  if (o.referenceYear !== undefined && o.referenceYear !== null && (typeof o.referenceYear !== 'number' || !Number.isFinite(o.referenceYear))) return false;
+  if (!Array.isArray(o.years) || !o.years.every((y) => isPlausibleYear(y))) return false; // finite integer + range
+  if (o.referenceYear !== undefined && o.referenceYear !== null && !isPlausibleYear(o.referenceYear)) return false; // rejects 2026.5 / -1 / NaN / Infinity
   if (o.hasMonthlyEvidence !== undefined && typeof o.hasMonthlyEvidence !== 'boolean') return false;
   if (o.daewoonAgeSpan !== undefined && o.daewoonAgeSpan !== null) {
     const s = o.daewoonAgeSpan as { min?: unknown; max?: unknown };
     if (s === null || typeof s !== 'object' || typeof s.min !== 'number' || typeof s.max !== 'number') return false;
-    if (!Number.isFinite(s.min) || !Number.isFinite(s.max) || s.min > s.max) return false; // startAge>endAge is invalid
+    if (!Number.isInteger(s.min) || !Number.isInteger(s.max)) return false; // rejects fractional (33.5) + NaN/Infinity
+    if (s.min < 0 || s.max < 0) return false; // rejects negative age
+    if (s.min > s.max) return false; // rejects reversed span (startAge > endAge)
   }
   return true;
 }
@@ -128,14 +148,13 @@ function isValidEngineEvidence(v: unknown): v is EngineEvidence {
   if (o.summary !== undefined && typeof o.summary !== 'string') return false;
   if (o.detail !== undefined && typeof o.detail !== 'string') return false;
   if (o.hasTimingEvidence !== undefined && typeof o.hasTimingEvidence !== 'boolean') return false;
-  if (!isValidSections(o.sections)) return false;
+  if (!isValidSectionsShape(o.sections)) return false;
   if (!isValidTimingAnchors(o.timingAnchors)) return false;
-  // Consistency: an 'available' engine MUST carry a usable fact (summary or ≥1 section) — an empty
-  // "available" is a mis-wire and must not be trusted as grounding.
+  // AVAILABLE must carry USABLE deterministic content (Codex FIX #2 §4): BOTH a non-empty summary AND
+  // ≥1 usable section (non-empty label + non-empty lines). Half-shaped "available" → fail-closed.
   if (o.availability === 'available') {
-    const hasSummary = typeof o.summary === 'string' && o.summary.trim().length > 0;
-    const hasSections = Array.isArray(o.sections) && o.sections.length > 0;
-    if (!hasSummary && !hasSections) return false;
+    if (!isNonEmptyString(o.summary)) return false;
+    if (!hasUsableSections(o.sections)) return false;
   }
   return true;
 }

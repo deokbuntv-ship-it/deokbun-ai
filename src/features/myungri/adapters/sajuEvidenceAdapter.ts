@@ -172,9 +172,10 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
         : null;
     const lines = dw.cycles.slice(0, 10).map((c) => {
       const marker = bundle.activeCycleOrdinal != null && c.ordinal === bundle.activeCycleOrdinal ? '〈현재〉 ' : '';
-      // Preserve the FULL Daewoon ten-god profile (Codex FIX B): 천간 + 지지 정기 + 지장간 십신.
+      // Preserve the canonical ENGINE-12 cycle ORDINAL (Codex FIX #1) + the FULL ten-god profile
+      // (천간 + 지지 정기 + 지장간 십신). Read verbatim; never renumbered from array position.
       const hidden = c.tenGods.hiddenStemTenGods.map((h) => `${stemH(h.stem)}(${role(h.role)}·${tg(h.tenGod)})`).join(' ');
-      return `${marker}${c.startAgeInclusive}~${c.endAgeInclusive}세 ${gz(c.tenGods)} 천간${tg(c.tenGods.stemTenGod)}/지지${tg(c.tenGods.branchMainTenGod)} 지장간 ${hidden}`;
+      return `${marker}제${c.ordinal}대운 ${c.startAgeInclusive}~${c.endAgeInclusive}세 ${gz(c.tenGods)} 천간${tg(c.tenGods.stemTenGod)}/지지${tg(c.tenGods.branchMainTenGod)} 지장간 ${hidden}`;
     });
     sections.push({ label: `대운(+대운십신)${direction ? ` · ${direction}` : ''}`, lines });
   }
@@ -238,10 +239,12 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     if (!o || o.capability !== 'AVAILABLE') return { a: [], l: [] };
     return { rule: o.ruleVersion, a: o.assumptions ?? [], l: o.limitations ?? [] };
   };
+  // Collect the ACTUAL ruleVersions/assumptions/limitations from every result object — INCLUDING the
+  // raw ENGINE-12 Daewoon result (Codex FIX #1: its provenance/assumptions/limitations were dropped).
   const ruleVersions = [`product=${provenance.productRule.ruleVersion}`, `tenGods=${derivedFacts.ruleVersions.tenGods}`];
   const assumptions = new Set<string>();
   const limitations = new Set<string>();
-  for (const [name, r] of [['대운십신', dw], ['세운', se], ['월운', wo], ['시간축', ax], ['월령', mc], ['통근투간', rt]] as const) {
+  for (const [name, r] of [['대운(ENGINE-12)', bundle.daewoon], ['대운십신', dw], ['세운', se], ['월운', wo], ['시간축', ax], ['월령', mc], ['통근투간', rt]] as const) {
     const m = meta(r);
     if (m.rule) ruleVersions.push(`${name}=${m.rule}`);
     m.a.forEach((x) => assumptions.add(x));
@@ -251,6 +254,14 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     `엔진 SAJU · 년주=${provenance.yearMonthAttributionRule.yearBoundary} · 월주=${provenance.yearMonthAttributionRule.monthBoundary}`,
     `ruleVersions ${ruleVersions.join(' · ')}`,
   ];
+  // ENGINE-12 Daewoon provenance object (direction/progression/interval/start-age/rounding/solar-term
+  // basis + provider identity) — the real source values, not a handcrafted summary (Codex FIX #1 §2-2).
+  if (bundle.daewoon && bundle.daewoon.capability === 'AVAILABLE') {
+    const dp = bundle.daewoon.provenance;
+    provLines.push(
+      `대운 도출(ENGINE-12) ${dp.ruleId}@${dp.ruleVersion} · 방향 ${dp.directionRule} · 진행 ${dp.progressionRule} · 간격 ${dp.intervalRule} · 시작나이 ${dp.startOffsetRule} · 반올림 ${dp.roundingRule} · 절기 ${dp.solarTerm.provider}@${dp.solarTerm.providerVersion}/${dp.solarTerm.solarTermRuleVersion} · 경계 ${dp.solarTerm.canonicalBoundaryPrecision}`,
+    );
+  }
   if (ax && ax.capability === 'AVAILABLE') {
     const p = ax.provenance;
     provLines.push(`도출 근거 년월주=${p.yearMonthPillarRuleVersion} 십신=${p.tenGodRuleVersion} 지장간=${p.hiddenStemRuleVersion} 관계=${p.relationRuleVersion} · 대운 방향/나이는 ENGINE-12 소유(재계산 아님)`);

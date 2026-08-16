@@ -202,8 +202,8 @@ describe('fail-closed against fabricated interpretation (§13/§53 red-team fix)
     grounding: {
       status: 'available',
       evidence: {
-        myungri: { availability: 'available', summary: '일간 갑목' },
-        ziwei: { availability: 'available', summary: '명궁 자미' },
+        myungri: { availability: 'available', summary: '일간 갑목', sections: [{ label: '명식', lines: ['일간 갑목'] }] },
+        ziwei: { availability: 'available', summary: '명궁 자미', sections: [{ label: '명반', lines: ['명궁 자미'] }] },
         qimen: { availability: 'not_applicable' },
       },
     },

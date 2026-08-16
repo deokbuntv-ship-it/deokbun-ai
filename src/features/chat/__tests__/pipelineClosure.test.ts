@@ -381,3 +381,65 @@ describe('PATCH#2 FIX C — grounding matrix (referenceYear / span order / asses
     expect(toSafeGrounding(bad({ ...base, timingAnchors: { years: [2024, 2026], referenceYear: 2026, daewoonAgeSpan: { min: 2, max: 92 }, hasMonthlyEvidence: true } })).status).toBe('available');
   });
 });
+
+// ── PATCH #3 · FIX #1 — raw ENGINE-12 Daewoon metadata reaches the PROMPT ─────────────
+describe('PATCH#3 FIX #1 — ENGINE-12 Daewoon ordinal/provenance/assumptions/limitations in prompt', () => {
+  it('1990 chart: prompt carries cycle ordinal + daewoon ruleVersion + provenance + assumptions + limitations', async () => {
+    const g = await buildConsultationGrounding(draft({ birthYear: '1990', birthMonth: '8', birthDay: '15', birthHour: '14' }), deps);
+    if (g.status !== 'available') throw new Error('expected available');
+    const ctx = renderGroundingContext(g);
+    expect(/제\d+대운/.test(ctx)).toBe(true); // canonical cycle ordinal (not renumbered)
+    expect(ctx).toContain('deokbunai.saju-daewoon.v1'); // ENGINE-12 ruleVersion
+    expect(ctx).toContain('대운 도출(ENGINE-12)'); // provenance line present
+    expect(ctx).toContain('YANG_MALE_YIN_FEMALE_FORWARD'); // direction rule basis
+    expect(ctx).toContain('lunar-javascript'); // solar-term provider identity
+    expect(ctx).toContain('THREE_DAYS_OF_SOLAR_TERM_INTERVAL_EQUALS_ONE_SYMBOLIC_YEAR'); // ENGINE-12 assumption
+    expect(ctx).toContain('ROUNDED_START_AGE_IS_PRESENTATION_GRADE_NOT_ASTRONOMICAL_PRECISION'); // rounded-age limitation
+    expect(ctx).toContain('SAME_UTC_MINUTE_AS_A_JIE_BOUNDARY_IS_AMBIGUOUS'); // boundary-ambiguity limitation
+    expect(ctx).toContain('V1_SUPPORTED_BIRTH_RANGE_1970_01_01_THROUGH_2050_12_31'); // supported-range limitation
+  });
+});
+
+// ── PATCH #3 · FIX #2 — strict AVAILABLE shape validation matrix (§15 cases 1–20) ─────
+describe('PATCH#3 FIX #2 — strict AVAILABLE shape / referenceYear / age-span matrix', () => {
+  const okSections = [{ label: '명식', lines: ['년 癸卯'] }];
+  const okBase = { availability: 'available', summary: 's', sections: okSections };
+  const st = (myungri: unknown) =>
+    toSafeGrounding({ status: 'available', evidence: { myungri, ziwei: { availability: 'engine_not_connected' }, qimen: { availability: 'engine_not_connected' } } } as unknown as ConsultationGrounding).status;
+  const anchors = (a: Record<string, unknown>) => ({ ...okBase, timingAnchors: { years: [2026], ...a } });
+
+  it('AVAILABLE content matrix (1–8)', () => {
+    expect(st({ availability: 'available', sections: okSections })).toBe('unavailable'); // 1 no summary
+    expect(st({ ...okBase, summary: '   ' })).toBe('unavailable'); // 2 whitespace summary
+    expect(st({ availability: 'available', summary: 's' })).toBe('unavailable'); // 3 no sections
+    expect(st({ ...okBase, sections: [] })).toBe('unavailable'); // 4 empty sections
+    expect(st({ ...okBase, sections: [{ label: '', lines: ['y'] }] })).toBe('unavailable'); // 5 empty label
+    expect(st({ ...okBase, sections: [{ label: '  ', lines: ['y'] }] })).toBe('unavailable'); // 6 whitespace label
+    expect(st({ ...okBase, sections: [{ label: 'x', lines: [] }] })).toBe('unavailable'); // 7 empty lines
+    expect(st({ ...okBase, sections: [{ label: 'x', lines: ['   '] }] })).toBe('unavailable'); // 8 whitespace lines
+  });
+  it('referenceYear matrix (9–12)', () => {
+    expect(st(anchors({ referenceYear: 2026.5 }))).toBe('unavailable'); // 9 fractional
+    expect(st(anchors({ referenceYear: -1 }))).toBe('unavailable'); // 10 negative
+    expect(st(anchors({ referenceYear: NaN }))).toBe('unavailable'); // 11 NaN
+    expect(st(anchors({ referenceYear: Infinity }))).toBe('unavailable'); // 12 Infinity
+  });
+  it('age-span matrix (13–18)', () => {
+    expect(st(anchors({ daewoonAgeSpan: { min: -1, max: 50 } }))).toBe('unavailable'); // 13 negative min
+    expect(st(anchors({ daewoonAgeSpan: { min: 2, max: -1 } }))).toBe('unavailable'); // 14 negative max
+    expect(st(anchors({ daewoonAgeSpan: { min: 33.5, max: 50 } }))).toBe('unavailable'); // 15 fractional min
+    expect(st(anchors({ daewoonAgeSpan: { min: 2, max: 42.5 } }))).toBe('unavailable'); // 16 fractional max
+    expect(st(anchors({ daewoonAgeSpan: { min: 50, max: 10 } }))).toBe('unavailable'); // 17 reversed
+    expect(st(anchors({ daewoonAgeSpan: { min: NaN, max: Infinity } }))).toBe('unavailable'); // 18 NaN/Infinity
+  });
+  it('valid AVAILABLE stays available (19); valid UNAVAILABLE stays unavailable (20)', () => {
+    expect(st(okBase)).toBe('available'); // 19
+    expect(st(anchors({ referenceYear: 2026, daewoonAgeSpan: { min: 2, max: 92 } }))).toBe('available'); // 19b valid anchors
+    expect(toSafeGrounding(GROUNDING_UNAVAILABLE).status).toBe('unavailable'); // 20
+  });
+  it('out-of-range / non-integer years → unavailable', () => {
+    expect(st({ ...okBase, timingAnchors: { years: [1800] } })).toBe('unavailable'); // out of sanity range
+    expect(st({ ...okBase, timingAnchors: { years: [2026.5] } })).toBe('unavailable'); // fractional year
+    expect(st({ ...okBase, timingAnchors: { years: ['2026'] } })).toBe('unavailable'); // non-number
+  });
+});
