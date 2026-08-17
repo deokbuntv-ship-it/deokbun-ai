@@ -38,6 +38,7 @@ import {
   extractResponsesText,
   openAiFailureCode,
   redactDiag,
+  resolveLlmBudgets,
 } from './_server/serverBundle.mjs';
 
 // Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
@@ -65,16 +66,18 @@ type TrustedBirthResolution =
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5-mini';
-const DEFAULT_MAX_OUTPUT_TOKENS = 800;
 
+// apiKey + model + the two per-path OUTPUT-token budgets. resolveLlmBudgets (bundled, bounded) gives the
+// consultation long-form and the summary DIFFERENT caps — a shared 800 made gpt-5-mini return
+// status=incomplete (reasoning ate the budget). Model is unchanged; env vars can tune within hard bounds.
 function readServerConfig() {
   const apiKey = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
   const model = Deno.env.get('LLM_MODEL')?.trim() || DEFAULT_MODEL;
-  const rawMaxOutputTokens = Deno.env.get('LLM_MAX_OUTPUT_TOKENS')?.trim();
-  const parsed = Number(rawMaxOutputTokens);
-  const maxOutputTokens =
-    Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_MAX_OUTPUT_TOKENS;
-  return { apiKey, model, maxOutputTokens };
+  const budgets = resolveLlmBudgets({
+    consultation: Deno.env.get('LLM_CONSULTATION_MAX_OUTPUT_TOKENS'),
+    summary: Deno.env.get('LLM_SUMMARY_MAX_OUTPUT_TOKENS'),
+  });
+  return { apiKey, model, budgets };
 }
 
 // Deno-native DigestProvider (Web Crypto). Byte-identical hex to the app's Node provider
@@ -319,7 +322,7 @@ export default {
           );
         }
 
-        const { apiKey, model, maxOutputTokens } = readServerConfig();
+        const { apiKey, model, budgets } = readServerConfig();
         if (apiKey.length === 0) {
           console.error('[chat] server_not_configured');
           return Response.json({ error: 'SERVER_NOT_CONFIGURED' }, { status: 500 });
@@ -335,7 +338,9 @@ export default {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
 
-        const cfg = { apiKey, model, maxOutputTokens };
+        // Separate output budgets: consultation long-form gets the larger cap; summary stays small.
+        const consultationCfg = { apiKey, model, maxOutputTokens: budgets.consultation };
+        const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary };
         const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 
         // Summary mode (FIX A/B/C): the SERVER owns the summary prompt (buildServerSummary → existingSummary
@@ -347,7 +352,7 @@ export default {
           let summaryUsage: Record<string, unknown> = {};
           let summaryErrorCode: string | null = null;
           const summaryCallLLM = async (messages: LLMMessage[]): Promise<string> => {
-            const r = await callOpenAI(messages, cfg);
+            const r = await callOpenAI(messages, summaryCfg);
             summaryUsage = r.usage;
             const code = openAiFailureCode(r);
             if (code === 'OK') return r.text;
@@ -415,7 +420,7 @@ export default {
         let capturedOutcome: OpenAiCall | null = null;
         const callLLM = async (messages: LLMMessage[]): Promise<string> => {
           stage = 'openai_request';
-          const r = await callOpenAI(messages, cfg);
+          const r = await callOpenAI(messages, consultationCfg);
           capturedUsage = r.usage;
           capturedOutcome = r;
           stage = 'response_parse';

@@ -22,6 +22,13 @@ export {
   SAFE_DIAG_KEYS,
 } from './edgeDiagnostics';
 export type { OpenAiOutcome, SafeDiagKey } from './edgeDiagnostics';
+export {
+  resolveLlmBudgets,
+  DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
+  DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
+  MIN_MAX_OUTPUT_TOKENS,
+  HARD_MAX_OUTPUT_TOKENS,
+} from './llmBudget';
 export type {
   ServerConsultationRequest,
   ServerConsultationResult,

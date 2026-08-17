@@ -7622,16 +7622,38 @@ function redactDiag(fields) {
   }
   return out;
 }
+
+// src/features/chat/server/llmBudget.ts
+var DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS = 2800;
+var DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 1e3;
+var MIN_MAX_OUTPUT_TOKENS = 256;
+var HARD_MAX_OUTPUT_TOKENS = 8e3;
+function clampBudget(raw, fallback) {
+  const n = Number((raw ?? "").trim());
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.min(Math.max(Math.floor(n), MIN_MAX_OUTPUT_TOKENS), HARD_MAX_OUTPUT_TOKENS);
+}
+function resolveLlmBudgets(env) {
+  return {
+    consultation: clampBudget(env.consultation, DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS),
+    summary: clampBudget(env.summary, DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS)
+  };
+}
 export {
+  DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
+  DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
+  HARD_MAX_OUTPUT_TOKENS,
   MAX_EXISTING_SUMMARY_CHARS,
   MAX_SUMMARY_SOURCE_CHARS,
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
+  MIN_MAX_OUTPUT_TOKENS,
   SAFE_DIAG_KEYS,
   buildServerConsultation,
   buildServerSummary,
   extractResponsesText,
   openAiFailureCode,
   redactDiag,
+  resolveLlmBudgets,
   sanitizeSummarySource
 };

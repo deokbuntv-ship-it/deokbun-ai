@@ -166,14 +166,16 @@ logged nothing. `callOpenAI` now returns a classified outcome and every failure 
 model, upstreamStatus, responseStatus, incompleteReason, output/total tokens — never prompt/birth/question/
 evidence/key/auth/answer. The same precise code now lands in `ai_usage_logs.error_code`.
 
-**Most likely class (hypothesis, not proven):** `OPENAI_EMPTY_OUTPUT` / `OPENAI_INCOMPLETE_max_output_tokens`
-— the ONLY previously-silent class (non-2xx already logged `openai_fault`), consistent with the reasoning
-model `gpt-5-mini` spending the `max_output_tokens` (default 800) budget on reasoning and emitting no
-visible text on a large grounded prompt. **DIAGNOSTIC_ONLY** — not fixed (raising the token budget /
-setting reasoning effort would be speculative); the next E2E's `[chat.diag]` (or `ai_usage_logs.error_code`)
-proves the exact class. No explicit OpenAI request timeout exists — a very slow reasoning call could also
-hit the platform wall-clock and be killed before any diag fires; that would show as a platform 5xx with no
-`[chat.diag]`, which is itself the signal to raise `LLM_MAX_OUTPUT_TOKENS`/lower reasoning effort.
+**Root cause — CONFIRMED + FIXED (2026-08-17).** The next E2E `[chat.diag]` was exactly
+`code: OPENAI_INCOMPLETE_max_output_tokens, upstreamStatus 200, responseStatus incomplete, outputTokens
+768, totalTokens 2798` — gpt-5-mini spent the shared 800-token budget on reasoning and returned
+`status: incomplete` with no visible text. **Fix:** split the output budget per path via the bundled,
+bounded `resolveLlmBudgets` — consultation `LLM_CONSULTATION_MAX_OUTPUT_TOKENS` (default **2800**, was 800),
+summary `LLM_SUMMARY_MAX_OUTPUT_TOKENS` (default **1000**), each clamped to [256, 8000]. Model unchanged
+(gpt-5-mini). All fail-closed / structured-validation behavior preserved (an incomplete response with no
+text still classifies as failure → LLM_FAILED, no partial leak). No explicit OpenAI request timeout exists;
+if a future very-slow reasoning call hits the platform wall-clock it would show as a platform 5xx with no
+`[chat.diag]` — the signal to lower reasoning effort or the budget.
 
 ## OWNER_ACTION_REQUIRED (§29)
 
