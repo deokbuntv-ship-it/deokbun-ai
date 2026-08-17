@@ -109,6 +109,29 @@ bundled here. UNVERIFIED, owner must confirm on deploy:
 What IS verified here: the Edge file passes a TS type-stripping syntax parse; the orchestrator + engines it
 calls run green under Node/Jest.
 
+### Deno bundling — module resolution (2026-08-17, first real deploy failure)
+
+**Symptom:** `supabase functions deploy chat --use-api` → `400 Failed to bundle the function (reason: Is a
+directory (os error 21) … at chat/index.ts:30:61)`. **Root cause:** the app graph uses Node/Metro-style
+extensionless + directory imports; Deno's resolver is strict (needs explicit `.ts` and explicit
+`/index.ts`), so the first `@/features/chat/server` (a directory) failed. `chat` is the first Edge to
+import app code, so it is the first to hit this. A static trace of the value-import graph from
+`src/features/chat/server/index.ts` (`scratchpad/trace-edge-graph.mjs`): **108 files, react-native/expo/react
+NONE reachable, 0 unresolved, 3 external specifiers (all mapped npm: engines), 15 directory + 213
+extensionless imports** — i.e. resolution-only, no missing modules and no UI code.
+
+**Fix (source-preserving, no engine edits):** `deno.json` → `"unstable": ["sloppy-imports"]` (Deno's
+Node→Deno migration feature: resolves `./foo`→`./foo.ts` and `./dir`→`./dir/index.ts` across all 108
+files, frozen engine included, unchanged) + the one entry VALUE import made explicit
+(`@/features/chat/server/index.ts`). The `@/`→`../../../src/` map applies first (specifier→path), then
+sloppy-imports resolves the path.
+
+**Fallback if a redeploy still fails on resolution** (bundler does not honor `sloppy-imports`): pre-bundle
+`src/features/chat/server/index.ts` with esbuild into a single self-contained ESM file under
+`supabase/functions/chat/`, marking `iztro` / `lunar-javascript` / `qimen-dunjia/dist/qimen.min.js`
+**external** (they stay `npm:` via the import map), and import that one file from the Edge. That removes
+every directory/extensionless import for Deno. Not done now (minimal fix first); documented for the owner.
+
 ## OWNER_ACTION_REQUIRED (§29)
 
 1. Review + apply `supabase/migrations/20260817000000_consumer_birth_profiles.sql` (RLS). Do NOT weaken RLS.

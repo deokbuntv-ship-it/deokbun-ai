@@ -27,8 +27,10 @@
 import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 
-import { buildServerConsultation, buildServerSummary } from '@/features/chat/server';
-import type { TrustedBirthResolution } from '@/features/chat/server';
+// Explicit /index.ts on the one VALUE import into the app graph (the directory the bundler flagged).
+// Everything deeper (108-file graph) resolves via `sloppy-imports` in deno.json.
+import { buildServerConsultation, buildServerSummary } from '@/features/chat/server/index.ts';
+import type { TrustedBirthResolution } from '@/features/chat/server/index.ts';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { BirthInfoDraft } from '@/features/consultation';
 
