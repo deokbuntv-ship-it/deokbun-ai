@@ -14,10 +14,11 @@ export const STRUCTURED_OUTPUT_INSTRUCTION = [
   '[출력 형식 — 구조화 JSON]',
   '이번 답변은 아래 JSON 객체 하나로만 출력하십시오. JSON 앞뒤에 다른 설명 문장을 붙이지 마십시오.',
   '모든 문자열은 자연스러운 한국어 상담 문장입니다. 근거 없는 점수·등급·별점·확률·시점을 만들지',
-  '마십시오. 제공되지 않은 엔진(예: 기문둔갑)을 사용했다고 말하지 마십시오. 명리와 자미두수 근거가',
-  '함께 제공되면 각 관점을 어느 엔진에서 나왔는지 구분해 설명하고, 실제로 같은 방향일 때만 조심스럽게',
-  "언급하되 '두 학문이 완전히 일치한다'처럼 근거 없는 합의를 단정하지 마십시오. 신강·신약·용신·격국·",
-  '12운성·12신살을 계산된 사실처럼 단정하지 마십시오.',
+  '마십시오. 제공되지 않은 엔진(예: 기문둔갑)을 사용했다고 말하거나 그 결과를 언급하지 마십시오.',
+  '명리와 자미두수 근거가 함께 제공되면 각 관점을 어느 엔진에서 나왔는지 구분해 따로 서술하고, 두',
+  "학문을 '모두'·'둘 다'·'완전히 일치'처럼 하나로 뭉뚱그려 합의를 단정하지 마십시오(각각 나눠 설명).",
+  '성격·성향·장단점은 쉬운 일상 언어로 풀어서 설명하고, 신강·신약·용신·격국·12운성·12신살 같은 전문',
+  '용어 자체를 답변에 쓰지 마십시오(그 개념을 단정적으로 언급하지도 마십시오).',
   '{',
   '  "coreSummary": "한 줄 핵심(방향 제시용, 본문을 대체하지 않음)",',
   '  "disposition": "기본 성향 요약(선택)",',
@@ -285,15 +286,20 @@ function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
 
 // Engine-use / consensus / unsupported-theory violation on a piece of text, given the CURRENT engine
 // availability. Shared by the structured validator AND the raw-text safety scan (FIX #1).
-function hasEngineOrConsensusViolation(text: string, grounding: ConsultationGrounding): boolean {
+// Returns the FIRST violation reason code, or null. `hasEngineOrConsensusViolation` is the boolean wrapper
+// used by the decision paths; the code is surfaced ONLY for safe diagnostics (no content).
+function engineOrConsensusViolationReason(text: string, grounding: ConsultationGrounding): string | null {
   const ziweiAvailable = grounding.status === 'available' && grounding.evidence.ziwei.availability === 'available';
   const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
-  if (!ziweiAvailable && ZIWEI_USE.test(text)) return true; // false Ziwei use when unavailable/not-applicable
-  if (!qimenAvailable && QIMEN_USE.test(text)) return true; // false Qimen use when unavailable/not-applicable
-  if (hasMultiEngineConsensus(text)) return true; // formal 3-engine consensus never grounded in V1 (no cross-map)
-  if (CROSS_ENGINE_CONSENSUS.test(text)) return true; // fake Saju↔Ziwei full consensus (no V1 cross-map)
-  if (FORBIDDEN_THEORY.test(text)) return true; // 신강/신약/용신/격국/12운성/12신살 as computed fact
-  return false;
+  if (!ziweiAvailable && ZIWEI_USE.test(text)) return 'UNGROUNDED_ZIWEI_CLAIM';
+  if (!qimenAvailable && QIMEN_USE.test(text)) return 'UNGROUNDED_QIMEN_CLAIM';
+  if (hasMultiEngineConsensus(text)) return 'CONSENSUS_CLAIM_MISMATCH'; // formal 3-engine consensus (no V1 cross-map)
+  if (CROSS_ENGINE_CONSENSUS.test(text)) return 'CROSS_ENGINE_CONSENSUS'; // fake Saju↔Ziwei full consensus
+  if (FORBIDDEN_THEORY.test(text)) return 'FORBIDDEN_THEORY'; // 신강/신약/용신/격국/12운성/12신살
+  return null;
+}
+function hasEngineOrConsensusViolation(text: string, grounding: ConsultationGrounding): boolean {
+  return engineOrConsensusViolationReason(text, grounding) !== null;
 }
 
 /** A single semantic safety scan (engine + consensus + theory + unsupported timing) over any text. */
@@ -409,6 +415,31 @@ function looksLikeStructuredJson(text: string): boolean {
     /"(coreSummary|coreInterpretation|strengths|cautions|domainInterpretation|futureFlow|followUps)"\s*:/.test(text) ||
     /^\s*[{[]/.test(text)
   );
+}
+
+// DIAGNOSTIC ONLY (safe, no content): the specific reason a raw model output was NOT rendered as an
+// accepted card, for the Edge's [chat.diag] logs. It re-derives the reason and changes no decision. Codes:
+// FORBIDDEN_THEORY | CROSS_ENGINE_CONSENSUS | CONSENSUS_CLAIM_MISMATCH | UNGROUNDED_ZIWEI_CLAIM |
+// UNGROUNDED_QIMEN_CLAIM | TIMING_CLAIM_MISMATCH | SUBSTANCE_GATE_FAILED | UNRENDERABLE_STRUCTURED_JSON |
+// PARSE_FAILED | STRUCTURAL_FALLBACK | NONE.
+export function firstStructuredRejectionReason(rawText: string, grounding: ConsultationGrounding): string {
+  const anchors = timingAnchorsOf(grounding);
+  const parsed = parseStructuredConsultation(rawText);
+  if (parsed) {
+    const eng = engineOrConsensusViolationReason(mainBodyText(parsed), grounding);
+    if (eng) return eng;
+    if (hasUnsupportedTiming(coreProseFields(parsed).join('\n'), anchors)) return 'TIMING_CLAIM_MISMATCH';
+    return 'NONE'; // would have been ACCEPTED
+  }
+  const salvaged = salvageStructuredText(rawText);
+  const candidate = salvaged ?? rawText;
+  const eng = engineOrConsensusViolationReason(candidate, grounding);
+  if (eng) return eng;
+  if (hasUnsupportedTiming(candidate, anchors)) return 'TIMING_CLAIM_MISMATCH';
+  if (looksLikeStructuredJson(rawText)) {
+    return extractJson(rawText) === null ? 'UNRENDERABLE_STRUCTURED_JSON' : 'SUBSTANCE_GATE_FAILED';
+  }
+  return 'STRUCTURAL_FALLBACK';
 }
 
 /** A readable plain-text rendering (for message persistence + the non-structured fallback). */

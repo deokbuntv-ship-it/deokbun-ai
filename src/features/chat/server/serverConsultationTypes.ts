@@ -58,12 +58,20 @@ export type ServerGroundingMeta = {
   questionTimeSource: 'SERVER_RECEIPT_TIME';
 };
 
+// Safe output diagnostics (no content) — how the LLM output was classified + the exact reason it was not
+// rendered as a card. For Edge [chat.diag] logs only; the Edge does NOT return this to the client.
+export type ServerConsultationDiagnostics = {
+  outputClassification: string; // ACCEPTED | STRUCTURAL_FALLBACK | SEMANTIC_REJECTED
+  rejectionReason?: string; // FORBIDDEN_THEORY | CROSS_ENGINE_CONSENSUS | UNGROUNDED_QIMEN_CLAIM | …
+};
+
 export type ServerConsultationResult =
   | {
       ok: true;
       text: string;
       structuredResult?: StructuredConsultationViewModel;
       groundingMeta: ServerGroundingMeta;
+      diagnostics?: ServerConsultationDiagnostics;
     }
   | {
       ok: false;

@@ -287,10 +287,11 @@ var STRUCTURED_OUTPUT_INSTRUCTION = [
   "[출력 형식 — 구조화 JSON]",
   "이번 답변은 아래 JSON 객체 하나로만 출력하십시오. JSON 앞뒤에 다른 설명 문장을 붙이지 마십시오.",
   "모든 문자열은 자연스러운 한국어 상담 문장입니다. 근거 없는 점수·등급·별점·확률·시점을 만들지",
-  "마십시오. 제공되지 않은 엔진(예: 기문둔갑)을 사용했다고 말하지 마십시오. 명리와 자미두수 근거가",
-  "함께 제공되면 각 관점을 어느 엔진에서 나왔는지 구분해 설명하고, 실제로 같은 방향일 때만 조심스럽게",
-  "언급하되 '두 학문이 완전히 일치한다'처럼 근거 없는 합의를 단정하지 마십시오. 신강·신약·용신·격국·",
-  "12운성·12신살을 계산된 사실처럼 단정하지 마십시오.",
+  "마십시오. 제공되지 않은 엔진(예: 기문둔갑)을 사용했다고 말하거나 그 결과를 언급하지 마십시오.",
+  "명리와 자미두수 근거가 함께 제공되면 각 관점을 어느 엔진에서 나왔는지 구분해 따로 서술하고, 두",
+  "학문을 '모두'·'둘 다'·'완전히 일치'처럼 하나로 뭉뚱그려 합의를 단정하지 마십시오(각각 나눠 설명).",
+  "성격·성향·장단점은 쉬운 일상 언어로 풀어서 설명하고, 신강·신약·용신·격국·12운성·12신살 같은 전문",
+  "용어 자체를 답변에 쓰지 마십시오(그 개념을 단정적으로 언급하지도 마십시오).",
   "{",
   '  "coreSummary": "한 줄 핵심(방향 제시용, 본문을 대체하지 않음)",',
   '  "disposition": "기본 성향 요약(선택)",',
@@ -452,15 +453,18 @@ function hasUnsupportedTiming(text, anchors) {
   }
   return false;
 }
-function hasEngineOrConsensusViolation(text, grounding) {
+function engineOrConsensusViolationReason(text, grounding) {
   const ziweiAvailable = grounding.status === "available" && grounding.evidence.ziwei.availability === "available";
   const qimenAvailable = grounding.status === "available" && grounding.evidence.qimen.availability === "available";
-  if (!ziweiAvailable && ZIWEI_USE.test(text)) return true;
-  if (!qimenAvailable && QIMEN_USE.test(text)) return true;
-  if (hasMultiEngineConsensus(text)) return true;
-  if (CROSS_ENGINE_CONSENSUS.test(text)) return true;
-  if (FORBIDDEN_THEORY.test(text)) return true;
-  return false;
+  if (!ziweiAvailable && ZIWEI_USE.test(text)) return "UNGROUNDED_ZIWEI_CLAIM";
+  if (!qimenAvailable && QIMEN_USE.test(text)) return "UNGROUNDED_QIMEN_CLAIM";
+  if (hasMultiEngineConsensus(text)) return "CONSENSUS_CLAIM_MISMATCH";
+  if (CROSS_ENGINE_CONSENSUS.test(text)) return "CROSS_ENGINE_CONSENSUS";
+  if (FORBIDDEN_THEORY.test(text)) return "FORBIDDEN_THEORY";
+  return null;
+}
+function hasEngineOrConsensusViolation(text, grounding) {
+  return engineOrConsensusViolationReason(text, grounding) !== null;
 }
 function hasSemanticViolation(text, grounding) {
   return hasEngineOrConsensusViolation(text, grounding) || hasUnsupportedTiming(text, timingAnchorsOf(grounding));
@@ -509,6 +513,25 @@ function salvageStructuredText(rawText) {
 }
 function looksLikeStructuredJson(text) {
   return /"(coreSummary|coreInterpretation|strengths|cautions|domainInterpretation|futureFlow|followUps)"\s*:/.test(text) || /^\s*[{[]/.test(text);
+}
+function firstStructuredRejectionReason(rawText, grounding) {
+  const anchors = timingAnchorsOf(grounding);
+  const parsed = parseStructuredConsultation(rawText);
+  if (parsed) {
+    const eng2 = engineOrConsensusViolationReason(mainBodyText(parsed), grounding);
+    if (eng2) return eng2;
+    if (hasUnsupportedTiming(coreProseFields(parsed).join("\n"), anchors)) return "TIMING_CLAIM_MISMATCH";
+    return "NONE";
+  }
+  const salvaged = salvageStructuredText(rawText);
+  const candidate2 = salvaged ?? rawText;
+  const eng = engineOrConsensusViolationReason(candidate2, grounding);
+  if (eng) return eng;
+  if (hasUnsupportedTiming(candidate2, anchors)) return "TIMING_CLAIM_MISMATCH";
+  if (looksLikeStructuredJson(rawText)) {
+    return extractJson(rawText) === null ? "UNRENDERABLE_STRUCTURED_JSON" : "SUBSTANCE_GATE_FAILED";
+  }
+  return "STRUCTURAL_FALLBACK";
 }
 function composeConsultationText(p) {
   const blocks = [];
@@ -7542,11 +7565,16 @@ async function buildServerConsultation(request, deps) {
   const outcome = classifyConsultationOutput(raw, effectiveGrounding);
   const structuredResult = outcome.kind === "ACCEPTED" ? buildStructuredConsultationResult(outcome.result, effectiveGrounding) : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
+  const diagnostics = {
+    outputClassification: outcome.kind,
+    ...outcome.kind === "ACCEPTED" ? {} : { rejectionReason: firstStructuredRejectionReason(raw, effectiveGrounding) }
+  };
   return {
     ok: true,
     text,
     ...structuredResult ? { structuredResult } : {},
-    groundingMeta: metaFrom(effectiveGrounding, mode)
+    groundingMeta: metaFrom(effectiveGrounding, mode),
+    diagnostics
   };
 }
 

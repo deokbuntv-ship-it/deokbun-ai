@@ -495,7 +495,19 @@ export default {
           requestId,
         );
 
+        // Diagnose WHY a success response was NOT rendered as a card (§3): a card-worthy answer
+        // (structuredResult present) needs no diagnostic; a fallback / safe-message does. Safe fields only.
+        if (result.diagnostics && result.diagnostics.outputClassification !== 'ACCEPTED') {
+          logDiag(requestId, 'RESPONSE_VALIDATION', result.diagnostics.rejectionReason ?? 'UNKNOWN', {
+            path: 'consultation',
+            model,
+            validationCategory: result.diagnostics.outputClassification,
+            grounded: result.groundingMeta.grounded,
+          });
+        }
+
         // Bounded response (§17): server-validated text + optional structured view-model + safe meta.
+        // `diagnostics` is intentionally NOT returned to the client — it is log-only.
         return Response.json({
           text: result.text,
           ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),

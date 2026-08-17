@@ -19,6 +19,7 @@ import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import {
   classifyConsultationOutput,
   composeConsultationText,
+  firstStructuredRejectionReason,
   SEMANTIC_REJECTION_MESSAGE,
 } from '@/features/chat/prompts/structuredConsultation';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
@@ -202,10 +203,20 @@ export async function buildServerConsultation(
         ? outcome.text
         : SEMANTIC_REJECTION_MESSAGE;
 
+  // Safe diagnostics (no content): how the model output was classified and — when NOT rendered as a card
+  // — the exact reason. Surfaced to the Edge for [chat.diag]; NOT returned to the client.
+  const diagnostics = {
+    outputClassification: outcome.kind,
+    ...(outcome.kind === 'ACCEPTED'
+      ? {}
+      : { rejectionReason: firstStructuredRejectionReason(raw, effectiveGrounding) }),
+  };
+
   return {
     ok: true,
     text,
     ...(structuredResult ? { structuredResult } : {}),
     groundingMeta: metaFrom(effectiveGrounding, mode),
+    diagnostics,
   };
 }
