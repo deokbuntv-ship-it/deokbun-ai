@@ -60,6 +60,15 @@ where schemaname='public'
 Do NOT blindly re-run the whole file; if `profiles` is needed, apply only its table+trigger
 after a developer review (it also needs a self-contained or restored `set_updated_at()`).
 
+**Reproducibility (2026-08-17):** the three tables that DO exist live
+(`consultation_subjects`, `conversations`, `conversation_messages`) are now
+version-controlled as migration
+`supabase/migrations/20260817000300_consumer_core_conversations.sql` — idempotent, so
+a **safe no-op** against the live DB; it only matters for a from-migrations rebuild
+(otherwise those tables would surface as PGRST205). Combined with `..._000100_profiles.sql`
+the whole consumer core is now reproducible from migrations. Applying it changes nothing
+in production; skipping it is fine until a rebuild is needed.
+
 ### B3. `docs/AI_USAGE_LOGS_REQUEST_ID.sql` — optional, safe anytime
 Adds a nullable `request_id` tracing column to `ai_usage_logs`. The app falls back automatically whether or not it is applied. Post-check: `select column_name from information_schema.columns where table_name='ai_usage_logs' and column_name='request_id';` → 1 row after applying.
 
