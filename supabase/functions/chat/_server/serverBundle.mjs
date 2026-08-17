@@ -7724,6 +7724,14 @@ function openAiFailureCode(o) {
   if (o.text.trim().length === 0) return "OPENAI_EMPTY_OUTPUT";
   return "OK";
 }
+function parseUsageDetails(usage) {
+  const u = usage ?? {};
+  const num = (v) => typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : null;
+  return {
+    cachedInputTokens: num(u.input_tokens_details?.cached_tokens),
+    reasoningTokens: num(u.output_tokens_details?.reasoning_tokens)
+  };
+}
 var SAFE_DIAG_KEYS = [
   "requestId",
   "stage",
@@ -7740,7 +7748,18 @@ var SAFE_DIAG_KEYS = [
   "validationCategory",
   "outputTokens",
   "totalTokens",
-  "latencyMs"
+  "latencyMs",
+  // cost telemetry (§13) — all non-PII scalars
+  "complexity",
+  // SIMPLE | STANDARD | DEEP
+  "reasoningEffort",
+  // low | medium | …
+  "maxOutputTokens",
+  // the chosen ceiling
+  "cachedInputTokens",
+  // usage.input_tokens_details.cached_tokens
+  "reasoningTokens"
+  // usage.output_tokens_details.reasoning_tokens
 ];
 function redactDiag(fields) {
   const out = {};
@@ -7888,6 +7907,7 @@ export {
   consultationResponseFormat,
   extractResponsesText,
   openAiFailureCode,
+  parseUsageDetails,
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,

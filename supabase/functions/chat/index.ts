@@ -39,6 +39,7 @@ import {
   consultationResponseFormat,
   extractResponsesText,
   openAiFailureCode,
+  parseUsageDetails,
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,
@@ -246,12 +247,23 @@ function adminClient(): ReturnType<typeof createClient> | null {
   if (url.length === 0 || serviceRoleKey.length === 0) return null;
   return createClient(url, serviceRoleKey);
 }
-async function logAiUsage(entry: AiUsageLog, requestId: string | null): Promise<void> {
+async function logAiUsage(
+  entry: AiUsageLog,
+  requestId: string | null,
+  extra?: Record<string, unknown>,
+): Promise<void> {
   try {
     const admin = adminClient();
     if (!admin) return;
+    const withReq = requestId ? { ...entry, request_id: requestId } : { ...entry };
+    // Progressive fallback (same policy as request_id): try the richest row first; if a telemetry
+    // column (cost §13) is not applied yet, retry without it so usage is NEVER lost.
+    if (extra && Object.keys(extra).length > 0) {
+      const { error } = await admin.from('ai_usage_logs').insert({ ...withReq, ...extra });
+      if (!error) return;
+    }
     if (requestId) {
-      const { error } = await admin.from('ai_usage_logs').insert({ ...entry, request_id: requestId });
+      const { error } = await admin.from('ai_usage_logs').insert(withReq);
       if (!error) return;
     }
     await admin.from('ai_usage_logs').insert(entry);
@@ -523,6 +535,10 @@ export default {
           return Response.json({ error: result.reason }, { status });
         }
 
+        // Cost telemetry (§13): reasoning + cached tokens split out of usage, plus the chosen
+        // complexity/effort/ceiling. All non-PII scalars; written via the progressive fallback so a
+        // not-yet-applied column never loses the row. Turns the cost estimates into MEASURED per-Q&A cost.
+        const usageDetails = parseUsageDetails(capturedUsage);
         await logAiUsage(
           {
             user_id: userId, model, request_type: 'chat',
@@ -532,6 +548,13 @@ export default {
             latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
           },
           requestId,
+          {
+            cached_input_tokens: usageDetails.cachedInputTokens,
+            reasoning_tokens: usageDetails.reasoningTokens,
+            max_output_tokens: profile.maxOutputTokens,
+            complexity,
+            reasoning_effort: profile.reasoningEffort,
+          },
         );
 
         // Diagnose WHY a success response was NOT rendered as a card (§3): a card-worthy answer

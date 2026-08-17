@@ -18,6 +18,7 @@ export type {
 export {
   extractResponsesText,
   openAiFailureCode,
+  parseUsageDetails,
   redactDiag,
   SAFE_DIAG_KEYS,
 } from './edgeDiagnostics';

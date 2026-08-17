@@ -3,6 +3,7 @@
 import {
   extractResponsesText,
   openAiFailureCode,
+  parseUsageDetails,
   redactDiag,
   SAFE_DIAG_KEYS,
 } from '@/features/chat/server';
@@ -78,5 +79,38 @@ describe('redactDiag — allowlist (never leaks prompt/birth/question/key/auth/b
   it('drops null/undefined safe fields (keeps the line compact)', () => {
     const out = redactDiag({ requestId: 'r', stage: 'OPENAI_RESPONSE', code: 'OPENAI_EMPTY_OUTPUT', incompleteReason: null, model: undefined });
     expect(out).toEqual({ requestId: 'r', stage: 'OPENAI_RESPONSE', code: 'OPENAI_EMPTY_OUTPUT' });
+  });
+
+  it('carries the cost-telemetry scalars (§13) — all in the allowlist, no PII', () => {
+    const out = redactDiag({
+      requestId: 'r', stage: 'ROUTING', code: 'OK',
+      complexity: 'STANDARD', reasoningEffort: 'low', maxOutputTokens: 4500,
+      cachedInputTokens: 1200, reasoningTokens: 640,
+      question: '제 사주 좀', birthInput: { y: 1990 }, // sensitive → still dropped
+    } as Record<string, unknown>);
+    expect(out).toMatchObject({ complexity: 'STANDARD', reasoningEffort: 'low', maxOutputTokens: 4500, cachedInputTokens: 1200, reasoningTokens: 640 });
+    expect(out).not.toHaveProperty('question');
+    expect(out).not.toHaveProperty('birthInput');
+  });
+});
+
+describe('parseUsageDetails — reasoning + cached token split (§13)', () => {
+  it('extracts the nested reasoning + cached token counts from an OpenAI usage object', () => {
+    expect(
+      parseUsageDetails({
+        input_tokens: 3000,
+        input_tokens_details: { cached_tokens: 1200 },
+        output_tokens: 1400,
+        output_tokens_details: { reasoning_tokens: 600 },
+      }),
+    ).toEqual({ cachedInputTokens: 1200, reasoningTokens: 600 });
+  });
+  it('is tolerant of missing/malformed shapes (null per field, never throws)', () => {
+    expect(parseUsageDetails(null)).toEqual({ cachedInputTokens: null, reasoningTokens: null });
+    expect(parseUsageDetails({})).toEqual({ cachedInputTokens: null, reasoningTokens: null });
+    expect(parseUsageDetails({ output_tokens_details: { reasoning_tokens: 'x' } })).toEqual({
+      cachedInputTokens: null,
+      reasoningTokens: null,
+    });
   });
 });

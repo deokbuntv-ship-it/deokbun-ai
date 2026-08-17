@@ -49,6 +49,26 @@ export function openAiFailureCode(o: OpenAiOutcome): string {
   return 'OK';
 }
 
+// Extract the token DETAIL breakdown from an OpenAI Responses `usage` object (cost telemetry §13).
+// gpt-5-mini reports reasoning tokens under output_tokens_details.reasoning_tokens and cache hits under
+// input_tokens_details.cached_tokens — the two fields needed to SEE the reasoning share + verify prompt
+// caching. Tolerant of missing/malformed shapes (null per field). Reads ONLY token counts, never content.
+export function parseUsageDetails(usage: unknown): {
+  cachedInputTokens: number | null;
+  reasoningTokens: number | null;
+} {
+  const u = (usage ?? {}) as {
+    input_tokens_details?: { cached_tokens?: unknown };
+    output_tokens_details?: { reasoning_tokens?: unknown };
+  };
+  const num = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.trunc(v) : null;
+  return {
+    cachedInputTokens: num(u.input_tokens_details?.cached_tokens),
+    reasoningTokens: num(u.output_tokens_details?.reasoning_tokens),
+  };
+}
+
 // The ONLY fields a diagnostic line may carry. Redaction is by ALLOWLIST (never blocklist): anything not
 // listed here — prompt, birthInput, question, evidence, grounding, apiKey, authorization, openai body,
 // messages — is dropped even if a caller passes it.
@@ -66,6 +86,12 @@ export const SAFE_DIAG_KEYS = [
   'outputTokens',
   'totalTokens',
   'latencyMs',
+  // cost telemetry (§13) — all non-PII scalars
+  'complexity', // SIMPLE | STANDARD | DEEP
+  'reasoningEffort', // low | medium | …
+  'maxOutputTokens', // the chosen ceiling
+  'cachedInputTokens', // usage.input_tokens_details.cached_tokens
+  'reasoningTokens', // usage.output_tokens_details.reasoning_tokens
 ] as const;
 export type SafeDiagKey = (typeof SAFE_DIAG_KEYS)[number];
 
