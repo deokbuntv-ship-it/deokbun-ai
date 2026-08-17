@@ -15,6 +15,13 @@ export type {
   ServerSummaryDeps,
   ServerSummaryTurn,
 } from './buildServerSummary';
+export {
+  extractResponsesText,
+  openAiFailureCode,
+  redactDiag,
+  SAFE_DIAG_KEYS,
+} from './edgeDiagnostics';
+export type { OpenAiOutcome, SafeDiagKey } from './edgeDiagnostics';
 export type {
   ServerConsultationRequest,
   ServerConsultationResult,

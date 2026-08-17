@@ -7568,12 +7568,70 @@ async function buildServerSummary(request, deps) {
   if (typeof raw !== "string" || raw.trim().length === 0) return { ok: false, reason: "LLM_FAILED" };
   return { ok: true, text: raw };
 }
+
+// src/features/chat/server/edgeDiagnostics.ts
+function extractResponsesText(payload) {
+  const output = payload?.output;
+  if (Array.isArray(output)) {
+    const parts = [];
+    for (const item of output) {
+      if (item?.type === "message" && Array.isArray(item.content)) {
+        for (const contentPart of item.content) {
+          if (contentPart?.type === "output_text" && typeof contentPart.text === "string") {
+            parts.push(contentPart.text);
+          }
+        }
+      }
+    }
+    const joined = parts.join("").trim();
+    if (joined.length > 0) return joined;
+  }
+  const convenience = payload?.output_text;
+  if (typeof convenience === "string" && convenience.trim().length > 0) return convenience.trim();
+  return "";
+}
+function openAiFailureCode(o) {
+  if (!o.ok) return o.statusCode ? `OPENAI_HTTP_${o.statusCode}` : "OPENAI_FETCH_FAILED";
+  if (o.text.trim().length === 0) {
+    return o.incompleteReason ? `OPENAI_INCOMPLETE_${o.incompleteReason}` : "OPENAI_EMPTY_OUTPUT";
+  }
+  return "OK";
+}
+var SAFE_DIAG_KEYS = [
+  "requestId",
+  "stage",
+  "code",
+  "path",
+  // 'consultation' | 'summary'
+  "upstreamStatus",
+  // OpenAI HTTP status (number)
+  "responseStatus",
+  // Responses API `status` enum ('completed'|'incomplete'|'failed')
+  "incompleteReason",
+  "model",
+  "grounded",
+  "validationCategory",
+  "outputTokens",
+  "totalTokens",
+  "latencyMs"
+];
+function redactDiag(fields) {
+  const out = {};
+  for (const key2 of SAFE_DIAG_KEYS) {
+    if (fields[key2] !== void 0 && fields[key2] !== null) out[key2] = fields[key2];
+  }
+  return out;
+}
 export {
   MAX_EXISTING_SUMMARY_CHARS,
   MAX_SUMMARY_SOURCE_CHARS,
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
+  SAFE_DIAG_KEYS,
   buildServerConsultation,
   buildServerSummary,
+  extractResponsesText,
+  openAiFailureCode,
+  redactDiag,
   sanitizeSummarySource
 };

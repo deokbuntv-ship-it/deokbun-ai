@@ -146,6 +146,35 @@ server-owned question time, summary works). Regenerate with `node supabase/funct
 (esbuild is a devDependency). This also shrinks the deploy to the Edge + one bundle instead of the whole
 `src/` tree. Deno/Supabase CLIs remain absent here, so the actual bundle+boot is still owner-verify on redeploy.
 
+### Chat 502 runtime diagnosis (2026-08-17 — worker boots, consultation POST → 502)
+
+**Evidence:** the bundle worker now boots (booted 47ms/64ms); an authenticated consultation returns
+`POST /functions/v1/chat → 502` (client `chat LLM_FAILURE`) with **no useful application log**.
+
+**Every 502 branch** (both explicit `status: 502` returns are the SAME class): the OpenAI/LLM path only.
+`INVALID_INPUT`→400, `SUBJECT_FORBIDDEN`→403, `SUBJECT_NOT_FOUND`→404, `SERVER_NOT_CONFIGURED`→500,
+`RATE_LIMITED`→429. A **502 == `LLM_FAILED`** = `callLLM` returned a non-OK OpenAI outcome, in
+`buildServerConsultation` (consultation) or `buildServerSummary` (summary), during/after the OpenAI call;
+an `ai_usage_logs` error row IS written for it.
+
+**Why the log was silent:** the three 502 sub-classes were indistinguishable and the empty-output case
+logged nothing. `callOpenAI` now returns a classified outcome and every failure emits a SAFE
+`[chat.diag]` line via `openAiFailureCode` + `redactDiag` (bundled, unit-tested):
+`OPENAI_FETCH_FAILED` (transport) · `OPENAI_HTTP_<status>` (401 key / 429 quota / 404 model / 400 body) ·
+`OPENAI_INCOMPLETE_<reason>` (2xx but `incomplete_details.reason`, e.g. `max_output_tokens`) ·
+`OPENAI_EMPTY_OUTPUT` (2xx, complete, no visible text). The line carries only requestId, stage, code,
+model, upstreamStatus, responseStatus, incompleteReason, output/total tokens — never prompt/birth/question/
+evidence/key/auth/answer. The same precise code now lands in `ai_usage_logs.error_code`.
+
+**Most likely class (hypothesis, not proven):** `OPENAI_EMPTY_OUTPUT` / `OPENAI_INCOMPLETE_max_output_tokens`
+— the ONLY previously-silent class (non-2xx already logged `openai_fault`), consistent with the reasoning
+model `gpt-5-mini` spending the `max_output_tokens` (default 800) budget on reasoning and emitting no
+visible text on a large grounded prompt. **DIAGNOSTIC_ONLY** — not fixed (raising the token budget /
+setting reasoning effort would be speculative); the next E2E's `[chat.diag]` (or `ai_usage_logs.error_code`)
+proves the exact class. No explicit OpenAI request timeout exists — a very slow reasoning call could also
+hit the platform wall-clock and be killed before any diag fires; that would show as a platform 5xx with no
+`[chat.diag]`, which is itself the signal to raise `LLM_MAX_OUTPUT_TOKENS`/lower reasoning effort.
+
 ## OWNER_ACTION_REQUIRED (§29)
 
 1. Review + apply `supabase/migrations/20260817000000_consumer_birth_profiles.sql` (RLS). Do NOT weaken RLS.

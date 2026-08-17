@@ -32,7 +32,13 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 // rejects the app's Node/Metro-style extensionless + directory imports and does NOT honor sloppy-imports,
 // so the Edge imports the single generated bundle instead. The 3 engine deps stay external → resolved by
 // deno.json to pinned npm: specifiers. No app-SOURCE import remains in this file.
-import { buildServerConsultation, buildServerSummary } from './_server/serverBundle.mjs';
+import {
+  buildServerConsultation,
+  buildServerSummary,
+  extractResponsesText,
+  openAiFailureCode,
+  redactDiag,
+} from './_server/serverBundle.mjs';
 
 // Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
 // extensionless/directory/@/ specifier to Deno. They mirror the source contracts; the authoritative
@@ -82,41 +88,33 @@ const denoDigestProvider = {
   },
 };
 
-function extractText(payload: unknown): string {
-  const output = (payload as { output?: unknown } | null)?.output;
-  if (Array.isArray(output)) {
-    const parts: string[] = [];
-    for (const item of output) {
-      if (item?.type === 'message' && Array.isArray(item.content)) {
-        for (const contentPart of item.content) {
-          if (contentPart?.type === 'output_text' && typeof contentPart.text === 'string') {
-            parts.push(contentPart.text);
-          }
-        }
-      }
-    }
-    const joined = parts.join('').trim();
-    if (joined.length > 0) return joined;
-  }
-  const convenience = (payload as { output_text?: unknown } | null)?.output_text;
-  if (typeof convenience === 'string' && convenience.trim().length > 0) return convenience.trim();
-  return '';
+// extractResponsesText / openAiFailureCode / redactDiag are imported from the bundle (unit-tested in Jest).
+
+// SAFE diagnostic line (§F). redactDiag keeps ONLY an allowlist of non-sensitive fields — never the
+// prompt, birth data, question, engine evidence, API key, auth header, or the OpenAI response text.
+type DiagStage =
+  | 'AUTH' | 'INPUT' | 'PROFILE_RESOLUTION' | 'GROUNDING'
+  | 'OPENAI_REQUEST' | 'OPENAI_RESPONSE' | 'RESPONSE_VALIDATION' | 'USAGE_LOG';
+function logDiag(requestId: string | null, stage: DiagStage, code: string, extra?: Record<string, unknown>) {
+  console.error('[chat.diag]', JSON.stringify(redactDiag({ requestId, stage, code, ...(extra ?? {}) })));
 }
 
-// The one outbound provider call, shared by the consultation + summary paths. Throws OpenAIFault (with a
-// stable code) on any transport/HTTP fault so callers can map it uniformly.
-class OpenAIFault extends Error {
-  code: string;
-  constructor(code: string) {
-    super(code);
-    this.name = 'OpenAIFault';
-    this.code = code;
-  }
-}
+// The one outbound provider call, shared by the consultation + summary paths. NEVER throws — it returns a
+// CLASSIFIED outcome (transport fault / HTTP status / Responses `status` + `incomplete_details.reason` /
+// extracted text / usage) so a 502 can be attributed to an exact class without exposing any content.
+type OpenAiCall = {
+  ok: boolean; // false = transport/HTTP failure
+  statusCode: number; // 0 when fetch threw
+  text: string;
+  usage: Record<string, unknown>;
+  responseStatus: string | null;
+  incompleteReason: string | null;
+};
 async function callOpenAI(
   messages: LLMMessage[],
   cfg: { apiKey: string; model: string; maxOutputTokens: number },
-): Promise<{ text: string; usage: Record<string, unknown> }> {
+): Promise<OpenAiCall> {
+  const base: OpenAiCall = { ok: false, statusCode: 0, text: '', usage: {}, responseStatus: null, incompleteReason: null };
   let providerResponse: Response;
   try {
     providerResponse = await fetch(OPENAI_RESPONSES_URL, {
@@ -125,12 +123,21 @@ async function callOpenAI(
       body: JSON.stringify({ model: cfg.model, input: messages, max_output_tokens: cfg.maxOutputTokens }),
     });
   } catch {
-    throw new OpenAIFault('OPENAI_FETCH_FAILED');
+    return base; // transport failure → ok:false, statusCode:0
   }
-  if (!providerResponse.ok) throw new OpenAIFault(`OPENAI_${providerResponse.status}`);
-  const payload = await providerResponse.json();
+  if (!providerResponse.ok) return { ...base, statusCode: providerResponse.status };
+  let payload: unknown;
+  try {
+    payload = await providerResponse.json();
+  } catch {
+    return { ...base, ok: true, statusCode: providerResponse.status }; // 2xx but unparseable → empty text
+  }
   const usage = (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
-  return { text: extractText(payload), usage };
+  const rawStatus = (payload as { status?: unknown } | null)?.status;
+  const responseStatus = typeof rawStatus === 'string' ? rawStatus : null;
+  const rawReason = (payload as { incomplete_details?: { reason?: unknown } } | null)?.incomplete_details?.reason;
+  const incompleteReason = typeof rawReason === 'string' ? rawReason : null;
+  return { ok: true, statusCode: providerResponse.status, text: extractResponsesText(payload), usage, responseStatus, incompleteReason };
 }
 
 // ---- trusted profile resolution (§9/§25) ------------------------------------
@@ -340,15 +347,21 @@ export default {
           let summaryUsage: Record<string, unknown> = {};
           let summaryErrorCode: string | null = null;
           const summaryCallLLM = async (messages: LLMMessage[]): Promise<string> => {
-            try {
-              const r = await callOpenAI(messages, cfg);
-              summaryUsage = r.usage;
-              return r.text;
-            } catch (e) {
-              summaryErrorCode = e instanceof OpenAIFault ? e.code : 'LLM_FAILED';
-              console.error('[chat] summary_openai_fault', JSON.stringify({ requestId, code: summaryErrorCode }));
-              throw e;
-            }
+            const r = await callOpenAI(messages, cfg);
+            summaryUsage = r.usage;
+            const code = openAiFailureCode(r);
+            if (code === 'OK') return r.text;
+            summaryErrorCode = code;
+            logDiag(requestId, 'OPENAI_RESPONSE', code, {
+              path: 'summary',
+              model,
+              upstreamStatus: r.statusCode || undefined,
+              responseStatus: r.responseStatus,
+              incompleteReason: r.incompleteReason,
+              outputTokens: toNullableInt(r.usage.output_tokens),
+              totalTokens: toNullableInt(r.usage.total_tokens),
+            });
+            return ''; // empty → buildServerSummary maps to LLM_FAILED
           };
           const summary = await buildServerSummary(
             {
@@ -372,6 +385,7 @@ export default {
               return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
             }
             // INVALID_INPUT: pre-flight (no OpenAI call) → no usage row, matching consultation's policy.
+            logDiag(requestId, 'INPUT', 'SUMMARY_INVALID_INPUT', { path: 'summary' });
             return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
           }
           // Success → log usage exactly once (FIX C: summary now counts toward the burst window).
@@ -389,25 +403,26 @@ export default {
         }
 
         if (typeof body.question !== 'string') {
+          logDiag(requestId, 'INPUT', 'MISSING_QUESTION', { path: 'consultation' });
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
 
-        // The single outbound trust exit. Captures usage for logging; throws on provider fault so the
-        // orchestrator maps it to LLM_FAILED (and we log the specific code here).
+        // The single outbound trust exit. Captures the classified OpenAI outcome so a 502 can be attributed
+        // to an exact class. callLLM never throws — a non-OK outcome returns '' → the orchestrator maps it
+        // to LLM_FAILED, and we log the precise code + safe diagnostics here.
         let capturedUsage: Record<string, unknown> = {};
         let llmErrorCode: string | null = null;
+        let capturedOutcome: OpenAiCall | null = null;
         const callLLM = async (messages: LLMMessage[]): Promise<string> => {
           stage = 'openai_request';
-          try {
-            const r = await callOpenAI(messages, cfg);
-            capturedUsage = r.usage;
-            stage = 'response_parse';
-            return r.text;
-          } catch (e) {
-            llmErrorCode = e instanceof OpenAIFault ? e.code : 'LLM_FAILED';
-            console.error('[chat] openai_fault', JSON.stringify({ stage, requestId, code: llmErrorCode }));
-            throw e;
-          }
+          const r = await callOpenAI(messages, cfg);
+          capturedUsage = r.usage;
+          capturedOutcome = r;
+          stage = 'response_parse';
+          const code = openAiFailureCode(r);
+          if (code === 'OK') return r.text;
+          llmErrorCode = code;
+          return ''; // empty → buildServerConsultation maps to LLM_FAILED (diagnostics logged at the branch)
         };
 
         stage = 'server_consultation';
@@ -436,17 +451,31 @@ export default {
         if (!result.ok) {
           const status = REASON_STATUS[result.reason] ?? 500;
           if (result.reason === 'LLM_FAILED') {
+            const code = llmErrorCode ?? 'LLM_FAILED';
+            // The precise 502 class (§F): transport / HTTP status / incomplete-reason / empty-output +
+            // token counts — enough to tell WHY without exposing prompt, birth, question, or the answer.
+            logDiag(requestId, 'OPENAI_RESPONSE', code, {
+              path: 'consultation',
+              model,
+              upstreamStatus: capturedOutcome?.statusCode || undefined,
+              responseStatus: capturedOutcome?.responseStatus,
+              incompleteReason: capturedOutcome?.incompleteReason,
+              outputTokens: toNullableInt(capturedUsage.output_tokens),
+              totalTokens: toNullableInt(capturedUsage.total_tokens),
+            });
             await logAiUsage(
               {
                 user_id: userId, model, request_type: 'chat',
                 input_tokens: null, output_tokens: null, total_tokens: null,
                 latency_ms: Date.now() - startedAt, status: 'error',
-                error_code: llmErrorCode ?? 'LLM_FAILED',
+                error_code: code,
               },
               requestId,
             );
             return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
           }
+          // SUBJECT_FORBIDDEN(403) / SUBJECT_NOT_FOUND(404) / INVALID_INPUT(400) — attribute the stage.
+          logDiag(requestId, result.reason === 'INVALID_INPUT' ? 'INPUT' : 'PROFILE_RESOLUTION', result.reason, { path: 'consultation' });
           return Response.json({ error: result.reason }, { status });
         }
 
