@@ -170,7 +170,7 @@ evidence/key/auth/answer. The same precise code now lands in `ai_usage_logs.erro
 `code: OPENAI_INCOMPLETE_max_output_tokens, upstreamStatus 200, responseStatus incomplete, outputTokens
 768, totalTokens 2798` — gpt-5-mini spent the shared 800-token budget on reasoning and returned
 `status: incomplete` with no visible text. **Fix:** split the output budget per path via the bundled,
-bounded `resolveLlmBudgets` — consultation `LLM_CONSULTATION_MAX_OUTPUT_TOKENS` (default **2800**, was 800),
+bounded `resolveLlmBudgets` — consultation `LLM_CONSULTATION_MAX_OUTPUT_TOKENS` (default **5000**, was 800→2800; raised after Structured Outputs still hit the cap),
 summary `LLM_SUMMARY_MAX_OUTPUT_TOKENS` (default **1000**), each clamped to [256, 8000]. Model unchanged
 (gpt-5-mini). All fail-closed / structured-validation behavior preserved (an incomplete response with no
 text still classifies as failure → LLM_FAILED, no partial leak). No explicit OpenAI request timeout exists;

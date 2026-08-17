@@ -5,10 +5,12 @@
 // 2798). The structured long-form consultation contract needs a larger budget; summary stays small.
 // Bounded on both ends — env can tune but never make it unbounded (§7).
 
-// Consultation: the structured schema (core summary + long-form interpretation + strengths + cautions +
-// domain sections + future flow + follow-ups) plus gpt-5-mini reasoning headroom. Conservative V1 value in
-// the recommended 2500–3000 band (input was ~2030 tokens; 768 of the 800 output tokens were reasoning).
-export const DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS = 2800;
+// Consultation: the strict structured schema (core summary + long-form interpretation + strengths +
+// cautions + domain sections + future flow + follow-ups) PLUS gpt-5-mini reasoning headroom. Raised to
+// 5000 after production still hit the cap under Structured Outputs (outputTokens 2800/2800, responseStatus
+// incomplete, totalTokens ~8079) — reasoning + a full schema-conforming answer needs more room. Still
+// within HARD_MAX (8000) and the model context.
+export const DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS = 5000;
 // Summary: short compression only.
 export const DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 1000;
 // Hard bounds so a bad env value can neither starve nor blow up cost.
