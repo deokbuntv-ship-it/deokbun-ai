@@ -17,7 +17,7 @@
 // Runtime: Supabase Edge Functions (Deno). Excluded from the app tsconfig; never
 // bundled by Metro.
 
-import { withSupabase } from 'npm:@supabase/server';
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 import { getTemplate, type TemplateVariables } from './templates.ts';

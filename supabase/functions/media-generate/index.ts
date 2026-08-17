@@ -9,7 +9,7 @@
 // content_assets row is marked completed — a provider success with a storage
 // failure is NOT reported as success (§17). No fake media. Runtime: Deno.
 
-import { withSupabase } from 'npm:@supabase/server';
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 import {

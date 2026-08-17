@@ -8,7 +8,7 @@
 //
 // Security: verify_jwt + admin_users gate; Google key server-side only. Deno.
 
-import { withSupabase } from 'npm:@supabase/server';
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 const STORAGE_BUCKET = 'content-media';

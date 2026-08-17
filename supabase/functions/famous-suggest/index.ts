@@ -13,7 +13,7 @@
 // Security mirrors content-generate: verify_jwt + admin_users membership,
 // server-side OpenAI key, no client secret. Runtime: Deno (excluded from app tsc).
 
-import { withSupabase } from 'npm:@supabase/server';
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';

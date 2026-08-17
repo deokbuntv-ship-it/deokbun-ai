@@ -21,10 +21,10 @@
 // NOTE: engine execution under Deno is UNVERIFIED in this workspace (no deno/supabase CLI) —
 // EDGE_RUNTIME_NOT_EXECUTED; the orchestrator logic itself is verified under Node/Jest.
 
-// @supabase/supabase-js pinned to the app's exact locked version (package-lock: 2.112.1) for reproducible
-// Edge builds. @supabase/server is a Deno-only helper (not in the app lockfile) — left unpinned here; the
-// owner should pin it to the version their Supabase CLI ships once confirmed (OWNER_ACTION).
-import { withSupabase } from 'npm:@supabase/server';
+// Pinned for reproducible Edge builds: @supabase/supabase-js to the app's exact locked version
+// (package-lock: 2.112.1), and @supabase/server (a Deno-only helper, not in the app lockfile) to the
+// owner-verified current version 1.4.1.
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 
 import { buildServerConsultation, buildServerSummary } from '@/features/chat/server';
