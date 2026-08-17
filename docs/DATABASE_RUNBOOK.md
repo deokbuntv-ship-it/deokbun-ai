@@ -39,7 +39,7 @@ from pg_policies
 where schemaname='public' and tablename='consultation_drafts';
 ```
 **Expect:** four policies `drafts_select_own`/`insert_own`/`update_own`/`delete_own`, with insert/update `with_check` containing `user_id = auth.uid()`. Also `select relrowsecurity from pg_class where relname='consultation_drafts';` must be `t`.
-**If 0 rows / RLS off:** apply `docs/DRAFT_RLS_SETUP.sql` (idempotent), then re-verify. **Priority.**
+**If 0 rows / RLS off:** apply migration `supabase/migrations/20260817000200_consultation_drafts.sql` (idempotent; now the canonical source — supersedes `docs/DRAFT_RLS_SETUP.sql`), then re-verify. **Priority.**
 
 ### B2. `docs/CONSUMER_CORE_SCHEMA.sql` — the 4 core consumer tables
 ⚠️ **CORRECTION (verified live 2026-08-14):** this file was previously assumed applied, but a

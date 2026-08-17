@@ -8,8 +8,11 @@
 -- user (PK = user_id), upsert on conflict user_id; stores only subject +
 -- birth_info (JSONB), never messages/prompts/secrets.
 --
--- ⚠️ ARTIFACT ONLY — not applied automatically; reconcile with the live DB first
--- (this table was applied out-of-band and is not otherwise in the repo).
+-- ⚠️ SUPERSEDED AS THE CANONICAL SOURCE — this table is now version-controlled as
+-- supabase/migrations/20260817000200_consultation_drafts.sql (same idempotent schema
+-- + RLS). This file is kept for the audit trail / rationale. Apply via the migration,
+-- not this artifact. It was originally applied out-of-band; the migration reconciles
+-- that drift and is a safe no-op where the table already exists.
 -- Idempotent + non-destructive.
 --
 -- RECOMMENDED FIX = Strategy 1 (RLS WITH CHECK). It closes the hole WITHOUT any
