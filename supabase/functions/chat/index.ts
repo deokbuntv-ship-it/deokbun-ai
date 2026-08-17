@@ -21,14 +21,15 @@
 // NOTE: engine execution under Deno is UNVERIFIED in this workspace (no deno/supabase CLI) —
 // EDGE_RUNTIME_NOT_EXECUTED; the orchestrator logic itself is verified under Node/Jest.
 
+// @supabase/supabase-js pinned to the app's exact locked version (package-lock: 2.112.1) for reproducible
+// Edge builds. @supabase/server is a Deno-only helper (not in the app lockfile) — left unpinned here; the
+// owner should pin it to the version their Supabase CLI ships once confirmed (OWNER_ACTION).
 import { withSupabase } from 'npm:@supabase/server';
-import { createClient } from 'npm:@supabase/supabase-js';
+import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 
-import { buildServerConsultation } from '@/features/chat/server';
+import { buildServerConsultation, buildServerSummary } from '@/features/chat/server';
 import type { TrustedBirthResolution } from '@/features/chat/server';
-import { buildSummaryPrompt } from '@/features/chat/prompts/summaryPromptBuilder';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
-import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft } from '@/features/consultation';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
@@ -303,39 +304,68 @@ export default {
         }
 
         const cfg = { apiKey, model, maxOutputTokens };
+        const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 
-        // Summary mode (§20): the SERVER builds the summary prompt from the raw turns — the client never
-        // authors it. A generic compression call: no grounding, no birth facts, no structured result.
+        // Summary mode (FIX A/B/C): the SERVER owns the summary prompt (buildServerSummary → existingSummary
+        // is untrusted content, never system) and applies hard input bounds server-side. Usage is logged
+        // exactly like consultation so summary calls COUNT toward the ai_usage_logs burst window — no
+        // rate-limit bypass, no double count.
         if (body.mode === 'summary') {
           stage = 'summary_request';
-          const rawTurns = Array.isArray(body.turns) ? body.turns : [];
-          const chatTurns: ChatMessage[] = rawTurns
-            .filter(
-              (t: unknown): t is { role: 'user' | 'assistant'; content: string } =>
-                t !== null &&
-                typeof t === 'object' &&
-                ((t as { role?: unknown }).role === 'user' || (t as { role?: unknown }).role === 'assistant') &&
-                typeof (t as { content?: unknown }).content === 'string',
-            )
-            .map((t, i) => ({ id: `s-${i}`, role: t.role, text: t.content }));
-          if (chatTurns.length === 0) {
+          let summaryUsage: Record<string, unknown> = {};
+          let summaryErrorCode: string | null = null;
+          const summaryCallLLM = async (messages: LLMMessage[]): Promise<string> => {
+            try {
+              const r = await callOpenAI(messages, cfg);
+              summaryUsage = r.usage;
+              return r.text;
+            } catch (e) {
+              summaryErrorCode = e instanceof OpenAIFault ? e.code : 'LLM_FAILED';
+              console.error('[chat] summary_openai_fault', JSON.stringify({ requestId, code: summaryErrorCode }));
+              throw e;
+            }
+          };
+          const summary = await buildServerSummary(
+            {
+              existingSummary: typeof body.existingSummary === 'string' ? body.existingSummary : null,
+              turns: body.turns,
+            },
+            { callLLM: summaryCallLLM },
+          );
+          if (!summary.ok) {
+            if (summary.reason === 'LLM_FAILED') {
+              // OpenAI WAS attempted → log the error (consistent with consultation; counts in the window).
+              await logAiUsage(
+                {
+                  user_id: userId, model, request_type: 'chat',
+                  input_tokens: null, output_tokens: null, total_tokens: null,
+                  latency_ms: Date.now() - startedAt, status: 'error',
+                  error_code: summaryErrorCode ?? 'LLM_FAILED',
+                },
+                requestId,
+              );
+              return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+            }
+            // INVALID_INPUT: pre-flight (no OpenAI call) → no usage row, matching consultation's policy.
             return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
           }
-          const existingSummary = typeof body.existingSummary === 'string' ? body.existingSummary : null;
-          try {
-            const r = await callOpenAI(buildSummaryPrompt(existingSummary, chatTurns), cfg);
-            if (r.text.trim().length === 0) return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
-            return Response.json({ text: r.text });
-          } catch {
-            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
-          }
+          // Success → log usage exactly once (FIX C: summary now counts toward the burst window).
+          await logAiUsage(
+            {
+              user_id: userId, model, request_type: 'chat',
+              input_tokens: toNullableInt(summaryUsage.input_tokens),
+              output_tokens: toNullableInt(summaryUsage.output_tokens),
+              total_tokens: toNullableInt(summaryUsage.total_tokens),
+              latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
+            },
+            requestId,
+          );
+          return Response.json({ text: summary.text });
         }
 
         if (typeof body.question !== 'string') {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
-
-        const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 
         // The single outbound trust exit. Captures usage for logging; throws on provider fault so the
         // orchestrator maps it to LLM_FAILED (and we log the specific code here).

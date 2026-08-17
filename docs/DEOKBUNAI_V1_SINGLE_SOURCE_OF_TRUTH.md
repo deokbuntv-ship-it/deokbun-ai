@@ -108,7 +108,7 @@ code exist & compile; *Integration* = are the pieces actually wired together end
 | Memory / Retention / Fortune | 40% | 20% | 5% | memory live; fortune/mailbox scaffold; push absent |
 | Content / Famous / SEO | 75% | 45% | 15% | routes+guards built; needs ~24 SQL applied; CTA-to-consult missing |
 | Admin | 80% | 60% | 20% | real-data areas + solid authz; needs SQL applied; 5 truthful seams |
-| Database / RLS | 85% | 40% | 30% | thorough artifacts; **no migrations dir**; apply manual/unverified |
+| Database / RLS | 85% | 40% | 30% | thorough artifacts; `migrations/` now holds the consumer_birth_profiles RLS migration (REVIEWED_NOT_APPLIED); other apply manual/unverified |
 | Infrastructure | 85% | 65% | 50% | Vercel verified; Supabase live; edges/secrets partial |
 | Security / Privacy | 75% | 65% | 40% | no client secret exposure, RLS-based; drafts user_id + apply-dependence |
 | Acquisition / Analytics | 5% | 0% | 0% | NOT_STARTED |
@@ -217,10 +217,13 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
   the Edge `chat` recomputes grounding (`buildServerConsultation`), owns the Qimen question time (receipt
   time) + activation + availability, builds the system prompt, calls OpenAI, and validates output. A
   modified client can no longer fabricate facts/availability/provenance/consensus (adversarially tested,
-  Node). **Not deploy-verified:** the Deno/Supabase CLIs are absent in the build workspace, so engine
-  execution inside the Edge is `EDGE_RUNTIME_NOT_EXECUTED` (owner deploy + runtime-verify + apply
-  `supabase/migrations/…_consumer_birth_profiles.sql`). Detail: `docs/CODEX_SERVER_TRUST_BOUNDARY_REVIEW.md`.
-  (Supersedes the 2026-08-16 `SERVER_TRUST_BOUNDARY_BLOCKED` note.)
+  Node). The conversation-summary path is server-owned too (2026-08-17 closure): the client's prior summary
+  is untrusted USER content (never a system message), server bounds cap turns/chars/aggregate, and summary
+  calls are usage-logged so they count toward the rate window. **Not deploy-verified:** the Deno/Supabase
+  CLIs are absent in the build workspace, so engine execution inside the Edge is `EDGE_RUNTIME_NOT_EXECUTED`
+  (owner deploy + runtime-verify). The `supabase/migrations/` directory now exists in-repo; the
+  `consumer_birth_profiles` RLS migration is **REVIEWED_NOT_APPLIED** (owner applies). Detail:
+  `docs/CODEX_SERVER_TRUST_BOUNDARY_REVIEW.md`. (Supersedes the 2026-08-16 `SERVER_TRUST_BOUNDARY_BLOCKED` note.)
 
 ### 11b. SAJU product integration (2026-08-16) — honest status
 
@@ -376,7 +379,8 @@ functions (`cancelContent`, `archiveFamous`, `listContent`/`listFamous`/`listSch
 - **Fortune tables:** `DEFERRED_POST_V1`.
 - RLS pattern: owner-scoped (`auth.uid()`), admin via `is_admin()`, `SECURITY DEFINER` RPCs
   for cross-user/public reads. `DRAFT_RLS_SETUP.sql` + `CONSUMER_CORE_SCHEMA.sql` document
-  the boundary. **No `supabase/migrations/` dir** → apply is manual (see `DATABASE_RUNBOOK.md`).
+  the boundary. `supabase/migrations/` now exists (the `consumer_birth_profiles` RLS migration,
+  REVIEWED_NOT_APPLIED); other schema apply is still manual (see `DATABASE_RUNBOOK.md`).
 - **Contradiction (F-H):** `ADMIN_02_SETUP.sql:12` says `public.profiles` does NOT exist,
   while `CONSUMER_CORE_SCHEMA.sql:49` defines it and `profileService` writes it every login
   (fire-and-forget, errors swallowed at `AuthContext`) — a genuinely-missing table would

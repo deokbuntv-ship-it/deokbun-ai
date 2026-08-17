@@ -2,7 +2,7 @@
 // request and receives the SERVER-validated result. Abstracted so the production Supabase adapter and the
 // test doubles share one contract.
 import type { ServerConsultationRequest, ServerGroundingMeta } from '@/features/chat/server';
-import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 
 export type ConsultationTransportResult =
   | {

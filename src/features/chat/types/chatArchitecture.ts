@@ -1,7 +1,7 @@
 import type { ConsultationDraft } from '@/features/consultation';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationMode } from '@/features/chat/prompts/consultationMode';
-import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import type { ChatMessage } from './chat';
 
 export type LLMMessageRole = 'system' | 'user' | 'assistant';

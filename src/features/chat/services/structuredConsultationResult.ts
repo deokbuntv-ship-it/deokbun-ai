@@ -2,7 +2,7 @@
 // LLM's parsed long-form (interpretation only) + the deterministic `grounding` (evidence/provenance,
 // unchanged) + a FAIL-CLOSED assessment. Reuses the existing view-model contract — no new schema.
 import { toConsumerAssessmentView } from '@/features/intelligence/presentation/assessmentView';
-import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ParsedStructuredConsultation } from '@/features/chat/prompts/structuredConsultation';
 

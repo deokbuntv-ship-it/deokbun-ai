@@ -4,7 +4,7 @@ import type {
   ConsultationTransportResult,
 } from '@/features/chat/services/consultationTransport';
 import type { ServerGroundingMeta } from '@/features/chat/server';
-import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { getSupabaseClient } from '@/services/supabase';
 
 // Production consultation transport (Server-Trust §7/§18). Posts the INPUTS-ONLY request to the Edge

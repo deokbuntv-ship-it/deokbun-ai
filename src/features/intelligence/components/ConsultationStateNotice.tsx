@@ -5,6 +5,7 @@ import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { ConsultationState } from '@/features/intelligence/types/consultationViewModel';
 import { colors, spacing } from '@/theme';
 
 // The truthful consultation states (§13). Each is an HONEST message — never a fabricated
@@ -12,14 +13,8 @@ import { colors, spacing } from '@/theme';
 // and structural (engine disconnected / partial / conflict / analysis failed) states so
 // the user knows what, if anything, they can do. `onRetry` reuses the existing chat retry
 // infra (§13) and is shown only for retryable states.
-export type ConsultationState =
-  | 'engine_conflict'
-  | 'partial_analysis'
-  | 'analysis_failure'
-  | 'network_error'
-  | 'birth_time_unknown'
-  | 'confidence_unavailable'
-  | 'engine_disconnected';
+// The `ConsultationState` type now lives in a runtime-neutral module (§2); re-exported for compat.
+export type { ConsultationState };
 
 const COPY: Record<ConsultationState, { title: string; body: string; retryable: boolean }> = {
   engine_conflict: {

@@ -1,4 +1,4 @@
-import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 
 export type ChatMessage = {
   id: string;

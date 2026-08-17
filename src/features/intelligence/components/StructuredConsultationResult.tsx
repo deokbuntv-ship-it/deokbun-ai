@@ -3,13 +3,13 @@ import { View } from 'react-native';
 import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import type { ConsumerAssessmentView, FeedbackVerdict } from '@/features/intelligence';
-import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
+import type { FeedbackVerdict } from '@/features/intelligence';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
 
 import { AssessmentSummary } from './AssessmentSummary';
-import { ConsultationStateNotice, type ConsultationState } from './ConsultationStateNotice';
+import { ConsultationStateNotice } from './ConsultationStateNotice';
 import { FollowUpSuggestions } from './FollowUpSuggestions';
 import { InterpretationEvidenceSheet } from './InterpretationEvidenceSheet';
 import { UserFeedbackControl } from './UserFeedbackControl';
@@ -28,32 +28,9 @@ import { UserFeedbackControl } from './UserFeedbackControl';
 // technical evidence + methodology, which live in the Explainability sheet ("왜 이렇게
 // 해석했나요?"). The hybrid free-form composer stays outside this component.
 
-export type StructuredConsultationViewModel = {
-  // 1 — one-line core conclusion (orientation, from the LLM). '' → omitted.
-  coreSummary?: string;
-  // 2 — 기본 성향 / current context
-  disposition?: string;
-  // 3 — Assessment (fail-closed ConsumerAssessmentView)
-  assessment: ConsumerAssessmentView;
-  // 4 — current flow / 현재 흐름
-  currentFlow?: string;
-  // 5 — core interpretation (long-form; expanded)
-  coreInterpretation?: string;
-  // 5b — strengths (long-form; expanded)
-  strengths?: string[];
-  // 5c — cautions (long-form; expanded)
-  cautions?: string[];
-  // 5d — domain-specific interpretation (long-form; expanded)
-  domainInterpretation?: { title: string; body: string }[];
-  // 5e — future flow / 앞으로의 흐름 (long-form; expanded)
-  futureFlow?: string;
-  // 6 — Explainability source (evidence/methodology — the ONLY collapsible layer)
-  grounding: ConsultationGrounding;
-  // 7 — recommended follow-up questions (helpers only; arise from a rich answer)
-  followUps?: string[];
-  // Whole-result truthful state (conflict/partial/failure/…); overrides the body.
-  state?: ConsultationState;
-};
+// `StructuredConsultationViewModel` moved to a runtime-neutral module (§2) so the server/Edge consultation
+// contract does not depend on this React-Native component. Re-exported here for existing UI importers.
+export type { StructuredConsultationViewModel };
 
 function Section({ title, body }: { title: string; body?: string }) {
   if (!body) return null;

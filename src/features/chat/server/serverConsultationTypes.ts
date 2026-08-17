@@ -8,7 +8,7 @@
 import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/interpretation';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
-import type { StructuredConsultationViewModel } from '@/features/intelligence/components/StructuredConsultationResult';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 
 // An untrusted prior conversation turn. The type constrains role to user/assistant; the server ALSO
 // drops any other role (incl. injected `system`) at runtime — history is never authoritative (§20).

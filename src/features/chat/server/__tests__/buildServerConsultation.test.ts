@@ -132,4 +132,19 @@ describe('buildServerConsultation — §24 server E2E degraded modes', () => {
     expect(r.ok).toBe(false);
     expect(sent).toHaveLength(0); // never reached the LLM
   });
+
+  it('L: natal → timing → natal, each a fresh server request → fresh grounding + question time', async () => {
+    // Three independent HTTP-style calls, each with its OWN server receipt instant (all 小寒-supported).
+    const t1 = Math.floor(Date.UTC(2024, 0, 15, 1, 0, 0) / 1000);
+    const t2 = Math.floor(Date.UTC(2024, 0, 15, 5, 0, 0) / 1000);
+    const t3 = Math.floor(Date.UTC(2024, 0, 16, 2, 0, 0) / 1000);
+    const q1 = await buildServerConsultation(baseRequest({ question: '제 타고난 성격은?' }), capturingDeps(GOOD_ANSWER, { nowEpochSeconds: t1 }).deps);
+    const q2 = await buildServerConsultation(baseRequest({ question: '지금 이 계약을 진행해도 될까요?' }), capturingDeps(GOOD_ANSWER, { nowEpochSeconds: t2 }).deps);
+    const q3 = await buildServerConsultation(baseRequest({ question: '그럼 제 타고난 강점은?' }), capturingDeps(GOOD_ANSWER, { nowEpochSeconds: t3 }).deps);
+    expect(q1.ok && q2.ok && q3.ok).toBe(true);
+    if (!q1.ok || !q2.ok || !q3.ok) return;
+    expect(q1.groundingMeta.engines.qimen).toBe('not_applicable'); // natal
+    expect(q2.groundingMeta.engines.qimen).toBe('available'); // timing → server-activated at its own instant
+    expect(q3.groundingMeta.engines.qimen).toBe('not_applicable'); // back to natal, no stale activation leak
+  });
 });
