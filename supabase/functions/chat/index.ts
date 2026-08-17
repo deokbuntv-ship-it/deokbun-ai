@@ -27,12 +27,35 @@
 import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 
-// Explicit /index.ts on the one VALUE import into the app graph (the directory the bundler flagged).
-// Everything deeper (108-file graph) resolves via `sloppy-imports` in deno.json.
-import { buildServerConsultation, buildServerSummary } from '@/features/chat/server/index.ts';
-import type { TrustedBirthResolution } from '@/features/chat/server/index.ts';
-import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
-import type { BirthInfoDraft } from '@/features/consultation';
+// The server orchestrator + its whole runtime-neutral graph (108 files incl. the FROZEN Saju engine) is
+// pre-bundled by esbuild into ONE Deno-safe ESM file (build: _server/build.mjs). Deno's Edge runtime
+// rejects the app's Node/Metro-style extensionless + directory imports and does NOT honor sloppy-imports,
+// so the Edge imports the single generated bundle instead. The 3 engine deps stay external → resolved by
+// deno.json to pinned npm: specifiers. No app-SOURCE import remains in this file.
+import { buildServerConsultation, buildServerSummary } from './_server/serverBundle.mjs';
+
+// Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
+// extensionless/directory/@/ specifier to Deno. They mirror the source contracts; the authoritative
+// shapes are enforced at runtime by the bundled buildServerConsultation/buildServerSummary.
+type LLMMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type BirthInfoDraft = {
+  displayName: string;
+  gender: 'male' | 'female' | null;
+  calendarType: 'solar' | 'lunar' | null;
+  lunarMonthType: 'regular' | 'leap' | null;
+  birthYear: string;
+  birthMonth: string;
+  birthDay: string;
+  birthTimeAccuracy: 'exact' | 'approximate' | 'unknown' | null;
+  birthHour: string;
+  birthMinute: string;
+  approximateTimePeriod: 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' | null;
+  birthPlace: string;
+};
+type TrustedBirthResolution =
+  | { status: 'RESOLVED'; birthInfo: BirthInfoDraft; subjectLabel?: string | null }
+  | { status: 'NOT_FOUND' }
+  | { status: 'FORBIDDEN' };
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5-mini';

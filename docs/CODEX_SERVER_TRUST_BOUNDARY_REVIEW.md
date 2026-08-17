@@ -120,17 +120,31 @@ import app code, so it is the first to hit this. A static trace of the value-imp
 NONE reachable, 0 unresolved, 3 external specifiers (all mapped npm: engines), 15 directory + 213
 extensionless imports** — i.e. resolution-only, no missing modules and no UI code.
 
-**Fix (source-preserving, no engine edits):** `deno.json` → `"unstable": ["sloppy-imports"]` (Deno's
-Node→Deno migration feature: resolves `./foo`→`./foo.ts` and `./dir`→`./dir/index.ts` across all 108
-files, frozen engine included, unchanged) + the one entry VALUE import made explicit
-(`@/features/chat/server/index.ts`). The `@/`→`../../../src/` map applies first (specifier→path), then
-sloppy-imports resolves the path.
+**Attempt 1 — `sloppy-imports` (b7ff6da): FAILED in the real Supabase runtime.** `deno.json`
+`"unstable": ["sloppy-imports"]` + explicit entry import. On actual deploy the function became ACTIVE but
+the **worker failed to boot**:
 
-**Fallback if a redeploy still fails on resolution** (bundler does not honor `sloppy-imports`): pre-bundle
-`src/features/chat/server/index.ts` with esbuild into a single self-contained ESM file under
-`supabase/functions/chat/`, marking `iztro` / `lunar-javascript` / `qimen-dunjia/dist/qimen.min.js`
-**external** (they stay `npm:` via the import map), and import that one file from the Edge. That removes
-every directory/extensionless import for Deno. Not done now (minimal fix first); documented for the owner.
+```
+Edge Logs: Module not found:
+  file:///var/tmp/sb-compile-edge-runtime/source/src/features/chat/server/buildServerConsultation
+Invocation: OPTIONS /functions/v1/chat → 503
+```
+
+i.e. the Supabase Edge compile/runtime does **not** honor `sloppy-imports`; it still could not resolve the
+extensionless re-export `./buildServerConsultation`. sloppy-imports is therefore NOT production-proven and
+is not relied upon.
+
+**Attempt 2 — esbuild pre-bundle (current, production-shaped):** `src/features/chat/server/index.ts` is
+pre-bundled by esbuild (`supabase/functions/chat/_server/build.mjs`) into ONE self-contained ESM file
+`supabase/functions/chat/_server/serverBundle.mjs`, which the Edge imports (`./_server/serverBundle.mjs`).
+The bundle inlines the entire 108-file graph (frozen engine included, source unchanged); the only imports
+left are the 3 engine deps, kept **external** and mapped by `deno.json` to pinned `npm:` specifiers. The
+Edge file now exposes **zero** `@/`/relative/extensionless/directory specifier to Deno (the 3 local types
+it needs are inlined). `deno.json` drops `sloppy-imports` and the `@/` map. Bundle audit: 3 externals only,
+0 React/RN/Expo, 0 test/route/secret; and it **functionally executes under Node** (grounded, all 3 engines,
+server-owned question time, summary works). Regenerate with `node supabase/functions/chat/_server/build.mjs`
+(esbuild is a devDependency). This also shrinks the deploy to the Edge + one bundle instead of the whole
+`src/` tree. Deno/Supabase CLIs remain absent here, so the actual bundle+boot is still owner-verify on redeploy.
 
 ## OWNER_ACTION_REQUIRED (§29)
 
