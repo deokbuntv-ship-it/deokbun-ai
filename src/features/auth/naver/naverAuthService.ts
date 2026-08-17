@@ -1,8 +1,17 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 
+import { newRequestId } from '@/features/analysis';
+import { authDiag, type AuthDiagStage } from '@/features/auth/authDiag';
+import type { AuthFailureReason } from '@/features/auth/errors/authErrors';
+import {
+  LOGIN_CALLBACK_PATH,
+  resolveConfiguredWebRedirect,
+} from '@/features/auth/services/authRedirect';
 import type { AuthActionResult } from '@/features/auth/services/authService';
+import { getPublicBaseUrl } from '@/features/publicSite/publicUrl';
 import { getSupabaseClient } from '@/services/supabase';
 
 import {
@@ -19,40 +28,57 @@ import { buildNaverAuthorizeUrl, parseNaverCallback, statesMatch } from './naver
 //
 // SECURITY: never logs the Naver code, the Naver token, or the Supabase tokens;
 // never handles the Naver client_secret; only redirects to the app's own
-// makeRedirectUri target (no attacker-controlled redirect). Google/Kakao are
-// untouched (they keep the built-in signInWithOAuth flow in authService).
+// redirect target (no attacker-controlled redirect). Google/Kakao are untouched.
+//
+// WEB REDIRECT PINNING (Overnight Sprint §1): the web redirect_uri is now resolved
+// with the SAME canonical-origin pinning as google/kakao (authService →
+// resolveConfiguredWebRedirect) instead of a bare makeRedirectUri. On web this pins
+// to `${EXPO_PUBLIC_PUBLIC_BASE_URL}/login-callback` so the value is deterministic
+// and matches the one URL registered in the Naver console — apex/www/preview-origin
+// drift was a probable production failure cause. Native falls through to the app
+// scheme (deokbunai://login-callback) exactly as before.
 export async function signInWithNaverBridge(): Promise<AuthActionResult> {
+  const requestId = newRequestId();
+  // One correlation id per attempt; every failure emits a SAFE stage breadcrumb
+  // (no token/code/URL/PII — see authDiag) so a production failure is attributable.
+  const fail = (stage: AuthDiagStage, reason: AuthFailureReason): AuthActionResult => {
+    authDiag({ provider: 'naver', stage, code: reason, requestId });
+    return { success: false, reason };
+  };
+
   const clientId = getNaverClientId();
   if (!clientId) {
     // Not configured yet (no EXPO_PUBLIC_NAVER_CLIENT_ID) → AUTH_CONFIG_REQUIRED.
-    return { success: false, reason: 'OAUTH_URL_MISSING' };
+    return fail('authorize', 'OAUTH_URL_MISSING');
   }
 
   const supabase = getSupabaseClient();
-  const redirectTo = makeRedirectUri({ path: 'login-callback' });
+  const redirectTo =
+    resolveConfiguredWebRedirect(getPublicBaseUrl(), Platform.OS === 'web') ??
+    makeRedirectUri({ path: LOGIN_CALLBACK_PATH });
   const state = Crypto.randomUUID();
 
   const authorizeUrl = buildNaverAuthorizeUrl({ clientId, redirectUri: redirectTo, state });
   const result = await WebBrowser.openAuthSessionAsync(authorizeUrl, redirectTo);
 
   if (result.type === 'cancel' || result.type === 'dismiss') {
-    return { success: false, reason: 'CANCELLED' };
+    return fail('authorize', 'CANCELLED');
   }
   if (result.type !== 'success' || !result.url) {
-    return { success: false, reason: 'REQUEST_FAILED' };
+    return fail('authorize', 'REQUEST_FAILED');
   }
 
   const callback = parseNaverCallback(result.url);
   if (!callback.ok) {
     // User denied → treat as cancelled; otherwise a malformed callback.
-    return {
-      success: false,
-      reason: callback.reason === 'DENIED' ? 'CANCELLED' : 'REQUEST_FAILED',
-    };
+    return fail(
+      'callback_parse',
+      callback.reason === 'DENIED' ? 'CANCELLED' : 'REQUEST_FAILED',
+    );
   }
   // CSRF: the returned state MUST equal the one we generated for this attempt.
   if (!statesMatch(callback.state, state)) {
-    return { success: false, reason: 'REQUEST_FAILED' };
+    return fail('state_validate', 'REQUEST_FAILED');
   }
 
   // Trusted exchange: the edge validates + exchanges the code, fetches the profile,
@@ -63,11 +89,11 @@ export async function signInWithNaverBridge(): Promise<AuthActionResult> {
       body: { code: callback.code, state: callback.state, redirectUri: redirectTo },
     });
     if (error || !data) {
-      return { success: false, reason: 'REQUEST_FAILED' };
+      return fail('edge_invoke', 'REQUEST_FAILED');
     }
     tokens = data as { access_token?: unknown; refresh_token?: unknown };
   } catch {
-    return { success: false, reason: 'REQUEST_FAILED' };
+    return fail('edge_invoke', 'REQUEST_FAILED');
   }
 
   const accessToken =
@@ -75,7 +101,7 @@ export async function signInWithNaverBridge(): Promise<AuthActionResult> {
   const refreshToken =
     typeof tokens.refresh_token === 'string' ? tokens.refresh_token : '';
   if (!accessToken || !refreshToken) {
-    return { success: false, reason: 'SESSION_MISSING' };
+    return fail('session_set', 'SESSION_MISSING');
   }
 
   const { error: setSessionError } = await supabase.auth.setSession({
@@ -83,7 +109,7 @@ export async function signInWithNaverBridge(): Promise<AuthActionResult> {
     refresh_token: refreshToken,
   });
   if (setSessionError) {
-    return { success: false, reason: 'REQUEST_FAILED' };
+    return fail('session_set', 'REQUEST_FAILED');
   }
 
   return { success: true };

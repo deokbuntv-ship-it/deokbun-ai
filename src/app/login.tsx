@@ -6,9 +6,13 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth, type AuthProviderId } from '@/features/auth';
+import { authDiag } from '@/features/auth/authDiag';
+import {
+  authOutcomeMessage,
+  authReasonToOutcome,
+  isSilentOutcome,
+} from '@/features/auth/errors/authErrors';
 import { consumePendingReturnTo } from '@/features/consultation';
-
-const SIGN_IN_FAILED_MESSAGE = '로그인에 실패했습니다. 다시 시도해 주세요.';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -19,9 +23,9 @@ export default function LoginScreen() {
   const handleLogin = async (providerId: AuthProviderId) => {
     setErrorText(null);
 
-    const success = await signInWithProvider(providerId);
+    const result = await signInWithProvider(providerId);
 
-    if (success) {
+    if (result.success) {
       // Authentication is an interruption, not a reset (§9): resume the consultation
       // the user was in, not always Home. returnTo is a pre-validated internal route
       // (open-redirect-safe, §12/§52); default Home when there is nothing to resume.
@@ -30,7 +34,15 @@ export default function LoginScreen() {
       return;
     }
 
-    setErrorText(SIGN_IN_FAILED_MESSAGE);
+    // Surface the SPECIFIC outcome (config required / account conflict / session
+    // failed / provider error) instead of one generic line — so a real failure is
+    // actionable, not a dead end. A cancelled login (incl. double-tap) is silent.
+    const outcome = authReasonToOutcome(result.reason);
+    authDiag({ provider: providerId as 'naver' | 'kakao' | 'google' | 'apple', stage: 'outcome', code: outcome });
+    if (isSilentOutcome(outcome)) {
+      return;
+    }
+    setErrorText(authOutcomeMessage(outcome));
   };
 
   return (

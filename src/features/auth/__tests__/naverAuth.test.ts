@@ -264,6 +264,38 @@ describe('login screen provider wiring (regression lock — source-level)', () =
   });
 });
 
+describe('Naver web login closure (Overnight Sprint §1 — source-level regression lock)', () => {
+  const naverSrc = fs.readFileSync(
+    path.join(__dirname, '../naver/naverAuthService.ts'),
+    'utf8',
+  );
+  const loginSrc = fs.readFileSync(path.join(__dirname, '../../../app/login.tsx'), 'utf8');
+
+  it('pins the web redirect_uri like google/kakao (resolveConfiguredWebRedirect), not a bare makeRedirectUri', () => {
+    // The fix: on web the Naver redirect is the canonical pinned origin (matches the
+    // one URL registered in the Naver console), removing apex/www/preview drift.
+    expect(naverSrc).toContain('resolveConfiguredWebRedirect');
+    expect(naverSrc).toContain('getPublicBaseUrl');
+  });
+
+  it('emits a SAFE [auth.diag] breadcrumb at each Naver failure stage', () => {
+    expect(naverSrc).toContain('authDiag');
+    // every failure goes through the shared `fail(stage, reason)` helper
+    expect(naverSrc).toMatch(/fail\('authorize'/);
+    expect(naverSrc).toMatch(/fail\('edge_invoke'/);
+    expect(naverSrc).toMatch(/fail\('state_validate'/);
+    expect(naverSrc).toMatch(/fail\('session_set'/);
+  });
+
+  it('login screen surfaces the SPECIFIC outcome (no single generic dead-end message)', () => {
+    expect(loginSrc).toContain('authReasonToOutcome');
+    expect(loginSrc).toContain('authOutcomeMessage');
+    expect(loginSrc).toContain('isSilentOutcome');
+    // the old always-generic string constant is gone (each failure is now specific)
+    expect(loginSrc).not.toContain('SIGN_IN_FAILED_MESSAGE');
+  });
+});
+
 describe('secret-exposure scan (directive §10/§21 — no client-side secrets)', () => {
   // All client-bundle auth source (incl. the new Naver bridge client). These MAY
   // discuss secrets in comments, so the scan targets concrete EXPOSURE patterns
@@ -273,6 +305,7 @@ describe('secret-exposure scan (directive §10/§21 — no client-side secrets)'
     '../services/authService.ts',
     '../services/oauthReturn.ts',
     '../errors/authErrors.ts',
+    '../authDiag.ts',
     '../naver/naverConfig.ts',
     '../naver/naverOAuth.ts',
     '../naver/naverProfile.ts',

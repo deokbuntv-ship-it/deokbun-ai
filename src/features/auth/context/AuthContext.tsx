@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { mapSupabaseUser } from '@/features/auth/mappers/mapSupabaseUser';
-import { authService } from '@/features/auth/services/authService';
+import { authService, type AuthActionResult } from '@/features/auth/services/authService';
 import type { AuthProviderId, AuthState } from '@/features/auth/types/auth';
 import { profileService } from '@/features/profile';
 import { getSupabaseClient } from '@/services/supabase';
@@ -15,7 +15,10 @@ type AuthContextValue = {
   authState: AuthState;
   isAuthenticated: boolean;
   isSigningIn: boolean;
-  signInWithProvider: (providerId: AuthProviderId) => Promise<boolean>;
+  // Returns the full AuthActionResult so the screen can surface the SPECIFIC
+  // failure reason (config required / account conflict / provider error / …)
+  // instead of one generic message. Previously collapsed to a boolean.
+  signInWithProvider: (providerId: AuthProviderId) => Promise<AuthActionResult>;
   signOut: () => Promise<void>;
 };
 
@@ -124,15 +127,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSigningIn,
       signInWithProvider: async (providerId: AuthProviderId) => {
         if (isSigningInRef.current) {
-          return false;
+          // A second tap while a sign-in is already in flight is a benign no-op.
+          // 'CANCELLED' → AUTH_CANCELLED is a SILENT outcome (no error banner).
+          return { success: false, reason: 'CANCELLED' };
         }
 
         isSigningInRef.current = true;
         setIsSigningIn(true);
 
         try {
-          const result = await authService.signInWithProvider(providerId);
-          return result.success;
+          return await authService.signInWithProvider(providerId);
         } finally {
           isSigningInRef.current = false;
           setIsSigningIn(false);
