@@ -56,6 +56,9 @@ export type SajuEvidenceBundle = {
   /** Ordinal of the Daewoon cycle active at the current age, when deterministically resolvable. */
   activeCycleOrdinal?: number | null;
   sewoon?: SewoonResult | null;
+  /** Question-targeted 세운 for the SPECIFIC years the user asked about (e.g. 2027), computed from
+   *  the frozen engine. Grounds a future-year answer AND makes those years valid timing anchors. */
+  extraSewoon?: SewoonResult[] | null;
   wolwoon?: WolwoonResult | null;
   /** Connected 원국↔대운↔세운↔월운 axis (cross-layer relations). */
   timeAxis?: MyungriTimeAxisResult | null;
@@ -188,6 +191,12 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     const rel = relationsToNatalText(se.relationsToNatal);
     timeLines.push(`세운 ${se.targetYear}: ${gz(se.pillar)} ${tg(se.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ''}`);
   }
+  // Question-targeted future/other-year 세운 (grounds "2027년"/"내년" answers; §2 TIMING fix).
+  for (const ex of bundle.extraSewoon ?? []) {
+    if (ex.capability !== 'AVAILABLE') continue;
+    const rel = relationsToNatalText(ex.relationsToNatal);
+    timeLines.push(`세운 ${ex.targetYear}: ${gz(ex.pillar)} ${tg(ex.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ''}`);
+  }
   if (wo && wo.capability === 'AVAILABLE') {
     const rel = relationsToNatalText(wo.relationsToNatal);
     const sewoonRel = [
@@ -218,6 +227,8 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
   if (typeof bundle.birthGregorianYear === 'number') anchorYears.add(bundle.birthGregorianYear);
   if (se?.capability === 'AVAILABLE') anchorYears.add(se.targetYear);
   if (wo?.capability === 'AVAILABLE') anchorYears.add(wo.targetYear);
+  // Question-targeted years are grounded (their 세운 is computed above) → valid anchors (§2).
+  for (const ex of bundle.extraSewoon ?? []) if (ex.capability === 'AVAILABLE') anchorYears.add(ex.targetYear);
   let daewoonAgeSpan: EngineEvidenceTimingAnchors['daewoonAgeSpan'] = null;
   if (dw && dw.capability === 'AVAILABLE' && dw.cycles.length > 0) {
     daewoonAgeSpan = {

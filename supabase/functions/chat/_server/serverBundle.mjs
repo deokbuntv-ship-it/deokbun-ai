@@ -6264,6 +6264,11 @@ function toSajuEvidence(bundle) {
     const rel = relationsToNatalText(se.relationsToNatal);
     timeLines.push(`세운 ${se.targetYear}: ${gz(se.pillar)} ${tg(se.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ""}`);
   }
+  for (const ex of bundle.extraSewoon ?? []) {
+    if (ex.capability !== "AVAILABLE") continue;
+    const rel = relationsToNatalText(ex.relationsToNatal);
+    timeLines.push(`세운 ${ex.targetYear}: ${gz(ex.pillar)} ${tg(ex.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ""}`);
+  }
   if (wo && wo.capability === "AVAILABLE") {
     const rel = relationsToNatalText(wo.relationsToNatal);
     const sewoonRel = [
@@ -6288,6 +6293,7 @@ function toSajuEvidence(bundle) {
   if (typeof bundle.birthGregorianYear === "number") anchorYears.add(bundle.birthGregorianYear);
   if (se?.capability === "AVAILABLE") anchorYears.add(se.targetYear);
   if (wo?.capability === "AVAILABLE") anchorYears.add(wo.targetYear);
+  for (const ex of bundle.extraSewoon ?? []) if (ex.capability === "AVAILABLE") anchorYears.add(ex.targetYear);
   let daewoonAgeSpan = null;
   if (dw && dw.capability === "AVAILABLE" && dw.cycles.length > 0) {
     daewoonAgeSpan = {
@@ -6604,6 +6610,31 @@ function calculateMonthCommand(natal) {
     assumptions: ASSUMPTIONS7,
     limitations: LIMITATIONS6
   };
+}
+
+// src/features/chat/services/questionYears.ts
+var SUPPORTED_YEAR_MIN2 = 1970;
+var SUPPORTED_YEAR_MAX2 = 2050;
+var MAX_TARGET_YEARS = 3;
+var RELATIVE = [
+  [/내후년/, 2],
+  [/내년|명년/, 1],
+  [/올해|금년|이번\s*해/, 0]
+];
+function resolveQuestionYears(question, currentSajuYear) {
+  const q = question ?? "";
+  const out = /* @__PURE__ */ new Set();
+  for (const m of q.matchAll(/((?:19|20|21)\d{2})\s*년/g)) out.add(Number(m[1]));
+  if (currentSajuYear !== null) {
+    for (const [re, off] of RELATIVE) if (re.test(q)) out.add(currentSajuYear + off);
+    for (const m of q.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) out.add(currentSajuYear + Number(m[1]));
+  }
+  return [...out].filter(
+    (y) => Number.isFinite(y) && y >= SUPPORTED_YEAR_MIN2 && y <= SUPPORTED_YEAR_MAX2 && y !== currentSajuYear
+  ).sort((a, b) => a - b).slice(0, MAX_TARGET_YEARS);
+}
+function epochForSajuYear(year) {
+  return Math.floor(Date.UTC(year, 6, 1, 3, 0, 0) / 1e3);
 }
 
 // src/features/ziwei/adapters/iztroAdapter.ts
@@ -7257,7 +7288,7 @@ function buildQimenEvidence(question, questionEpochSeconds) {
     return MYUNGRI_UNAVAILABLE;
   }
 }
-async function buildMyungriEvidence(draft, deps) {
+async function buildMyungriEvidence(draft, deps, question) {
   const execution = await executeSajuFromBirthInput(toSajuEngineInput(draft.birthInfo), {
     digestProvider: deps.digestProvider,
     historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
@@ -7278,6 +7309,8 @@ async function buildMyungriEvidence(draft, deps) {
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
   const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: now });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
+  const currentSajuYearForTargets = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
+  const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets).map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) })).filter((s) => s.capability === "AVAILABLE");
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
   const currentSajuYear = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
   const currentAge = Number.isFinite(solarBirthYear) && currentSajuYear !== null ? currentSajuYear - solarBirthYear : null;
@@ -7306,6 +7339,7 @@ async function buildMyungriEvidence(draft, deps) {
     activeCycleOrdinal,
     sewoon: sewoon.capability === "AVAILABLE" ? sewoon : null,
     wolwoon: wolwoon.capability === "AVAILABLE" ? wolwoon : null,
+    extraSewoon,
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null
   });
@@ -7318,7 +7352,11 @@ async function buildConsultationGrounding(draft, deps, question) {
   const withBirth = draft;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(withBirth, deps);
+  const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(
+    withBirth,
+    deps,
+    question ?? ""
+  );
   const qimen = buildQimenEvidence(question, now);
   const groundingAvailable = myungri.availability === "available" || ziwei.availability === "available";
   if (!groundingAvailable) {

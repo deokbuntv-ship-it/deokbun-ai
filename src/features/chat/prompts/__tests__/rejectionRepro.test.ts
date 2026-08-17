@@ -107,3 +107,34 @@ describe('buildServerConsultation surfaces safe diagnostics (log-only)', () => {
     }
   });
 });
+
+// Reproduces + fixes the production log: STANDARD "2027년 사업운" → RESPONSE_VALIDATION /
+// TIMING_CLAIM_MISMATCH / SEMANTIC_REJECTED. Root cause: 세운 grounding covered only the CURRENT
+// year, so the questioned year was never an anchor. Fix: buildMyungriEvidence now computes the
+// questioned year's 세운 from the frozen engine → it is grounded AND anchored. The validator is
+// NOT weakened: a year the user did NOT ask (ungrounded) is still rejected.
+describe('TIMING_CLAIM_MISMATCH fix — question-targeted 세운 grounding (§2)', () => {
+  // NOW = 2024-01-15 (before 立春 → current 사주 year 2023). A 2027 question must ground 2027.
+  let G2027: Awaited<ReturnType<typeof buildConsultationGrounding>>;
+  beforeAll(async () => {
+    clearZiweiCache();
+    clearQimenCache();
+    G2027 = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '2027년 사업운은 어때?');
+  });
+
+  it('grounding now anchors the questioned year (2027) via a real frozen 세운', () => {
+    expect(G2027.status).toBe('available');
+    if (G2027.status === 'available') {
+      expect(G2027.evidence.myungri.timingAnchors?.years).toContain(2027);
+    }
+  });
+  it('a grounded 2027 answer is ACCEPTED (previously TIMING_CLAIM_MISMATCH)', () => {
+    const core = '2027년에는 사업 흐름이 점차 안정되며, 무리한 확장보다 검증된 분야에 집중하는 편이 유리한 해로 보입니다.';
+    expect(firstStructuredRejectionReason(answer(core), G2027)).toBe('NONE');
+    expect(classifyConsultationOutput(answer(core), G2027).kind).toBe('ACCEPTED');
+  });
+  it('a NON-asked, ungrounded year (2035) is STILL rejected — validator not weakened', () => {
+    const core = '2035년에는 반드시 사업이 크게 번창하고 큰돈을 벌게 되는 시기가 찾아옵니다.';
+    expect(firstStructuredRejectionReason(answer(core), G2027)).toBe('TIMING_CLAIM_MISMATCH');
+  });
+});

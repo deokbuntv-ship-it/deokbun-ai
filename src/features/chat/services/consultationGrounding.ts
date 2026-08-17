@@ -37,6 +37,7 @@ import {
   toSajuEvidence,
   type MyungriStemAndBranch,
 } from '@/features/myungri';
+import { epochForSajuYear, resolveQuestionYears } from '@/features/chat/services/questionYears';
 import {
   ZIWEI_RULESET_VERSION,
   computeZiweiChartMemoized,
@@ -93,6 +94,7 @@ type MyungriOutcome = { evidence: EngineEvidence; engineVersion: string | null }
 async function buildMyungriEvidence(
   draft: ConsultationDraft & { birthInfo: BirthInfoDraft },
   deps: SajuGroundingDeps,
+  question: string,
 ): Promise<MyungriOutcome> {
   const execution = await executeSajuFromBirthInput(toSajuEngineInput(draft.birthInfo), {
     digestProvider: deps.digestProvider,
@@ -125,6 +127,17 @@ async function buildMyungriEvidence(
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1000);
   const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: now });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
+
+  // Question-targeted 세운 (Commercial Quality Sprint §2 — TIMING_CLAIM_MISMATCH fix). The 세운 above
+  // covers only the CURRENT year, so a "2027년"/"내년" question produced an answer the validator then
+  // rejected as unsupported. Resolve the SPECIFIC years the question names and compute each one's 세운
+  // from the FROZEN engine (same rules, no recompute) — this grounds the answer in real target-year
+  // facts AND legitimises the timing anchor. Bounded (≤3) + range-checked; an ungroundable year is
+  // simply skipped, so a fabricated future year is still rejected (validator unchanged).
+  const currentSajuYearForTargets = sewoon.capability === 'AVAILABLE' ? sewoon.targetYear : null;
+  const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets)
+    .map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) }))
+    .filter((s) => s.capability === 'AVAILABLE');
 
   // Current age + ACTIVE 대운 cycle (Codex FIX #3). The Gregorian birth year comes from the SAME
   // lunar→solar authority Ziwei uses (consistent), and the current 사주 year is the 세운 targetYear.
@@ -166,6 +179,7 @@ async function buildMyungriEvidence(
     activeCycleOrdinal,
     sewoon: sewoon.capability === 'AVAILABLE' ? sewoon : null,
     wolwoon: wolwoon.capability === 'AVAILABLE' ? wolwoon : null,
+    extraSewoon,
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null,
   });
@@ -190,7 +204,11 @@ export async function buildConsultationGrounding(
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode).
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(withBirth, deps);
+  const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(
+    withBirth,
+    deps,
+    question ?? '',
+  );
   // Qimen is QUESTION-TIME based: it consumes the current question + instant, NOT the birth. It is
   // supplementary (not_applicable for natal questions) and never makes the grounding available on its
   // own — the natal spine (Saju/Ziwei) governs availability (§13/§14).
