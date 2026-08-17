@@ -35,10 +35,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 import {
   buildServerConsultation,
   buildServerSummary,
+  classifyQuestionComplexity,
   consultationResponseFormat,
   extractResponsesText,
   openAiFailureCode,
   redactDiag,
+  resolveConsultationProfile,
   resolveLlmBudgets,
 } from './_server/serverBundle.mjs';
 
@@ -116,7 +118,7 @@ type OpenAiCall = {
 };
 async function callOpenAI(
   messages: LLMMessage[],
-  cfg: { apiKey: string; model: string; maxOutputTokens: number; responseFormat?: unknown },
+  cfg: { apiKey: string; model: string; maxOutputTokens: number; responseFormat?: unknown; reasoningEffort?: string },
 ): Promise<OpenAiCall> {
   const base: OpenAiCall = { ok: false, statusCode: 0, text: '', usage: {}, responseStatus: null, incompleteReason: null };
   let providerResponse: Response;
@@ -128,6 +130,10 @@ async function callOpenAI(
         model: cfg.model,
         input: messages,
         max_output_tokens: cfg.maxOutputTokens,
+        // Reasoning effort (Overnight Sprint §4/§8) — gpt-5-mini bills reasoning tokens as OUTPUT; without
+        // this it ran at the provider default (medium) and reasoning dominated cost. The per-question
+        // complexity profile sets it (SIMPLE/STANDARD 'low', DEEP 'medium'). Absent for summary (free text).
+        ...(cfg.reasoningEffort ? { reasoning: { effort: cfg.reasoningEffort } } : {}),
         // Structured Outputs (consultation only) — the Responses API constrains output to the JSON schema
         // so the server always gets parseable JSON. Absent for summary (free text).
         ...(cfg.responseFormat ? { text: { format: cfg.responseFormat } } : {}),
@@ -346,9 +352,9 @@ export default {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
 
-        // Separate output budgets: consultation long-form gets the larger cap; summary stays small.
-        // Consultation uses Structured Outputs (schema-constrained JSON); summary is free text.
-        const consultationCfg = { apiKey, model, maxOutputTokens: budgets.consultation, responseFormat: consultationResponseFormat() };
+        // Summary output budget (small, free text). The CONSULTATION config is built PER-QUESTION after the
+        // question is validated (below) so its output ceiling + reasoning effort follow the question's
+        // complexity (Overnight Sprint §4/§8) — SIMPLE/STANDARD run cheaper 'low' reasoning, DEEP 'medium'.
         const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary };
         const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 
@@ -420,6 +426,30 @@ export default {
           logDiag(requestId, 'INPUT', 'MISSING_QUESTION', { path: 'consultation' });
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
+
+        // Per-question complexity → LLM tuning profile (Overnight Sprint §4/§8). DETERMINISTIC (no LLM call)
+        // and with NO effect on grounding/validation — it only sets the output-token CEILING + reasoning
+        // effort. gpt-5-mini bills reasoning tokens as output, so 'low' effort on SIMPLE/STANDARD questions is
+        // the dominant, truncation-SAFE cost saving (a lower effort leaves MORE budget for the answer, not
+        // less). Global env overrides both the ceiling (LLM_CONSULTATION_MAX_OUTPUT_TOKENS) and the effort
+        // (LLM_CONSULTATION_REASONING_EFFORT) when set.
+        const complexity = classifyQuestionComplexity(body.question);
+        const profile = resolveConsultationProfile(complexity, {
+          maxOutputTokens: Deno.env.get('LLM_CONSULTATION_MAX_OUTPUT_TOKENS'),
+          reasoningEffort: Deno.env.get('LLM_CONSULTATION_REASONING_EFFORT'),
+        });
+        const consultationCfg = {
+          apiKey,
+          model,
+          maxOutputTokens: profile.maxOutputTokens,
+          reasoningEffort: profile.reasoningEffort,
+          responseFormat: consultationResponseFormat(),
+        };
+        // SAFE routing breadcrumb — only the class + tuning scalars, never question/PII. Lets the owner
+        // confirm the router is live and see the per-question effort/ceiling in edge logs.
+        console.log(
+          `[chat.route] req=${requestId} complexity=${complexity} effort=${profile.reasoningEffort} cap=${profile.maxOutputTokens}`,
+        );
 
         // The single outbound trust exit. Captures the classified OpenAI outcome so a 502 can be attributed
         // to an exact class. callLLM never throws — a non-OK outcome returns '' → the orchestrator maps it

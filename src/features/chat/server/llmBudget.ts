@@ -35,3 +35,53 @@ export function resolveLlmBudgets(env: { consultation?: string | null; summary?:
     summary: clampBudget(env.summary, DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS),
   };
 }
+
+// ---- Per-complexity consultation profile (Overnight Sprint §4/§8) -------------------------------------
+// gpt-5-mini bills REASONING tokens as output and, with no `reasoning.effort` set, runs at the provider
+// default (medium) — the true cost driver (production: outputTokens 2800/2800 incomplete = reasoning ate
+// the budget). The dominant, SAFE cost lever is therefore lowering reasoning effort for simpler questions;
+// max_output_tokens stays a generous truncation-safe CEILING (you are billed on ACTUAL tokens, so a high
+// ceiling that goes unused costs nothing — it only prevents OPENAI_INCOMPLETE). Effort + a per-complexity
+// ceiling together tune each question to what it needs, without ever risking a truncated answer (§26).
+import type { QuestionComplexity } from './questionComplexity';
+
+// Only the four low-risk efforts are permitted here. 'none'/'minimal' are intentionally excluded as
+// defaults — a grounded structured consultation still needs light reasoning to compose a coherent,
+// schema-conforming answer; 'low' is the safe floor. Owner can force any value via env after live validation.
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+const VALID_EFFORTS: readonly ReasoningEffort[] = ['minimal', 'low', 'medium', 'high'];
+
+export type ConsultationProfile = {
+  maxOutputTokens: number; // truncation-safe CEILING (billed on actual)
+  reasoningEffort: ReasoningEffort;
+};
+
+// Defaults: effort rises with complexity (the real cost lever); the ceiling also rises so a longer
+// legitimate answer never truncates. All ceilings are within [MIN, HARD_MAX] and were chosen to stay ABOVE
+// the production-observed completion point (a full structured answer completed at 5000 under medium effort;
+// low effort needs less, so SIMPLE/STANDARD ceilings are safe).
+const PROFILE_DEFAULTS: Record<QuestionComplexity, ConsultationProfile> = {
+  SIMPLE: { maxOutputTokens: 3500, reasoningEffort: 'low' },
+  STANDARD: { maxOutputTokens: 4500, reasoningEffort: 'low' },
+  DEEP: { maxOutputTokens: 6000, reasoningEffort: 'medium' },
+};
+
+function coerceEffort(raw: string | null | undefined, fallback: ReasoningEffort): ReasoningEffort {
+  const v = (raw ?? '').trim().toLowerCase();
+  return (VALID_EFFORTS as readonly string[]).includes(v) ? (v as ReasoningEffort) : fallback;
+}
+
+// Resolve the consultation profile for one question's complexity. Optional GLOBAL env overrides (applied to
+// EVERY complexity, for backward-compat + emergency tuning): the legacy `LLM_CONSULTATION_MAX_OUTPUT_TOKENS`
+// still pins the ceiling, and `LLM_CONSULTATION_REASONING_EFFORT` pins the effort. When unset, the
+// per-complexity defaults above apply. The ceiling is clamped to [MIN, HARD_MAX] exactly like resolveLlmBudgets.
+export function resolveConsultationProfile(
+  complexity: QuestionComplexity,
+  overrides?: { maxOutputTokens?: string | null; reasoningEffort?: string | null },
+): ConsultationProfile {
+  const base = PROFILE_DEFAULTS[complexity];
+  return {
+    maxOutputTokens: clampBudget(overrides?.maxOutputTokens, base.maxOutputTokens),
+    reasoningEffort: coerceEffort(overrides?.reasoningEffort, base.reasoningEffort),
+  };
+}

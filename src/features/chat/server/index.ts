@@ -24,11 +24,15 @@ export {
 export type { OpenAiOutcome, SafeDiagKey } from './edgeDiagnostics';
 export {
   resolveLlmBudgets,
+  resolveConsultationProfile,
   DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
   DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
   MIN_MAX_OUTPUT_TOKENS,
   HARD_MAX_OUTPUT_TOKENS,
 } from './llmBudget';
+export type { ConsultationProfile, ReasoningEffort } from './llmBudget';
+export { classifyQuestionComplexity } from './questionComplexity';
+export type { QuestionComplexity } from './questionComplexity';
 export { consultationResponseFormat, CONSULTATION_JSON_SCHEMA } from './consultationSchema';
 export type {
   ServerConsultationRequest,

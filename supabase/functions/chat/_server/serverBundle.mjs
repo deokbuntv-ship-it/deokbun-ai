@@ -7714,6 +7714,74 @@ function resolveLlmBudgets(env) {
     summary: clampBudget(env.summary, DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS)
   };
 }
+var VALID_EFFORTS = ["minimal", "low", "medium", "high"];
+var PROFILE_DEFAULTS = {
+  SIMPLE: { maxOutputTokens: 3500, reasoningEffort: "low" },
+  STANDARD: { maxOutputTokens: 4500, reasoningEffort: "low" },
+  DEEP: { maxOutputTokens: 6e3, reasoningEffort: "medium" }
+};
+function coerceEffort(raw, fallback) {
+  const v = (raw ?? "").trim().toLowerCase();
+  return VALID_EFFORTS.includes(v) ? v : fallback;
+}
+function resolveConsultationProfile(complexity, overrides) {
+  const base = PROFILE_DEFAULTS[complexity];
+  return {
+    maxOutputTokens: clampBudget(overrides?.maxOutputTokens, base.maxOutputTokens),
+    reasoningEffort: coerceEffort(overrides?.reasoningEffort, base.reasoningEffort)
+  };
+}
+
+// src/features/chat/server/questionComplexity.ts
+var DEEP_PATTERNS = [
+  /대운/,
+  // Daewoon = 10-year luck cycles (inherently multi-period)
+  /평생|일생|한평생|인생\s*전체|전\s*생애|생애\s*전반/,
+  /\d{2,}\s*년\s*(?:동안|간|간의|흐름)/,
+  // "10년 동안/흐름"
+  /(?:향후|앞으로|지난)\s*\d{2,}\s*년/,
+  // "향후 10년"
+  /종합(?:적|해|분석)|총정리|전반적(?:인)?\s*흐름|장기적|전체적인\s*흐름/,
+  /대운별|시기별\s*(?:흐름|운)/
+];
+var TIMING_PATTERNS = [
+  /\d{4}\s*년/,
+  // "2027년"
+  /올해|금년|내년|내후년|작년|재작년/,
+  /이번\s*달|다음\s*달|이번\s*주|다음\s*주|이달|다음달/,
+  /상반기|하반기|이번\s*분기|분기/,
+  /요즘|최근|당분간|지금\s*시기/
+];
+var EVENT_DOMAIN_PATTERNS = [
+  /사업|장사|창업|투자|재물|재정|금전|수입|매출|돈\s*(?:운|복)/,
+  /직업|직장|이직|취업|퇴사|승진|커리어|진로|사업운/,
+  /연애운|결혼운|이혼|재혼|궁합|이별/,
+  /건강|질병|수술|병/,
+  /시험|합격|입시|고시|취업\s*시험/,
+  /이사|이전|매매|계약|부동산|분양/,
+  /소송|합격운|취업운|재물운|금전운|직장운|애정운|연애/
+];
+var TRAIT_PATTERNS = [
+  /성격|성향|기질|성정|본성|타고난|천성/,
+  /장점|단점|강점|약점|장단점/,
+  /어떤\s*사람|나는\s*누구|자아|정체성/,
+  /적성|재능|소질|잘하는|어울리는\s*일/
+];
+function anyMatch(patterns, q) {
+  return patterns.some((re) => re.test(q));
+}
+function classifyQuestionComplexity(question) {
+  const q = (question ?? "").trim();
+  if (q.length === 0) return "STANDARD";
+  if (anyMatch(DEEP_PATTERNS, q)) return "DEEP";
+  const hasTiming = anyMatch(TIMING_PATTERNS, q);
+  const hasEvent = anyMatch(EVENT_DOMAIN_PATTERNS, q);
+  const hasTrait = anyMatch(TRAIT_PATTERNS, q);
+  if (hasTrait && !hasTiming && !hasEvent) return "SIMPLE";
+  if (hasTiming || hasEvent) return "STANDARD";
+  if (q.length <= 12) return "SIMPLE";
+  return "STANDARD";
+}
 
 // src/features/chat/server/consultationSchema.ts
 var CONSULTATION_JSON_SCHEMA = {
@@ -7764,10 +7832,12 @@ export {
   SAFE_DIAG_KEYS,
   buildServerConsultation,
   buildServerSummary,
+  classifyQuestionComplexity,
   consultationResponseFormat,
   extractResponsesText,
   openAiFailureCode,
   redactDiag,
+  resolveConsultationProfile,
   resolveLlmBudgets,
   sanitizeSummarySource
 };
