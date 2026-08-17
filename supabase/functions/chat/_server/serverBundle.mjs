@@ -529,9 +529,21 @@ function firstStructuredRejectionReason(rawText, grounding) {
   if (eng) return eng;
   if (hasUnsupportedTiming(candidate2, anchors)) return "TIMING_CLAIM_MISMATCH";
   if (looksLikeStructuredJson(rawText)) {
-    return extractJson(rawText) === null ? "UNRENDERABLE_STRUCTURED_JSON" : "SUBSTANCE_GATE_FAILED";
+    const obj = extractJson(rawText);
+    if (obj === null) return jsonExtractFailureKind(rawText);
+    if (typeof obj !== "object") return "JSON_SHAPE_INVALID";
+    const p = mapStructuredFields(obj);
+    if (!p.coreSummary || !p.coreInterpretation) return "REQUIRED_FIELD_MISSING";
+    return "SUBSTANCE_GATE_FAILED";
   }
   return "STRUCTURAL_FALLBACK";
+}
+function jsonExtractFailureKind(text) {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate2 = fence ? fence[1] : text;
+  const opens = (candidate2.match(/\{/g) ?? []).length;
+  const closes = (candidate2.match(/\}/g) ?? []).length;
+  return candidate2.lastIndexOf("}") === -1 || opens > closes ? "JSON_TRUNCATED" : "JSON_PARSE_FAILED";
 }
 function composeConsultationText(p) {
   const blocks = [];
@@ -7656,9 +7668,8 @@ function extractResponsesText(payload) {
 }
 function openAiFailureCode(o) {
   if (!o.ok) return o.statusCode ? `OPENAI_HTTP_${o.statusCode}` : "OPENAI_FETCH_FAILED";
-  if (o.text.trim().length === 0) {
-    return o.incompleteReason ? `OPENAI_INCOMPLETE_${o.incompleteReason}` : "OPENAI_EMPTY_OUTPUT";
-  }
+  if (o.incompleteReason) return `OPENAI_INCOMPLETE_${o.incompleteReason}`;
+  if (o.text.trim().length === 0) return "OPENAI_EMPTY_OUTPUT";
   return "OK";
 }
 var SAFE_DIAG_KEYS = [
@@ -7703,7 +7714,45 @@ function resolveLlmBudgets(env) {
     summary: clampBudget(env.summary, DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS)
   };
 }
+
+// src/features/chat/server/consultationSchema.ts
+var CONSULTATION_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    coreSummary: { type: "string" },
+    disposition: { type: ["string", "null"] },
+    coreInterpretation: { type: "string" },
+    strengths: { type: "array", items: { type: "string" } },
+    cautions: { type: "array", items: { type: "string" } },
+    domainInterpretation: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { title: { type: "string" }, body: { type: "string" } },
+        required: ["title", "body"]
+      }
+    },
+    futureFlow: { type: ["string", "null"] },
+    followUps: { type: "array", items: { type: "string" } }
+  },
+  required: [
+    "coreSummary",
+    "disposition",
+    "coreInterpretation",
+    "strengths",
+    "cautions",
+    "domainInterpretation",
+    "futureFlow",
+    "followUps"
+  ]
+};
+function consultationResponseFormat() {
+  return { type: "json_schema", name: "deokbun_consultation", strict: true, schema: CONSULTATION_JSON_SCHEMA };
+}
 export {
+  CONSULTATION_JSON_SCHEMA,
   DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
   DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
   HARD_MAX_OUTPUT_TOKENS,
@@ -7715,6 +7764,7 @@ export {
   SAFE_DIAG_KEYS,
   buildServerConsultation,
   buildServerSummary,
+  consultationResponseFormat,
   extractResponsesText,
   openAiFailureCode,
   redactDiag,

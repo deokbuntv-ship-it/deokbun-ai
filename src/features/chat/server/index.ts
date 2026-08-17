@@ -29,6 +29,7 @@ export {
   MIN_MAX_OUTPUT_TOKENS,
   HARD_MAX_OUTPUT_TOKENS,
 } from './llmBudget';
+export { consultationResponseFormat, CONSULTATION_JSON_SCHEMA } from './consultationSchema';
 export type {
   ServerConsultationRequest,
   ServerConsultationResult,

@@ -41,9 +41,11 @@ export type OpenAiOutcome = {
 };
 export function openAiFailureCode(o: OpenAiOutcome): string {
   if (!o.ok) return o.statusCode ? `OPENAI_HTTP_${o.statusCode}` : 'OPENAI_FETCH_FAILED';
-  if (o.text.trim().length === 0) {
-    return o.incompleteReason ? `OPENAI_INCOMPLETE_${o.incompleteReason}` : 'OPENAI_EMPTY_OUTPUT';
-  }
+  // Incomplete (e.g. max_output_tokens) is a FAILURE even with partial text — a truncated structured
+  // answer is unusable (mid-JSON, no closing brace) and must never proceed to parse. Fail closed with a
+  // clear reason instead of leaking through as an unparseable payload.
+  if (o.incompleteReason) return `OPENAI_INCOMPLETE_${o.incompleteReason}`;
+  if (o.text.trim().length === 0) return 'OPENAI_EMPTY_OUTPUT';
   return 'OK';
 }
 

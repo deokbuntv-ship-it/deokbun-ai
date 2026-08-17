@@ -437,9 +437,25 @@ export function firstStructuredRejectionReason(rawText: string, grounding: Consu
   if (eng) return eng;
   if (hasUnsupportedTiming(candidate, anchors)) return 'TIMING_CLAIM_MISMATCH';
   if (looksLikeStructuredJson(rawText)) {
-    return extractJson(rawText) === null ? 'UNRENDERABLE_STRUCTURED_JSON' : 'SUBSTANCE_GATE_FAILED';
+    // Split the old catch-all UNRENDERABLE_STRUCTURED_JSON into precise structural categories (§7).
+    const obj = extractJson(rawText);
+    if (obj === null) return jsonExtractFailureKind(rawText); // JSON_TRUNCATED | JSON_PARSE_FAILED
+    if (typeof obj !== 'object') return 'JSON_SHAPE_INVALID';
+    const p = mapStructuredFields(obj as Record<string, unknown>);
+    if (!p.coreSummary || !p.coreInterpretation) return 'REQUIRED_FIELD_MISSING';
+    return 'SUBSTANCE_GATE_FAILED'; // fields present but too shallow for a card
   }
   return 'STRUCTURAL_FALLBACK';
+}
+
+// Distinguish a TRUNCATED structured payload (no/too-few closing braces → cut off) from a genuine JSON
+// syntax error (balanced braces but still unparseable). Content-free.
+function jsonExtractFailureKind(text: string): string {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fence ? fence[1] : text;
+  const opens = (candidate.match(/\{/g) ?? []).length;
+  const closes = (candidate.match(/\}/g) ?? []).length;
+  return candidate.lastIndexOf('}') === -1 || opens > closes ? 'JSON_TRUNCATED' : 'JSON_PARSE_FAILED';
 }
 
 /** A readable plain-text rendering (for message persistence + the non-structured fallback). */

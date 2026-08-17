@@ -35,6 +35,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 import {
   buildServerConsultation,
   buildServerSummary,
+  consultationResponseFormat,
   extractResponsesText,
   openAiFailureCode,
   redactDiag,
@@ -115,7 +116,7 @@ type OpenAiCall = {
 };
 async function callOpenAI(
   messages: LLMMessage[],
-  cfg: { apiKey: string; model: string; maxOutputTokens: number },
+  cfg: { apiKey: string; model: string; maxOutputTokens: number; responseFormat?: unknown },
 ): Promise<OpenAiCall> {
   const base: OpenAiCall = { ok: false, statusCode: 0, text: '', usage: {}, responseStatus: null, incompleteReason: null };
   let providerResponse: Response;
@@ -123,7 +124,14 @@ async function callOpenAI(
     providerResponse = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: cfg.model, input: messages, max_output_tokens: cfg.maxOutputTokens }),
+      body: JSON.stringify({
+        model: cfg.model,
+        input: messages,
+        max_output_tokens: cfg.maxOutputTokens,
+        // Structured Outputs (consultation only) — the Responses API constrains output to the JSON schema
+        // so the server always gets parseable JSON. Absent for summary (free text).
+        ...(cfg.responseFormat ? { text: { format: cfg.responseFormat } } : {}),
+      }),
     });
   } catch {
     return base; // transport failure → ok:false, statusCode:0
@@ -339,7 +347,8 @@ export default {
         }
 
         // Separate output budgets: consultation long-form gets the larger cap; summary stays small.
-        const consultationCfg = { apiKey, model, maxOutputTokens: budgets.consultation };
+        // Consultation uses Structured Outputs (schema-constrained JSON); summary is free text.
+        const consultationCfg = { apiKey, model, maxOutputTokens: budgets.consultation, responseFormat: consultationResponseFormat() };
         const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary };
         const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 

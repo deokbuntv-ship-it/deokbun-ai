@@ -34,8 +34,12 @@ describe('openAiFailureCode — 502 class classification', () => {
     expect(openAiFailureCode({ ok: false, statusCode: 429, text: '' })).toBe('OPENAI_HTTP_429');
     expect(openAiFailureCode({ ok: false, statusCode: 404, text: '' })).toBe('OPENAI_HTTP_404');
   });
-  it('2xx but incomplete (reasoning ate the token budget) → OPENAI_INCOMPLETE_<reason>', () => {
+  it('2xx but incomplete → OPENAI_INCOMPLETE_<reason> EVEN WITH partial text (truncated = unusable)', () => {
     expect(openAiFailureCode({ ok: true, statusCode: 200, text: '', incompleteReason: 'max_output_tokens' })).toBe(
+      'OPENAI_INCOMPLETE_max_output_tokens',
+    );
+    // a truncated structured answer has partial text but must still fail closed (never proceed to parse)
+    expect(openAiFailureCode({ ok: true, statusCode: 200, text: '{"coreSummary":"차분', incompleteReason: 'max_output_tokens' })).toBe(
       'OPENAI_INCOMPLETE_max_output_tokens',
     );
   });
