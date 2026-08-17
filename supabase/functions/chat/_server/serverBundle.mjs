@@ -309,11 +309,30 @@ function extractJson(text) {
   const start = candidate2.indexOf("{");
   const end = candidate2.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    return JSON.parse(candidate2.slice(start, end + 1));
-  } catch {
-    return null;
-  }
+  const slice = candidate2.slice(start, end + 1);
+  const tryParse = (s) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return void 0;
+    }
+  };
+  const direct = tryParse(slice);
+  if (direct !== void 0) return direct;
+  const relaxed = tryParse(slice.replace(/,(\s*[}\]])/g, "$1"));
+  return relaxed === void 0 ? null : relaxed;
+}
+function mapStructuredFields(o) {
+  return {
+    coreSummary: str(o.coreSummary),
+    disposition: str(o.disposition),
+    coreInterpretation: str(o.coreInterpretation),
+    strengths: strArray(o.strengths),
+    cautions: strArray(o.cautions),
+    domainInterpretation: domainArray(o.domainInterpretation),
+    futureFlow: str(o.futureFlow),
+    followUps: strArray(o.followUps)
+  };
 }
 var str = (v) => {
   if (typeof v !== "string") return void 0;
@@ -338,26 +357,26 @@ var domainArray = (v) => {
 function parseStructuredConsultation(text) {
   const raw = extractJson(text);
   if (raw === null || typeof raw !== "object") return null;
-  const o = raw;
-  const parsed = {
-    coreSummary: str(o.coreSummary),
-    disposition: str(o.disposition),
-    coreInterpretation: str(o.coreInterpretation),
-    strengths: strArray(o.strengths),
-    cautions: strArray(o.cautions),
-    domainInterpretation: domainArray(o.domainInterpretation),
-    futureFlow: str(o.futureFlow),
-    followUps: strArray(o.followUps)
-  };
+  const parsed = mapStructuredFields(raw);
   if (!isSubstantiveLongForm(parsed)) return null;
   return parsed;
 }
 var MIN_CORE_INTERPRETATION_CHARS = 120;
+var MIN_CORE_WITH_SUPPORT_CHARS = 50;
+var MIN_TOTAL_BODY_CHARS = 180;
 function isSubstantiveLongForm(p) {
   if (!p.coreSummary || !p.coreInterpretation) return false;
-  if (p.coreInterpretation.length < MIN_CORE_INTERPRETATION_CHARS) return false;
   const hasSupporting = (p.strengths?.length ?? 0) > 0 || (p.cautions?.length ?? 0) > 0 || (p.domainInterpretation?.length ?? 0) > 0 || !!p.futureFlow || !!p.disposition;
-  return hasSupporting;
+  if (!hasSupporting) return false;
+  if (p.coreInterpretation.length >= MIN_CORE_INTERPRETATION_CHARS) return true;
+  const supportingChars = [
+    ...p.strengths ?? [],
+    ...p.cautions ?? [],
+    ...(p.domainInterpretation ?? []).map((d) => d.body),
+    p.futureFlow ?? "",
+    p.disposition ?? ""
+  ].join(" ").trim().length;
+  return p.coreInterpretation.length >= MIN_CORE_WITH_SUPPORT_CHARS && p.coreInterpretation.length + supportingChars >= MIN_TOTAL_BODY_CHARS;
 }
 var ZIWEI_USE = /자미두수\s*(로\s*보|로\s*분석|를\s*보면|에\s*따르면|\s*분석|\s*결과|\s*명반|\s*차트|\s*상)/;
 var QIMEN_USE = /기문(둔갑)?\s*(에서|에는|으로\s*보|으로\s*분석|을\s*보면|를\s*보면|\s*보면|에\s*따르면|\s*분석|\s*결과|\s*국|\s*상|\s*판|까지|도\s*(함께|같이|보|분석))|기문\s*국|값부|값사|值符|值使|八門|九星|八神|九宮|현재\s*국세?/;
@@ -469,10 +488,27 @@ function classifyConsultationOutput(rawText, grounding) {
     const validated = validateStructuredAgainstGrounding(parsed, grounding);
     return validated ? { kind: "ACCEPTED", result: validated } : { kind: "SEMANTIC_REJECTED", reason: "structured_semantic_violation" };
   }
-  if (hasSemanticViolation(rawText, grounding)) {
+  const salvaged = salvageStructuredText(rawText);
+  const candidate2 = salvaged ?? rawText;
+  if (hasSemanticViolation(candidate2, grounding)) {
     return { kind: "SEMANTIC_REJECTED", reason: "raw_semantic_violation" };
   }
-  return { kind: "STRUCTURAL_FALLBACK", text: rawText };
+  if (salvaged === null && looksLikeStructuredJson(rawText)) {
+    return { kind: "SEMANTIC_REJECTED", reason: "unrenderable_structured_json" };
+  }
+  return { kind: "STRUCTURAL_FALLBACK", text: candidate2 };
+}
+function salvageStructuredText(rawText) {
+  const raw = extractJson(rawText);
+  if (raw === null || typeof raw !== "object") return null;
+  const p = mapStructuredFields(raw);
+  const hasContent = !!p.coreSummary || !!p.coreInterpretation || (p.strengths?.length ?? 0) > 0 || (p.cautions?.length ?? 0) > 0 || (p.domainInterpretation?.length ?? 0) > 0;
+  if (!hasContent) return null;
+  const composed = composeConsultationText(p).trim();
+  return composed.length > 0 ? composed : null;
+}
+function looksLikeStructuredJson(text) {
+  return /"(coreSummary|coreInterpretation|strengths|cautions|domainInterpretation|futureFlow|followUps)"\s*:/.test(text) || /^\s*[{[]/.test(text);
 }
 function composeConsultationText(p) {
   const blocks = [];

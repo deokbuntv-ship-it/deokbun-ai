@@ -48,11 +48,36 @@ function extractJson(text: string): unknown {
   const start = candidate.indexOf('{');
   const end = candidate.lastIndexOf('}');
   if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    return JSON.parse(candidate.slice(start, end + 1));
-  } catch {
-    return null;
-  }
+  const slice = candidate.slice(start, end + 1);
+  const tryParse = (s: string): unknown => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return undefined;
+    }
+  };
+  const direct = tryParse(slice);
+  if (direct !== undefined) return direct;
+  // Tolerate the single most common LLM JSON defect: a trailing comma directly before a } or ]. Narrow —
+  // only strips commas that immediately precede a closing brace/bracket (across whitespace); it does not
+  // attempt to repair arbitrary malformed JSON.
+  const relaxed = tryParse(slice.replace(/,(\s*[}\]])/g, '$1'));
+  return relaxed === undefined ? null : relaxed;
+}
+
+// Map the raw object → typed consultation fields (no substance gate). Shared by the strict parser and the
+// readable-salvage path so a JSON payload that fails the card gate is never shown as raw JSON (§4).
+function mapStructuredFields(o: Record<string, unknown>): ParsedStructuredConsultation {
+  return {
+    coreSummary: str(o.coreSummary),
+    disposition: str(o.disposition),
+    coreInterpretation: str(o.coreInterpretation),
+    strengths: strArray(o.strengths),
+    cautions: strArray(o.cautions),
+    domainInterpretation: domainArray(o.domainInterpretation),
+    futureFlow: str(o.futureFlow),
+    followUps: strArray(o.followUps),
+  };
 }
 
 const str = (v: unknown): string | undefined => {
@@ -85,41 +110,50 @@ const domainArray = (v: unknown): { title: string; body: string }[] | undefined 
 export function parseStructuredConsultation(text: string): ParsedStructuredConsultation | null {
   const raw = extractJson(text);
   if (raw === null || typeof raw !== 'object') return null;
-  const o = raw as Record<string, unknown>;
+  const parsed = mapStructuredFields(raw as Record<string, unknown>);
 
-  const parsed: ParsedStructuredConsultation = {
-    coreSummary: str(o.coreSummary),
-    disposition: str(o.disposition),
-    coreInterpretation: str(o.coreInterpretation),
-    strengths: strArray(o.strengths),
-    cautions: strArray(o.cautions),
-    domainInterpretation: domainArray(o.domainInterpretation),
-    futureFlow: str(o.futureFlow),
-    followUps: strArray(o.followUps),
-  };
-
-  // Substance gate (Codex FIX #6 / §8): a valid structured consultation must be LONG-FORM, not a
-  // one-liner. Require BOTH the orientation (coreSummary) AND a substantive core interpretation,
-  // with enough additional body to justify structured rendering. Summary-only / too-shallow → null
-  // → safe plain-text fallback (no empty card).
+  // Substance gate (Codex FIX #6 / §8): a valid structured consultation must be a real long-form answer,
+  // not a one-liner. Summary-only / too-shallow → null → safe fallback (no empty card).
   if (!isSubstantiveLongForm(parsed)) return null;
   return parsed;
 }
 
-const MIN_CORE_INTERPRETATION_CHARS = 120;
+const MIN_CORE_INTERPRETATION_CHARS = 120; // a long core alone is card-worthy
+const MIN_CORE_WITH_SUPPORT_CHARS = 50; // a shorter core is fine when backed by real supporting sections
+const MIN_TOTAL_BODY_CHARS = 180; // core + supporting content together
 
-/** Long-form product gate: coreSummary + a substantive coreInterpretation (+ some supporting body). */
+/**
+ * Long-form product gate: coreSummary + a substantive core, EITHER a long core on its own OR a decent core
+ * backed by real supporting sections (강점/주의점/영역별/흐름/성향). A rich answer with a concise core is a
+ * full consultation, not a one-liner — this no longer forces every card to have a ≥120-char core (which
+ * dropped valid live answers to raw-text fallback). Still rejects genuine one-liners.
+ */
 export function isSubstantiveLongForm(p: ParsedStructuredConsultation): boolean {
   if (!p.coreSummary || !p.coreInterpretation) return false;
-  if (p.coreInterpretation.length < MIN_CORE_INTERPRETATION_CHARS) return false;
-  // At least one supporting section beyond the core body (강점/주의점/영역별/앞으로의 흐름/기본 성향).
+  // Unchanged rule: a card always needs ≥1 supporting section (강점/주의점/영역별/앞으로의 흐름/기본 성향).
   const hasSupporting =
     (p.strengths?.length ?? 0) > 0 ||
     (p.cautions?.length ?? 0) > 0 ||
     (p.domainInterpretation?.length ?? 0) > 0 ||
     !!p.futureFlow ||
     !!p.disposition;
-  return hasSupporting;
+  if (!hasSupporting) return false;
+  // A long core is card-worthy on its own; a shorter core is fine when the TOTAL body is still substantial
+  // (a rich, concise-core answer — the shape that previously dropped to raw-text fallback).
+  if (p.coreInterpretation.length >= MIN_CORE_INTERPRETATION_CHARS) return true;
+  const supportingChars = [
+    ...(p.strengths ?? []),
+    ...(p.cautions ?? []),
+    ...(p.domainInterpretation ?? []).map((d) => d.body),
+    p.futureFlow ?? '',
+    p.disposition ?? '',
+  ]
+    .join(' ')
+    .trim().length;
+  return (
+    p.coreInterpretation.length >= MIN_CORE_WITH_SUPPORT_CHARS &&
+    p.coreInterpretation.length + supportingChars >= MIN_TOTAL_BODY_CHARS
+  );
 }
 
 // ── Grounding-aware validation (Codex FIX #8/#9/#10) ─────────────────────────────────
@@ -336,12 +370,45 @@ export function classifyConsultationOutput(
       ? { kind: 'ACCEPTED', result: validated }
       : { kind: 'SEMANTIC_REJECTED', reason: 'structured_semantic_violation' };
   }
-  // Not the structured schema → candidate for a plain-text fallback, but ONLY if the raw prose itself
-  // is semantically safe. A false-engine/consensus/theory claim or an unsupported period → reject.
-  if (hasSemanticViolation(rawText, grounding)) {
+  // Parse did not yield an accepted card. CRITICAL (§4): the RAW model JSON must NEVER reach the user. If
+  // the output was a structured-JSON attempt, compose readable prose from whatever fields survived and use
+  // THAT as the fallback text (subject to the same semantic checks). Genuine prose passes through as-is.
+  const salvaged = salvageStructuredText(rawText);
+  const candidate = salvaged ?? rawText;
+  if (hasSemanticViolation(candidate, grounding)) {
     return { kind: 'SEMANTIC_REJECTED', reason: 'raw_semantic_violation' };
   }
-  return { kind: 'STRUCTURAL_FALLBACK', text: rawText };
+  // Last-resort guard: if the text still looks like a raw JSON payload (unparseable JSON we could not turn
+  // into prose), do NOT leak it — fall back to the safe message instead.
+  if (salvaged === null && looksLikeStructuredJson(rawText)) {
+    return { kind: 'SEMANTIC_REJECTED', reason: 'unrenderable_structured_json' };
+  }
+  return { kind: 'STRUCTURAL_FALLBACK', text: candidate };
+}
+
+// Turn a structured-JSON payload that failed the card gate into readable prose (never raw JSON, §4).
+// Returns null when the text is not a JSON object carrying consultation content.
+function salvageStructuredText(rawText: string): string | null {
+  const raw = extractJson(rawText);
+  if (raw === null || typeof raw !== 'object') return null;
+  const p = mapStructuredFields(raw as Record<string, unknown>);
+  const hasContent =
+    !!p.coreSummary ||
+    !!p.coreInterpretation ||
+    (p.strengths?.length ?? 0) > 0 ||
+    (p.cautions?.length ?? 0) > 0 ||
+    (p.domainInterpretation?.length ?? 0) > 0;
+  if (!hasContent) return null;
+  const composed = composeConsultationText(p).trim();
+  return composed.length > 0 ? composed : null;
+}
+
+// Heuristic: does the text look like a raw structured-JSON payload (so it must never be shown verbatim)?
+function looksLikeStructuredJson(text: string): boolean {
+  return (
+    /"(coreSummary|coreInterpretation|strengths|cautions|domainInterpretation|futureFlow|followUps)"\s*:/.test(text) ||
+    /^\s*[{[]/.test(text)
+  );
 }
 
 /** A readable plain-text rendering (for message persistence + the non-structured fallback). */
