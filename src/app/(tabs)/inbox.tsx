@@ -34,7 +34,7 @@ import {
 // are a separate section rather than mixed into the fortune sub-filters.
 type Status = 'loading' | 'ready' | 'error';
 type ReportStatus = 'idle' | 'loading' | 'ready' | 'error';
-type Section = 'fortune' | 'report';
+type Section = 'fortune' | 'report' | 'compat';
 
 export default function FortuneInboxScreen() {
   const router = useRouter();
@@ -73,7 +73,7 @@ export default function FortuneInboxScreen() {
   // Load saved reports when (and each time) the 보고서 section is opened — newest first, owner-scoped
   // by RLS. Runs on section change, not every render (§29-analog: no per-render DB query).
   useEffect(() => {
-    if (section !== 'report') return;
+    if (section !== 'report' && section !== 'compat') return;
     if (!isAuthenticated) {
       setReports([]);
       setReportStatus('ready');
@@ -81,8 +81,9 @@ export default function FortuneInboxScreen() {
     }
     let active = true;
     setReportStatus('loading');
+    // 보고서 → consultation reports · 궁합 → compatibility reports (owner-scoped by RLS, newest first).
     reportService
-      .listReports()
+      .listReportsByType(section === 'compat' ? 'compatibility' : 'consultation')
       .then((rows) => {
         if (!active) return;
         setReports(rows);
@@ -131,6 +132,11 @@ export default function FortuneInboxScreen() {
                 label="보고서"
                 selected={section === 'report'}
                 onPress={() => setSection('report')}
+              />
+              <Chip
+                label="궁합"
+                selected={section === 'compat'}
+                onPress={() => setSection('compat')}
               />
             </Stack>
 
@@ -215,10 +221,22 @@ export default function FortuneInboxScreen() {
             ) : reportItems.length === 0 ? (
               <Card radius="xl">
                 <Stack gap="sm">
-                  <Text variant="headingMedium">아직 저장된 상담 보고서가 없어요.</Text>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    AI 상담을 진행한 뒤 보고서를 만들어 이곳에 저장할 수 있어요.
-                  </Text>
+                  {section === 'compat' ? (
+                    <>
+                      <Text variant="headingMedium">아직 저장된 궁합이 없어요.</Text>
+                      <Text variant="bodyMedium" colorToken="textSecondary">
+                        궁합을 본 뒤 보고서를 만들면 이곳에 저장돼요.
+                      </Text>
+                      <Button label="궁합 보러 가기" radius="lg" onPress={() => router.push('/compatibility')} />
+                    </>
+                  ) : (
+                    <>
+                      <Text variant="headingMedium">아직 저장된 상담 보고서가 없어요.</Text>
+                      <Text variant="bodyMedium" colorToken="textSecondary">
+                        AI 상담을 진행한 뒤 보고서를 만들어 이곳에 저장할 수 있어요.
+                      </Text>
+                    </>
+                  )}
                 </Stack>
               </Card>
             ) : (
@@ -226,7 +244,7 @@ export default function FortuneInboxScreen() {
                 {reportItems.map((r) => (
                   <InsightCard
                     key={r.id}
-                    tag={{ label: '보고서', tone: 'secondary' }}
+                    tag={{ label: section === 'compat' ? '궁합' : '보고서', tone: 'secondary' }}
                     timestamp={r.dateLabel}
                     muted
                     title={r.title}

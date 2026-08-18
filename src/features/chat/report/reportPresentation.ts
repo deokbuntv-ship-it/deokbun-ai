@@ -107,6 +107,7 @@ export function premiumViewFromSharedContent(c: SharedReportContent): PremiumRep
     id: '',
     conversationId: null,
     title: c.title,
+    reportType: 'consultation',
     createdAt: c.generatedAt ?? '',
     updatedAt: null,
     payload: {

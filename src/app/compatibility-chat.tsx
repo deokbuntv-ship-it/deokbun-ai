@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/AppHeader';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
@@ -11,6 +12,8 @@ import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
 import { ChatInput, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
+import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
+import { reportService } from '@/features/chat/report/reportService';
 import type { CompatibilityResultMeta } from '@/features/chat/server';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
@@ -55,6 +58,8 @@ export default function CompatibilityChatScreen() {
   const [sending, setSending] = useState(false);
   const [tier, setTier] = useState<CompatibilityResultMeta | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
   const initialSentRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -115,6 +120,36 @@ export default function CompatibilityChatScreen() {
     void send(INITIAL_QUESTION);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, self, target]);
+
+  // Deterministic 궁합 report (ZERO extra LLM): composed from the tier + the validated pair answers.
+  const handleGenerateReport = async () => {
+    if (!tier || reportBusy) return;
+    const answers = messages
+      .filter((m) => m.role === 'assistant' && m.structuredResult)
+      .map((m) => toConsultationPresentation(m.structuredResult!));
+    if (answers.length === 0) return;
+    const questions = messages.filter((m) => m.role === 'user').map((m) => m.text);
+    setReportBusy(true);
+    try {
+      const report = await reportService.createCompatibilityReport({
+        selfLabel: tier.selfLabel,
+        targetLabel: tier.targetLabel,
+        overallLabel: tier.overallLabel,
+        dimensions: tier.dimensions.map((d) => ({ title: d.title, verdict: d.verdict })),
+        questions,
+        answers,
+        generatedAt: new Date().toISOString(),
+      });
+      if (report) {
+        setReportId(report.id);
+        router.push({ pathname: '/report/[id]', params: { id: report.id } });
+      } else {
+        setErrorText('보고서를 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
+      }
+    } finally {
+      setReportBusy(false);
+    }
+  };
 
   const renderMessage = (m: CompatMessage) => {
     if (m.role === 'user') {
@@ -177,6 +212,18 @@ export default function CompatibilityChatScreen() {
               {tier ? <CompatibilityTierCard meta={tier} /> : null}
               {messages.map(renderMessage)}
               {sending ? <ConsultationLoading /> : null}
+              {tier && !sending ? (
+                <Button
+                  label={reportId ? '궁합 보고서 보기' : reportBusy ? '보고서 만드는 중…' : '궁합 보고서 만들기'}
+                  variant={reportId ? 'secondary' : 'primary'}
+                  onPress={
+                    reportId
+                      ? () => router.push({ pathname: '/report/[id]', params: { id: reportId } })
+                      : handleGenerateReport
+                  }
+                  disabled={reportBusy}
+                />
+              ) : null}
               {errorText ? (
                 <Card>
                   <Text variant="bodyMedium" colorToken="textSecondary">

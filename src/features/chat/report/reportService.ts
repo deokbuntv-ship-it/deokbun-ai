@@ -1,11 +1,18 @@
 import { logDbError } from '@/features/analysis';
+import type { ConsultationPresentationVM } from '@/features/chat/presentation/consultationPresentationVM';
 import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
 import {
   buildConsultationReport,
   type ConsultationReportPayload,
 } from '@/features/chat/report/consultationReportComposer';
+import {
+  buildCompatibilityReport,
+  type CompatibilityReportDimension,
+} from '@/features/chat/report/compatibilityReportComposer';
 import { conversationService } from '@/features/chat/services/conversationService';
 import { getSupabaseClient } from '@/services/supabase';
+
+export type ReportType = 'consultation' | 'compatibility';
 
 // Consultation report persistence (Commercial UX V4 §16/§29). Builds a report DETERMINISTICALLY from the
 // conversation's already-validated structured answers + stored summary (buildConsultationReport — ZERO
@@ -20,6 +27,7 @@ export type ConsultationReport = {
   conversationId: string | null;
   title: string;
   payload: ConsultationReportPayload;
+  reportType: ReportType;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -29,15 +37,18 @@ type ReportRow = {
   conversation_id: string | null;
   title: string;
   report_payload: ConsultationReportPayload;
+  report_type?: string | null;
   created_at: string;
   updated_at?: string | null;
 };
-const COLUMNS = 'id, conversation_id, title, report_payload, created_at, updated_at';
+// report_type is additive (migration 20260819000000); default 'consultation' keeps every existing row.
+const COLUMNS = 'id, conversation_id, title, report_payload, report_type, created_at, updated_at';
 const toReport = (r: ReportRow): ConsultationReport => ({
   id: r.id,
   conversationId: r.conversation_id,
   title: r.title,
   payload: r.report_payload,
+  reportType: r.report_type === 'compatibility' ? 'compatibility' : 'consultation',
   createdAt: r.created_at,
   updatedAt: r.updated_at ?? null,
 });
@@ -134,9 +145,59 @@ async function loadReportByConversation(
   return data ? toReport(data as ReportRow) : null;
 }
 
+// Build + persist a DETERMINISTIC 궁합 report (Compatibility V1 §41/§48/§50 — ZERO extra LLM calls).
+// V1 stores it with conversation_id = null (the pair chat is not conversation-persisted yet) and
+// report_type = 'compatibility'; the unique (user_id, conversation_id) index only applies WHERE
+// conversation_id IS NOT NULL, so multiple pair reports per owner are allowed. Returns null when there
+// is no substantive pair answer yet, or on a DB failure (logged, never thrown).
+async function createCompatibilityReport(input: {
+  selfLabel: string;
+  targetLabel: string;
+  overallLabel: string;
+  dimensions: readonly CompatibilityReportDimension[];
+  questions: readonly string[];
+  answers: readonly ConsultationPresentationVM[];
+  storedSummary?: string | null;
+  generatedAt: string;
+}): Promise<ConsultationReport | null> {
+  if (input.answers.length === 0) return null; // eligibility: nothing substantive to report yet
+  const supabase = getSupabaseClient();
+  const payload = buildCompatibilityReport(input);
+  const { data, error } = await supabase
+    .from(REPORTS)
+    .insert({
+      conversation_id: null,
+      title: payload.title,
+      report_payload: payload,
+      report_type: 'compatibility',
+      status: 'ready',
+    })
+    .select(COLUMNS)
+    .single();
+  if (error) {
+    logDbError(error, 'report', 'db');
+    return null;
+  }
+  return toReport(data as ReportRow);
+}
+
+// Owner-scoped list filtered by report_type (운세우편함 categories: 보고서=consultation / 궁합=compatibility).
+async function listReportsByType(reportType: ReportType): Promise<ConsultationReport[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(REPORTS)
+    .select(COLUMNS)
+    .eq('report_type', reportType)
+    .order('created_at', { ascending: false });
+  if (error) logDbError(error, 'report', 'db');
+  return ((data as ReportRow[] | null) ?? []).map(toReport);
+}
+
 export const reportService = {
   createOrUpdateReport,
+  createCompatibilityReport,
   listReports,
+  listReportsByType,
   loadReport,
   loadReportByConversation,
 };
