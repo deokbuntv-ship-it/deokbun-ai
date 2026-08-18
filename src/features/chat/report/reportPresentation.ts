@@ -62,6 +62,65 @@ export function toReportListItem(report: ConsultationReport): ReportListItemView
   };
 }
 
+// The premium detail projection (§5/§6): the summary is promoted to a hero, the remaining populated
+// sections (핵심 포인트 / 주의할 점 / 다룬 내용) follow as editorial blocks. Built on toReportDetailView so
+// the empty-section filtering + hygiene are shared. `mode` is carried by the renderer, not here.
+export type PremiumReportView = {
+  eyebrow: string;
+  title: string;
+  dateLabel: string;
+  summary: string; // hero; '' when the report has no summary
+  sections: ReportDetailSection[]; // non-summary sections, already empty-filtered
+};
+
+const SUMMARY_TITLE = '한눈에 보는 요약';
+
+export function toPremiumReportView(report: ConsultationReport): PremiumReportView {
+  const base = toReportDetailView(report);
+  const summarySection = base.sections.find(
+    (s): s is Extract<ReportDetailSection, { kind: 'paragraph' }> =>
+      s.kind === 'paragraph' && s.title === SUMMARY_TITLE,
+  );
+  return {
+    eyebrow: '개인 상담 보고서',
+    title: base.title,
+    dateLabel: base.dateLabel,
+    summary: summarySection ? summarySection.body : '',
+    sections: base.sections.filter((s) => s !== summarySection),
+  };
+}
+
+// Build a ConsultationReport-shaped object from a bounded shared-report DTO (recipient path) so the
+// SAME premium projection + renderer serve owner and shared views (§46). Only user-facing fields exist
+// on the DTO — no ids/conversation/grounding — so nothing sensitive can reach the renderer.
+export type SharedReportContent = {
+  title: string;
+  generatedAt: string | null;
+  summary: string;
+  keyFindings: string[];
+  cautions: string[];
+  coveredTopics: string[];
+};
+
+export function premiumViewFromSharedContent(c: SharedReportContent): PremiumReportView {
+  const synthetic: ConsultationReport = {
+    id: '',
+    conversationId: null,
+    title: c.title,
+    createdAt: c.generatedAt ?? '',
+    updatedAt: null,
+    payload: {
+      title: c.title,
+      summary: c.summary,
+      keyFindings: c.keyFindings ?? [],
+      cautions: c.cautions ?? [],
+      coveredTopics: c.coveredTopics ?? [],
+      generatedAt: c.generatedAt ?? '',
+    },
+  };
+  return toPremiumReportView(synthetic);
+}
+
 export function toReportDetailView(report: ConsultationReport): ReportDetailView {
   const p = report.payload ?? ({} as ConsultationReport['payload']);
   const sections: ReportDetailSection[] = [];

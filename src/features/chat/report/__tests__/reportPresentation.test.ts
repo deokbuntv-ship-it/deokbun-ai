@@ -4,6 +4,8 @@
 import type { ConsultationReport } from '@/features/chat/report/reportService';
 import {
   formatReportDate,
+  premiumViewFromSharedContent,
+  toPremiumReportView,
   toReportDetailView,
   toReportListItem,
 } from '@/features/chat/report/reportPresentation';
@@ -86,5 +88,41 @@ describe('toReportDetailView', () => {
     const summary = v.sections.find((s) => s.title === '한눈에 보는 요약');
     expect(summary?.kind).toBe('paragraph');
     expect(summary && summary.kind === 'paragraph' ? summary.body : '').toContain('기반을 다질');
+  });
+});
+
+describe('toPremiumReportView', () => {
+  it('promotes the summary to a hero and lists the remaining sections (no summary in the list)', () => {
+    const v = toPremiumReportView(makeReport());
+    expect(v.eyebrow).toBe('개인 상담 보고서');
+    expect(v.title).toContain('상담 보고서');
+    expect(v.dateLabel).toBe('2026.08.18');
+    expect(v.summary).toContain('기반을 다질');
+    expect(v.sections.map((s) => s.title)).toEqual(['핵심 포인트', '주의할 점', '상담에서 다룬 주요 질문']);
+    expect(v.sections.some((s) => s.title === '한눈에 보는 요약')).toBe(false);
+  });
+
+  it('emits an empty hero (no fabrication) when the report has no summary', () => {
+    const v = toPremiumReportView(makeReport({ summary: '' }));
+    expect(v.summary).toBe('');
+    expect(v.sections.map((s) => s.title)).toEqual(['핵심 포인트', '주의할 점', '상담에서 다룬 주요 질문']);
+  });
+});
+
+describe('premiumViewFromSharedContent (recipient path reuses the same renderer)', () => {
+  it('builds the same premium shape from a bounded shared DTO', () => {
+    const v = premiumViewFromSharedContent({
+      title: '공유받은 보고서',
+      generatedAt: NOW,
+      summary: '핵심 요약입니다.',
+      keyFindings: ['포인트 1'],
+      cautions: [],
+      coveredTopics: ['질문 1'],
+    });
+    expect(v.title).toBe('공유받은 보고서');
+    expect(v.dateLabel).toBe('2026.08.18');
+    expect(v.summary).toBe('핵심 요약입니다.');
+    // cautions empty → filtered out; only the populated sections remain
+    expect(v.sections.map((s) => s.title)).toEqual(['핵심 포인트', '상담에서 다룬 주요 질문']);
   });
 });
