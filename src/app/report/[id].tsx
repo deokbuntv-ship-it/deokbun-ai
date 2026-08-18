@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { ConsumerBottomNav } from '@/components/ConsumerBottomNav';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -15,12 +15,11 @@ import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
 import { ShareReportSheet } from '@/features/chat/report/ShareReportSheet';
 import { toPremiumReportView, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
 import { reportService } from '@/features/chat/report/reportService';
-import { spacing } from '@/theme';
 
-// 상담 보고서 상세 (Commercial UX V4 §5–§28). Owner-only premium view of a saved report. RLS-scoped load;
-// a logged-out visitor is redirected to login (§24); a missing/other-owner id → a calm not-found (§25/§26,
-// no raw security detail). Reload/direct-URL safe — always reads the DB (§22/§23). The consumer bottom
-// nav is preserved on this pushed detail screen via ConsumerBottomNav (§10–§14), active on 운세우편함.
+// 상담 보고서 상세 (Commercial UX V4 §5–§28). Lives INSIDE the (tabs) group so it renders within the REAL
+// consumer navigation shell (app-tabs) — the real bottom bar, not a custom footer. Owner-only: RLS load;
+// logged-out → declarative Redirect to login (§24); missing/other-owner id → a calm not-found (§25/§26).
+// Reload/direct-URL safe (§22/§23).
 type Status = 'loading' | 'ready' | 'notfound' | 'error';
 
 export default function ConsultationReportDetailScreen() {
@@ -61,7 +60,7 @@ export default function ConsultationReportDetailScreen() {
     else router.replace('/inbox');
   };
 
-  // §24 — a logged-out visitor cannot view a report. Redirect to login (RLS also protects the data).
+  // §24 — a logged-out visitor cannot view a report. Declarative redirect (robust on direct/fresh loads).
   if (authState.status === 'unauthenticated') {
     return <Redirect href="/login" />;
   }
@@ -100,8 +99,8 @@ export default function ConsultationReportDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Preserve the consumer bottom navigation on this pushed detail screen (§10–§14). */}
-      <ConsumerBottomNav active="inbox" />
+      {/* The real consumer bottom nav on this pushed detail screen (§10–§14). */}
+      <DetailBottomNav active="inbox" />
 
       <ShareReportSheet visible={shareVisible} onClose={() => setShareVisible(false)} reportId={id} />
     </Screen>

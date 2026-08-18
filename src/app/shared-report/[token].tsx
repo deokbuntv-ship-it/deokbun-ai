@@ -1,11 +1,11 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { ConsumerBottomNav } from '@/components/ConsumerBottomNav';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -16,15 +16,17 @@ import { setPendingShareToken } from '@/features/chat/report/pendingSharedReport
 import { premiumViewFromSharedContent, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
 import { shareService } from '@/features/chat/report/shareService';
 import { isValidShareToken } from '@/features/chat/report/shareToken';
-import { spacing } from '@/theme';
 
-// 공유받은 상담 보고서 (Commercial UX V4 §22–§29). A recipient MUST be logged in — the report body is
-// NEVER shown before login (§22). If logged out, the shape-valid token is stashed in an ephemeral store
-// and login proceeds; after login the continuation returns here (§24, no open redirect). The report is
-// read through the get_shared_report RPC, which returns a BOUNDED DTO (§27) — no owner id, conversation,
-// grounding, or account data ever reaches this screen. Read-only: no edit / regenerate / owner controls
-// (§28/§29). Revoked / expired / invalid → an indistinguishable "no longer shared" state (§41).
-type Status = 'checking' | 'loading' | 'ready' | 'unavailable';
+// 공유받은 상담 보고서 (Commercial UX V4 §22–§29). Lives inside the (tabs) group → renders within the REAL
+// consumer nav shell.
+//
+// AUTH-GATE ORDERING (P0-B, §C): the RENDER branches on auth state FIRST, so a logged-out visitor NEVER
+// reaches the fetch, the report body, or the unavailable state — it stores the shape-valid token in an
+// ephemeral store (never `returnTo`, no open redirect) and hands off to /login via a DECLARATIVE Redirect
+// (robust on a fresh/incognito direct load, unlike an effect-based router.replace). The RPC is called ONLY
+// when authenticated. Read-only: no owner controls (§28/§29). Revoked/expired/invalid → one
+// indistinguishable "cannot view" state (§H/§41).
+type FetchStatus = 'loading' | 'ready' | 'unavailable';
 
 export default function SharedReportScreen() {
   const router = useRouter();
@@ -33,18 +35,18 @@ export default function SharedReportScreen() {
   const { authState } = useAuth();
 
   const [view, setView] = useState<PremiumReportVM | null>(null);
-  const [status, setStatus] = useState<Status>('checking');
+  const [status, setStatus] = useState<FetchStatus>('loading');
 
+  // Stash the token BEFORE handing off to login (only while logged out + shape-valid). Never in returnTo.
   useEffect(() => {
-    if (authState.status === 'loading') return; // wait for auth to resolve
-    // §22 — logged out: stash the token (never the report) and send to login; the report body is not
-    // fetched or shown. After login the continuation returns to this exact route.
-    if (authState.status === 'unauthenticated') {
-      if (isValidShareToken(token)) setPendingShareToken(token);
-      router.replace('/login');
-      return;
+    if (authState.status === 'unauthenticated' && isValidShareToken(token)) {
+      setPendingShareToken(token);
     }
-    // Authenticated: validate + fetch the bounded DTO.
+  }, [authState.status, token]);
+
+  // Fetch the bounded DTO ONLY when authenticated (§C — never before auth resolves).
+  useEffect(() => {
+    if (authState.status !== 'authenticated') return;
     if (!isValidShareToken(token)) {
       setStatus('unavailable');
       return;
@@ -68,52 +70,67 @@ export default function SharedReportScreen() {
     return () => {
       active = false;
     };
-  }, [token, authState.status, router]);
+  }, [token, authState.status]);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/');
   };
 
+  // ── Auth gate FIRST (render-level) ──────────────────────────────────────────
+  if (authState.status === 'loading') {
+    return (
+      <Screen padded={false} frame>
+        <AppHeader title="공유받은 보고서" />
+        <View style={styles.centerPad}>
+          <Card radius="xl">
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              불러오는 중입니다...
+            </Text>
+          </Card>
+        </View>
+      </Screen>
+    );
+  }
+  if (authState.status === 'unauthenticated') {
+    // The report body is NEVER fetched or shown before login (§22).
+    return <Redirect href="/login" />;
+  }
+
+  // ── Authenticated: bounded, read-only view ──────────────────────────────────
   return (
     <Screen padded={false} frame>
       <AppHeader title="공유받은 보고서" showBack onBack={handleBack} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
-          {status === 'ready' && view ? (
-            <PremiumReportView
-              view={view}
-              mode="shared"
-              footer={
-                // A gentle, non-ad invitation — the shared view doubles as a soft entry point (§47).
-                <Card radius="xl">
-                  <Stack gap="sm">
-                    <Text variant="bodySmall" colorToken="textSecondary">
-                      덕분AI에서 나만의 상담 보고서도 만들어 볼 수 있어요.
-                    </Text>
-                    <Button
-                      label="덕분AI 홈으로"
-                      variant="secondary"
-                      radius="lg"
-                      onPress={() => router.replace('/')}
-                    />
-                  </Stack>
-                </Card>
-              }
-            />
-          ) : status === 'ready' || status === 'loading' || status === 'checking' ? (
+          {status === 'loading' ? (
             <Card radius="xl">
               <Text variant="bodyMedium" colorToken="textSecondary">
                 보고서를 불러오는 중입니다...
               </Text>
             </Card>
+          ) : status === 'ready' && view ? (
+            <PremiumReportView
+              view={view}
+              mode="shared"
+              footer={
+                <Card radius="xl">
+                  <Stack gap="sm">
+                    <Text variant="bodySmall" colorToken="textSecondary">
+                      덕분AI에서 나만의 상담 보고서도 만들어 볼 수 있어요.
+                    </Text>
+                    <Button label="덕분AI 홈으로" variant="secondary" radius="lg" onPress={() => router.replace('/')} />
+                  </Stack>
+                </Card>
+              }
+            />
           ) : (
             // §41 — revoked / expired / invalid / not found → one calm, indistinguishable message.
             <Card radius="xl">
               <Stack gap="md">
-                <Text variant="headingMedium">이 보고서는 더 이상 공유되지 않습니다.</Text>
+                <Text variant="headingMedium">이 보고서를 확인할 수 없습니다.</Text>
                 <Text variant="bodyMedium" colorToken="textSecondary">
-                  공유가 취소되었거나 링크가 만료되었을 수 있어요.
+                  공유가 종료되었거나 링크가 만료되었을 수 있어요.
                 </Text>
                 <Button label="덕분AI 홈으로" radius="lg" onPress={() => router.replace('/')} />
               </Stack>
@@ -122,7 +139,8 @@ export default function SharedReportScreen() {
         </View>
       </ScrollView>
 
-      <ConsumerBottomNav />
+      {/* The recipient is signed in — let them explore the app via the real consumer nav (§47). */}
+      <DetailBottomNav />
     </Screen>
   );
 }
@@ -139,5 +157,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  centerPad: {
+    padding: 20,
   },
 });

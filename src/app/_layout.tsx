@@ -32,11 +32,10 @@ export default function RootLayout() {
             <Stack.Screen name="login-callback" options={{ headerShown: false }} />
             {/* 운세우편 상세 (05) — pushed from 운세우편함; own AppHeader back. */}
             <Stack.Screen name="mail-detail" options={{ headerShown: false }} />
-            {/* 상담 보고서 상세 — pushed from 우편함>보고서 and the chat report CTA; own AppHeader,
-                owner-only (RLS), redirects to login when signed out. */}
+            {/* 상담 보고서 상세 — owner-only (RLS), redirects to login when signed out; renders the real
+                consumer bottom nav via DetailBottomNav. */}
             <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
-            {/* 공유받은 상담 보고서 — recipient view via a share token; login-required, read-only,
-                bounded DTO through the get_shared_report RPC. */}
+            {/* 공유받은 상담 보고서 — recipient view via a share token; login-required, read-only. */}
             <Stack.Screen name="shared-report/[token]" options={{ headerShown: false }} />
             {/* 분석 대상자 관리 (from MY) — subject management; own AppHeader. */}
             <Stack.Screen name="subjects" options={{ headerShown: false }} />
