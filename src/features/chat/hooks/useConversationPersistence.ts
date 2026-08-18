@@ -41,6 +41,10 @@ type UseConversationPersistenceResult = {
   // Authoritative subject snapshot of a conversation opened by id (history).
   // The screen uses this to self-correct the draft on direct/F5 entry.
   restoredSubjectSnapshot: ConversationSubjectSnapshot;
+  // The active conversation id (null until a conversation is restored or lazily
+  // created). Surfaced reactively so the screen can offer conversation-level
+  // actions (e.g. "상담 보고서 만들기") once a real conversation row exists.
+  activeConversationId: string | null;
   persistMessage: (message: ChatMessage) => void;
 };
 
@@ -66,6 +70,8 @@ export function useConversationPersistence(
     useState<ConversationMemoryState>(EMPTY_MEMORY);
   const [restoredSubjectSnapshot, setRestoredSubjectSnapshot] =
     useState<ConversationSubjectSnapshot>(null);
+  // Mirror of conversationIdRef, exposed to the screen for conversation-level actions.
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   // Which (user + startNew + subject) context is currently hydrated.
   const hydratedKeyRef = useRef<string | null>(null);
@@ -100,6 +106,7 @@ export function useConversationPersistence(
 
   const resetInMemory = () => {
     conversationIdRef.current = null;
+    setActiveConversationId(null);
     persistedIdsRef.current = new Set();
     creationRef.current = null;
     saveChainRef.current = Promise.resolve();
@@ -163,6 +170,7 @@ export function useConversationPersistence(
       lastSummarizedMessageId: string | null;
     }) => {
       conversationIdRef.current = loaded.conversationId;
+      setActiveConversationId(loaded.conversationId);
       persistedMessagesRef.current = loaded.messages;
       loaded.messages.forEach((message) => {
         persistedIdsRef.current.add(message.id);
@@ -259,6 +267,7 @@ export function useConversationPersistence(
       .createConversation(subjectIdRef.current, subjectSnapshotRef.current)
       .then((id) => {
         conversationIdRef.current = id;
+        setActiveConversationId(id);
         return id;
       })
       .catch((error) => {
@@ -412,6 +421,7 @@ export function useConversationPersistence(
     resetToken,
     conversationMemory,
     restoredSubjectSnapshot,
+    activeConversationId,
     persistMessage,
   };
 }

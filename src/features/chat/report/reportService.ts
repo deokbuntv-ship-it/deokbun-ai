@@ -21,6 +21,7 @@ export type ConsultationReport = {
   title: string;
   payload: ConsultationReportPayload;
   createdAt: string;
+  updatedAt: string | null;
 };
 
 type ReportRow = {
@@ -29,14 +30,16 @@ type ReportRow = {
   title: string;
   report_payload: ConsultationReportPayload;
   created_at: string;
+  updated_at?: string | null;
 };
-const COLUMNS = 'id, conversation_id, title, report_payload, created_at';
+const COLUMNS = 'id, conversation_id, title, report_payload, created_at, updated_at';
 const toReport = (r: ReportRow): ConsultationReport => ({
   id: r.id,
   conversationId: r.conversation_id,
   title: r.title,
   payload: r.report_payload,
   createdAt: r.created_at,
+  updatedAt: r.updated_at ?? null,
 });
 
 // Build (or refresh) the report for a conversation. Returns null when there is nothing to report yet
@@ -116,4 +119,24 @@ async function loadReport(id: string): Promise<ConsultationReport | null> {
   return data ? toReport(data as ReportRow) : null;
 }
 
-export const reportService = { createOrUpdateReport, listReports, loadReport };
+// Existing report for a conversation, if any (§29 — the chat CTA shows "보고서 보기" vs "만들기").
+// RLS-scoped to the owner; a missing/other-owner report simply returns null.
+async function loadReportByConversation(
+  conversationId: string,
+): Promise<ConsultationReport | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(REPORTS)
+    .select(COLUMNS)
+    .eq('conversation_id', conversationId)
+    .maybeSingle();
+  if (error) logDbError(error, 'report', 'db');
+  return data ? toReport(data as ReportRow) : null;
+}
+
+export const reportService = {
+  createOrUpdateReport,
+  listReports,
+  loadReport,
+  loadReportByConversation,
+};

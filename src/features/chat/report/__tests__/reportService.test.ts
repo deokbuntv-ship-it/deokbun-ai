@@ -125,3 +125,28 @@ describe('reportService.createOrUpdateReport', () => {
     expect(cfg.calls).not.toContain('insert:consultation_reports');
   });
 });
+
+describe('reportService.loadReportByConversation (§29 — chat CTA existing-report lookup)', () => {
+  it('returns the mapped report when one exists for the conversation', async () => {
+    cfg.reportsSelectMaybeSingle = {
+      data: {
+        id: 'r1',
+        conversation_id: 'c1',
+        title: '2027년 사업운 상담 보고서',
+        report_payload: { title: 't', summary: 's', keyFindings: [], cautions: [], coveredTopics: [], generatedAt: NOW },
+        created_at: NOW,
+        updated_at: NOW,
+      },
+      error: null,
+    };
+    const report = await reportService.loadReportByConversation('c1');
+    expect(report?.id).toBe('r1');
+    expect(report?.conversationId).toBe('c1');
+    expect(report?.updatedAt).toBe(NOW);
+  });
+
+  it('returns null when the conversation has no report (owner miss / absent)', async () => {
+    cfg.reportsSelectMaybeSingle = { data: null, error: null };
+    expect(await reportService.loadReportByConversation('c1')).toBeNull();
+  });
+});

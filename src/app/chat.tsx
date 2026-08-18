@@ -39,6 +39,9 @@ import {
     StructuredConsultationResult,
 } from '@/features/intelligence/components';
 import { computeAnswerAnchorOffset } from '@/features/chat/scrollAnchor';
+import { ReportCtaFooter } from '@/features/chat/report/ReportCtaFooter';
+import { isReportEligible, resolveReportCtaView } from '@/features/chat/report/reportCta';
+import { reportService } from '@/features/chat/report/reportService';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
@@ -110,6 +113,7 @@ export default function ChatScreen() {
     resetToken,
     conversationMemory,
     restoredSubjectSnapshot,
+    activeConversationId,
     persistMessage,
   } = useConversationPersistence({
     startNew: startNewRef.current,
@@ -361,6 +365,77 @@ export default function ChatScreen() {
     await runSend(attempt.text, attempt.context);
   };
 
+  // ─── Consultation report CTA (Commercial UX V4 §5/§6/§8/§9/§29) ─────────────
+  // The conversation to report on: a history-opened id, else the id lazily created for this session.
+  const reportConversationId = conversationIdParam ?? activeConversationId ?? null;
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [reportJustCreated, setReportJustCreated] = useState(false);
+  const [reportGenerating, setReportGenerating] = useState(false);
+  const [reportError, setReportError] = useState(false);
+  const isGeneratingReportRef = useRef(false); // synchronous double-tap lock (§8)
+  const reportLoadedForRef = useRef<string | null>(null); // load existing report once per conversation
+
+  // Look up an EXISTING report for this conversation once (§29) so the CTA opens it ("보고서 보기")
+  // rather than offering to create a duplicate. Owner-scoped by RLS; a miss just leaves the create CTA.
+  useEffect(() => {
+    if (!isAuthenticated || !reportConversationId) return;
+    if (reportLoadedForRef.current === reportConversationId) return;
+    reportLoadedForRef.current = reportConversationId;
+    // New conversation context → clear any prior conversation's report state so a just-created
+    // success CTA can never bleed into a different consultation (§30). The lookup below repopulates.
+    setReportId(null);
+    setReportJustCreated(false);
+    setReportError(false);
+    let active = true;
+    reportService
+      .loadReportByConversation(reportConversationId)
+      .then((existing) => {
+        if (active && existing) setReportId(existing.id);
+      })
+      .catch(() => {
+        // A lookup failure must never break chat; leave the create CTA available.
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, reportConversationId]);
+
+  const handleGenerateReport = async () => {
+    if (isGeneratingReportRef.current || !reportConversationId) return; // double-tap guard (§8)
+    isGeneratingReportRef.current = true;
+    setReportGenerating(true);
+    setReportError(false);
+    try {
+      const report = await reportService.createOrUpdateReport(
+        reportConversationId,
+        new Date().toISOString(),
+      );
+      if (report) {
+        setReportId(report.id);
+        setReportJustCreated(true); // show the deterministic success copy (§9)
+      } else {
+        setReportError(true);
+      }
+    } catch {
+      setReportError(true); // safe message + retry; the conversation is untouched (§31)
+    } finally {
+      setReportGenerating(false);
+      isGeneratingReportRef.current = false;
+    }
+  };
+
+  const handleOpenReport = (id: string) => {
+    router.push({ pathname: '/report/[id]', params: { id } });
+  };
+
+  const reportCtaView = resolveReportCtaView({
+    eligible: isReportEligible(messages),
+    conversationId: reportConversationId,
+    reportId,
+    justCreated: reportJustCreated,
+    generating: reportGenerating,
+  });
+
   const header = (
     <AppHeader
       centerTitle
@@ -441,6 +516,16 @@ export default function ChatScreen() {
               ))}
               {/* One honest analysis state — no fake engine stages (§H/§10). */}
               {isSending ? <ConsultationLoading /> : null}
+              {/* Conversation-level report action (ONE per conversation, §7) — appears once the
+                  consultation has a real answer. Hidden while a send is in flight. */}
+              {!isSending ? (
+                <ReportCtaFooter
+                  view={reportCtaView}
+                  error={reportError}
+                  onGenerate={handleGenerateReport}
+                  onOpen={handleOpenReport}
+                />
+              ) : null}
             </Stack>
           </View>
         </ScrollView>
