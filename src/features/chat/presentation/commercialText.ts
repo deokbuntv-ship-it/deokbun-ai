@@ -1,0 +1,42 @@
+// Commercial-text hygiene — defense-in-depth for the user-facing consultation (V4 §8/§9/§44/§69).
+// PURE. The STRUCTURED_OUTPUT_INSTRUCTION already forbids internal/developer terminology; this is the
+// belt-and-suspenders the presentation layer can apply so an occasional model slip NEVER reaches a user.
+//
+// Two functions, deliberately conservative (제6조 — never mangle a valid answer):
+//   containsInternalTerminology(text) — a DETECTOR for tests + safe diagnostics (no mutation).
+//   stripEngineLabels(text)           — removes ONLY the specific, unambiguous internal LABEL patterns
+//                                       ("(엔진: SAJU)", "(engine: iztro)", "(제공됨)") — never prose.
+
+// Whole-word / labeled patterns that must never appear in a commercial answer. Anchored to avoid false
+// positives on ordinary Korean prose (e.g. "제공" alone is fine; "(제공됨)" as an evidence label is not).
+const INTERNAL_TERMS: readonly RegExp[] = [
+  /엔진\s*[:：]/, // "엔진: SAJU"
+  /\bSAJU\b/i,
+  /\biztro\b/i,
+  /\bgrounding\b/i,
+  /\bvalidator\b/i,
+  /\bschema\b/i,
+  /\bOpenAI\b/i,
+  /\bJSON\b/i,
+  /\bLLM\b/,
+  /\bV1\b/,
+  /\bV2\b/,
+  /\(제공됨\)/,
+  /계산\s*모듈/,
+  /(?:현재\s*버전|이\s*버전|V1)[^.]*계산되지\s*않/, // "이 버전에서는 …계산되지 않았습니다"
+];
+
+export function containsInternalTerminology(text: string): boolean {
+  const t = text ?? '';
+  return INTERNAL_TERMS.some((re) => re.test(t));
+}
+
+// Remove the specific internal LABEL patterns that are safe to strip without touching surrounding prose.
+export function stripEngineLabels(text: string): string {
+  return (text ?? '')
+    .replace(/\s*[（(]\s*엔진\s*[:：][^）)]*[）)]/g, '') // (엔진: SAJU)
+    .replace(/\s*[（(]\s*engine\s*[:：][^）)]*[）)]/gi, '') // (engine: iztro)
+    .replace(/\s*[（(]\s*제공됨\s*[）)]/g, '') // (제공됨)
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
