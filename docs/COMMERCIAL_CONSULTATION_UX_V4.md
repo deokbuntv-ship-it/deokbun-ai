@@ -32,6 +32,26 @@ banner-noted as superseded on its next edit.
   so an internal engine label the model slips in never reaches the screen (§8/§9/§69) — tested.
 - **Cost telemetry** (`f1fb5e0`): reasoning/cached tokens + complexity/effort now logged.
 
+### Client integration WIRED (2026-08-18, commit `815c8a7`)
+- **Presentation VM bound to the live component** (Task A/B): `StructuredConsultationResult` now renders
+  via `toConsultationPresentation` — headline → concise core → key points → cautions → **detail collapsed
+  by default** ("상세 근거 보기") → chips. The owner-approved reversal of GOLDEN_FLOW §0.
+- **Structured answer persisted + restored** (Task C-E): `persistStructured` (pure, tested) +
+  `conversationService.saveMessage/loadMessages` + the persistence hook now write/read
+  `conversation_messages.structured_result` — a reload keeps the card + follow-up chips (fail-closed to
+  text on malformed/legacy). Grounding is NOT persisted (data minimization).
+
+### Still remaining (NOT implemented — honest status)
+- **F. Summary → prompt (context compression):** deferred — `buildPrompt` renders `conversationSummary`
+  as a SYSTEM message; wiring a real summary safely requires making it an UNTRUSTED bounded context
+  section (never system/evidence) + threading it through `ServerConsultationRequest` +
+  `createServerConsultationService` + regenerating the bundle. Trust-boundary-delicate; not rushed.
+- **G-J. Report service + CTA + mailbox 보고서 category + report detail:** the deterministic composer +
+  DB exist and persisted structured answers now provide the source; the report SERVICE
+  (generate/load/list) + chat CTA + mailbox screens + routes are the remaining client work.
+- **K-L. Auth-gated report sharing:** deferred (share-grant SECURITY DEFINER RPC + token-hash + revoke +
+  auth returnTo + UI); NOT shipped insecurely (§79). Kakao = external OWNER_ACTION.
+
 ### Already built BEFORE this sprint (verified — do NOT rebuild)
 The agent survey confirmed the consultation render layer is **complete and mounted**, so several
 directive items are already satisfied:
