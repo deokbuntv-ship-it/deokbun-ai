@@ -79,6 +79,10 @@ export function createServerConsultationService(
         subjectLabel: input.draft.subject.displayName,
         question: trimmedUserMessage,
         conversationContext,
+        // Recent turns + the compressed summary of OLDER turns (§26) — so long conversations don't
+        // re-send the whole history. UNTRUSTED: the server renders it as a bounded, sanitized user
+        // message, never system/evidence. Threshold-based generation is unchanged (no per-question call).
+        conversationSummary: memoryResult.existingSummary,
         requestMetadata: { requestId },
       });
 

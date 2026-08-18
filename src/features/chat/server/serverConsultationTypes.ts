@@ -23,6 +23,10 @@ export type ServerConsultationRequest = {
   subjectLabel?: string | null;
   question: string;
   conversationContext?: UntrustedTurn[];
+  // UNTRUSTED compressed prior-conversation context (§B). Like conversationContext, it is NEVER a system
+  // instruction, NEVER grounding/evidence: the server renders it as a bounded, sanitized USER-role
+  // message. Enables long-conversation memory without re-sending the whole history each turn (§26).
+  conversationSummary?: string | null;
   // Diagnostics only — NEVER used to build grounding or the Qimen question time (§10). The server owns
   // the question instant (its own receipt time). Kept so a client clock skew can be observed, not trusted.
   requestMetadata?: { clientQuestionTimeEpoch?: number | null; requestId?: string | null };

@@ -161,7 +161,7 @@ export async function buildServerConsultation(
   try {
     messages = buildPrompt({
       selectedContext,
-      conversationSummary: null,
+      conversationSummary: request.conversationSummary ?? null,
       recentMessages,
       currentUserMessage: question,
       mode,
@@ -171,7 +171,7 @@ export async function buildServerConsultation(
     effectiveGrounding = GROUNDING_UNAVAILABLE;
     messages = buildPrompt({
       selectedContext,
-      conversationSummary: null,
+      conversationSummary: request.conversationSummary ?? null,
       recentMessages,
       currentUserMessage: question,
       mode,
