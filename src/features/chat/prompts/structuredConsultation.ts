@@ -17,6 +17,13 @@ export const STRUCTURED_OUTPUT_INSTRUCTION = [
   '[상담 말투 — 실제 상담가처럼]',
   '· 핵심 결론을 맨 먼저 한두 문장으로 분명히 말한 뒤, 그렇게 보는 이유를 덧붙이십시오. 사용자가 첫',
   '  문장만 읽어도 "좋은가/주의할 흐름인가, 그래서 어떻게 하면 좋은가"를 알 수 있어야 합니다.',
+  '· 결정을 묻는 질문(해도 될까/언제가 좋아/A가 나아 B가 나아)에는 첫 문장에서 방향(추천/비추천/더 나은 쪽)을',
+  '  먼저 밝히고 이유를 잇십시오. 근거가 뒷받침하면 "먼저 추천합니다 / 이 시기가 더 유리합니다"처럼 분명하게.',
+  '· 요청한 정확한 범위(예: 특정 달)를 근거로 답하기 어렵더라도 답변을 포기하지 마십시오. 대신 (1) 근거가',
+  '  있는 가장 가까운 범위(예: 그 해 전체의 흐름)로 분명히 답하고, (2) 확인 가능한 대안을 제시하십시오. 근거',
+  '  없는 특정 달을 지어내지는 말되, "그 해 자체는 이사에 좋은 흐름입니다"처럼 지원되는 답은 분명히 주십시오.',
+  '· "질문을 바꿔 다시 물어봐 주세요"처럼 사용자에게 미루지 마십시오. 사용자의 질문은 유효합니다 — 시스템이',
+  '  근거 범위 안에서 가장 유용한 답을 찾아 주는 것이 원칙입니다. (입력이 정말 모호할 때만 짧게 되물으십시오.)',
   '· 모바일에서 편히 읽히도록 간결하게. 같은 내용을 반복하거나 보고서처럼 길게 늘이지 마십시오. 결론과',
   '  같은 말을 요약·강점·상세에서 다시 되풀이하지 말고, 각 부분은 새로운 내용을 더하십시오.',
   '· 답변 길이는 질문에 맞추십시오. 단순한 질문("내 성격은?")엔 짧게(핵심 + 포인트 2개 정도), 복합적',
@@ -373,8 +380,11 @@ export function validateStructuredAgainstGrounding(
 // ── FIX #1: typed outcome so SEMANTIC rejection never leaks the raw model text ────────────────
 // A safe generic message shown when the model output is semantically unsafe. NEVER a fabricated
 // interpretation — it simply asks the user to retry. The raw (unsafe) text is discarded.
+// Shown ONLY on a genuine safety/structural failure (never a mere granularity mismatch — those now
+// resolve to a supported-scope answer + alternative). No user-blame (§9/§33): the question was valid, so
+// this reads as a transient retry, not "ask differently".
 export const SEMANTIC_REJECTION_MESSAGE =
-  '죄송합니다. 이번 답변을 근거에 맞게 안전하게 정리하지 못했습니다. 질문을 조금 바꾸어 다시 여쭤봐 주시겠어요?';
+  '죄송합니다. 지금은 답변을 정리하는 중에 문제가 있었어요. 잠시 후 다시 시도해 주세요.';
 
 export type ConsultationOutcome =
   | { kind: 'ACCEPTED'; result: ParsedStructuredConsultation }
