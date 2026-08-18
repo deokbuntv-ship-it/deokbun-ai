@@ -34,6 +34,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 // deno.json to pinned npm: specifiers. No app-SOURCE import remains in this file.
 import {
   buildServerConsultation,
+  buildCompatibilityConsultation,
   buildServerSummary,
   classifyQuestionComplexity,
   consultationResponseFormat,
@@ -313,7 +314,13 @@ type ConsultationRequestBody = {
   subjectLabel?: string | null;
   question?: unknown;
   conversationContext?: unknown;
+  conversationSummary?: unknown;
   requestMetadata?: { clientQuestionTimeEpoch?: number | null; requestId?: string | null } | null;
+  // 궁합(compatibility) mode: the partner's untrusted birth INPUT (server recomputes the pair). Absent →
+  // the existing single-subject consultation path is used unchanged.
+  consultationMode?: 'solo' | 'compatibility';
+  partnerBirthInput?: unknown;
+  partnerLabel?: string | null;
   // summary mode only
   existingSummary?: unknown;
   turns?: unknown;
@@ -482,27 +489,55 @@ export default {
         };
 
         stage = 'server_consultation';
-        const result = await buildServerConsultation(
-          {
-            subjectProfileId: body.subjectProfileId ?? null,
-            birthInput: body.birthInput as BirthInfoDraft,
-            subjectLabel: body.subjectLabel ?? null,
-            question: body.question,
-            conversationContext: Array.isArray(body.conversationContext)
-              ? (body.conversationContext as { role: 'user' | 'assistant'; content: string }[])
-              : undefined,
-            requestMetadata: {
-              clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
-              requestId,
-            },
-          },
-          {
-            digestProvider: denoDigestProvider,
-            nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
-            callLLM,
-            resolveTrustedBirth: makeResolveTrustedBirth(userId, adminClient()),
-          },
-        );
+        const conversationContext = Array.isArray(body.conversationContext)
+          ? (body.conversationContext as { role: 'user' | 'assistant'; content: string }[])
+          : undefined;
+        const conversationSummary =
+          typeof body.conversationSummary === 'string' ? body.conversationSummary : null;
+        // 궁합(compatibility) mode routes to the pairwise orchestrator (SAME one-LLM-call boundary + validator);
+        // solo path is unchanged. Both return the identical ServerConsultationResult shape.
+        const result =
+          body.consultationMode === 'compatibility'
+            ? await buildCompatibilityConsultation(
+                {
+                  birthInput: body.birthInput as BirthInfoDraft,
+                  subjectLabel: body.subjectLabel ?? null,
+                  partnerBirthInput: (body.partnerBirthInput ?? null) as BirthInfoDraft | null,
+                  partnerLabel: body.partnerLabel ?? null,
+                  consultationMode: 'compatibility',
+                  question: body.question,
+                  conversationContext,
+                  conversationSummary,
+                  requestMetadata: {
+                    clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
+                    requestId,
+                  },
+                },
+                {
+                  digestProvider: denoDigestProvider,
+                  nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
+                  callLLM,
+                },
+              )
+            : await buildServerConsultation(
+                {
+                  subjectProfileId: body.subjectProfileId ?? null,
+                  birthInput: body.birthInput as BirthInfoDraft,
+                  subjectLabel: body.subjectLabel ?? null,
+                  question: body.question,
+                  conversationContext,
+                  requestMetadata: {
+                    clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
+                    requestId,
+                  },
+                },
+                {
+                  digestProvider: denoDigestProvider,
+                  nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
+                  callLLM,
+                  resolveTrustedBirth: makeResolveTrustedBirth(userId, adminClient()),
+                },
+              );
 
         if (!result.ok) {
           const status = REASON_STATUS[result.reason] ?? 500;
@@ -574,6 +609,8 @@ export default {
           text: result.text,
           ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
           groundingMeta: result.groundingMeta,
+          // Deterministic 궁합 tier (compatibility mode only) — the client renders/persists it (no extra LLM).
+          ...(result.compatibility ? { compatibility: result.compatibility } : {}),
         });
       } catch (error) {
         console.error(

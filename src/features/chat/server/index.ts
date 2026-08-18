@@ -1,6 +1,7 @@
 // Server trust boundary — public surface. The Edge Function imports `buildServerConsultation` /
 // `buildServerSummary`; the client imports the request/response types to shape its inputs-only request.
 export { buildServerConsultation } from './buildServerConsultation';
+export { buildCompatibilityConsultation } from './buildCompatibilityConsultation';
 export {
   buildServerSummary,
   sanitizeSummarySource,

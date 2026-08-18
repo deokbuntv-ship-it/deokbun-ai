@@ -177,6 +177,15 @@ export function renderAnswerPlanDirective(plan: AnswerPlan): string {
   const lines: string[] = ['[상담 지침 — 서버 판단(사용자에게 그대로 노출하지 말 것)]'];
   lines.push('· 사용자는 답을 찾으러 왔습니다. 결론을 맨 먼저, 근거 범위 안에서 가능한 한 분명하게 말하십시오.');
   lines.push(`· ${ASSERTIVENESS_LINE[plan.assertiveness]}`);
+  // 궁합(compatibility) mode: the SAME decision engine, but reframed around the PAIR. The plan
+  // still owns support/assertiveness/timing; these lines add the relationship framing + the safety
+  // discipline (§60 no fatalism / §61 no mind-reading) the pairwise answer must obey.
+  if (plan.mode === 'compatibility') {
+    lines.push('· 이 상담은 두 사람의 "궁합"입니다. 한 사람만 풀이하지 말고, 두 사람 사이에서 무엇이 잘 맞고(강점) 무엇이 부딪히는지(마찰), 그래서 이 관계를 어떻게 가져가면 좋은지를 관계 중심으로 답하십시오.');
+    lines.push('· 근거가 분명하면 "전체적으로 잘 맞는 편입니다"처럼 분명하게, 섞여 있으면 강점과 마찰을 함께 짚고, 근거가 약하면 가장 가까운 유효한 관계 해석을 주십시오. "궁합은 여러 요소에 따라 다릅니다"로 끝내지 마십시오.');
+    lines.push('· 관계의 결과(결혼 성공/이별/바람 등)를 사건으로 확정하지 마십시오. 대신 두 사람의 결이 맞는 정도(적합도)와 조율 포인트로 답하십시오. "헤어져야 한다 / 결혼하면 실패한다 / 이 사람은 나쁜 사람이다"처럼 단정하지 마십시오.');
+    lines.push('· 상대의 속마음을 사실로 단정하지 마십시오(예: "상대는 당신을 사랑합니다"). 관계의 흐름·표현 방식·(질문에 시점이 있으면) 타이밍으로 설명하고, 알 수 없는 내면은 구분해 말하십시오.');
+  }
   if (plan.comparisonSupported) lines.push('· 비교 근거가 충분합니다. 두 후보를 실제로 비교해 더 나은 쪽을 고르십시오(근거가 팽팽하면 그렇다고 말하십시오).');
   else if (plan.intents.includes('COMPARISON')) lines.push('· 비교 근거가 충분하지 않습니다. 한쪽을 승자로 단정하지 말고, 근거가 있는 범위까지만 답하십시오.');
   if (plan.rankingSupported) lines.push('· 순위 근거(후보군)가 있습니다. 1순위 또는 상위 그룹을 제시하십시오. 없는 정밀 점수는 만들지 마십시오.');

@@ -21,6 +21,14 @@ export type ServerConsultationRequest = {
   subjectProfileId?: string | null;
   birthInput: BirthInfoDraft;
   subjectLabel?: string | null;
+  // 궁합(compatibility) mode (additive; absent/'solo' → the existing single-subject path is unchanged).
+  // When 'compatibility', the server ALSO recomputes the partner's chart from `partnerBirthInput` and
+  // builds the deterministic PAIRWISE evidence — the partner birth is untrusted INPUT, never trusted FACTS.
+  consultationMode?: 'solo' | 'compatibility';
+  partnerBirthInput?: BirthInfoDraft | null;
+  partnerLabel?: string | null;
+  // Reserved for a future server-owned partner profile (RLS); unused in V1 (recompute from input).
+  partnerProfileId?: string | null;
   question: string;
   conversationContext?: UntrustedTurn[];
   // UNTRUSTED compressed prior-conversation context (§B). Like conversationContext, it is NEVER a system
@@ -69,6 +77,20 @@ export type ServerConsultationDiagnostics = {
   rejectionReason?: string; // FORBIDDEN_THEORY | CROSS_ENGINE_CONSENSUS | UNGROUNDED_QIMEN_CLAIM | …
 };
 
+// Deterministic 궁합 verdict (SERVER-owned tier — never an LLM/ fabricated score). Carried alongside the
+// structured answer so the client can render the tier chip, the mailbox summary, and the report without
+// any extra LLM call. Flat data only (no engine object) so the client contract stays decoupled.
+export type CompatibilityResultMeta = {
+  overall: 'VERY_GOOD' | 'GOOD' | 'NEEDS_CARE' | 'CHALLENGING';
+  overallLabel: string;
+  dimensions: { key: string; title: string; signal: string; verdict: string }[];
+  reducedPrecision: boolean;
+  selfLabel: string;
+  targetLabel: string;
+  engineVersion: string;
+  tierModelVersion: string;
+};
+
 export type ServerConsultationResult =
   | {
       ok: true;
@@ -76,6 +98,8 @@ export type ServerConsultationResult =
       structuredResult?: StructuredConsultationViewModel;
       groundingMeta: ServerGroundingMeta;
       diagnostics?: ServerConsultationDiagnostics;
+      // Present only for consultationMode === 'compatibility'. Deterministic; no extra LLM call.
+      compatibility?: CompatibilityResultMeta;
     }
   | {
       ok: false;
