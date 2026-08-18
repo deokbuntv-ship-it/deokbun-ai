@@ -47,4 +47,33 @@ describe('STRUCTURED_OUTPUT_INSTRUCTION — commercial answer rules', () => {
     expect(I).toMatch(/완전히 일치.*단정하지|각 관점을 따로/);
     expect(I).toMatch(/신강·신약·용신·격국/);
   });
+
+  // ── Commercial Answer V5 additions ──────────────────────────────────────────
+  it('V5: the headline states the conclusion AND the actionable direction (first sentence answers "그래서")', () => {
+    expect(I).toMatch(/좋은가|좋은지/);
+    expect(I).toContain('그래서 어떤 방향이 유리한지'); // headline carries the "what to do" direction
+    expect(I).toContain('사업운은 좋은 편입니다'); // the worked example pattern
+  });
+
+  it('V5: bans machine-like Korean filler (§17)', () => {
+    expect(I).toContain('종합적으로 볼 때');
+    expect(I).toContain('이를 바탕으로');
+    expect(I).toMatch(/같은 어미로 끝내지 말/);
+  });
+
+  it('V5: length self-scales to the question (simple short, complex fuller) without padding', () => {
+    expect(I).toMatch(/단순한 질문/);
+    expect(I).toMatch(/짧게/);
+    expect(I).toMatch(/억지로 늘이지/);
+  });
+
+  it('V5: detail must add NEW value — not restate the core in more words (§15/§19)', () => {
+    expect(I).toMatch(/되풀이하지 말|반복하지 말/);
+    expect(I).toMatch(/새로운 내용/);
+  });
+
+  it('V5: cautions must be specific, not vague fortune-cookie language (§12)', () => {
+    expect(I).toMatch(/막연한 말/);
+    expect(I).toMatch(/실제로 무엇을 조심/);
+  });
 });

@@ -3,4 +3,6 @@
 // answers — so a persisted consultation / Consultation-Intelligence case can record
 // which prompt produced it. This is the PROMPT contract version, independent of the
 // server model id (LLM_MODEL, edge-owned) and the future engineVersion (Codex-owned).
-export const CONSULTATION_PROMPT_VERSION = 'consultation@1.0.0';
+// 1.1.0 — Commercial Answer V5: conclusion+direction headline, self-scaling length, natural-Korean /
+// anti-filler rules, and "detail must add new value" (no schema change — same fields, refined contract).
+export const CONSULTATION_PROMPT_VERSION = 'consultation@1.1.0';

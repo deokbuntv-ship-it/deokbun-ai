@@ -67,6 +67,57 @@ describe('toConsultationPresentation — commercial hierarchy', () => {
     expect(p).not.toHaveProperty('actions');
   });
 
+  it('dedup V2: drops a key point fully CONTAINED in the summary, keeps distinct advice (§19)', () => {
+    const p = toConsultationPresentation(
+      base({
+        coreInterpretation: '당신은 끈기가 강점입니다 그리고 시야가 넓습니다.',
+        strengths: ['끈기가 강점입니다', '위기에 침착하게 대응하는 힘'], // first ⊂ summary → dropped; second distinct → kept
+      }),
+    );
+    expect(p.keyPoints).toEqual(['위기에 침착하게 대응하는 힘']);
+  });
+
+  it('dedup V2: drops a near-duplicate (high token overlap) but keeps a genuinely different point', () => {
+    const p = toConsultationPresentation(
+      base({
+        coreInterpretation: '핵심은 안정적으로 수익을 쌓는 방식입니다.',
+        strengths: [
+          '한 번에 큰 승부보다 안정적으로 수익을 쌓는 방식이 잘 맞습니다',
+          '안정적으로 수익을 쌓는 방식이 한 번에 큰 승부보다 잘 맞습니다', // reordered near-duplicate → dropped
+          '사람들과의 신뢰를 오래 유지하는 힘', // distinct → kept
+        ],
+      }),
+    );
+    expect(p.keyPoints).toEqual([
+      '한 번에 큰 승부보다 안정적으로 수익을 쌓는 방식이 잘 맞습니다',
+      '사람들과의 신뢰를 오래 유지하는 힘',
+    ]);
+  });
+
+  it('does NOT over-dedup topically-related but distinct advice (conservative)', () => {
+    const p = toConsultationPresentation(
+      base({
+        strengths: ['재물을 모으는 힘이 강합니다', '재물을 지키는 신중함도 있습니다'], // same topic, different idea
+      }),
+    );
+    expect(p.keyPoints).toEqual(['재물을 모으는 힘이 강합니다', '재물을 지키는 신중함도 있습니다']);
+  });
+
+  it('caps detail sections so a long-range answer is not a wall (§13/§25), keeping the timing flow last', () => {
+    const p = toConsultationPresentation(
+      base({
+        domainInterpretation: Array.from({ length: 8 }, (_, i) => ({
+          title: `구간 ${i + 1}`,
+          body: `${i + 1}번째 구간의 고유한 해석 내용입니다.`,
+        })),
+        futureFlow: '전체적으로 완만한 상승 흐름입니다.',
+      }),
+    );
+    // ≤5 domain sections + the timing flow appended
+    expect(p.detailSections.length).toBe(6);
+    expect(p.detailSections[p.detailSections.length - 1].title).toBe('앞으로의 흐름');
+  });
+
   it('handles a minimal answer (only headline) without crashing', () => {
     const p = toConsultationPresentation(
       base({

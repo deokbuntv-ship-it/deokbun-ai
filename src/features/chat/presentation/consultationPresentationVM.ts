@@ -23,23 +23,50 @@ export type ConsultationPresentationVM = {
 };
 
 const MAX_POINTS = 3;
+const MAX_DETAIL_SECTIONS = 5; // §13/§25 — a long-range answer must not become a wall of many sections
+const JACCARD_REDUNDANT = 0.8; // near-duplicate threshold (high → conservative, keeps distinct advice)
 
 const norm = (s: string): string => s.replace(/\s+/g, ' ').trim().toLowerCase();
+const tokenize = (s: string): Set<string> =>
+  new Set(
+    norm(s)
+      .replace(/[.,!?·…()"'"":;]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length > 0),
+  );
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  return inter / (a.size + b.size - inter);
+}
 
-// Dedup within a list AND against anchor texts (headline/summary), conservatively (exact normalized
-// match only — never fuzzy/semantic, so distinct advice is never dropped). Blank entries removed.
+// Dedup V2 (§19): drop an item that adds no new information relative to the anchors (headline/summary)
+// or an already-kept item. Conservative by design — an item is redundant only when it is (a) an exact
+// normalized match, (b) fully CONTAINED in a longer anchor (the shorter phrase adds nothing), or (c) a
+// near-duplicate by high token overlap (≥0.8 Jaccard over ≥3 eojeol). Distinct advice — even on the same
+// topic — has different words/tokens and is kept. Blank entries removed.
+function isRedundant(candidate: string, against: readonly string[]): boolean {
+  const nc = norm(candidate);
+  const tc = tokenize(candidate);
+  for (const a of against) {
+    const na = norm(a);
+    if (na === nc) return true; // exact
+    if (nc.length >= 4 && na.length > nc.length && na.includes(nc)) return true; // candidate ⊂ anchor
+    if (tc.size >= 3 && jaccard(tc, tokenize(a)) >= JACCARD_REDUNDANT) return true; // near-duplicate
+  }
+  return false;
+}
+
 function dedupe(items: string[] | undefined, against: readonly string[] = []): string[] {
-  const seen = new Set(against.map(norm));
-  const out: string[] = [];
+  const kept: string[] = [];
   for (const raw of items ?? []) {
     const t = (raw ?? '').trim();
     if (!t) continue;
-    const n = norm(t);
-    if (seen.has(n)) continue;
-    seen.add(n);
-    out.push(t);
+    if (isRedundant(t, [...against, ...kept])) continue;
+    kept.push(t);
   }
-  return out;
+  return kept;
 }
 
 export function toConsultationPresentation(
@@ -52,11 +79,19 @@ export function toConsultationPresentation(
   const keyPoints = dedupe(vm.strengths, anchors).slice(0, MAX_POINTS);
   const cautions = dedupe(vm.cautions, [...anchors, ...keyPoints]).slice(0, MAX_POINTS);
 
+  // Collapsed detail: domain sections (capped so a long-range answer can't become a wall, §13/§25) with
+  // near-duplicate bodies dropped, then the timing flow always last when present.
   const detailSections: PresentationDetailSection[] = [];
+  const keptBodies: string[] = [];
   for (const d of vm.domainInterpretation ?? []) {
+    if (detailSections.length >= MAX_DETAIL_SECTIONS) break;
     const title = (d.title ?? '').trim();
     const body = (d.body ?? '').trim();
-    if (title && body) detailSections.push({ title, body });
+    if (!title || !body) continue;
+    // Skip a detail section whose body just restates the summary or an earlier section (§15/§19).
+    if (isRedundant(body, [...anchors, ...keptBodies])) continue;
+    detailSections.push({ title, body });
+    keptBodies.push(body);
   }
   if (vm.futureFlow?.trim()) {
     detailSections.push({ title: '앞으로의 흐름', body: vm.futureFlow.trim() });
