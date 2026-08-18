@@ -6629,23 +6629,36 @@ function calculateMonthCommand(natal) {
 // src/features/chat/services/questionYears.ts
 var SUPPORTED_YEAR_MIN2 = 1970;
 var SUPPORTED_YEAR_MAX2 = 2050;
-var MAX_TARGET_YEARS = 3;
+var MAX_TARGET_YEARS = 12;
 var RELATIVE = [
   [/내후년/, 2],
   [/내년|명년/, 1],
   [/올해|금년|이번\s*해/, 0]
 ];
-function resolveQuestionYears(question, currentSajuYear) {
+function finalize(years) {
+  return [...new Set(years)].filter((y) => Number.isFinite(y) && y >= SUPPORTED_YEAR_MIN2 && y <= SUPPORTED_YEAR_MAX2).sort((a, b) => a - b).slice(0, MAX_TARGET_YEARS);
+}
+function resolveQuestionYears(question, referenceYear) {
   const q = question ?? "";
-  const out = /* @__PURE__ */ new Set();
-  for (const m of q.matchAll(/((?:19|20|21)\d{2})\s*년/g)) out.add(Number(m[1]));
-  if (currentSajuYear !== null) {
-    for (const [re, off] of RELATIVE) if (re.test(q)) out.add(currentSajuYear + off);
-    for (const m of q.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) out.add(currentSajuYear + Number(m[1]));
+  const years = [];
+  for (const m of q.matchAll(
+    /((?:19|20|21)\d{2})\s*년?\s*(?:~|∼|-|–|—|부터)\s*((?:19|20|21)\d{2})\s*년?(?:\s*까지)?/g
+  )) {
+    let a = Number(m[1]);
+    let b = Number(m[2]);
+    if (a > b) [a, b] = [b, a];
+    if (b - a <= 200) for (let y = a; y <= b; y++) years.push(y);
   }
-  return [...out].filter(
-    (y) => Number.isFinite(y) && y >= SUPPORTED_YEAR_MIN2 && y <= SUPPORTED_YEAR_MAX2 && y !== currentSajuYear
-  ).sort((a, b) => a - b).slice(0, MAX_TARGET_YEARS);
+  if (referenceYear !== null) {
+    for (const m of q.matchAll(/(?:앞으로|향후|다가오는)\s*(\d{1,2})\s*년|(\d{1,2})\s*년\s*(?:간|동안)/g)) {
+      const n = Number(m[1] ?? m[2]);
+      if (n >= 1) for (let i = 0; i < n; i++) years.push(referenceYear + i);
+    }
+    for (const m of q.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) years.push(referenceYear + Number(m[1]));
+    for (const [re, off] of RELATIVE) if (re.test(q)) years.push(referenceYear + off);
+  }
+  for (const m of q.matchAll(/((?:19|20|21)\d{2})\s*년/g)) years.push(Number(m[1]));
+  return finalize(years);
 }
 function epochForSajuYear(year) {
   return Math.floor(Date.UTC(year, 6, 1, 3, 0, 0) / 1e3);
@@ -7324,7 +7337,7 @@ async function buildMyungriEvidence(draft, deps, question) {
   const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: now });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
   const currentSajuYearForTargets = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
-  const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets).map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) })).filter((s) => s.capability === "AVAILABLE");
+  const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets).filter((y) => y !== currentSajuYearForTargets).map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) })).filter((s) => s.capability === "AVAILABLE");
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
   const currentSajuYear = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
   const currentAge = Number.isFinite(solarBirthYear) && currentSajuYear !== null ? currentSajuYear - solarBirthYear : null;

@@ -135,7 +135,10 @@ async function buildMyungriEvidence(
   // facts AND legitimises the timing anchor. Bounded (≤3) + range-checked; an ungroundable year is
   // simply skipped, so a fabricated future year is still rejected (validator unchanged).
   const currentSajuYearForTargets = sewoon.capability === 'AVAILABLE' ? sewoon.targetYear : null;
+  // resolveQuestionYears now INCLUDES the reference year; skip it here (its 세운 is already `sewoon`) so a
+  // "올해"/range-including-this-year question adds no duplicate. Ranges ("앞으로 10년") yield the rest.
   const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets)
+    .filter((y) => y !== currentSajuYearForTargets)
     .map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) }))
     .filter((s) => s.capability === 'AVAILABLE');
 

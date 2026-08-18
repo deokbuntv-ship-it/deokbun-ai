@@ -138,3 +138,33 @@ describe('TIMING_CLAIM_MISMATCH fix — question-targeted 세운 grounding (§2)
     expect(firstStructuredRejectionReason(answer(core), G2027)).toBe('TIMING_CLAIM_MISMATCH');
   });
 });
+
+// Reproduces + fixes the live failure: "앞으로 10년 사업 흐름 알려줘" → safe fallback. Root cause: the
+// resolver had no forward-DURATION parsing, so a range question grounded ZERO extra years → the DEEP
+// multi-year answer was ungrounded → TIMING_CLAIM_MISMATCH. Fix: resolveQuestionYears expands the range
+// and each year's 세운 is computed from the frozen engine.
+describe('multi-year range grounding — "앞으로 N년" (Temporal Sprint §8/§12)', () => {
+  // NOW = 2024-01-15 (current 사주 year 2023). "앞으로 5년" grounds 2023..2027.
+  let G5: Awaited<ReturnType<typeof buildConsultationGrounding>>;
+  beforeAll(async () => {
+    clearZiweiCache();
+    clearQimenCache();
+    G5 = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '앞으로 5년 사업 흐름 알려줘');
+  });
+
+  it('anchors EVERY year in the requested range (a real frozen 세운 per year)', () => {
+    expect(G5.status).toBe('available');
+    if (G5.status === 'available') {
+      const years = G5.evidence.myungri.timingAnchors?.years ?? [];
+      for (const y of [2023, 2024, 2025, 2026, 2027]) expect(years).toContain(y);
+    }
+  });
+  it('an answer within the range (2027) is ACCEPTED', () => {
+    const core = '앞으로 몇 해는 기반을 다지는 흐름이고, 2027년 무렵에는 확장의 기회가 조금씩 열리는 편으로 보입니다.';
+    expect(firstStructuredRejectionReason(answer(core), G5)).toBe('NONE');
+  });
+  it('an answer BEYOND the range (2035) is STILL rejected — validator not weakened', () => {
+    const core = '2035년에는 반드시 큰 성공과 큰돈이 따라오는 해가 될 것입니다.';
+    expect(firstStructuredRejectionReason(answer(core), G5)).toBe('TIMING_CLAIM_MISMATCH');
+  });
+});
