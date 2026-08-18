@@ -243,9 +243,9 @@ export default function CompatibilityChatScreen() {
             />
           </View>
         </View>
-        {/* Consumer bottom nav (§5) — same DetailBottomNav as report/mail detail; it owns the bottom
-            safe-area, so the composer above never overlaps it. */}
-        <DetailBottomNav active="consult" />
+        {/* Consumer bottom nav (§5) — same DetailBottomNav as the primary tab bar; 궁합 active since this
+            is part of the 궁합 flow. It owns the bottom safe-area, so the composer above never overlaps it. */}
+        <DetailBottomNav active="compatibility" />
       </View>
     </Screen>
   );

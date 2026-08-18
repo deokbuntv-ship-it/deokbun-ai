@@ -12,64 +12,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, type SemanticColors } from '@/theme';
 
-// FINAL Stitch user app is MOBILE-FIRST. On web we therefore render an app-like
-// phone canvas (centered, max ~430px) with a real BOTTOM tab bar — NOT a desktop
-// top navigation. The 4-tab IA (홈 · 상담 · 운세우편함 · MY) and tab behavior are
-// unchanged; this file only changes presentation (web). Native uses NativeTabs.
+import { CONSUMER_NAV_ITEMS, type ConsumerNavKey } from './consumerNav';
+import { ConsumerNavGlyph } from './ConsumerNavGlyph';
+
+// FINAL Stitch user app is MOBILE-FIRST. On web we render an app-like phone canvas (centered, max ~430px)
+// with a real BOTTOM tab bar — NOT a desktop top navigation. The 5-tab IA (홈·상담·궁합·운세우편함·MY) +
+// glyphs come from the SHARED CONSUMER_NAV_ITEMS / ConsumerNavGlyph so the tab bar and the detail-screen
+// mirror (DetailBottomNav) never drift. Native uses NativeTabs (app-tabs.tsx).
 const CANVAS_MAX = 430;
-// Nav body height ex-safe-area (§52). 56 keeps the interactive bar in the owner's 56–64px range
-// (6 top + ~42 item + 8 bottom ≈ 56–64 with the 22px icon), and drives the TabSlot content reservation.
+// Nav body height ex-safe-area (§52). 56 keeps the interactive bar in the owner's 56–64px range and drives
+// the TabSlot content reservation. Unchanged for 5 items — width is absorbed by flex:1, not extra height.
 const NAV_HEIGHT = 56;
 
-type TabKey = 'home' | 'consult' | 'inbox' | 'my';
 type ThemeColors = SemanticColors;
 
-// Crisp line icons via inline SVG. This is a `.web.tsx` file, so it renders
-// through react-dom — no icon-font/vector-icons dependency needed.
-function TabGlyph({ name, color, active }: { name: TabKey; color: string; active: boolean }) {
-  const common = {
-    width: 22,
-    height: 22,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: color,
-    strokeWidth: active ? 2.3 : 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-  };
-  switch (name) {
-    case 'home':
-      return (
-        <svg {...common}>
-          <path d="M3 11 12 4l9 7" />
-          <path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" />
-        </svg>
-      );
-    case 'consult':
-      return (
-        <svg {...common}>
-          <path d="M21 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.3A8 8 0 1 1 21 11.5z" />
-        </svg>
-      );
-    case 'inbox':
-      return (
-        <svg {...common}>
-          <rect x="3" y="5" width="18" height="14" rx="2.5" />
-          <path d="m3.5 7 8.5 6 8.5-6" />
-        </svg>
-      );
-    case 'my':
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4.5 20c0-3.8 3.4-6 7.5-6s7.5 2.2 7.5 6" />
-        </svg>
-      );
-  }
-}
-
 type NavItemProps = TabTriggerSlotProps & {
-  tab: TabKey;
+  tab: ConsumerNavKey;
   label: string;
   theme: ThemeColors;
 };
@@ -78,7 +36,7 @@ function NavItem({ tab, label, theme, isFocused, ...props }: NavItemProps) {
   const color = isFocused ? theme.primary : theme.textSecondary;
   return (
     <Pressable {...props} style={styles.navItem}>
-      <TabGlyph name={tab} color={color} active={!!isFocused} />
+      <ConsumerNavGlyph name={tab} color={color} active={!!isFocused} />
       <Text style={[styles.navLabel, { color }]} numberOfLines={1}>
         {label}
       </Text>
@@ -126,18 +84,11 @@ export default function AppTabs() {
           />
           <TabList asChild>
             <BottomNav insetBottom={insets.bottom} theme={theme}>
-              <TabTrigger name="home" href="/" asChild>
-                <NavItem tab="home" label="홈" theme={theme} />
-              </TabTrigger>
-              <TabTrigger name="consult" href="/consult" asChild>
-                <NavItem tab="consult" label="상담" theme={theme} />
-              </TabTrigger>
-              <TabTrigger name="inbox" href="/inbox" asChild>
-                <NavItem tab="inbox" label="운세우편함" theme={theme} />
-              </TabTrigger>
-              <TabTrigger name="my" href="/my" asChild>
-                <NavItem tab="my" label="MY" theme={theme} />
-              </TabTrigger>
+              {CONSUMER_NAV_ITEMS.map((item) => (
+                <TabTrigger key={item.key} name={item.key} href={item.route} asChild>
+                  <NavItem tab={item.key} label={item.label} theme={theme} />
+                </TabTrigger>
+              ))}
             </BottomNav>
           </TabList>
         </Tabs>
@@ -180,6 +131,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 3,
     paddingVertical: 4,
+    paddingHorizontal: 2, // keep 5 labels from colliding at 375px
   },
   navLabel: {
     fontSize: 11,

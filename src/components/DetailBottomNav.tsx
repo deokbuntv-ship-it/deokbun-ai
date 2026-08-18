@@ -5,19 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors } from '@/theme';
 
-// Native counterpart of DetailBottomNav.web (see that file for the architecture note). The app is
-// mobile-web-first and the web bar carries the shared glyph set; on native (no inline SVG without an extra
-// dependency, matching the app's LineIcon-null-on-native convention) the detail bar is label-forward with
-// the same items/order/routes and an accent-color active state. Same exports as the .web file so imports
-// resolve identically on both platforms.
-export type DetailNavKey = 'home' | 'consult' | 'inbox' | 'my';
+import { CONSUMER_NAV_ITEMS, type ConsumerNavKey } from './consumerNav';
 
-const ITEMS: { key: DetailNavKey; label: string; route: '/' | '/consult' | '/inbox' | '/my' }[] = [
-  { key: 'home', label: '홈', route: '/' },
-  { key: 'consult', label: '상담', route: '/consult' },
-  { key: 'inbox', label: '운세우편함', route: '/inbox' },
-  { key: 'my', label: 'MY', route: '/my' },
-];
+// Native counterpart of DetailBottomNav.web (see that file for the architecture note). Label-forward on
+// native (no inline SVG without an extra dependency), same items/order/routes from the shared
+// CONSUMER_NAV_ITEMS (홈·상담·궁합·운세우편함·MY) with an active-color state.
+export type DetailNavKey = ConsumerNavKey;
 
 export function DetailBottomNav({ active }: { active?: DetailNavKey }) {
   const router = useRouter();
@@ -36,7 +29,7 @@ export function DetailBottomNav({ active }: { active?: DetailNavKey }) {
         },
       ]}
     >
-      {ITEMS.map((item) => {
+      {CONSUMER_NAV_ITEMS.map((item) => {
         const isActive = item.key === active;
         const color = isActive ? theme.primary : theme.textSecondary;
         return (
@@ -71,6 +64,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 6,
+    paddingHorizontal: 2,
   },
   navLabel: {
     fontSize: 11,

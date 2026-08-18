@@ -5,7 +5,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -15,8 +14,9 @@ import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/s
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// 궁합 선택 화면 (§32/§33/§34). 본인은 자동 선택(is_self), 상대방은 저장된 대상자 중에서 고르거나
-// 추가한다. 저장된 대상자는 PRIVATE 상담 데이터 — 여기서 노출되는 것은 이름/관계뿐(생년월일 raw 미노출).
+// 궁합 — PRIMARY TAB (owner nav decision). 본인은 자동 선택(is_self), 상대방은 저장된 대상자 중에서 고르거나
+// 추가한다. 저장된 대상자는 PRIVATE 상담 데이터 — 여기서 노출되는 것은 이름/관계뿐(생년월일 raw 미노출). As a
+// tab, the primary bottom bar renders automatically (no DetailBottomNav here).
 export default function CompatibilityScreen() {
   const router = useRouter();
   const scheme = useColorScheme();
@@ -36,11 +36,6 @@ export default function CompatibilityScreen() {
 
   const self = subjects.find((s) => s.isSelf) ?? null;
   const others = subjects.filter((s) => !s.isSelf);
-
-  const handleBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/');
-  };
 
   const startCompatibility = () => {
     if (!self || !targetId) return;
@@ -142,8 +137,8 @@ export default function CompatibilityScreen() {
   };
 
   return (
-    <Screen padded={false} frame>
-      <AppHeader title="궁합" showBack onBack={handleBack} />
+    <Screen padded={false}>
+      <AppHeader title="궁합" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="lg">
@@ -157,7 +152,6 @@ export default function CompatibilityScreen() {
           </Stack>
         </View>
       </ScrollView>
-      <DetailBottomNav active="consult" />
     </Screen>
   );
 }

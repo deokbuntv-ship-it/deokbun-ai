@@ -37,8 +37,7 @@ export default function RootLayout() {
             <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
             {/* 공유받은 상담 보고서 — recipient view via a share token; login-required, read-only. */}
             <Stack.Screen name="shared-report/[token]" options={{ headerShown: false }} />
-            {/* 궁합 — 선택 화면 + 궁합 상담(두 사람); own AppHeader + DetailBottomNav. */}
-            <Stack.Screen name="compatibility" options={{ headerShown: false }} />
+            {/* 궁합 선택은 이제 (tabs)의 기본 탭 → 여기 등록하지 않음. 궁합 상담(두 사람)은 pushed screen. */}
             <Stack.Screen name="compatibility-chat" options={{ headerShown: false }} />
             {/* 분석 대상자 관리 (from MY) — subject management; own AppHeader. */}
             <Stack.Screen name="subjects" options={{ headerShown: false }} />

@@ -3,9 +3,10 @@ import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
-// FINAL Stitch bottom navigation — exactly 4 tabs: 홈 · 상담 · 운세우편함 · MY.
-// Single icon family (SF Symbols iOS / Material Android-web), deep-navy active
-// label. AI 상담(/chat) and 운세우편 상세 are pushed screens, not tabs.
+// FINAL Stitch bottom navigation (owner nav decision) — 5 tabs: 홈 · 상담 · 궁합 · 운세우편함 · MY.
+// Order/labels mirror the shared CONSUMER_NAV_ITEMS (NativeTabs children can't be data-driven, so the
+// order is kept literal here). Single icon family (SF Symbols iOS / Material Android-web), deep-navy
+// active label. AI 상담(/chat), 궁합 상담(/compatibility-chat), and 운세우편 상세 are pushed screens, not tabs.
 export default function AppTabs() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
@@ -23,6 +24,11 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="consult">
         <NativeTabs.Trigger.Label>상담</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="bubble.left.and.bubble.right.fill" md="chat" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="compatibility">
+        <NativeTabs.Trigger.Label>궁합</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="person.2.fill" md="group" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="inbox">
