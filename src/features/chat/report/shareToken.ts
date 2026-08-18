@@ -19,6 +19,26 @@ function toStringArray(v: unknown): string[] {
   return v.filter((x): x is string => typeof x === 'string').map((s) => s.trim()).filter(Boolean);
 }
 
+// The classified outcome of a shared-report read (§14). A DB/RPC INFRASTRUCTURE failure (e.g. a missing
+// function → SQLSTATE 42883) is distinct from a grant that is simply not viewable (invalid / revoked /
+// expired / not found → the RPC returns null). The consumer UI stays generic for both, but the code +
+// logs distinguish them so an infra error can never masquerade as "expired/revoked".
+export type SharedReportOutcome =
+  | { status: 'ok'; content: SharedReportContent }
+  | { status: 'unavailable' } // valid call, no accessible grant (merged for security, §41)
+  | { status: 'error'; code: string | null }; // RPC/DB infrastructure error (logged, e.g. pgCode 42883)
+
+// Pure classifier for a get_shared_report response `{ data, error }`. An error (any pgCode) → 'error';
+// a null/empty payload → 'unavailable'; a valid bounded payload → 'ok'.
+export function classifySharedReportResponse(res: {
+  data: unknown;
+  error: { code?: string | null } | null | undefined;
+}): SharedReportOutcome {
+  if (res.error) return { status: 'error', code: res.error.code ?? null };
+  const content = parseSharedReportDTO(res.data);
+  return content ? { status: 'ok', content } : { status: 'unavailable' };
+}
+
 // Parse the jsonb returned by get_shared_report() into the bounded content the renderer consumes. Returns
 // null for an absent/invalid response (revoked / expired / not found → the RPC returns null). Never trusts
 // or surfaces any field beyond the six user-facing ones (§27) — extra keys are ignored.

@@ -55,14 +55,16 @@ export default function SharedReportScreen() {
     setStatus('loading');
     shareService
       .loadSharedReport(token)
-      .then((content) => {
+      .then((outcome) => {
         if (!active) return;
-        if (!content) {
+        if (outcome.status === 'ok') {
+          setView(premiumViewFromSharedContent(outcome.content));
+          setStatus('ready');
+        } else {
+          // 'unavailable' AND 'error' (infra, e.g. 42883) both render the generic screen; the 'error'
+          // case was already logged with its pgCode (§14 — never silently presented as expired/revoked).
           setStatus('unavailable');
-          return;
         }
-        setView(premiumViewFromSharedContent(content));
-        setStatus('ready');
       })
       .catch(() => {
         if (active) setStatus('unavailable');

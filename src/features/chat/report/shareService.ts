@@ -1,8 +1,11 @@
 import * as Crypto from 'expo-crypto';
 
 import { logDbError } from '@/features/analysis';
-import { parseSharedReportDTO, isValidShareToken } from '@/features/chat/report/shareToken';
-import type { SharedReportContent } from '@/features/chat/report/reportPresentation';
+import {
+  classifySharedReportResponse,
+  isValidShareToken,
+  type SharedReportOutcome,
+} from '@/features/chat/report/shareToken';
 import { getPublicBaseUrl } from '@/features/publicSite/publicUrl';
 import { getSupabaseClient } from '@/services/supabase';
 
@@ -128,18 +131,21 @@ async function revokeShare(shareId: string): Promise<boolean> {
   return true;
 }
 
-// Recipient read: present the raw token to the SECURITY DEFINER RPC. Returns a bounded DTO or null
-// (invalid / revoked / expired / not found / not authenticated). Validates the token shape client-side
-// first so a malformed value never reaches the RPC.
-async function loadSharedReport(rawToken: string): Promise<SharedReportContent | null> {
-  if (!isValidShareToken(rawToken)) return null;
+// Recipient read: present the raw token to the SECURITY DEFINER RPC. Returns a CLASSIFIED outcome
+// (§14) — 'ok' (bounded DTO) / 'unavailable' (no accessible grant) / 'error' (RPC/DB infra failure, e.g.
+// pgCode 42883). Validates the token shape client-side first so a malformed value never reaches the RPC.
+// NOTE: this is only ever called from the AUTHENTICATED branch of the shared-report screen — a logged-out
+// visitor never reaches it (§9/§12).
+async function loadSharedReport(rawToken: string): Promise<SharedReportOutcome> {
+  if (!isValidShareToken(rawToken)) return { status: 'unavailable' };
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc('get_shared_report', { p_token: rawToken });
-  if (error) {
-    logDbError(error, 'report_share', 'db');
-    return null;
+  const res = await supabase.rpc('get_shared_report', { p_token: rawToken });
+  if (res.error) {
+    // Keep the pgCode in the logs (SHARE_DB_ERROR) so an infra failure is diagnosable + never silently
+    // presented as "expired/revoked".
+    logDbError(res.error, 'report_share', 'db');
   }
-  return parseSharedReportDTO(data);
+  return classifySharedReportResponse(res);
 }
 
 export const shareService = {

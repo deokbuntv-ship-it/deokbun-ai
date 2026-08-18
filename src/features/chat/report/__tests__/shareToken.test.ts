@@ -1,7 +1,11 @@
 // Share-token validation + bounded DTO parsing (Commercial UX V4 §18/§24/§27). The token shape guard is
 // the open-redirect defense for the post-login continuation; the DTO parser is the last line keeping
 // non-user-facing fields out of the recipient view.
-import { isValidShareToken, parseSharedReportDTO } from '@/features/chat/report/shareToken';
+import {
+  classifySharedReportResponse,
+  isValidShareToken,
+  parseSharedReportDTO,
+} from '@/features/chat/report/shareToken';
 
 const HEX48 = 'a'.repeat(48);
 
@@ -59,5 +63,29 @@ describe('parseSharedReportDTO', () => {
     expect(dto?.title).toBe('상담 보고서');
     expect(dto?.generatedAt).toBeNull();
     expect(dto?.keyFindings).toEqual([]);
+  });
+});
+
+describe('classifySharedReportResponse (§14 — infra error vs unavailable)', () => {
+  const dto = { title: 't', summary: 's', keyFindings: [], cautions: [], coveredTopics: [] };
+
+  it('classifies a valid payload as ok', () => {
+    const r = classifySharedReportResponse({ data: dto, error: null });
+    expect(r.status).toBe('ok');
+    expect(r.status === 'ok' && r.content.title).toBe('t');
+  });
+
+  it('classifies a null payload as unavailable (invalid/revoked/expired/not-found merged, §41)', () => {
+    expect(classifySharedReportResponse({ data: null, error: null })).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a DB/RPC error as error WITH its code (42883 must NOT look like expired/revoked)', () => {
+    const r = classifySharedReportResponse({ data: null, error: { code: '42883' } });
+    expect(r).toEqual({ status: 'error', code: '42883' });
+  });
+
+  it('an error takes precedence over any data', () => {
+    const r = classifySharedReportResponse({ data: dto, error: { code: '42501' } });
+    expect(r.status).toBe('error');
   });
 });
