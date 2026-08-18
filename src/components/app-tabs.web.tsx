@@ -17,7 +17,9 @@ import { colors, type SemanticColors } from '@/theme';
 // top navigation. The 4-tab IA (홈 · 상담 · 운세우편함 · MY) and tab behavior are
 // unchanged; this file only changes presentation (web). Native uses NativeTabs.
 const CANVAS_MAX = 430;
-const NAV_HEIGHT = 58;
+// Nav body height ex-safe-area (§52). 56 keeps the interactive bar in the owner's 56–64px range
+// (6 top + ~42 item + 8 bottom ≈ 56–64 with the 22px icon), and drives the TabSlot content reservation.
+const NAV_HEIGHT = 56;
 
 type TabKey = 'home' | 'consult' | 'inbox' | 'my';
 type ThemeColors = SemanticColors;
@@ -26,8 +28,8 @@ type ThemeColors = SemanticColors;
 // through react-dom — no icon-font/vector-icons dependency needed.
 function TabGlyph({ name, color, active }: { name: TabKey; color: string; active: boolean }) {
   const common = {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: color,

@@ -14,7 +14,7 @@ import { colors } from '@/theme';
 // the `active` section. The primary navigator is left completely untouched (zero regression).
 export type DetailNavKey = 'home' | 'consult' | 'inbox' | 'my';
 
-const NAV_HEIGHT = 58;
+const NAV_HEIGHT = 56;
 
 const ITEMS: { key: DetailNavKey; label: string; route: '/' | '/consult' | '/inbox' | '/my' }[] = [
   { key: 'home', label: '홈', route: '/' },
@@ -26,8 +26,8 @@ const ITEMS: { key: DetailNavKey; label: string; route: '/' | '/consult' | '/inb
 // Identical inline-SVG glyphs to app-tabs.web (this is a .web.tsx file → renders through react-dom).
 function TabGlyph({ name, color, active }: { name: DetailNavKey; color: string; active: boolean }) {
   const common = {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: color,

@@ -60,7 +60,7 @@ export function DetailBottomNav({ active }: { active?: DetailNavKey }) {
 
 const styles = StyleSheet.create({
   navBar: {
-    minHeight: 58,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'stretch',
     borderTopWidth: StyleSheet.hairlineWidth,
