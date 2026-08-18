@@ -12,6 +12,7 @@ import {
   authReasonToOutcome,
   isSilentOutcome,
 } from '@/features/auth/errors/authErrors';
+import { consumePendingShareToken } from '@/features/chat/report/pendingSharedReport';
 import { consumePendingReturnTo } from '@/features/consultation';
 
 export default function LoginScreen() {
@@ -26,6 +27,14 @@ export default function LoginScreen() {
     const result = await signInWithProvider(providerId);
 
     if (result.success) {
+      // A recipient interrupted while opening a shared report resumes there (§24). The token rides an
+      // ephemeral client store (never `returnTo`), is shape-validated, and only fills the dynamic route
+      // param — so there is no open-redirect surface.
+      const shareToken = consumePendingShareToken();
+      if (shareToken) {
+        router.replace({ pathname: '/shared-report/[token]', params: { token: shareToken } });
+        return;
+      }
       // Authentication is an interruption, not a reset (§9): resume the consultation
       // the user was in, not always Home. returnTo is a pre-validated internal route
       // (open-redirect-safe, §12/§52); default Home when there is nothing to resume.

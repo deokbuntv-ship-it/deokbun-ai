@@ -35,6 +35,9 @@ export default function RootLayout() {
             {/* 상담 보고서 상세 — pushed from 우편함>보고서 and the chat report CTA; own AppHeader,
                 owner-only (RLS), redirects to login when signed out. */}
             <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
+            {/* 공유받은 상담 보고서 — recipient view via a share token; login-required, read-only,
+                bounded DTO through the get_shared_report RPC. */}
+            <Stack.Screen name="shared-report/[token]" options={{ headerShown: false }} />
             {/* 분석 대상자 관리 (from MY) — subject management; own AppHeader. */}
             <Stack.Screen name="subjects" options={{ headerShown: false }} />
             {/* 대상자 상담 이력 / 만세력 (pushed from subjects); own AppHeader. */}

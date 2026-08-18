@@ -7,6 +7,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth';
 import { resolveOAuthReturn } from '@/features/auth/services/oauthReturn';
+import { consumePendingShareToken } from '@/features/chat/report/pendingSharedReport';
 import { peekPendingConsultationIntent } from '@/features/consultation';
 
 // Provider-neutral OAuth return route (google / kakao / naver all share it).
@@ -31,6 +32,17 @@ export default function LoginCallbackScreen() {
   const { authState } = useAuth();
 
   useEffect(() => {
+    // Full-page landing (not the popup flow): resume a shared-report recipient first (§24). In the popup
+    // flow this window has its own sessionStorage, so the token set in the opener isn't here → null, and
+    // the opener (login.tsx) stays the single consumer. The token is shape-valid + only fills the route
+    // param (no open redirect).
+    if (authState.status === 'authenticated') {
+      const shareToken = consumePendingShareToken();
+      if (shareToken) {
+        router.replace({ pathname: '/shared-report/[token]', params: { token: shareToken } });
+        return;
+      }
+    }
     // Peek (do not consume) the resume route so the opener window (login.tsx) remains
     // the single consumer in the popup flow; this only matters on a direct/full-page
     // landing where this route IS the main window.
