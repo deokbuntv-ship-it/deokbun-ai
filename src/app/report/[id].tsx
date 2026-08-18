@@ -12,6 +12,7 @@ import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
 import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
+import { ShareReportSheet } from '@/features/chat/report/ShareReportSheet';
 import { toPremiumReportView, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
 import { reportService } from '@/features/chat/report/reportService';
 import { spacing } from '@/theme';
@@ -30,6 +31,7 @@ export default function ConsultationReportDetailScreen() {
 
   const [view, setView] = useState<PremiumReportVM | null>(null);
   const [status, setStatus] = useState<Status>('loading');
+  const [shareVisible, setShareVisible] = useState(false);
 
   useEffect(() => {
     if (authState.status !== 'authenticated') return;
@@ -76,7 +78,13 @@ export default function ConsultationReportDetailScreen() {
               </Text>
             </Card>
           ) : status === 'ready' && view ? (
-            <PremiumReportView view={view} mode="owner" />
+            <PremiumReportView
+              view={view}
+              mode="owner"
+              footer={
+                <Button label="보고서 공유하기" radius="lg" onPress={() => setShareVisible(true)} />
+              }
+            />
           ) : (
             // §26 — not found / error: one calm line + a way back. No raw security detail (§25).
             <Card radius="xl">
@@ -94,6 +102,8 @@ export default function ConsultationReportDetailScreen() {
 
       {/* Preserve the consumer bottom navigation on this pushed detail screen (§10–§14). */}
       <ConsumerBottomNav active="inbox" />
+
+      <ShareReportSheet visible={shareVisible} onClose={() => setShareVisible(false)} reportId={id} />
     </Screen>
   );
 }
