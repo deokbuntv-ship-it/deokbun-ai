@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { ConsumerBottomNav } from '@/components/ConsumerBottomNav';
 import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
@@ -188,6 +189,9 @@ export default function FortuneMailDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Preserve the consumer bottom navigation on this pushed detail screen (§15 parity). */}
+      <ConsumerBottomNav active="inbox" />
     </Screen>
   );
 }

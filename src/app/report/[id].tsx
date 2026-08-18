@@ -5,21 +5,21 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { ConsumerBottomNav } from '@/components/ConsumerBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
-import { toReportDetailView, type ReportDetailView } from '@/features/chat/report/reportPresentation';
+import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
+import { toPremiumReportView, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
 import { reportService } from '@/features/chat/report/reportService';
 import { spacing } from '@/theme';
 
-// 상담 보고서 상세 (Commercial UX V4 §17/§22/§23/§24/§26). Owner-only: the report is loaded by id
-// through reportService (RLS-scoped) — a logged-out visitor is redirected to login (§24); a report
-// that does not exist OR belongs to another user simply returns null → a safe "not found" state
-// (§25, no raw security detail). Reload/direct-URL safe: the data always comes from the DB, never an
-// in-memory hand-off (§22/§23). The view is a deterministic projection (toReportDetailView) that hides
-// empty sections and carries no engine/debug language.
+// 상담 보고서 상세 (Commercial UX V4 §5–§28). Owner-only premium view of a saved report. RLS-scoped load;
+// a logged-out visitor is redirected to login (§24); a missing/other-owner id → a calm not-found (§25/§26,
+// no raw security detail). Reload/direct-URL safe — always reads the DB (§22/§23). The consumer bottom
+// nav is preserved on this pushed detail screen via ConsumerBottomNav (§10–§14), active on 운세우편함.
 type Status = 'loading' | 'ready' | 'notfound' | 'error';
 
 export default function ConsultationReportDetailScreen() {
@@ -28,11 +28,10 @@ export default function ConsultationReportDetailScreen() {
   const id = typeof params.id === 'string' ? params.id : '';
   const { authState } = useAuth();
 
-  const [view, setView] = useState<ReportDetailView | null>(null);
+  const [view, setView] = useState<PremiumReportVM | null>(null);
   const [status, setStatus] = useState<Status>('loading');
 
   useEffect(() => {
-    // Wait for auth to resolve before querying (an unauthenticated read would just 404).
     if (authState.status !== 'authenticated') return;
     let active = true;
     setStatus('loading');
@@ -44,7 +43,7 @@ export default function ConsultationReportDetailScreen() {
           setStatus('notfound');
           return;
         }
-        setView(toReportDetailView(report));
+        setView(toPremiumReportView(report));
         setStatus('ready');
       })
       .catch(() => {
@@ -77,46 +76,7 @@ export default function ConsultationReportDetailScreen() {
               </Text>
             </Card>
           ) : status === 'ready' && view ? (
-            <Stack gap="xl">
-              {/* header — title + generation date */}
-              <Stack gap="xs">
-                <Text variant="displayMedium">{view.title}</Text>
-                {view.dateLabel ? (
-                  <Text variant="bodySmall" colorToken="textSecondary">
-                    {view.dateLabel}
-                  </Text>
-                ) : null}
-              </Stack>
-
-              {/* sections — empty ones are already filtered out (§18) */}
-              {view.sections.map((section, i) => (
-                <Card key={i} radius="xl">
-                  <Stack gap="sm">
-                    <Text variant="headingMedium" style={styles.bold}>
-                      {section.title}
-                    </Text>
-                    {section.kind === 'paragraph' ? (
-                      <Text variant="bodyMedium" style={styles.body}>
-                        {section.body}
-                      </Text>
-                    ) : (
-                      <Stack gap="xs">
-                        {section.items.map((it, j) => (
-                          <View key={j} style={styles.bulletRow}>
-                            <Text variant="bodyMedium" colorToken="textSecondary">
-                              ·
-                            </Text>
-                            <Text variant="bodyMedium" style={styles.bulletText}>
-                              {it}
-                            </Text>
-                          </View>
-                        ))}
-                      </Stack>
-                    )}
-                  </Stack>
-                </Card>
-              ))}
-            </Stack>
+            <PremiumReportView view={view} mode="owner" />
           ) : (
             // §26 — not found / error: one calm line + a way back. No raw security detail (§25).
             <Card radius="xl">
@@ -131,6 +91,9 @@ export default function ConsultationReportDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Preserve the consumer bottom navigation on this pushed detail screen (§10–§14). */}
+      <ConsumerBottomNav active="inbox" />
     </Screen>
   );
 }
@@ -147,19 +110,5 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-  },
-  bold: {
-    fontWeight: '700',
-  },
-  body: {
-    lineHeight: 23,
-  },
-  bulletRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  bulletText: {
-    flex: 1,
-    lineHeight: 23,
   },
 });
