@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -36,7 +36,6 @@ function newId(role: string): string {
 
 export default function CompatibilityChatScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ selfId?: string; targetId?: string }>();
   const { isAuthenticated } = useAuth();
   const { subjects, status } = useConsultationSubjects();
@@ -234,7 +233,7 @@ export default function CompatibilityChatScreen() {
             </Stack>
           </View>
         </ScrollView>
-        <View style={[styles.composer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <View style={styles.composer}>
           <View style={styles.wrapper}>
             <ChatInput
               value={input}
@@ -244,6 +243,9 @@ export default function CompatibilityChatScreen() {
             />
           </View>
         </View>
+        {/* Consumer bottom nav (§5) — same DetailBottomNav as report/mail detail; it owns the bottom
+            safe-area, so the composer above never overlaps it. */}
+        <DetailBottomNav active="consult" />
       </View>
     </Screen>
   );
@@ -255,5 +257,5 @@ const styles = StyleSheet.create({
   wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   userRow: { alignItems: 'flex-end' },
   userBubble: { maxWidth: '86%', backgroundColor: undefined },
-  composer: { paddingHorizontal: 20, paddingTop: spacing.sm },
+  composer: { paddingHorizontal: 20, paddingTop: spacing.sm, paddingBottom: spacing.sm },
 });

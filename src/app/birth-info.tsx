@@ -21,8 +21,9 @@ import {
     type Gender,
     type LunarMonthType,
 } from '@/features/consultation';
+import { setPendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 type SelectOption<T extends string> = {
   value: T;
@@ -125,10 +126,13 @@ function isValidMinute(value: string): boolean {
 
 export default function BirthInfoScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ subjectId?: string }>();
+  const params = useLocalSearchParams<{ subjectId?: string; origin?: string; self?: string }>();
   const subjectId =
     typeof params.subjectId === 'string' ? params.subjectId : undefined;
   const isEditMode = subjectId !== undefined;
+  // Entered from the 궁합 flow (§2/§4): after save we return to /compatibility (never /chat), and we show
+  // an explicit "궁합으로 돌아가기" action instead of the onboarding "상담 시작" buttons.
+  const fromCompatibility = params.origin === 'compatibility';
 
   const { updateSubject, updateBirthInfo } = useConsultationDraft();
   const scheme = useColorScheme();
@@ -151,7 +155,9 @@ export default function BirthInfoScreen() {
 
   const [birthPlace, setBirthPlace] = useState('');
 
-  const [isSelf, setIsSelf] = useState(false);
+  // Pre-check 본인 when the 궁합 "본인 정보 등록하기" entry passed self=1 (create mode only; edit mode
+  // overwrites from the loaded record).
+  const [isSelf, setIsSelf] = useState(() => params.self === '1');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -339,6 +345,42 @@ export default function BirthInfoScreen() {
     }
   };
 
+  // 궁합 flow — create the subject, then RETURN to /compatibility (never /chat, never an LLM call §8).
+  // The new TARGET is auto-selected there via the ephemeral pending id; a new 본인 is not auto-selected.
+  const handleSaveForCompatibility = async () => {
+    if (isSaving) return;
+    const birthInfo = buildBirthInfo();
+    if (birthInfo === null) return;
+
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const record = await consultationSubjectService.createSubject({
+        displayName: birthInfo.displayName || (isSelf ? '본인' : '상대방'),
+        relationship: relationshipValue(),
+        isSelf,
+        birthInfo,
+      });
+      if (!isSelf) setPendingCompatibilitySubjectId(record.id);
+      router.replace('/compatibility');
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      setSaveError(
+        code === '23505'
+          ? '이미 본인으로 등록된 대상이 있습니다. "본인으로 저장"을 해제해 주세요.'
+          : '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Cancel/back BEFORE save → return to 궁합 without creating a record (§4). Never forces Home.
+  const handleCompatibilityBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/compatibility');
+  };
+
   // Edit flow — update the saved subject only (never touches drafts/conversations).
   const handleSaveEdit = async () => {
     if (isSaving || subjectId === undefined) {
@@ -430,11 +472,32 @@ export default function BirthInfoScreen() {
         <View style={styles.contentWrapper}>
           <Stack gap="xxl">
             <Stack gap="xs">
+              {fromCompatibility ? (
+                <Pressable
+                  onPress={handleCompatibilityBack}
+                  accessibilityRole="button"
+                  accessibilityLabel="궁합으로 돌아가기"
+                  hitSlop={8}
+                  style={{ marginBottom: spacing.sm }}
+                >
+                  <Text variant="bodyMedium" style={{ color: theme.secondary, fontWeight: '600' }}>
+                    ← 궁합으로 돌아가기
+                  </Text>
+                </Pressable>
+              ) : null}
               <Text variant="headingLarge">
-                {isEditMode ? '대상 편집' : '출생정보 입력'}
+                {isEditMode
+                  ? '대상 편집'
+                  : fromCompatibility
+                    ? params.self === '1'
+                      ? '본인 정보 등록'
+                      : '상대방 추가'
+                    : '출생정보 입력'}
               </Text>
               <Text variant="bodyMedium" colorToken="textSecondary">
-                정확한 분석을 위해 알고 있는 범위에서 입력해 주세요.
+                {fromCompatibility
+                  ? '저장하면 궁합 화면으로 돌아가 바로 궁합을 볼 수 있어요.'
+                  : '정확한 분석을 위해 알고 있는 범위에서 입력해 주세요.'}
               </Text>
             </Stack>
 
@@ -634,6 +697,19 @@ export default function BirthInfoScreen() {
                       }}
                     />
                   )}
+                </>
+              ) : fromCompatibility ? (
+                <>
+                  <Button
+                    label={isSaving ? '저장 중...' : '저장하고 궁합으로'}
+                    disabled={!isFormValid || isSaving}
+                    onPress={handleSaveForCompatibility}
+                  />
+                  {saveError ? (
+                    <Text variant="bodySmall" colorToken="danger">
+                      {saveError}
+                    </Text>
+                  ) : null}
                 </>
               ) : (
                 <>

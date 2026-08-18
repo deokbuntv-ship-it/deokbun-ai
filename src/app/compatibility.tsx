@@ -10,7 +10,8 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
-import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
+import { isSavedSubjectId, useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
+import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -26,6 +27,10 @@ export default function CompatibilityScreen() {
   useFocusEffect(
     useCallback(() => {
       reload();
+      // Just returned from "대상자 추가"? Auto-select the subject we just created (§3). Ephemeral +
+      // one-shot; only a real saved id is honored, and it only sets local selection state.
+      const pendingId = consumePendingCompatibilitySubjectId();
+      if (pendingId && isSavedSubjectId(pendingId)) setTargetId(pendingId);
     }, [reload]),
   );
 
@@ -90,7 +95,10 @@ export default function CompatibilityScreen() {
             <Text variant="bodySmall" colorToken="textSecondary">
               궁합은 본인과 상대방 두 사람의 사주를 바탕으로 봐드려요.
             </Text>
-            <Button label="본인 정보 등록하기" onPress={() => router.push('/birth-info')} />
+            <Button
+              label="본인 정보 등록하기"
+              onPress={() => router.push({ pathname: '/birth-info', params: { origin: 'compatibility', self: '1' } })}
+            />
           </Stack>
         </Card>
       );
@@ -123,7 +131,11 @@ export default function CompatibilityScreen() {
           ) : (
             <Stack gap="sm">{others.map(renderTarget)}</Stack>
           )}
-          <Button label="＋ 대상자 추가" variant="secondary" onPress={() => router.push('/birth-info')} />
+          <Button
+            label="＋ 대상자 추가"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/birth-info', params: { origin: 'compatibility' } })}
+          />
         </Stack>
       </Stack>
     );
