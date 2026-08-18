@@ -31,6 +31,15 @@ export function containsInternalTerminology(text: string): boolean {
   return INTERNAL_TERMS.some((re) => re.test(t));
 }
 
+// Raw 천간(10) · 지지(12) hanja. These belong in the internal evidence, NOT the consumer answer (V1.4 §20):
+// a live answer was observed leaking bare 寅/卯/巳 etc. This DETECTS them (for tests + safe telemetry);
+// it never mutates prose (translation is the model's job, guided by the prompt).
+const GANJI_HANJA = /[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]/;
+
+export function containsRawGanji(text: string): boolean {
+  return GANJI_HANJA.test(text ?? '');
+}
+
 // Remove the specific internal LABEL patterns that are safe to strip without touching surrounding prose.
 export function stripEngineLabels(text: string): string {
   return (text ?? '')

@@ -28,6 +28,13 @@ describe('STRUCTURED_OUTPUT_INSTRUCTION — commercial answer rules', () => {
     expect(I).toContain('자미두수에서는');
   });
 
+  it('V1.4: bans raw 천간·지지 hanja in the consumer answer, requires translation (§20)', () => {
+    expect(I).toContain('천간·지지 한자');
+    expect(I).toMatch(/甲乙丙丁/); // the stems are listed as forbidden-to-echo
+    expect(I).toMatch(/寅卯/); // and the branches
+    expect(I).toMatch(/뜻을 풀어/); // must translate to plain language
+  });
+
   it('forbids exposing implementation limitations to the user', () => {
     expect(I).toContain('계산되지 않았습니다');
     expect(I).toContain('구현 한계를 사용자에게 설명하지');

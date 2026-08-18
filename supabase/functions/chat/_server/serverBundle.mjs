@@ -2,7 +2,7 @@
 // Regenerate: node supabase/functions/chat/_server/build.mjs
 
 // src/features/chat/prompts/consultationPromptVersion.ts
-var CONSULTATION_PROMPT_VERSION = "consultation@1.3.0";
+var CONSULTATION_PROMPT_VERSION = "consultation@1.4.0";
 
 // src/features/chat/prompts/consultationMode.ts
 var FOLLOW_UP_CUES = /(그중|그 중|그때|그 때|그럼|그러면|그건|그 시기|그 달|아까|방금|위에서|말한 것 중|어느 쪽)/;
@@ -332,6 +332,9 @@ var STRUCTURED_OUTPUT_INSTRUCTION = [
   '· 계산하지 않은 내용은 그냥 언급하지 않으면 됩니다. "이 버전에서는 지원하지 않는다/계산되지',
   '  않았다"처럼 구현 한계를 사용자에게 설명하지 마십시오.',
   "· 신강·신약·용신·격국·12운성·12신살 같은 전문 용어 자체를 답변에 쓰지 말고 단정하지도 마십시오.",
+  "· 천간·지지 한자(甲乙丙丁戊己庚辛壬癸 · 子丑寅卯辰巳午未申酉戌亥)나 그 조합(예: 甲木·寅卯·丙午)을",
+  '  사용자 답변에 그대로 쓰지 마십시오. 반드시 뜻을 풀어 일상 언어로 설명하십시오(예: "寅卯의 기운"이',
+  '  아니라 "변화와 이동의 흐름이 강해지는 시기"). 근거의 뜻은 살리되, 기호는 노출하지 마십시오.',
   "",
   "[근거 사용 규칙]",
   "· 제공된 근거만 사용하고, 제공되지 않은 학문(예: 기문둔갑)을 썼다고 말하지 마십시오.",
@@ -666,7 +669,10 @@ function buildContextMessage(input) {
     "",
     buildResponsePolicy(mode, grounding.status === "available"),
     "",
-    STRUCTURED_OUTPUT_INSTRUCTION
+    STRUCTURED_OUTPUT_INSTRUCTION,
+    // Deterministic Decision-Engine directive (server-computed): the LLM verbalizes this decision. Placed
+    // LAST so it is the most specific, final shaping instruction. Absent → static policy alone.
+    ...input.answerPlanDirective ? ["", input.answerPlanDirective] : []
   ].join("\n");
 }
 function buildPrompt(input) {
@@ -7694,6 +7700,126 @@ function buildStructuredConsultationResult(parsed, grounding) {
   };
 }
 
+// src/features/chat/server/answerPlan.ts
+var COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
+var RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
+var EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
+var SUITABILITY_CUE = /해도\s*(?:돼|되나|괜찮|될까)|괜찮(?:을까|아)|좋을까|어때|어떨까|맞(?:아|을까|나)|추천/;
+var ACTION_CUE = /할까|말까|해야\s*(?:돼|하나|할까)|어떻게\s*(?:해|하면)|계속\s*할|확장|바꿀까|움직/;
+var groundedMonthsOf = (g) => {
+  const out = /* @__PURE__ */ new Set();
+  if (g.status !== "available") return out;
+  for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    for (const m of ev.timingAnchors?.months ?? []) if (Number.isInteger(m)) out.add(m);
+  }
+  return out;
+};
+var groundedYearsOf = (g) => {
+  const out = /* @__PURE__ */ new Set();
+  if (g.status !== "available") return out;
+  for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    for (const y of ev.timingAnchors?.years ?? []) if (Number.isInteger(y)) out.add(y);
+  }
+  return out;
+};
+var referenceYearOf = (g) => {
+  if (g.status !== "available") return null;
+  for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    const r = ev.timingAnchors?.referenceYear;
+    if (typeof r === "number") return r;
+  }
+  return null;
+};
+function deriveAnswerPlan(question, grounding, mode = "solo") {
+  const q = (question ?? "").trim();
+  const refYear = referenceYearOf(grounding);
+  const monthPlan = resolveQuestionMonths(q, refYear, null);
+  const requestedYears = resolveQuestionYears(q, refYear);
+  const gMonths = groundedMonthsOf(grounding);
+  const gYears = groundedYearsOf(grounding);
+  const intents = [];
+  const isCompare = monthPlan.intent === "COMPARE_MONTHS" || COMPARE_CUE.test(q) && (monthPlan.targets.length >= 2 || requestedYears.length >= 2);
+  const isRanking = monthPlan.intent === "BEST_MONTH" || monthPlan.intent === "MONTH_RANGE" || RANK_CUE.test(q) && requestedYears.length >= 2;
+  if (isCompare) intents.push("COMPARISON");
+  if (isRanking) intents.push("RANKING");
+  if (EVENT_CUE.test(q)) intents.push("EVENT_PREDICTION");
+  if (ACTION_CUE.test(q)) intents.push("ACTION");
+  if (SUITABILITY_CUE.test(q)) intents.push("SUITABILITY");
+  if (monthPlan.intent !== "NONE" || requestedYears.length > 0) intents.push("TIMING");
+  if (intents.length === 0) intents.push("DESCRIPTIVE");
+  const requestedGranularity = monthPlan.intent !== "NONE" ? "MONTH" : requestedYears.length > 0 ? "YEAR" : "NONE";
+  const requestedMonthKeys = monthPlan.targets.map((t) => t.year * 100 + t.month);
+  const monthsGrounded = requestedMonthKeys.length > 0 && requestedMonthKeys.every((k) => gMonths.has(k));
+  const anyMonthGrounded = requestedMonthKeys.some((k) => gMonths.has(k));
+  const yearsGrounded = requestedYears.length > 0 && requestedYears.every((y) => gYears.has(y));
+  let resolvedGranularity = "NONE";
+  let supportLevel = "NONE";
+  if (requestedGranularity === "MONTH") {
+    if (monthsGrounded) {
+      resolvedGranularity = "MONTH";
+      supportLevel = "DIRECT";
+    } else if (anyMonthGrounded) {
+      resolvedGranularity = "MONTH";
+      supportLevel = "PARTIAL";
+    } else if (gYears.size > 0) {
+      resolvedGranularity = "YEAR";
+      supportLevel = "ALTERNATIVE";
+    }
+  } else if (requestedGranularity === "YEAR") {
+    if (yearsGrounded) {
+      resolvedGranularity = "YEAR";
+      supportLevel = "DIRECT";
+    } else if (gYears.size > 0) {
+      resolvedGranularity = "YEAR";
+      supportLevel = "PARTIAL";
+    }
+  } else {
+    if (grounding.status === "available") {
+      resolvedGranularity = "NONE";
+      supportLevel = "DIRECT";
+    }
+  }
+  const groundedMonthCandidates = requestedMonthKeys.filter((k) => gMonths.has(k)).length;
+  const groundedYearCandidates = requestedYears.filter((y) => gYears.has(y)).length;
+  const groundedCandidates = Math.max(groundedMonthCandidates, groundedYearCandidates);
+  const comparisonSupported = isCompare && groundedCandidates >= 2;
+  const rankingSupported = isRanking && groundedCandidates >= 2;
+  let assertiveness = "LIMITED";
+  if (supportLevel === "DIRECT") assertiveness = comparisonSupported || rankingSupported ? "VERY_STRONG" : "STRONG";
+  else if (supportLevel === "PARTIAL") assertiveness = "MODERATE";
+  else if (supportLevel === "ALTERNATIVE") assertiveness = "LIMITED";
+  else assertiveness = "LIMITED";
+  return {
+    mode,
+    intents,
+    requestedGranularity,
+    resolvedGranularity,
+    supportLevel,
+    assertiveness,
+    comparisonSupported,
+    rankingSupported,
+    forbidEventCertainty: intents.includes("EVENT_PREDICTION")
+  };
+}
+var ASSERTIVENESS_LINE = {
+  VERY_STRONG: '근거가 충분합니다. 결론과 추천/비교를 분명하게 말하십시오(예: "5월을 1순위로 추천합니다", "이쪽이 더 낫습니다"). 흐리지 마십시오.',
+  STRONG: '근거가 뒷받침됩니다. 결론을 분명하게 말하십시오(예: "추천합니다", "좋은 시기입니다"). 습관적으로 유보하지 마십시오.',
+  MODERATE: '근거가 부분적입니다. "상대적으로 유리한 편", "우선 후보" 정도로 방향은 주되 과도한 단정은 피하십시오.',
+  LIMITED: "요청한 정확한 범위의 근거는 부족합니다. 확인 가능한 더 넓은 범위로 분명히 답하고 대안을 제시하되, 없는 근거를 지어내지 마십시오."
+};
+function renderAnswerPlanDirective(plan) {
+  const lines = ["[상담 지침 — 서버 판단(사용자에게 그대로 노출하지 말 것)]"];
+  lines.push("· 사용자는 답을 찾으러 왔습니다. 결론을 맨 먼저, 근거 범위 안에서 가능한 한 분명하게 말하십시오.");
+  lines.push(`· ${ASSERTIVENESS_LINE[plan.assertiveness]}`);
+  if (plan.comparisonSupported) lines.push("· 비교 근거가 충분합니다. 두 후보를 실제로 비교해 더 나은 쪽을 고르십시오(근거가 팽팽하면 그렇다고 말하십시오).");
+  else if (plan.intents.includes("COMPARISON")) lines.push("· 비교 근거가 충분하지 않습니다. 한쪽을 승자로 단정하지 말고, 근거가 있는 범위까지만 답하십시오.");
+  if (plan.rankingSupported) lines.push("· 순위 근거(후보군)가 있습니다. 1순위 또는 상위 그룹을 제시하십시오. 없는 정밀 점수는 만들지 마십시오.");
+  else if (plan.intents.includes("RANKING")) lines.push('· 순위를 매길 후보군 근거가 부족합니다. "가장 좋다"를 하나로 단정하지 마십시오.');
+  if (plan.forbidEventCertainty) lines.push('· 사건의 발생 자체를 확정하지 마십시오(예: "반드시 이사합니다"). 대신 시기 적합도로 답하십시오(예: "이사 시기를 고른다면 …는 좋은 후보입니다").');
+  if (plan.supportLevel === "ALTERNATIVE") lines.push("· 요청한 세부 시점 대신, 근거가 있는 더 넓은 시기의 흐름으로 답하고 다음으로 좁힐 수 있음을 안내하십시오. 사용자에게 다시 물으라고 미루지 마십시오.");
+  return lines.join("\n");
+}
+
 // src/features/chat/server/buildServerConsultation.ts
 var MAX_CONTEXT_TURNS = 12;
 var MAX_TURN_CHARS = 4e3;
@@ -7784,7 +7910,8 @@ async function buildServerConsultation(request, deps) {
       recentMessages,
       currentUserMessage: question,
       mode,
-      grounding
+      grounding,
+      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, grounding))
     });
   } catch {
     effectiveGrounding = GROUNDING_UNAVAILABLE;
@@ -7794,7 +7921,8 @@ async function buildServerConsultation(request, deps) {
       recentMessages,
       currentUserMessage: question,
       mode,
-      grounding: GROUNDING_UNAVAILABLE
+      grounding: GROUNDING_UNAVAILABLE,
+      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, GROUNDING_UNAVAILABLE))
     });
   }
   let raw;

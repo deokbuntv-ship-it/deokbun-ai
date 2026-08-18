@@ -1,6 +1,18 @@
 // Commercial-text hygiene (V4 §8/§9/§44/§69). Locks the internal-terminology detector + the
 // conservative engine-label stripper used as presentation-layer defense-in-depth.
-import { containsInternalTerminology, stripEngineLabels } from '../commercialText';
+import { containsInternalTerminology, containsRawGanji, stripEngineLabels } from '../commercialText';
+
+describe('containsRawGanji — raw 천간지지 hanja must not reach the consumer answer (§20)', () => {
+  it('flags raw stems/branches / combinations', () => {
+    expect(containsRawGanji('寅卯의 기운이 강해집니다')).toBe(true);
+    expect(containsRawGanji('일간 甲木을 중심으로')).toBe(true);
+    expect(containsRawGanji('丙午 세운')).toBe(true);
+  });
+  it('does NOT flag ordinary translated Korean prose', () => {
+    expect(containsRawGanji('변화와 이동의 흐름이 강해지는 시기입니다')).toBe(false);
+    expect(containsRawGanji('사업운은 좋은 편입니다. 5월을 먼저 추천합니다.')).toBe(false);
+  });
+});
 
 describe('containsInternalTerminology — never let internal/dev terms reach the user', () => {
   it('flags the exact leak patterns the owner called out', () => {

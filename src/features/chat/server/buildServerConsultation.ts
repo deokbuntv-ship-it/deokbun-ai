@@ -25,6 +25,7 @@ import {
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import { buildConsultationGrounding } from '@/features/chat/services/consultationGrounding';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
+import { deriveAnswerPlan, renderAnswerPlanDirective } from './answerPlan';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
 import type {
@@ -156,6 +157,10 @@ export async function buildServerConsultation(
   //    the (already sanitized) message, so no client-authored system block can enter.
   const recentMessages = sanitizeConversation(request.conversationContext);
   const mode = classifyConsultationMode(question, recentMessages.length > 0);
+  // SERVER-owned Decision Engine (Answer-Seeking V1.4): compute the deterministic answer plan from the
+  // question + the grounding's evidence inventory, and hand the LLM a directive it verbalizes — so the
+  // server (not the model) decides the support level, assertiveness, and comparison/ranking/claim
+  // permissions. Reads only deterministic anchors; never authorizes an ungrounded claim.
   let effectiveGrounding = grounding;
   let messages;
   try {
@@ -166,6 +171,7 @@ export async function buildServerConsultation(
       currentUserMessage: question,
       mode,
       grounding,
+      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, grounding)),
     });
   } catch {
     effectiveGrounding = GROUNDING_UNAVAILABLE;
@@ -176,6 +182,7 @@ export async function buildServerConsultation(
       currentUserMessage: question,
       mode,
       grounding: GROUNDING_UNAVAILABLE,
+      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, GROUNDING_UNAVAILABLE)),
     });
   }
 

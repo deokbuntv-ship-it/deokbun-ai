@@ -36,6 +36,10 @@ export type PromptBuildInput = {
   grounding?: ConsultationGrounding;
   // Response-shaping mode (§14). Optional — defaults to classifying currentUserMessage.
   mode?: ConsultationMode;
+  // Deterministic Decision-Engine directive (Answer-Seeking V1.4): the SERVER's computed decision (support
+  // level → assertiveness, comparison/ranking permission, claim permissions) as a compact system
+  // instruction the LLM verbalizes. Optional — absent → the LLM falls back to the static policy alone.
+  answerPlanDirective?: string | null;
 };
 
 // Response contract seam (§33/§37). The LLM answer stays a natural-language string

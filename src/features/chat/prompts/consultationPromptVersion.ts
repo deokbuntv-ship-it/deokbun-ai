@@ -11,4 +11,7 @@
 // grounded from the frozen 월운 engine and become valid month-level timing anchors — the validator ALLOWS a
 // grounded month suitability/comparison claim and (safer) REJECTS an ungrounded month even inside a
 // grounded year. Same schema/frozen semantics; zero extra LLM calls.
-export const CONSULTATION_PROMPT_VERSION = 'consultation@1.3.0';
+// 1.4.0 — Server Decision Engine: the server derives intent / support level / assertiveness /
+// comparison-ranking-claim permissions (answerPlan) from the question + grounding and hands the LLM a
+// directive it verbalizes (the model no longer decides its own confidence); + consumer 간지-hanja hygiene.
+export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.0';

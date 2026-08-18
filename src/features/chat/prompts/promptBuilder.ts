@@ -106,6 +106,9 @@ function buildContextMessage(input: PromptBuildInput): string {
     buildResponsePolicy(mode, grounding.status === 'available'),
     '',
     STRUCTURED_OUTPUT_INSTRUCTION,
+    // Deterministic Decision-Engine directive (server-computed): the LLM verbalizes this decision. Placed
+    // LAST so it is the most specific, final shaping instruction. Absent → static policy alone.
+    ...(input.answerPlanDirective ? ['', input.answerPlanDirective] : []),
   ].join('\n');
 }
 
