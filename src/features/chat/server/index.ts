@@ -37,6 +37,7 @@ export { classifyQuestionComplexity } from './questionComplexity';
 export type { QuestionComplexity } from './questionComplexity';
 export { consultationResponseFormat, CONSULTATION_JSON_SCHEMA } from './consultationSchema';
 export type {
+  CompatibilityResultMeta,
   ServerConsultationRequest,
   ServerConsultationResult,
   ServerConsultationDeps,

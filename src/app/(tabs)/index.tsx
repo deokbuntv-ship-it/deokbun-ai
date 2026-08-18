@@ -208,6 +208,35 @@ export default function HomeScreen() {
               </View>
             </Stack>
 
+            {/* 궁합 — discoverable entry to the pushed 궁합 flow (NOT a 5th nav tab). */}
+            <Stack gap="md">
+              <Text variant="bodyLarge" style={styles.sectionTitle}>
+                궁합
+              </Text>
+              <Pressable
+                onPress={() => router.push('/compatibility')}
+                accessibilityRole="button"
+                accessibilityLabel="궁합 보러 가기"
+              >
+                <Card radius="xl">
+                  <Stack direction="row" gap="md" align="center">
+                    <LineIcon name="heart" size={22} color={theme.secondary} />
+                    <View style={styles.flex1}>
+                      <Text variant="bodyLarge" style={{ fontWeight: '700' }}>
+                        두 사람 궁합 보기
+                      </Text>
+                      <Text variant="bodySmall" colorToken="textSecondary">
+                        본인과 상대방의 사주로 잘 맞는 점·조율할 점을 봐드려요.
+                      </Text>
+                    </View>
+                    <Text variant="bodyLarge" style={styles.chevron}>
+                      ›
+                    </Text>
+                  </Stack>
+                </Card>
+              </Pressable>
+            </Stack>
+
             {/* 최근 상담 (real) */}
             <Stack gap="md">
               <Text variant="bodyLarge" style={styles.sectionTitle}>

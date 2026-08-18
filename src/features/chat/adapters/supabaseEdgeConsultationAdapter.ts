@@ -3,7 +3,7 @@ import type {
   ConsultationTransport,
   ConsultationTransportResult,
 } from '@/features/chat/services/consultationTransport';
-import type { ServerGroundingMeta } from '@/features/chat/server';
+import type { CompatibilityResultMeta, ServerGroundingMeta } from '@/features/chat/server';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { getSupabaseClient } from '@/services/supabase';
 
@@ -28,12 +28,14 @@ export const supabaseEdgeConsultationAdapter: ConsultationTransport = {
     const structuredResult = (data as { structuredResult?: StructuredConsultationViewModel } | null)
       ?.structuredResult;
     const groundingMeta = (data as { groundingMeta?: ServerGroundingMeta } | null)?.groundingMeta;
+    const compatibility = (data as { compatibility?: CompatibilityResultMeta } | null)?.compatibility;
 
     return {
       ok: true,
       text,
       ...(structuredResult ? { structuredResult } : {}),
       ...(groundingMeta ? { groundingMeta } : {}),
+      ...(compatibility ? { compatibility } : {}),
     };
   },
 };

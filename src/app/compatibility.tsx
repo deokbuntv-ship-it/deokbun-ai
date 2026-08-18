@@ -1,0 +1,156 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
+import { AppHeader } from '@/components/AppHeader';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
+import { Screen } from '@/components/Screen';
+import { Stack } from '@/components/Stack';
+import { Text } from '@/components/Text';
+import { MaxContentWidth } from '@/constants/theme';
+import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
+import { colors } from '@/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+// 궁합 선택 화면 (§32/§33/§34). 본인은 자동 선택(is_self), 상대방은 저장된 대상자 중에서 고르거나
+// 추가한다. 저장된 대상자는 PRIVATE 상담 데이터 — 여기서 노출되는 것은 이름/관계뿐(생년월일 raw 미노출).
+export default function CompatibilityScreen() {
+  const router = useRouter();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const { subjects, status, reload } = useConsultationSubjects();
+  const [targetId, setTargetId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+
+  const self = subjects.find((s) => s.isSelf) ?? null;
+  const others = subjects.filter((s) => !s.isSelf);
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
+  const startCompatibility = () => {
+    if (!self || !targetId) return;
+    router.push({ pathname: '/compatibility-chat', params: { selfId: self.id, targetId } });
+  };
+
+  const renderTarget = (subject: ConsultationSubjectRecord) => {
+    const selected = subject.id === targetId;
+    return (
+      <Pressable
+        key={subject.id}
+        onPress={() => setTargetId(selected ? null : subject.id)}
+        accessibilityRole="button"
+        accessibilityLabel={`${subject.displayName} 선택`}
+      >
+        <Card radius="lg" style={selected ? { borderColor: theme.primary, borderWidth: 1.5 } : undefined}>
+          <Stack direction="row" gap="sm" align="center">
+            <Stack gap="xs" style={{ flex: 1 }}>
+              <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+                {subject.displayName}
+              </Text>
+              {subject.relationship ? (
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {subject.relationship}
+                </Text>
+              ) : null}
+            </Stack>
+            <Text variant="bodyMedium" style={{ color: selected ? theme.primary : theme.textSecondary }}>
+              {selected ? '● 선택됨' : '○ 선택'}
+            </Text>
+          </Stack>
+        </Card>
+      </Pressable>
+    );
+  };
+
+  const renderBody = () => {
+    if (status === 'loading') {
+      return (
+        <Card>
+          <Text variant="bodyMedium" colorToken="textSecondary">
+            불러오는 중입니다...
+          </Text>
+        </Card>
+      );
+    }
+    if (!self) {
+      return (
+        <Card>
+          <Stack gap="sm">
+            <Text variant="bodyMedium">먼저 본인의 생년월일을 등록해 주세요.</Text>
+            <Text variant="bodySmall" colorToken="textSecondary">
+              궁합은 본인과 상대방 두 사람의 사주를 바탕으로 봐드려요.
+            </Text>
+            <Button label="본인 정보 등록하기" onPress={() => router.push('/birth-info')} />
+          </Stack>
+        </Card>
+      );
+    }
+    return (
+      <Stack gap="lg">
+        {/* 본인 (자동 선택) */}
+        <Stack gap="sm">
+          <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+            본인
+          </Text>
+          <Card radius="lg">
+            <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+              {self.displayName} <Text variant="bodySmall" colorToken="textSecondary">(본인)</Text>
+            </Text>
+          </Card>
+        </Stack>
+
+        {/* 상대방 선택 */}
+        <Stack gap="sm">
+          <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+            상대방
+          </Text>
+          {others.length === 0 ? (
+            <Card>
+              <Text variant="bodyMedium" colorToken="textSecondary">
+                아직 저장된 상대방이 없어요. 아래에서 대상자를 추가해 주세요.
+              </Text>
+            </Card>
+          ) : (
+            <Stack gap="sm">{others.map(renderTarget)}</Stack>
+          )}
+          <Button label="＋ 대상자 추가" variant="secondary" onPress={() => router.push('/birth-info')} />
+        </Stack>
+      </Stack>
+    );
+  };
+
+  return (
+    <Screen padded={false} frame>
+      <AppHeader title="궁합" showBack onBack={handleBack} />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.wrapper}>
+          <Stack gap="lg">
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              누구와의 궁합을 볼까요?
+            </Text>
+            {renderBody()}
+            {self ? (
+              <Button label="궁합 보기" onPress={startCompatibility} disabled={!targetId} />
+            ) : null}
+          </Stack>
+        </View>
+      </ScrollView>
+      <DetailBottomNav active="consult" />
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, alignItems: 'center' },
+  wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+});
