@@ -11,7 +11,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
-import { ChatInput, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
+import { ChatInput, conversationService, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
 import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
 import { reportService } from '@/features/chat/report/reportService';
 import type { CompatibilityResultMeta } from '@/features/chat/server';
@@ -36,7 +36,8 @@ function newId(role: string): string {
 
 export default function CompatibilityChatScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ selfId?: string; targetId?: string }>();
+  const params = useLocalSearchParams<{ selfId?: string; targetId?: string; new?: string }>();
+  const startNew = params.new === '1';
   const { isAuthenticated } = useAuth();
   const { subjects, status } = useConsultationSubjects();
 
@@ -59,12 +60,50 @@ export default function CompatibilityChatScreen() {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
-  const initialSentRef = useRef(false);
+  const hydratedRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
+  const persistedIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<ScrollView>(null);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/compatibility');
+  };
+
+  // Best-effort persistence of a Q&A pair (§7). The 궁합 conversation is created LAZILY on the first
+  // answer so it carries the deterministic tier (compatibility_meta) from creation. Idempotent + only
+  // when authenticated; a failure never blocks the answer UX. subject_snapshot freezes the pair (§14).
+  const persistPair = async (
+    userMsg: CompatMessage,
+    assistantMsg: CompatMessage,
+    tierForCreate: CompatibilityResultMeta | null,
+  ) => {
+    if (!isAuthenticated || !self || !target) return;
+    try {
+      if (conversationIdRef.current === null) {
+        conversationIdRef.current = await conversationService.createConversation(
+          target.id,
+          {
+            self: { id: self.id, displayName: self.displayName },
+            target: { id: target.id, displayName: target.displayName, relationship: target.relationship },
+          },
+          { consultationMode: 'compatibility', compatibilityMeta: tierForCreate ?? undefined },
+        );
+      }
+      const cid = conversationIdRef.current;
+      for (const m of [userMsg, assistantMsg]) {
+        if (persistedIdsRef.current.has(m.id)) continue;
+        persistedIdsRef.current.add(m.id);
+        await conversationService.saveMessage(cid, {
+          role: m.role,
+          content: m.text,
+          clientMessageId: m.id,
+          ...(m.structuredResult ? { structuredResult: m.structuredResult } : {}),
+        });
+      }
+    } catch {
+      // fail-open: keep the in-memory conversation; a later message can retry conversation creation.
+    }
   };
 
   const send = async (question: string) => {
@@ -94,31 +133,57 @@ export default function CompatibilityChatScreen() {
         return;
       }
       if (result.compatibility) setTier(result.compatibility);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: newId('assistant'),
-          role: 'assistant',
-          text: result.responseText,
-          ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
-          ...(result.compatibility ? { compatibility: result.compatibility } : {}),
-        },
-      ]);
+      const assistantMsg: CompatMessage = {
+        id: newId('assistant'),
+        role: 'assistant',
+        text: result.responseText,
+        ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
+        ...(result.compatibility ? { compatibility: result.compatibility } : {}),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+      // Persist the Q&A pair (best-effort) so a refresh restores it with ZERO new LLM call (§9).
+      void persistPair(userMsg, assistantMsg, result.compatibility ?? tier);
     } finally {
       setSending(false);
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     }
   };
 
-  // Auto-send the initial overview once both people are loaded.
+  // Load-first (§9/§54): once both people are ready, try to RESTORE the latest 궁합 conversation for
+  // this pair (messages + tier) with NO LLM call. Only when there is none (or 새 궁합 상담) do we auto-send
+  // the initial overview. This is what prevents a refresh from regenerating the whole answer.
   useEffect(() => {
-    if (initialSentRef.current) return;
-    if (status !== 'ready') return;
-    if (!self || !target) return;
-    initialSentRef.current = true;
-    void send(INITIAL_QUESTION);
+    if (hydratedRef.current) return;
+    if (status !== 'ready' || !self || !target) return;
+    hydratedRef.current = true;
+    let cancelled = false;
+
+    if (!isAuthenticated || startNew) {
+      // No persistence (logged-out) or an explicit new consultation → fresh in-memory + auto-send.
+      void send(INITIAL_QUESTION);
+      return;
+    }
+
+    (async () => {
+      const loaded = await conversationService
+        .loadLatestCompatibilityConversation(target.id)
+        .catch(() => null);
+      if (cancelled) return;
+      if (loaded && loaded.messages.length > 0) {
+        conversationIdRef.current = loaded.conversationId;
+        loaded.messages.forEach((m) => persistedIdsRef.current.add(m.id));
+        setMessages(loaded.messages as CompatMessage[]);
+        if (loaded.compatibilityMeta) setTier(loaded.compatibilityMeta as CompatibilityResultMeta);
+      } else {
+        void send(INITIAL_QUESTION);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, self, target]);
+  }, [status, self, target, isAuthenticated, startNew]);
 
   // Deterministic 궁합 report (ZERO extra LLM): composed from the tier + the validated pair answers.
   const handleGenerateReport = async () => {

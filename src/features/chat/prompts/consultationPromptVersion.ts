@@ -14,4 +14,7 @@
 // 1.4.0 — Server Decision Engine: the server derives intent / support level / assertiveness /
 // comparison-ranking-claim permissions (answerPlan) from the question + grounding and hands the LLM a
 // directive it verbalizes (the model no longer decides its own confidence); + consumer 간지-hanja hygiene.
-export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.0';
+// 1.4.1 — Compatibility answer-quality refinement: relationship-specific follow-up examples (no generic
+// "더 궁금한 점?"), relationship-type adaptation (연인/친구/사업파트너/가족), and an explicit no-gender-
+// stereotype rule in the 궁합 response policy. Solo prompt/schema unchanged; compatibility-only wording.
+export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.1';

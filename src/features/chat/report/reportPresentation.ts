@@ -82,7 +82,8 @@ export function toPremiumReportView(report: ConsultationReport): PremiumReportVi
       s.kind === 'paragraph' && s.title === SUMMARY_TITLE,
   );
   return {
-    eyebrow: '개인 상담 보고서',
+    // 궁합 reports read "궁합 보고서" — never the solo "개인 상담 보고서" (§21).
+    eyebrow: report.reportType === 'compatibility' ? '궁합 보고서' : '개인 상담 보고서',
     title: base.title,
     dateLabel: base.dateLabel,
     summary: summarySection ? summarySection.body : '',

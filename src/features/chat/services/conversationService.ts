@@ -68,9 +68,13 @@ export type ConversationSummaryItem = {
 // Creates a new conversation. user_id is decided by the DB default `auth.uid()`.
 // `subjectId` is the saved consultation_subjects UUID, or null for temp/legacy
 // consultations. `subjectSnapshot` freezes the subject/birthInfo at this moment.
+// `opts` (additive) marks a 궁합 conversation (consultation_mode='compatibility') and stores its
+// deterministic tier meta — solo callers pass no opts, so their inserts are byte-unchanged (both
+// columns default null). compatibility_meta requires migration 20260819000100.
 async function createConversation(
   subjectId: string | null,
   subjectSnapshot: ConversationSubjectSnapshot,
+  opts?: { consultationMode?: 'solo' | 'compatibility'; compatibilityMeta?: unknown },
 ): Promise<string> {
   const supabase = getSupabaseClient();
 
@@ -79,6 +83,8 @@ async function createConversation(
     .insert({
       subject_id: subjectId,
       subject_snapshot: subjectSnapshot ?? null,
+      ...(opts?.consultationMode ? { consultation_mode: opts.consultationMode } : {}),
+      ...(opts?.compatibilityMeta !== undefined ? { compatibility_meta: opts.compatibilityMeta } : {}),
     })
     .select('id')
     .single();
@@ -205,6 +211,9 @@ async function loadLatestConversationForSubject(
     .from(CONVERSATIONS)
     .select(CONVERSATION_COLUMNS)
     .eq('subject_id', subjectId)
+    // Exclude 궁합 conversations so the SOLO chat never restores a compatibility conversation for a
+    // subject that is also used as a 궁합 target (solo = null/legacy or explicit 'solo').
+    .or('consultation_mode.is.null,consultation_mode.eq.solo')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -217,6 +226,76 @@ async function loadLatestConversationForSubject(
   }
 
   return hydrateConversation(data as ConversationRow);
+}
+
+// ── 궁합(compatibility) conversation persistence ─────────────────────────────
+// Reuses the SAME conversations + conversation_messages tables (no compatibility_conversations
+// table). A 궁합 conversation is subject_id = target subject + consultation_mode = 'compatibility';
+// the pair is DERIVED (owner is_self + target). compatibility_meta carries the deterministic tier so a
+// reload restores the tier chip without any LLM call. Requires migrations 20260819000000/000100.
+const COMPAT_CONVERSATION_COLUMNS =
+  'id, summary, last_summarized_message_id, subject_snapshot, compatibility_meta';
+
+export type LoadedCompatibilityConversation = LoadedConversation & { compatibilityMeta: unknown };
+
+// Latest 궁합 conversation for a target subject (or null). Restores messages (structured cards +
+// follow-ups) + the deterministic tier meta — the load-first path that prevents a duplicate LLM
+// call on refresh (§9/§54).
+async function loadLatestCompatibilityConversation(
+  subjectId: string,
+): Promise<LoadedCompatibilityConversation | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .select(COMPAT_CONVERSATION_COLUMNS)
+    .eq('subject_id', subjectId)
+    .eq('consultation_mode', 'compatibility')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  if (data === null) {
+    return null;
+  }
+  const row = data as ConversationRow & { compatibility_meta?: unknown };
+  const messages = await loadMessages(row.id);
+  return {
+    conversationId: row.id,
+    messages,
+    summary: row.summary,
+    lastSummarizedMessageId: row.last_summarized_message_id,
+    subjectSnapshot: row.subject_snapshot,
+    compatibilityMeta: row.compatibility_meta ?? null,
+  };
+}
+
+// All 궁합 conversations for a target (pair history), newest first.
+async function listCompatibilityConversationsForSubject(
+  subjectId: string,
+): Promise<ConversationSummaryItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .select('id, created_at, updated_at, summary, subject_snapshot')
+    .eq('subject_id', subjectId)
+    .eq('consultation_mode', 'compatibility')
+    .order('updated_at', { ascending: false });
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  return (
+    (data as
+      | Array<{ id: string; created_at: string; updated_at: string; summary: string | null; subject_snapshot: ConversationSubjectSnapshot }>
+      | null) ?? []
+  ).map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    summary: row.summary,
+    subjectSnapshot: row.subject_snapshot,
+  }));
 }
 
 // Loads a specific conversation by id (for opening a past conversation from
@@ -253,6 +332,8 @@ async function listConversationsForSubject(
     .from(CONVERSATIONS)
     .select('id, created_at, updated_at, summary, subject_snapshot')
     .eq('subject_id', subjectId)
+    // Solo history excludes 궁합 conversations (they surface under 운세우편함 > 궁합, not solo history).
+    .or('consultation_mode.is.null,consultation_mode.eq.solo')
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -308,5 +389,7 @@ export const conversationService = {
   loadLatestConversationForSubject,
   loadConversationById,
   listConversationsForSubject,
+  loadLatestCompatibilityConversation,
+  listCompatibilityConversationsForSubject,
   saveSummary,
 };
