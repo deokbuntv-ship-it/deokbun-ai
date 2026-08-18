@@ -27,6 +27,15 @@ async function ensureProfile(
   userId: string,
   initialDisplayName: string | null,
 ): Promise<void> {
+  // Fail-closed assertion (PGRST303 closure §4): ensureProfile is NOT an auth authority — the caller
+  // guarantees a valid authenticated session. A missing/blank id means the auth state is not ready;
+  // do nothing rather than fire an unauthenticated write.
+  if (typeof userId !== 'string' || userId.trim().length === 0) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth.profile] stage=ensure_profile_skipped reason=missing_user_id');
+    return;
+  }
+
   const supabase = getSupabaseClient();
 
   const { error } = await supabase.from(TABLE).upsert(

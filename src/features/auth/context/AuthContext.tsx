@@ -1,7 +1,9 @@
+import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { mapSupabaseUser } from '@/features/auth/mappers/mapSupabaseUser';
 import { authService, type AuthActionResult } from '@/features/auth/services/authService';
+import { isSessionUsable } from '@/features/auth/sessionValidity';
 import type { AuthProviderId, AuthState } from '@/features/auth/types/auth';
 import { profileService } from '@/features/profile';
 import { getSupabaseClient } from '@/services/supabase';
@@ -34,6 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const ensuredProfileUserIdRef = useRef<string | null>(null);
   const ensureProfileTokenRef = useRef(0);
 
+  // PGRST303 closure: the latest Supabase session (read to check ACCESS-TOKEN freshness before any
+  // authenticated DB bootstrap) + a signal that bumps on every auth event (initial + TOKEN_REFRESHED),
+  // so the bootstrap re-runs once the token is actually valid.
+  const latestSessionRef = useRef<Session | null>(null);
+  const [sessionSignal, setSessionSignal] = useState(0);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -46,19 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (error || data.session === null || data.session.user === null) {
+        const session = error ? null : data.session;
+        latestSessionRef.current = session;
+        if (session === null || session.user === null) {
           setAuthState({ status: 'unauthenticated', user: null });
-          return;
+        } else {
+          setAuthState({ status: 'authenticated', user: mapSupabaseUser(session.user) });
         }
-
-        setAuthState({
-          status: 'authenticated',
-          user: mapSupabaseUser(data.session.user),
-        });
+        // Signal that a session state is known — the profile bootstrap gates on token freshness.
+        setSessionSignal((s) => s + 1);
       })
       .catch(() => {
         if (isMounted) {
+          latestSessionRef.current = null;
           setAuthState({ status: 'unauthenticated', user: null });
+          setSessionSignal((s) => s + 1);
         }
       });
 
@@ -68,15 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Capture the freshest session (incl. TOKEN_REFRESHED) so the bootstrap can re-attempt with a
+        // valid access token — this is what closes the PGRST303 race (no setTimeout / no blind retry).
+        latestSessionRef.current = session;
         if (session === null || session.user === null) {
           setAuthState({ status: 'unauthenticated', user: null });
-          return;
+        } else {
+          setAuthState({ status: 'authenticated', user: mapSupabaseUser(session.user) });
         }
-
-        setAuthState({
-          status: 'authenticated',
-          user: mapSupabaseUser(session.user),
-        });
+        setSessionSignal((s) => s + 1);
       },
     );
 
@@ -103,6 +113,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return; // already ensured (or in-flight) for this user
     }
 
+    // PGRST303 CLOSURE: bootstrap ONLY with a valid, non-expired access token. On restore the token
+    // can be stale while the UI is already "authenticated" → a PostgREST write would fail JWT-claims
+    // validation. If not usable, DEFER without marking done — the next auth event (TOKEN_REFRESHED
+    // bumps sessionSignal) re-runs this effect with the fresh token. No setTimeout, no blind retry.
+    if (!isSessionUsable(latestSessionRef.current)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[auth.profile] stage=bootstrap_deferred authInitialized=true hasSession=${!!latestSessionRef.current} hasUser=${!!latestSessionRef.current?.user} reason=session_not_usable`,
+      );
+      return;
+    }
+
     ensuredProfileUserIdRef.current = userId;
     const token = ensureProfileTokenRef.current + 1;
     ensureProfileTokenRef.current = token;
@@ -117,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authState.status, authState.user?.id]);
+  }, [authState.status, authState.user?.id, sessionSignal]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
