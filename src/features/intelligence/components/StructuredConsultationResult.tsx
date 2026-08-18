@@ -10,11 +10,15 @@ import type { StructuredConsultationViewModel } from '@/features/intelligence/ty
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
 
-import { AssessmentSummary } from './AssessmentSummary';
 import { ConsultationStateNotice } from './ConsultationStateNotice';
 import { FollowUpSuggestions } from './FollowUpSuggestions';
-import { InterpretationEvidenceSheet } from './InterpretationEvidenceSheet';
 import { UserFeedbackControl } from './UserFeedbackControl';
+
+// Commercial cleanup (V4 §22/§23/§24): the AssessmentSummary (fail-closed "아직 평가를 보여드리지
+// 않아요" limitation copy) and the InterpretationEvidenceSheet (raw 활용된 관점 / 미사용 engine status,
+// 천간지지-level facts) are internal/debug surfaces — they are NOT rendered in the consumer answer. The
+// user sees only normalized, natural-language interpretation. The assessment/grounding remain on the
+// view-model for admin/inspection use; they are simply not shown here.
 
 // Commercial Consultation UX V4 — the Structured Consultation Result, COMMERCIAL hierarchy.
 //
@@ -127,17 +131,18 @@ export function StructuredConsultationResult({
         </Card>
       ) : null}
 
-      {/* 4 — DETAIL ON DEMAND (§8/§11): 상세 근거 + assessment + explainability collapsed by default */}
+      {/* 4 — DETAIL ON DEMAND (§8/§11): normalized, user-language interpretation only — collapsed by
+          default. NO raw engine evidence / 활용됨·미사용 / assessment limitation copy (§22-§24). */}
       {hasDetail ? (
         <Card radius="xl">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={detailOpen ? '상세 근거 접기' : '상세 근거 보기'}
+            accessibilityLabel={detailOpen ? '상세 해석 접기' : '상세 해석 보기'}
             onPress={() => setDetailOpen((o) => !o)}
             hitSlop={8}
           >
             <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.secondary }}>
-              {detailOpen ? '상세 근거 접기 ▴' : '상세 근거 보기 ▾'}
+              {detailOpen ? '상세 해석 접기 ▴' : '상세 해석 보기 ▾'}
             </Text>
           </Pressable>
           {detailOpen ? (
@@ -145,15 +150,10 @@ export function StructuredConsultationResult({
               {p.detailSections.map((d, i) => (
                 <Section key={i} title={d.title} body={d.body} />
               ))}
-              <AssessmentSummary view={vm.assessment} />
-              <InterpretationEvidenceSheet grounding={vm.grounding} />
             </Stack>
           ) : null}
         </Card>
-      ) : (
-        // No detail sections → still expose the explainability trigger (its own collapse).
-        <InterpretationEvidenceSheet grounding={vm.grounding} />
-      )}
+      ) : null}
 
       {/* 5 — recommended follow-ups (composer stays external) */}
       {p.followUps.length > 0 && onSelectFollowUp ? (
