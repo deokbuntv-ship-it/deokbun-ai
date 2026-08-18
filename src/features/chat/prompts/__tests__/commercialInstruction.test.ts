@@ -14,6 +14,12 @@ describe('STRUCTURED_OUTPUT_INSTRUCTION — commercial answer rules', () => {
     expect(I).not.toContain('길게, 여러 문단'); // the previous verbose directive is removed
   });
 
+  it('handles multi-year questions as a flow summary + key periods, not N full yearly reports (§13/§14)', () => {
+    expect(I).toContain('여러 해');
+    expect(I).toContain('전환점');
+    expect(I).toContain('연도별 상세는 사용자가 다시 물을 때');
+  });
+
   it('forbids internal/developer terminology and prescribes natural 학문명', () => {
     expect(I).toContain('내부·개발 용어');
     for (const term of ['엔진', 'SAJU', 'iztro', 'grounding', 'V1']) expect(I).toContain(term); // named in the ban list
