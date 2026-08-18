@@ -37,6 +37,11 @@ export type EngineEvidenceTimingAnchors = {
   daewoonAgeSpan?: { min: number; max: number } | null;
   /** true when the current-month 월운 evidence exists — gates 이번 달 / 다음 달 claims. */
   hasMonthlyEvidence?: boolean;
+  /** Grounded CIVIL months as year*100+month (e.g. 202702 = 2027-02), one per question-requested month
+   *  whose 월운 was computed. A specific "YYYY년 M월" claim is a valid timing anchor ONLY when its
+   *  (year, month) is in this set — this both ENABLES grounded future-month claims and CLOSES the prior
+   *  gap where a bare "2027년 2월" passed on year-only grounding. */
+  months?: number[];
 };
 
 export type EngineEvidence = {

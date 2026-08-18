@@ -249,6 +249,6 @@ describe('broadened prohibitions + summary discipline (§21/§44 red-team fix)',
 
 describe('traceability (§36/§37)', () => {
   it('exposes a stable prompt version (bumped to 1.1.0 for the Commercial Answer V5 contract)', () => {
-    expect(CONSULTATION_PROMPT_VERSION).toBe('consultation@1.2.0');
+    expect(CONSULTATION_PROMPT_VERSION).toBe('consultation@1.3.0');
   });
 });

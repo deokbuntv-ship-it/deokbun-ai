@@ -60,6 +60,11 @@ export type SajuEvidenceBundle = {
    *  the frozen engine. Grounds a future-year answer AND makes those years valid timing anchors. */
   extraSewoon?: SewoonResult[] | null;
   wolwoon?: WolwoonResult | null;
+  /** Question-targeted future 월운 for the SPECIFIC months the user asked about (e.g. 2027-02), each
+   *  computed from the frozen engine. `requestedYear`/`requestedMonth` are the CIVIL month the user named
+   *  (the label + timing anchor); `result` is the 사주 월운 for the 사주 month that civil month belongs to.
+   *  Grounds a future-month answer AND makes that (year, month) a valid month-level timing anchor. */
+  extraWolwoon?: Array<{ requestedYear: number; requestedMonth: number; result: WolwoonResult }> | null;
   /** Connected 원국↔대운↔세운↔월운 axis (cross-layer relations). */
   timeAxis?: MyungriTimeAxisResult | null;
   /** Gregorian birth year — an allowed timing anchor (so "2024년생" is not flagged unsupported). */
@@ -208,6 +213,23 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
         `${rel ? ` · 원국관계 ${rel}` : ''}${sewoonRel ? ` · 세운관계 ${sewoonRel}` : ''}`,
     );
   }
+  // Question-targeted future months (frozen engine, labeled by the CIVIL month the user asked). These
+  // become valid month-level timing anchors so the answer may judge that specific month.
+  for (const ew of bundle.extraWolwoon ?? []) {
+    const w = ew.result;
+    if (w.capability !== 'AVAILABLE') continue;
+    const rel = relationsToNatalText(w.relationsToNatal);
+    const sewoonRel = [
+      w.relationToSewoon.stem ? STEM_REL[w.relationToSewoon.stem.kind] : '',
+      ...w.relationToSewoon.branch.map((b) => BRANCH_REL[b.kind]),
+    ]
+      .filter(Boolean)
+      .join(',');
+    timeLines.push(
+      `월운 ${ew.requestedYear}년 ${ew.requestedMonth}월: ${gz(w.pillar)} ${tg(w.tenGods.stemTenGod)}` +
+        `${rel ? ` · 원국관계 ${rel}` : ''}${sewoonRel ? ` · 세운관계 ${sewoonRel}` : ''}`,
+    );
+  }
   if (timeLines.length) sections.push({ label: '세운·월운', lines: timeLines });
 
   // 원국 ↔ 대운 ↔ 세운 ↔ 월운 connected time-axis (cross-layer relations, facts only)
@@ -220,7 +242,9 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     sections.push({ label: '시간축 연결(원국↔대운↔세운↔월운)', lines: axisLines.length ? axisLines : ['현재 교차 관계 없음'] });
   }
 
-  const hasTimingEvidence = hasDaewoon || (se?.capability === 'AVAILABLE') || (wo?.capability === 'AVAILABLE');
+  const availableExtraWolwoon = (bundle.extraWolwoon ?? []).filter((e) => e.result.capability === 'AVAILABLE');
+  const hasTimingEvidence =
+    hasDaewoon || se?.capability === 'AVAILABLE' || wo?.capability === 'AVAILABLE' || availableExtraWolwoon.length > 0;
 
   // structured timing anchors (allowlist for timing validation — Codex pipeline FIX #2 + FIX A)
   const anchorYears = new Set<number>();
@@ -229,6 +253,13 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
   if (wo?.capability === 'AVAILABLE') anchorYears.add(wo.targetYear);
   // Question-targeted years are grounded (their 세운 is computed above) → valid anchors (§2).
   for (const ex of bundle.extraSewoon ?? []) if (ex.capability === 'AVAILABLE') anchorYears.add(ex.targetYear);
+  // Question-targeted MONTHS (year*100+month) grounded above → valid month-level anchors; their civil year
+  // is anchored too so "2027년 2월" passes both the year and the month check.
+  const anchorMonths = new Set<number>();
+  for (const ew of availableExtraWolwoon) {
+    anchorYears.add(ew.requestedYear);
+    anchorMonths.add(ew.requestedYear * 100 + ew.requestedMonth);
+  }
   let daewoonAgeSpan: EngineEvidenceTimingAnchors['daewoonAgeSpan'] = null;
   if (dw && dw.capability === 'AVAILABLE' && dw.cycles.length > 0) {
     daewoonAgeSpan = {
@@ -241,6 +272,7 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     referenceYear: se?.capability === 'AVAILABLE' ? se.targetYear : null, // resolves 올해/내년/내후년
     daewoonAgeSpan,
     hasMonthlyEvidence: wo?.capability === 'AVAILABLE', // gates 이번 달 / 다음 달
+    ...(anchorMonths.size > 0 ? { months: [...anchorMonths].sort((a, b) => a - b) } : {}),
   };
 
   // 근거·한계 — 立春/12-Jie provenance + every reused ruleVersion + the ACTUAL assumptions/limitations

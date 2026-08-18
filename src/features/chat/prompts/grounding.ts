@@ -136,6 +136,18 @@ function isValidTimingAnchors(v: unknown): boolean {
   if (!Array.isArray(o.years) || !o.years.every((y) => isPlausibleYear(y))) return false; // finite integer + range
   if (o.referenceYear !== undefined && o.referenceYear !== null && !isPlausibleYear(o.referenceYear)) return false; // rejects 2026.5 / -1 / NaN / Infinity
   if (o.hasMonthlyEvidence !== undefined && typeof o.hasMonthlyEvidence !== 'boolean') return false;
+  if ((o as { months?: unknown }).months !== undefined) {
+    const months = (o as { months?: unknown }).months;
+    // year*100+month; year plausible, month 1..12. Rejects fractional / out-of-range / bad month.
+    if (
+      !Array.isArray(months) ||
+      !months.every(
+        (m) => Number.isInteger(m) && isPlausibleYear(Math.floor((m as number) / 100)) && (m as number) % 100 >= 1 && (m as number) % 100 <= 12,
+      )
+    ) {
+      return false;
+    }
+  }
   if (o.daewoonAgeSpan !== undefined && o.daewoonAgeSpan !== null) {
     const s = o.daewoonAgeSpan as { min?: unknown; max?: unknown };
     if (s === null || typeof s !== 'object' || typeof s.min !== 'number' || typeof s.max !== 'number') return false;

@@ -2,7 +2,7 @@
 // Regenerate: node supabase/functions/chat/_server/build.mjs
 
 // src/features/chat/prompts/consultationPromptVersion.ts
-var CONSULTATION_PROMPT_VERSION = "consultation@1.2.0";
+var CONSULTATION_PROMPT_VERSION = "consultation@1.3.0";
 
 // src/features/chat/prompts/consultationMode.ts
 var FOLLOW_UP_CUES = /(그중|그 중|그때|그 때|그럼|그러면|그건|그 시기|그 달|아까|방금|위에서|말한 것 중|어느 쪽)/;
@@ -94,6 +94,14 @@ function isValidTimingAnchors(v) {
   if (!Array.isArray(o.years) || !o.years.every((y) => isPlausibleYear(y))) return false;
   if (o.referenceYear !== void 0 && o.referenceYear !== null && !isPlausibleYear(o.referenceYear)) return false;
   if (o.hasMonthlyEvidence !== void 0 && typeof o.hasMonthlyEvidence !== "boolean") return false;
+  if (o.months !== void 0) {
+    const months = o.months;
+    if (!Array.isArray(months) || !months.every(
+      (m) => Number.isInteger(m) && isPlausibleYear(Math.floor(m / 100)) && m % 100 >= 1 && m % 100 <= 12
+    )) {
+      return false;
+    }
+  }
   if (o.daewoonAgeSpan !== void 0 && o.daewoonAgeSpan !== null) {
     const s = o.daewoonAgeSpan;
     if (s === null || typeof s !== "object" || typeof s.min !== "number" || typeof s.max !== "number") return false;
@@ -442,12 +450,13 @@ function mainBodyText(p) {
   return [...coreProseFields(p), p.futureFlow].filter((x) => typeof x === "string").join("\n");
 }
 function timingAnchorsOf(grounding) {
-  const anchors = { years: /* @__PURE__ */ new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
+  const anchors = { years: /* @__PURE__ */ new Set(), months: /* @__PURE__ */ new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== "available") return anchors;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
     if (!ta) continue;
     for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
+    for (const m of ta.months ?? []) if (Number.isInteger(m)) anchors.months.add(m);
     if (typeof ta.referenceYear === "number" && anchors.referenceYear === null) anchors.referenceYear = ta.referenceYear;
     if (ta.hasMonthlyEvidence === true) anchors.hasMonthly = true;
     if (ta.daewoonAgeSpan) {
@@ -466,6 +475,10 @@ function hasUnsupportedTiming(text, anchors) {
   const yearOK = (y) => anchors.years.has(y);
   for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년/g)) {
     if (!yearOK(Number(m[1]))) return true;
+  }
+  for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년\s*(\d{1,2})\s*월/g)) {
+    const mm = Number(m[2]);
+    if (mm >= 1 && mm <= 12 && !anchors.months.has(Number(m[1]) * 100 + mm)) return true;
   }
   for (const [re, off] of RELATIVE_YEAR) {
     if (re.test(text) && (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off))) return true;
@@ -6329,6 +6342,18 @@ function toSajuEvidence(bundle) {
       `월운 ${wo.targetYear}·${wo.lunarMonth}월: ${gz(wo.pillar)} ${tg(wo.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ""}${sewoonRel ? ` · 세운관계 ${sewoonRel}` : ""}`
     );
   }
+  for (const ew of bundle.extraWolwoon ?? []) {
+    const w = ew.result;
+    if (w.capability !== "AVAILABLE") continue;
+    const rel = relationsToNatalText(w.relationsToNatal);
+    const sewoonRel = [
+      w.relationToSewoon.stem ? STEM_REL[w.relationToSewoon.stem.kind] : "",
+      ...w.relationToSewoon.branch.map((b) => BRANCH_REL[b.kind])
+    ].filter(Boolean).join(",");
+    timeLines.push(
+      `월운 ${ew.requestedYear}년 ${ew.requestedMonth}월: ${gz(w.pillar)} ${tg(w.tenGods.stemTenGod)}${rel ? ` · 원국관계 ${rel}` : ""}${sewoonRel ? ` · 세운관계 ${sewoonRel}` : ""}`
+    );
+  }
   if (timeLines.length) sections.push({ label: "세운·월운", lines: timeLines });
   const ax = bundle.timeAxis;
   if (ax && ax.capability === "AVAILABLE") {
@@ -6338,12 +6363,18 @@ function toSajuEvidence(bundle) {
     for (const s of ax.branchSetRelations) axisLines.push(`${SET_REL[s.kind]} ${s.branches.map(branchH).join("")}`);
     sections.push({ label: "시간축 연결(원국↔대운↔세운↔월운)", lines: axisLines.length ? axisLines : ["현재 교차 관계 없음"] });
   }
-  const hasTimingEvidence = hasDaewoon || se?.capability === "AVAILABLE" || wo?.capability === "AVAILABLE";
+  const availableExtraWolwoon = (bundle.extraWolwoon ?? []).filter((e) => e.result.capability === "AVAILABLE");
+  const hasTimingEvidence = hasDaewoon || se?.capability === "AVAILABLE" || wo?.capability === "AVAILABLE" || availableExtraWolwoon.length > 0;
   const anchorYears = /* @__PURE__ */ new Set();
   if (typeof bundle.birthGregorianYear === "number") anchorYears.add(bundle.birthGregorianYear);
   if (se?.capability === "AVAILABLE") anchorYears.add(se.targetYear);
   if (wo?.capability === "AVAILABLE") anchorYears.add(wo.targetYear);
   for (const ex of bundle.extraSewoon ?? []) if (ex.capability === "AVAILABLE") anchorYears.add(ex.targetYear);
+  const anchorMonths = /* @__PURE__ */ new Set();
+  for (const ew of availableExtraWolwoon) {
+    anchorYears.add(ew.requestedYear);
+    anchorMonths.add(ew.requestedYear * 100 + ew.requestedMonth);
+  }
   let daewoonAgeSpan = null;
   if (dw && dw.capability === "AVAILABLE" && dw.cycles.length > 0) {
     daewoonAgeSpan = {
@@ -6356,8 +6387,9 @@ function toSajuEvidence(bundle) {
     referenceYear: se?.capability === "AVAILABLE" ? se.targetYear : null,
     // resolves 올해/내년/내후년
     daewoonAgeSpan,
-    hasMonthlyEvidence: wo?.capability === "AVAILABLE"
+    hasMonthlyEvidence: wo?.capability === "AVAILABLE",
     // gates 이번 달 / 다음 달
+    ...anchorMonths.size > 0 ? { months: [...anchorMonths].sort((a, b) => a - b) } : {}
   };
   const meta = (r) => {
     const o = r;
@@ -6698,6 +6730,83 @@ function resolveQuestionYears(question, referenceYear) {
 }
 function epochForSajuYear(year) {
   return Math.floor(Date.UTC(year, 6, 1, 3, 0, 0) / 1e3);
+}
+function epochForSajuMonth(year, month) {
+  return Math.floor(Date.UTC(year, month - 1, 15, 3, 0, 0) / 1e3);
+}
+
+// src/features/chat/services/questionMonths.ts
+var MAX_MONTH_TARGETS = 12;
+var EMPTY = { intent: "NONE", targets: [] };
+var inRange = (y) => y >= SUPPORTED_YEAR_MIN2 && y <= SUPPORTED_YEAR_MAX2;
+function normalize(year, month) {
+  const zero = month - 1 + year * 12;
+  return { year: Math.floor(zero / 12), month: (zero % 12 + 12) % 12 + 1 };
+}
+function dedupeClampCap(targets) {
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const t of targets) {
+    if (!Number.isInteger(t.month) || t.month < 1 || t.month > 12 || !inRange(t.year)) continue;
+    const key2 = `${t.year}-${t.month}`;
+    if (seen.has(key2)) continue;
+    seen.add(key2);
+    out.push(t);
+    if (out.length >= MAX_MONTH_TARGETS) break;
+  }
+  return out.sort((a, b) => a.year - b.year || a.month - b.month);
+}
+function resolveYearContext(q, referenceYear) {
+  const explicit = q.match(/(\d{4})\s*년/);
+  if (explicit) return Number(explicit[1]);
+  if (referenceYear === null) return null;
+  if (/내후년/.test(q)) return referenceYear + 2;
+  if (/내년|명년/.test(q)) return referenceYear + 1;
+  if (/올해|금년|이번\s*해/.test(q)) return referenceYear;
+  return referenceYear;
+}
+function resolveQuestionMonths(question, referenceYear, referenceMonth) {
+  const q = (question ?? "").trim();
+  if (q.length === 0) return EMPTY;
+  const yearCtx = resolveYearContext(q, referenceYear);
+  if (referenceYear !== null && referenceMonth !== null) {
+    if (/(다다음\s*달|다다음달)/.test(q)) return { intent: "EXACT_MONTH", targets: dedupeClampCap([normalize(referenceYear, referenceMonth + 2)]) };
+    if (/(다음\s*달|담\s*달|다음달)/.test(q)) return { intent: "EXACT_MONTH", targets: dedupeClampCap([normalize(referenceYear, referenceMonth + 1)]) };
+    if (/(이번\s*달|이달|금월|이번달)/.test(q)) return { intent: "EXACT_MONTH", targets: dedupeClampCap([{ year: referenceYear, month: referenceMonth }]) };
+  }
+  const monthNums = [...q.matchAll(/(\d{1,2})\s*월/g)].map((m) => Number(m[1])).filter((n) => n >= 1 && n <= 12);
+  const rangeM = q.match(/(\d{1,2})\s*월?\s*(?:~|∼|-|–|—|부터)\s*(\d{1,2})\s*월(?:\s*까지)?/);
+  if (yearCtx !== null && rangeM) {
+    let a = Number(rangeM[1]);
+    let b = Number(rangeM[2]);
+    if (a >= 1 && a <= 12 && b >= 1 && b <= 12) {
+      if (a > b) [a, b] = [b, a];
+      const targets = [];
+      for (let m = a; m <= b; m++) targets.push({ year: yearCtx, month: m });
+      return { intent: "MONTH_RANGE", targets: dedupeClampCap(targets) };
+    }
+  }
+  if (yearCtx !== null && /상반기/.test(q)) {
+    return { intent: "MONTH_RANGE", targets: dedupeClampCap([1, 2, 3, 4, 5, 6].map((m) => ({ year: yearCtx, month: m }))) };
+  }
+  if (yearCtx !== null && /하반기/.test(q)) {
+    return { intent: "MONTH_RANGE", targets: dedupeClampCap([7, 8, 9, 10, 11, 12].map((m) => ({ year: yearCtx, month: m }))) };
+  }
+  const compareCue = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제)/;
+  if (yearCtx !== null && monthNums.length >= 2 && compareCue.test(q)) {
+    return { intent: "COMPARE_MONTHS", targets: dedupeClampCap(monthNums.map((m) => ({ year: yearCtx, month: m }))) };
+  }
+  const bestCue = /(언제|몇\s*월|어느\s*달|가장\s*좋은\s*달|제일\s*좋은\s*달|좋은\s*달|좋은\s*시기)/;
+  if (yearCtx !== null && bestCue.test(q) && monthNums.length === 0) {
+    return { intent: "BEST_MONTH", targets: dedupeClampCap(Array.from({ length: 12 }, (_, i) => ({ year: yearCtx, month: i + 1 }))) };
+  }
+  if (yearCtx !== null && monthNums.length >= 1) {
+    return {
+      intent: monthNums.length >= 2 ? "COMPARE_MONTHS" : "EXACT_MONTH",
+      targets: dedupeClampCap(monthNums.map((m) => ({ year: yearCtx, month: m })))
+    };
+  }
+  return EMPTY;
 }
 
 // src/features/ziwei/adapters/iztroAdapter.ts
@@ -7374,6 +7483,17 @@ async function buildMyungriEvidence(draft, deps, question) {
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
   const currentSajuYearForTargets = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
   const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets).filter((y) => y !== currentSajuYearForTargets).map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) })).filter((s) => s.capability === "AVAILABLE");
+  const kstNow = new Date((now + 9 * 3600) * 1e3);
+  const currentCivilMonth = kstNow.getUTCMonth() + 1;
+  const extraWolwoon = resolveQuestionMonths(
+    question,
+    currentSajuYearForTargets ?? kstNow.getUTCFullYear(),
+    currentCivilMonth
+  ).targets.map((t) => ({
+    requestedYear: t.year,
+    requestedMonth: t.month,
+    result: calculateWolwoonForInstant({ natal, instantEpochSeconds: epochForSajuMonth(t.year, t.month) })
+  })).filter((x) => x.result.capability === "AVAILABLE");
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
   const currentSajuYear = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
   const currentAge = Number.isFinite(solarBirthYear) && currentSajuYear !== null ? currentSajuYear - solarBirthYear : null;
@@ -7403,6 +7523,7 @@ async function buildMyungriEvidence(draft, deps, question) {
     sewoon: sewoon.capability === "AVAILABLE" ? sewoon : null,
     wolwoon: wolwoon.capability === "AVAILABLE" ? wolwoon : null,
     extraSewoon,
+    extraWolwoon,
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null
   });

@@ -37,7 +37,8 @@ import {
   toSajuEvidence,
   type MyungriStemAndBranch,
 } from '@/features/myungri';
-import { epochForSajuYear, resolveQuestionYears } from '@/features/chat/services/questionYears';
+import { epochForSajuMonth, epochForSajuYear, resolveQuestionYears } from '@/features/chat/services/questionYears';
+import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
 import {
   ZIWEI_RULESET_VERSION,
   computeZiweiChartMemoized,
@@ -142,6 +143,25 @@ async function buildMyungriEvidence(
     .map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) }))
     .filter((s) => s.capability === 'AVAILABLE');
 
+  // Question-targeted future MONTHS (Answer-Seeking Engine §3/§4). Resolve the SPECIFIC months the user
+  // asked (server time is authoritative — never the LLM), compute each one's 월운 from the FROZEN engine,
+  // and label it by the CIVIL month asked. Bounded (≤12) + fail-closed (an ungroundable month is skipped,
+  // so a fabricated month is still rejected). Deterministic; ZERO extra LLM calls. Cost-guarded by the
+  // resolver's intent (EXACT=1, COMPARE=2, RANGE=window, BEST≤12; year-level/non-timing questions → 0).
+  const kstNow = new Date((now + 9 * 3600) * 1000); // Asia/Seoul civil date from the trusted server instant
+  const currentCivilMonth = kstNow.getUTCMonth() + 1;
+  const extraWolwoon = resolveQuestionMonths(
+    question,
+    currentSajuYearForTargets ?? kstNow.getUTCFullYear(),
+    currentCivilMonth,
+  )
+    .targets.map((t) => ({
+      requestedYear: t.year,
+      requestedMonth: t.month,
+      result: calculateWolwoonForInstant({ natal, instantEpochSeconds: epochForSajuMonth(t.year, t.month) }),
+    }))
+    .filter((x) => x.result.capability === 'AVAILABLE');
+
   // Current age + ACTIVE 대운 cycle (Codex FIX #3). The Gregorian birth year comes from the SAME
   // lunar→solar authority Ziwei uses (consistent), and the current 사주 year is the 세운 targetYear.
   // Age is only used to MARK which already-computed cycle is current — no cycle is recomputed.
@@ -183,6 +203,7 @@ async function buildMyungriEvidence(
     sewoon: sewoon.capability === 'AVAILABLE' ? sewoon : null,
     wolwoon: wolwoon.capability === 'AVAILABLE' ? wolwoon : null,
     extraSewoon,
+    extraWolwoon,
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null,
   });

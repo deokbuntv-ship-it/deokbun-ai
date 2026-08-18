@@ -244,6 +244,7 @@ function mainBodyText(p: ParsedStructuredConsultation): string {
 // ── evidence-derived timing anchors (Codex pipeline FIX #2 + FIX A) ───────────────────
 type TimingAnchors = {
   years: Set<number>;
+  months: Set<number>; // grounded CIVIL months as year*100+month (e.g. 202702)
   referenceYear: number | null;
   ageMin: number | null;
   ageMax: number | null;
@@ -251,12 +252,13 @@ type TimingAnchors = {
 };
 
 function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
-  const anchors: TimingAnchors = { years: new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
+  const anchors: TimingAnchors = { years: new Set(), months: new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== 'available') return anchors;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
     if (!ta) continue;
     for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
+    for (const m of ta.months ?? []) if (Number.isInteger(m)) anchors.months.add(m);
     if (typeof ta.referenceYear === 'number' && anchors.referenceYear === null) anchors.referenceYear = ta.referenceYear;
     if (ta.hasMonthlyEvidence === true) anchors.hasMonthly = true;
     if (ta.daewoonAgeSpan) {
@@ -285,6 +287,13 @@ function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
   // explicit Gregorian year
   for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년/g)) {
     if (!yearOK(Number(m[1]))) return true;
+  }
+  // explicit "YYYY년 M월" — a SPECIFIC month claim is supported ONLY when that (year, month) 월운 was
+  // grounded (§14). This ENABLES a grounded future-month judgment AND closes the prior gap where a bare
+  // "2027년 2월" passed on year-only grounding (the month was never checked).
+  for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년\s*(\d{1,2})\s*월/g)) {
+    const mm = Number(m[2]);
+    if (mm >= 1 && mm <= 12 && !anchors.months.has(Number(m[1]) * 100 + mm)) return true;
   }
   // relative-definite year (올해/내년/내후년)
   for (const [re, off] of RELATIVE_YEAR) {

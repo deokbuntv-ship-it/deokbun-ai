@@ -73,3 +73,11 @@ export function resolveQuestionYears(question: string, referenceYear: number | n
 export function epochForSajuYear(year: number): number {
   return Math.floor(Date.UTC(year, 6, 1, 3, 0, 0) / 1000);
 }
+
+// A deterministic epoch (seconds) safely INSIDE the requested CIVIL month (day 15, 03:00 UTC ≈ noon KST):
+// past that month's 節입 (~5th) and before the next, so resolveSajuYearAndMonth maps it to the 사주 month
+// that civil (year, month) mostly belongs to (e.g. civil 2027-02 → 寅월 2027; civil 2027-01 → 丑월 2026).
+// The caller labels the evidence with the CIVIL month the user asked; the 사주 ordinal stays internal. Pure.
+export function epochForSajuMonth(year: number, month: number): number {
+  return Math.floor(Date.UTC(year, month - 1, 15, 3, 0, 0) / 1000);
+}

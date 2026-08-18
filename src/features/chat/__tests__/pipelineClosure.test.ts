@@ -67,7 +67,7 @@ const input = (userMessage: string, d: ConsultationDraft): ChatServiceInput => (
 
 // A well-formed available grounding with explicit timing anchors, for unit-level classifier tests.
 const groundingWith = (o: {
-  hasTiming?: boolean; ziwei?: string; qimen?: string; years?: number[];
+  hasTiming?: boolean; ziwei?: string; qimen?: string; years?: number[]; months?: number[];
   referenceYear?: number | null; ageSpan?: { min: number; max: number } | null; hasMonthly?: boolean;
 } = {}): ConsultationGrounding => ({
   status: 'available',
@@ -80,6 +80,7 @@ const groundingWith = (o: {
         referenceYear: o.referenceYear === undefined ? 2026 : o.referenceYear,
         daewoonAgeSpan: o.ageSpan === undefined ? { min: 2, max: 92 } : o.ageSpan,
         hasMonthlyEvidence: o.hasMonthly ?? true,
+        ...(o.months ? { months: o.months } : {}),
       },
     },
     ziwei: { availability: (o.ziwei ?? 'engine_not_connected') as never },
@@ -154,6 +155,65 @@ describe('FIX 2 — timing validation covers all fields incl. followUps', () => 
     );
     if (out.kind === 'ACCEPTED') expect(out.result.followUps).toEqual(['성격을 더 볼까요?']);
     else throw new Error('expected accepted');
+  });
+});
+
+// ── Future-month grounding (Answer-Seeking Engine P0-C) ──────────────────────────────
+describe('future-month grounding — a specific month claim is gated by grounded 월운', () => {
+  const yA = { years: [2024, 2026, 2027] };
+
+  it('grounded month → a "2027년 2월" suitability claim is ACCEPTED', () => {
+    const out = classifyConsultationOutput(
+      structuredJson({ coreInterpretation: `${LONG} 2027년 2월은 이사 시기로 좋은 편입니다.` }),
+      groundingWith({ ...yA, months: [202702] }),
+    );
+    expect(out.kind).toBe('ACCEPTED');
+  });
+
+  it('UNgrounded month within a grounded year → REJECTED (closes the year-only leak, §14)', () => {
+    const out = classifyConsultationOutput(
+      structuredJson({ coreInterpretation: `${LONG} 2027년 3월이 가장 좋습니다.` }),
+      groundingWith({ ...yA, months: [202702] }), // only Feb grounded, not March
+    );
+    expect(out.kind).toBe('SEMANTIC_REJECTED');
+  });
+
+  it('year grounded but NO month evidence → a bare "2027년 2월" claim is REJECTED (leak closed)', () => {
+    const out = classifyConsultationOutput(
+      structuredJson({ coreInterpretation: `${LONG} 2027년 2월이 이사에 가장 좋습니다.` }),
+      groundingWith({ ...yA }), // years include 2027, but months absent
+    );
+    expect(out.kind).toBe('SEMANTIC_REJECTED');
+  });
+
+  it('a year-level claim (no month) is unaffected — still ACCEPTED', () => {
+    const out = classifyConsultationOutput(
+      structuredJson({ coreInterpretation: `${LONG} 2027년은 이사에 좋은 흐름입니다.` }),
+      groundingWith({ ...yA }),
+    );
+    expect(out.kind).toBe('ACCEPTED');
+  });
+
+  it('END-TO-END: a "2027년 2월" question grounds that month from the frozen engine', async () => {
+    const g = await buildConsultationGrounding(draft(), deps, '2027년 2월에 이사하면 어때?');
+    if (g.status !== 'available') throw new Error('expected available');
+    const anchors = g.evidence.myungri.timingAnchors;
+    expect(anchors?.months ?? []).toContain(202702); // Feb 2027 is a grounded month anchor
+    expect(anchors?.years ?? []).toContain(2027);
+    const monthLines = (g.evidence.myungri.sections ?? []).flatMap((s) => s.lines).join(' ');
+    expect(monthLines).toContain('2027년 2월'); // the compact 월운 row is rendered
+    // and now the LLM MAY assert a Feb-2027 suitability judgment (validated against this grounding)
+    const out = classifyConsultationOutput(
+      structuredJson({ coreInterpretation: `${LONG} 2027년 2월은 이사 시기로 우선순위가 높은 편입니다.` }),
+      g,
+    );
+    expect(out.kind).toBe('ACCEPTED');
+  });
+
+  it('a NON-month question grounds ZERO months (cost guard §36)', async () => {
+    const g = await buildConsultationGrounding(draft(), deps, '내 성격은 어때?');
+    if (g.status !== 'available') throw new Error('expected available');
+    expect(g.evidence.myungri.timingAnchors?.months ?? []).toEqual([]);
   });
 });
 
