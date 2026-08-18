@@ -382,6 +382,9 @@ export function useConversationPersistence(
           role,
           content: message.text,
           clientMessageId: message.id,
+          // Persist the validated structured answer (assistant only; user messages have none) so a
+          // reload restores the card + follow-up chips instead of a plain text bubble (§14).
+          structuredResult: message.structuredResult,
         }),
       )
       .then(() => {

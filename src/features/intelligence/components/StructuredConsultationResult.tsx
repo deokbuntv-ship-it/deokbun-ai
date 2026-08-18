@@ -1,8 +1,10 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
+import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
 import type { FeedbackVerdict } from '@/features/intelligence';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -14,19 +16,14 @@ import { FollowUpSuggestions } from './FollowUpSuggestions';
 import { InterpretationEvidenceSheet } from './InterpretationEvidenceSheet';
 import { UserFeedbackControl } from './UserFeedbackControl';
 
-// Golden Flow V4 — the Structured Consultation Result. Composes the approved answer-first
-// hierarchy over REAL contract fields only. Every prose section (core summary, disposition,
-// interpretation, strengths, cautions, domain, future flow) is a caller-provided string
-// sourced from the LLM response — this component NEVER fabricates interpretation copy. A
-// section with no source is simply omitted (fail-closed). Categorical evaluation comes from
-// `assessment` (fail-closed); explainability from `grounding`.
+// Commercial Consultation UX V4 — the Structured Consultation Result, COMMERCIAL hierarchy.
 //
-// LONG-FORM LOCK (docs/GOLDEN_FLOW_V4_UX.md §0): long-form is a core value. The one-sentence
-// core is ORIENTATION only — it never shortens the answer. The detailed interpretation
-// (핵심 해석 + 강점 + 주의점 + 영역별 해석 + 앞으로의 흐름) renders **EXPANDED by default**; it is
-// NEVER hidden behind "더 자세히 보기". Progressive disclosure / collapse is reserved for
-// technical evidence + methodology, which live in the Explainability sheet ("왜 이렇게
-// 해석했나요?"). The hybrid free-form composer stays outside this component.
+// OWNER PRODUCT DECISION (supersedes the old GOLDEN_FLOW_V4_UX §0 "long-form expanded by default"
+// lock): CONCLUSION FIRST → core points → cautions → DETAIL ON DEMAND (collapsed) → follow-ups.
+// The component binds to a commercial `ConsultationPresentationVM` (via toConsultationPresentation)
+// rather than the raw LLM/engine schema, so the UI layout is decoupled from the validation schema.
+// It NEVER fabricates copy — a section with no source is omitted (fail-closed). Internal engine
+// terminology is already stripped upstream (buildStructuredConsultationResult → stripEngineLabels).
 
 // `StructuredConsultationViewModel` moved to a runtime-neutral module (§2) so the server/Edge consultation
 // contract does not depend on this React-Native component. Re-exported here for existing UI importers.
@@ -80,75 +77,87 @@ export function StructuredConsultationResult({
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // A whole-result truthful state replaces the body — never a fabricated reading.
   if (vm.state) {
     return <ConsultationStateNotice state={vm.state} onRetry={onRetry} />;
   }
 
-  const hasDetailedLongForm =
-    (vm.strengths?.length ?? 0) > 0 ||
-    (vm.cautions?.length ?? 0) > 0 ||
-    (vm.domainInterpretation?.length ?? 0) > 0 ||
-    !!vm.futureFlow;
+  // Bind to the commercial presentation model (hierarchy + dedup + empty-filter + hygiene upstream).
+  const p = toConsultationPresentation(vm);
+  const hasDetail = p.detailSections.length > 0;
 
   return (
     <Stack gap="lg">
-      {/* 1 — core conclusion (orientation only; never a replacement for the long answer) */}
-      {vm.coreSummary ? (
+      {/* 1 — HEADLINE conclusion (visible on the first viewport, §7) + optional disposition line */}
+      {p.headline ? (
         <Card radius="xl">
           <Text variant="bodyLarge" style={{ fontWeight: '700', lineHeight: 26 }}>
-            {vm.coreSummary}
+            {p.headline}
+          </Text>
+          {p.disposition ? (
+            <Text
+              variant="bodySmall"
+              colorToken="textSecondary"
+              style={{ marginTop: spacing.xs, lineHeight: 21 }}
+            >
+              {p.disposition}
+            </Text>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {/* 2 — concise core interpretation (the summary) */}
+      {p.summary ? (
+        <Card radius="xl">
+          <Text variant="bodyMedium" style={{ lineHeight: 23 }}>
+            {p.summary}
           </Text>
         </Card>
       ) : null}
 
-      {/* 2 — disposition / current context */}
-      {vm.disposition ? (
-        <Card radius="xl">
-          <Section title="기본 성향" body={vm.disposition} />
-        </Card>
-      ) : null}
-
-      {/* 3 — Assessment summary (fail-closed, categorical) */}
-      <AssessmentSummary view={vm.assessment} />
-
-      {/* 4 — current flow */}
-      {vm.currentFlow ? (
-        <Card radius="xl">
-          <Section title="현재 흐름" body={vm.currentFlow} />
-        </Card>
-      ) : null}
-
-      {/* 5 — core interpretation: the primary long-form answer, EXPANDED (§0) */}
-      {vm.coreInterpretation ? (
-        <Card radius="xl">
-          <Section title="핵심 해석" body={vm.coreInterpretation} />
-        </Card>
-      ) : null}
-
-      {/* 5b–5e — detailed long-form (강점/주의점/영역별/앞으로의 흐름): EXPANDED by default (§0).
-          NEVER behind "더 자세히 보기" — this is the substance of the consultation. */}
-      {hasDetailedLongForm ? (
+      {/* 3 — key points + cautions (compact) */}
+      {p.keyPoints.length > 0 || p.cautions.length > 0 ? (
         <Card radius="xl">
           <Stack gap="lg">
-            <BulletList title="강점" items={vm.strengths} glyphColor={theme.secondary} />
-            <BulletList title="주의할 점" items={vm.cautions} glyphColor={theme.accent} />
-            {vm.domainInterpretation?.map((d, i) => (
-              <Section key={i} title={d.title} body={d.body} />
-            ))}
-            <Section title="앞으로의 흐름" body={vm.futureFlow} />
+            <BulletList title="핵심 포인트" items={p.keyPoints} glyphColor={theme.secondary} />
+            <BulletList title="조심할 점" items={p.cautions} glyphColor={theme.accent} />
           </Stack>
         </Card>
       ) : null}
 
-      {/* 6 — Explainability (evidence/methodology — the only optional/collapsible depth) */}
-      <InterpretationEvidenceSheet grounding={vm.grounding} />
+      {/* 4 — DETAIL ON DEMAND (§8/§11): 상세 근거 + assessment + explainability collapsed by default */}
+      {hasDetail ? (
+        <Card radius="xl">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={detailOpen ? '상세 근거 접기' : '상세 근거 보기'}
+            onPress={() => setDetailOpen((o) => !o)}
+            hitSlop={8}
+          >
+            <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.secondary }}>
+              {detailOpen ? '상세 근거 접기 ▴' : '상세 근거 보기 ▾'}
+            </Text>
+          </Pressable>
+          {detailOpen ? (
+            <Stack gap="lg" style={{ marginTop: spacing.md }}>
+              {p.detailSections.map((d, i) => (
+                <Section key={i} title={d.title} body={d.body} />
+              ))}
+              <AssessmentSummary view={vm.assessment} />
+              <InterpretationEvidenceSheet grounding={vm.grounding} />
+            </Stack>
+          ) : null}
+        </Card>
+      ) : (
+        // No detail sections → still expose the explainability trigger (its own collapse).
+        <InterpretationEvidenceSheet grounding={vm.grounding} />
+      )}
 
-      {/* 7 — recommended follow-ups (helpers; composer stays external). They arise from a
-          rich answer's new curiosity — never from withholding interpretation. */}
-      {vm.followUps && onSelectFollowUp ? (
-        <FollowUpSuggestions suggestions={vm.followUps} onSelect={onSelectFollowUp} />
+      {/* 5 — recommended follow-ups (composer stays external) */}
+      {p.followUps.length > 0 && onSelectFollowUp ? (
+        <FollowUpSuggestions suggestions={p.followUps} onSelect={onSelectFollowUp} />
       ) : null}
 
       {/* feedback (honest seam) */}

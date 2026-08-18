@@ -1,5 +1,10 @@
 import { logDbError } from '@/features/analysis';
+import {
+  parsePersistedStructured,
+  serializeStructuredForPersistence,
+} from '@/features/chat/presentation/persistStructured';
 import type { ChatMessage } from '@/features/chat/types/chat';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { getSupabaseClient } from '@/services/supabase';
 
 // Persistence for conversation sessions and their messages. This lives OUTSIDE
@@ -11,7 +16,9 @@ import { getSupabaseClient } from '@/services/supabase';
 // composite-ownership RLS WITH CHECK so a conversation can only reference the
 // caller's own consultation_subjects.
 //
-// Never stores: prompt text, memory summary, API keys, JWTs, or secrets.
+// Never stores: prompt text, grounding/engine payload, API keys, JWTs, or secrets. It DOES store the
+// validated user-facing structured answer (prose + follow-ups) in `structured_result` so a reload
+// keeps the card + chips (§14/§56 — no grounding, no raw payload).
 
 const CONVERSATIONS = 'conversations';
 const MESSAGES = 'conversation_messages';
@@ -30,6 +37,7 @@ type ConversationMessageRow = {
   role: PersistableMessageRole;
   content: string;
   client_message_id: string;
+  structured_result?: unknown; // JSONB — parsed fail-closed by parsePersistedStructured
 };
 
 type ConversationRow = {
@@ -93,9 +101,16 @@ async function saveMessage(
     role: PersistableMessageRole;
     content: string;
     clientMessageId: string;
+    structuredResult?: StructuredConsultationViewModel;
   },
 ): Promise<void> {
   const supabase = getSupabaseClient();
+
+  // Persist the VALIDATED structured answer (user-facing prose + follow-ups only — never grounding
+  // or raw payload; §14/§56) so a reload keeps the card + chips instead of a plain bubble.
+  const persisted = message.structuredResult
+    ? serializeStructuredForPersistence(message.structuredResult)
+    : null;
 
   // Idempotent: the (conversation_id, client_message_id) unique constraint plus
   // ignoreDuplicates makes a repeated save a no-op. The parent-ownership INSERT
@@ -106,6 +121,8 @@ async function saveMessage(
       role: message.role,
       content: message.content,
       client_message_id: message.clientMessageId,
+      structured_result: persisted,
+      follow_ups: persisted?.followUps ?? null,
     },
     { onConflict: 'conversation_id,client_message_id', ignoreDuplicates: true },
   );
@@ -120,7 +137,7 @@ async function loadMessages(conversationId: string): Promise<ChatMessage[]> {
 
   const { data: rows, error } = await supabase
     .from(MESSAGES)
-    .select('role, content, client_message_id')
+    .select('role, content, client_message_id, structured_result')
     .eq('conversation_id', conversationId)
     .order('seq', { ascending: true });
 
@@ -128,11 +145,16 @@ async function loadMessages(conversationId: string): Promise<ChatMessage[]> {
     logDbError(error, 'conversation', 'persist');
   }
 
-  return ((rows as ConversationMessageRow[] | null) ?? []).map((row) => ({
-    id: row.client_message_id,
-    role: row.role,
-    text: row.content,
-  }));
+  return ((rows as ConversationMessageRow[] | null) ?? []).map((row) => {
+    // Restore the structured card fail-closed: malformed/legacy/absent → plain text bubble.
+    const structuredResult = parsePersistedStructured(row.structured_result);
+    return {
+      id: row.client_message_id,
+      role: row.role,
+      text: row.content,
+      ...(structuredResult ? { structuredResult } : {}),
+    };
+  });
 }
 
 async function hydrateConversation(
