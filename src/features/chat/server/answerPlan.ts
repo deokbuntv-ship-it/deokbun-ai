@@ -40,6 +40,10 @@ export type AnswerPlan = {
 const COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 const RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
 const EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
+// GUARANTEE-seeking: "무조건 성공해?", "반드시 붙나요?", "100% 부자 될까요?" — a demand for a CERTAIN
+// outcome that is NOT phrased as "~하게 돼", so EVENT_CUE misses it. It is still an event-certainty ask:
+// the engine must forbid guaranteeing the event and answer with suitability instead (§6/§11/§28).
+const GUARANTEE_CUE = /무조건|반드시|100\s*%|꼭\s|틀림없이|절대(?:\s|로)|확실히/;
 const SUITABILITY_CUE = /해도\s*(?:돼|되나|괜찮|될까)|괜찮(?:을까|아)|좋을까|어때|어떨까|맞(?:아|을까|나)|추천/;
 const ACTION_CUE = /할까|말까|해야\s*(?:돼|하나|할까)|어떻게\s*(?:해|하면)|계속\s*할|확장|바꿀까|움직/;
 
@@ -83,11 +87,13 @@ export function deriveAnswerPlan(
   // Intent (multi). EVENT_PREDICTION is recognised but always down-converted to a suitability/timing answer
   // (§6/§11) — the decision NEED, not the literal event, drives the answer.
   const intents: DecisionIntent[] = [];
-  // Two named candidates ARE a comparison (the structure signals it, e.g. "2월이 좋아 5월이 좋아?");
-  // a lexical cue also triggers it across a year range.
-  const isCompare =
-    monthPlan.intent === 'COMPARE_MONTHS' ||
-    (COMPARE_CUE.test(q) && (monthPlan.targets.length >= 2 || requestedYears.length >= 2));
+  // A comparison is RECOGNISED whenever the question compares options: two named months (the structure
+  // signals it, e.g. "2월이 좋아 5월이 좋아?") OR a comparison cue — INCLUDING a NON-TEMPORAL choice
+  // ("직장 vs 사업 뭐가 더 좋아?") that has no year/month candidates. Recognition ≠ permission: the user
+  // asked us to choose, so we must engage the comparison — but `comparisonSupported` below still requires
+  // ≥2 GROUNDED temporal candidates, so a domain choice is weighed honestly without fabricating a timing
+  // "winner" (§12/§29).
+  const isCompare = monthPlan.intent === 'COMPARE_MONTHS' || COMPARE_CUE.test(q);
   // A best/range ask over a candidate set is a ranking.
   const isRanking =
     monthPlan.intent === 'BEST_MONTH' ||
@@ -95,7 +101,7 @@ export function deriveAnswerPlan(
     (RANK_CUE.test(q) && requestedYears.length >= 2);
   if (isCompare) intents.push('COMPARISON');
   if (isRanking) intents.push('RANKING');
-  if (EVENT_CUE.test(q)) intents.push('EVENT_PREDICTION');
+  if (EVENT_CUE.test(q) || GUARANTEE_CUE.test(q)) intents.push('EVENT_PREDICTION');
   if (ACTION_CUE.test(q)) intents.push('ACTION');
   if (SUITABILITY_CUE.test(q)) intents.push('SUITABILITY');
   if (monthPlan.intent !== 'NONE' || requestedYears.length > 0) intents.push('TIMING');

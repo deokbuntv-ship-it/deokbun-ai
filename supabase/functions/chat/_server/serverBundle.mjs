@@ -7704,6 +7704,7 @@ function buildStructuredConsultationResult(parsed, grounding) {
 var COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 var RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
 var EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
+var GUARANTEE_CUE = /무조건|반드시|100\s*%|꼭\s|틀림없이|절대(?:\s|로)|확실히/;
 var SUITABILITY_CUE = /해도\s*(?:돼|되나|괜찮|될까)|괜찮(?:을까|아)|좋을까|어때|어떨까|맞(?:아|을까|나)|추천/;
 var ACTION_CUE = /할까|말까|해야\s*(?:돼|하나|할까)|어떻게\s*(?:해|하면)|계속\s*할|확장|바꿀까|움직/;
 var groundedMonthsOf = (g) => {
@@ -7738,11 +7739,11 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
   const gMonths = groundedMonthsOf(grounding);
   const gYears = groundedYearsOf(grounding);
   const intents = [];
-  const isCompare = monthPlan.intent === "COMPARE_MONTHS" || COMPARE_CUE.test(q) && (monthPlan.targets.length >= 2 || requestedYears.length >= 2);
+  const isCompare = monthPlan.intent === "COMPARE_MONTHS" || COMPARE_CUE.test(q);
   const isRanking = monthPlan.intent === "BEST_MONTH" || monthPlan.intent === "MONTH_RANGE" || RANK_CUE.test(q) && requestedYears.length >= 2;
   if (isCompare) intents.push("COMPARISON");
   if (isRanking) intents.push("RANKING");
-  if (EVENT_CUE.test(q)) intents.push("EVENT_PREDICTION");
+  if (EVENT_CUE.test(q) || GUARANTEE_CUE.test(q)) intents.push("EVENT_PREDICTION");
   if (ACTION_CUE.test(q)) intents.push("ACTION");
   if (SUITABILITY_CUE.test(q)) intents.push("SUITABILITY");
   if (monthPlan.intent !== "NONE" || requestedYears.length > 0) intents.push("TIMING");
