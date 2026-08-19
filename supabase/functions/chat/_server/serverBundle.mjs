@@ -9193,6 +9193,429 @@ var DAILY_FORTUNE_JSON_SCHEMA = {
 function dailyFortuneResponseFormat() {
   return { type: "json_schema", name: "deokbun_today_fortune", strict: true, schema: DAILY_FORTUNE_JSON_SCHEMA };
 }
+
+// src/features/monthly/engine/monthDate.ts
+var KST_OFFSET_SECONDS3 = 32400;
+var FORTUNE_TIMEZONE2 = "Asia/Seoul";
+function currentTargetMonth(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
+}
+function monthMidpointEpochSeconds(m) {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
+}
+function formatMonthLabel(m) {
+  return `${m.year}년 ${m.month}월`;
+}
+
+// src/features/monthly/engine/monthlyEvidence.ts
+var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.0.0";
+var ALL_DOMAINS2 = ["overall", "work", "wealth", "relationship", "action"];
+async function buildMonthlyFortuneEvidence(input, deps) {
+  const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
+  const instant = monthMidpointEpochSeconds(target);
+  const unavailable9 = (reason) => ({
+    available: false,
+    year: target.year,
+    month: target.month,
+    timezone: FORTUNE_TIMEZONE2,
+    reason,
+    evidenceVersion: MONTHLY_EVIDENCE_VERSION
+  });
+  let execution;
+  try {
+    execution = await executeSajuFromBirthInput(toSajuEngineInput(input.birthInfo), {
+      digestProvider: deps.digestProvider,
+      historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
+    });
+  } catch {
+    return unavailable9("CHART_EXECUTION_THREW");
+  }
+  if (!execution.success) return unavailable9("CHART_INPUT_INVALID");
+  const engineResult = execution.engineResult;
+  if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
+  const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
+  const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: instant });
+  if (wolwoon.capability !== "AVAILABLE") return unavailable9(`WOLWOON_${wolwoon.reason}`);
+  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: instant });
+  return {
+    available: true,
+    year: target.year,
+    month: target.month,
+    timezone: FORTUNE_TIMEZONE2,
+    monthStemTenGod: wolwoon.tenGods.stemTenGod,
+    monthBranchTenGod: wolwoon.tenGods.branchMainTenGod,
+    monthRelationsToNatal: wolwoon.relationsToNatal,
+    sewoonAvailable: sewoon.capability === "AVAILABLE",
+    supportedDomains: ALL_DOMAINS2,
+    evidenceVersion: MONTHLY_EVIDENCE_VERSION
+  };
+}
+
+// src/features/monthly/engine/monthlyPlan.ts
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.0.0";
+var MONTHLY_MODE_LABEL = {
+  EXPAND: "확장·추진",
+  MANAGE: "점검·관리",
+  CONNECT: "관계·조율",
+  ADJUST: "조정·조율",
+  STABILIZE: "정비·속도조절"
+};
+function tenGodDomain2(tg3) {
+  switch (tg3) {
+    case "DIRECT_WEALTH":
+    case "INDIRECT_WEALTH":
+      return "wealth";
+    case "DIRECT_OFFICER":
+    case "SEVEN_KILLINGS":
+      return "work";
+    case "EATING_GOD":
+    case "HURTING_OFFICER":
+      return "action";
+    case "PEER":
+    case "ROB_WEALTH":
+      return "relationship";
+    case "DIRECT_RESOURCE":
+    case "INDIRECT_RESOURCE":
+      return "overall";
+  }
+}
+function derivePrimaryMode2(tier, strongestDomain) {
+  if (tier === "속도를 조절할 달") return "STABILIZE";
+  if (tier === "변화가 많은 달") return "ADJUST";
+  switch (strongestDomain) {
+    case "work":
+    case "action":
+      return "EXPAND";
+    case "wealth":
+    case "overall":
+      return "MANAGE";
+    case "relationship":
+      return "CONNECT";
+  }
+}
+function deriveDomainSignals2(tier, strongestDomain, cautionDomain) {
+  const emphasisStatus = tier === "기회를 살리기 좋은 달" ? "좋음" : "무난";
+  const signals = [{ domain: strongestDomain, status: emphasisStatus }];
+  if (cautionDomain !== null && cautionDomain !== strongestDomain) {
+    signals.push({ domain: cautionDomain, status: "주의" });
+  }
+  return signals;
+}
+var HARMONY_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
+var FRICTION_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+function deriveMonthlyPlan(evidence) {
+  const base = {
+    year: evidence.year,
+    month: evidence.month,
+    maxOpportunities: 3,
+    maxCautions: 2,
+    maxActions: 3,
+    forbidEventCertainty: true,
+    forbidExactDates: true,
+    evidenceVersion: evidence.evidenceVersion,
+    planVersion: MONTHLY_PLAN_VERSION
+  };
+  if (!evidence.available) {
+    return {
+      ...base,
+      available: false,
+      overallTier: "안정적으로 운영할 달",
+      primaryMode: "MANAGE",
+      primaryModeLabel: MONTHLY_MODE_LABEL.MANAGE,
+      strongestDomain: "overall",
+      cautionDomain: null,
+      domainSignals: [],
+      supportedDomains: [],
+      harmonyCount: 0,
+      frictionCount: 0
+    };
+  }
+  const rel = evidence.monthRelationsToNatal;
+  let harmonyCount = 0;
+  let frictionCount = 0;
+  for (const s of rel.stem) {
+    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
+    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
+  }
+  for (const b of rel.branch) {
+    if (HARMONY_BRANCH2.has(b.relation.kind)) harmonyCount += 1;
+    else if (FRICTION_BRANCH2.has(b.relation.kind)) frictionCount += 1;
+  }
+  const overallTier = frictionCount === 0 && harmonyCount >= 1 ? "기회를 살리기 좋은 달" : frictionCount === 0 ? "안정적으로 운영할 달" : harmonyCount >= frictionCount ? "변화가 많은 달" : "속도를 조절할 달";
+  const strongestDomain = tenGodDomain2(evidence.monthStemTenGod);
+  const cautionDomain = frictionCount > 0 ? tenGodDomain2(evidence.monthBranchTenGod) : null;
+  const primaryMode = derivePrimaryMode2(overallTier, strongestDomain);
+  return {
+    ...base,
+    available: true,
+    overallTier,
+    primaryMode,
+    primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
+    strongestDomain,
+    cautionDomain,
+    domainSignals: deriveDomainSignals2(overallTier, strongestDomain, cautionDomain),
+    supportedDomains: evidence.supportedDomains,
+    harmonyCount,
+    frictionCount
+  };
+}
+
+// src/features/monthly/types.ts
+var MONTHLY_DOMAIN_LABEL = {
+  overall: "전체 흐름",
+  work: "일·사업",
+  wealth: "재물",
+  relationship: "인간관계·연애",
+  action: "행동·변화"
+};
+var MONTHLY_POLICY_VERSION = "monthly@1.0.0";
+
+// src/features/monthly/server/monthlyFortunePrompt.ts
+function buildMonthlyFortunePrompt(plan) {
+  const label = formatMonthLabel({ year: plan.year, month: plan.month });
+  const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
+  const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
+  const system = [
+    `당신은 덕분AI의 "이번 달 운세"입니다. 한 사람의 사주를 ${label}에 대입해 나온 "이번 달의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 이번 달이 어떤 달이고 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답해야 합니다.`,
+    "반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.",
+    '서버가 이미 판단한 이번 달의 결(반드시 그대로 따를 것 — 당신은 이 판단을 "말로 풀어내는" 역할입니다):',
+    `- 이번 달 전반 기운: "${plan.overallTier}"`,
+    `- 이번 달 권하는 방식: "${plan.primaryModeLabel}"`,
+    `- 기운이 실리는 영역: "${emphasized}"`,
+    cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 이번 달은 크게 부딪히는 기운은 없습니다.",
+    "작성 규칙(반드시 지킬 것):",
+    '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
+    "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
+    '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
+    `- opportunities: 최대 ${plan.maxOpportunities}개. 서로 다른 새로운 정보. 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
+    `- cautions: 최대 ${plan.maxCautions}개. "조심하세요"로 끝내지 말고 무엇을 어떻게 조심할지 구체적으로. ${cautionLabel ? "위 조절 영역 중심으로." : "특별한 마찰이 없으면 억지로 만들지 말고 0~1개만."}`,
+    `- actions: 이번 달을 어떻게 보내면 좋은지 구체적 행동 ${plan.maxActions}개 이내("그래서 이번 달 어떻게 보내면 되지?"에 답).`,
+    "- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 이번 달 결정), 3) 시기/실행 순으로.",
+    '정확한 날짜·주간을 지어내지 마십시오(§24): 이번 달 근거는 "달" 단위입니다. "8월 17~21일이 가장 좋다"처럼 특정 날짜/주를 단정하지 말고, 더 구체적인 시기가 궁금하면 상담에서 날짜를 비교해볼 수 있다고 안내하십시오.',
+    '사건을 확정하지 마십시오(§32): "돈이 들어옵니다 / 계약이 성사됩니다 / 연락이 옵니다 / 이직합니다 / 헤어집니다"처럼 쓰지 말고, "~하기에 좋은 흐름", "~은 조건을 확인하고 움직이는 편이 낫습니다"처럼 적합도·기회로 쓰십시오. 행운의 색·방향·숫자·점수도 만들지 마십시오.',
+    "건강은 진단·치료가 아니라 컨디션 관리·생활 리듬으로만. 돈은 특정 종목 매수 권유 금지, 흐름·조율로만. 관계는 상대의 속마음을 사실로 단정하지 마십시오.",
+    "JSON 스키마(deokbun_monthly_fortune)에 맞춰 그 형식으로만 답하십시오. 글은 모바일에서 읽기 좋게 간결하게(긴 에세이 금지)."
+  ].join("\n");
+  const user = [
+    `이번 달: ${label}`,
+    `전반 기운: ${plan.overallTier}`,
+    `권하는 방식: ${plan.primaryModeLabel}`,
+    `기운이 실리는 영역: ${emphasized}`,
+    `조율이 필요한 영역: ${cautionLabel ?? "특별히 없음"}`,
+    `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
+    "",
+    `위 판단을 바탕으로, 이번 달 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답하는 ${label} 운세를 스키마 형식의 JSON으로 작성하십시오.`
+  ].join("\n");
+  return [
+    { role: "system", content: system },
+    { role: "user", content: user }
+  ];
+}
+
+// src/features/monthly/server/buildMonthlyFortune.ts
+var clean3 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
+function firstSentence2(s) {
+  const m = /^[^.!?。\n]*[.!?。]?/.exec(s.trim());
+  return (m ? m[0] : s).trim();
+}
+function toDisplayLabel2(rawLabel, question) {
+  const base = (rawLabel || question).trim().replace(/[?？.!。·\s]+$/u, "");
+  return base.length <= 20 ? base : `${base.slice(0, 18).trim()}…`;
+}
+var CATEGORY_PATTERNS2 = [
+  { key: "RUSH", re: /서두르|성급|(?<!마)무리|급하게|급한|밀어붙이|조급/ },
+  { key: "ORGANIZE", re: /정리|점검|마무리|재점검|정돈|조건을?\s*(다시\s*)?확인/ },
+  { key: "PACE", re: /속도|천천히|여유|리듬|쉬어|휴식|무리하지/ },
+  { key: "RELATION", re: /관계|사람|소통|말을?\s*아끼|경청|협의|대화/ },
+  { key: "DECIDE", re: /결정|판단|선택|계약|서명|협상/ },
+  { key: "MONEY", re: /지출|비용|예산|투자|자금|씀씀이|수익/ },
+  { key: "EXPAND", re: /확장|추진|도전|시작|새로운\s*일|벌이/ }
+];
+function semanticCategory2(text) {
+  for (const c of CATEGORY_PATTERNS2) if (c.re.test(text)) return c.key;
+  return null;
+}
+var EVENT_GUARANTEE2 = /(돈|재물|자금|목돈)[^.\n]{0,8}(들어옵니다|들어와요|생깁니다|생겨요)|(합격|당첨|승진|성사|성공|이직|퇴사)(합니다|됩니다|해요|돼요)|(연락|전화|고백)[^.\n]{0,8}(옵니다|와요|받습니다)|(헤어집니다|이혼합니다|사고가\s*납니다)/;
+function containsEventGuarantee2(text) {
+  return EVENT_GUARANTEE2.test(text);
+}
+var UNSUPPORTED_DATE = /\d{1,2}\s*[~\-–]\s*\d{1,2}\s*일|\d{1,2}\s*일[^\d]{0,8}(가장|제일|최고|좋|유리|추천|길|적합)|\d{1,2}\s*월\s*\d{1,2}\s*일|(첫째|둘째|셋째|넷째|마지막)\s*주[^\d]{0,8}(가장|제일|좋|유리|추천)/;
+function containsUnsupportedDatePrecision(text) {
+  return UNSUPPORTED_DATE.test(text);
+}
+function parseMonthlyFortune(raw, plan) {
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!obj || typeof obj !== "object") return null;
+  const o = obj;
+  const headline = clean3(o.headline);
+  const overallSummary = clean3(o.overallSummary);
+  if (headline.length === 0 || overallSummary.length === 0) return null;
+  const verdict = clean3(o.verdict) || firstSentence2(overallSummary);
+  const seen = /* @__PURE__ */ new Set();
+  const opportunities = [];
+  for (const h of Array.isArray(o.opportunities) ? o.opportunities : []) {
+    const hh = h ?? {};
+    const domain = clean3(hh.domain);
+    const title = clean3(hh.title);
+    const body = clean3(hh.body);
+    if (title.length === 0 || body.length === 0) continue;
+    const cat = semanticCategory2(`${title} ${body}`);
+    if (cat && seen.has(cat)) continue;
+    if (cat) seen.add(cat);
+    opportunities.push({ domain, title, body });
+    if (opportunities.length >= plan.maxOpportunities) break;
+  }
+  const covered = /* @__PURE__ */ new Set([...seen]);
+  for (const t of [verdict, headline]) {
+    const c = semanticCategory2(t);
+    if (c) covered.add(c);
+  }
+  const cautions = [];
+  for (const c of Array.isArray(o.cautions) ? o.cautions : []) {
+    const cc = c ?? {};
+    const title = clean3(cc.title);
+    const body = clean3(cc.body);
+    if (title.length === 0 || body.length === 0) continue;
+    const cat = semanticCategory2(`${title} ${body}`);
+    if (cat && covered.has(cat)) continue;
+    if (cat) covered.add(cat);
+    cautions.push({ title, body });
+    if (cautions.length >= plan.maxCautions) break;
+  }
+  const actionSeen = /* @__PURE__ */ new Set();
+  const actions = [];
+  for (const a of Array.isArray(o.actions) ? o.actions : []) {
+    const text = clean3(a);
+    if (text.length === 0) continue;
+    const cat = semanticCategory2(text);
+    if (cat && actionSeen.has(cat)) continue;
+    if (cat) actionSeen.add(cat);
+    actions.push(text);
+    if (actions.length >= plan.maxActions) break;
+  }
+  const followUps = [];
+  const rawFollowUps = Array.isArray(o.followUps) ? o.followUps : Array.isArray(o.consultationPrompts) ? o.consultationPrompts : [];
+  for (const f of rawFollowUps) {
+    let displayLabel = "";
+    let question = "";
+    if (typeof f === "string") {
+      question = clean3(f);
+    } else if (f && typeof f === "object") {
+      const ff = f;
+      displayLabel = clean3(ff.displayLabel);
+      question = clean3(ff.question);
+    }
+    if (question.length === 0) continue;
+    followUps.push({ displayLabel: toDisplayLabel2(displayLabel, question), question });
+    if (followUps.length >= 3) break;
+  }
+  if (verdict.length === 0 || actions.length === 0) return null;
+  const surfaced = [
+    headline,
+    verdict,
+    overallSummary,
+    ...opportunities.flatMap((h) => [h.title, h.body]),
+    ...cautions.flatMap((c) => [c.title, c.body]),
+    ...actions,
+    ...followUps.flatMap((f) => [f.displayLabel, f.question])
+  ].join(" ");
+  if (containsRawGanji(surfaced)) return null;
+  if (containsEventGuarantee2(surfaced)) return null;
+  if (containsUnsupportedDatePrecision(surfaced)) return null;
+  return {
+    headline,
+    verdict,
+    overallSummary,
+    overallTier: plan.overallTier,
+    primaryMode: plan.primaryMode,
+    primaryModeLabel: plan.primaryModeLabel,
+    domainSignals: plan.domainSignals,
+    opportunities,
+    cautions,
+    actions,
+    followUps
+  };
+}
+async function buildMonthlyFortune(request, deps) {
+  const evidence = await buildMonthlyFortuneEvidence(
+    { birthInfo: request.birthInput },
+    { digestProvider: deps.digestProvider, historicalTimezoneResolver: deps.historicalTimezoneResolver, nowEpochSeconds: deps.nowEpochSeconds }
+  );
+  if (!evidence.available) return { ok: false, reason: "EVIDENCE_UNAVAILABLE", year: evidence.year, month: evidence.month };
+  const plan = deriveMonthlyPlan(evidence);
+  const messages = buildMonthlyFortunePrompt(plan);
+  let raw;
+  try {
+    raw = await deps.callLLM(messages);
+  } catch {
+    return { ok: false, reason: "LLM_FAILED", year: plan.year, month: plan.month };
+  }
+  const result = parseMonthlyFortune(raw, plan);
+  if (result === null) return { ok: false, reason: "INVALID_OUTPUT", year: plan.year, month: plan.month };
+  return {
+    ok: true,
+    year: plan.year,
+    month: plan.month,
+    overallTier: plan.overallTier,
+    result,
+    policyVersion: MONTHLY_POLICY_VERSION,
+    evidenceVersion: plan.evidenceVersion,
+    planVersion: plan.planVersion
+  };
+}
+
+// src/features/monthly/server/monthlyFortuneSchema.ts
+var MONTHLY_FORTUNE_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    // headline: a concrete one-liner answering "이번 달은 어떤 달인가" (§19).
+    headline: { type: "string" },
+    // verdict: 1-3 sentences — overall judgment + strongest opportunity + primary caution (§20).
+    verdict: { type: "string" },
+    overallSummary: { type: "string" },
+    opportunities: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { domain: { type: "string" }, title: { type: "string" }, body: { type: "string" } },
+        required: ["domain", "title", "body"]
+      }
+    },
+    cautions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { title: { type: "string" }, body: { type: "string" } },
+        required: ["title", "body"]
+      }
+    },
+    // actions: the month's plan — concrete "이렇게 보내세요" steps (§23).
+    actions: { type: "array", items: { type: "string" } },
+    // followUps: SHORT chip label + the RICH question actually carried into 상담 (§65-§67).
+    followUps: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { displayLabel: { type: "string" }, question: { type: "string" } },
+        required: ["displayLabel", "question"]
+      }
+    }
+  },
+  required: ["headline", "verdict", "overallSummary", "opportunities", "cautions", "actions", "followUps"]
+};
+function monthlyFortuneResponseFormat() {
+  return { type: "json_schema", name: "deokbun_monthly_fortune", strict: true, schema: MONTHLY_FORTUNE_JSON_SCHEMA };
+}
 export {
   CONSULTATION_JSON_SCHEMA,
   DAILY_FORTUNE_JSON_SCHEMA,
@@ -9204,8 +9627,10 @@ export {
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
   MIN_MAX_OUTPUT_TOKENS,
+  MONTHLY_FORTUNE_JSON_SCHEMA,
   SAFE_DIAG_KEYS,
   buildCompatibilityConsultation,
+  buildMonthlyFortune,
   buildServerConsultation,
   buildServerSummary,
   buildTodayFortune,
@@ -9213,8 +9638,10 @@ export {
   consultationResponseFormat,
   dailyFortuneResponseFormat,
   extractResponsesText,
+  monthlyFortuneResponseFormat,
   openAiFailureCode,
   parseDailyFortune,
+  parseMonthlyFortune,
   parseUsageDetails,
   redactDiag,
   resolveConsultationProfile,

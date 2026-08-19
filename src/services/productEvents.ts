@@ -37,7 +37,15 @@ export type ProductEventName =
   | 'today_fortune_cache_hit'
   | 'today_fortune_detail_opened'
   | 'today_fortune_consultation_clicked'
-  | 'today_fortune_mailbox_opened';
+  | 'today_fortune_mailbox_opened'
+  // 이번 달 운세 (Monthly Fortune V1, §74) — monthly retention funnel. Bounded, no PII.
+  | 'monthly_fortune_card_viewed'
+  | 'monthly_fortune_opened'
+  | 'monthly_fortune_generated'
+  | 'monthly_fortune_cache_hit'
+  | 'monthly_fortune_detail_opened'
+  | 'monthly_fortune_consultation_clicked'
+  | 'monthly_fortune_mailbox_opened';
 
 // The ONLY property keys that may be persisted. Everything else is dropped (§38). No name / birth /
 // question / answer / email / phone can appear here — those keys are simply not on the allowlist.
@@ -60,6 +68,8 @@ const ALLOWED_PROPS = new Set<string>([
   'fortune_date',
   'cache_status',
   'overall_tier',
+  // Monthly-fortune funnel prop (§74) — a "YYYY-MM" month key (coarse, non-PII).
+  'fortune_month',
 ]);
 const MAX_STR = 64;
 

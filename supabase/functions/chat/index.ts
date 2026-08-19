@@ -37,6 +37,8 @@ import {
   buildCompatibilityConsultation,
   buildTodayFortune,
   dailyFortuneResponseFormat,
+  buildMonthlyFortune,
+  monthlyFortuneResponseFormat,
   buildServerSummary,
   classifyQuestionComplexity,
   consultationResponseFormat,
@@ -214,7 +216,7 @@ function makeResolveTrustedBirth(
 type AiUsageLog = {
   user_id: string | null;
   model: string | null;
-  request_type: 'chat' | 'today_fortune';
+  request_type: 'chat' | 'today_fortune' | 'monthly_fortune';
   input_tokens: number | null;
   output_tokens: number | null;
   total_tokens: number | null;
@@ -311,8 +313,9 @@ async function checkBurstRateLimit(userId: string | null, now: number): Promise<
 //   mode 'summary': existingSummary + raw turns → the SERVER builds the summary prompt (§20).
 type ConsultationRequestBody = {
   mode?: 'consultation' | 'summary';
-  // 오늘의 운세: a stateless daily-fortune generation from the SELF birth INPUT. The SERVER owns the date.
-  kind?: 'today_fortune';
+  // 오늘의 운세 / 이번 달 운세: a stateless daily/monthly-fortune generation from the SELF birth INPUT. The
+  // SERVER owns the date/month (never a client-supplied target — the current month only, abuse-proof §60).
+  kind?: 'today_fortune' | 'monthly_fortune';
   subjectProfileId?: string | null;
   birthInput?: unknown;
   subjectLabel?: string | null;
@@ -468,6 +471,98 @@ export default {
             result: fortune.result,
             policyVersion: fortune.policyVersion,
             evidenceVersion: fortune.evidenceVersion,
+            model,
+          });
+        }
+
+        // 이번 달 운세 (Monthly Fortune V1) — a SEPARATE temporal product (NOT Today×30). The SERVER owns the
+        // CURRENT target month (nowEpochSeconds = receipt time; never a client-supplied month → abuse-proof
+        // §60) and makes EXACTLY ONE OpenAI call. Slightly larger output ceiling than Today (a month digest is
+        // longer, §33) but still fixed 'low' reasoning. The client persists + caches (one row per user per
+        // month), so repeat access never re-enters here.
+        if (body.kind === 'monthly_fortune') {
+          stage = 'monthly_fortune_request';
+          const birthInput = body.birthInput;
+          if (birthInput === null || typeof birthInput !== 'object') {
+            logDiag(requestId, 'INPUT', 'MISSING_BIRTH_INPUT', { path: 'monthly_fortune' });
+            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          }
+          const monthlyEffort = Deno.env.get('LLM_MONTHLY_REASONING_EFFORT')?.trim() || 'low';
+          const monthlyMaxRaw = Number(Deno.env.get('LLM_MONTHLY_MAX_OUTPUT_TOKENS'));
+          const monthlyMaxTokens = Number.isFinite(monthlyMaxRaw) && monthlyMaxRaw > 0 ? Math.floor(monthlyMaxRaw) : 3000;
+          const monthlyCfg = { apiKey, model, maxOutputTokens: monthlyMaxTokens, reasoningEffort: monthlyEffort, responseFormat: monthlyFortuneResponseFormat() };
+
+          let monthlyUsage: Record<string, unknown> = {};
+          let monthlyErrorCode: string | null = null;
+          let monthlyOutcome: OpenAiCall | null = null;
+          const monthlyCallLLM = async (messages: LLMMessage[]): Promise<string> => {
+            stage = 'openai_request';
+            const r = await callOpenAI(messages, monthlyCfg);
+            monthlyUsage = r.usage;
+            monthlyOutcome = r;
+            const code = openAiFailureCode(r);
+            if (code === 'OK') return r.text;
+            monthlyErrorCode = code;
+            return '';
+          };
+
+          const monthly = await buildMonthlyFortune(
+            { birthInput: birthInput as BirthInfoDraft },
+            { digestProvider: denoDigestProvider, nowEpochSeconds: Math.floor(startedAt / 1000), callLLM: monthlyCallLLM },
+          );
+
+          if (!monthly.ok) {
+            if (monthly.reason === 'EVIDENCE_UNAVAILABLE') {
+              logDiag(requestId, 'PROFILE_RESOLUTION', 'MONTHLY_EVIDENCE_UNAVAILABLE', { path: 'monthly_fortune' });
+              return Response.json({ ok: false, reason: 'EVIDENCE_UNAVAILABLE', year: monthly.year, month: monthly.month });
+            }
+            const code = monthlyErrorCode ?? monthly.reason;
+            logDiag(requestId, 'OPENAI_RESPONSE', code, {
+              path: 'monthly_fortune', model,
+              upstreamStatus: monthlyOutcome?.statusCode || undefined,
+              responseStatus: monthlyOutcome?.responseStatus,
+              incompleteReason: monthlyOutcome?.incompleteReason,
+              outputTokens: toNullableInt(monthlyUsage.output_tokens),
+              totalTokens: toNullableInt(monthlyUsage.total_tokens),
+            });
+            await logAiUsage(
+              {
+                user_id: userId, model, request_type: 'monthly_fortune',
+                input_tokens: null, output_tokens: null, total_tokens: null,
+                latency_ms: Date.now() - startedAt, status: 'error', error_code: code,
+              },
+              requestId,
+            );
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+
+          const monthlyDetails = parseUsageDetails(monthlyUsage);
+          await logAiUsage(
+            {
+              user_id: userId, model, request_type: 'monthly_fortune',
+              input_tokens: toNullableInt(monthlyUsage.input_tokens),
+              output_tokens: toNullableInt(monthlyUsage.output_tokens),
+              total_tokens: toNullableInt(monthlyUsage.total_tokens),
+              latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
+            },
+            requestId,
+            {
+              cached_input_tokens: monthlyDetails.cachedInputTokens,
+              reasoning_tokens: monthlyDetails.reasoningTokens,
+              max_output_tokens: monthlyMaxTokens,
+              complexity: 'MONTHLY',
+              reasoning_effort: monthlyEffort,
+            },
+          );
+          return Response.json({
+            ok: true,
+            year: monthly.year,
+            month: monthly.month,
+            overallTier: monthly.overallTier,
+            result: monthly.result,
+            policyVersion: monthly.policyVersion,
+            evidenceVersion: monthly.evidenceVersion,
+            planVersion: monthly.planVersion,
             model,
           });
         }

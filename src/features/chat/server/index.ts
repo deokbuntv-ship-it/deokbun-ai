@@ -47,6 +47,18 @@ export {
   type TodayFortuneDeps,
   type TodayFortuneServerResult,
 } from '@/features/today/server';
+// 이번 달 운세 (Monthly Fortune V1) — the monthly generator is part of the SAME server graph so the Edge
+// bundle includes it (no new external dependency). The Edge dispatches a `monthly_fortune` request to
+// buildMonthlyFortune. It is a SEPARATE temporal product (NOT Today×30) — one LLM call for the month.
+export {
+  buildMonthlyFortune,
+  parseMonthlyFortune,
+  monthlyFortuneResponseFormat,
+  MONTHLY_FORTUNE_JSON_SCHEMA,
+  type MonthlyFortuneRequest,
+  type MonthlyFortuneDeps,
+  type MonthlyFortuneServerResult,
+} from '@/features/monthly/server';
 export type {
   CompatibilityResultMeta,
   ServerConsultationRequest,

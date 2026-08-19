@@ -33,6 +33,14 @@ import {
   trackTodayEvent,
   type TodayPreview,
 } from '@/features/today';
+import {
+  clientCurrentMonthGuess,
+  monthlyFortuneService,
+  monthlyToneVariant,
+  toMonthlyPreview,
+  trackMonthlyEvent,
+  type MonthlyPreview,
+} from '@/features/monthly';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors } from '@/theme';
 
@@ -42,6 +50,8 @@ const TODAY_TONE_COLOR: Record<ReturnType<typeof toneVariant>, string> = {
   change: '#B26A00',
   caution: '#C0392B',
 };
+// 이번 달 운세 pills reuse the SAME restrained palette as Today (no new colors).
+const MONTHLY_TONE_COLOR: Record<ReturnType<typeof monthlyToneVariant>, string> = TODAY_TONE_COLOR;
 
 // 01_HOME — Personal AI Consultation Hub (Stitch v4). Greeting → question
 // composer → popular questions → recent consultation → recent fortune mail. The
@@ -134,6 +144,32 @@ export default function HomeScreen() {
   const openToday = () => {
     trackTodayEvent('today_fortune_opened');
     router.push('/today');
+  };
+
+  // 이번 달 운세 Home card (§48–§51): read the latest stored record for a lightweight preview. NO LLM is fired
+  // on Home render — generation happens only when the user opens /monthly.
+  const [monthlyPreview, setMonthlyPreview] = useState<MonthlyPreview | null>(null);
+  const [monthlyIsCurrent, setMonthlyIsCurrent] = useState(false);
+  useEffect(() => {
+    trackMonthlyEvent('monthly_fortune_card_viewed');
+    let active = true;
+    monthlyFortuneService
+      .loadLatest()
+      .then((rec) => {
+        if (!active || !rec) return;
+        const guess = clientCurrentMonthGuess(Date.now());
+        setMonthlyPreview(toMonthlyPreview(rec));
+        setMonthlyIsCurrent(rec.year === guess.year && rec.month === guess.month);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openMonthly = () => {
+    trackMonthlyEvent('monthly_fortune_opened');
+    router.push('/monthly');
   };
 
   useEffect(() => {
@@ -268,6 +304,54 @@ export default function HomeScreen() {
                     onPress={openToday}
                     radius="lg"
                     accessibilityLabel="오늘의 운세 보기"
+                  />
+                </Stack>
+              </Card>
+            </Stack>
+
+            {/* 이번 달 운세 — monthly retention entry (no LLM on Home; generation happens on /monthly).
+                Same one-card-one-button composition as Today (no wrapping Pressable → no nested <button>). */}
+            <Stack gap="md">
+              <Text variant="bodyLarge" style={styles.sectionTitle}>
+                이번 달 운세
+              </Text>
+              <Card radius="xl">
+                <Stack gap="sm">
+                  {monthlyIsCurrent && monthlyPreview ? (
+                    <>
+                      <View style={styles.rowBetween}>
+                        <View style={styles.todayPills}>
+                          <View style={[styles.tonePill, { borderColor: MONTHLY_TONE_COLOR[monthlyPreview.toneVariant] }]}>
+                            <Text variant="bodySmall" style={{ color: MONTHLY_TONE_COLOR[monthlyPreview.toneVariant], fontWeight: '700' }}>
+                              {monthlyPreview.overallTier}
+                            </Text>
+                          </View>
+                          {monthlyPreview.primaryModeLabel ? (
+                            <View style={[styles.todayModePill, { borderColor: theme.border }]}>
+                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
+                                {monthlyPreview.primaryModeLabel}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text variant="bodySmall" colorToken="textSecondary">
+                          {monthlyPreview.monthLabel}
+                        </Text>
+                      </View>
+                      <Text variant="bodyLarge" style={{ fontWeight: '700' }} numberOfLines={2}>
+                        {monthlyPreview.headline}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text variant="bodyMedium" colorToken="textSecondary">
+                      이번 달의 큰 흐름을 확인해보세요. 사주로 이번 달을 짚어드릴게요.
+                    </Text>
+                  )}
+                  <Button
+                    label="이번 달 운세 보기"
+                    onPress={openMonthly}
+                    radius="lg"
+                    accessibilityLabel="이번 달 운세 보기"
                   />
                 </Stack>
               </Card>

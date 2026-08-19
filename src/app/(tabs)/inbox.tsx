@@ -22,6 +22,11 @@ import {
   trackTodayEvent,
   type DailyFortuneRecord,
 } from '@/features/today';
+import {
+  monthlyFortuneService,
+  toMonthlyPreview,
+  type MonthlyFortuneRecord,
+} from '@/features/monthly';
 
 // 04_FORTUNE_INBOX — Personalized Insight Feed (Stitch _3), NOT an email inbox.
 // The fortune engine is not connected, so the list is empty and the screen shows
@@ -46,26 +51,28 @@ export default function FortuneInboxScreen() {
 
   const [section, setSection] = useState<Section>('fortune');
   const [fortunes, setFortunes] = useState<DailyFortuneRecord[]>([]);
+  const [monthlies, setMonthlies] = useState<MonthlyFortuneRecord[]>([]);
   const [status, setStatus] = useState<Status>('loading');
   const [reports, setReports] = useState<ConsultationReport[]>([]);
   const [reportStatus, setReportStatus] = useState<ReportStatus>('idle');
   const [sheetVisible, setSheetVisible] = useState(false);
 
-  // 운세 section = the 오늘의 운세 archive (§44/§45): real generated daily fortunes, owner-scoped by RLS,
-  // newest first. Read-only (0 LLM) — opening a card shows the SAME canonical record on /today.
+  // 운세 section = the 오늘의 운세 + 이번 달 운세 archive (§44/§45/§61): real generated fortunes, owner-scoped by
+  // RLS, newest first. Read-only (0 LLM) — opening a card shows the SAME canonical record on /today or /monthly.
   useEffect(() => {
     if (!isAuthenticated) {
       setFortunes([]);
+      setMonthlies([]);
       setStatus('ready');
       return;
     }
     let active = true;
     setStatus('loading');
-    todayFortuneService
-      .listAll()
-      .then((rows) => {
+    Promise.all([todayFortuneService.listAll(), monthlyFortuneService.listAll()])
+      .then(([daily, monthly]) => {
         if (!active) return;
-        setFortunes(rows);
+        setFortunes(daily);
+        setMonthlies(monthly);
         setStatus('ready');
       })
       .catch(() => {
@@ -164,31 +171,51 @@ export default function FortuneInboxScreen() {
                     운세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
                   </Text>
                 </Card>
-              ) : fortunes.length === 0 ? (
+              ) : fortunes.length === 0 && monthlies.length === 0 ? (
                 <Card radius="xl">
                   <Stack gap="sm">
-                    <Text variant="headingMedium">아직 받은 오늘의 운세가 없어요</Text>
+                    <Text variant="headingMedium">아직 받은 운세가 없어요</Text>
                     <Text variant="bodyMedium" colorToken="textSecondary">
-                      홈에서 "오늘 운세 보기"로 오늘의 운세를 받으면 이곳에 차곡차곡 쌓여요.
+                      홈에서 오늘의 운세나 이번 달 운세를 받으면 이곳에 차곡차곡 쌓여요.
                     </Text>
                     <Button label="오늘의 운세 보기" radius="lg" onPress={() => router.push('/today')} />
                   </Stack>
                 </Card>
               ) : (
                 <Stack gap="lg">
-                  {fortunes.map((rec) => {
-                    const p = toTodayPreview(rec);
-                    return (
-                      <InsightCard
-                        key={rec.id}
-                        tag={{ label: '오늘의 운세', tone: 'secondary' }}
-                        timestamp={`${p.dot}${p.weekday ? ` ${p.weekday}` : ''} · ${p.overallTone}${p.primaryModeLabel ? ` · ${p.primaryModeLabel}` : ''}`}
-                        muted
-                        title={p.headline}
-                        onPress={() => router.push({ pathname: '/today', params: { date: rec.fortuneDate } })}
-                      />
-                    );
-                  })}
+                  {/* Merged 운세 feed — 오늘의 운세 + 이번 달 운세, newest first (§61/§64). Each opens its own
+                      canonical record read-only (0 LLM). Monthly cards sort by mid-month so they interleave. */}
+                  {[
+                    ...fortunes.map((rec) => ({ kind: 'today' as const, id: rec.id, sortKey: rec.fortuneDate, today: rec })),
+                    ...monthlies.map((rec) => ({ kind: 'monthly' as const, id: rec.id, sortKey: `${rec.year}-${String(rec.month).padStart(2, '0')}-15`, monthly: rec })),
+                  ]
+                    .sort((a, b) => (a.sortKey < b.sortKey ? 1 : a.sortKey > b.sortKey ? -1 : 0))
+                    .map((item) => {
+                      if (item.kind === 'today') {
+                        const p = toTodayPreview(item.today);
+                        return (
+                          <InsightCard
+                            key={`t-${item.id}`}
+                            tag={{ label: '오늘의 운세', tone: 'secondary' }}
+                            timestamp={`${p.dot}${p.weekday ? ` ${p.weekday}` : ''} · ${p.overallTone}${p.primaryModeLabel ? ` · ${p.primaryModeLabel}` : ''}`}
+                            muted
+                            title={p.headline}
+                            onPress={() => router.push({ pathname: '/today', params: { date: item.today.fortuneDate } })}
+                          />
+                        );
+                      }
+                      const p = toMonthlyPreview(item.monthly);
+                      return (
+                        <InsightCard
+                          key={`m-${item.id}`}
+                          tag={{ label: '이번 달 운세', tone: 'primary' }}
+                          timestamp={`${p.monthLabel} · ${p.overallTier}${p.primaryModeLabel ? ` · ${p.primaryModeLabel}` : ''}`}
+                          muted
+                          title={p.headline}
+                          onPress={() => router.push({ pathname: '/monthly', params: { ym: `${item.monthly.year}-${String(item.monthly.month).padStart(2, '0')}` } })}
+                        />
+                      );
+                    })}
                 </Stack>
               )
             ) : !isAuthenticated ? (
