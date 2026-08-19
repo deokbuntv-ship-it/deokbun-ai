@@ -35,6 +35,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 import {
   buildServerConsultation,
   buildCompatibilityConsultation,
+  buildTodayFortune,
+  dailyFortuneResponseFormat,
   buildServerSummary,
   classifyQuestionComplexity,
   consultationResponseFormat,
@@ -212,7 +214,7 @@ function makeResolveTrustedBirth(
 type AiUsageLog = {
   user_id: string | null;
   model: string | null;
-  request_type: 'chat';
+  request_type: 'chat' | 'today_fortune';
   input_tokens: number | null;
   output_tokens: number | null;
   total_tokens: number | null;
@@ -309,6 +311,8 @@ async function checkBurstRateLimit(userId: string | null, now: number): Promise<
 //   mode 'summary': existingSummary + raw turns → the SERVER builds the summary prompt (§20).
 type ConsultationRequestBody = {
   mode?: 'consultation' | 'summary';
+  // 오늘의 운세: a stateless daily-fortune generation from the SELF birth INPUT. The SERVER owns the date.
+  kind?: 'today_fortune';
   subjectProfileId?: string | null;
   birthInput?: unknown;
   subjectLabel?: string | null;
@@ -376,6 +380,97 @@ export default {
         // complexity (Overnight Sprint §4/§8) — SIMPLE/STANDARD run cheaper 'low' reasoning, DEEP 'medium'.
         const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary };
         const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
+
+        // 오늘의 운세 (Today Fortune V1): a stateless daily-fortune generation. The SERVER owns the date
+        // (nowEpochSeconds = receipt time, §6/§29), builds the deterministic daily evidence + plan from the
+        // birth INPUT, and makes EXACTLY ONE OpenAI call. Cheaper than a consultation: fixed 'low' reasoning +
+        // a modest output ceiling (§53/§58), both env-overridable. The client persists + caches the result
+        // (one row per user per fortune_date), so repeat access never re-enters here.
+        if (body.kind === 'today_fortune') {
+          stage = 'today_fortune_request';
+          const birthInput = body.birthInput;
+          if (birthInput === null || typeof birthInput !== 'object') {
+            logDiag(requestId, 'INPUT', 'MISSING_BIRTH_INPUT', { path: 'today_fortune' });
+            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          }
+          const todayEffort = Deno.env.get('LLM_TODAY_REASONING_EFFORT')?.trim() || 'low';
+          const todayMaxRaw = Number(Deno.env.get('LLM_TODAY_MAX_OUTPUT_TOKENS'));
+          const todayMaxTokens = Number.isFinite(todayMaxRaw) && todayMaxRaw > 0 ? Math.floor(todayMaxRaw) : 2500;
+          const todayCfg = { apiKey, model, maxOutputTokens: todayMaxTokens, reasoningEffort: todayEffort, responseFormat: dailyFortuneResponseFormat() };
+
+          let todayUsage: Record<string, unknown> = {};
+          let todayErrorCode: string | null = null;
+          let todayOutcome: OpenAiCall | null = null;
+          const todayCallLLM = async (messages: LLMMessage[]): Promise<string> => {
+            stage = 'openai_request';
+            const r = await callOpenAI(messages, todayCfg);
+            todayUsage = r.usage;
+            todayOutcome = r;
+            const code = openAiFailureCode(r);
+            if (code === 'OK') return r.text;
+            todayErrorCode = code;
+            return '';
+          };
+
+          const fortune = await buildTodayFortune(
+            { birthInput: birthInput as BirthInfoDraft },
+            { digestProvider: denoDigestProvider, nowEpochSeconds: Math.floor(startedAt / 1000), callLLM: todayCallLLM },
+          );
+
+          if (!fortune.ok) {
+            if (fortune.reason === 'EVIDENCE_UNAVAILABLE') {
+              // No OpenAI call happened → no usage row. Truthful non-generation result (retry won't help).
+              logDiag(requestId, 'PROFILE_RESOLUTION', 'TODAY_EVIDENCE_UNAVAILABLE', { path: 'today_fortune' });
+              return Response.json({ ok: false, reason: 'EVIDENCE_UNAVAILABLE', fortuneDate: fortune.fortuneDate });
+            }
+            const code = todayErrorCode ?? fortune.reason;
+            logDiag(requestId, 'OPENAI_RESPONSE', code, {
+              path: 'today_fortune', model,
+              upstreamStatus: todayOutcome?.statusCode || undefined,
+              responseStatus: todayOutcome?.responseStatus,
+              incompleteReason: todayOutcome?.incompleteReason,
+              outputTokens: toNullableInt(todayUsage.output_tokens),
+              totalTokens: toNullableInt(todayUsage.total_tokens),
+            });
+            await logAiUsage(
+              {
+                user_id: userId, model, request_type: 'today_fortune',
+                input_tokens: null, output_tokens: null, total_tokens: null,
+                latency_ms: Date.now() - startedAt, status: 'error', error_code: code,
+              },
+              requestId,
+            );
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+
+          const todayDetails = parseUsageDetails(todayUsage);
+          await logAiUsage(
+            {
+              user_id: userId, model, request_type: 'today_fortune',
+              input_tokens: toNullableInt(todayUsage.input_tokens),
+              output_tokens: toNullableInt(todayUsage.output_tokens),
+              total_tokens: toNullableInt(todayUsage.total_tokens),
+              latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
+            },
+            requestId,
+            {
+              cached_input_tokens: todayDetails.cachedInputTokens,
+              reasoning_tokens: todayDetails.reasoningTokens,
+              max_output_tokens: todayMaxTokens,
+              complexity: 'TODAY',
+              reasoning_effort: todayEffort,
+            },
+          );
+          return Response.json({
+            ok: true,
+            fortuneDate: fortune.fortuneDate,
+            overallTone: fortune.overallTone,
+            result: fortune.result,
+            policyVersion: fortune.policyVersion,
+            evidenceVersion: fortune.evidenceVersion,
+            model,
+          });
+        }
 
         // Summary mode (FIX A/B/C): the SERVER owns the summary prompt (buildServerSummary → existingSummary
         // is untrusted content, never system) and applies hard input bounds server-side. Usage is logged

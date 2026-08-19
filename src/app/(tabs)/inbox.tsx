@@ -17,11 +17,11 @@ import { toReportListItem } from '@/features/chat/report/reportPresentation';
 import { reportService, type ConsultationReport } from '@/features/chat/report/reportService';
 import { isSavedSubjectId, useConsultationDraft } from '@/features/consultation';
 import {
-  FORTUNE_MAIL_FILTERS,
-  fortuneMailService,
-  type FortuneMailFilter,
-  type FortuneMailItem,
-} from '@/features/fortune';
+  todayFortuneService,
+  toTodayPreview,
+  trackTodayEvent,
+  type DailyFortuneRecord,
+} from '@/features/today';
 
 // 04_FORTUNE_INBOX — Personalized Insight Feed (Stitch _3), NOT an email inbox.
 // The fortune engine is not connected, so the list is empty and the screen shows
@@ -45,21 +45,27 @@ export default function FortuneInboxScreen() {
     subject && isSavedSubjectId(subject.id) ? subject.id : null;
 
   const [section, setSection] = useState<Section>('fortune');
-  const [filter, setFilter] = useState<FortuneMailFilter>('all');
-  const [items, setItems] = useState<FortuneMailItem[]>([]);
+  const [fortunes, setFortunes] = useState<DailyFortuneRecord[]>([]);
   const [status, setStatus] = useState<Status>('loading');
   const [reports, setReports] = useState<ConsultationReport[]>([]);
   const [reportStatus, setReportStatus] = useState<ReportStatus>('idle');
   const [sheetVisible, setSheetVisible] = useState(false);
 
+  // 운세 section = the 오늘의 운세 archive (§44/§45): real generated daily fortunes, owner-scoped by RLS,
+  // newest first. Read-only (0 LLM) — opening a card shows the SAME canonical record on /today.
   useEffect(() => {
+    if (!isAuthenticated) {
+      setFortunes([]);
+      setStatus('ready');
+      return;
+    }
     let active = true;
     setStatus('loading');
-    fortuneMailService
-      .listMail(subjectId)
+    todayFortuneService
+      .listAll()
       .then((rows) => {
         if (!active) return;
-        setItems(rows);
+        setFortunes(rows);
         setStatus('ready');
       })
       .catch(() => {
@@ -68,7 +74,11 @@ export default function FortuneInboxScreen() {
     return () => {
       active = false;
     };
-  }, [subjectId]);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (section === 'fortune') trackTodayEvent('today_fortune_mailbox_opened');
+  }, [section]);
 
   // Load saved reports when (and each time) the 보고서 section is opened — newest first, owner-scoped
   // by RLS. Runs on section change, not every render (§29-analog: no per-render DB query).
@@ -96,14 +106,6 @@ export default function FortuneInboxScreen() {
       active = false;
     };
   }, [section, isAuthenticated]);
-
-  const visible = items.filter((item) => {
-    if (filter === 'all') return true;
-    if (filter === 'important') return item.important;
-    if (filter === 'monthly') return item.category.includes('월간');
-    if (filter === 'move') return item.category.includes('이동') || item.category.includes('사업');
-    return true;
-  });
 
   const reportItems = reports.map(toReportListItem);
 
@@ -141,62 +143,54 @@ export default function FortuneInboxScreen() {
             </Stack>
 
             {section === 'fortune' ? (
-              <>
-                <Stack direction="row" gap="sm" style={styles.chipWrap}>
-                  {FORTUNE_MAIL_FILTERS.map((f) => (
-                    <Chip
-                      key={f.key}
-                      label={f.label}
-                      selected={f.key === filter}
-                      onPress={() => setFilter(f.key)}
-                    />
-                  ))}
-                </Stack>
-
-                {status === 'loading' ? (
-                  <Card radius="xl">
+              !isAuthenticated ? (
+                <Card radius="xl">
+                  <Stack gap="md">
                     <Text variant="bodyMedium" colorToken="textSecondary">
-                      운세우편을 확인하고 있어요.
+                      로그인하면 오늘의 운세를 받아볼 수 있어요.
                     </Text>
-                  </Card>
-                ) : status === 'error' ? (
-                  <Card radius="xl">
-                    <Text variant="bodyMedium" colorToken="textSecondary">
-                      운세우편을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-                    </Text>
-                  </Card>
-                ) : visible.length === 0 ? (
-                  <Card radius="xl">
-                    <Stack gap="sm">
-                      <Text variant="headingMedium">아직 도착한 운세우편이 없어요</Text>
-                      <Text variant="bodyMedium" colorToken="textSecondary">
-                        덕분AI가 먼저 발견한 개인화된 운세 인사이트가 준비되면 이곳으로
-                        도착합니다. 운세 계산 엔진을 연결하고 있어요.
-                      </Text>
-                    </Stack>
-                  </Card>
-                ) : (
-                  <Stack gap="lg">
-                    {visible.map((item) => (
-                      <InsightCard
-                        key={item.id}
-                        tag={{ label: item.category, tone: item.categoryTone }}
-                        timestamp={item.timestamp}
-                        unread={item.unread}
-                        muted={!item.unread}
-                        title={item.title}
-                        body={item.preview}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/mail-detail',
-                            params: { id: item.id },
-                          })
-                        }
-                      />
-                    ))}
+                    <Button label="로그인하기" radius="lg" onPress={() => router.push('/login')} />
                   </Stack>
-                )}
-              </>
+                </Card>
+              ) : status === 'loading' ? (
+                <Card radius="xl">
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    오늘의 운세를 확인하고 있어요.
+                  </Text>
+                </Card>
+              ) : status === 'error' ? (
+                <Card radius="xl">
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    운세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+                  </Text>
+                </Card>
+              ) : fortunes.length === 0 ? (
+                <Card radius="xl">
+                  <Stack gap="sm">
+                    <Text variant="headingMedium">아직 받은 오늘의 운세가 없어요</Text>
+                    <Text variant="bodyMedium" colorToken="textSecondary">
+                      홈에서 "오늘 운세 보기"로 오늘의 운세를 받으면 이곳에 차곡차곡 쌓여요.
+                    </Text>
+                    <Button label="오늘의 운세 보기" radius="lg" onPress={() => router.push('/today')} />
+                  </Stack>
+                </Card>
+              ) : (
+                <Stack gap="lg">
+                  {fortunes.map((rec) => {
+                    const p = toTodayPreview(rec);
+                    return (
+                      <InsightCard
+                        key={rec.id}
+                        tag={{ label: '오늘의 운세', tone: 'secondary' }}
+                        timestamp={`${p.dot}${p.weekday ? ` ${p.weekday}` : ''} · ${p.overallTone}`}
+                        muted
+                        title={p.headline}
+                        onPress={() => router.push({ pathname: '/today', params: { date: rec.fortuneDate } })}
+                      />
+                    );
+                  })}
+                </Stack>
+              )
             ) : !isAuthenticated ? (
               <Card radius="xl">
                 <Stack gap="md">

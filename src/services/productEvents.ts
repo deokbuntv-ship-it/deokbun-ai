@@ -29,7 +29,15 @@ export type ProductEventName =
   | 'onboarding_terms_completed'
   | 'onboarding_birth_viewed'
   | 'onboarding_birth_completed'
-  | 'onboarding_completed';
+  | 'onboarding_completed'
+  // 오늘의 운세 (Today Fortune V1, §50) — daily retention funnel. Bounded, no PII.
+  | 'today_fortune_card_viewed'
+  | 'today_fortune_opened'
+  | 'today_fortune_generated'
+  | 'today_fortune_cache_hit'
+  | 'today_fortune_detail_opened'
+  | 'today_fortune_consultation_clicked'
+  | 'today_fortune_mailbox_opened';
 
 // The ONLY property keys that may be persisted. Everything else is dropped (§38). No name / birth /
 // question / answer / email / phone can appear here — those keys are simply not on the allowlist.
@@ -48,6 +56,10 @@ const ALLOWED_PROPS = new Set<string>([
   'completion_step',
   'is_existing_user',
   'continuation_type',
+  // Today-fortune funnel props (§51) — a calendar date + cache status + readable tier. No PII.
+  'fortune_date',
+  'cache_status',
+  'overall_tier',
 ]);
 const MAX_STR = 64;
 

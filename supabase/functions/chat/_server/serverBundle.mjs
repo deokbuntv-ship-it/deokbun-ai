@@ -7561,6 +7561,10 @@ async function buildConsultationGrounding(draft, deps, question) {
 }
 
 // src/features/chat/presentation/commercialText.ts
+var GANJI_HANJA = /[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]/;
+function containsRawGanji(text) {
+  return GANJI_HANJA.test(text ?? "");
+}
 function stripEngineLabels(text) {
   return (text ?? "").replace(/\s*[（(]\s*엔진\s*[:：][^）)]*[）)]/g, "").replace(/\s*[（(]\s*engine\s*[:：][^）)]*[）)]/gi, "").replace(/\s*[（(]\s*제공됨\s*[）)]/g, "").replace(/[ \t]{2,}/g, " ").trim();
 }
@@ -8774,8 +8778,269 @@ var CONSULTATION_JSON_SCHEMA = {
 function consultationResponseFormat() {
   return { type: "json_schema", name: "deokbun_consultation", strict: true, schema: CONSULTATION_JSON_SCHEMA };
 }
+
+// src/features/today/engine/dayLuck.ts
+function calculateDayLuck(input) {
+  const dp = calculateDayPillar(input.civilDate);
+  if (!dp.ok) return { available: false, reason: "DAY_PILLAR_FAILED" };
+  const pillar = dp.value;
+  const tenGods = buildTenGodProfile(input.natal.dayMaster, pillar);
+  if (!tenGods) return { available: false, reason: "TEN_GOD_FAILED" };
+  const relationsToNatal = buildRelationsToNatal(pillar, input.natal);
+  return {
+    available: true,
+    pillar,
+    tenGods,
+    relationsToNatal,
+    dayPillarRuleVersion: DEOKBUNAI_SAJU_DAY_V1_RULE.ruleVersion
+  };
+}
+
+// src/features/today/engine/fortuneDate.ts
+var KST_OFFSET_SECONDS2 = 32400;
+var FORTUNE_TIMEZONE = "Asia/Seoul";
+var pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
+function epochToKstCivilDate(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
+}
+function fortuneDateStringFromEpoch(epochSeconds) {
+  const d = epochToKstCivilDate(epochSeconds);
+  return `${d.year}-${pad2(d.month)}-${pad2(d.day)}`;
+}
+
+// src/features/today/engine/todayEvidence.ts
+var TODAY_EVIDENCE_VERSION = "today-evidence@1.0.0";
+var ALL_DOMAINS = ["overall", "work", "wealth", "relationship", "action"];
+async function buildTodayFortuneEvidence(input, deps) {
+  const fortuneDate = fortuneDateStringFromEpoch(input.nowEpochSeconds);
+  const unavailable9 = (reason) => ({
+    available: false,
+    fortuneDate,
+    timezone: FORTUNE_TIMEZONE,
+    reason,
+    evidenceVersion: TODAY_EVIDENCE_VERSION
+  });
+  let execution;
+  try {
+    execution = await executeSajuFromBirthInput(toSajuEngineInput(input.birthInfo), {
+      digestProvider: deps.digestProvider,
+      historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
+    });
+  } catch {
+    return unavailable9("CHART_EXECUTION_THREW");
+  }
+  if (!execution.success) return unavailable9("CHART_INPUT_INVALID");
+  const engineResult = execution.engineResult;
+  if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
+  const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
+  const dayLuck = calculateDayLuck({ natal, civilDate: epochToKstCivilDate(input.nowEpochSeconds) });
+  if (!dayLuck.available) return unavailable9(`DAY_LUCK_${dayLuck.reason}`);
+  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
+  const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
+  return {
+    available: true,
+    fortuneDate,
+    timezone: FORTUNE_TIMEZONE,
+    dayLuck,
+    dayStemTenGod: dayLuck.tenGods.stemTenGod,
+    dayBranchTenGod: dayLuck.tenGods.branchMainTenGod,
+    sewoonAvailable: sewoon.capability === "AVAILABLE",
+    wolwoonAvailable: wolwoon.capability === "AVAILABLE",
+    supportedDomains: ALL_DOMAINS,
+    evidenceVersion: TODAY_EVIDENCE_VERSION
+  };
+}
+
+// src/features/today/engine/todayPlan.ts
+var TODAY_PLAN_VERSION = "today-plan@1.0.0";
+function tenGodDomain(tg3) {
+  switch (tg3) {
+    case "DIRECT_WEALTH":
+    case "INDIRECT_WEALTH":
+      return "wealth";
+    case "DIRECT_OFFICER":
+    case "SEVEN_KILLINGS":
+      return "work";
+    case "EATING_GOD":
+    case "HURTING_OFFICER":
+      return "action";
+    case "PEER":
+    case "ROB_WEALTH":
+      return "relationship";
+    case "DIRECT_RESOURCE":
+    case "INDIRECT_RESOURCE":
+      return "overall";
+  }
+}
+var HARMONY_BRANCH = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
+var FRICTION_BRANCH = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+function deriveDailyPlan(evidence) {
+  const base = {
+    fortuneDate: evidence.fortuneDate,
+    maxHighlights: 3,
+    maxCautions: 2,
+    forbidEventCertainty: true,
+    evidenceVersion: evidence.evidenceVersion,
+    planVersion: TODAY_PLAN_VERSION
+  };
+  if (!evidence.available) {
+    return { ...base, available: false, overallTone: "무난한 흐름", strongestDomain: "overall", cautionDomain: null, supportedDomains: [], harmonyCount: 0, frictionCount: 0 };
+  }
+  const rel = evidence.dayLuck.relationsToNatal;
+  let harmonyCount = 0;
+  let frictionCount = 0;
+  for (const s of rel.stem) {
+    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
+    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
+  }
+  for (const b of rel.branch) {
+    if (HARMONY_BRANCH.has(b.relation.kind)) harmonyCount += 1;
+    else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
+  }
+  const overallTone = frictionCount === 0 && harmonyCount >= 1 ? "좋은 흐름" : frictionCount === 0 ? "무난한 흐름" : harmonyCount >= frictionCount ? "변화가 많은 날" : "조심해서 움직일 날";
+  return {
+    ...base,
+    available: true,
+    overallTone,
+    strongestDomain: tenGodDomain(evidence.dayStemTenGod),
+    cautionDomain: frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null,
+    supportedDomains: evidence.supportedDomains,
+    harmonyCount,
+    frictionCount
+  };
+}
+
+// src/features/today/types.ts
+var TODAY_DOMAIN_LABEL = {
+  overall: "오늘의 전체 흐름",
+  work: "일·사업",
+  wealth: "재물",
+  relationship: "인간관계·연애",
+  action: "행동·주의점"
+};
+var TODAY_POLICY_VERSION = "today@1.0.0";
+
+// src/features/today/server/todayFortunePrompt.ts
+function buildTodayFortunePrompt(plan) {
+  const emphasized = TODAY_DOMAIN_LABEL[plan.strongestDomain];
+  const cautionLabel = plan.cautionDomain ? TODAY_DOMAIN_LABEL[plan.cautionDomain] : null;
+  const system = [
+    '당신은 덕분AI의 "오늘의 운세"입니다. 한 사람의 사주를 바탕으로 "오늘 하루"에 대한 짧고 개인적인 운세를 씁니다.',
+    "반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.",
+    `길이 규칙(반드시 지킬 것): headline은 한 줄로 "오늘이 어떤 날인지" 구체적으로. overallSummary는 2~4문장. highlights는 최대 ${plan.maxHighlights}개(각 domain 라벨 + title + 1~2문장 body). cautions는 최대 ${plan.maxCautions}개. actionTip은 오늘 할 수 있는 구체적 행동 1가지. consultationPrompts는 오늘 이어서 상담으로 물어볼 만한 자연스러운 질문 2~3개.`,
+    `서버가 판단한 오늘의 결(반드시 따를 것): 전반 기운은 "${plan.overallTone}". 오늘 기운이 실리는 영역은 "${emphasized}". ` + (cautionLabel ? `"${cautionLabel}" 쪽은 무리하지 말고 속도를 조절하도록 안내하십시오.` : "오늘은 크게 부딪히는 기운은 없습니다."),
+    '사건을 확정하지 마십시오(§21): "돈이 들어옵니다 / 연락이 옵니다 / 합격합니다 / 계약이 성사됩니다"처럼 쓰지 말고, "~하기에 괜찮은 흐름", "~은 서두르지 않는 편이 낫습니다"처럼 적합도·흐름으로 쓰십시오.',
+    '뻔한 운세 문구를 쓰지 마십시오("긍정적으로 생각하세요", "좋은 하루 보내세요"만으로 채우지 말 것). 오늘이 "어떤 성격의 날"이고 무엇을 하면 좋은지 알려주십시오.',
+    "건강은 진단·치료가 아니라 컨디션 관리·생활 리듬으로만. 돈은 특정 종목 매수 권유 금지, 흐름·조율로만. 관계는 상대의 속마음을 사실로 단정하지 마십시오.",
+    "JSON 스키마(deokbun_today_fortune)에 맞춰 그 형식으로만 답하십시오."
+  ].join("\n");
+  const user = [
+    `오늘 날짜: ${plan.fortuneDate}`,
+    `전반 기운: ${plan.overallTone}`,
+    `오늘 기운이 실리는 영역: ${emphasized}`,
+    `조율이 필요한 영역: ${cautionLabel ?? "특별히 없음"}`,
+    `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
+    "",
+    "위 판단을 바탕으로 오늘의 운세를 스키마 형식의 JSON으로 작성하십시오."
+  ].join("\n");
+  return [
+    { role: "system", content: system },
+    { role: "user", content: user }
+  ];
+}
+
+// src/features/today/server/buildTodayFortune.ts
+var clean2 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
+function parseDailyFortune(raw, plan) {
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!obj || typeof obj !== "object") return null;
+  const o = obj;
+  const headline = clean2(o.headline);
+  const overallSummary = clean2(o.overallSummary);
+  const actionTip = clean2(o.actionTip);
+  if (headline.length === 0 || overallSummary.length === 0 || actionTip.length === 0) return null;
+  const highlights = (Array.isArray(o.highlights) ? o.highlights : []).map((h) => {
+    const hh = h ?? {};
+    return { domain: clean2(hh.domain), title: clean2(hh.title), body: clean2(hh.body) };
+  }).filter((h) => h.title.length > 0 && h.body.length > 0).slice(0, plan.maxHighlights);
+  const cautions = (Array.isArray(o.cautions) ? o.cautions : []).map((c) => {
+    const cc = c ?? {};
+    return { title: clean2(cc.title), body: clean2(cc.body) };
+  }).filter((c) => c.title.length > 0 && c.body.length > 0).slice(0, plan.maxCautions);
+  const consultationPrompts = (Array.isArray(o.consultationPrompts) ? o.consultationPrompts : []).map((p) => clean2(p)).filter((p) => p.length > 0).slice(0, 3);
+  const surfaced = [headline, overallSummary, actionTip, ...highlights.flatMap((h) => [h.title, h.body]), ...cautions.flatMap((c) => [c.title, c.body])].join(" ");
+  if (containsRawGanji(surfaced)) return null;
+  return { headline, overallSummary, overallTone: plan.overallTone, highlights, cautions, actionTip, consultationPrompts };
+}
+async function buildTodayFortune(request, deps) {
+  const evidence = await buildTodayFortuneEvidence(
+    { birthInfo: request.birthInput, nowEpochSeconds: deps.nowEpochSeconds },
+    { digestProvider: deps.digestProvider, historicalTimezoneResolver: deps.historicalTimezoneResolver }
+  );
+  if (!evidence.available) return { ok: false, reason: "EVIDENCE_UNAVAILABLE", fortuneDate: evidence.fortuneDate };
+  const plan = deriveDailyPlan(evidence);
+  const messages = buildTodayFortunePrompt(plan);
+  let raw;
+  try {
+    raw = await deps.callLLM(messages);
+  } catch {
+    return { ok: false, reason: "LLM_FAILED", fortuneDate: plan.fortuneDate };
+  }
+  const result = parseDailyFortune(raw, plan);
+  if (result === null) return { ok: false, reason: "INVALID_OUTPUT", fortuneDate: plan.fortuneDate };
+  return {
+    ok: true,
+    fortuneDate: plan.fortuneDate,
+    overallTone: plan.overallTone,
+    result,
+    policyVersion: TODAY_POLICY_VERSION,
+    evidenceVersion: plan.evidenceVersion,
+    planVersion: plan.planVersion
+  };
+}
+
+// src/features/today/server/todayFortuneSchema.ts
+var DAILY_FORTUNE_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    headline: { type: "string" },
+    overallSummary: { type: "string" },
+    highlights: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { domain: { type: "string" }, title: { type: "string" }, body: { type: "string" } },
+        required: ["domain", "title", "body"]
+      }
+    },
+    cautions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { title: { type: "string" }, body: { type: "string" } },
+        required: ["title", "body"]
+      }
+    },
+    actionTip: { type: "string" },
+    consultationPrompts: { type: "array", items: { type: "string" } }
+  },
+  required: ["headline", "overallSummary", "highlights", "cautions", "actionTip", "consultationPrompts"]
+};
+function dailyFortuneResponseFormat() {
+  return { type: "json_schema", name: "deokbun_today_fortune", strict: true, schema: DAILY_FORTUNE_JSON_SCHEMA };
+}
 export {
   CONSULTATION_JSON_SCHEMA,
+  DAILY_FORTUNE_JSON_SCHEMA,
   DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
   DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
   HARD_MAX_OUTPUT_TOKENS,
@@ -8788,10 +9053,13 @@ export {
   buildCompatibilityConsultation,
   buildServerConsultation,
   buildServerSummary,
+  buildTodayFortune,
   classifyQuestionComplexity,
   consultationResponseFormat,
+  dailyFortuneResponseFormat,
   extractResponsesText,
   openAiFailureCode,
+  parseDailyFortune,
   parseUsageDetails,
   redactDiag,
   resolveConsultationProfile,

@@ -25,8 +25,23 @@ import {
   useConsultationDraft,
 } from '@/features/consultation';
 import { fortuneMailService, type FortuneMailItem } from '@/features/fortune';
+import {
+  clientTodayFortuneDateGuess,
+  todayFortuneService,
+  toneVariant,
+  toTodayPreview,
+  trackTodayEvent,
+  type TodayPreview,
+} from '@/features/today';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors } from '@/theme';
+
+const TODAY_TONE_COLOR: Record<ReturnType<typeof toneVariant>, string> = {
+  positive: '#1F8A54',
+  neutral: '#5B6472',
+  change: '#B26A00',
+  caution: '#C0392B',
+};
 
 // 01_HOME — Personal AI Consultation Hub (Stitch v4). Greeting → question
 // composer → popular questions → recent consultation → recent fortune mail. The
@@ -95,6 +110,31 @@ export default function HomeScreen() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 오늘의 운세 Home card (§31–§34): read the latest stored record for a lightweight preview. NO LLM is
+  // fired on Home render — generation happens only when the user opens /today.
+  const [todayPreview, setTodayPreview] = useState<TodayPreview | null>(null);
+  const [todayIsToday, setTodayIsToday] = useState(false);
+  useEffect(() => {
+    trackTodayEvent('today_fortune_card_viewed');
+    let active = true;
+    todayFortuneService
+      .loadLatest()
+      .then((rec) => {
+        if (!active || !rec) return;
+        setTodayPreview(toTodayPreview(rec));
+        setTodayIsToday(rec.fortuneDate === clientTodayFortuneDateGuess(Date.now()));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openToday = () => {
+    trackTodayEvent('today_fortune_opened');
+    router.push('/today');
+  };
 
   useEffect(() => {
     let active = true;
@@ -179,6 +219,41 @@ export default function HomeScreen() {
                   style={styles.quickChip}
                 />
               ))}
+            </Stack>
+
+            {/* 오늘의 운세 — daily retention entry (no LLM on Home; generation happens on /today). */}
+            <Stack gap="md">
+              <Text variant="bodyLarge" style={styles.sectionTitle}>
+                오늘의 운세
+              </Text>
+              <Pressable onPress={openToday} accessibilityRole="button" accessibilityLabel="오늘의 운세 보기">
+                <Card radius="xl">
+                  <Stack gap="sm">
+                    {todayIsToday && todayPreview ? (
+                      <>
+                        <View style={styles.rowBetween}>
+                          <View style={[styles.tonePill, { borderColor: TODAY_TONE_COLOR[todayPreview.toneVariant] }]}>
+                            <Text variant="bodySmall" style={{ color: TODAY_TONE_COLOR[todayPreview.toneVariant], fontWeight: '700' }}>
+                              {todayPreview.overallTone}
+                            </Text>
+                          </View>
+                          <Text variant="bodySmall" colorToken="textSecondary">
+                            {todayPreview.dot}
+                          </Text>
+                        </View>
+                        <Text variant="bodyLarge" style={{ fontWeight: '700' }} numberOfLines={2}>
+                          {todayPreview.headline}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text variant="bodyMedium" colorToken="textSecondary">
+                        오늘의 운세가 준비되어 있어요. 오늘 하루를 사주로 짚어드릴게요.
+                      </Text>
+                    )}
+                    <Button label="오늘 운세 보기" onPress={openToday} radius="lg" />
+                  </Stack>
+                </Card>
+              </Pressable>
             </Stack>
 
             {/* 지금 많이 물어보는 질문 (server-replaceable list) */}
@@ -372,5 +447,12 @@ const styles = StyleSheet.create({
   chevron: {
     color: '#C6C9D0',
     fontWeight: '600',
+  },
+  tonePill: {
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
 });
