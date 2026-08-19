@@ -182,7 +182,7 @@ export default function FortuneInboxScreen() {
                       <InsightCard
                         key={rec.id}
                         tag={{ label: '오늘의 운세', tone: 'secondary' }}
-                        timestamp={`${p.dot}${p.weekday ? ` ${p.weekday}` : ''} · ${p.overallTone}`}
+                        timestamp={`${p.dot}${p.weekday ? ` ${p.weekday}` : ''} · ${p.overallTone}${p.primaryModeLabel ? ` · ${p.primaryModeLabel}` : ''}`}
                         muted
                         title={p.headline}
                         onPress={() => router.push({ pathname: '/today', params: { date: rec.fortuneDate } })}

@@ -1,27 +1,34 @@
-// The DAILY prompt (§12/§19/§20/§21). It verbalizes the SERVER's deterministic daily plan into a compact,
-// consumer-safe digest — it never decides the tier itself. All calculation language (간지/십신/합충…) is
-// banned from the output; the model receives only the plan's readable signals.
+// The DAILY prompt (§20-§24). It verbalizes the SERVER's deterministic daily plan into a compact, specific,
+// consumer-safe digest — it NEVER decides the tier / mode / domain status itself (those are server-owned).
+// All calculation language (간지/십신/합충…) is banned from the output; the model receives only the plan's
+// readable signals and must answer the day DIRECTLY (§9/§21/§22), not with generic motivational filler.
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import { TODAY_DOMAIN_LABEL } from '@/features/today/types';
 import type { DailyPlan } from '@/features/today/engine/todayPlan';
 
-export const TODAY_PROMPT_VERSION = 'today-prompt@1.0.0';
+export const TODAY_PROMPT_VERSION = 'today-prompt@1.1.0';
 
 export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
   const emphasized = TODAY_DOMAIN_LABEL[plan.strongestDomain];
   const cautionLabel = plan.cautionDomain ? TODAY_DOMAIN_LABEL[plan.cautionDomain] : null;
 
   const system = [
-    '당신은 덕분AI의 "오늘의 운세"입니다. 한 사람의 사주를 바탕으로 "오늘 하루"에 대한 짧고 개인적인 운세를 씁니다.',
+    '당신은 덕분AI의 "오늘의 운세"입니다. 한 사람의 사주를 오늘 날짜에 대입해 나온 "오늘 하루의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 오늘이 어떤 날이고 무엇을 우선하면 좋은지 분명히 답해야 합니다.',
     '반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.',
-    '길이 규칙(반드시 지킬 것): headline은 한 줄로 "오늘이 어떤 날인지" 구체적으로. overallSummary는 2~4문장. ' +
-      `highlights는 최대 ${plan.maxHighlights}개(각 domain 라벨 + title + 1~2문장 body). cautions는 최대 ${plan.maxCautions}개. actionTip은 오늘 할 수 있는 구체적 행동 1가지. consultationPrompts는 오늘 이어서 상담으로 물어볼 만한 자연스러운 질문 2~3개.`,
-    '서버가 판단한 오늘의 결(반드시 따를 것): ' +
-      `전반 기운은 "${plan.overallTone}". 오늘 기운이 실리는 영역은 "${emphasized}". ` +
-      (cautionLabel ? `"${cautionLabel}" 쪽은 무리하지 말고 속도를 조절하도록 안내하십시오.` : '오늘은 크게 부딪히는 기운은 없습니다.'),
-    '사건을 확정하지 마십시오(§21): "돈이 들어옵니다 / 연락이 옵니다 / 합격합니다 / 계약이 성사됩니다"처럼 쓰지 말고, ' +
-      '"~하기에 괜찮은 흐름", "~은 서두르지 않는 편이 낫습니다"처럼 적합도·흐름으로 쓰십시오.',
-    '뻔한 운세 문구를 쓰지 마십시오("긍정적으로 생각하세요", "좋은 하루 보내세요"만으로 채우지 말 것). 오늘이 "어떤 성격의 날"이고 무엇을 하면 좋은지 알려주십시오.',
+    '서버가 이미 판단한 오늘의 결(반드시 그대로 따를 것 — 당신은 이 판단을 "말로 풀어내는" 역할입니다):',
+    `- 오늘의 전반 기운: "${plan.overallTone}"`,
+    `- 오늘 권하는 행동 방식: "${plan.primaryModeLabel}"`,
+    `- 오늘 기운이 실리는 영역: "${emphasized}"`,
+    cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : '- 오늘은 크게 부딪히는 기운은 없습니다.',
+    '작성 규칙(반드시 지킬 것):',
+    `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
+    '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',
+    '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로 덧붙이십시오.',
+    `- highlights: 최대 ${plan.maxHighlights}개. 각 항목은 서로 다른 새로운 정보를 담아야 합니다(같은 말을 바꿔 쓰지 말 것). 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
+    `- cautions: 최대 ${plan.maxCautions}개. "주의하세요"로 끝내지 말고 "무엇을 어떻게" 조심할지 구체적으로. ${cautionLabel ? '위 조절 영역을 중심으로.' : '특별한 마찰이 없으면 억지로 만들지 말고 0~1개만.'}`,
+    '- actionTip: 오늘 당장 할 수 있는 구체적 행동 1가지("그래서 오늘 뭐 하면 돼?"에 답).',
+    '- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장, "사주 흐름을 기준으로 …"처럼 구체적으로). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 오늘 결정), 3) 오늘 실행/확인할 것 순으로.',
+    '사건을 확정하지 마십시오(§54): "돈이 들어옵니다 / 연락이 옵니다 / 합격합니다 / 계약이 성사됩니다"처럼 쓰지 말고, "~하기에 괜찮은 흐름", "~은 서두르지 않는 편이 낫습니다"처럼 적합도·흐름으로 쓰십시오. 행운의 색·방향·숫자·복권 같은 것도 만들지 마십시오.',
     '건강은 진단·치료가 아니라 컨디션 관리·생활 리듬으로만. 돈은 특정 종목 매수 권유 금지, 흐름·조율로만. 관계는 상대의 속마음을 사실로 단정하지 마십시오.',
     'JSON 스키마(deokbun_today_fortune)에 맞춰 그 형식으로만 답하십시오.',
   ].join('\n');
@@ -29,11 +36,12 @@ export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
   const user = [
     `오늘 날짜: ${plan.fortuneDate}`,
     `전반 기운: ${plan.overallTone}`,
-    `오늘 기운이 실리는 영역: ${emphasized}`,
+    `권하는 행동 방식: ${plan.primaryModeLabel}`,
+    `기운이 실리는 영역: ${emphasized}`,
     `조율이 필요한 영역: ${cautionLabel ?? '특별히 없음'}`,
     `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
     '',
-    '위 판단을 바탕으로 오늘의 운세를 스키마 형식의 JSON으로 작성하십시오.',
+    '위 판단을 바탕으로, 오늘 무엇을 우선하면 좋은지 분명히 답하는 오늘의 운세를 스키마 형식의 JSON으로 작성하십시오.',
   ].join('\n');
 
   return [

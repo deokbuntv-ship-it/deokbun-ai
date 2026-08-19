@@ -1,30 +1,55 @@
-// The DAILY PLAN — the smallest deterministic decision layer for 오늘의 운세 (§12/§13). It does NOT copy the
-// full consultation Answer Plan; it reads today's 일운 relations and produces a READABLE overall tier + which
-// domain the day emphasizes + where to pace, plus the answer-shape limits the prose must obey. The tier comes
-// from a TRANSPARENT harmony/friction tally (like the compatibility tier) — never a fabricated numeric score
-// (§14). Pure + unit-testable.
+// The DAILY PLAN — the smallest deterministic decision layer for 오늘의 운세 (§6/§7/§12/§13). It does NOT copy
+// the full consultation Answer Plan; it reads today's 일운 relations and produces a READABLE overall tier +
+// the day's ACTION MODE + which domain the day emphasizes + where to pace, plus the answer-shape limits the
+// prose must obey. The tier + mode + domain statuses come from a TRANSPARENT harmony/friction tally crossed
+// with the day-stem 십신 (like the compatibility tier) — never a fabricated numeric score (§11/§14). All of
+// this is derived from evidence that ALREADY exists; no new engine semantics are introduced. Pure + tested.
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { TodayDomain, TodayFortuneEvidence } from '@/features/today/engine/todayEvidence';
 
-export const TODAY_PLAN_VERSION = 'today-plan@1.0.0';
+export const TODAY_PLAN_VERSION = 'today-plan@1.1.0';
 
 export type DailyOverallTone = '좋은 흐름' | '무난한 흐름' | '변화가 많은 날' | '조심해서 움직일 날';
+
+// The day's PRIMARY ACTION MODE (§6/§7) — a deterministic "what today favors doing", derived from the tempo
+// (harmony/friction tier) crossed with the day's emphasis (십신 domain). It is a suitability read, never an
+// event forecast. Kept to a small, useful set (§12: not 12 vague categories).
+export type PrimaryMode = 'EXECUTE' | 'MANAGE' | 'CONNECT' | 'ADJUST' | 'STABILIZE';
+
+export const PRIMARY_MODE_LABEL: Record<PrimaryMode, string> = {
+  EXECUTE: '실행·추진',
+  MANAGE: '점검·관리',
+  CONNECT: '관계·조율',
+  ADJUST: '조정·조율',
+  STABILIZE: '속도 조절·정리',
+};
+
+// Non-numeric domain status (§13/§14) — only ever produced for the two domains the evidence robustly knows:
+// where the day's energy sits (emphasis) and, on a friction day, where to pace (caution). Never a fabricated
+// full 5-domain matrix.
+export type DomainStatus = '좋음' | '무난' | '주의';
+export type DailyDomainSignal = { domain: TodayDomain; status: DomainStatus };
 
 export type DailyPlan = {
   fortuneDate: string;
   available: boolean;
   overallTone: DailyOverallTone;
+  /** The day's action mode (server-owned; the LLM verbalizes it, never chooses it). */
+  primaryMode: PrimaryMode;
+  primaryModeLabel: string;
   /** The domain the day's energy (일간 십신) emphasizes. */
   strongestDomain: TodayDomain;
   /** Where to pace when there is friction; null on a clean day. */
   cautionDomain: TodayDomain | null;
+  /** ≤2 deterministic domain statuses (emphasis + caution) — the "오늘의 핵심" glance row. */
+  domainSignals: DailyDomainSignal[];
   supportedDomains: TodayDomain[];
   /** Transparent tally — the evidence behind the tier (NOT a score). */
   harmonyCount: number;
   frictionCount: number;
   maxHighlights: number;
   maxCautions: number;
-  /** The day is a suitability read, never an event guarantee (§21). */
+  /** The day is a suitability read, never an event guarantee (§21/§54). */
   forbidEventCertainty: boolean;
   evidenceVersion: string;
   planVersion: string;
@@ -51,6 +76,38 @@ function tenGodDomain(tg: TenGod): TodayDomain {
   }
 }
 
+// Tempo (tier) × emphasis (십신 domain) → action mode. Friction sets the tempo first: a friction-dominant day
+// is always "속도 조절·정리"; a mixed day is "조정·조율". On a friction-free day the emphasis domain chooses.
+function derivePrimaryMode(tone: DailyOverallTone, strongestDomain: TodayDomain): PrimaryMode {
+  if (tone === '조심해서 움직일 날') return 'STABILIZE';
+  if (tone === '변화가 많은 날') return 'ADJUST';
+  switch (strongestDomain) {
+    case 'work':
+    case 'action':
+      return 'EXECUTE';
+    case 'wealth':
+    case 'overall':
+      return 'MANAGE';
+    case 'relationship':
+      return 'CONNECT';
+  }
+}
+
+// ≤2 truthful domain statuses. The emphasized domain is '좋음' only on a clearly good day, else '무난' — never
+// '주의' (the caution row carries 주의). The caution domain (friction days only, when distinct) is '주의'.
+function deriveDomainSignals(
+  tone: DailyOverallTone,
+  strongestDomain: TodayDomain,
+  cautionDomain: TodayDomain | null,
+): DailyDomainSignal[] {
+  const emphasisStatus: DomainStatus = tone === '좋은 흐름' ? '좋음' : '무난';
+  const signals: DailyDomainSignal[] = [{ domain: strongestDomain, status: emphasisStatus }];
+  if (cautionDomain !== null && cautionDomain !== strongestDomain) {
+    signals.push({ domain: cautionDomain, status: '주의' });
+  }
+  return signals;
+}
+
 const HARMONY_BRANCH = new Set(['BRANCH_SIX_COMBINATION', 'BRANCH_HALF_THREE_HARMONY']);
 const FRICTION_BRANCH = new Set(['BRANCH_CLASH', 'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT', 'BRANCH_DESTRUCTION', 'BRANCH_HARM']);
 
@@ -65,7 +122,19 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
   };
 
   if (!evidence.available) {
-    return { ...base, available: false, overallTone: '무난한 흐름', strongestDomain: 'overall', cautionDomain: null, supportedDomains: [], harmonyCount: 0, frictionCount: 0 };
+    return {
+      ...base,
+      available: false,
+      overallTone: '무난한 흐름',
+      primaryMode: 'MANAGE',
+      primaryModeLabel: PRIMARY_MODE_LABEL.MANAGE,
+      strongestDomain: 'overall',
+      cautionDomain: null,
+      domainSignals: [],
+      supportedDomains: [],
+      harmonyCount: 0,
+      frictionCount: 0,
+    };
   }
 
   const rel = evidence.dayLuck.relationsToNatal;
@@ -89,12 +158,19 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
           ? '변화가 많은 날'
           : '조심해서 움직일 날';
 
+  const strongestDomain = tenGodDomain(evidence.dayStemTenGod);
+  const cautionDomain = frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null;
+  const primaryMode = derivePrimaryMode(overallTone, strongestDomain);
+
   return {
     ...base,
     available: true,
     overallTone,
-    strongestDomain: tenGodDomain(evidence.dayStemTenGod),
-    cautionDomain: frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null,
+    primaryMode,
+    primaryModeLabel: PRIMARY_MODE_LABEL[primaryMode],
+    strongestDomain,
+    cautionDomain,
+    domainSignals: deriveDomainSignals(overallTone, strongestDomain, cautionDomain),
     supportedDomains: evidence.supportedDomains,
     harmonyCount,
     frictionCount,

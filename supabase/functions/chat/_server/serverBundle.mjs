@@ -8853,7 +8853,14 @@ async function buildTodayFortuneEvidence(input, deps) {
 }
 
 // src/features/today/engine/todayPlan.ts
-var TODAY_PLAN_VERSION = "today-plan@1.0.0";
+var TODAY_PLAN_VERSION = "today-plan@1.1.0";
+var PRIMARY_MODE_LABEL = {
+  EXECUTE: "실행·추진",
+  MANAGE: "점검·관리",
+  CONNECT: "관계·조율",
+  ADJUST: "조정·조율",
+  STABILIZE: "속도 조절·정리"
+};
 function tenGodDomain(tg3) {
   switch (tg3) {
     case "DIRECT_WEALTH":
@@ -8873,6 +8880,28 @@ function tenGodDomain(tg3) {
       return "overall";
   }
 }
+function derivePrimaryMode(tone, strongestDomain) {
+  if (tone === "조심해서 움직일 날") return "STABILIZE";
+  if (tone === "변화가 많은 날") return "ADJUST";
+  switch (strongestDomain) {
+    case "work":
+    case "action":
+      return "EXECUTE";
+    case "wealth":
+    case "overall":
+      return "MANAGE";
+    case "relationship":
+      return "CONNECT";
+  }
+}
+function deriveDomainSignals(tone, strongestDomain, cautionDomain) {
+  const emphasisStatus = tone === "좋은 흐름" ? "좋음" : "무난";
+  const signals = [{ domain: strongestDomain, status: emphasisStatus }];
+  if (cautionDomain !== null && cautionDomain !== strongestDomain) {
+    signals.push({ domain: cautionDomain, status: "주의" });
+  }
+  return signals;
+}
 var HARMONY_BRANCH = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
 var FRICTION_BRANCH = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
 function deriveDailyPlan(evidence) {
@@ -8885,7 +8914,19 @@ function deriveDailyPlan(evidence) {
     planVersion: TODAY_PLAN_VERSION
   };
   if (!evidence.available) {
-    return { ...base, available: false, overallTone: "무난한 흐름", strongestDomain: "overall", cautionDomain: null, supportedDomains: [], harmonyCount: 0, frictionCount: 0 };
+    return {
+      ...base,
+      available: false,
+      overallTone: "무난한 흐름",
+      primaryMode: "MANAGE",
+      primaryModeLabel: PRIMARY_MODE_LABEL.MANAGE,
+      strongestDomain: "overall",
+      cautionDomain: null,
+      domainSignals: [],
+      supportedDomains: [],
+      harmonyCount: 0,
+      frictionCount: 0
+    };
   }
   const rel = evidence.dayLuck.relationsToNatal;
   let harmonyCount = 0;
@@ -8899,12 +8940,18 @@ function deriveDailyPlan(evidence) {
     else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
   }
   const overallTone = frictionCount === 0 && harmonyCount >= 1 ? "좋은 흐름" : frictionCount === 0 ? "무난한 흐름" : harmonyCount >= frictionCount ? "변화가 많은 날" : "조심해서 움직일 날";
+  const strongestDomain = tenGodDomain(evidence.dayStemTenGod);
+  const cautionDomain = frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null;
+  const primaryMode = derivePrimaryMode(overallTone, strongestDomain);
   return {
     ...base,
     available: true,
     overallTone,
-    strongestDomain: tenGodDomain(evidence.dayStemTenGod),
-    cautionDomain: frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null,
+    primaryMode,
+    primaryModeLabel: PRIMARY_MODE_LABEL[primaryMode],
+    strongestDomain,
+    cautionDomain,
+    domainSignals: deriveDomainSignals(overallTone, strongestDomain, cautionDomain),
     supportedDomains: evidence.supportedDomains,
     harmonyCount,
     frictionCount
@@ -8919,30 +8966,41 @@ var TODAY_DOMAIN_LABEL = {
   relationship: "인간관계·연애",
   action: "행동·주의점"
 };
-var TODAY_POLICY_VERSION = "today@1.0.0";
+var TODAY_POLICY_VERSION = "today@1.1.0";
 
 // src/features/today/server/todayFortunePrompt.ts
 function buildTodayFortunePrompt(plan) {
   const emphasized = TODAY_DOMAIN_LABEL[plan.strongestDomain];
   const cautionLabel = plan.cautionDomain ? TODAY_DOMAIN_LABEL[plan.cautionDomain] : null;
   const system = [
-    '당신은 덕분AI의 "오늘의 운세"입니다. 한 사람의 사주를 바탕으로 "오늘 하루"에 대한 짧고 개인적인 운세를 씁니다.',
+    '당신은 덕분AI의 "오늘의 운세"입니다. 한 사람의 사주를 오늘 날짜에 대입해 나온 "오늘 하루의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 오늘이 어떤 날이고 무엇을 우선하면 좋은지 분명히 답해야 합니다.',
     "반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.",
-    `길이 규칙(반드시 지킬 것): headline은 한 줄로 "오늘이 어떤 날인지" 구체적으로. overallSummary는 2~4문장. highlights는 최대 ${plan.maxHighlights}개(각 domain 라벨 + title + 1~2문장 body). cautions는 최대 ${plan.maxCautions}개. actionTip은 오늘 할 수 있는 구체적 행동 1가지. consultationPrompts는 오늘 이어서 상담으로 물어볼 만한 자연스러운 질문 2~3개.`,
-    `서버가 판단한 오늘의 결(반드시 따를 것): 전반 기운은 "${plan.overallTone}". 오늘 기운이 실리는 영역은 "${emphasized}". ` + (cautionLabel ? `"${cautionLabel}" 쪽은 무리하지 말고 속도를 조절하도록 안내하십시오.` : "오늘은 크게 부딪히는 기운은 없습니다."),
-    '사건을 확정하지 마십시오(§21): "돈이 들어옵니다 / 연락이 옵니다 / 합격합니다 / 계약이 성사됩니다"처럼 쓰지 말고, "~하기에 괜찮은 흐름", "~은 서두르지 않는 편이 낫습니다"처럼 적합도·흐름으로 쓰십시오.',
-    '뻔한 운세 문구를 쓰지 마십시오("긍정적으로 생각하세요", "좋은 하루 보내세요"만으로 채우지 말 것). 오늘이 "어떤 성격의 날"이고 무엇을 하면 좋은지 알려주십시오.',
+    '서버가 이미 판단한 오늘의 결(반드시 그대로 따를 것 — 당신은 이 판단을 "말로 풀어내는" 역할입니다):',
+    `- 오늘의 전반 기운: "${plan.overallTone}"`,
+    `- 오늘 권하는 행동 방식: "${plan.primaryModeLabel}"`,
+    `- 오늘 기운이 실리는 영역: "${emphasized}"`,
+    cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 오늘은 크게 부딪히는 기운은 없습니다.",
+    "작성 규칙(반드시 지킬 것):",
+    `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
+    "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
+    '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로 덧붙이십시오.',
+    `- highlights: 최대 ${plan.maxHighlights}개. 각 항목은 서로 다른 새로운 정보를 담아야 합니다(같은 말을 바꿔 쓰지 말 것). 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
+    `- cautions: 최대 ${plan.maxCautions}개. "주의하세요"로 끝내지 말고 "무엇을 어떻게" 조심할지 구체적으로. ${cautionLabel ? "위 조절 영역을 중심으로." : "특별한 마찰이 없으면 억지로 만들지 말고 0~1개만."}`,
+    '- actionTip: 오늘 당장 할 수 있는 구체적 행동 1가지("그래서 오늘 뭐 하면 돼?"에 답).',
+    '- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장, "사주 흐름을 기준으로 …"처럼 구체적으로). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 오늘 결정), 3) 오늘 실행/확인할 것 순으로.',
+    '사건을 확정하지 마십시오(§54): "돈이 들어옵니다 / 연락이 옵니다 / 합격합니다 / 계약이 성사됩니다"처럼 쓰지 말고, "~하기에 괜찮은 흐름", "~은 서두르지 않는 편이 낫습니다"처럼 적합도·흐름으로 쓰십시오. 행운의 색·방향·숫자·복권 같은 것도 만들지 마십시오.',
     "건강은 진단·치료가 아니라 컨디션 관리·생활 리듬으로만. 돈은 특정 종목 매수 권유 금지, 흐름·조율로만. 관계는 상대의 속마음을 사실로 단정하지 마십시오.",
     "JSON 스키마(deokbun_today_fortune)에 맞춰 그 형식으로만 답하십시오."
   ].join("\n");
   const user = [
     `오늘 날짜: ${plan.fortuneDate}`,
     `전반 기운: ${plan.overallTone}`,
-    `오늘 기운이 실리는 영역: ${emphasized}`,
+    `권하는 행동 방식: ${plan.primaryModeLabel}`,
+    `기운이 실리는 영역: ${emphasized}`,
     `조율이 필요한 영역: ${cautionLabel ?? "특별히 없음"}`,
     `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
     "",
-    "위 판단을 바탕으로 오늘의 운세를 스키마 형식의 JSON으로 작성하십시오."
+    "위 판단을 바탕으로, 오늘 무엇을 우선하면 좋은지 분명히 답하는 오늘의 운세를 스키마 형식의 JSON으로 작성하십시오."
   ].join("\n");
   return [
     { role: "system", content: system },
@@ -8952,6 +9010,31 @@ function buildTodayFortunePrompt(plan) {
 
 // src/features/today/server/buildTodayFortune.ts
 var clean2 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
+function firstSentence(s) {
+  const m = /^[^.!?。\n]*[.!?。]?/.exec(s.trim());
+  return (m ? m[0] : s).trim();
+}
+function toDisplayLabel(rawLabel, question) {
+  const base = (rawLabel || question).trim().replace(/[?？.!。·\s]+$/u, "");
+  return base.length <= 20 ? base : `${base.slice(0, 18).trim()}…`;
+}
+var CATEGORY_PATTERNS = [
+  { key: "RUSH", re: /서두르|성급|(?<!마)무리|급하게|급한|밀어붙이|조급/ },
+  // (?<!마) so 마무리(finishing) ≠ 무리(overdoing)
+  { key: "ORGANIZE", re: /정리|점검|마무리|재점검|정돈|조건을?\s*(다시\s*)?확인/ },
+  { key: "PACE", re: /속도|천천히|여유|리듬|쉬어|휴식|무리하지/ },
+  { key: "LISTEN", re: /말을?\s*아끼|경청|듣는|들어주|한 발 물러/ },
+  { key: "DECIDE", re: /결정|판단|선택|확답|계약서|서명/ },
+  { key: "MONEY", re: /지출|비용|예산|투자|자금|씀씀이/ }
+];
+function semanticCategory(text) {
+  for (const c of CATEGORY_PATTERNS) if (c.re.test(text)) return c.key;
+  return null;
+}
+var EVENT_GUARANTEE = /(돈|재물|자금|목돈)[^.\n]{0,8}(들어옵니다|들어와요|들어옴|생깁니다|생겨요)|(합격|당첨|승진|성사|성공)(합니다|됩니다|해요|돼요)|(연락|전화|고백)[^.\n]{0,8}(옵니다|와요|받습니다|올\s*거예요)/;
+function containsEventGuarantee(text) {
+  return EVENT_GUARANTEE.test(text);
+}
 function parseDailyFortune(raw, plan) {
   let obj;
   try {
@@ -8965,18 +9048,78 @@ function parseDailyFortune(raw, plan) {
   const overallSummary = clean2(o.overallSummary);
   const actionTip = clean2(o.actionTip);
   if (headline.length === 0 || overallSummary.length === 0 || actionTip.length === 0) return null;
-  const highlights = (Array.isArray(o.highlights) ? o.highlights : []).map((h) => {
+  const verdict = clean2(o.verdict) || firstSentence(overallSummary);
+  const seenCategories = /* @__PURE__ */ new Set();
+  const highlights = [];
+  for (const h of Array.isArray(o.highlights) ? o.highlights : []) {
     const hh = h ?? {};
-    return { domain: clean2(hh.domain), title: clean2(hh.title), body: clean2(hh.body) };
-  }).filter((h) => h.title.length > 0 && h.body.length > 0).slice(0, plan.maxHighlights);
-  const cautions = (Array.isArray(o.cautions) ? o.cautions : []).map((c) => {
+    const domain = clean2(hh.domain);
+    const title = clean2(hh.title);
+    const body = clean2(hh.body);
+    if (title.length === 0 || body.length === 0) continue;
+    const cat = semanticCategory(`${title} ${body}`);
+    if (cat && seenCategories.has(cat)) continue;
+    if (cat) seenCategories.add(cat);
+    highlights.push({ domain, title, body });
+    if (highlights.length >= plan.maxHighlights) break;
+  }
+  const coveredByOthers = /* @__PURE__ */ new Set([...seenCategories]);
+  for (const t of [verdict, headline]) {
+    const c = semanticCategory(t);
+    if (c) coveredByOthers.add(c);
+  }
+  const cautions = [];
+  for (const c of Array.isArray(o.cautions) ? o.cautions : []) {
     const cc = c ?? {};
-    return { title: clean2(cc.title), body: clean2(cc.body) };
-  }).filter((c) => c.title.length > 0 && c.body.length > 0).slice(0, plan.maxCautions);
-  const consultationPrompts = (Array.isArray(o.consultationPrompts) ? o.consultationPrompts : []).map((p) => clean2(p)).filter((p) => p.length > 0).slice(0, 3);
-  const surfaced = [headline, overallSummary, actionTip, ...highlights.flatMap((h) => [h.title, h.body]), ...cautions.flatMap((c) => [c.title, c.body])].join(" ");
+    const title = clean2(cc.title);
+    const body = clean2(cc.body);
+    if (title.length === 0 || body.length === 0) continue;
+    const cat = semanticCategory(`${title} ${body}`);
+    if (cat && coveredByOthers.has(cat)) continue;
+    if (cat) coveredByOthers.add(cat);
+    cautions.push({ title, body });
+    if (cautions.length >= plan.maxCautions) break;
+  }
+  const followUps = [];
+  const rawFollowUps = Array.isArray(o.followUps) ? o.followUps : Array.isArray(o.consultationPrompts) ? o.consultationPrompts : [];
+  for (const f of rawFollowUps) {
+    let displayLabel = "";
+    let question = "";
+    if (typeof f === "string") {
+      question = clean2(f);
+    } else if (f && typeof f === "object") {
+      const ff = f;
+      displayLabel = clean2(ff.displayLabel);
+      question = clean2(ff.question);
+    }
+    if (question.length === 0) continue;
+    followUps.push({ displayLabel: toDisplayLabel(displayLabel, question), question });
+    if (followUps.length >= 3) break;
+  }
+  const surfaced = [
+    headline,
+    verdict,
+    overallSummary,
+    actionTip,
+    ...highlights.flatMap((h) => [h.title, h.body]),
+    ...cautions.flatMap((c) => [c.title, c.body]),
+    ...followUps.flatMap((f) => [f.displayLabel, f.question])
+  ].join(" ");
   if (containsRawGanji(surfaced)) return null;
-  return { headline, overallSummary, overallTone: plan.overallTone, highlights, cautions, actionTip, consultationPrompts };
+  if (containsEventGuarantee(surfaced)) return null;
+  return {
+    headline,
+    verdict,
+    overallSummary,
+    overallTone: plan.overallTone,
+    primaryMode: plan.primaryMode,
+    primaryModeLabel: plan.primaryModeLabel,
+    domainSignals: plan.domainSignals,
+    highlights,
+    cautions,
+    actionTip,
+    followUps
+  };
 }
 async function buildTodayFortune(request, deps) {
   const evidence = await buildTodayFortuneEvidence(
@@ -9010,7 +9153,10 @@ var DAILY_FORTUNE_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
+    // headline: a concrete one-liner about the day (never a poetic slogan, §9/§10).
     headline: { type: "string" },
+    // verdict: 1-2 sentences that directly answer "오늘은 어떤 날이고 뭘 우선하면 되나" (§16).
+    verdict: { type: "string" },
     overallSummary: { type: "string" },
     highlights: {
       type: "array",
@@ -9031,9 +9177,18 @@ var DAILY_FORTUNE_JSON_SCHEMA = {
       }
     },
     actionTip: { type: "string" },
-    consultationPrompts: { type: "array", items: { type: "string" } }
+    // followUps: SHORT chip label + the RICH question actually carried into 상담 (§37).
+    followUps: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { displayLabel: { type: "string" }, question: { type: "string" } },
+        required: ["displayLabel", "question"]
+      }
+    }
   },
-  required: ["headline", "overallSummary", "highlights", "cautions", "actionTip", "consultationPrompts"]
+  required: ["headline", "verdict", "overallSummary", "highlights", "cautions", "actionTip", "followUps"]
 };
 function dailyFortuneResponseFormat() {
   return { type: "json_schema", name: "deokbun_today_fortune", strict: true, schema: DAILY_FORTUNE_JSON_SCHEMA };

@@ -13,9 +13,8 @@ import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { setPendingConsultationIntent, useConsultationDraft, useConsultationSubjects } from '@/features/consultation';
 import {
-  clientTodayFortuneDateGuess,
-  formatFortuneDateLabel,
   todayFortuneService,
+  toTodayDetailView,
   toneVariant,
   trackTodayEvent,
   type DailyFortuneRecord,
@@ -31,6 +30,8 @@ const TONE_COLOR: Record<ReturnType<typeof toneVariant>, string> = {
   change: '#B26A00',
   caution: '#C0392B',
 };
+// Domain-status accents reuse the SAME restrained green/gray/red palette as the tones (no new colors, §34).
+const STATUS_COLOR: Record<string, string> = { positive: '#1F8A54', neutral: '#5B6472', caution: '#C0392B' };
 
 // 오늘의 운세 상세 (§35–§40). A gated, pushed screen (auth + onboarding guaranteed by the gate). On open it
 // load-or-creates today's canonical record (0 LLM on a cache hit); a ?date= param opens a PAST record
@@ -116,8 +117,6 @@ export default function TodayScreen() {
 
   if (status === 'auth') return <Redirect href="/login" />;
 
-  const label = record ? formatFortuneDateLabel(record.fortuneDate) : formatFortuneDateLabel(requestedDate ?? clientTodayFortuneDateGuess(Date.now()));
-
   return (
     <Screen padded={false} frame>
       <AppHeader title="오늘의 운세" showBack onBack={handleBack} />
@@ -131,70 +130,110 @@ export default function TodayScreen() {
               </Text>
             </View>
           ) : status === 'ready' && record ? (
-            <Stack gap="xl">
-              <Stack gap="xs">
-                <Text variant="bodySmall" colorToken="textSecondary">
-                  {label.dot} {label.weekday ? `${label.weekday}요일` : ''}
-                </Text>
-                <View style={[styles.tonePill, { borderColor: TONE_COLOR[toneVariant(record.overallTone)] }]}>
-                  <Text variant="bodySmall" style={{ color: TONE_COLOR[toneVariant(record.overallTone)], fontWeight: '700' }}>
-                    {record.overallTone}
-                  </Text>
-                </View>
-                <Text variant="headingLarge">{record.result.headline}</Text>
-                <Text variant="bodyMedium" colorToken="textSecondary">
-                  {record.result.overallSummary}
-                </Text>
-              </Stack>
-
-              {record.result.highlights.length > 0 ? (
-                <Stack gap="sm">
-                  <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 좋은 흐름</Text>
-                  {record.result.highlights.map((h, i) => (
-                    <Card key={`h${i}`} radius="lg">
-                      <Stack gap="xs">
-                        <Text variant="bodyMedium" style={{ fontWeight: '700' }}>
-                          {h.domain ? `${h.domain} · ` : ''}{h.title}
+            (() => {
+              const view = toTodayDetailView(record);
+              return (
+                <Stack gap="lg">
+                  {/* HERO — the day, answered (§8/§28/§33). The strongest block: tone + mode, headline, verdict. */}
+                  <Card radius="xl" style={[styles.hero, { borderColor: TONE_COLOR[view.toneVariant] }]}>
+                    <Stack gap="sm">
+                      <View style={styles.heroTop}>
+                        <View style={styles.pillRow}>
+                          <View style={[styles.tonePill, { borderColor: TONE_COLOR[view.toneVariant] }]}>
+                            <Text variant="bodySmall" style={{ color: TONE_COLOR[view.toneVariant], fontWeight: '700' }}>
+                              {view.overallTone}
+                            </Text>
+                          </View>
+                          {view.primaryModeLabel ? (
+                            <View style={[styles.modePill, { borderColor: theme.border }]}>
+                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
+                                {view.primaryModeLabel}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text variant="bodySmall" colorToken="textSecondary">
+                          {view.dot}{view.weekday ? ` ${view.weekday}` : ''}
                         </Text>
-                        <Text variant="bodyMedium" colorToken="textSecondary">{h.body}</Text>
+                      </View>
+                      <Text variant="headingLarge">{view.headline}</Text>
+                      <Text variant="bodyLarge" style={styles.verdict}>{view.verdict}</Text>
+                    </Stack>
+                  </Card>
+
+                  {/* 오늘의 핵심 — deterministic domain statuses (only what the evidence robustly knows, §13). */}
+                  {view.domainSignals.length > 0 ? (
+                    <Card radius="lg">
+                      <Stack gap="sm">
+                        <Text variant="bodySmall" colorToken="textSecondary" style={styles.keyTitle}>오늘의 핵심</Text>
+                        {view.domainSignals.map((s, i) => (
+                          <View key={`s${i}`} style={styles.signalRow}>
+                            <Text variant="bodyMedium" style={{ fontWeight: '600' }}>{s.label}</Text>
+                            <Text variant="bodyMedium" style={{ color: STATUS_COLOR[s.variant], fontWeight: '700' }}>{s.status}</Text>
+                          </View>
+                        ))}
                       </Stack>
                     </Card>
-                  ))}
-                </Stack>
-              ) : null}
+                  ) : null}
 
-              {record.result.cautions.length > 0 ? (
-                <Stack gap="sm">
-                  <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 조심할 것</Text>
-                  {record.result.cautions.map((c, i) => (
-                    <Card key={`c${i}`} radius="lg">
-                      <Stack gap="xs">
-                        <Text variant="bodyMedium" style={{ fontWeight: '700' }}>{c.title}</Text>
-                        <Text variant="bodyMedium" colorToken="textSecondary">{c.body}</Text>
-                      </Stack>
+                  {/* 오늘 좋은 흐름 — grouped rows in ONE card (§31: less fragmentation). */}
+                  {view.highlights.length > 0 ? (
+                    <Stack gap="sm">
+                      <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 좋은 흐름</Text>
+                      <Card radius="lg">
+                        <Stack gap="md">
+                          {view.highlights.map((h, i) => (
+                            <View key={`h${i}`} style={i > 0 ? styles.rowDivider : undefined}>
+                              <Text variant="bodyMedium" style={{ fontWeight: '700' }}>
+                                {h.domain ? `${h.domain} · ` : ''}{h.title}
+                              </Text>
+                              <Text variant="bodyMedium" colorToken="textSecondary">{h.body}</Text>
+                            </View>
+                          ))}
+                        </Stack>
+                      </Card>
+                    </Stack>
+                  ) : null}
+
+                  {/* 오늘 조심할 것 */}
+                  {view.cautions.length > 0 ? (
+                    <Stack gap="sm">
+                      <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 조심할 것</Text>
+                      <Card radius="lg">
+                        <Stack gap="md">
+                          {view.cautions.map((c, i) => (
+                            <View key={`c${i}`} style={i > 0 ? styles.rowDivider : undefined}>
+                              <Text variant="bodyMedium" style={{ fontWeight: '700' }}>{c.title}</Text>
+                              <Text variant="bodyMedium" colorToken="textSecondary">{c.body}</Text>
+                            </View>
+                          ))}
+                        </Stack>
+                      </Card>
+                    </Stack>
+                  ) : null}
+
+                  {/* 오늘 이렇게 해보세요 — one accented action card. */}
+                  <Stack gap="sm">
+                    <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 이렇게 해보세요</Text>
+                    <Card radius="lg" style={{ borderColor: theme.primary, borderWidth: 1 }}>
+                      <Text variant="bodyMedium">{view.actionTip}</Text>
                     </Card>
-                  ))}
-                </Stack>
-              ) : null}
-
-              <Stack gap="sm">
-                <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 이렇게 해보세요</Text>
-                <Card radius="lg" style={{ borderColor: theme.primary, borderWidth: 1 }}>
-                  <Text variant="bodyMedium">{record.result.actionTip}</Text>
-                </Card>
-              </Stack>
-
-              {record.result.consultationPrompts.length > 0 ? (
-                <Stack gap="sm">
-                  <Text variant="bodyLarge" style={styles.sectionTitle}>더 자세히 물어보기</Text>
-                  <Stack direction="row" gap="sm" style={styles.chipWrap}>
-                    {record.result.consultationPrompts.map((q) => (
-                      <Chip key={q} label={q} onPress={() => askInConsultation(q)} />
-                    ))}
                   </Stack>
+
+                  {/* 이어서 물어보기 — SHORT chip labels; the RICH question is sent to 상담 (§37/§47). */}
+                  {view.followUps.length > 0 ? (
+                    <Stack gap="sm">
+                      <Text variant="bodyLarge" style={styles.sectionTitle}>이어서 물어보기</Text>
+                      <Stack direction="row" gap="sm" style={styles.chipWrap}>
+                        {view.followUps.map((f) => (
+                          <Chip key={f.question} label={f.displayLabel} onPress={() => askInConsultation(f.question)} />
+                        ))}
+                      </Stack>
+                    </Stack>
+                  ) : null}
                 </Stack>
-              ) : null}
-            </Stack>
+              );
+            })()
           ) : status === 'no-self' ? (
             <Card radius="xl">
               <Stack gap="md">
@@ -234,6 +273,15 @@ const styles = StyleSheet.create({
   wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   center: { paddingTop: 80, alignItems: 'center' },
   sectionTitle: { fontWeight: '700' },
+  // HERO: a single strong summary card with a tone-colored left accent (§33) — no heavy fill (§34).
+  hero: { borderLeftWidth: 4 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   tonePill: { alignSelf: 'flex-start', borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  modePill: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  verdict: { fontWeight: '600', lineHeight: 24 },
+  keyTitle: { fontWeight: '700', letterSpacing: 0.2 },
+  signalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowDivider: { borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)', paddingTop: 12, marginTop: 2 },
   chipWrap: { flexWrap: 'wrap' },
 });

@@ -236,10 +236,19 @@ export default function HomeScreen() {
                   {todayIsToday && todayPreview ? (
                     <>
                       <View style={styles.rowBetween}>
-                        <View style={[styles.tonePill, { borderColor: TODAY_TONE_COLOR[todayPreview.toneVariant] }]}>
-                          <Text variant="bodySmall" style={{ color: TODAY_TONE_COLOR[todayPreview.toneVariant], fontWeight: '700' }}>
-                            {todayPreview.overallTone}
-                          </Text>
+                        <View style={styles.todayPills}>
+                          <View style={[styles.tonePill, { borderColor: TODAY_TONE_COLOR[todayPreview.toneVariant] }]}>
+                            <Text variant="bodySmall" style={{ color: TODAY_TONE_COLOR[todayPreview.toneVariant], fontWeight: '700' }}>
+                              {todayPreview.overallTone}
+                            </Text>
+                          </View>
+                          {todayPreview.primaryModeLabel ? (
+                            <View style={[styles.todayModePill, { borderColor: theme.border }]}>
+                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
+                                {todayPreview.primaryModeLabel}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
                         <Text variant="bodySmall" colorToken="textSecondary">
                           {todayPreview.dot}
@@ -251,7 +260,7 @@ export default function HomeScreen() {
                     </>
                   ) : (
                     <Text variant="bodyMedium" colorToken="textSecondary">
-                      오늘의 운세가 준비되어 있어요. 오늘 하루를 사주로 짚어드릴게요.
+                      오늘 하루의 흐름을 확인해보세요. 사주로 오늘을 짚어드릴게요.
                     </Text>
                   )}
                   <Button
@@ -459,6 +468,18 @@ const styles = StyleSheet.create({
   tonePill: {
     alignSelf: 'flex-start',
     borderWidth: 1.5,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  todayPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  todayModePill: {
+    borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 3,

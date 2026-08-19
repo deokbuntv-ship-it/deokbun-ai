@@ -61,6 +61,47 @@ describe('deriveDailyPlan — transparent tier tally, no fake score (§13/§14)'
     expect(p.maxCautions).toBe(2);
   });
 
+  it('derives a deterministic primary action mode from tempo × emphasis (§6/§7), never the LLM', () => {
+    // friction-free + work/action emphasis → EXECUTE
+    expect(deriveDailyPlan(ev({ harmonies: 1, frictions: 0, stemTenGod: 'DIRECT_OFFICER' })).primaryMode).toBe('EXECUTE');
+    expect(deriveDailyPlan(ev({ harmonies: 1, frictions: 0, stemTenGod: 'EATING_GOD' })).primaryMode).toBe('EXECUTE');
+    // friction-free + wealth/overall → MANAGE
+    expect(deriveDailyPlan(ev({ harmonies: 1, frictions: 0, stemTenGod: 'DIRECT_WEALTH' })).primaryMode).toBe('MANAGE');
+    expect(deriveDailyPlan(ev({ harmonies: 1, frictions: 0, stemTenGod: 'DIRECT_RESOURCE' })).primaryMode).toBe('MANAGE');
+    // friction-free + relationship → CONNECT
+    expect(deriveDailyPlan(ev({ harmonies: 1, frictions: 0, stemTenGod: 'PEER' })).primaryMode).toBe('CONNECT');
+    // mixed day → ADJUST; friction-dominant → STABILIZE (tempo overrides emphasis)
+    expect(deriveDailyPlan(ev({ harmonies: 2, frictions: 1, stemTenGod: 'DIRECT_OFFICER' })).primaryMode).toBe('ADJUST');
+    expect(deriveDailyPlan(ev({ harmonies: 0, frictions: 2, stemTenGod: 'DIRECT_OFFICER' })).primaryMode).toBe('STABILIZE');
+  });
+
+  it('exposes a Korean mode label consistent with the mode', () => {
+    const p = deriveDailyPlan(ev({ harmonies: 1, frictions: 0, stemTenGod: 'DIRECT_WEALTH' }));
+    expect(p.primaryMode).toBe('MANAGE');
+    expect(p.primaryModeLabel).toBe('점검·관리');
+  });
+
+  it('domainSignals are ≤2, deterministic, and never fabricate a full 5-domain matrix (§13/§14)', () => {
+    // clearly good day → emphasis is 좋음, no caution row
+    expect(deriveDailyPlan(ev({ harmonies: 2, frictions: 0, stemTenGod: 'DIRECT_WEALTH' })).domainSignals).toEqual([
+      { domain: 'wealth', status: '좋음' },
+    ]);
+    // friction day, distinct domains → emphasis 무난 (never 좋음) + caution 주의
+    expect(
+      deriveDailyPlan(ev({ harmonies: 0, frictions: 2, stemTenGod: 'DIRECT_WEALTH', branchTenGod: 'SEVEN_KILLINGS' })).domainSignals,
+    ).toEqual([
+      { domain: 'wealth', status: '무난' },
+      { domain: 'work', status: '주의' },
+    ]);
+  });
+
+  it('collapses to ONE signal when emphasis and caution are the same domain (no contradiction)', () => {
+    const p = deriveDailyPlan(ev({ harmonies: 0, frictions: 2, stemTenGod: 'DIRECT_OFFICER', branchTenGod: 'SEVEN_KILLINGS' }));
+    expect(p.strongestDomain).toBe('work');
+    expect(p.cautionDomain).toBe('work');
+    expect(p.domainSignals).toEqual([{ domain: 'work', status: '무난' }]);
+  });
+
   it('unavailable evidence → available:false, neutral, no domains (fail-closed)', () => {
     const p = deriveDailyPlan({ available: false, fortuneDate: '2026-08-19', timezone: 'Asia/Seoul', reason: 'CHART_UNAVAILABLE', evidenceVersion: 'today-evidence@1.0.0' });
     expect(p.available).toBe(false);
