@@ -19,7 +19,17 @@ export type ProductEventName =
   | 'compatibility_report_viewed'
   | 'compatibility_report_shared'
   | 'compatibility_conversation_resumed'
-  | 'compatibility_new_conversation_started';
+  | 'compatibility_new_conversation_started'
+  // Signup-first onboarding funnel (§63) — bounded, no PII (birth data/tokens/emails never appear here).
+  | 'login_entry_viewed'
+  | 'oauth_started'
+  | 'oauth_succeeded'
+  | 'oauth_failed'
+  | 'onboarding_terms_viewed'
+  | 'onboarding_terms_completed'
+  | 'onboarding_birth_viewed'
+  | 'onboarding_birth_completed'
+  | 'onboarding_completed';
 
 // The ONLY property keys that may be persisted. Everything else is dropped (§38). No name / birth /
 // question / answer / email / phone can appear here — those keys are simply not on the allowlist.
@@ -32,6 +42,12 @@ const ALLOWED_PROPS = new Set<string>([
   'followup_category',
   'source',
   'channel',
+  // Onboarding funnel props (§64) — the login method + which step + new-vs-existing + continuation kind.
+  // These are categorical/boolean only; no name/birth/email/phone/token/URL can appear here.
+  'provider',
+  'completion_step',
+  'is_existing_user',
+  'continuation_type',
 ]);
 const MAX_STR = 64;
 

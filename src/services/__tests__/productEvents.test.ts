@@ -46,6 +46,21 @@ describe('sanitizeEventProperties — allowlist (PII can never pass §38)', () =
     }
   });
 
+  it('keeps the onboarding funnel props (provider/step/existing/continuation) but never PII', () => {
+    const out = sanitizeEventProperties({
+      provider: 'kakao',
+      completion_step: 'birth',
+      is_existing_user: true,
+      continuation_type: 'shared_report',
+      // must be dropped:
+      birth_date: '1994-05-20',
+      email: 'x@y.com',
+    });
+    expect(out).toEqual({ provider: 'kakao', completion_step: 'birth', is_existing_user: true, continuation_type: 'shared_report' });
+    expect(out).not.toHaveProperty('birth_date');
+    expect(out).not.toHaveProperty('email');
+  });
+
   it('drops over-long strings and non-primitive values', () => {
     const out = sanitizeEventProperties({
       source: 'x'.repeat(200), // too long

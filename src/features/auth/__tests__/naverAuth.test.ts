@@ -250,7 +250,7 @@ describe('login screen provider wiring (regression lock — source-level)', () =
 
   it('wires naver through the existing generic handler', () => {
     expect(src).toMatch(/handleLogin\('naver'\)/);
-    expect(src).toContain('네이버로 시작하기');
+    expect(src).toContain('네이버로 계속하기'); // signup-first CTA copy (§12: "계속하기")
   });
 
   it('keeps kakao + google wired (no regression)', () => {
@@ -260,7 +260,7 @@ describe('login screen provider wiring (regression lock — source-level)', () =
 
   it('reuses the shared Button component + isSigningIn disabled state', () => {
     // naver button reuses the same <Button ... disabled={isSigningIn}> pattern.
-    expect(src).toMatch(/label="네이버로 시작하기"[\s\S]*disabled=\{isSigningIn\}/);
+    expect(src).toMatch(/label="네이버로 계속하기"[\s\S]*disabled=\{isSigningIn\}/);
   });
 });
 

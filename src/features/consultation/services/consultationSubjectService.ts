@@ -91,6 +91,25 @@ async function createSubject(
   return toRecord(data as ConsultationSubjectRow);
 }
 
+// The user's canonical SELF subject (is_self = true), or null when onboarding has not created one yet.
+// One row max is guaranteed by the partial unique index; maybeSingle tolerates zero. Used by the onboarding
+// completeness check — throws (logDbError) on a real DB error so facts loading can fail closed.
+async function getSelfSubject(): Promise<ConsultationSubjectRecord | null> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(COLUMNS)
+    .eq('is_self', true)
+    .maybeSingle();
+
+  if (error) {
+    logDbError(error, 'subject', 'getSelfSubject');
+  }
+
+  return data === null ? null : toRecord(data as ConsultationSubjectRow);
+}
+
 async function getSubject(
   id: string,
 ): Promise<ConsultationSubjectRecord | null> {
@@ -187,6 +206,7 @@ export const consultationSubjectService = {
   listSubjects,
   createSubject,
   getSubject,
+  getSelfSubject,
   updateSubject,
   deleteSubject,
   setPrimarySubject,

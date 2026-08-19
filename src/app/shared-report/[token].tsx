@@ -11,6 +11,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
+import { isOnboarded, useOnboarding } from '@/features/onboarding';
 import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
 import { setPendingShareToken } from '@/features/chat/report/pendingSharedReport';
 import { premiumViewFromSharedContent, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
@@ -33,20 +34,27 @@ export default function SharedReportScreen() {
   const params = useLocalSearchParams<{ token?: string }>();
   const token = typeof params.token === 'string' ? params.token : '';
   const { authState } = useAuth();
+  const { state: onboardingState } = useOnboarding();
 
   const [view, setView] = useState<PremiumReportVM | null>(null);
   const [status, setStatus] = useState<FetchStatus>('loading');
 
-  // Stash the token BEFORE handing off to login (only while logged out + shape-valid). Never in returnTo.
+  // Stash the token BEFORE any redirect (logged out OR authenticated-but-not-onboarded), shape-valid only.
+  // Never in returnTo. FINAL OVERRIDE: a new/incomplete member must finish onboarding first, then the
+  // resolver consumes this token to bring them straight back here — so we preserve it across BOTH hops.
   useEffect(() => {
-    if (authState.status === 'unauthenticated' && isValidShareToken(token)) {
+    const willRedirect =
+      authState.status === 'unauthenticated' ||
+      (authState.status === 'authenticated' && !isOnboarded(onboardingState));
+    if (willRedirect && isValidShareToken(token)) {
       setPendingShareToken(token);
     }
-  }, [authState.status, token]);
+  }, [authState.status, onboardingState, token]);
 
-  // Fetch the bounded DTO ONLY when authenticated (§C — never before auth resolves).
+  // Fetch the bounded DTO ONLY when authenticated AND fully onboarded (§C/§47 — never before, so an
+  // incomplete member can never see a shared report ahead of finishing signup).
   useEffect(() => {
-    if (authState.status !== 'authenticated') return;
+    if (authState.status !== 'authenticated' || !isOnboarded(onboardingState)) return;
     if (!isValidShareToken(token)) {
       setStatus('unavailable');
       return;
@@ -72,7 +80,7 @@ export default function SharedReportScreen() {
     return () => {
       active = false;
     };
-  }, [token, authState.status]);
+  }, [token, authState.status, onboardingState]);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -97,6 +105,26 @@ export default function SharedReportScreen() {
   if (authState.status === 'unauthenticated') {
     // The report body is NEVER fetched or shown before login (§22).
     return <Redirect href="/login" />;
+  }
+  // Authenticated but onboarding facts still resolving → hold (never flash the report).
+  if (onboardingState === 'AUTHENTICATED_LOADING') {
+    return (
+      <Screen padded={false} frame>
+        <AppHeader title="공유받은 보고서" />
+        <View style={styles.centerPad}>
+          <Card radius="xl">
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              불러오는 중입니다...
+            </Text>
+          </Card>
+        </View>
+      </Screen>
+    );
+  }
+  // FINAL OVERRIDE (§47): a new/incomplete member must finish onboarding before viewing. The token was
+  // stashed above; the resolver returns them here once COMPLETE.
+  if (!isOnboarded(onboardingState)) {
+    return <Redirect href="/onboarding" />;
   }
 
   // ── Authenticated: bounded, read-only view ──────────────────────────────────

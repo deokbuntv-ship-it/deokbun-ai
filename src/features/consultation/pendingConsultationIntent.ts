@@ -19,8 +19,9 @@ export type PendingConsultationIntent = {
   savedAt?: number; // epoch ms when the question was stored (for TTL, §19)
 };
 
-// Only these internal routes may be resumed to (§12/§52 — no open redirect).
-const ALLOWED_RETURN_TO: readonly string[] = ['/chat', '/consult', '/inbox', '/today', '/'];
+// Only these internal routes may be resumed to (§12/§52 — no open redirect). Primary consumer surfaces the
+// signup-first gate may bounce a deep-linking anonymous user off of, so intent survives onboarding (§53).
+const ALLOWED_RETURN_TO: readonly string[] = ['/chat', '/consult', '/compatibility', '/inbox', '/today', '/my', '/'];
 
 const STORAGE_KEY = 'deokbun.pendingConsultationIntent';
 

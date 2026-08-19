@@ -6,6 +6,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AcquisitionBridge } from '@/features/ads/acquisition/AcquisitionBridge';
 import { AuthProvider } from '@/features/auth';
 import { ConsultationDraftProvider } from '@/features/consultation';
+import { OnboardingGate, OnboardingProvider } from '@/features/onboarding';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 SplashScreen.preventAutoHideAsync();
@@ -16,17 +17,26 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
-        <ConsultationDraftProvider>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <AnimatedSplashOverlay />
-          {/* Additive, fail-closed ad-acquisition capture (Sprint 3B). Renders nothing;
-              organic (no ?ad=) visitors are unaffected. */}
-          <AcquisitionBridge />
-          <Stack>
+        <OnboardingProvider>
+          <ConsultationDraftProvider>
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <AnimatedSplashOverlay />
+            {/* Additive, fail-closed ad-acquisition capture (Sprint 3B). Renders nothing;
+                organic (no ?ad=) visitors are unaffected. */}
+            <AcquisitionBridge />
+            {/* Signup-first gate (§7): one centralized, fail-closed authority that keeps anonymous /
+                un-onboarded users out of personalized surfaces and routes them through login → terms →
+                birth profile. Public routes (login, content, famous, admin, shared-report) pass through. */}
+            <OnboardingGate>
+              <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="birth-info" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
+            {/* Signup-first onboarding steps (gate-driven): resolver → terms → birth profile. */}
+            <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding/terms" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding/birth" options={{ headerShown: false }} />
             {/* Provider-neutral OAuth return route (web popup completion; native
                 intercepts the deep link and never mounts this). */}
             <Stack.Screen name="login-callback" options={{ headerShown: false }} />
@@ -56,8 +66,10 @@ export default function RootLayout() {
             />
             <Stack.Screen name="famous/index" options={{ headerShown: false }} />
             <Stack.Screen name="famous/[slug]" options={{ headerShown: false }} />
-          </Stack>
-        </ConsultationDraftProvider>
+              </Stack>
+            </OnboardingGate>
+          </ConsultationDraftProvider>
+        </OnboardingProvider>
       </AuthProvider>
     </ThemeProvider>
   );

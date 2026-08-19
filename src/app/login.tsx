@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
@@ -12,84 +12,73 @@ import {
   authReasonToOutcome,
   isSilentOutcome,
 } from '@/features/auth/errors/authErrors';
-import { consumePendingShareToken } from '@/features/chat/report/pendingSharedReport';
-import { consumePendingReturnTo } from '@/features/consultation';
+import { trackOnboardingEvent } from '@/features/onboarding/onboardingAnalytics';
 
+// Signup-first ENTRY (§9/§10/§12). Brand + a short value proposition + social CTAs. Social auth is BOTH
+// login and signup — the user never has to pick "로그인 vs 회원가입" up front; new-vs-existing is resolved
+// after auth by the onboarding resolver. On success we ALWAYS route to /onboarding (never straight to Home
+// or a shared report): the resolver decides the next step and is the single consumer of any continuation.
 export default function LoginScreen() {
   const router = useRouter();
   const { signInWithProvider, isSigningIn } = useAuth();
 
   const [errorText, setErrorText] = useState<string | null>(null);
 
+  useEffect(() => {
+    void trackOnboardingEvent('login_entry_viewed');
+  }, []);
+
   const handleLogin = async (providerId: AuthProviderId) => {
     setErrorText(null);
+    void trackOnboardingEvent('oauth_started', { provider: providerId });
 
     const result = await signInWithProvider(providerId);
 
     if (result.success) {
-      // A recipient interrupted while opening a shared report resumes there (§24). The token rides an
-      // ephemeral client store (never `returnTo`), is shape-validated, and only fills the dynamic route
-      // param — so there is no open-redirect surface.
-      const shareToken = consumePendingShareToken();
-      if (shareToken) {
-        router.replace({ pathname: '/shared-report/[token]', params: { token: shareToken } });
-        return;
-      }
-      // Authentication is an interruption, not a reset (§9): resume the consultation
-      // the user was in, not always Home. returnTo is a pre-validated internal route
-      // (open-redirect-safe, §12/§52); default Home when there is nothing to resume.
-      const returnTo = consumePendingReturnTo();
-      router.replace(returnTo ?? '/');
+      void trackOnboardingEvent('oauth_succeeded', { provider: providerId });
+      // The resolver reads onboarding state and forwards: existing-complete → destination, new/incomplete →
+      // the missing step. Any pending shared-report token / returnTo survives in its ephemeral store and is
+      // consumed ONLY there, after onboarding completes (§13/§47/§49) — never here.
+      router.replace('/onboarding');
       return;
     }
 
-    // Surface the SPECIFIC outcome (config required / account conflict / session
-    // failed / provider error) instead of one generic line — so a real failure is
-    // actionable, not a dead end. A cancelled login (incl. double-tap) is silent.
+    // Surface the SPECIFIC outcome (config required / account conflict / session failed / provider error)
+    // instead of one generic line. A cancelled login (incl. double-tap) is silent.
     const outcome = authReasonToOutcome(result.reason);
     authDiag({ provider: providerId as 'naver' | 'kakao' | 'google' | 'apple', stage: 'outcome', code: outcome });
     if (isSilentOutcome(outcome)) {
       return;
     }
+    void trackOnboardingEvent('oauth_failed', { provider: providerId });
     setErrorText(authOutcomeMessage(outcome));
   };
 
   return (
     <Screen frame>
-      <Stack style={{ flex: 1, paddingTop: 24 }} align="center" justify="center" gap="lg">
-        <Stack gap="xs" align="center">
-          <Text variant="headingLarge">덕분AI</Text>
-          <Text variant="bodyMedium" colorToken="textSecondary">
-            로그인하고 AI 상담을 시작해 보세요.
+      <Stack style={{ flex: 1, paddingTop: 24 }} align="center" justify="center" gap="xl">
+        <Stack gap="sm" align="center">
+          <Text variant="displayMedium">덕분AI</Text>
+          <Text variant="bodyLarge" colorToken="textSecondary" style={{ textAlign: 'center' }}>
+            내 사주를 기반으로{'\n'}지금 필요한 답을 찾아주는{'\n'}AI 운세 상담
           </Text>
         </Stack>
 
-        <Button
-          label="카카오로 시작하기"
-          onPress={() => handleLogin('kakao')}
-          disabled={isSigningIn}
-        />
+        <Stack gap="sm" align="stretch" style={{ width: '100%', maxWidth: 360 }}>
+          <Button label="카카오로 계속하기" onPress={() => handleLogin('kakao')} disabled={isSigningIn} />
+          <Button label="네이버로 계속하기" onPress={() => handleLogin('naver')} disabled={isSigningIn} />
+          <Button label="Google로 계속하기" onPress={() => handleLogin('google')} disabled={isSigningIn} />
 
-        <Button
-          label="Google로 시작하기"
-          onPress={() => handleLogin('google')}
-          disabled={isSigningIn}
-        />
+          {errorText ? (
+            <Text variant="bodySmall" colorToken="danger" style={{ textAlign: 'center' }}>
+              {errorText}
+            </Text>
+          ) : null}
+        </Stack>
 
-        {/* Naver login — reuses the existing Button + generic handler (no custom
-            styling yet). Official green Naver branding is a follow-up in
-            docs/NAVER_LOGIN_UI_HANDOFF.md. */}
-        <Button
-          label="네이버로 시작하기"
-          onPress={() => handleLogin('naver')}
-          disabled={isSigningIn}
-        />
-
-        {errorText ? (
-          <Text variant="bodySmall" colorToken="danger">
-            {errorText}
-          </Text>
-        ) : null}
+        <Text variant="caption" colorToken="textSecondary" style={{ textAlign: 'center' }}>
+          계속하면 서비스 이용약관과 개인정보 처리방침에 동의하는 절차가 진행돼요.
+        </Text>
       </Stack>
     </Screen>
   );
