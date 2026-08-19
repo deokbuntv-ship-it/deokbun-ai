@@ -86,7 +86,11 @@ export function InsightCard({
     </Card>
   );
 
-  if (onPress) {
+  // Composition guard (§34): expose exactly ONE interactive control so the card can never
+  // render a <button> inside a <button> — invalid DOM that throws a hydration error on web.
+  // A CTA button, when present, IS that control, so only a CTA-less card becomes a
+  // whole-card Pressable. (No caller passes both today; this keeps that structurally safe.)
+  if (onPress && !ctaLabel) {
     return (
       <Pressable onPress={onPress} accessibilityRole="button">
         {inner}

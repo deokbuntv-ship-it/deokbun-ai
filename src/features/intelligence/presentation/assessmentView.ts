@@ -9,11 +9,12 @@
 //   • `insufficient` confidence is HIDDEN, never shown as "낮음" (§25);
 //   • supporting/counter are kept SEPARATE, never summed (§23);
 //   • no numeric score is ever produced (§21).
-import {
-  ASSESSMENT_RULESET_NOT_CONNECTED,
-  type AssessmentAxis,
-  type AssessmentItem,
-} from '@/features/intelligence';
+// Import from the SOURCE modules, not the '@/features/intelligence' barrel: the barrel
+// re-exports this file, so importing back from it forms a require cycle (index → this →
+// index) that Metro flags as "uninitialized values". Presentation adapters must depend
+// DOWNWARD on the contracts, never UPWARD on the aggregating barrel.
+import { type AssessmentAxis, type AssessmentItem } from '../assessment';
+import { ASSESSMENT_RULESET_NOT_CONNECTED } from '../versions';
 import {
   AGREEMENT_LABELS,
   AXIS_LABELS,

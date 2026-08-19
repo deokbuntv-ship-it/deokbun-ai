@@ -9,6 +9,10 @@
 import type { EngineEvidenceAvailability } from '@/features/analysis';
 import type { Agreement, Polarity } from '@/features/analysis/crossAnalysis';
 import type { GroundingUnavailableReason } from '@/features/chat/prompts/grounding';
+// Source modules, not the '@/features/intelligence' barrel. These are type-only imports
+// (erased at runtime, so no require cycle today), but keeping every presentation module off
+// the barrel makes the "no upward barrel import" contract absolute — a future value import
+// here can never silently reintroduce the cycle.
 import type {
   AssessmentAgreement,
   AssessmentApplicability,
@@ -16,16 +20,15 @@ import type {
   AssessmentConfidence,
   AssessmentDirection,
   AssessmentLevel,
-  FeedbackReason,
-  FeedbackVerdict,
+} from '../assessment';
+import type { FeedbackReason, FeedbackVerdict } from '../feedback';
+import type {
   OutcomeConfidence,
   OutcomeSource,
   OutcomeType,
   OutcomeVerificationStatus,
-  QualityDimension,
-  QualityReviewStatus,
-  QualityStatus,
-} from '@/features/intelligence';
+} from '../outcome';
+import type { QualityDimension, QualityReviewStatus, QualityStatus } from '../quality';
 
 export type LabelTone = 'strong' | 'neutral' | 'caution' | 'muted';
 

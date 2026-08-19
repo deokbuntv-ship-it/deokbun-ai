@@ -3,10 +3,10 @@
 // (admin) ViewModel. Same fail-closed rules as assessmentView: insufficient confidence is
 // hidden from the consumer (never "낮음"), supporting/counter are kept SEPARATE, unknown
 // stays unknown. Raw evidence ids are ADMIN-only (§9 — not consumer-facing).
-import {
-  ASSESSMENT_RULESET_NOT_CONNECTED,
-  type AssessmentItem,
-} from '@/features/intelligence';
+// Source modules, not the barrel (avoids the index → this → index require cycle). See
+// assessmentView.ts for the rationale.
+import { type AssessmentItem } from '../assessment';
+import { ASSESSMENT_RULESET_NOT_CONNECTED } from '../versions';
 
 import {
   AGREEMENT_LABELS,

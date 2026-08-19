@@ -221,39 +221,47 @@ export default function HomeScreen() {
               ))}
             </Stack>
 
-            {/* 오늘의 운세 — daily retention entry (no LLM on Home; generation happens on /today). */}
+            {/* 오늘의 운세 — daily retention entry (no LLM on Home; generation happens on /today).
+                Composition (§34): a single CTA <Button> is the ONE interactive control; the card body
+                is display-only. We deliberately do NOT wrap the <Card> in a <Pressable>, because the
+                <Button> already renders a role="button" node — on web RN-Web renders both as real
+                <button> elements, and a <button> nested inside a <button> is invalid DOM (a hydration
+                error). One card = one button. */}
             <Stack gap="md">
               <Text variant="bodyLarge" style={styles.sectionTitle}>
                 오늘의 운세
               </Text>
-              <Pressable onPress={openToday} accessibilityRole="button" accessibilityLabel="오늘의 운세 보기">
-                <Card radius="xl">
-                  <Stack gap="sm">
-                    {todayIsToday && todayPreview ? (
-                      <>
-                        <View style={styles.rowBetween}>
-                          <View style={[styles.tonePill, { borderColor: TODAY_TONE_COLOR[todayPreview.toneVariant] }]}>
-                            <Text variant="bodySmall" style={{ color: TODAY_TONE_COLOR[todayPreview.toneVariant], fontWeight: '700' }}>
-                              {todayPreview.overallTone}
-                            </Text>
-                          </View>
-                          <Text variant="bodySmall" colorToken="textSecondary">
-                            {todayPreview.dot}
+              <Card radius="xl">
+                <Stack gap="sm">
+                  {todayIsToday && todayPreview ? (
+                    <>
+                      <View style={styles.rowBetween}>
+                        <View style={[styles.tonePill, { borderColor: TODAY_TONE_COLOR[todayPreview.toneVariant] }]}>
+                          <Text variant="bodySmall" style={{ color: TODAY_TONE_COLOR[todayPreview.toneVariant], fontWeight: '700' }}>
+                            {todayPreview.overallTone}
                           </Text>
                         </View>
-                        <Text variant="bodyLarge" style={{ fontWeight: '700' }} numberOfLines={2}>
-                          {todayPreview.headline}
+                        <Text variant="bodySmall" colorToken="textSecondary">
+                          {todayPreview.dot}
                         </Text>
-                      </>
-                    ) : (
-                      <Text variant="bodyMedium" colorToken="textSecondary">
-                        오늘의 운세가 준비되어 있어요. 오늘 하루를 사주로 짚어드릴게요.
+                      </View>
+                      <Text variant="bodyLarge" style={{ fontWeight: '700' }} numberOfLines={2}>
+                        {todayPreview.headline}
                       </Text>
-                    )}
-                    <Button label="오늘 운세 보기" onPress={openToday} radius="lg" />
-                  </Stack>
-                </Card>
-              </Pressable>
+                    </>
+                  ) : (
+                    <Text variant="bodyMedium" colorToken="textSecondary">
+                      오늘의 운세가 준비되어 있어요. 오늘 하루를 사주로 짚어드릴게요.
+                    </Text>
+                  )}
+                  <Button
+                    label="오늘 운세 보기"
+                    onPress={openToday}
+                    radius="lg"
+                    accessibilityLabel="오늘의 운세 보기"
+                  />
+                </Stack>
+              </Card>
             </Stack>
 
             {/* 지금 많이 물어보는 질문 (server-replaceable list) */}
