@@ -9197,6 +9197,7 @@ function dailyFortuneResponseFormat() {
 // src/features/monthly/engine/monthDate.ts
 var KST_OFFSET_SECONDS3 = 32400;
 var FORTUNE_TIMEZONE2 = "Asia/Seoul";
+var pad22 = (n) => n < 10 ? `0${n}` : `${n}`;
 function currentTargetMonth(epochSeconds) {
   const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
   return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
@@ -9204,16 +9205,55 @@ function currentTargetMonth(epochSeconds) {
 function monthMidpointEpochSeconds(m) {
   return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
 }
+function civilMonthStartEpoch(m) {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1e3) - KST_OFFSET_SECONDS3;
+}
+function nextCivilMonth(m) {
+  return m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 };
+}
+function kstDateString(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
+  return `${shifted.getUTCFullYear()}-${pad22(shifted.getUTCMonth() + 1)}-${pad22(shifted.getUTCDate())}`;
+}
 function formatMonthLabel(m) {
   return `${m.year}년 ${m.month}월`;
 }
 
+// src/features/monthly/engine/civilMonthSegments.ts
+function resolveCivilMonthSajuSegments(target) {
+  const start = civilMonthStartEpoch(target);
+  const end = civilMonthStartEpoch(nextCivilMonth(target));
+  const a = resolveSajuTemporalForInstant(start);
+  const b = resolveSajuTemporalForInstant(end - 1);
+  if (!a || !b) return null;
+  const seg = (s, e, sajuYear, ord) => ({
+    startEpoch: s,
+    endEpoch: e,
+    durationSeconds: e - s,
+    sajuYear,
+    sajuMonthOrdinal: ord,
+    startCivilDate: kstDateString(s)
+  });
+  if (a.sajuYear === b.sajuYear && a.jieMonthOrdinal === b.jieMonthOrdinal) {
+    return [seg(start, end, a.sajuYear, a.jieMonthOrdinal)];
+  }
+  let lo = start;
+  let hi = end;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    const m = resolveSajuTemporalForInstant(mid);
+    if (m && m.sajuYear === b.sajuYear && m.jieMonthOrdinal === b.jieMonthOrdinal) hi = mid;
+    else lo = mid;
+  }
+  const t = hi;
+  return [seg(start, t, a.sajuYear, a.jieMonthOrdinal), seg(t, end, b.sajuYear, b.jieMonthOrdinal)];
+}
+
 // src/features/monthly/engine/monthlyEvidence.ts
-var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.0.0";
+var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.1.0";
 var ALL_DOMAINS2 = ["overall", "work", "wealth", "relationship", "action"];
 async function buildMonthlyFortuneEvidence(input, deps) {
   const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
-  const instant = monthMidpointEpochSeconds(target);
   const unavailable9 = (reason) => ({
     available: false,
     year: target.year,
@@ -9235,17 +9275,32 @@ async function buildMonthlyFortuneEvidence(input, deps) {
   const engineResult = execution.engineResult;
   if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
   const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
-  const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: instant });
-  if (wolwoon.capability !== "AVAILABLE") return unavailable9(`WOLWOON_${wolwoon.reason}`);
-  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: instant });
+  const rawSegments = resolveCivilMonthSajuSegments(target);
+  if (!rawSegments || rawSegments.length === 0) return unavailable9("CIVIL_MONTH_SEGMENTS_UNAVAILABLE");
+  const totalSeconds = rawSegments.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const segments = [];
+  for (const s of rawSegments) {
+    const midEpoch = s.startEpoch + Math.floor(s.durationSeconds / 2);
+    const w = calculateWolwoonForInstant({ natal, instantEpochSeconds: midEpoch });
+    if (w.capability !== "AVAILABLE") return unavailable9(`WOLWOON_${w.reason}`);
+    segments.push({
+      sajuMonthOrdinal: s.sajuMonthOrdinal,
+      durationSeconds: s.durationSeconds,
+      weight: totalSeconds > 0 ? s.durationSeconds / totalSeconds : 1,
+      startCivilDate: s.startCivilDate,
+      stemTenGod: w.tenGods.stemTenGod,
+      branchTenGod: w.tenGods.branchMainTenGod,
+      relationsToNatal: w.relationsToNatal
+    });
+  }
+  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: monthMidpointEpochSeconds(target) });
   return {
     available: true,
     year: target.year,
     month: target.month,
     timezone: FORTUNE_TIMEZONE2,
-    monthStemTenGod: wolwoon.tenGods.stemTenGod,
-    monthBranchTenGod: wolwoon.tenGods.branchMainTenGod,
-    monthRelationsToNatal: wolwoon.relationsToNatal,
+    segments,
+    transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
     sewoonAvailable: sewoon.capability === "AVAILABLE",
     supportedDomains: ALL_DOMAINS2,
     evidenceVersion: MONTHLY_EVIDENCE_VERSION
@@ -9253,7 +9308,7 @@ async function buildMonthlyFortuneEvidence(input, deps) {
 }
 
 // src/features/monthly/engine/monthlyPlan.ts
-var MONTHLY_PLAN_VERSION = "monthly-plan@1.0.0";
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.1.0";
 var MONTHLY_MODE_LABEL = {
   EXPAND: "확장·추진",
   MANAGE: "점검·관리",
@@ -9304,6 +9359,35 @@ function deriveDomainSignals2(tier, strongestDomain, cautionDomain) {
 }
 var HARMONY_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
 var FRICTION_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+function tierFromTally(harmony, friction) {
+  return friction === 0 && harmony >= 1 ? "기회를 살리기 좋은 달" : friction === 0 ? "안정적으로 운영할 달" : harmony >= friction ? "변화가 많은 달" : "속도를 조절할 달";
+}
+function deriveSegmentSignal(seg) {
+  let harmonyCount = 0;
+  let frictionCount = 0;
+  for (const s of seg.relationsToNatal.stem) {
+    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
+    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
+  }
+  for (const b of seg.relationsToNatal.branch) {
+    if (HARMONY_BRANCH2.has(b.relation.kind)) harmonyCount += 1;
+    else if (FRICTION_BRANCH2.has(b.relation.kind)) frictionCount += 1;
+  }
+  const tier = tierFromTally(harmonyCount, frictionCount);
+  const strongestDomain = tenGodDomain2(seg.stemTenGod);
+  const cautionDomain = frictionCount > 0 ? tenGodDomain2(seg.branchTenGod) : null;
+  const primaryMode = derivePrimaryMode2(tier, strongestDomain);
+  return {
+    weight: seg.weight,
+    tier,
+    primaryMode,
+    primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
+    strongestDomain,
+    cautionDomain,
+    harmonyCount,
+    frictionCount
+  };
+}
 function deriveMonthlyPlan(evidence) {
   const base = {
     year: evidence.year,
@@ -9316,7 +9400,7 @@ function deriveMonthlyPlan(evidence) {
     evidenceVersion: evidence.evidenceVersion,
     planVersion: MONTHLY_PLAN_VERSION
   };
-  if (!evidence.available) {
+  if (!evidence.available || evidence.segments.length === 0) {
     return {
       ...base,
       available: false,
@@ -9328,24 +9412,32 @@ function deriveMonthlyPlan(evidence) {
       domainSignals: [],
       supportedDomains: [],
       harmonyCount: 0,
-      frictionCount: 0
+      frictionCount: 0,
+      segmentCount: 0,
+      hasMeaningfulTransition: false,
+      transition: null
     };
   }
-  const rel = evidence.monthRelationsToNatal;
-  let harmonyCount = 0;
-  let frictionCount = 0;
-  for (const s of rel.stem) {
-    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
-    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
+  const signals = evidence.segments.map(deriveSegmentSignal);
+  let dominant = signals[0];
+  for (const s of signals) if (s.weight >= dominant.weight) dominant = s;
+  const overallTier = dominant.tier;
+  const strongestDomain = dominant.strongestDomain;
+  const cautionDomain = dominant.cautionDomain;
+  const primaryMode = dominant.primaryMode;
+  let hasMeaningfulTransition = false;
+  let transition = null;
+  if (signals.length === 2 && evidence.transitionCivilDate) {
+    const [early, later] = signals;
+    if (early.tier !== later.tier || early.primaryMode !== later.primaryMode) {
+      hasMeaningfulTransition = true;
+      transition = {
+        transitionCivilDate: evidence.transitionCivilDate,
+        early: { tier: early.tier, modeLabel: early.primaryModeLabel, strongestDomain: early.strongestDomain },
+        later: { tier: later.tier, modeLabel: later.primaryModeLabel, strongestDomain: later.strongestDomain }
+      };
+    }
   }
-  for (const b of rel.branch) {
-    if (HARMONY_BRANCH2.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH2.has(b.relation.kind)) frictionCount += 1;
-  }
-  const overallTier = frictionCount === 0 && harmonyCount >= 1 ? "기회를 살리기 좋은 달" : frictionCount === 0 ? "안정적으로 운영할 달" : harmonyCount >= frictionCount ? "변화가 많은 달" : "속도를 조절할 달";
-  const strongestDomain = tenGodDomain2(evidence.monthStemTenGod);
-  const cautionDomain = frictionCount > 0 ? tenGodDomain2(evidence.monthBranchTenGod) : null;
-  const primaryMode = derivePrimaryMode2(overallTier, strongestDomain);
   return {
     ...base,
     available: true,
@@ -9356,8 +9448,11 @@ function deriveMonthlyPlan(evidence) {
     cautionDomain,
     domainSignals: deriveDomainSignals2(overallTier, strongestDomain, cautionDomain),
     supportedDomains: evidence.supportedDomains,
-    harmonyCount,
-    frictionCount
+    harmonyCount: dominant.harmonyCount,
+    frictionCount: dominant.frictionCount,
+    segmentCount: signals.length,
+    hasMeaningfulTransition,
+    transition
   };
 }
 
@@ -9369,13 +9464,14 @@ var MONTHLY_DOMAIN_LABEL = {
   relationship: "인간관계·연애",
   action: "행동·변화"
 };
-var MONTHLY_POLICY_VERSION = "monthly@1.0.0";
+var MONTHLY_POLICY_VERSION = "monthly@1.1.0";
 
 // src/features/monthly/server/monthlyFortunePrompt.ts
 function buildMonthlyFortunePrompt(plan) {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
   const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
   const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
+  const transitionDirective = plan.hasMeaningfulTransition && plan.transition ? `이번 달은 초반과 중반 이후의 흐름이 다릅니다. 초반은 "${plan.transition.early.tier}", 중반 이후는 "${plan.transition.later.tier}" 흐름입니다. verdict와 overallSummary에서 "초반에는 ~, 중반 이후에는 ~"처럼 이 변화를 자연스럽게 설명하십시오. 단, 특정 날짜가 "가장 좋다"고 단정하지 말고 "초반 / 중반 이후" 표현을 쓰십시오.` : null;
   const system = [
     `당신은 덕분AI의 "이번 달 운세"입니다. 한 사람의 사주를 ${label}에 대입해 나온 "이번 달의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 이번 달이 어떤 달이고 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답해야 합니다.`,
     "반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.",
@@ -9384,6 +9480,7 @@ function buildMonthlyFortunePrompt(plan) {
     `- 이번 달 권하는 방식: "${plan.primaryModeLabel}"`,
     `- 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 이번 달은 크게 부딪히는 기운은 없습니다.",
+    ...transitionDirective ? [transitionDirective] : [],
     "작성 규칙(반드시 지킬 것):",
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
@@ -9403,6 +9500,7 @@ function buildMonthlyFortunePrompt(plan) {
     `권하는 방식: ${plan.primaryModeLabel}`,
     `기운이 실리는 영역: ${emphasized}`,
     `조율이 필요한 영역: ${cautionLabel ?? "특별히 없음"}`,
+    ...plan.hasMeaningfulTransition && plan.transition ? [`이번 달 흐름 변화: 초반 "${plan.transition.early.tier}" → 중반 이후 "${plan.transition.later.tier}" ("초반/중반 이후"로만 표현, 특정 날짜 단정 금지)`] : [],
     `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
     "",
     `위 판단을 바탕으로, 이번 달 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답하는 ${label} 운세를 스키마 형식의 JSON으로 작성하십시오.`
@@ -9539,7 +9637,13 @@ function parseMonthlyFortune(raw, plan) {
     opportunities,
     cautions,
     actions,
-    followUps
+    followUps,
+    // Server-owned within-month transition (§5) — the LLM never emits the 節 date; it comes from the plan.
+    transition: plan.transition ? {
+      transitionDate: plan.transition.transitionCivilDate,
+      early: { tierLabel: plan.transition.early.tier, modeLabel: plan.transition.early.modeLabel },
+      later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel }
+    } : null
   };
 }
 async function buildMonthlyFortune(request, deps) {

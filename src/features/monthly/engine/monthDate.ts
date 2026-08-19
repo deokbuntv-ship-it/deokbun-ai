@@ -19,10 +19,27 @@ export function currentTargetMonth(epochSeconds: number): TargetMonth {
   return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
 }
 
-// A representative UTC instant for the civil month: the 15th at 12:00 KST (= 03:00 UTC). Its 節-based saju
-// month covers the majority of the civil month, so the frozen resolver attributes the DOMINANT 월운 pillar.
+// A representative UTC instant for the civil month: the 15th at 12:00 KST (= 03:00 UTC). Used only for the
+// 세운(year) context read; the full-month 월운 coverage is resolved by resolveCivilMonthSajuSegments (§2).
 export function monthMidpointEpochSeconds(m: TargetMonth): number {
   return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1000);
+}
+
+// The epoch (seconds) of 00:00 KST on the 1st of the civil month — the inclusive start of the civil month.
+// 00:00 KST = the UTC midnight of that civil date minus 9h.
+export function civilMonthStartEpoch(m: TargetMonth): number {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1000) - KST_OFFSET_SECONDS;
+}
+
+// The next civil month (rolls the year at December).
+export function nextCivilMonth(m: TargetMonth): TargetMonth {
+  return m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 };
+}
+
+// The Korea civil date (YYYY-MM-DD) for a UTC epoch (seconds) — e.g. to label a 節 transition instant.
+export function kstDateString(epochSeconds: number): string {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS) * 1000);
+  return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())}`;
 }
 
 // "YYYY-MM" — the canonical month key (mailbox sort, cache read, DB identity pair mirror).

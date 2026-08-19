@@ -25,6 +25,13 @@ export const MONTHLY_DOMAIN_SHORT_LABEL: Record<MonthlyDomain, string> = {
 
 export type MonthlyOpportunity = { domain: string; title: string; body: string };
 export type MonthlyCaution = { title: string; body: string };
+// A deterministic within-month transition (§5) — the 節 date the flow shifts + each side's tier/mode labels.
+// Server-owned (from the plan), present only when the civil month's two segments materially differ.
+export type MonthlyResultTransition = {
+  transitionDate: string; // 'YYYY-MM-DD' (KST) — the deterministic 節 date, never fabricated
+  early: { tierLabel: string; modeLabel: string };
+  later: { tierLabel: string; modeLabel: string };
+};
 // A follow-up carried into 상담: a SHORT chip label + the RICH question actually sent (the consultation
 // re-grounds independently — the monthly text is never sent as evidence, §68).
 export type MonthlyFollowUp = { displayLabel: string; question: string };
@@ -45,6 +52,8 @@ export type MonthlyFortuneResult = {
   /** The month's action plan — concrete, grounded "이렇게 보내세요" steps (§23). */
   actions: string[];
   followUps?: MonthlyFollowUp[];
+  /** V1.1 — a within-month 節 transition (초반/중반 이후), when the two segments materially differ. */
+  transition?: MonthlyResultTransition | null;
 };
 
 // The persisted canonical record (one per user per fortune_year+fortune_month). `result` holds only the
@@ -64,4 +73,4 @@ export type MonthlyFortuneRecord = {
   updatedAt: string;
 };
 
-export const MONTHLY_POLICY_VERSION = 'monthly@1.0.0';
+export const MONTHLY_POLICY_VERSION = 'monthly@1.1.0';

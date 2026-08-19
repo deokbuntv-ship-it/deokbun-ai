@@ -46,8 +46,9 @@ const PLAN = {
   primaryMode: 'ADJUST', primaryModeLabel: '조정·조율', strongestDomain: 'work', cautionDomain: 'relationship',
   domainSignals: [{ domain: 'work', status: '무난' }, { domain: 'relationship', status: '주의' }],
   supportedDomains: ['overall', 'work', 'wealth', 'relationship', 'action'],
-  harmonyCount: 2, frictionCount: 1, maxOpportunities: 3, maxCautions: 2, maxActions: 3,
-  forbidEventCertainty: true, forbidExactDates: true, evidenceVersion: 'monthly-evidence@1.0.0', planVersion: 'monthly-plan@1.0.0',
+  harmonyCount: 2, frictionCount: 1, segmentCount: 1, hasMeaningfulTransition: false, transition: null,
+  maxOpportunities: 3, maxCautions: 2, maxActions: 3,
+  forbidEventCertainty: true, forbidExactDates: true, evidenceVersion: 'monthly-evidence@1.1.0', planVersion: 'monthly-plan@1.1.0',
 } as never;
 
 describe('buildMonthlyFortune — ONE LLM call, server-owned decision, month-level', () => {
@@ -70,6 +71,12 @@ describe('buildMonthlyFortune — ONE LLM call, server-owned decision, month-lev
     expect(out.result.domainSignals).toEqual(plan.domainSignals);
     expect(out.result.followUps).toHaveLength(3);
     for (const f of out.result.followUps ?? []) expect(f.displayLabel.length).toBeLessThanOrEqual(20);
+    // The within-month transition is server-owned (from the plan) — null or a well-formed 節 date, never
+    // fabricated by the model.
+    expect(out.result.transition === null || typeof out.result.transition?.transitionDate === 'string').toBe(true);
+    expect(out.result.transition).toEqual(plan.transition
+      ? { transitionDate: plan.transition.transitionCivilDate, early: { tierLabel: plan.transition.early.tier, modeLabel: plan.transition.early.modeLabel }, later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel } }
+      : null);
   });
 
   it('LLM throw → LLM_FAILED; invalid JSON → INVALID_OUTPUT; unresolvable chart → EVIDENCE_UNAVAILABLE (no call)', async () => {

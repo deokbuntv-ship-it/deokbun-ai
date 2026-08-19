@@ -16,13 +16,19 @@ function ev(opts: { harmonies?: number; frictions?: number; stemTenGod?: TenGod;
   ];
   return {
     available: true, year: 2026, month: 8, timezone: 'Asia/Seoul',
-    monthStemTenGod: opts.stemTenGod ?? 'DIRECT_WEALTH',
-    monthBranchTenGod: opts.branchTenGod ?? 'DIRECT_OFFICER',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    monthRelationsToNatal: { stem: [], branch: branch as any },
+    segments: [
+      {
+        sajuMonthOrdinal: 7, durationSeconds: 1, weight: 1, startCivilDate: '2026-08-01',
+        stemTenGod: opts.stemTenGod ?? 'DIRECT_WEALTH',
+        branchTenGod: opts.branchTenGod ?? 'DIRECT_OFFICER',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        relationsToNatal: { stem: [], branch: branch as any },
+      },
+    ],
+    transitionCivilDate: null,
     sewoonAvailable: true,
     supportedDomains: ['overall', 'work', 'wealth', 'relationship', 'action'],
-    evidenceVersion: 'monthly-evidence@1.0.0',
+    evidenceVersion: 'monthly-evidence@1.1.0',
   } as MonthlyFortuneEvidence;
 }
 
@@ -62,8 +68,9 @@ const PLAN = {
   year: 2026, month: 8, available: true, overallTier: '변화가 많은 달',
   primaryMode: 'ADJUST', primaryModeLabel: '조정·조율', strongestDomain: 'work', cautionDomain: 'relationship',
   domainSignals: [{ domain: 'work', status: '무난' }], supportedDomains: ['overall', 'work', 'wealth', 'relationship', 'action'],
-  harmonyCount: 2, frictionCount: 1, maxOpportunities: 3, maxCautions: 2, maxActions: 3,
-  forbidEventCertainty: true, forbidExactDates: true, evidenceVersion: 'monthly-evidence@1.0.0', planVersion: 'monthly-plan@1.0.0',
+  harmonyCount: 2, frictionCount: 1, segmentCount: 1, hasMeaningfulTransition: false, transition: null,
+  maxOpportunities: 3, maxCautions: 2, maxActions: 3,
+  forbidEventCertainty: true, forbidExactDates: true, evidenceVersion: 'monthly-evidence@1.1.0', planVersion: 'monthly-plan@1.1.0',
 } as never;
 
 describe('Monthly quality — representative month types map to a clear (tier, mode) (§85/§86)', () => {

@@ -8,12 +8,19 @@ import { MONTHLY_DOMAIN_LABEL } from '@/features/monthly/types';
 import { formatMonthLabel } from '@/features/monthly/engine/monthDate';
 import type { MonthlyPlan } from '@/features/monthly/engine/monthlyPlan';
 
-export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.0.0';
+export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.1.0';
 
 export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
   const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
   const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
+
+  // When the civil month spans a 節 boundary AND the two regimes differ, tell the model to describe the shift
+  // in "초반 / 중반 이후" terms (§5). The exact 節 date is server-owned (shown by the UI) — the model must NOT
+  // claim a specific day is "가장 좋다" (§8); it only narrates that the flow changes.
+  const transitionDirective = plan.hasMeaningfulTransition && plan.transition
+    ? `이번 달은 초반과 중반 이후의 흐름이 다릅니다. 초반은 "${plan.transition.early.tier}", 중반 이후는 "${plan.transition.later.tier}" 흐름입니다. verdict와 overallSummary에서 "초반에는 ~, 중반 이후에는 ~"처럼 이 변화를 자연스럽게 설명하십시오. 단, 특정 날짜가 "가장 좋다"고 단정하지 말고 "초반 / 중반 이후" 표현을 쓰십시오.`
+    : null;
 
   const system = [
     `당신은 덕분AI의 "이번 달 운세"입니다. 한 사람의 사주를 ${label}에 대입해 나온 "이번 달의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 이번 달이 어떤 달이고 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답해야 합니다.`,
@@ -23,6 +30,7 @@ export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
     `- 이번 달 권하는 방식: "${plan.primaryModeLabel}"`,
     `- 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : '- 이번 달은 크게 부딪히는 기운은 없습니다.',
+    ...(transitionDirective ? [transitionDirective] : []),
     '작성 규칙(반드시 지킬 것):',
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',
@@ -43,6 +51,9 @@ export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
     `권하는 방식: ${plan.primaryModeLabel}`,
     `기운이 실리는 영역: ${emphasized}`,
     `조율이 필요한 영역: ${cautionLabel ?? '특별히 없음'}`,
+    ...(plan.hasMeaningfulTransition && plan.transition
+      ? [`이번 달 흐름 변화: 초반 "${plan.transition.early.tier}" → 중반 이후 "${plan.transition.later.tier}" ("초반/중반 이후"로만 표현, 특정 날짜 단정 금지)`]
+      : []),
     `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
     '',
     `위 판단을 바탕으로, 이번 달 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답하는 ${label} 운세를 스키마 형식의 JSON으로 작성하십시오.`,

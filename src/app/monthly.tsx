@@ -174,6 +174,26 @@ export default function MonthlyScreen() {
                     </Card>
                   ) : null}
 
+                  {/* 이번 달 흐름 변화 — deterministic 節 transition (§5), only when the two segments differ. */}
+                  {view.transition ? (
+                    <Card radius="lg">
+                      <Stack gap="sm">
+                        <Text variant="bodySmall" colorToken="textSecondary" style={styles.keyTitle}>이번 달 흐름 변화</Text>
+                        <Text variant="bodyMedium" colorToken="textSecondary">
+                          {view.transition.dateLabel} 무렵부터 흐름이 달라져요.
+                        </Text>
+                        <View style={styles.signalRow}>
+                          <Text variant="bodyMedium" style={{ fontWeight: '600' }}>초반</Text>
+                          <Text variant="bodyMedium" colorToken="textSecondary">{view.transition.early.tierLabel}</Text>
+                        </View>
+                        <View style={styles.signalRow}>
+                          <Text variant="bodyMedium" style={{ fontWeight: '600' }}>중반 이후</Text>
+                          <Text variant="bodyMedium" colorToken="textSecondary">{view.transition.later.tierLabel}</Text>
+                        </View>
+                      </Stack>
+                    </Card>
+                  ) : null}
+
                   {/* 기회 — grouped rows in ONE card (§55). */}
                   {view.opportunities.length > 0 ? (
                     <Stack gap="sm">

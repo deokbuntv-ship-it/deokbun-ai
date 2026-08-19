@@ -49,6 +49,22 @@ function toDomainSignalViews(record: MonthlyFortuneRecord): MonthlyDomainSignalV
   }));
 }
 
+// The within-month 節 transition (§5), with the date formatted for display ("8월 7일"). Null when the month
+// is one clean regime (or a V1.0 record without the field).
+export type MonthlyTransitionView = {
+  dateLabel: string;
+  early: { tierLabel: string; modeLabel: string };
+  later: { tierLabel: string; modeLabel: string };
+};
+
+function toTransitionView(record: MonthlyFortuneRecord): MonthlyTransitionView | null {
+  const t = record.result.transition;
+  if (!t) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t.transitionDate);
+  const dateLabel = m ? `${Number(m[2])}월 ${Number(m[3])}일` : t.transitionDate;
+  return { dateLabel, early: t.early, later: t.later };
+}
+
 export type MonthlyPreview = {
   year: number;
   month: number;
@@ -75,6 +91,7 @@ export type MonthlyDetailView = MonthlyPreview & {
   verdict: string;
   overallSummary: string;
   domainSignals: MonthlyDomainSignalView[];
+  transition: MonthlyTransitionView | null;
   opportunities: { domain: string; title: string; body: string }[];
   cautions: { title: string; body: string }[];
   actions: string[];
@@ -88,6 +105,7 @@ export function toMonthlyDetailView(record: MonthlyFortuneRecord): MonthlyDetail
     verdict: (r.verdict && r.verdict.trim()) || firstSentence(r.overallSummary),
     overallSummary: r.overallSummary,
     domainSignals: toDomainSignalViews(record),
+    transition: toTransitionView(record),
     opportunities: r.opportunities ?? [],
     cautions: r.cautions ?? [],
     actions: r.actions ?? [],

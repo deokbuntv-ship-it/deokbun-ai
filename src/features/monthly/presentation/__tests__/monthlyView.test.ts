@@ -19,6 +19,11 @@ const rec: MonthlyFortuneRecord = {
     cautions: [{ title: '말 아끼기', body: '민감한 대화는 미루세요.' }],
     actions: ['조건을 다시 확인하기', '대화는 준비해서 진행하기'],
     followUps: [{ displayLabel: '이번 달 일 흐름은?', question: '이번 달 일 흐름을 알려줘' }],
+    transition: {
+      transitionDate: '2026-08-07',
+      early: { tierLabel: '속도를 조절할 달', modeLabel: '정비·속도조절' },
+      later: { tierLabel: '기회를 살리기 좋은 달', modeLabel: '확장·추진' },
+    },
   },
   evidenceVersion: 'monthly-evidence@1.0.0',
   planVersion: 'monthly-plan@1.0.0',
@@ -79,6 +84,12 @@ describe('monthlyView — one record renders consistently on Home / detail / mai
     expect(d.opportunities).toHaveLength(1);
     expect(d.actions).toEqual(['조건을 다시 확인하기', '대화는 준비해서 진행하기']);
     expect(d.followUps).toEqual([{ displayLabel: '이번 달 일 흐름은?', question: '이번 달 일 흐름을 알려줘' }]);
+    // The 節 transition date is formatted for display; the tier/mode labels pass through.
+    expect(d.transition).toEqual({
+      dateLabel: '8월 7일',
+      early: { tierLabel: '속도를 조절할 달', modeLabel: '정비·속도조절' },
+      later: { tierLabel: '기회를 살리기 좋은 달', modeLabel: '확장·추진' },
+    });
   });
 
   it('renders a minimal (forward-compat) record: verdict falls back, no mode/signals/followUps', () => {
@@ -87,6 +98,7 @@ describe('monthlyView — one record renders consistently on Home / detail / mai
     const d = toMonthlyDetailView(minimalRec);
     expect(d.verdict).toBe('큰 변화 없이 흐릅니다.');
     expect(d.domainSignals).toEqual([]);
+    expect(d.transition).toBeNull();
     expect(d.followUps).toEqual([]);
     expect(d.actions).toEqual(['리듬을 지키기']);
   });

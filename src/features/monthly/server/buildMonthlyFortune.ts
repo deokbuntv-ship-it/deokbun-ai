@@ -186,6 +186,14 @@ export function parseMonthlyFortune(raw: string, plan: MonthlyPlan): MonthlyFort
     cautions,
     actions,
     followUps,
+    // Server-owned within-month transition (§5) — the LLM never emits the 節 date; it comes from the plan.
+    transition: plan.transition
+      ? {
+          transitionDate: plan.transition.transitionCivilDate,
+          early: { tierLabel: plan.transition.early.tier, modeLabel: plan.transition.early.modeLabel },
+          later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel },
+        }
+      : null,
   };
 }
 
