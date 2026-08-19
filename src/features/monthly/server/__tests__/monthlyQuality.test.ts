@@ -44,7 +44,23 @@ function categoryOf(text: string): string | null {
   return null;
 }
 
-function evaluateMonthlyQuality(r: MonthlyFortuneResult): string[] {
+// Map a consumer domain LABEL (free text from the LLM, e.g. "인간관계·대화") to a coarse domain, for the
+// concentration check (§2.8).
+const DOMAIN_KEYWORDS: { d: string; re: RegExp }[] = [
+  { d: 'wealth', re: /재물|돈|지출|투자|자금|수입|재정/ },
+  { d: 'work', re: /일|사업|업무|직장|커리어|승진|프로젝트/ },
+  { d: 'relationship', re: /관계|사람|연애|감정|대화|소통|가족|친구/ },
+  { d: 'action', re: /행동|변화|결정|실행|도전|이동|이사/ },
+];
+function domainOf(label: string): string | null {
+  for (const k of DOMAIN_KEYWORDS) if (k.re.test(label)) return k.d;
+  return null;
+}
+
+// `coverageOrder` is the plan's supported-domain list; when it has ≥2 domains but every opportunity collapses
+// into one (§2.8), that is EXCESSIVE_DOMAIN_CONCENTRATION. When only one domain is supported it is NOT flagged
+// (§2.7 — breadth stays evidence-calibrated).
+function evaluateMonthlyQuality(r: MonthlyFortuneResult, coverageOrder: string[] = []): string[] {
   const flags: string[] = [];
   const verdict = r.verdict ?? '';
   const surfaced = [r.headline, verdict, r.overallSummary, ...r.opportunities.flatMap((o) => [o.title, o.body]), ...r.cautions.flatMap((c) => [c.title, c.body]), ...r.actions].join(' ');
@@ -56,6 +72,10 @@ function evaluateMonthlyQuality(r: MonthlyFortuneResult): string[] {
     const c = categoryOf(`${o.title} ${o.body}`);
     if (c && seen.has(c)) flags.push('DUPLICATE_SIGNAL');
     if (c) seen.add(c);
+  }
+  if (coverageOrder.length >= 2 && r.opportunities.length >= 2) {
+    const domains = new Set(r.opportunities.map((o) => domainOf(o.domain)).filter(Boolean));
+    if (domains.size <= 1) flags.push('EXCESSIVE_DOMAIN_CONCENTRATION');
   }
   if ((r.followUps ?? []).some((f) => f.displayLabel.length > 20)) flags.push('FOLLOWUP_TOO_LONG');
   if (containsRawGanji(surfaced)) flags.push('RAW_TERMINOLOGY');
@@ -124,5 +144,36 @@ describe('Monthly quality — parsed output passes the quality contract', () => 
   it('the parser rejects an event guarantee AND an unsupported exact-date before evaluation (§24/§37)', () => {
     expect(parseMonthlyFortune(JSON.stringify({ headline: '좋은 달', verdict: '좋습니다.', overallSummary: '점검하기 좋아요.', opportunities: [{ domain: '재물', title: '수입', body: '이번 달 계약이 성사됩니다.' }], cautions: [], actions: ['확인하기'], followUps: [] }), PLAN)).toBeNull();
     expect(parseMonthlyFortune(JSON.stringify({ headline: '좋은 달', verdict: '좋습니다.', overallSummary: '점검하기 좋아요.', opportunities: [], cautions: [], actions: ['셋째 주가 가장 좋으니 그때 계약하기'], followUps: [] }), PLAN)).toBeNull();
+  });
+});
+
+describe('Monthly quality — domain breadth (§2.8 EXCESSIVE_DOMAIN_CONCENTRATION)', () => {
+  const base = {
+    headline: 'x', verdict: '이번 달은 정리에 유리합니다.', overallSummary: '차분히 살피기 좋아요.',
+    overallTier: '변화가 많은 달' as const, cautions: [], actions: ['확인하기'], followUps: [],
+  };
+
+  it('flags when ≥2 domains are supported but every opportunity collapses into one (E)', () => {
+    const r: MonthlyFortuneResult = { ...base, opportunities: [
+      { domain: '인간관계·대화', title: '대화', body: '소통을 늘리세요.' },
+      { domain: '연애·감정', title: '감정', body: '감정을 살피세요.' },
+    ] };
+    expect(evaluateMonthlyQuality(r, ['relationship', 'work'])).toContain('EXCESSIVE_DOMAIN_CONCENTRATION');
+  });
+
+  it('does NOT flag when opportunities span the supported domains (A/C/D)', () => {
+    const r: MonthlyFortuneResult = { ...base, opportunities: [
+      { domain: '인간관계', title: '대화', body: '소통을 늘리세요.' },
+      { domain: '일·사업', title: '실행', body: '준비한 일을 진행하세요.' },
+    ] };
+    expect(evaluateMonthlyQuality(r, ['relationship', 'work'])).not.toContain('EXCESSIVE_DOMAIN_CONCENTRATION');
+  });
+
+  it('does NOT flag single-domain output when only one domain is supported (B — no fake breadth)', () => {
+    const r: MonthlyFortuneResult = { ...base, opportunities: [
+      { domain: '인간관계', title: '대화', body: '소통을 늘리세요.' },
+      { domain: '관계', title: '경청', body: '듣는 시간을 가지세요.' },
+    ] };
+    expect(evaluateMonthlyQuality(r, ['relationship'])).not.toContain('EXCESSIVE_DOMAIN_CONCENTRATION');
   });
 });

@@ -8,7 +8,7 @@
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { MonthlyDomain, MonthlyFortuneEvidence, MonthlySegmentEvidence } from '@/features/monthly/engine/monthlyEvidence';
 
-export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.1.0';
+export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.2.0';
 
 export type MonthlyOverallTier = '기회를 살리기 좋은 달' | '안정적으로 운영할 달' | '변화가 많은 달' | '속도를 조절할 달';
 
@@ -43,6 +43,12 @@ export type MonthlyPlan = {
   strongestDomain: MonthlyDomain;
   cautionDomain: MonthlyDomain | null;
   domainSignals: MonthlyDomainSignal[];
+  /** P1 (§2.6): the SECONDARY supported domains (distinct from primary + caution) the prose should also
+   * cover, derived from the month's other 십신 facts. Empty when only one domain is genuinely supported
+   * (§2.7 — no fabricated breadth). */
+  secondaryDomains: MonthlyDomain[];
+  /** The deterministic domain coverage priority (primary → secondary → caution), distinct. */
+  coverageOrder: MonthlyDomain[];
   supportedDomains: MonthlyDomain[];
   harmonyCount: number;
   frictionCount: number;
@@ -106,6 +112,30 @@ function deriveDomainSignals(
     signals.push({ domain: cautionDomain, status: '주의' });
   }
   return signals;
+}
+
+// P1 domain coverage (§2.1-§2.7): the distinct domains the month's 십신 facts genuinely support, so the prose
+// can broaden beyond the primary WITHOUT fabricating breadth. Candidates come from every segment's stem AND
+// branch 십신; secondary = distinct candidates minus the primary + caution domain (≤2). Empty when only one
+// domain is supported.
+function deriveCoverage(
+  segments: MonthlySegmentEvidence[],
+  primaryDomain: MonthlyDomain,
+  cautionDomain: MonthlyDomain | null,
+): { secondaryDomains: MonthlyDomain[]; coverageOrder: MonthlyDomain[] } {
+  const candidates: MonthlyDomain[] = [];
+  for (const seg of segments) {
+    candidates.push(tenGodDomain(seg.stemTenGod));
+    candidates.push(tenGodDomain(seg.branchTenGod));
+  }
+  const distinct = [...new Set(candidates)];
+  const secondaryDomains = distinct.filter((d) => d !== primaryDomain && d !== cautionDomain).slice(0, 2);
+  const coverageOrder = [
+    primaryDomain,
+    ...secondaryDomains,
+    ...(cautionDomain && cautionDomain !== primaryDomain && !secondaryDomains.includes(cautionDomain) ? [cautionDomain] : []),
+  ];
+  return { secondaryDomains, coverageOrder };
 }
 
 const HARMONY_BRANCH = new Set(['BRANCH_SIX_COMBINATION', 'BRANCH_HALF_THREE_HARMONY']);
@@ -182,6 +212,8 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
       strongestDomain: 'overall',
       cautionDomain: null,
       domainSignals: [],
+      secondaryDomains: [],
+      coverageOrder: [],
       supportedDomains: [],
       harmonyCount: 0,
       frictionCount: 0,
@@ -202,6 +234,7 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
   const strongestDomain = dominant.strongestDomain;
   const cautionDomain = dominant.cautionDomain;
   const primaryMode = dominant.primaryMode;
+  const coverage = deriveCoverage(evidence.segments, strongestDomain, cautionDomain);
 
   // Transition (§5/§6): only when there are two segments AND they differ in tier or action mode. Identical
   // practical direction ⇒ one clean judgment (no manufactured transition).
@@ -228,6 +261,8 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
     strongestDomain,
     cautionDomain,
     domainSignals: deriveDomainSignals(overallTier, strongestDomain, cautionDomain),
+    secondaryDomains: coverage.secondaryDomains,
+    coverageOrder: coverage.coverageOrder,
     supportedDomains: evidence.supportedDomains,
     harmonyCount: dominant.harmonyCount,
     frictionCount: dominant.frictionCount,

@@ -8,12 +8,19 @@ import { MONTHLY_DOMAIN_LABEL } from '@/features/monthly/types';
 import { formatMonthLabel } from '@/features/monthly/engine/monthDate';
 import type { MonthlyPlan } from '@/features/monthly/engine/monthlyPlan';
 
-export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.1.0';
+export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.2.0';
 
 export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
   const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
   const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
+
+  // P1 domain breadth (§2.1-§2.7): diversify opportunities across the SUPPORTED domains (server-owned
+  // coverage), or — when only one domain is genuinely supported — stay focused rather than fabricate breadth.
+  const secondaryLabels = plan.secondaryDomains.map((d) => MONTHLY_DOMAIN_LABEL[d]);
+  const coverageDirective = secondaryLabels.length > 0
+    ? `opportunities는 서로 다른 영역을 다루십시오 — 우선 "${emphasized}", 그다음 ${secondaryLabels.map((l) => `"${l}"`).join(', ')} 순으로 넓히십시오. 같은 영역(예: 관계=연애·대화·소통)을 다른 말로 반복하지 말고 지원되는 다른 영역으로 넓히십시오.`
+    : `이번 달은 "${emphasized}" 영역이 중심입니다. 억지로 다른 영역을 만들지 말고, "${emphasized}" 안에서 서로 다른 측면(실행·조율·점검 등)을 다루십시오.`;
 
   // When the civil month spans a 節 boundary AND the two regimes differ, tell the model to describe the shift
   // in "초반 / 중반 이후" terms (§5). The exact 節 date is server-owned (shown by the UI) — the model must NOT
@@ -36,6 +43,7 @@ export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
     `- opportunities: 최대 ${plan.maxOpportunities}개. 서로 다른 새로운 정보. 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
+    `- ${coverageDirective}`,
     `- cautions: 최대 ${plan.maxCautions}개. "조심하세요"로 끝내지 말고 무엇을 어떻게 조심할지 구체적으로. ${cautionLabel ? '위 조절 영역 중심으로.' : '특별한 마찰이 없으면 억지로 만들지 말고 0~1개만.'}`,
     `- actions: 이번 달을 어떻게 보내면 좋은지 구체적 행동 ${plan.maxActions}개 이내("그래서 이번 달 어떻게 보내면 되지?"에 답).`,
     '- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 이번 달 결정), 3) 시기/실행 순으로.',

@@ -57,6 +57,18 @@ describe('deriveMonthlyPlan — single-segment month (transparent tier tally, no
     expect(deriveMonthlyPlan(evOne({ harmonies: 2, frictions: 0, stemTenGod: 'DIRECT_WEALTH' })).domainSignals).toEqual([{ domain: 'wealth', status: '좋음' }]);
   });
 
+  it('P1 coverage: broadens to distinct supported domains; no fake breadth when all map to one (§2.1-§2.7)', () => {
+    // stem→wealth, branch→work → a genuine secondary domain.
+    const diverse = deriveMonthlyPlan(evOne({ harmonies: 1, frictions: 0, stemTenGod: 'DIRECT_WEALTH', branchTenGod: 'DIRECT_OFFICER' }));
+    expect(diverse.strongestDomain).toBe('wealth');
+    expect(diverse.secondaryDomains).toEqual(['work']);
+    expect(diverse.coverageOrder).toEqual(['wealth', 'work']);
+    // stem AND branch both map to wealth → NO fabricated secondary domain.
+    const single = deriveMonthlyPlan(evOne({ harmonies: 1, frictions: 0, stemTenGod: 'DIRECT_WEALTH', branchTenGod: 'INDIRECT_WEALTH' }));
+    expect(single.secondaryDomains).toEqual([]);
+    expect(single.coverageOrder).toEqual(['wealth']);
+  });
+
   it('single segment → no transition; caps + guards set', () => {
     const p = deriveMonthlyPlan(evOne({ harmonies: 1, frictions: 0 }));
     expect(p.segmentCount).toBe(1);

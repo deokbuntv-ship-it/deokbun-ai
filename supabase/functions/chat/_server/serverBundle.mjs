@@ -9308,7 +9308,7 @@ async function buildMonthlyFortuneEvidence(input, deps) {
 }
 
 // src/features/monthly/engine/monthlyPlan.ts
-var MONTHLY_PLAN_VERSION = "monthly-plan@1.1.0";
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.2.0";
 var MONTHLY_MODE_LABEL = {
   EXPAND: "확장·추진",
   MANAGE: "점검·관리",
@@ -9356,6 +9356,21 @@ function deriveDomainSignals2(tier, strongestDomain, cautionDomain) {
     signals.push({ domain: cautionDomain, status: "주의" });
   }
   return signals;
+}
+function deriveCoverage(segments, primaryDomain, cautionDomain) {
+  const candidates = [];
+  for (const seg of segments) {
+    candidates.push(tenGodDomain2(seg.stemTenGod));
+    candidates.push(tenGodDomain2(seg.branchTenGod));
+  }
+  const distinct = [...new Set(candidates)];
+  const secondaryDomains = distinct.filter((d) => d !== primaryDomain && d !== cautionDomain).slice(0, 2);
+  const coverageOrder = [
+    primaryDomain,
+    ...secondaryDomains,
+    ...cautionDomain && cautionDomain !== primaryDomain && !secondaryDomains.includes(cautionDomain) ? [cautionDomain] : []
+  ];
+  return { secondaryDomains, coverageOrder };
 }
 var HARMONY_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
 var FRICTION_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
@@ -9410,6 +9425,8 @@ function deriveMonthlyPlan(evidence) {
       strongestDomain: "overall",
       cautionDomain: null,
       domainSignals: [],
+      secondaryDomains: [],
+      coverageOrder: [],
       supportedDomains: [],
       harmonyCount: 0,
       frictionCount: 0,
@@ -9425,6 +9442,7 @@ function deriveMonthlyPlan(evidence) {
   const strongestDomain = dominant.strongestDomain;
   const cautionDomain = dominant.cautionDomain;
   const primaryMode = dominant.primaryMode;
+  const coverage = deriveCoverage(evidence.segments, strongestDomain, cautionDomain);
   let hasMeaningfulTransition = false;
   let transition = null;
   if (signals.length === 2 && evidence.transitionCivilDate) {
@@ -9447,6 +9465,8 @@ function deriveMonthlyPlan(evidence) {
     strongestDomain,
     cautionDomain,
     domainSignals: deriveDomainSignals2(overallTier, strongestDomain, cautionDomain),
+    secondaryDomains: coverage.secondaryDomains,
+    coverageOrder: coverage.coverageOrder,
     supportedDomains: evidence.supportedDomains,
     harmonyCount: dominant.harmonyCount,
     frictionCount: dominant.frictionCount,
@@ -9464,13 +9484,15 @@ var MONTHLY_DOMAIN_LABEL = {
   relationship: "인간관계·연애",
   action: "행동·변화"
 };
-var MONTHLY_POLICY_VERSION = "monthly@1.1.0";
+var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
 
 // src/features/monthly/server/monthlyFortunePrompt.ts
 function buildMonthlyFortunePrompt(plan) {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
   const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
   const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
+  const secondaryLabels = plan.secondaryDomains.map((d) => MONTHLY_DOMAIN_LABEL[d]);
+  const coverageDirective = secondaryLabels.length > 0 ? `opportunities는 서로 다른 영역을 다루십시오 — 우선 "${emphasized}", 그다음 ${secondaryLabels.map((l) => `"${l}"`).join(", ")} 순으로 넓히십시오. 같은 영역(예: 관계=연애·대화·소통)을 다른 말로 반복하지 말고 지원되는 다른 영역으로 넓히십시오.` : `이번 달은 "${emphasized}" 영역이 중심입니다. 억지로 다른 영역을 만들지 말고, "${emphasized}" 안에서 서로 다른 측면(실행·조율·점검 등)을 다루십시오.`;
   const transitionDirective = plan.hasMeaningfulTransition && plan.transition ? `이번 달은 초반과 중반 이후의 흐름이 다릅니다. 초반은 "${plan.transition.early.tier}", 중반 이후는 "${plan.transition.later.tier}" 흐름입니다. verdict와 overallSummary에서 "초반에는 ~, 중반 이후에는 ~"처럼 이 변화를 자연스럽게 설명하십시오. 단, 특정 날짜가 "가장 좋다"고 단정하지 말고 "초반 / 중반 이후" 표현을 쓰십시오.` : null;
   const system = [
     `당신은 덕분AI의 "이번 달 운세"입니다. 한 사람의 사주를 ${label}에 대입해 나온 "이번 달의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 이번 달이 어떤 달이고 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답해야 합니다.`,
@@ -9486,6 +9508,7 @@ function buildMonthlyFortunePrompt(plan) {
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
     `- opportunities: 최대 ${plan.maxOpportunities}개. 서로 다른 새로운 정보. 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
+    `- ${coverageDirective}`,
     `- cautions: 최대 ${plan.maxCautions}개. "조심하세요"로 끝내지 말고 무엇을 어떻게 조심할지 구체적으로. ${cautionLabel ? "위 조절 영역 중심으로." : "특별한 마찰이 없으면 억지로 만들지 말고 0~1개만."}`,
     `- actions: 이번 달을 어떻게 보내면 좋은지 구체적 행동 ${plan.maxActions}개 이내("그래서 이번 달 어떻게 보내면 되지?"에 답).`,
     "- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 이번 달 결정), 3) 시기/실행 순으로.",

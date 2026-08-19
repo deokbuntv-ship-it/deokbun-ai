@@ -73,4 +73,4 @@ export type MonthlyFortuneRecord = {
   updatedAt: string;
 };
 
-export const MONTHLY_POLICY_VERSION = 'monthly@1.1.0';
+export const MONTHLY_POLICY_VERSION = 'monthly@1.2.0';
