@@ -21,6 +21,7 @@ import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
+import { trackProductEvent } from '@/services/productEvents';
 import { ConsultationLoading, StructuredConsultationResult } from '@/features/intelligence/components';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { spacing } from '@/theme';
@@ -65,6 +66,16 @@ export default function CompatibilityChatScreen() {
   const [reportBusy, setReportBusy] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackVerdict>>({});
   const hydratedRef = useRef(false);
+  const resultViewedRef = useRef(false);
+  const trackResultViewed = (overall?: string) => {
+    if (resultViewedRef.current) return;
+    resultViewedRef.current = true;
+    void trackProductEvent('compatibility_result_viewed', {
+      surface: 'compatibility_chat',
+      consultationMode: 'compatibility',
+      properties: { compatibility_tier: overall },
+    });
+  };
   const conversationIdRef = useRef<string | null>(null);
   const persistedIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<ScrollView>(null);
@@ -136,7 +147,10 @@ export default function CompatibilityChatScreen() {
         );
         return;
       }
-      if (result.compatibility) setTier(result.compatibility);
+      if (result.compatibility) {
+        setTier(result.compatibility);
+        trackResultViewed(result.compatibility.overall);
+      }
       const assistantMsg: CompatMessage = {
         id: newId('assistant'),
         role: 'assistant',
@@ -164,6 +178,7 @@ export default function CompatibilityChatScreen() {
 
     if (!isAuthenticated || startNew) {
       // No persistence (logged-out) or an explicit new consultation → fresh in-memory + auto-send.
+      if (startNew) void trackProductEvent('compatibility_new_conversation_started', { surface: 'compatibility_chat', consultationMode: 'compatibility' });
       void send(INITIAL_QUESTION);
       return;
     }
@@ -177,12 +192,16 @@ export default function CompatibilityChatScreen() {
         conversationIdRef.current = loaded.conversationId;
         loaded.messages.forEach((m) => persistedIdsRef.current.add(m.id));
         setMessages(loaded.messages as CompatMessage[]);
-        if (loaded.compatibilityMeta) setTier(loaded.compatibilityMeta as CompatibilityResultMeta);
+        const restoredTier = loaded.compatibilityMeta as CompatibilityResultMeta | null;
+        if (restoredTier) setTier(restoredTier);
+        void trackProductEvent('compatibility_conversation_resumed', { surface: 'compatibility_chat', consultationMode: 'compatibility' });
+        trackResultViewed(restoredTier?.overall);
         // Restore 👍/👎 per message so a reload keeps feedback selected (§31).
         void feedbackService.loadFeedbackForConversation(loaded.conversationId).then((fm) => {
           if (!cancelled) setFeedbackMap(fm);
         });
       } else {
+        void trackProductEvent('compatibility_started', { surface: 'compatibility_chat', consultationMode: 'compatibility' });
         void send(INITIAL_QUESTION);
       }
     })();
@@ -214,6 +233,11 @@ export default function CompatibilityChatScreen() {
       });
       if (report) {
         setReportId(report.id);
+        void trackProductEvent('compatibility_report_created', {
+          surface: 'compatibility_chat',
+          consultationMode: 'compatibility',
+          properties: { compatibility_tier: tier.overall },
+        });
         router.push({ pathname: '/report/[id]', params: { id: report.id } });
       } else {
         setErrorText('보고서를 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
@@ -227,6 +251,10 @@ export default function CompatibilityChatScreen() {
   // (user, message) — a re-vote updates it (§30). No PII: only the message id + verdict + versions.
   const submitFeedback = async (messageId: string, verdict: FeedbackVerdict) => {
     setFeedbackMap((prev) => ({ ...prev, [messageId]: verdict }));
+    void trackProductEvent(
+      verdict === 'helpful' ? 'compatibility_feedback_positive' : 'compatibility_feedback_negative',
+      { surface: 'compatibility_chat', consultationMode: 'compatibility', properties: { compatibility_tier: tier?.overall } },
+    );
     await feedbackService.saveFeedback({
       conversationId: conversationIdRef.current,
       messageId,
@@ -254,7 +282,13 @@ export default function CompatibilityChatScreen() {
         <View key={m.id}>
           <StructuredConsultationResult
             vm={m.structuredResult}
-            onSelectFollowUp={(q) => void send(q)}
+            onSelectFollowUp={(q) => {
+              void trackProductEvent('compatibility_followup_clicked', {
+                surface: 'compatibility_chat',
+                consultationMode: 'compatibility',
+              });
+              void send(q);
+            }}
             onFeedback={(verdict) => void submitFeedback(m.id, verdict)}
             initialFeedback={feedbackMap[m.id] ?? null}
           />

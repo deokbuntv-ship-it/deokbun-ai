@@ -11,6 +11,7 @@ import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { isSavedSubjectId, useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
+import { trackProductEvent } from '@/services/productEvents';
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -39,6 +40,12 @@ export default function CompatibilityScreen() {
 
   const startCompatibility = () => {
     if (!self || !targetId) return;
+    const targetRel = others.find((s) => s.id === targetId)?.relationship ?? undefined;
+    void trackProductEvent('compatibility_pair_selected', {
+      surface: 'compatibility_select',
+      consultationMode: 'compatibility',
+      properties: { relationship_type: targetRel ?? undefined },
+    });
     router.push({ pathname: '/compatibility-chat', params: { selfId: self.id, targetId } });
   };
 
