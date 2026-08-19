@@ -111,3 +111,19 @@ export function pickPostOnboardingDestination(input: {
   if (isSafeReturnTo(input.returnTo)) return { kind: 'path', to: input.returnTo };
   return { kind: 'path', to: HOME_PATH };
 }
+
+// The gate's IMPERATIVE contract, made pure + IDEMPOTENT (§5/§18). Combines the gate decision with an
+// already-at-target check: a redirect is emitted ONLY when the current path differs from the target, so the
+// gate never re-issues a navigation to the route it is already on (the classic navigation update-loop).
+// `showOverlay` covers the (always-mounted) navigator while loading or while a redirect is in flight — the
+// navigator is NEVER unmounted (that unmount/remount during navigation is what caused the ContextNavigator
+// "Maximum update depth"). A stable resolved state at its correct route yields { null, false } → zero work.
+export type GateNavigation = { redirectTo: string | null; showOverlay: boolean };
+
+export function resolveGateNavigation(state: OnboardingState, rawPath: string | null | undefined): GateNavigation {
+  const decision = resolveGateDecision(state, rawPath);
+  if (decision.kind === 'render') return { redirectTo: null, showOverlay: false };
+  if (decision.kind === 'loading') return { redirectTo: null, showOverlay: true };
+  const target = normalizePath(rawPath) === decision.to ? null : decision.to;
+  return { redirectTo: target, showOverlay: target !== null };
+}

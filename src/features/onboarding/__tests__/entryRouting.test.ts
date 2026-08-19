@@ -3,9 +3,12 @@ import {
   normalizePath,
   pickPostOnboardingDestination,
   resolveGateDecision,
+  resolveGateNavigation,
   type GateDecision,
 } from '@/features/onboarding/entryRouting';
 import type { OnboardingState } from '@/features/onboarding/onboardingState';
+
+const ALL_STATES: OnboardingState[] = ['ANONYMOUS', 'AUTHENTICATED_LOADING', 'NEEDS_TERMS', 'NEEDS_BIRTH_PROFILE', 'COMPLETE', 'ERROR'];
 
 describe('normalizePath', () => {
   it('strips query/hash/trailing slash, defaults empty → /', () => {
@@ -76,6 +79,37 @@ describe('resolveGateDecision — onboarding routes (no skipping, no lingering)'
   it('COMPLETE lingering on a step → resolver (which sends them onward)', () => {
     expect(resolveGateDecision('COMPLETE', '/onboarding/terms')).toEqual(redirect('/onboarding'));
     expect(resolveGateDecision('COMPLETE', '/onboarding/birth')).toEqual(redirect('/onboarding'));
+  });
+});
+
+describe('resolveGateNavigation — idempotent, navigator never unmounted (loop fix §5/§18)', () => {
+  it('a settled COMPLETE user at Home does zero work (no redirect, no overlay)', () => {
+    expect(resolveGateNavigation('COMPLETE', '/')).toEqual({ redirectTo: null, showOverlay: false });
+  });
+  it('a settled user at each correct onboarding step does zero work', () => {
+    expect(resolveGateNavigation('NEEDS_TERMS', '/onboarding/terms')).toEqual({ redirectTo: null, showOverlay: false });
+    expect(resolveGateNavigation('NEEDS_BIRTH_PROFILE', '/onboarding/birth')).toEqual({ redirectTo: null, showOverlay: false });
+    expect(resolveGateNavigation('ANONYMOUS', '/login')).toEqual({ redirectTo: null, showOverlay: false });
+  });
+  it('loading → overlay only (no navigation), so the navigator stays mounted', () => {
+    expect(resolveGateNavigation('AUTHENTICATED_LOADING', '/chat')).toEqual({ redirectTo: null, showOverlay: true });
+    expect(resolveGateNavigation('ERROR', '/')).toEqual({ redirectTo: null, showOverlay: true });
+  });
+  it('a needed redirect emits the target + overlay', () => {
+    expect(resolveGateNavigation('ANONYMOUS', '/chat')).toEqual({ redirectTo: '/login', showOverlay: true });
+    expect(resolveGateNavigation('NEEDS_TERMS', '/chat')).toEqual({ redirectTo: '/onboarding/terms', showOverlay: true });
+  });
+
+  // The core loop-prevention invariant: for EVERY state × path, a redirect target is NEVER the current
+  // route — the gate can never re-issue a navigation to the page it is already on.
+  it('never redirects to the current route (idempotent for all states × paths)', () => {
+    const paths = ['/', '/chat', '/compatibility', '/inbox', '/my', '/login', '/login-callback', '/content/x', '/shared-report/t', '/onboarding', '/onboarding/terms', '/onboarding/birth', '/report/1'];
+    for (const s of ALL_STATES) {
+      for (const p of paths) {
+        const nav = resolveGateNavigation(s, p);
+        if (nav.redirectTo !== null) expect(normalizePath(nav.redirectTo)).not.toBe(normalizePath(p));
+      }
+    }
   });
 });
 

@@ -3,46 +3,47 @@ import { useEffect, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
-import { Screen } from '@/components/Screen';
-import { Stack } from '@/components/Stack';
+import { Stack as VStack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { isSafeReturnTo, setPendingConsultationIntent } from '@/features/consultation';
-import { classifyConsumerPath, resolveGateDecision } from '@/features/onboarding/entryRouting';
+import { classifyConsumerPath, resolveGateNavigation } from '@/features/onboarding/entryRouting';
 import { useOnboarding } from '@/features/onboarding/OnboardingContext';
 import type { OnboardingState } from '@/features/onboarding/onboardingState';
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// Small branded hold shown while auth/onboarding state resolves — never a blank white page, never a flash of
-// Home/Chat (§8/§56/§57). On a recoverable facts ERROR it offers a retry instead of spinning forever (§6/§61).
-// Deterministic first paint (no time-of-day text) so the web static export hydrates.
-function OnboardingHold({ state, onRetry }: { state: OnboardingState; onRetry: () => void }) {
+// Full-screen branded hold OVERLAY (§8/§56/§57). It covers the navigator while auth/onboarding state
+// resolves or a redirect is in flight — so no protected screen is ever visible — WITHOUT unmounting the
+// navigator underneath. On a recoverable facts ERROR it offers retry instead of spinning forever (§6/§61).
+function GateHoldOverlay({ state, onRetry }: { state: OnboardingState; onRetry: () => void }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
   return (
-    <Screen frame>
-      <View style={styles.center}>
-        <Stack gap="md" align="center">
-          <Text variant="headingLarge">덕분AI</Text>
-          {state === 'ERROR' ? (
-            <Stack gap="sm" align="center">
-              <Text variant="bodyMedium" colorToken="textSecondary">
-                정보를 불러오지 못했어요. 다시 시도해 주세요.
-              </Text>
-              <Button label="다시 시도" variant="secondary" onPress={onRetry} />
-            </Stack>
-          ) : (
-            <ActivityIndicator color={theme.primary} />
-          )}
-        </Stack>
-      </View>
-    </Screen>
+    <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: theme.background }]}>
+      <VStack gap="md" align="center">
+        <Text variant="headingLarge">덕분AI</Text>
+        {state === 'ERROR' ? (
+          <VStack gap="sm" align="center">
+            <Text variant="bodyMedium" colorToken="textSecondary">
+              정보를 불러오지 못했어요. 다시 시도해 주세요.
+            </Text>
+            <Button label="다시 시도" variant="secondary" onPress={onRetry} />
+          </VStack>
+        ) : (
+          <ActivityIndicator color={theme.primary} />
+        )}
+      </VStack>
+    </View>
   );
 }
 
-// The ONE centralized gate (§7). Wraps the whole navigator: it reads the shared onboarding state + the
-// current path and either renders the app, holds on a branded loader, or declaratively redirects to the
-// right step. Declarative <Redirect> (not an effect) so it fires on a fresh/incognito web load too.
+// The ONE centralized gate (§7). CRITICAL (loop fix): the root navigator (`children` = <Stack>) is ALWAYS
+// rendered — never swapped for a redirect/loading element. Conditionally unmounting the root navigator is an
+// expo-router anti-pattern that, during the auth→facts transition, remounts the Stack (+ the nested Tabs)
+// mid-navigation and drives ContextNavigator into "Maximum update depth". Instead we keep the navigator
+// mounted and, when the user must go elsewhere, render a declarative <Redirect> (idempotent — only when not
+// already at the target) plus a full-screen hold overlay so no protected screen is ever seen. State
+// derivation stays pure (resolveGateDecision); the gate itself never calls setState or navigates imperatively.
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const { state, reload } = useOnboarding();
   const pathname = usePathname();
@@ -55,12 +56,18 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
     }
   }, [state, pathname]);
 
-  const decision = resolveGateDecision(state, pathname);
-  if (decision.kind === 'redirect') return <Redirect href={decision.to as never} />;
-  if (decision.kind === 'loading') return <OnboardingHold state={state} onRetry={reload} />;
-  return <>{children}</>;
+  // Pure, idempotent nav contract (never re-issues a redirect to the current route).
+  const { redirectTo, showOverlay } = resolveGateNavigation(state, pathname);
+
+  return (
+    <>
+      {children}
+      {redirectTo !== null ? <Redirect href={redirectTo as never} /> : null}
+      {showOverlay ? <GateHoldOverlay state={state} onRetry={reload} /> : null}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  overlay: { alignItems: 'center', justifyContent: 'center', zIndex: 9999 },
 });
