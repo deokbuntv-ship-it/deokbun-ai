@@ -13,14 +13,17 @@ import { colors, radius, spacing } from '@/theme';
 // persistence, and shows the unavailable note.
 export function UserFeedbackControl({
   onSubmit,
+  initialVerdict,
 }: {
   onSubmit?: (verdict: FeedbackVerdict) => Promise<void> | void;
+  // Restores the previously-chosen verdict on reload (§31) so 👍/👎 stays selected.
+  initialVerdict?: FeedbackVerdict | null;
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
   const control = feedbackControlState();
   const canPersist = control.canPersist && !!onSubmit;
-  const [picked, setPicked] = useState<FeedbackVerdict | null>(null);
+  const [picked, setPicked] = useState<FeedbackVerdict | null>(initialVerdict ?? null);
 
   const choose = (verdict: FeedbackVerdict) => {
     setPicked(verdict);

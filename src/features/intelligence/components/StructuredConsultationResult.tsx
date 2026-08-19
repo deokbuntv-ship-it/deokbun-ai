@@ -73,11 +73,13 @@ export function StructuredConsultationResult({
   onSelectFollowUp,
   onRetry,
   onFeedback,
+  initialFeedback,
 }: {
   vm: StructuredConsultationViewModel;
   onSelectFollowUp?: (q: string) => void;
   onRetry?: () => void;
   onFeedback?: (verdict: FeedbackVerdict) => Promise<void> | void;
+  initialFeedback?: FeedbackVerdict | null;
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
@@ -160,8 +162,8 @@ export function StructuredConsultationResult({
         <FollowUpSuggestions suggestions={p.followUps} onSelect={onSelectFollowUp} />
       ) : null}
 
-      {/* feedback (honest seam) */}
-      <UserFeedbackControl onSubmit={onFeedback} />
+      {/* feedback — persists via onFeedback; initialFeedback restores the chosen verdict on reload */}
+      <UserFeedbackControl onSubmit={onFeedback} initialVerdict={initialFeedback} />
     </Stack>
   );
 }

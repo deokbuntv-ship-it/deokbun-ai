@@ -42,6 +42,9 @@ import { computeAnswerAnchorOffset } from '@/features/chat/scrollAnchor';
 import { ReportCtaFooter } from '@/features/chat/report/ReportCtaFooter';
 import { isReportEligible, resolveReportCtaView } from '@/features/chat/report/reportCta';
 import { reportService } from '@/features/chat/report/reportService';
+import { feedbackService } from '@/features/chat/services/feedbackService';
+import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
+import type { FeedbackVerdict } from '@/features/intelligence';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
@@ -122,6 +125,33 @@ export default function ChatScreen() {
     subjectSnapshot,
     conversationId: conversationIdParam,
   });
+
+  // Feedback (👍/👎) persistence — solo parity with 궁합. Restores per-message verdicts when the active
+  // conversation changes (reload / open-from-history) so the selection survives; save is non-blocking.
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackVerdict>>({});
+  useEffect(() => {
+    if (!activeConversationId) {
+      setFeedbackMap({});
+      return;
+    }
+    let cancelled = false;
+    void feedbackService.loadFeedbackForConversation(activeConversationId).then((m) => {
+      if (!cancelled) setFeedbackMap(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConversationId]);
+  const submitFeedback = async (messageId: string, verdict: FeedbackVerdict) => {
+    setFeedbackMap((prev) => ({ ...prev, [messageId]: verdict }));
+    await feedbackService.saveFeedback({
+      conversationId: activeConversationId,
+      messageId,
+      verdict,
+      consultationMode: 'solo',
+      policyVersion: CONSULTATION_PROMPT_VERSION,
+    });
+  };
 
   // When a specific past conversation is opened by id, its stored subject
   // snapshot is authoritative. Self-correct the draft (once per conversation) so
@@ -508,6 +538,8 @@ export default function ChatScreen() {
                       vm={message.structuredResult}
                       onSelectFollowUp={handleSelectFollowUp}
                       onRetry={handleRetry}
+                      onFeedback={(verdict) => void submitFeedback(message.id, verdict)}
+                      initialFeedback={feedbackMap[message.id] ?? null}
                     />
                   ) : (
                     <ChatBubble message={message} />

@@ -184,9 +184,9 @@ describe('human review view — never fabricates a write path (§33)', () => {
 });
 
 // ── Feedback (§20/§32) — no fake persistence ──────────────────────────────────────────
-describe('feedback view + control — honest seam (§32)', () => {
-  it('control cannot persist in V1.0 (no fake 저장됨)', () => {
-    expect(feedbackControlState().canPersist).toBe(false);
+describe('feedback view + control', () => {
+  it('control CAN persist now (feedbackService wired) — the control still ANDs with a provided onSubmit', () => {
+    expect(feedbackControlState().canPersist).toBe(true);
   });
   it('none when no feedback; present with label when given', () => {
     expect(toFeedbackView(null)).toEqual({ status: 'none' });

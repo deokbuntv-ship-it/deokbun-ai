@@ -12,9 +12,12 @@ import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
 import { ChatInput, conversationService, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
+import { feedbackService } from '@/features/chat/services/feedbackService';
 import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
+import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { reportService } from '@/features/chat/report/reportService';
 import type { CompatibilityResultMeta } from '@/features/chat/server';
+import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
@@ -60,6 +63,7 @@ export default function CompatibilityChatScreen() {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackVerdict>>({});
   const hydratedRef = useRef(false);
   const conversationIdRef = useRef<string | null>(null);
   const persistedIdsRef = useRef<Set<string>>(new Set());
@@ -174,6 +178,10 @@ export default function CompatibilityChatScreen() {
         loaded.messages.forEach((m) => persistedIdsRef.current.add(m.id));
         setMessages(loaded.messages as CompatMessage[]);
         if (loaded.compatibilityMeta) setTier(loaded.compatibilityMeta as CompatibilityResultMeta);
+        // Restore 👍/👎 per message so a reload keeps feedback selected (§31).
+        void feedbackService.loadFeedbackForConversation(loaded.conversationId).then((fm) => {
+          if (!cancelled) setFeedbackMap(fm);
+        });
       } else {
         void send(INITIAL_QUESTION);
       }
@@ -215,6 +223,20 @@ export default function CompatibilityChatScreen() {
     }
   };
 
+  // Persist 👍/👎 for an assistant message (non-blocking; optimistic local update). One row per
+  // (user, message) — a re-vote updates it (§30). No PII: only the message id + verdict + versions.
+  const submitFeedback = async (messageId: string, verdict: FeedbackVerdict) => {
+    setFeedbackMap((prev) => ({ ...prev, [messageId]: verdict }));
+    await feedbackService.saveFeedback({
+      conversationId: conversationIdRef.current,
+      messageId,
+      verdict,
+      consultationMode: 'compatibility',
+      policyVersion: CONSULTATION_PROMPT_VERSION,
+      engineVersion: tier?.engineVersion ?? null,
+    });
+  };
+
   const renderMessage = (m: CompatMessage) => {
     if (m.role === 'user') {
       return (
@@ -230,7 +252,12 @@ export default function CompatibilityChatScreen() {
     if (m.structuredResult) {
       return (
         <View key={m.id}>
-          <StructuredConsultationResult vm={m.structuredResult} onSelectFollowUp={(q) => void send(q)} />
+          <StructuredConsultationResult
+            vm={m.structuredResult}
+            onSelectFollowUp={(q) => void send(q)}
+            onFeedback={(verdict) => void submitFeedback(m.id, verdict)}
+            initialFeedback={feedbackMap[m.id] ?? null}
+          />
         </View>
       );
     }

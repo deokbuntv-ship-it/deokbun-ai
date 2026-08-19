@@ -139,8 +139,11 @@ export type FeedbackControlState = {
 };
 
 export function feedbackControlState(): FeedbackControlState {
+  // The client write path is wired (feedbackService → consultation_feedback). The control still
+  // ANDs this with a provided onSubmit, so a screen that does not pass one falls back to the honest
+  // note rather than claiming persistence.
   return {
-    canPersist: false,
+    canPersist: true,
     unavailableNote: '피드백 저장 기능은 준비 중이에요.',
   };
 }
