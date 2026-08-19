@@ -1,13 +1,12 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Chip } from '@/components/Chip';
 import { InsightCard } from '@/components/InsightCard';
-import { LineIcon, type LineIconName } from '@/components/LineIcon';
+import { LineIcon } from '@/components/LineIcon';
 import { ListRow } from '@/components/ListRow';
 import { PersonSelectorSheet } from '@/components/PersonSelectorSheet';
 import { QuestionComposer } from '@/components/QuestionComposer';
@@ -26,6 +25,14 @@ import {
   useConsultationSubjects,
 } from '@/features/consultation';
 import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
+import {
+  DEFAULT_POPULAR_QUESTIONS,
+  popularQuestionIcon,
+  popularQuestionService,
+  trackPopularQuestionClick,
+  trackPopularQuestionImpression,
+  type PopularQuestion,
+} from '@/features/popular-questions';
 import { fortuneMailService, type FortuneMailItem } from '@/features/fortune';
 import {
   clientTodayFortuneDateGuess,
@@ -55,28 +62,11 @@ const TODAY_TONE_COLOR: Record<ReturnType<typeof toneVariant>, string> = {
 // 이번 달 운세 pills reuse the SAME restrained palette as Today (no new colors).
 const MONTHLY_TONE_COLOR: Record<ReturnType<typeof monthlyToneVariant>, string> = TODAY_TONE_COLOR;
 
-// 01_HOME — Personal AI Consultation Hub (Stitch v4). Greeting → question
-// composer → popular questions → recent consultation → recent fortune mail. The
-// popular-question list is a data array (server-replaceable). Recent items come
-// from real services; fortune mail is empty until the engine ships (no mock).
-
-// Server-replaceable list (not tightly coupled to UI). Later: fetch from server.
-const POPULAR_QUESTIONS: { q: string; icon: LineIconName }[] = [
-  { q: '올해 재물운의 흐름이 어떻게 될까?', icon: 'wallet' },
-  { q: '이직을 준비하는데 언제가 좋을까?', icon: 'briefcase' },
-  { q: '올해 나에게 올 가장 큰 변화는?', icon: 'swap' },
-  { q: '새로운 인연을 만날 수 있을까?', icon: 'heart' },
-  { q: '건강 측면에서 조심해야 할 것은?', icon: 'leaf' },
-];
-// V4 §13 breadth: whole-flow · diagnostic · timing · decision · relationship — demonstrates
-// the range of questions, not a catalog of fortune products. Copy-only (server-replaceable).
-const QUICK_PROMPTS: string[] = [
-  '올해 전체 흐름이 궁금해',
-  '요즘 일이 자꾸 꼬이는 이유가 있을까?',
-  '이직하기 좋은 시기가 언제야?',
-  '사업을 확장해도 될까?',
-  '연애 흐름은 어때?',
-];
+// 01_HOME — Personal AI Consultation Hub. FINAL V1 IA (Home IA sprint): greeting + composer → 오늘의 운세 →
+// 이번 달 운세 → 궁합 → 지금 많이 물어보는 질문 → 최근 상담 → 최근 운세우편. The composer is the single primary
+// CTA (the old quick-prompt pills below it were removed). "지금 많이 물어보는 질문" is now an admin-managed,
+// analytics-backed conversion surface loaded from popularQuestionService (curated defaults as a resilient
+// fallback). Recent items come from real services; fortune mail is empty until the engine ships (no mock).
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -174,6 +164,50 @@ export default function HomeScreen() {
     router.push('/monthly');
   };
 
+  // 지금 많이 물어보는 질문 — admin-managed, analytics-backed conversion surface. Loaded from the DB (active +
+  // owner-ordered); the curated DEFAULT set is the initial paint AND the fallback when the table is
+  // unavailable (pre-migration) or unreachable, so the section never regresses to empty. NO LLM, NO ranking.
+  const [popularQuestions, setPopularQuestions] = useState<PopularQuestion[]>(() =>
+    DEFAULT_POPULAR_QUESTIONS.slice(0, 5),
+  );
+  const [popularLoaded, setPopularLoaded] = useState(false);
+  const impressedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    let active = true;
+    popularQuestionService
+      .listActive()
+      .then((rows) => {
+        if (!active) return;
+        // A successful query with 0 active rows means the owner deactivated all → respect that (empty section).
+        setPopularQuestions(rows.slice(0, 5));
+        setPopularLoaded(true);
+      })
+      .catch(() => {
+        // Pre-migration / DB unreachable → keep the curated defaults already in state (no empty flash).
+        if (active) setPopularLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // One impression per question per Home view (deduped — NOT per render), fired once the list has SETTLED so
+  // impressions attribute to what is actually shown (§ funnel). impressedRef resets on unmount → next Home
+  // visit is a fresh view boundary.
+  useEffect(() => {
+    if (!popularLoaded) return;
+    popularQuestions.forEach((q, i) => {
+      if (impressedRef.current.has(q.analyticsKey)) return;
+      impressedRef.current.add(q.analyticsKey);
+      trackPopularQuestionImpression({
+        questionKey: q.analyticsKey,
+        category: q.category,
+        placement: 'home',
+        position: i + 1,
+      });
+    });
+  }, [popularLoaded, popularQuestions]);
+
   // 생일 축하 (retention §7.2/§16.3) — deterministic from the canonical SELF birth date (0 LLM), shown only on
   // the actual birthday in Korea time. Never permanently occupies Home.
   const { subjects: allSubjects } = useConsultationSubjects();
@@ -215,13 +249,20 @@ export default function HomeScreen() {
     };
   }, [subjectId]);
 
-  // Start a (new) consultation with an optional prefilled question. UI never
-  // calls the LLM — this only navigates into the chat screen.
-  const startConsult = (question: string) => {
+  // Start a (new) consultation with an optional prefilled question. UI never calls the LLM — this only
+  // navigates into the chat screen. An optional `origin` attributes the consultation to a popular question
+  // (funnel), riding the same ephemeral store as the question; the direct composer passes NO origin (a typed
+  // question must never get a fake question id).
+  const startConsult = (question: string, origin?: { key: string; category: string }) => {
     // The question rides the EPHEMERAL store (never the URL — it is sensitive, §20) and
     // is consumed by chat. This covers both the has-subject and no-subject paths.
     if (question.trim().length > 0) {
-      setPendingConsultationIntent({ question });
+      setPendingConsultationIntent({
+        question,
+        ...(origin
+          ? { originQuestionKey: origin.key, originQuestionCategory: origin.category }
+          : {}),
+      });
     }
     if (!subject) {
       setSheetForConsult(true);
@@ -229,6 +270,18 @@ export default function HomeScreen() {
       return;
     }
     router.push({ pathname: '/chat', params: { startNew: '1' } });
+  };
+
+  // A tap on a popular question: record the click (one tap = one click) then start the consultation carrying
+  // the stable origin so chat can attribute consultation_start / first_answer_success without text-matching.
+  const onPopularPress = (q: PopularQuestion, position: number) => {
+    trackPopularQuestionClick({
+      questionKey: q.analyticsKey,
+      category: q.category,
+      placement: 'home',
+      position,
+    });
+    startConsult(q.questionText, { key: q.analyticsKey, category: q.category });
   };
 
   return (
@@ -266,18 +319,7 @@ export default function HomeScreen() {
               </Card>
             ) : null}
 
-            <QuestionComposer onSubmit={startConsult} />
-
-            <Stack direction="row" gap="sm" style={styles.chipWrap}>
-              {QUICK_PROMPTS.map((q) => (
-                <Chip
-                  key={q}
-                  label={q}
-                  onPress={() => startConsult(q)}
-                  style={styles.quickChip}
-                />
-              ))}
-            </Stack>
+            <QuestionComposer onSubmit={(q) => startConsult(q)} />
 
             {/* 오늘의 운세 — daily retention entry (no LLM on Home; generation happens on /today).
                 Composition (§34): a single CTA <Button> is the ONE interactive control; the card body
@@ -379,34 +421,8 @@ export default function HomeScreen() {
               </Card>
             </Stack>
 
-            {/* 지금 많이 물어보는 질문 (server-replaceable list) */}
-            <Stack gap="md">
-              <Text variant="bodyLarge" style={styles.sectionTitle}>
-                지금 많이 물어보는 질문
-              </Text>
-              <View>
-                {POPULAR_QUESTIONS.map(({ q, icon }, i) => (
-                  <View
-                    key={q}
-                    style={
-                      i > 0
-                        ? { borderTopWidth: 1, borderTopColor: theme.border }
-                        : undefined
-                    }
-                  >
-                    <ListRow
-                      label={q}
-                      leading={
-                        <LineIcon name={icon} size={20} color={theme.textSecondary} />
-                      }
-                      onPress={() => startConsult(q)}
-                    />
-                  </View>
-                ))}
-              </View>
-            </Stack>
-
-            {/* 궁합 — discoverable entry to the pushed 궁합 flow (NOT a 5th nav tab). */}
+            {/* 궁합 — discoverable entry to the pushed 궁합 flow (NOT a 5th nav tab). Placed ABOVE the popular
+                questions in the final V1 IA so the primary personal services (Today/Monthly/궁합) lead. */}
             <Stack gap="md">
               <Text variant="bodyLarge" style={styles.sectionTitle}>
                 궁합
@@ -434,6 +450,41 @@ export default function HomeScreen() {
                 </Card>
               </Pressable>
             </Stack>
+
+            {/* 지금 많이 물어보는 질문 — admin-managed conversion surface. Each row is a one-tap consultation
+                entry that carries a stable analytics key through the funnel. Hidden entirely if the owner
+                deactivated every question (respects owner intent — no empty title). */}
+            {popularQuestions.length > 0 ? (
+              <Stack gap="md">
+                <Text variant="bodyLarge" style={styles.sectionTitle}>
+                  지금 많이 물어보는 질문
+                </Text>
+                <View>
+                  {popularQuestions.map((q, i) => (
+                    <View
+                      key={q.analyticsKey}
+                      style={
+                        i > 0
+                          ? { borderTopWidth: 1, borderTopColor: theme.border }
+                          : undefined
+                      }
+                    >
+                      <ListRow
+                        label={q.questionText}
+                        leading={
+                          <LineIcon
+                            name={popularQuestionIcon(q.category)}
+                            size={20}
+                            color={theme.textSecondary}
+                          />
+                        }
+                        onPress={() => onPopularPress(q, i + 1)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </Stack>
+            ) : null}
 
             {/* 최근 상담 (real) */}
             <Stack gap="md">
@@ -544,12 +595,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-  },
-  chipWrap: {
-    flexWrap: 'wrap',
-  },
-  quickChip: {
-    flex: 1,
   },
   sectionTitle: {
     fontWeight: '700',

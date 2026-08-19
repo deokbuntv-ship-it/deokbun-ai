@@ -53,6 +53,7 @@ jest.mock('@/services/supabase', () => ({
 }));
 
 import { todayFortuneService } from '@/features/today/services/todayFortuneService';
+import { clientTodayFortuneDateGuess } from '@/features/today';
 import type { BirthInfoDraft } from '@/features/consultation';
 
 const SELF: BirthInfoDraft = {
@@ -60,7 +61,9 @@ const SELF: BirthInfoDraft = {
   birthYear: '1990', birthMonth: '6', birthDay: '15', birthTimeAccuracy: 'exact',
   birthHour: '9', birthMinute: '30', approximateTimePeriod: null, birthPlace: '서울',
 };
-const today = new Date().toISOString().slice(0, 10); // matches clientTodayFortuneDateGuess for "now"
+// Resolve "today" the SAME KST way the service does (§29). Using new Date().toISOString() (UTC) would
+// disagree with the service between UTC 15:00–24:00 (= KST 00:00–09:00) and flake the cache-hit assertions.
+const today = clientTodayFortuneDateGuess(Date.now());
 
 const genOk = {
   ok: true, fortuneDate: today, overallTone: '좋은 흐름',

@@ -28,12 +28,19 @@ import {
 } from '@/features/chat';
 import {
     consumePendingQuestion,
+    consumePendingQuestionOrigin,
     isSavedSubjectId,
     setPendingConsultationIntent,
     useConsultationDraft,
     type BirthInfoDraft,
     type ConsultationSubject,
 } from '@/features/consultation';
+import {
+    isPopularQuestionCategory,
+    trackPopularQuestionConsultationStart,
+    trackPopularQuestionFirstAnswerSuccess,
+    type PopularQuestionCategory,
+} from '@/features/popular-questions';
 import {
     ConsultationLoading,
     StructuredConsultationResult,
@@ -93,6 +100,13 @@ export default function ChatScreen() {
   const rootNavState = useRootNavigationState();
   const startNewClearedRef = useRef(false);
   const qSeededRef = useRef(false);
+
+  // Popular-question conversion funnel. When a consultation is seeded from a popular question, its stable
+  // origin rides here so consultation_start (first send) and first_answer_success (first successful answer)
+  // attribute correctly — WITHOUT text-matching. Each fires at most once per consultation.
+  const popularOriginRef = useRef<{ key: string; category: PopularQuestionCategory | null } | null>(null);
+  const popularStartFiredRef = useRef(false);
+  const popularSuccessFiredRef = useRef(false);
 
   const { draft, hydrationStatus: draftHydrationStatus, updateSubject, updateBirthInfo } =
     useConsultationDraft();
@@ -248,13 +262,21 @@ export default function ChatScreen() {
     // birth-info / login journey (§28) — NEVER auto-sent (§29). The question rides the
     // ephemeral store, not the URL (§20). Only for a FRESH consultation: opening an
     // existing conversation by id must not resurface a pending question.
-    const q =
-      !qSeededRef.current && conversationIdParam === undefined
-        ? (consumePendingQuestion() ?? '')
-        : '';
+    // Consume the popular-question origin BEFORE the question — consumePendingQuestion() clears savedAt, which
+    // the origin's TTL guard reads. Only in the same fresh-consultation branch that consumes the question.
+    const canSeed = !qSeededRef.current && conversationIdParam === undefined;
+    const origin = canSeed ? consumePendingQuestionOrigin() : null;
+    const q = canSeed ? (consumePendingQuestion() ?? '') : '';
     if (!qSeededRef.current && q.length > 0) {
       qSeededRef.current = true;
       setInputText(q);
+      // Attribute this consultation to the popular question it started from (null for a typed question). The
+      // category is re-validated to the closed vocabulary before it can become an analytics dimension.
+      popularOriginRef.current = origin
+        ? { key: origin.key, category: isPopularQuestionCategory(origin.category) ? origin.category : null }
+        : null;
+      popularStartFiredRef.current = false;
+      popularSuccessFiredRef.current = false;
     } else {
       setInputText('');
     }
@@ -297,6 +319,16 @@ export default function ChatScreen() {
   // call, and authGuard reads LIVE auth state so an expired session re-gates on retry (§57).
   const runSend = async (text: string, context: ChatMessage[]) => {
     setIsSending(true);
+    // Popular-question funnel: the first send of a popular-origin consultation enters the request lifecycle
+    // exactly once — strictly after, and distinct from, the Home click. Retries never re-fire (guarded).
+    if (popularOriginRef.current && !popularStartFiredRef.current) {
+      popularStartFiredRef.current = true;
+      trackPopularQuestionConsultationStart({
+        questionKey: popularOriginRef.current.key,
+        category: popularOriginRef.current.category,
+        placement: 'home',
+      });
+    }
     try {
       const result = await chatServiceRef.current.sendMessage({
         userMessage: text,
@@ -318,6 +350,15 @@ export default function ChatScreen() {
         persistMessage(assistantMessage);
         setSendError(null);
         lastAttemptRef.current = null;
+        // Popular-question funnel: the FIRST successful answer of a popular-origin consultation, once.
+        if (popularOriginRef.current && !popularSuccessFiredRef.current) {
+          popularSuccessFiredRef.current = true;
+          trackPopularQuestionFirstAnswerSuccess({
+            questionKey: popularOriginRef.current.key,
+            category: popularOriginRef.current.category,
+            placement: 'home',
+          });
+        }
         // Anchor the viewport to the START of the new answer (§G) — NOT the bottom.
         pendingAnchorRef.current = assistantMessage.id;
       } else {

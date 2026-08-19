@@ -52,7 +52,15 @@ export type ProductEventName =
   | 'birthday_message_opened'
   | 'life_event_created'
   | 'life_event_reminder_opened'
-  | 'notification_pref_updated';
+  | 'notification_pref_updated'
+  // Popular-question consultation-conversion funnel (Home IA sprint). The FULL conversion path for the
+  // admin-managed "지금 많이 물어보는 질문" list: impression (deduped per Home view) → click (one tap) →
+  // consultation_start (enters the send lifecycle, ≠ click) → first_answer_success (first successful answer
+  // only). Correlated by a STABLE analytics key (a slug), never the raw question text. Bounded, no PII.
+  | 'popular_question_impression'
+  | 'popular_question_click'
+  | 'popular_question_consultation_start'
+  | 'popular_question_first_answer_success';
 
 // The ONLY property keys that may be persisted. Everything else is dropped (§38). No name / birth /
 // question / answer / email / phone can appear here — those keys are simply not on the allowlist.
@@ -80,6 +88,12 @@ const ALLOWED_PROPS = new Set<string>([
   // Retention props (§14.2) — a categorical category/type code + an allowlisted deep-link target. No PII.
   'category',
   'deep_link_target',
+  // Popular-question funnel props (Home IA sprint) — a STABLE analytics slug + its category + where it was
+  // shown + its rank in the list. All categorical/numeric; the raw question text is NEVER an event property.
+  'question_key',
+  'question_category',
+  'placement',
+  'position',
 ]);
 const MAX_STR = 64;
 

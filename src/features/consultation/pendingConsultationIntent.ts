@@ -17,7 +17,21 @@ export type PendingConsultationIntent = {
   question?: string;
   returnTo?: string;
   savedAt?: number; // epoch ms when the question was stored (for TTL, §19)
+  // Popular-question conversion origin (Home IA sprint). When a consultation is started from the
+  // admin-managed "지금 많이 물어보는 질문" list, its STABLE analytics slug + category ride here so the
+  // chat screen can attribute consultation_start / first_answer_success to the right question WITHOUT
+  // ever text-matching. These are categorical identifiers only — never the raw question, name, or birth.
+  originQuestionKey?: string;
+  originQuestionCategory?: string;
 };
+
+// A popular-question origin slug/category is a short categorical token — bound it and reject anything that
+// is not a plain [A-Za-z0-9_-] identifier so nothing free-form (or PII-shaped) can be smuggled through.
+const ORIGIN_TOKEN_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+function safeOriginToken(value: string | undefined): string | undefined {
+  return typeof value === 'string' && ORIGIN_TOKEN_RE.test(value) ? value : undefined;
+}
 
 // Only these internal routes may be resumed to (§12/§52 — no open redirect). Primary consumer surfaces the
 // signup-first gate may bounce a deep-linking anonymous user off of, so intent survives onboarding (§53).
@@ -95,6 +109,18 @@ export function setPendingConsultationIntent(patch: PendingConsultationIntent): 
   if (isSafeReturnTo(patch.returnTo)) {
     next.returnTo = patch.returnTo;
   }
+  // A conversion origin is only meaningful alongside a fresh question; validate both tokens independently
+  // and drop anything unsafe rather than storing it.
+  if ('originQuestionKey' in patch) {
+    const key = safeOriginToken(patch.originQuestionKey);
+    if (key) next.originQuestionKey = key;
+    else delete next.originQuestionKey;
+  }
+  if ('originQuestionCategory' in patch) {
+    const cat = safeOriginToken(patch.originQuestionCategory);
+    if (cat) next.originQuestionCategory = cat;
+    else delete next.originQuestionCategory;
+  }
   write(next);
 }
 
@@ -116,6 +142,31 @@ export function consumePendingQuestion(): string | null {
   const expired =
     typeof current.savedAt === 'number' && Date.now() - current.savedAt > QUESTION_TTL_MS;
   return expired ? null : current.question;
+}
+
+/** Read + clear the popular-question conversion origin (one-shot). Returns null if absent, or if the
+ * companion question has aged past the TTL (a stale origin must never attach to an unrelated later
+ * consultation, §19). Consume this BEFORE consumePendingQuestion(), which clears savedAt. */
+export function consumePendingQuestionOrigin(): { key: string; category: string | null } | null {
+  const current = read();
+  const key = safeOriginToken(current?.originQuestionKey);
+  if (!current || !key) {
+    if (current && ('originQuestionKey' in current || 'originQuestionCategory' in current)) {
+      const rest: PendingConsultationIntent = { ...current };
+      delete rest.originQuestionKey;
+      delete rest.originQuestionCategory;
+      write(rest);
+    }
+    return null;
+  }
+  const rest: PendingConsultationIntent = { ...current };
+  delete rest.originQuestionKey;
+  delete rest.originQuestionCategory;
+  write(rest);
+  const expired =
+    typeof current.savedAt === 'number' && Date.now() - current.savedAt > QUESTION_TTL_MS;
+  if (expired) return null;
+  return { key, category: safeOriginToken(current.originQuestionCategory) ?? null };
 }
 
 /** Read + clear the pending returnTo (one-shot), validated. Returns null if absent/unsafe. */

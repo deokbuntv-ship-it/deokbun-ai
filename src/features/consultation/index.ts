@@ -26,6 +26,7 @@ export {
 export {
     clearPendingConsultationIntent,
     consumePendingQuestion,
+    consumePendingQuestionOrigin,
     consumePendingReturnTo,
     isSafeReturnTo,
     peekPendingConsultationIntent,
