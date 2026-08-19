@@ -23,7 +23,9 @@ import {
   isSavedSubjectId,
   setPendingConsultationIntent,
   useConsultationDraft,
+  useConsultationSubjects,
 } from '@/features/consultation';
+import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
 import { fortuneMailService, type FortuneMailItem } from '@/features/fortune';
 import {
   clientTodayFortuneDateGuess,
@@ -172,6 +174,13 @@ export default function HomeScreen() {
     router.push('/monthly');
   };
 
+  // 생일 축하 (retention §7.2/§16.3) — deterministic from the canonical SELF birth date (0 LLM), shown only on
+  // the actual birthday in Korea time. Never permanently occupies Home.
+  const { subjects: allSubjects } = useConsultationSubjects();
+  const selfSubject = allSubjects.find((s) => s.isSelf) ?? null;
+  const selfBirthMd = selfSubject ? birthMonthDay(selfSubject.birthInfo) : null;
+  const isBirthday = selfBirthMd ? isBirthdayTodayKst(selfBirthMd, Date.now()) : false;
+
   useEffect(() => {
     let active = true;
     if (!subjectId) {
@@ -243,6 +252,19 @@ export default function HomeScreen() {
               {mounted ? greeting() : '안녕하세요.'}
               {'\n'}오늘은 무엇이 궁금하세요?
             </Text>
+
+            {/* 생일 축하 (deterministic, birthday-only, 0 LLM). A tasteful one-off card, not a permanent banner. */}
+            {isBirthday ? (
+              <Card radius="xl">
+                <Stack gap="sm">
+                  <Text variant="bodyLarge" style={{ fontWeight: '700' }}>생일을 축하드려요 🎉</Text>
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    새로운 한 해의 흐름을 확인해보세요.
+                  </Text>
+                  <Button label="이번 달 운세 보기" onPress={openMonthly} radius="lg" />
+                </Stack>
+              </Card>
+            ) : null}
 
             <QuestionComposer onSubmit={startConsult} />
 

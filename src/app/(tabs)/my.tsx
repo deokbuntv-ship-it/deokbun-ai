@@ -80,16 +80,27 @@ export default function MyScreen() {
               </Pressable>
             </Card>
 
-            {/* 설정 / 약관 (future) */}
+            {/* 알림 설정 / 중요한 일정 / 약관 */}
             <Card radius="xl">
               <View>
-                <View style={styles.rowStatic}>
+                <Pressable
+                  onPress={() => router.push('/notification-settings')}
+                  accessibilityRole="button"
+                  style={styles.row}
+                >
                   <LineIcon name="gear" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>
-                    설정
-                  </Text>
-                  <StatusBadge label="준비 중" tone="neutral" pill />
-                </View>
+                  <Text variant="bodyLarge" style={styles.rowLabel}>알림 설정</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/life-events')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
+                  <LineIcon name="calendar" size={22} color={theme.secondary} />
+                  <Text variant="bodyLarge" style={styles.rowLabel}>중요한 일정</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
                 <View style={[styles.rowStatic, { borderTopWidth: 1, borderTopColor: theme.border }]}>
                   <LineIcon name="shield" size={22} color={theme.secondary} />
                   <Text variant="bodyLarge" style={styles.rowLabel}>

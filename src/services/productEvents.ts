@@ -45,7 +45,14 @@ export type ProductEventName =
   | 'monthly_fortune_cache_hit'
   | 'monthly_fortune_detail_opened'
   | 'monthly_fortune_consultation_clicked'
-  | 'monthly_fortune_mailbox_opened';
+  | 'monthly_fortune_mailbox_opened'
+  // Retention foundation (§14/§21) — notification / birthday / life-event funnel. Bounded, no PII.
+  | 'notification_created'
+  | 'notification_opened'
+  | 'birthday_message_opened'
+  | 'life_event_created'
+  | 'life_event_reminder_opened'
+  | 'notification_pref_updated';
 
 // The ONLY property keys that may be persisted. Everything else is dropped (§38). No name / birth /
 // question / answer / email / phone can appear here — those keys are simply not on the allowlist.
@@ -70,6 +77,9 @@ const ALLOWED_PROPS = new Set<string>([
   'overall_tier',
   // Monthly-fortune funnel prop (§74) — a "YYYY-MM" month key (coarse, non-PII).
   'fortune_month',
+  // Retention props (§14.2) — a categorical category/type code + an allowlisted deep-link target. No PII.
+  'category',
+  'deep_link_target',
 ]);
 const MAX_STR = 64;
 
