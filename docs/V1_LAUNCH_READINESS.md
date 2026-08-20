@@ -31,6 +31,7 @@ Legend: **DONE** shipped in-repo · **PARTIAL** works but has a named gap · **M
 | **Monitoring** | **PARTIAL→improved (this sprint)** | PII-safe logging seam + **root ErrorBoundary added**; **no Sentry** (seam ready, OWNER credential later). |
 | **Backup / recovery** | DOCS (this sprint) | see §B; live Supabase PITR/backup settings are OWNER-verify. |
 | App store config | PARTIAL (this sprint) | name → 덕분이, bundle IDs added (`com.deokbun.app`); **OWNER confirm final IDs + store accounts**. |
+| **Consumer brand → 덕분이** | **DONE (this sprint)** | all user-facing surfaces migrated; internal identifiers preserved; **LLM prompt self-name pending next edge deploy** (OWNER). |
 | Push (external) | MISSING | provider abstraction only (noop); OWNER: FCM/APNs credentials. |
 | Email (external) | MISSING | OWNER: email provider + API key. |
 | Payment / monetization | MISSING (by design) | see §C — **review required before V1 freeze**. |
@@ -102,6 +103,21 @@ FREE↔PLUS feature boundary; M1/M3 paid retention; churn; and willingness-to-pa
 checkpoint only — nothing here implements or commits to a pricing model.
 
 ---
+
+## E. Brand migration (덕분이)
+
+Consumer service name is **덕분이**. User-facing surfaces (login, onboarding/consent, Home header, consultation
+welcome/composer/loading, birth-profile copy, MY disclaimer, shared-report + share copy, public site, legal
+docs, content/famous SEO) now say 덕분이. **Intentionally preserved:** app slug/scheme + bundle IDs
+(`DeokbunAI` / `deokbunai` / `com.deokbun.app`), all Latin `DeokbunAI` identifiers/comments + `DEOKBUNAI_*`
+version constants, the operator-only admin console brand, and the **edge-bundled LLM system prompts**
+(today/monthly/consultation) — the AI's self-name is a persona/behavior change requiring an edge redeploy.
+Bundle identifiers were **not** changed by the brand rename (they are independent). Locked by
+`src/app/__tests__/consumerBrand.test.ts`.
+
+**OWNER (next edge deploy):** update the AI self-name from 덕분AI to 덕분이 in `todayFortunePrompt.ts`,
+`monthlyFortunePrompt.ts`, `consultationPolicy.ts`, then rebuild `serverBundle.mjs` and deploy — so generated
+answers self-refer as 덕분이.
 
 ## D. Owner actions
 
