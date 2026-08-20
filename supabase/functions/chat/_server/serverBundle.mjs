@@ -8646,18 +8646,73 @@ function safeResponseForRoute(route) {
   }
 }
 
+// src/features/chat/server/consultationDomain.ts
+function classifyConsultationDomain(question) {
+  const q = question ?? "";
+  if (/창업|개업/.test(q)) return "창업";
+  if (/사업|장사|가게|매출|자영업/.test(q)) return "사업";
+  if (/이직|전직|퇴사/.test(q)) return "이직";
+  if (/직업|직장|취업|커리어|일자리|진로/.test(q)) return "직업";
+  if (/재물|재정|돈|투자|자산|수입|금전|씀씀이/.test(q)) return "재물";
+  if (/결혼|혼인|약혼/.test(q)) return "결혼";
+  if (/연애|사랑|썸|이성|애인|인연/.test(q)) return "연애";
+  if (/인간관계|대인|관계운|사람\s*관계/.test(q)) return "관계";
+  if (/건강|질병|몸|체력|컨디션/.test(q)) return "건강";
+  if (/시험|합격|수능|자격증|취득|고시/.test(q)) return "시험";
+  if (/이사|이주|이전|이사운|집을?\s*(옮|사)/.test(q)) return "이사";
+  if (/계약|서명|거래|체결/.test(q)) return "계약";
+  return "전반";
+}
+
 // src/features/chat/server/decisionMeta.ts
-function buildConsultationDecisionMeta(plan, grounding, resolvedTemporalContext) {
+function buildConsultationDecisionMeta(question, plan, grounding, resolvedTemporalContext, modelId) {
   return {
     answerPlanVersion: ANSWER_PLAN_VERSION,
     decisionPolicyVersion: DECISION_POLICY_VERSION,
     promptVersion: CONSULTATION_PROMPT_VERSION,
     ...grounding.status === "available" && grounding.engineVersion ? { engineVersion: grounding.engineVersion } : {},
+    ...modelId ? { modelId } : {},
+    // Sprint E §10 — actual runtime model id, server-supplied (never client)
     resolvedGranularity: plan.resolvedGranularity,
     resolvedTargets: resolvedTemporalContext.resolvedTargets,
     ...plan.polarity ? { polarity: plan.polarity } : {},
+    domain: classifyConsultationDomain(question),
     resolvedTemporalContext
   };
+}
+var POLARITY_TIERS = ["FAVORABLE", "STEADY", "DYNAMIC", "CAUTION"];
+var numArray = (v) => Array.isArray(v) ? v.filter((n) => typeof n === "number") : [];
+function parseDecisionMeta(v) {
+  if (v === null || typeof v !== "object") return void 0;
+  const o = v;
+  if (typeof o.answerPlanVersion !== "string" || typeof o.decisionPolicyVersion !== "string" || typeof o.promptVersion !== "string") return void 0;
+  if (o.resolvedGranularity !== "NONE" && o.resolvedGranularity !== "YEAR" && o.resolvedGranularity !== "MONTH") return void 0;
+  const rtc = o.resolvedTemporalContext;
+  if (rtc === null || typeof rtc !== "object" || typeof rtc.anchorEpochSeconds !== "number") return void 0;
+  const p = typeof o.polarity === "string" && POLARITY_TIERS.includes(o.polarity) ? o.polarity : void 0;
+  return {
+    answerPlanVersion: o.answerPlanVersion,
+    decisionPolicyVersion: o.decisionPolicyVersion,
+    promptVersion: o.promptVersion,
+    ...typeof o.engineVersion === "string" ? { engineVersion: o.engineVersion } : {},
+    ...typeof o.modelId === "string" ? { modelId: o.modelId } : {},
+    resolvedGranularity: o.resolvedGranularity,
+    resolvedTargets: numArray(o.resolvedTargets),
+    ...p ? { polarity: p } : {},
+    ...typeof o.domain === "string" ? { domain: o.domain } : {},
+    resolvedTemporalContext: {
+      anchorEpochSeconds: rtc.anchorEpochSeconds,
+      timezone: "Asia/Seoul",
+      referenceYear: typeof rtc.referenceYear === "number" ? rtc.referenceYear : null,
+      referenceMonth: typeof rtc.referenceMonth === "number" ? rtc.referenceMonth : null,
+      resolvedTargets: numArray(rtc.resolvedTargets),
+      qimenActive: rtc.qimenActive === true
+    }
+  };
+}
+function isDecisionVersionMismatch(persisted) {
+  if (!persisted) return false;
+  return persisted.answerPlanVersion !== ANSWER_PLAN_VERSION || persisted.decisionPolicyVersion !== DECISION_POLICY_VERSION;
 }
 
 // src/features/chat/server/resolvedTemporalContext.ts
@@ -8691,6 +8746,70 @@ function buildResolvedTemporalContext(question, nowEpochSeconds, grounding) {
     resolvedTargets: Array.from(new Set(targets)),
     qimenActive
   };
+}
+
+// src/features/chat/services/followUpContext.ts
+function previousDecisionFromMeta(meta) {
+  if (!meta) return null;
+  return {
+    polarity: meta.polarity,
+    resolvedGranularity: meta.resolvedGranularity,
+    resolvedTargets: meta.resolvedTargets,
+    decisionMeta: meta,
+    hasComparisonSet: meta.resolvedTargets.length >= 2
+  };
+}
+function classifyFollowUpIntent(question) {
+  const q = (question ?? "").trim();
+  if (q.length === 0) return "NONE";
+  if (/^왜\s*\??$|왜\s*(그래|그런|그렇|인가|일까|죠|요)/.test(q)) return "WHY";
+  if (/그럼\s*내년|그러면\s*내년|내년은\s*\??$|내년엔\s*\??$/.test(q)) return "NEXT_YEAR";
+  if (/둘\s*중|두\s*개\s*중|어느\s*(쪽|것|게)\s*(이|가)?/.test(q)) return "BETWEEN_CANDIDATES";
+  if (/그럼\s*언제|그러면\s*언제|언제(가|는|쯤)?\s*\??$/.test(q)) return "WHEN";
+  return "NONE";
+}
+function resolveFollowUpAction(intent, previous) {
+  switch (intent) {
+    case "WHY":
+      return { kind: "EXPLAIN_PREVIOUS", versionMismatch: isDecisionVersionMismatch(previous?.decisionMeta) };
+    case "NEXT_YEAR":
+      return { kind: "RECALC_NEXT_YEAR" };
+    case "BETWEEN_CANDIDATES":
+      return { kind: "DESCRIBE_CANDIDATES_NO_WINNER", candidates: previous?.resolvedTargets ?? [] };
+    case "WHEN":
+      return { kind: "DEFER_V1_1" };
+    default:
+      return { kind: "NONE" };
+  }
+}
+var POLARITY_LABEL = {
+  FAVORABLE: "좋은 편",
+  STEADY: "무난한 편",
+  DYNAMIC: "변화가 많은 편",
+  CAUTION: "조심이 필요한 편"
+};
+function renderFollowUpDirective(action, previous) {
+  switch (action.kind) {
+    case "EXPLAIN_PREVIOUS": {
+      const parts = [
+        '[후속 지침 — "왜?"] 새로운 결론을 새로 만들지 마십시오. 앞선 상담의 결론을 그대로 두고, 그렇게 본 이유만 설명하십시오.'
+      ];
+      if (previous?.polarity) parts.push(`앞선 결론의 전반 흐름은 "${POLARITY_LABEL[previous.polarity]}"였습니다 — 이 방향을 바꾸지 마십시오.`);
+      if (action.versionMismatch) {
+        parts.push("저장된 이전 판단을 그대로 설명하고, 지금 규칙으로 다시 계산해 다른 결론을 내지 마십시오.");
+      }
+      return parts.join(" ");
+    }
+    case "RECALC_NEXT_YEAR": {
+      const dom = previous?.decisionMeta?.domain && previous.decisionMeta.domain !== "전반" ? previous.decisionMeta.domain : null;
+      return `[후속 지침 — "그럼 내년은?"] ${dom ? `앞선 주제(${dom})를 이어서 ` : ""}내년(다음 해)의 흐름을 새로 설명하십시오. 앞선 해의 결론을 그대로 옮기지 말고, 내년 근거에 따라 판단하십시오.`;
+    }
+    case "DESCRIBE_CANDIDATES_NO_WINNER":
+      if (action.candidates.length < 2) return null;
+      return '[후속 지침 — "둘 중에는?"] 앞서 살펴본 후보들을 각각 설명하되, 한쪽을 승자/1순위로 고르거나 더 낫다고 단정하지 마십시오. 지금 규칙으로는 한쪽을 우열로 정하지 않습니다.';
+    default:
+      return null;
+  }
 }
 
 // src/features/chat/server/buildServerConsultation.ts
@@ -8784,20 +8903,39 @@ async function buildServerConsultation(request, deps) {
   } catch {
     grounding = GROUNDING_UNAVAILABLE;
   }
+  const followUpIntent = classifyFollowUpIntent(question);
+  let followUpDirective = null;
+  let followUpVersionMismatch = false;
+  if (followUpIntent !== "NONE" && deps.loadPreviousDecision) {
+    let prevMeta = null;
+    try {
+      prevMeta = await deps.loadPreviousDecision();
+    } catch {
+      prevMeta = null;
+    }
+    const previous = previousDecisionFromMeta(prevMeta);
+    const action = resolveFollowUpAction(followUpIntent, previous);
+    if (action.kind === "EXPLAIN_PREVIOUS") followUpVersionMismatch = action.versionMismatch;
+    followUpDirective = renderFollowUpDirective(action, previous);
+  }
   const recentMessages = sanitizeConversation(request.conversationContext);
   const mode = classifyConsultationMode(question, recentMessages.length > 0);
   let effectiveGrounding = grounding;
   let plan = deriveAnswerPlan(question, effectiveGrounding);
-  const buildMessages = (extraDirective) => buildPrompt({
-    selectedContext,
-    conversationSummary: request.conversationSummary ?? null,
-    recentMessages,
-    currentUserMessage: question,
-    mode,
-    grounding: effectiveGrounding,
-    answerPlanDirective: extraDirective ? `${renderAnswerPlanDirective(plan)}
-${extraDirective}` : renderAnswerPlanDirective(plan)
-  });
+  const buildMessages = (extraDirective) => {
+    const base = followUpDirective ? `${renderAnswerPlanDirective(plan)}
+${followUpDirective}` : renderAnswerPlanDirective(plan);
+    return buildPrompt({
+      selectedContext,
+      conversationSummary: request.conversationSummary ?? null,
+      recentMessages,
+      currentUserMessage: question,
+      mode,
+      grounding: effectiveGrounding,
+      answerPlanDirective: extraDirective ? `${base}
+${extraDirective}` : base
+    });
+  };
   let messages;
   try {
     messages = buildMessages();
@@ -8831,7 +8969,7 @@ ${extraDirective}` : renderAnswerPlanDirective(plan)
   });
   const outcome = guard.outcome;
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(plan, effectiveGrounding, resolvedTemporalContext);
+  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null);
   const structuredResult = outcome.kind === "ACCEPTED" ? {
     ...buildStructuredConsultationResult(outcome.result, effectiveGrounding),
     ...plan.polarity ? { conclusionPolarity: plan.polarity } : {},
@@ -8842,6 +8980,8 @@ ${extraDirective}` : renderAnswerPlanDirective(plan)
     outputClassification: outcome.kind,
     ...guard.regenerated ? { regenerated: true } : {},
     ...safetyRoute !== "NORMAL" ? { safetyRoute } : {},
+    ...followUpIntent !== "NONE" ? { followUp: followUpIntent } : {},
+    ...followUpVersionMismatch ? { versionMismatch: true } : {},
     ...outcome.kind === "ACCEPTED" ? {} : {
       rejectionReason: guard.guardRejected ? "GUARD_CERTAINTY_MITIGATION" : firstStructuredRejectionReason(raw, effectiveGrounding)
     }
@@ -9441,7 +9581,7 @@ ${COMPAT_REGEN_DIRECTIVE}`));
   });
   const outcome = guard.outcome;
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(plan, safeGrounding, resolvedTemporalContext);
+  const decisionMeta = buildConsultationDecisionMeta(question, plan, safeGrounding, resolvedTemporalContext, deps.modelId ?? null);
   const structuredResult = outcome.kind === "ACCEPTED" ? {
     ...buildStructuredConsultationResult(outcome.result, safeGrounding),
     ...plan.polarity ? { conclusionPolarity: plan.polarity } : {},
@@ -10261,6 +10401,7 @@ export {
   SAFE_DIAG_KEYS,
   TODAY_CANONICAL_VERSION,
   buildCompatibilityConsultation,
+  buildConsultationDecisionMeta,
   buildMonthlyFortune,
   buildServerConsultation,
   buildServerSummary,
@@ -10271,10 +10412,12 @@ export {
   dailyFortuneResponseFormat,
   extractResponsesText,
   fortuneDateStringFromEpoch,
+  isDecisionVersionMismatch,
   monthKey,
   monthlyFortuneResponseFormat,
   openAiFailureCode,
   parseDailyFortune,
+  parseDecisionMeta,
   parseMonthlyFortune,
   parseUsageDetails,
   redactDiag,
