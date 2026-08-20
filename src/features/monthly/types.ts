@@ -74,3 +74,5 @@ export type MonthlyFortuneRecord = {
 };
 
 export const MONTHLY_POLICY_VERSION = 'monthly@1.2.0';
+// Server canonical cache/lease identity. Separate from display policy provenance for future tier routing.
+export const MONTHLY_CANONICAL_VERSION = 'monthly-canonical@1.2.0';

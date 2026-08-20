@@ -1,7 +1,7 @@
 // Server trust boundary — request/response contract (Server-Trust sprint §7/§8/§17).
 //
-// THE CORE INVARIANT: the client is authoritative for NOTHING deterministic. It may say WHICH subject
-// (its own birth input, or a server-owned profile id) and WHAT it is asking — nothing else. It sends NO
+// THE CORE INVARIANT: the client is authoritative for NOTHING deterministic. Normal consumer SELF comes
+// from the authenticated user's canonical stored subject; the client says only WHAT it is asking. It sends NO
 // grounding, NO engine evidence, NO availability flags, NO provenance, NO system prompt, NO "verified
 // facts". Everything trusted is (re)built by the server from the birth INPUT it recomputes. See
 // `buildServerConsultation`.
@@ -15,11 +15,10 @@ import type { StructuredConsultationViewModel } from '@/features/intelligence/ty
 export type UntrustedTurn = { role: 'user' | 'assistant'; content: string };
 
 export type ServerConsultationRequest = {
-  // When present AND the server can resolve+own it (RLS), the server-owned profile is authoritative and
-  // the client `birthInput` is ignored entirely (§9). When absent (V1 default, no profile persisted),
-  // the server recomputes facts from `birthInput` — untrusted INPUT, never trusted FACTS.
+  // Legacy/preview fields remain optional in the shared shape, but the paid consumer Edge ignores them and
+  // always resolves canonical SELF from consultation_subjects.is_self.
   subjectProfileId?: string | null;
-  birthInput: BirthInfoDraft;
+  birthInput?: BirthInfoDraft;
   subjectLabel?: string | null;
   // 궁합(compatibility) mode (additive; absent/'solo' → the existing single-subject path is unchanged).
   // When 'compatibility', the server ALSO recomputes the partner's chart from `partnerBirthInput` and
@@ -27,8 +26,10 @@ export type ServerConsultationRequest = {
   consultationMode?: 'solo' | 'compatibility';
   partnerBirthInput?: BirthInfoDraft | null;
   partnerLabel?: string | null;
-  // Reserved for a future server-owned partner profile (RLS); unused in V1 (recompute from input).
+  // Owned TARGET subject, or explicit RAW_UNSAVED target input when targetSource says so.
   partnerProfileId?: string | null;
+  partnerSubjectId?: string | null;
+  targetSource?: 'OWNED_SUBJECT' | 'RAW_UNSAVED';
   question: string;
   conversationContext?: UntrustedTurn[];
   // UNTRUSTED compressed prior-conversation context (§B). Like conversationContext, it is NEVER a system

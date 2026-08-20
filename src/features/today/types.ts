@@ -74,3 +74,5 @@ export type DailyFortuneRecord = {
 };
 
 export const TODAY_POLICY_VERSION = 'today@1.1.0';
+// Server canonical cache/lease identity. Bump only when a semantic change must produce a new canonical row.
+export const TODAY_CANONICAL_VERSION = 'today-canonical@1.1.0';

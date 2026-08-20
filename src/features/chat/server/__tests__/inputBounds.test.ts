@@ -3,6 +3,8 @@ import {
   MAX_CONTEXT_ITEMS,
   MAX_CONTEXT_ITEM_CHARS,
   MAX_QUESTION_CHARS,
+  MAX_LABEL_CHARS,
+  MAX_REQUEST_BODY_CHARS,
   validateConsultationInputBounds,
 } from '../inputBounds';
 
@@ -30,6 +32,12 @@ describe('validateConsultationInputBounds', () => {
       ok: false,
       code: 'REQUEST_TOO_LARGE',
     });
+  });
+
+  it('rejects oversized labels, birth fields and overall nested bodies', () => {
+    expect(validateConsultationInputBounds({ partnerLabel: 'x'.repeat(MAX_LABEL_CHARS + 1) })).toMatchObject({ ok: false });
+    expect(validateConsultationInputBounds({ birthInput: { birthPlace: 'x'.repeat(257) } })).toMatchObject({ ok: false });
+    expect(validateConsultationInputBounds({ requestMetadata: { nested: 'x'.repeat(MAX_REQUEST_BODY_CHARS) } })).toMatchObject({ ok: false });
   });
 
   it('rejects too many context / turn items', () => {

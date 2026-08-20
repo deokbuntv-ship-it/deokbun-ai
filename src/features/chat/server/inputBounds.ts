@@ -12,6 +12,10 @@
 export const MAX_QUESTION_CHARS = 2000;
 export const MAX_CONTEXT_ITEMS = 100;
 export const MAX_CONTEXT_ITEM_CHARS = 4000;
+export const MAX_LABEL_CHARS = 160;
+export const MAX_BIRTH_FIELD_CHARS = 256;
+export const MAX_REQUEST_BODY_CHARS = 100_000;
+export const MAX_REQUEST_BODY_BYTES = 120_000;
 
 // Every request_type that results in a paid LLM call. The burst limiter counts ALL of these against one
 // window so 오늘의 운세 / 이번 달 운세 generations are throttled like consultations — closing the gap where
@@ -33,7 +37,29 @@ function arrTooLong(v: unknown, max: number): boolean {
 // REQUEST_TOO_LARGE (413) so meaning is never silently altered.
 export function validateConsultationInputBounds(body: unknown): InputBoundsVerdict {
   const b = (body ?? {}) as Record<string, unknown>;
+  try {
+    const serialized = JSON.stringify(body);
+    if (typeof serialized === 'string' && serialized.length > MAX_REQUEST_BODY_CHARS) {
+      return { ok: false, code: 'REQUEST_TOO_LARGE' };
+    }
+  } catch {
+    return { ok: false, code: 'REQUEST_TOO_LARGE' };
+  }
   if (strTooLong(b.question, MAX_QUESTION_CHARS)) return { ok: false, code: 'REQUEST_TOO_LARGE' };
+  if (strTooLong(b.subjectLabel, MAX_LABEL_CHARS) || strTooLong(b.partnerLabel, MAX_LABEL_CHARS)) {
+    return { ok: false, code: 'REQUEST_TOO_LARGE' };
+  }
+  if (strTooLong(b.conversationSummary, MAX_CONTEXT_ITEM_CHARS)
+      || strTooLong(b.existingSummary, MAX_CONTEXT_ITEM_CHARS)) {
+    return { ok: false, code: 'REQUEST_TOO_LARGE' };
+  }
+  for (const birth of [b.birthInput, b.partnerBirthInput]) {
+    if (birth && typeof birth === 'object' && !Array.isArray(birth)) {
+      for (const value of Object.values(birth as Record<string, unknown>)) {
+        if (strTooLong(value, MAX_BIRTH_FIELD_CHARS)) return { ok: false, code: 'REQUEST_TOO_LARGE' };
+      }
+    }
+  }
   if (arrTooLong(b.conversationContext, MAX_CONTEXT_ITEMS)) return { ok: false, code: 'REQUEST_TOO_LARGE' };
   if (arrTooLong(b.turns, MAX_CONTEXT_ITEMS)) return { ok: false, code: 'REQUEST_TOO_LARGE' };
   for (const arr of [b.conversationContext, b.turns]) {

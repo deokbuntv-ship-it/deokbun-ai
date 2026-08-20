@@ -2,7 +2,7 @@
 //
 // This is the ONLY place a real LLM provider is called AND — as of the server-trust sprint — the ONLY
 // place the authoritative deterministic grounding is built. The client is authoritative for NOTHING
-// deterministic (§7/§8): it sends birth INPUT + a question + untrusted prior turns. The SERVER recomputes
+// deterministic (§7/§8): it sends a question + untrusted prior turns. The SERVER resolves canonical SELF,
 // every fact, builds the grounding + system prompt, calls OpenAI, validates the output, and returns a
 // bounded result. A modified client can no longer fabricate SAJU/Ziwei/Qimen facts, availability,
 // provenance, or "세 학문 일치" consensus.
@@ -14,7 +14,7 @@
 // - The client CANNOT send messages/grounding/system prompts. The server builds them from input.        [§8]
 // - The question time (Qimen + current-year 세운/월운) is the SERVER receipt time, not the client clock.  [§10]
 // - The model + output-token limit are server-decided.
-// - Per-user burst rate limit runs before any paid LLM call, reusing ai_usage_logs.
+// - An atomic DB reservation runs before every paid LLM call; cache hits need no reservation.
 //
 // Runtime: Supabase Edge Functions (Deno). Excluded from the app tsconfig; never bundled by Metro. It
 // imports the app's runtime-neutral orchestrator via the sibling deno.json import map ('@/' → src).
@@ -48,8 +48,14 @@ import {
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,
+  runCanonicalGeneration,
   validateConsultationInputBounds,
-  LLM_RATE_LIMITED_REQUEST_TYPES,
+  TODAY_CANONICAL_VERSION,
+  MONTHLY_CANONICAL_VERSION,
+  fortuneDateStringFromEpoch,
+  currentTargetMonth,
+  monthKey,
+  MAX_REQUEST_BODY_BYTES,
 } from './_server/serverBundle.mjs';
 
 // Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
@@ -70,13 +76,10 @@ type BirthInfoDraft = {
   approximateTimePeriod: 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' | null;
   birthPlace: string;
 };
-type TrustedBirthResolution =
-  | { status: 'RESOLVED'; birthInfo: BirthInfoDraft; subjectLabel?: string | null }
-  | { status: 'NOT_FOUND' }
-  | { status: 'FORBIDDEN' };
-
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5-mini';
+const REQUIRED_TERMS_VERSION = '2026-08-v1';
+const CURRENT_TIER = 'FREE';
 
 // apiKey + model + the two per-path OUTPUT-token budgets. resolveLlmBudgets (bundled, bounded) gives the
 // consultation long-form and the summary DIFFERENT caps — a shared 800 made gpt-5-mini return
@@ -165,55 +168,6 @@ async function callOpenAI(
   return { ok: true, statusCode: providerResponse.status, text: extractResponsesText(payload), usage, responseStatus, incompleteReason };
 }
 
-// ---- trusted profile resolution (§9/§25) ------------------------------------
-// Map a server-owned consumer_birth_profiles row → BirthInfoDraft. Because the Edge uses the
-// service_role client (which BYPASSES RLS), the owner check below is REQUIRED, not optional.
-function rowToBirthInfo(row: Record<string, unknown>): BirthInfoDraft {
-  const s = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-  return {
-    displayName: s(row.display_name),
-    gender: (row.gender as BirthInfoDraft['gender']) ?? null,
-    calendarType: (row.calendar_type as BirthInfoDraft['calendarType']) ?? null,
-    lunarMonthType: (row.lunar_month_type as BirthInfoDraft['lunarMonthType']) ?? null,
-    birthYear: s(row.birth_year),
-    birthMonth: s(row.birth_month),
-    birthDay: s(row.birth_day),
-    birthTimeAccuracy: (row.birth_time_accuracy as BirthInfoDraft['birthTimeAccuracy']) ?? null,
-    birthHour: s(row.birth_hour),
-    birthMinute: s(row.birth_minute),
-    approximateTimePeriod: (row.approximate_time_period as BirthInfoDraft['approximateTimePeriod']) ?? null,
-    birthPlace: s(row.birth_place),
-  };
-}
-
-function makeResolveTrustedBirth(
-  userId: string | null,
-  admin: ReturnType<typeof createClient> | null,
-): (subjectProfileId: string) => Promise<TrustedBirthResolution> {
-  return async (subjectProfileId: string) => {
-    if (!userId || !admin) return { status: 'FORBIDDEN' };
-    try {
-      const { data, error } = await admin
-        .from('consumer_birth_profiles')
-        .select('*')
-        .eq('id', subjectProfileId)
-        .maybeSingle();
-      if (error || !data) return { status: 'NOT_FOUND' };
-      // Service role bypasses RLS → verify ownership in code (defense in depth, §25).
-      if ((data as { owner_user_id?: unknown }).owner_user_id !== userId) return { status: 'FORBIDDEN' };
-      return {
-        status: 'RESOLVED',
-        birthInfo: rowToBirthInfo(data as Record<string, unknown>),
-        subjectLabel:
-          ((data as { subject_label?: string | null }).subject_label ??
-            (data as { display_name?: string | null }).display_name) ?? null,
-      };
-    } catch {
-      return { status: 'NOT_FOUND' }; // fail closed
-    }
-  };
-}
-
 // ---- AI usage logging -------------------------------------------------------
 type AiUsageLog = {
   user_id: string | null;
@@ -232,7 +186,7 @@ function toNullableInt(value: unknown): number | null {
 function sanitizeRequestId(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > 64) return null;
+  if (trimmed.length < 8 || trimmed.length > 64) return null;
   return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : null;
 }
 function userIdFromRequest(req: Request): string | null {
@@ -253,6 +207,67 @@ function adminClient(): ReturnType<typeof createClient> | null {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
   if (url.length === 0 || serviceRoleKey.length === 0) return null;
   return createClient(url, serviceRoleKey);
+}
+
+type AdminClient = ReturnType<typeof createClient>;
+type ConsumerAuthority =
+  | { status: 'ok'; subjectId: string; subjectLabel: string; birthInfo: BirthInfoDraft; tier: 'FREE' }
+  | { status: 'consent_required' | 'profile_required' | 'unavailable' };
+
+function storedSubjectBirth(row: Record<string, unknown>): BirthInfoDraft | null {
+  const raw = row.birth_info;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const birth = raw as BirthInfoDraft;
+  if (typeof birth.birthYear !== 'string' || typeof birth.birthMonth !== 'string'
+      || typeof birth.birthDay !== 'string') return null;
+  return { ...birth, displayName: String(row.display_name ?? birth.displayName ?? '나') };
+}
+
+async function resolveConsumerAuthority(userId: string | null, admin: AdminClient | null): Promise<ConsumerAuthority> {
+  if (!userId || !admin) return { status: 'unavailable' };
+  try {
+    const [profileResult, subjectResult] = await Promise.all([
+      admin.from('profiles').select('terms_version').eq('id', userId).maybeSingle(),
+      admin.from('consultation_subjects')
+        .select('id,display_name,birth_info')
+        .eq('user_id', userId).eq('is_self', true).maybeSingle(),
+    ]);
+    if (profileResult.error || subjectResult.error) return { status: 'unavailable' };
+    if (!profileResult.data || (profileResult.data as { terms_version?: unknown }).terms_version !== REQUIRED_TERMS_VERSION) {
+      return { status: 'consent_required' };
+    }
+    if (!subjectResult.data) return { status: 'profile_required' };
+    const row = subjectResult.data as Record<string, unknown>;
+    const birthInfo = storedSubjectBirth(row);
+    if (!birthInfo || typeof row.id !== 'string') return { status: 'profile_required' };
+    return {
+      status: 'ok', subjectId: row.id, subjectLabel: String(row.display_name ?? '나'), birthInfo, tier: CURRENT_TIER,
+    };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+async function resolveOwnedPartner(
+  userId: string,
+  partnerSubjectId: string,
+  admin: AdminClient,
+): Promise<{ birthInfo: BirthInfoDraft; label: string; relationship: string | null } | null> {
+  try {
+    const { data, error } = await admin.from('consultation_subjects')
+      .select('id,display_name,relationship,birth_info')
+      .eq('id', partnerSubjectId).eq('user_id', userId).maybeSingle();
+    if (error || !data) return null;
+    const row = data as Record<string, unknown>;
+    const birthInfo = storedSubjectBirth(row);
+    return birthInfo ? {
+      birthInfo,
+      label: String(row.display_name ?? '상대방'),
+      relationship: typeof row.relationship === 'string' ? row.relationship : null,
+    } : null;
+  } catch {
+    return null;
+  }
 }
 async function logAiUsage(
   entry: AiUsageLog,
@@ -279,7 +294,7 @@ async function logAiUsage(
   }
 }
 
-// ---- burst rate limiting ----------------------------------------------------
+// ---- atomic paid-work reservation ------------------------------------------
 const RATE_WINDOW_MS = (() => {
   const v = Number(Deno.env.get('CHAT_RATE_WINDOW_MS')?.trim());
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 60_000;
@@ -288,38 +303,218 @@ const RATE_MAX_REQUESTS = (() => {
   const v = Number(Deno.env.get('CHAT_RATE_MAX_REQUESTS')?.trim());
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 20;
 })();
-type RateVerdict = { limited: false } | { limited: true; retryAfterMs: number };
-async function checkBurstRateLimit(userId: string | null, now: number): Promise<RateVerdict> {
-  if (!userId) return { limited: false };
+type PaidReservationVerdict =
+  | { status: 'allowed' }
+  | { status: 'rate_limited'; retryAfterMs: number }
+  | { status: 'unavailable' };
+async function reservePaidWorkAtomic(
+  admin: AdminClient | null,
+  userId: string | null,
+  workload: 'chat' | 'today_fortune' | 'monthly_fortune',
+): Promise<PaidReservationVerdict> {
+  if (!admin || !userId) return { status: 'unavailable' };
   try {
-    const admin = adminClient();
-    if (!admin) return { limited: false };
-    const cutoffIso = new Date(now - RATE_WINDOW_MS).toISOString();
-    const { count, error } = await admin
-      .from('ai_usage_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      // Count EVERY paid-LLM request type in the window — not just 'chat' — so 오늘의 운세 / 이번 달 운세
-      // generations are throttled too (§A2). Previously today/monthly logged under their own request_type and
-      // slipped the counter entirely, leaving an effectively unbounded paid path for a cache-bypassing client.
-      .in('request_type', [...LLM_RATE_LIMITED_REQUEST_TYPES])
-      .gte('created_at', cutoffIso);
-    if (error || count === null) return { limited: false };
-    if (count >= RATE_MAX_REQUESTS) return { limited: true, retryAfterMs: RATE_WINDOW_MS };
-    return { limited: false };
+    const { data, error } = await admin.rpc('reserve_paid_work', {
+      p_user_id: userId, p_workload: workload,
+      p_window_ms: RATE_WINDOW_MS, p_max_requests: RATE_MAX_REQUESTS,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row || typeof row.allowed !== 'boolean') return { status: 'unavailable' };
+    return row.allowed
+      ? { status: 'allowed' }
+      : { status: 'rate_limited', retryAfterMs: Number(row.retry_after_ms) || RATE_WINDOW_MS };
   } catch {
-    return { limited: false };
+    return { status: 'unavailable' };
   }
+}
+
+type FortuneIdentity = {
+  userId: string;
+  kind: 'today' | 'monthly';
+  periodKey: string;
+  subjectId: string;
+  tier: 'FREE';
+  semanticVersion: string;
+};
+
+type CanonicalFortuneRead =
+  | { status: 'found'; record: Record<string, unknown> }
+  | { status: 'missing' }
+  | { status: 'unavailable' };
+async function readCanonicalFortune(admin: AdminClient, identity: FortuneIdentity): Promise<CanonicalFortuneRead> {
+  try {
+    let query = admin.from(identity.kind === 'today' ? 'daily_fortunes' : 'monthly_fortunes')
+      .select('*').eq('user_id', identity.userId).eq('subject_id', identity.subjectId)
+      .eq('tier', identity.tier).eq('semantic_version', identity.semanticVersion);
+    if (identity.kind === 'today') {
+      query = query.eq('fortune_date', identity.periodKey);
+    } else {
+      const [year, month] = identity.periodKey.split('-').map(Number);
+      query = query.eq('fortune_year', year).eq('fortune_month', month);
+    }
+    const { data, error } = await query.maybeSingle();
+    if (error) return { status: 'unavailable' };
+    return data
+      ? { status: 'found', record: data as Record<string, unknown> }
+      : { status: 'missing' };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+async function acquireFortuneLease(admin: AdminClient, identity: FortuneIdentity) {
+  try {
+    const { data, error } = await admin.rpc('acquire_fortune_generation_lease', {
+      p_user_id: identity.userId, p_kind: identity.kind, p_period_key: identity.periodKey,
+      p_subject_id: identity.subjectId, p_tier: identity.tier,
+      p_semantic_version: identity.semanticVersion, p_lease_seconds: 300,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return { status: 'unavailable' as const };
+    if (row.outcome === 'COMPLETED') return { status: 'completed' as const };
+    if (row.outcome === 'BUSY') return { status: 'busy' as const };
+    return row.outcome === 'ACQUIRED' && typeof row.lease_token === 'string'
+      ? { status: 'acquired' as const, token: row.lease_token }
+      : { status: 'unavailable' as const };
+  } catch {
+    return { status: 'unavailable' as const };
+  }
+}
+
+async function releaseFortuneLease(admin: AdminClient, identity: FortuneIdentity, token: string): Promise<void> {
+  try {
+    await admin.rpc('release_fortune_generation_lease', {
+      p_user_id: identity.userId, p_kind: identity.kind, p_period_key: identity.periodKey,
+      p_subject_id: identity.subjectId, p_tier: identity.tier,
+      p_semantic_version: identity.semanticVersion, p_lease_token: token,
+    });
+  } catch {
+    // DB-clock expiry is the final recovery path; never let a cleanup fault mask the original result.
+  }
+}
+
+async function completeTodayFortune(
+  admin: AdminClient, identity: FortuneIdentity, token: string, generated: Record<string, unknown>, model: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await admin.rpc('complete_today_fortune_generation', {
+      p_user_id: identity.userId, p_period_key: identity.periodKey, p_subject_id: identity.subjectId,
+      p_tier: identity.tier, p_semantic_version: identity.semanticVersion, p_lease_token: token,
+      p_overall_tone: generated.overallTone, p_result_json: generated.result,
+      p_evidence_version: generated.evidenceVersion ?? null,
+      p_policy_version: generated.policyVersion ?? null, p_model: model,
+    });
+    return error || !data ? null : data as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function completeMonthlyFortune(
+  admin: AdminClient, identity: FortuneIdentity, token: string, generated: Record<string, unknown>, model: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await admin.rpc('complete_monthly_fortune_generation', {
+      p_user_id: identity.userId, p_period_key: identity.periodKey, p_subject_id: identity.subjectId,
+      p_tier: identity.tier, p_semantic_version: identity.semanticVersion, p_lease_token: token,
+      p_overall_tier: generated.overallTier, p_result_json: generated.result,
+      p_evidence_version: generated.evidenceVersion ?? null,
+      p_plan_version: generated.planVersion ?? null, p_policy_version: generated.policyVersion ?? null,
+      p_model: model,
+    });
+    return error || !data ? null : data as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+type PaidRequestWorkload = 'chat' | 'compatibility' | 'summary';
+type PaidRequestContext = { admin: AdminClient; userId: string; workload: PaidRequestWorkload; requestId: string; token: string };
+type PaidRequestStart =
+  | { status: 'acquired'; context: PaidRequestContext }
+  | { status: 'completed'; response: Record<string, unknown> }
+  | { status: 'processing' | 'rate_limited' | 'unavailable'; retryAfterMs?: number };
+
+async function acquirePaidRequest(
+  admin: AdminClient | null, userId: string | null, workload: PaidRequestWorkload, requestId: string | null,
+): Promise<PaidRequestStart> {
+  if (!admin || !userId || !requestId) return { status: 'unavailable' };
+  try {
+    const { data, error } = await admin.rpc('acquire_paid_request', {
+      p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_seconds: 300,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return { status: 'unavailable' };
+    if (row.outcome === 'COMPLETED' && row.response_json && typeof row.response_json === 'object') {
+      return { status: 'completed', response: row.response_json as Record<string, unknown> };
+    }
+    if (row.outcome === 'PROCESSING') return { status: 'processing' };
+    if (row.outcome !== 'ACQUIRED' || typeof row.lease_token !== 'string') return { status: 'unavailable' };
+    const reservation = await reservePaidWorkAtomic(admin, userId, 'chat');
+    if (reservation.status !== 'allowed') {
+      await admin.rpc('release_paid_request', {
+        p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_token: row.lease_token,
+      });
+      return reservation.status === 'rate_limited'
+        ? { status: 'rate_limited', retryAfterMs: reservation.retryAfterMs }
+        : { status: 'unavailable' };
+    }
+    return { status: 'acquired', context: { admin, userId, workload, requestId, token: row.lease_token } };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+async function releasePaidRequest(ctx: PaidRequestContext): Promise<void> {
+  try {
+    await ctx.admin.rpc('release_paid_request', {
+      p_user_id: ctx.userId, p_workload: ctx.workload,
+      p_request_id: ctx.requestId, p_lease_token: ctx.token,
+    });
+  } catch {
+    // Lease expiry is the recovery path.
+  }
+}
+
+async function readCompletedPaidRequest(ctx: PaidRequestContext): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.from('paid_request_idempotency')
+      .select('response_json').eq('user_id', ctx.userId).eq('workload', ctx.workload)
+      .eq('request_id', ctx.requestId).eq('status', 'COMPLETED').maybeSingle();
+    const response = (data as { response_json?: unknown } | null)?.response_json;
+    return !error && response && typeof response === 'object' ? response as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+async function completePaidRequest(
+  ctx: PaidRequestContext,
+  response: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.rpc('complete_paid_request', {
+      p_user_id: ctx.userId, p_workload: ctx.workload, p_request_id: ctx.requestId,
+      p_lease_token: ctx.token, p_response_json: response,
+    });
+    if (!error && data === true) return response;
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  } catch {
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  }
+  await releasePaidRequest(ctx);
+  return null;
 }
 
 // ---- request contract (§7) --------------------------------------------------
 // The client sends ONLY untrusted inputs. No messages / grounding / system prompt.
-//   mode 'consultation' (default): birthInput + question + untrusted turns → server grounds + answers.
+//   mode 'consultation' (default): question + untrusted turns; server resolves canonical SELF and grounds.
 //   mode 'summary': existingSummary + raw turns → the SERVER builds the summary prompt (§20).
 type ConsultationRequestBody = {
   mode?: 'consultation' | 'summary';
-  // 오늘의 운세 / 이번 달 운세: a stateless daily/monthly-fortune generation from the SELF birth INPUT. The
-  // SERVER owns the date/month (never a client-supplied target — the current month only, abuse-proof §60).
+  // 오늘의 운세 / 이번 달 운세: server resolves canonical SELF and owns the date/month.
   kind?: 'today_fortune' | 'monthly_fortune';
   subjectProfileId?: string | null;
   birthInput?: unknown;
@@ -333,6 +528,8 @@ type ConsultationRequestBody = {
   consultationMode?: 'solo' | 'compatibility';
   partnerBirthInput?: unknown;
   partnerLabel?: string | null;
+  partnerSubjectId?: string | null;
+  targetSource?: 'OWNED_SUBJECT' | 'RAW_UNSAVED';
   // summary mode only
   existingSummary?: unknown;
   turns?: unknown;
@@ -344,6 +541,11 @@ const REASON_STATUS: Record<string, number> = {
   SUBJECT_FORBIDDEN: 403,
   SUBJECT_NOT_FOUND: 404,
   LLM_FAILED: 502,
+  CONSENT_REQUIRED: 403,
+  PROFILE_REQUIRED: 403,
+  GENERATION_IN_PROGRESS: 409,
+  REQUEST_IN_PROGRESS: 409,
+  TEMPORARILY_UNAVAILABLE: 503,
 };
 
 export default {
@@ -353,26 +555,20 @@ export default {
       let stage = 'auth_completed';
       const startedAt = Date.now();
       const userId = userIdFromRequest(req);
+      const admin = adminClient();
 
       try {
         if (req.method !== 'POST') {
           return Response.json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
         }
 
-        const rate = await checkBurstRateLimit(userId, startedAt);
-        if (rate.limited) {
-          console.error('[chat] rate_limited', JSON.stringify({ retryAfterMs: rate.retryAfterMs }));
-          return Response.json(
-            { error: 'RATE_LIMITED', retryAfterMs: rate.retryAfterMs },
-            { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
-          );
+        if (!userId) return Response.json({ error: 'AUTH_REQUIRED' }, { status: 401 });
+        const declaredLength = Number(req.headers.get('content-length'));
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BODY_BYTES) {
+          return Response.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
         }
 
         const { apiKey, model, budgets } = readServerConfig();
-        if (apiKey.length === 0) {
-          console.error('[chat] server_not_configured');
-          return Response.json({ error: 'SERVER_NOT_CONFIGURED' }, { status: 500 });
-        }
 
         let body: ConsultationRequestBody;
         try {
@@ -393,6 +589,16 @@ export default {
           return Response.json({ error: bounds.code }, { status: REASON_STATUS[bounds.code] ?? 413 });
         }
 
+        // Authenticated is not product-authorized. Resolve required consent + the ONE canonical SELF from the
+        // actual consumer tables before any paid work. Raw client SELF birth input is ignored downstream.
+        const authority = await resolveConsumerAuthority(userId, admin);
+        if (authority.status !== 'ok') {
+          const code = authority.status === 'consent_required'
+            ? 'CONSENT_REQUIRED'
+            : authority.status === 'profile_required' ? 'PROFILE_REQUIRED' : 'TEMPORARILY_UNAVAILABLE';
+          return Response.json({ error: code }, { status: REASON_STATUS[code] });
+        }
+
         // Summary output budget (small, free text). The CONSULTATION config is built PER-QUESTION after the
         // question is validated (below) so its output ceiling + reasoning effort follow the question's
         // complexity (Overnight Sprint §4/§8) — SIMPLE/STANDARD run cheaper 'low' reasoning, DEEP 'medium'.
@@ -400,185 +606,178 @@ export default {
 
         // 오늘의 운세 (Today Fortune V1): a stateless daily-fortune generation. The SERVER owns the date
         // (nowEpochSeconds = receipt time, §6/§29), builds the deterministic daily evidence + plan from the
-        // birth INPUT, and makes EXACTLY ONE OpenAI call. Cheaper than a consultation: fixed 'low' reasoning +
-        // a modest output ceiling (§53/§58), both env-overridable. The client persists + caches the result
-        // (one row per user per fortune_date), so repeat access never re-enters here.
+        // stored canonical SELF, and makes EXACTLY ONE OpenAI call. The completion RPC persists before success.
         if (body.kind === 'today_fortune') {
           stage = 'today_fortune_request';
-          const birthInput = body.birthInput;
-          if (birthInput === null || typeof birthInput !== 'object') {
-            logDiag(requestId, 'INPUT', 'MISSING_BIRTH_INPUT', { path: 'today_fortune' });
-            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
-          }
+          if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          const serverEpoch = Math.floor(startedAt / 1000);
+          const periodKey = fortuneDateStringFromEpoch(serverEpoch);
+          const identity: FortuneIdentity = {
+            userId, kind: 'today', periodKey, subjectId: authority.subjectId,
+            tier: authority.tier, semanticVersion: TODAY_CANONICAL_VERSION,
+          };
           const todayEffort = Deno.env.get('LLM_TODAY_REASONING_EFFORT')?.trim() || 'low';
           const todayMaxRaw = Number(Deno.env.get('LLM_TODAY_MAX_OUTPUT_TOKENS'));
           const todayMaxTokens = Number.isFinite(todayMaxRaw) && todayMaxRaw > 0 ? Math.floor(todayMaxRaw) : 2500;
           const todayCfg = { apiKey, model, maxOutputTokens: todayMaxTokens, reasoningEffort: todayEffort, responseFormat: dailyFortuneResponseFormat() };
-
           let todayUsage: Record<string, unknown> = {};
           let todayErrorCode: string | null = null;
           let todayOutcome: OpenAiCall | null = null;
-          const todayCallLLM = async (messages: LLMMessage[]): Promise<string> => {
-            stage = 'openai_request';
-            const r = await callOpenAI(messages, todayCfg);
-            todayUsage = r.usage;
-            todayOutcome = r;
-            const code = openAiFailureCode(r);
-            if (code === 'OK') return r.text;
-            todayErrorCode = code;
-            return '';
-          };
-
-          const fortune = await buildTodayFortune(
-            { birthInput: birthInput as BirthInfoDraft },
-            { digestProvider: denoDigestProvider, nowEpochSeconds: Math.floor(startedAt / 1000), callLLM: todayCallLLM },
+          let nonPaidFailure: Record<string, unknown> | null = null;
+          const guarded = await runCanonicalGeneration({
+            readCanonical: () => readCanonicalFortune(admin, identity),
+            acquireLease: () => acquireFortuneLease(admin, identity),
+            reservePaidWork: () => apiKey.length > 0
+              ? reservePaidWorkAtomic(admin, userId, 'today_fortune')
+              : Promise.resolve({ status: 'unavailable' as const }),
+            generate: async () => {
+              const fortune = await buildTodayFortune(
+                { birthInput: authority.birthInfo },
+                {
+                  digestProvider: denoDigestProvider, nowEpochSeconds: serverEpoch,
+                  callLLM: async (messages: LLMMessage[]): Promise<string> => {
+                    stage = 'openai_request';
+                    const r = await callOpenAI(messages, todayCfg);
+                    todayUsage = r.usage; todayOutcome = r;
+                    const code = openAiFailureCode(r);
+                    if (code === 'OK') return r.text;
+                    todayErrorCode = code; return '';
+                  },
+                },
+              );
+              if (!fortune.ok) {
+                if (fortune.reason === 'EVIDENCE_UNAVAILABLE') {
+                  nonPaidFailure = { ok: false, reason: fortune.reason, fortuneDate: fortune.fortuneDate };
+                } else {
+                  const code = todayErrorCode ?? fortune.reason;
+                  await logAiUsage({ user_id: userId, model, request_type: 'today_fortune',
+                    input_tokens: null, output_tokens: null, total_tokens: null,
+                    latency_ms: Date.now() - startedAt, status: 'error', error_code: code }, requestId);
+                }
+                return { ok: false as const };
+              }
+              const details = parseUsageDetails(todayUsage);
+              await logAiUsage({ user_id: userId, model, request_type: 'today_fortune',
+                input_tokens: toNullableInt(todayUsage.input_tokens), output_tokens: toNullableInt(todayUsage.output_tokens),
+                total_tokens: toNullableInt(todayUsage.total_tokens), latency_ms: Date.now() - startedAt,
+                status: 'success', error_code: null }, requestId, {
+                cached_input_tokens: details.cachedInputTokens, reasoning_tokens: details.reasoningTokens,
+                max_output_tokens: todayMaxTokens, complexity: 'TODAY', reasoning_effort: todayEffort,
+              });
+              return { ok: true as const, value: fortune as unknown as Record<string, unknown> };
+            },
+            complete: (token: string, value: Record<string, unknown>) => completeTodayFortune(admin, identity, token, value, model),
+            release: (token: string) => releaseFortuneLease(admin, identity, token),
+          });
+          if (guarded.status === 'ok') {
+            const row = guarded.record as Record<string, unknown>;
+            return Response.json({ ok: true, fortuneDate: row.fortune_date, overallTone: row.overall_tone,
+              result: row.result_json, policyVersion: row.policy_version, evidenceVersion: row.evidence_version,
+              model: row.model });
+          }
+          if (guarded.status === 'in_progress') return Response.json({ error: 'GENERATION_IN_PROGRESS' }, { status: 409 });
+          if (guarded.status === 'rate_limited') return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: guarded.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(guarded.retryAfterMs / 1000)) } },
           );
-
-          if (!fortune.ok) {
-            if (fortune.reason === 'EVIDENCE_UNAVAILABLE') {
-              // No OpenAI call happened → no usage row. Truthful non-generation result (retry won't help).
-              logDiag(requestId, 'PROFILE_RESOLUTION', 'TODAY_EVIDENCE_UNAVAILABLE', { path: 'today_fortune' });
-              return Response.json({ ok: false, reason: 'EVIDENCE_UNAVAILABLE', fortuneDate: fortune.fortuneDate });
-            }
-            const code = todayErrorCode ?? fortune.reason;
-            logDiag(requestId, 'OPENAI_RESPONSE', code, {
-              path: 'today_fortune', model,
-              upstreamStatus: todayOutcome?.statusCode || undefined,
-              responseStatus: todayOutcome?.responseStatus,
-              incompleteReason: todayOutcome?.incompleteReason,
-              outputTokens: toNullableInt(todayUsage.output_tokens),
-              totalTokens: toNullableInt(todayUsage.total_tokens),
+          if (nonPaidFailure) return Response.json(nonPaidFailure);
+          if (guarded.status === 'generation_failed') {
+            logDiag(requestId, 'OPENAI_RESPONSE', todayErrorCode ?? 'LLM_FAILED', {
+              path: 'today_fortune', model, upstreamStatus: todayOutcome?.statusCode || undefined,
+              responseStatus: todayOutcome?.responseStatus, incompleteReason: todayOutcome?.incompleteReason,
             });
-            await logAiUsage(
-              {
-                user_id: userId, model, request_type: 'today_fortune',
-                input_tokens: null, output_tokens: null, total_tokens: null,
-                latency_ms: Date.now() - startedAt, status: 'error', error_code: code,
-              },
-              requestId,
-            );
             return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
           }
-
-          const todayDetails = parseUsageDetails(todayUsage);
-          await logAiUsage(
-            {
-              user_id: userId, model, request_type: 'today_fortune',
-              input_tokens: toNullableInt(todayUsage.input_tokens),
-              output_tokens: toNullableInt(todayUsage.output_tokens),
-              total_tokens: toNullableInt(todayUsage.total_tokens),
-              latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
-            },
-            requestId,
-            {
-              cached_input_tokens: todayDetails.cachedInputTokens,
-              reasoning_tokens: todayDetails.reasoningTokens,
-              max_output_tokens: todayMaxTokens,
-              complexity: 'TODAY',
-              reasoning_effort: todayEffort,
-            },
-          );
-          return Response.json({
-            ok: true,
-            fortuneDate: fortune.fortuneDate,
-            overallTone: fortune.overallTone,
-            result: fortune.result,
-            policyVersion: fortune.policyVersion,
-            evidenceVersion: fortune.evidenceVersion,
-            model,
-          });
+          return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         }
 
         // 이번 달 운세 (Monthly Fortune V1) — a SEPARATE temporal product (NOT Today×30). The SERVER owns the
         // CURRENT target month (nowEpochSeconds = receipt time; never a client-supplied month → abuse-proof
         // §60) and makes EXACTLY ONE OpenAI call. Slightly larger output ceiling than Today (a month digest is
-        // longer, §33) but still fixed 'low' reasoning. The client persists + caches (one row per user per
-        // month), so repeat access never re-enters here.
+        // longer, §33) but still fixed 'low' reasoning. The completion RPC persists before success.
         if (body.kind === 'monthly_fortune') {
           stage = 'monthly_fortune_request';
-          const birthInput = body.birthInput;
-          if (birthInput === null || typeof birthInput !== 'object') {
-            logDiag(requestId, 'INPUT', 'MISSING_BIRTH_INPUT', { path: 'monthly_fortune' });
-            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
-          }
+          if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          const serverEpoch = Math.floor(startedAt / 1000);
+          const targetMonth = currentTargetMonth(serverEpoch);
+          const periodKey = monthKey(targetMonth);
+          const identity: FortuneIdentity = {
+            userId, kind: 'monthly', periodKey, subjectId: authority.subjectId,
+            tier: authority.tier, semanticVersion: MONTHLY_CANONICAL_VERSION,
+          };
           const monthlyEffort = Deno.env.get('LLM_MONTHLY_REASONING_EFFORT')?.trim() || 'low';
           const monthlyMaxRaw = Number(Deno.env.get('LLM_MONTHLY_MAX_OUTPUT_TOKENS'));
           const monthlyMaxTokens = Number.isFinite(monthlyMaxRaw) && monthlyMaxRaw > 0 ? Math.floor(monthlyMaxRaw) : 3000;
           const monthlyCfg = { apiKey, model, maxOutputTokens: monthlyMaxTokens, reasoningEffort: monthlyEffort, responseFormat: monthlyFortuneResponseFormat() };
-
           let monthlyUsage: Record<string, unknown> = {};
           let monthlyErrorCode: string | null = null;
           let monthlyOutcome: OpenAiCall | null = null;
-          const monthlyCallLLM = async (messages: LLMMessage[]): Promise<string> => {
-            stage = 'openai_request';
-            const r = await callOpenAI(messages, monthlyCfg);
-            monthlyUsage = r.usage;
-            monthlyOutcome = r;
-            const code = openAiFailureCode(r);
-            if (code === 'OK') return r.text;
-            monthlyErrorCode = code;
-            return '';
-          };
-
-          const monthly = await buildMonthlyFortune(
-            { birthInput: birthInput as BirthInfoDraft },
-            { digestProvider: denoDigestProvider, nowEpochSeconds: Math.floor(startedAt / 1000), callLLM: monthlyCallLLM },
+          let nonPaidFailure: Record<string, unknown> | null = null;
+          const guarded = await runCanonicalGeneration({
+            readCanonical: () => readCanonicalFortune(admin, identity),
+            acquireLease: () => acquireFortuneLease(admin, identity),
+            reservePaidWork: () => apiKey.length > 0
+              ? reservePaidWorkAtomic(admin, userId, 'monthly_fortune')
+              : Promise.resolve({ status: 'unavailable' as const }),
+            generate: async () => {
+              const monthly = await buildMonthlyFortune(
+                { birthInput: authority.birthInfo },
+                {
+                  digestProvider: denoDigestProvider, nowEpochSeconds: serverEpoch,
+                  callLLM: async (messages: LLMMessage[]): Promise<string> => {
+                    stage = 'openai_request';
+                    const r = await callOpenAI(messages, monthlyCfg);
+                    monthlyUsage = r.usage; monthlyOutcome = r;
+                    const code = openAiFailureCode(r);
+                    if (code === 'OK') return r.text;
+                    monthlyErrorCode = code; return '';
+                  },
+                },
+              );
+              if (!monthly.ok) {
+                if (monthly.reason === 'EVIDENCE_UNAVAILABLE') {
+                  nonPaidFailure = { ok: false, reason: monthly.reason, year: monthly.year, month: monthly.month };
+                } else {
+                  const code = monthlyErrorCode ?? monthly.reason;
+                  await logAiUsage({ user_id: userId, model, request_type: 'monthly_fortune',
+                    input_tokens: null, output_tokens: null, total_tokens: null,
+                    latency_ms: Date.now() - startedAt, status: 'error', error_code: code }, requestId);
+                }
+                return { ok: false as const };
+              }
+              const details = parseUsageDetails(monthlyUsage);
+              await logAiUsage({ user_id: userId, model, request_type: 'monthly_fortune',
+                input_tokens: toNullableInt(monthlyUsage.input_tokens), output_tokens: toNullableInt(monthlyUsage.output_tokens),
+                total_tokens: toNullableInt(monthlyUsage.total_tokens), latency_ms: Date.now() - startedAt,
+                status: 'success', error_code: null }, requestId, {
+                cached_input_tokens: details.cachedInputTokens, reasoning_tokens: details.reasoningTokens,
+                max_output_tokens: monthlyMaxTokens, complexity: 'MONTHLY', reasoning_effort: monthlyEffort,
+              });
+              return { ok: true as const, value: monthly as unknown as Record<string, unknown> };
+            },
+            complete: (token: string, value: Record<string, unknown>) => completeMonthlyFortune(admin, identity, token, value, model),
+            release: (token: string) => releaseFortuneLease(admin, identity, token),
+          });
+          if (guarded.status === 'ok') {
+            const row = guarded.record as Record<string, unknown>;
+            return Response.json({ ok: true, year: row.fortune_year, month: row.fortune_month,
+              overallTier: row.overall_tier, result: row.result_json, policyVersion: row.policy_version,
+              evidenceVersion: row.evidence_version, planVersion: row.plan_version, model: row.model });
+          }
+          if (guarded.status === 'in_progress') return Response.json({ error: 'GENERATION_IN_PROGRESS' }, { status: 409 });
+          if (guarded.status === 'rate_limited') return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: guarded.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(guarded.retryAfterMs / 1000)) } },
           );
-
-          if (!monthly.ok) {
-            if (monthly.reason === 'EVIDENCE_UNAVAILABLE') {
-              logDiag(requestId, 'PROFILE_RESOLUTION', 'MONTHLY_EVIDENCE_UNAVAILABLE', { path: 'monthly_fortune' });
-              return Response.json({ ok: false, reason: 'EVIDENCE_UNAVAILABLE', year: monthly.year, month: monthly.month });
-            }
-            const code = monthlyErrorCode ?? monthly.reason;
-            logDiag(requestId, 'OPENAI_RESPONSE', code, {
-              path: 'monthly_fortune', model,
-              upstreamStatus: monthlyOutcome?.statusCode || undefined,
-              responseStatus: monthlyOutcome?.responseStatus,
-              incompleteReason: monthlyOutcome?.incompleteReason,
-              outputTokens: toNullableInt(monthlyUsage.output_tokens),
-              totalTokens: toNullableInt(monthlyUsage.total_tokens),
+          if (nonPaidFailure) return Response.json(nonPaidFailure);
+          if (guarded.status === 'generation_failed') {
+            logDiag(requestId, 'OPENAI_RESPONSE', monthlyErrorCode ?? 'LLM_FAILED', {
+              path: 'monthly_fortune', model, upstreamStatus: monthlyOutcome?.statusCode || undefined,
+              responseStatus: monthlyOutcome?.responseStatus, incompleteReason: monthlyOutcome?.incompleteReason,
             });
-            await logAiUsage(
-              {
-                user_id: userId, model, request_type: 'monthly_fortune',
-                input_tokens: null, output_tokens: null, total_tokens: null,
-                latency_ms: Date.now() - startedAt, status: 'error', error_code: code,
-              },
-              requestId,
-            );
             return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
           }
-
-          const monthlyDetails = parseUsageDetails(monthlyUsage);
-          await logAiUsage(
-            {
-              user_id: userId, model, request_type: 'monthly_fortune',
-              input_tokens: toNullableInt(monthlyUsage.input_tokens),
-              output_tokens: toNullableInt(monthlyUsage.output_tokens),
-              total_tokens: toNullableInt(monthlyUsage.total_tokens),
-              latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
-            },
-            requestId,
-            {
-              cached_input_tokens: monthlyDetails.cachedInputTokens,
-              reasoning_tokens: monthlyDetails.reasoningTokens,
-              max_output_tokens: monthlyMaxTokens,
-              complexity: 'MONTHLY',
-              reasoning_effort: monthlyEffort,
-            },
-          );
-          return Response.json({
-            ok: true,
-            year: monthly.year,
-            month: monthly.month,
-            overallTier: monthly.overallTier,
-            result: monthly.result,
-            policyVersion: monthly.policyVersion,
-            evidenceVersion: monthly.evidenceVersion,
-            planVersion: monthly.planVersion,
-            model,
-          });
+          return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         }
 
         // Summary mode (FIX A/B/C): the SERVER owns the summary prompt (buildServerSummary → existingSummary
@@ -587,6 +786,19 @@ export default {
         // rate-limit bypass, no double count.
         if (body.mode === 'summary') {
           stage = 'summary_request';
+          if (!requestId) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          const paid = await acquirePaidRequest(admin, userId, 'summary', requestId);
+          if (paid.status === 'completed') return Response.json(paid.response);
+          if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
+          if (paid.status === 'rate_limited') return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+          );
+          if (paid.status !== 'acquired') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          if (apiKey.length === 0) {
+            await releasePaidRequest(paid.context);
+            return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          }
           let summaryUsage: Record<string, unknown> = {};
           let summaryErrorCode: string | null = null;
           const summaryCallLLM = async (messages: LLMMessage[]): Promise<string> => {
@@ -625,10 +837,12 @@ export default {
                 },
                 requestId,
               );
+              await releasePaidRequest(paid.context);
               return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
             }
             // INVALID_INPUT: pre-flight (no OpenAI call) → no usage row, matching consultation's policy.
             logDiag(requestId, 'INPUT', 'SUMMARY_INVALID_INPUT', { path: 'summary' });
+            await releasePaidRequest(paid.context);
             return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
           }
           // Success → log usage exactly once (FIX C: summary now counts toward the burst window).
@@ -642,12 +856,50 @@ export default {
             },
             requestId,
           );
-          return Response.json({ text: summary.text });
+          const response = { text: summary.text };
+          const completed = await completePaidRequest(paid.context, response);
+          return completed
+            ? Response.json(completed)
+            : Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         }
 
         if (typeof body.question !== 'string') {
           logDiag(requestId, 'INPUT', 'MISSING_QUESTION', { path: 'consultation' });
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+        if (body.question.trim().length === 0) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        if (!requestId) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+
+        let partnerBirthInput: BirthInfoDraft | null = null;
+        let partnerLabel: string | null = null;
+        if (body.consultationMode === 'compatibility') {
+          if (typeof body.partnerSubjectId === 'string' && admin) {
+            const partner = await resolveOwnedPartner(userId, body.partnerSubjectId, admin);
+            if (!partner) return Response.json({ error: 'SUBJECT_NOT_FOUND' }, { status: 404 });
+            partnerBirthInput = partner.birthInfo;
+            partnerLabel = partner.relationship ? `${partner.label} (${partner.relationship})` : partner.label;
+          } else if (body.targetSource === 'RAW_UNSAVED'
+              && body.partnerBirthInput && typeof body.partnerBirthInput === 'object') {
+            // Explicit raw TARGET only. SELF always remains the server-owned canonical subject.
+            partnerBirthInput = body.partnerBirthInput as BirthInfoDraft;
+            partnerLabel = typeof body.partnerLabel === 'string' ? body.partnerLabel : '상대방';
+          } else {
+            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          }
+        }
+
+        const requestWorkload: PaidRequestWorkload = body.consultationMode === 'compatibility' ? 'compatibility' : 'chat';
+        const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId);
+        if (paid.status === 'completed') return Response.json(paid.response);
+        if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
+        if (paid.status === 'rate_limited') return Response.json(
+          { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
+          { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+        );
+        if (paid.status !== 'acquired') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+        if (apiKey.length === 0) {
+          await releasePaidRequest(paid.context);
+          return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         }
 
         // Per-question complexity → LLM tuning profile (Overnight Sprint §4/§8). DETERMINISTIC (no LLM call)
@@ -703,11 +955,11 @@ export default {
         const result =
           body.consultationMode === 'compatibility'
             ? await buildCompatibilityConsultation(
-                {
-                  birthInput: body.birthInput as BirthInfoDraft,
-                  subjectLabel: body.subjectLabel ?? null,
-                  partnerBirthInput: (body.partnerBirthInput ?? null) as BirthInfoDraft | null,
-                  partnerLabel: body.partnerLabel ?? null,
+                  {
+                   birthInput: authority.birthInfo,
+                   subjectLabel: authority.subjectLabel,
+                   partnerBirthInput,
+                   partnerLabel,
                   consultationMode: 'compatibility',
                   question: body.question,
                   conversationContext,
@@ -724,10 +976,10 @@ export default {
                 },
               )
             : await buildServerConsultation(
-                {
-                  subjectProfileId: body.subjectProfileId ?? null,
-                  birthInput: body.birthInput as BirthInfoDraft,
-                  subjectLabel: body.subjectLabel ?? null,
+                  {
+                   subjectProfileId: null,
+                   birthInput: authority.birthInfo,
+                   subjectLabel: authority.subjectLabel,
                   question: body.question,
                   conversationContext,
                   requestMetadata: {
@@ -739,7 +991,6 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
-                  resolveTrustedBirth: makeResolveTrustedBirth(userId, adminClient()),
                 },
               );
 
@@ -767,10 +1018,12 @@ export default {
               },
               requestId,
             );
+            await releasePaidRequest(paid.context);
             return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
           }
           // SUBJECT_FORBIDDEN(403) / SUBJECT_NOT_FOUND(404) / INVALID_INPUT(400) — attribute the stage.
           logDiag(requestId, result.reason === 'INVALID_INPUT' ? 'INPUT' : 'PROFILE_RESOLUTION', result.reason, { path: 'consultation' });
+          await releasePaidRequest(paid.context);
           return Response.json({ error: result.reason }, { status });
         }
 
@@ -809,13 +1062,17 @@ export default {
 
         // Bounded response (§17): server-validated text + optional structured view-model + safe meta.
         // `diagnostics` is intentionally NOT returned to the client — it is log-only.
-        return Response.json({
+        const response = {
           text: result.text,
           ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
           groundingMeta: result.groundingMeta,
           // Deterministic 궁합 tier (compatibility mode only) — the client renders/persists it (no extra LLM).
           ...(result.compatibility ? { compatibility: result.compatibility } : {}),
-        });
+        };
+        const completed = await completePaidRequest(paid.context, response);
+        return completed
+          ? Response.json(completed)
+          : Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
       } catch (error) {
         console.error(
           '[chat] unhandled_exception',

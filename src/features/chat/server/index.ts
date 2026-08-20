@@ -41,7 +41,23 @@ export {
   MAX_QUESTION_CHARS,
   MAX_CONTEXT_ITEMS,
   MAX_CONTEXT_ITEM_CHARS,
+  MAX_LABEL_CHARS,
+  MAX_BIRTH_FIELD_CHARS,
+  MAX_REQUEST_BODY_CHARS,
+  MAX_REQUEST_BODY_BYTES,
 } from './inputBounds';
+export { runCanonicalGeneration, runIdempotentPaidRequest } from './economicGuards';
+export type {
+  CanonicalGenerationResult,
+  CanonicalLease,
+  IdempotentPaidResult,
+  PaidReservation,
+  RequestLease,
+} from './economicGuards';
+export { TODAY_CANONICAL_VERSION } from '@/features/today/types';
+export { MONTHLY_CANONICAL_VERSION } from '@/features/monthly/types';
+export { fortuneDateStringFromEpoch } from '@/features/today/engine/fortuneDate';
+export { currentTargetMonth, monthKey } from '@/features/monthly/engine/monthDate';
 export type { InputBoundsVerdict } from './inputBounds';
 export { consultationResponseFormat, CONSULTATION_JSON_SCHEMA } from './consultationSchema';
 // 오늘의 운세 (Today Fortune V1) — the daily generator is part of the SAME server graph so the Edge bundle

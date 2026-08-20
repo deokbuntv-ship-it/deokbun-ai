@@ -8746,6 +8746,10 @@ function classifyQuestionComplexity(question) {
 var MAX_QUESTION_CHARS = 2e3;
 var MAX_CONTEXT_ITEMS = 100;
 var MAX_CONTEXT_ITEM_CHARS = 4e3;
+var MAX_LABEL_CHARS = 160;
+var MAX_BIRTH_FIELD_CHARS = 256;
+var MAX_REQUEST_BODY_CHARS = 1e5;
+var MAX_REQUEST_BODY_BYTES = 12e4;
 var LLM_RATE_LIMITED_REQUEST_TYPES = ["chat", "today_fortune", "monthly_fortune"];
 function strTooLong(v, max) {
   return typeof v === "string" && v.length > max;
@@ -8755,7 +8759,28 @@ function arrTooLong(v, max) {
 }
 function validateConsultationInputBounds(body) {
   const b = body ?? {};
+  try {
+    const serialized = JSON.stringify(body);
+    if (typeof serialized === "string" && serialized.length > MAX_REQUEST_BODY_CHARS) {
+      return { ok: false, code: "REQUEST_TOO_LARGE" };
+    }
+  } catch {
+    return { ok: false, code: "REQUEST_TOO_LARGE" };
+  }
   if (strTooLong(b.question, MAX_QUESTION_CHARS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
+  if (strTooLong(b.subjectLabel, MAX_LABEL_CHARS) || strTooLong(b.partnerLabel, MAX_LABEL_CHARS)) {
+    return { ok: false, code: "REQUEST_TOO_LARGE" };
+  }
+  if (strTooLong(b.conversationSummary, MAX_CONTEXT_ITEM_CHARS) || strTooLong(b.existingSummary, MAX_CONTEXT_ITEM_CHARS)) {
+    return { ok: false, code: "REQUEST_TOO_LARGE" };
+  }
+  for (const birth of [b.birthInput, b.partnerBirthInput]) {
+    if (birth && typeof birth === "object" && !Array.isArray(birth)) {
+      for (const value of Object.values(birth)) {
+        if (strTooLong(value, MAX_BIRTH_FIELD_CHARS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
+      }
+    }
+  }
   if (arrTooLong(b.conversationContext, MAX_CONTEXT_ITEMS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
   if (arrTooLong(b.turns, MAX_CONTEXT_ITEMS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
   for (const arr of [b.conversationContext, b.turns]) {
@@ -8769,6 +8794,125 @@ function validateConsultationInputBounds(body) {
     }
   }
   return { ok: true };
+}
+
+// src/features/chat/server/economicGuards.ts
+async function runCanonicalGeneration(deps) {
+  const cached = await deps.readCanonical();
+  if (cached.status === "found") return { status: "ok", record: cached.record, cacheHit: true };
+  if (cached.status === "unavailable") return { status: "temporarily_unavailable" };
+  const lease = await deps.acquireLease();
+  if (lease.status === "unavailable") return { status: "temporarily_unavailable" };
+  if (lease.status === "busy" || lease.status === "completed") {
+    const completed = await deps.readCanonical();
+    if (completed.status === "found") return { status: "ok", record: completed.record, cacheHit: true };
+    if (completed.status === "unavailable" || lease.status === "completed") {
+      return { status: "temporarily_unavailable" };
+    }
+    return { status: "in_progress" };
+  }
+  const reservation = await deps.reservePaidWork();
+  if (reservation.status !== "allowed") {
+    await deps.release(lease.token);
+    return reservation.status === "rate_limited" ? { status: "rate_limited", retryAfterMs: reservation.retryAfterMs } : { status: "temporarily_unavailable" };
+  }
+  const generated = await deps.generate();
+  if (!generated.ok) {
+    await deps.release(lease.token);
+    return { status: "generation_failed" };
+  }
+  const persisted = await deps.complete(lease.token, generated.value);
+  if (persisted) return { status: "ok", record: persisted, cacheHit: false };
+  const recovered = await deps.readCanonical();
+  if (recovered.status === "found") return { status: "ok", record: recovered.record, cacheHit: true };
+  await deps.release(lease.token);
+  return { status: "persistence_failed" };
+}
+async function runIdempotentPaidRequest(deps) {
+  const claim = await deps.acquireRequest();
+  if (claim.status === "completed") return { status: "ok", response: claim.response, cacheHit: true };
+  if (claim.status === "processing") return { status: "in_progress" };
+  if (claim.status === "unavailable") return { status: "temporarily_unavailable" };
+  const reservation = await deps.reservePaidWork();
+  if (reservation.status !== "allowed") {
+    await deps.release(claim.token);
+    return reservation.status === "rate_limited" ? { status: "rate_limited", retryAfterMs: reservation.retryAfterMs } : { status: "temporarily_unavailable" };
+  }
+  const generated = await deps.generate();
+  if (!generated.ok) {
+    await deps.release(claim.token);
+    return { status: "generation_failed" };
+  }
+  if (await deps.complete(claim.token, generated.response)) {
+    return { status: "ok", response: generated.response, cacheHit: false };
+  }
+  const recovered = await deps.readCompleted();
+  if (recovered) return { status: "ok", response: recovered, cacheHit: true };
+  await deps.release(claim.token);
+  return { status: "persistence_failed" };
+}
+
+// src/features/today/types.ts
+var TODAY_DOMAIN_LABEL = {
+  overall: "오늘의 전체 흐름",
+  work: "일·사업",
+  wealth: "재물",
+  relationship: "인간관계·연애",
+  action: "행동·주의점"
+};
+var TODAY_POLICY_VERSION = "today@1.1.0";
+var TODAY_CANONICAL_VERSION = "today-canonical@1.1.0";
+
+// src/features/monthly/types.ts
+var MONTHLY_DOMAIN_LABEL = {
+  overall: "전체 흐름",
+  work: "일·사업",
+  wealth: "재물",
+  relationship: "인간관계·연애",
+  action: "행동·변화"
+};
+var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
+var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.2.0";
+
+// src/features/today/engine/fortuneDate.ts
+var KST_OFFSET_SECONDS2 = 32400;
+var FORTUNE_TIMEZONE = "Asia/Seoul";
+var pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
+function epochToKstCivilDate(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
+}
+function fortuneDateStringFromEpoch(epochSeconds) {
+  const d = epochToKstCivilDate(epochSeconds);
+  return `${d.year}-${pad2(d.month)}-${pad2(d.day)}`;
+}
+
+// src/features/monthly/engine/monthDate.ts
+var KST_OFFSET_SECONDS3 = 32400;
+var FORTUNE_TIMEZONE2 = "Asia/Seoul";
+var pad22 = (n) => n < 10 ? `0${n}` : `${n}`;
+function currentTargetMonth(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
+}
+function monthMidpointEpochSeconds(m) {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
+}
+function civilMonthStartEpoch(m) {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1e3) - KST_OFFSET_SECONDS3;
+}
+function nextCivilMonth(m) {
+  return m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 };
+}
+function kstDateString(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
+  return `${shifted.getUTCFullYear()}-${pad22(shifted.getUTCMonth() + 1)}-${pad22(shifted.getUTCDate())}`;
+}
+function monthKey(m) {
+  return `${m.year}-${pad22(m.month)}`;
+}
+function formatMonthLabel(m) {
+  return `${m.year}년 ${m.month}월`;
 }
 
 // src/features/chat/server/consultationSchema.ts
@@ -8823,19 +8967,6 @@ function calculateDayLuck(input) {
     relationsToNatal,
     dayPillarRuleVersion: DEOKBUNAI_SAJU_DAY_V1_RULE.ruleVersion
   };
-}
-
-// src/features/today/engine/fortuneDate.ts
-var KST_OFFSET_SECONDS2 = 32400;
-var FORTUNE_TIMEZONE = "Asia/Seoul";
-var pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
-function epochToKstCivilDate(epochSeconds) {
-  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
-  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
-}
-function fortuneDateStringFromEpoch(epochSeconds) {
-  const d = epochToKstCivilDate(epochSeconds);
-  return `${d.year}-${pad2(d.month)}-${pad2(d.day)}`;
 }
 
 // src/features/today/engine/todayEvidence.ts
@@ -8986,16 +9117,6 @@ function deriveDailyPlan(evidence) {
     frictionCount
   };
 }
-
-// src/features/today/types.ts
-var TODAY_DOMAIN_LABEL = {
-  overall: "오늘의 전체 흐름",
-  work: "일·사업",
-  wealth: "재물",
-  relationship: "인간관계·연애",
-  action: "행동·주의점"
-};
-var TODAY_POLICY_VERSION = "today@1.1.0";
 
 // src/features/today/server/todayFortunePrompt.ts
 function buildTodayFortunePrompt(plan) {
@@ -9221,31 +9342,6 @@ var DAILY_FORTUNE_JSON_SCHEMA = {
 };
 function dailyFortuneResponseFormat() {
   return { type: "json_schema", name: "deokbun_today_fortune", strict: true, schema: DAILY_FORTUNE_JSON_SCHEMA };
-}
-
-// src/features/monthly/engine/monthDate.ts
-var KST_OFFSET_SECONDS3 = 32400;
-var FORTUNE_TIMEZONE2 = "Asia/Seoul";
-var pad22 = (n) => n < 10 ? `0${n}` : `${n}`;
-function currentTargetMonth(epochSeconds) {
-  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
-  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
-}
-function monthMidpointEpochSeconds(m) {
-  return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
-}
-function civilMonthStartEpoch(m) {
-  return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1e3) - KST_OFFSET_SECONDS3;
-}
-function nextCivilMonth(m) {
-  return m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 };
-}
-function kstDateString(epochSeconds) {
-  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
-  return `${shifted.getUTCFullYear()}-${pad22(shifted.getUTCMonth() + 1)}-${pad22(shifted.getUTCDate())}`;
-}
-function formatMonthLabel(m) {
-  return `${m.year}년 ${m.month}월`;
 }
 
 // src/features/monthly/engine/civilMonthSegments.ts
@@ -9504,16 +9600,6 @@ function deriveMonthlyPlan(evidence) {
     transition
   };
 }
-
-// src/features/monthly/types.ts
-var MONTHLY_DOMAIN_LABEL = {
-  overall: "전체 흐름",
-  work: "일·사업",
-  wealth: "재물",
-  relationship: "인간관계·연애",
-  action: "행동·변화"
-};
-var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
 
 // src/features/monthly/server/monthlyFortunePrompt.ts
 function buildMonthlyFortunePrompt(plan) {
@@ -9779,16 +9865,22 @@ export {
   DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
   HARD_MAX_OUTPUT_TOKENS,
   LLM_RATE_LIMITED_REQUEST_TYPES,
+  MAX_BIRTH_FIELD_CHARS,
   MAX_CONTEXT_ITEMS,
   MAX_CONTEXT_ITEM_CHARS,
   MAX_EXISTING_SUMMARY_CHARS,
+  MAX_LABEL_CHARS,
   MAX_QUESTION_CHARS,
+  MAX_REQUEST_BODY_BYTES,
+  MAX_REQUEST_BODY_CHARS,
   MAX_SUMMARY_SOURCE_CHARS,
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
   MIN_MAX_OUTPUT_TOKENS,
+  MONTHLY_CANONICAL_VERSION,
   MONTHLY_FORTUNE_JSON_SCHEMA,
   SAFE_DIAG_KEYS,
+  TODAY_CANONICAL_VERSION,
   buildCompatibilityConsultation,
   buildMonthlyFortune,
   buildServerConsultation,
@@ -9796,8 +9888,11 @@ export {
   buildTodayFortune,
   classifyQuestionComplexity,
   consultationResponseFormat,
+  currentTargetMonth,
   dailyFortuneResponseFormat,
   extractResponsesText,
+  fortuneDateStringFromEpoch,
+  monthKey,
   monthlyFortuneResponseFormat,
   openAiFailureCode,
   parseDailyFortune,
@@ -9806,6 +9901,8 @@ export {
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,
+  runCanonicalGeneration,
+  runIdempotentPaidRequest,
   sanitizeSummarySource,
   validateConsultationInputBounds
 };
