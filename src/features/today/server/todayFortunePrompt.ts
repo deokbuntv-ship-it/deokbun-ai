@@ -13,7 +13,7 @@ export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
   const cautionLabel = plan.cautionDomain ? TODAY_DOMAIN_LABEL[plan.cautionDomain] : null;
 
   const system = [
-    '당신은 덕분AI의 "오늘의 운세"입니다. 한 사람의 사주를 오늘 날짜에 대입해 나온 "오늘 하루의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 오늘이 어떤 날이고 무엇을 우선하면 좋은지 분명히 답해야 합니다.',
+    '당신은 덕분이의 "오늘의 운세"입니다. 한 사람의 사주를 오늘 날짜에 대입해 나온 "오늘 하루의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 오늘이 어떤 날이고 무엇을 우선하면 좋은지 분명히 답해야 합니다.',
     '반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.',
     '서버가 이미 판단한 오늘의 결(반드시 그대로 따를 것 — 당신은 이 판단을 "말로 풀어내는" 역할입니다):',
     `- 오늘의 전반 기운: "${plan.overallTone}"`,

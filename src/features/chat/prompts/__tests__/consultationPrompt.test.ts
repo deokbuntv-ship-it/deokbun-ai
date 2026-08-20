@@ -61,8 +61,8 @@ describe('mode classification (§14/§15/§29)', () => {
 
 describe('system constitution — hard rules present (§9/§10/§21/§40/§44)', () => {
   const c = SYSTEM_CONSTITUTION;
-  it('names DeokbunAI and the interpreter-not-calculator principle', () => {
-    expect(c).toContain('DeokbunAI');
+  it('names 덕분이 and the interpreter-not-calculator principle', () => {
+    expect(c).toContain('덕분이');
     expect(c).toContain('계산하지 않고 해석');
   });
   it('forbids fabricated calculation, timing, and precision', () => {

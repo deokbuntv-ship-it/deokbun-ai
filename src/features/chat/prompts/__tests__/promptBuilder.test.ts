@@ -33,7 +33,7 @@ describe('buildPrompt', () => {
   it('assembles system-instruction, context, recent turns, then the user turn (no summary when null)', () => {
     const m = buildPrompt(base());
     expect(m.map((x) => x.role)).toEqual(['system', 'system', 'user', 'assistant', 'user']);
-    expect(m[0].content).toContain('DeokbunAI');
+    expect(m[0].content).toContain('덕분이');
     expect(m[1].content).toContain('대상: 홍길동');
     expect(m[1].content).toContain('출생시간: 10시 30분');
     expect(m[m.length - 1]).toEqual({ role: 'user', content: '올해 운세는?' });

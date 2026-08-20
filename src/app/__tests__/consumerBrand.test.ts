@@ -46,3 +46,18 @@ describe('consumer surfaces use the finalized brand 덕분이', () => {
     expect(read('components/QuestionComposer/QuestionComposer.tsx')).toMatch(/덕분이/);
   });
 });
+
+// The LLM system prompts verbalize a self-name to the consumer, so their persona copy must also be 덕분이.
+// (The source file is edge/server code, but the AI's self-reference is consumer-facing.)
+describe('LLM prompt self-name is 덕분이 (consumer-visible persona)', () => {
+  const PROMPT_FILES = [
+    'features/today/server/todayFortunePrompt.ts',
+    'features/monthly/server/monthlyFortunePrompt.ts',
+    'features/chat/prompts/consultationPolicy.ts',
+  ];
+  it.each(PROMPT_FILES)('%s persona says 덕분이, never 덕분AI', (rel) => {
+    const src = read(rel);
+    expect(src).toMatch(/덕분이/);
+    expect(src).not.toMatch(/덕분AI/);
+  });
+});
