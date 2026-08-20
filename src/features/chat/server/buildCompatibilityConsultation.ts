@@ -281,6 +281,8 @@ export async function buildCompatibilityConsultation(
     raw,
     grounding: safeGrounding,
     requireMitigation: plan.requireMitigation,
+    forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
+    polarity: plan.polarity,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));

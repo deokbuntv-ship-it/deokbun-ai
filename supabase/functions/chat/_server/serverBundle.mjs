@@ -2,7 +2,7 @@
 // Regenerate: node supabase/functions/chat/_server/build.mjs
 
 // src/features/chat/prompts/consultationPromptVersion.ts
-var CONSULTATION_PROMPT_VERSION = "consultation@1.4.2";
+var CONSULTATION_PROMPT_VERSION = "consultation@1.4.3";
 
 // src/features/chat/prompts/consultationMode.ts
 var FOLLOW_UP_CUES = /(그중|그 중|그때|그 때|그럼|그러면|그건|그 시기|그 달|아까|방금|위에서|말한 것 중|어느 쪽)/;
@@ -145,12 +145,26 @@ function toSafeGrounding(g) {
   if (g.assessmentVersion !== void 0 && g.assessmentVersion !== null && typeof g.assessmentVersion !== "string") {
     return GROUNDING_UNAVAILABLE;
   }
-  if (g.polarity !== void 0 && g.polarity !== null && !POLARITY_TIER_VALUES.includes(g.polarity)) {
+  if (g.referenceMonth !== void 0 && g.referenceMonth !== null && !isCivilMonth(g.referenceMonth)) {
+    return GROUNDING_UNAVAILABLE;
+  }
+  if (g.targetPolarities !== void 0 && !isValidTargetPolarities(g.targetPolarities)) {
     return GROUNDING_UNAVAILABLE;
   }
   return g;
 }
 var POLARITY_TIER_VALUES = ["FAVORABLE", "STEADY", "DYNAMIC", "CAUTION"];
+var isCivilMonth = (v) => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 12;
+function isValidTargetPolarities(v) {
+  if (!Array.isArray(v)) return false;
+  return v.every((t) => {
+    if (t === null || typeof t !== "object") return false;
+    const o = t;
+    if (o.granularity !== "YEAR" && o.granularity !== "MONTH") return false;
+    if (typeof o.targetKey !== "number" || !Number.isInteger(o.targetKey)) return false;
+    return typeof o.polarity === "string" && POLARITY_TIER_VALUES.includes(o.polarity);
+  });
+}
 function renderGroundingContext(grounding) {
   if (grounding.status === "unavailable") {
     return [
@@ -228,14 +242,15 @@ var SYSTEM_CONSTITUTION = [
   "",
   "[불확실성 · 표현 — 근거가 있으면 분명하게 판단]",
   '- 사용자는 "설명"이 아니라 "답"을 찾으러 왔습니다. 제공된 근거 안에서는 가능한 한 분명하게 판단하고,',
-  "  근거가 뒷받침하는 판단·추천·비교까지 습관적으로 흐리지 마십시오. (근거가 충분한데 약하게 말하는 것도 품질 실패입니다.)",
+  "  근거가 뒷받침하는 판단·추천까지 습관적으로 흐리지 마십시오. (근거가 충분한데 약하게 말하는 것도 품질 실패입니다.)",
   "- 다만 사건의 발생 자체를 확정하는 예언(반드시 일어난다·무조건 성사된다·틀림없이 ~한다·이때 반드시 돈을 번다)은",
   '  하지 마십시오. 구분하십시오: "2월에 반드시 이사합니다"(사건 확정 — 금지) vs "2월은 이사하기 좋은',
   '  시기입니다"(적합도 평가 — 근거가 있으면 분명히 말해도 됩니다).',
-  '- 근거가 뒷받침하면 이렇게 분명히 말하십시오: "2027년은 사업 확장에 유리한 해입니다", "그 중에서는',
-  '  2월을 먼저 추천합니다", "5월보다 7월이 더 유리합니다". 근거가 약할 때만 "상대적으로 유리한 편" 정도로 조절하십시오.',
-  '- "가장 좋다 / 1순위 / A가 B보다 낫다" 같은 비교·추천은 실제로 비교할 근거가 있을 때만 하십시오. 비교 근거가',
-  "  없으면 순위를 만들지 말고, 근거가 있는 범위(예: 그 해 전체의 적합도)까지만 분명히 답하십시오.",
+  '- 근거가 뒷받침하면 단일 판단은 분명히 말하십시오: "2027년은 사업 확장에 유리한 해입니다", "지금은 추천합니다".',
+  '  근거가 약할 때만 "상대적으로 유리한 편" 정도로 조절하십시오.',
+  '- 여러 후보(시기·선택지)를 비교하는 질문에서는 각 후보의 근거를 각각 설명하되, "가장 좋다 / 1순위 / A가 B보다',
+  '  낫다 / 더 나은 쪽" 처럼 한쪽을 승자로 단정하지 마십시오. 지금은 한쪽을 1순위로 정하지 않고, 각 후보의 적합도까지만',
+  "  답합니다. 순위·점수를 만들지 마십시오.",
   '- 근거 없는 점수·등급·별점·순위·확률·날짜를 만들지 마십시오(예: "재물운 83점", "A등급",',
   '  "★★★★☆", "상/중/하" 모두 금지).',
   "",
@@ -308,8 +323,9 @@ var STRUCTURED_OUTPUT_INSTRUCTION = [
   "[상담 말투 — 실제 상담가처럼]",
   "· 핵심 결론을 맨 먼저 한두 문장으로 분명히 말한 뒤, 그렇게 보는 이유를 덧붙이십시오. 사용자가 첫",
   '  문장만 읽어도 "좋은가/주의할 흐름인가, 그래서 어떻게 하면 좋은가"를 알 수 있어야 합니다.',
-  "· 결정을 묻는 질문(해도 될까/언제가 좋아/A가 나아 B가 나아)에는 첫 문장에서 방향(추천/비추천/더 나은 쪽)을",
-  '  먼저 밝히고 이유를 잇십시오. 근거가 뒷받침하면 "먼저 추천합니다 / 이 시기가 더 유리합니다"처럼 분명하게.',
+  "· 단일 결정을 묻는 질문(해도 될까/언제가 좋아)에는 첫 문장에서 방향(추천/비추천)을 먼저 밝히고 이유를 잇십시오.",
+  '  근거가 뒷받침하면 "추천합니다 / 좋은 시기입니다"처럼 분명하게. 다만 "A가 나아 B가 나아"처럼 여러 후보를',
+  "  비교하는 질문에서는 한쪽을 승자로 고르거나 1순위를 정하지 말고, 각 후보의 근거를 나란히 설명하십시오.",
   "· 요청한 정확한 범위(예: 특정 달)를 근거로 답하기 어렵더라도 답변을 포기하지 마십시오. 대신 (1) 근거가",
   "  있는 가장 가까운 범위(예: 그 해 전체의 흐름)로 분명히 답하고, (2) 확인 가능한 대안을 제시하십시오. 근거",
   '  없는 특정 달을 지어내지는 말되, "그 해 자체는 이사에 좋은 흐름입니다"처럼 지원되는 답은 분명히 주십시오.',
@@ -457,8 +473,9 @@ function mainBodyText(p) {
   return [...coreProseFields(p), p.futureFlow].filter((x) => typeof x === "string").join("\n");
 }
 function timingAnchorsOf(grounding) {
-  const anchors = { years: /* @__PURE__ */ new Set(), months: /* @__PURE__ */ new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
+  const anchors = { years: /* @__PURE__ */ new Set(), months: /* @__PURE__ */ new Set(), referenceYear: null, referenceMonth: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== "available") return anchors;
+  anchors.referenceMonth = grounding.referenceMonth ?? null;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
     if (!ta) continue;
@@ -494,7 +511,12 @@ function hasUnsupportedTiming(text, anchors) {
     const off = Number(m[1]);
     if (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off)) return true;
   }
-  if (/(다음\s*달|담\s*달|이듬\s*달|다음달)/.test(text)) return true;
+  if (/(다음\s*달|담\s*달|이듬\s*달|다음달)/.test(text)) {
+    if (anchors.referenceYear === null || anchors.referenceMonth === null) return true;
+    const nextIdx = anchors.referenceYear * 12 + (anchors.referenceMonth - 1) + 1;
+    const nextKey = Math.floor(nextIdx / 12) * 100 + (nextIdx % 12 + 1);
+    if (!anchors.months.has(nextKey)) return true;
+  }
   if (/(이번\s*달|이달|금월|이번달)/.test(text) && !anchors.hasMonthly) return true;
   const hasSpan = anchors.ageMin !== null && anchors.ageMax !== null;
   const AGE_REF = /\d{1,3}\s*(?:세|살)|[1-9]0\s*대|중년|장년|노년|말년|청년|초년/;
@@ -7506,9 +7528,9 @@ async function buildMyungriEvidence(draft, deps, question) {
     digestProvider: deps.digestProvider,
     historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
   });
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
   const engineResult = execution.engineResult;
-  if (engineResult.status === "UNAVAILABLE") return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
+  if (engineResult.status === "UNAVAILABLE") return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
   const fourPillars = engineResult.output.fourPillars;
   const natal = natalContextFromFourPillars(fourPillars);
   const natalRelations = calculateNatalRelations(natal);
@@ -7568,8 +7590,19 @@ async function buildMyungriEvidence(draft, deps, question) {
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null
   });
-  const polarity = sewoon.capability === "AVAILABLE" ? derivePolarity(sewoon.relationsToNatal).tier : null;
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, polarity };
+  const targetPolarities = [];
+  if (sewoon.capability === "AVAILABLE") {
+    targetPolarities.push({ granularity: "YEAR", targetKey: sewoon.targetYear, polarity: derivePolarity(sewoon.relationsToNatal).tier });
+  }
+  for (const ex of extraSewoon) {
+    if (ex.capability === "AVAILABLE") targetPolarities.push({ granularity: "YEAR", targetKey: ex.targetYear, polarity: derivePolarity(ex.relationsToNatal).tier });
+  }
+  for (const ew of extraWolwoon) {
+    if (ew.result.capability === "AVAILABLE") {
+      targetPolarities.push({ granularity: "MONTH", targetKey: ew.requestedYear * 100 + ew.requestedMonth, polarity: derivePolarity(ew.result.relationsToNatal).tier });
+    }
+  }
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceMonth: currentCivilMonth };
 }
 async function buildConsultationGrounding(draft, deps, question) {
   if (draft.subject === null || draft.birthInfo === null) {
@@ -7578,7 +7611,7 @@ async function buildConsultationGrounding(draft, deps, question) {
   const withBirth = draft;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion, polarity: myungriPolarity } = await buildMyungriEvidence(
+  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceMonth } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? ""
@@ -7593,8 +7626,9 @@ async function buildConsultationGrounding(draft, deps, question) {
     evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
     engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
-    // SERVER-owned overall polarity (Sprint C §5) — present only when the current 세운 (Saju) is grounded.
-    ...myungriPolarity ? { polarity: myungriPolarity } : {}
+    // Server-derived reference month + target-scoped polarities (Sprint C.1) — present only with Saju.
+    ...referenceMonth !== null ? { referenceMonth } : {},
+    ...targetPolarities.length > 0 ? { targetPolarities } : {}
   };
 }
 
@@ -7743,8 +7777,8 @@ function buildStructuredConsultationResult(parsed, grounding) {
 }
 
 // src/features/chat/server/answerPlan.ts
-var ANSWER_PLAN_VERSION = "answer-plan@1.1.0";
-var DECISION_POLICY_VERSION = "decision-policy@1.1.0";
+var ANSWER_PLAN_VERSION = "answer-plan@1.2.0";
+var DECISION_POLICY_VERSION = "decision-policy@1.2.0";
 var COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 var RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
 var EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
@@ -7775,11 +7809,23 @@ var referenceYearOf = (g) => {
   }
   return null;
 };
-var polarityOf = (g) => g.status === "available" ? g.polarity ?? void 0 : void 0;
+var referenceMonthOf = (g) => g.status === "available" ? g.referenceMonth ?? null : null;
+function selectTargetPolarity(g, granularity, monthTargets, requestedYears) {
+  if (g.status !== "available" || !g.targetPolarities) return void 0;
+  const find = (kind, key2) => g.targetPolarities?.find((t) => t.granularity === kind && t.targetKey === key2)?.polarity;
+  if (granularity === "MONTH") {
+    return monthTargets.length === 1 ? find("MONTH", monthTargets[0].year * 100 + monthTargets[0].month) : void 0;
+  }
+  if (granularity === "YEAR") {
+    return requestedYears.length === 1 ? find("YEAR", requestedYears[0]) : void 0;
+  }
+  return void 0;
+}
 function deriveAnswerPlan(question, grounding, mode = "solo") {
   const q = (question ?? "").trim();
   const refYear = referenceYearOf(grounding);
-  const monthPlan = resolveQuestionMonths(q, refYear, null);
+  const refMonth = referenceMonthOf(grounding);
+  const monthPlan = resolveQuestionMonths(q, refYear, refMonth);
   const requestedYears = resolveQuestionYears(q, refYear);
   const gMonths = groundedMonthsOf(grounding);
   const gYears = groundedYearsOf(grounding);
@@ -7835,7 +7881,7 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
   else if (supportLevel === "PARTIAL") assertiveness = "MODERATE";
   else if (supportLevel === "ALTERNATIVE") assertiveness = "LIMITED";
   else assertiveness = "LIMITED";
-  const polarity = polarityOf(grounding);
+  const polarity = selectTargetPolarity(grounding, resolvedGranularity, monthPlan.targets, requestedYears);
   return {
     mode,
     intents,
@@ -8455,7 +8501,24 @@ function containsForbiddenCertainty(text) {
   }
   return false;
 }
-var CERTAINTY_REGEN_DIRECTIVE = '[중요 — 재작성] 앞 답변에 "반드시/무조건/100%/절대/틀림없이" 같은 단정이나 결과 보장(합격합니다·부자가 됩니다·원금 보장 등)이 있었습니다. 사건의 발생이나 결과를 확정·보장하지 말고, 근거 범위 안에서 적합도·흐름·조언으로만 다시 답하십시오.';
+var WINNER_CLAIM = /보다\s*(더\s*)?(좋|낫|유리|나은)|(이쪽|저쪽|한쪽|이\s*편|그\s*편)\s*(이|가)?\s*더\s*(좋|낫|유리)|더\s*나은\s*(쪽|편|시기|달|해)|가장\s*(좋|나은|유리|나쁜|안\s*좋)|제일\s*(좋|나은|유리)|최고의\s*(시기|해|달|때)|최악의\s*(시기|해|달)|1\s*순위|우선\s*추천|먼저\s*추천/;
+var WINNER_HEDGE = /단정|어렵|아니|않|없|정하지|고르지|가리기|우열|비슷|팽팽|섣불리/;
+function containsWinnerClaim(text) {
+  if (typeof text !== "string" || text.length === 0) return false;
+  for (const s of splitSentences(text)) {
+    if (WINNER_CLAIM.test(s) && !WINNER_HEDGE.test(s)) return true;
+  }
+  return false;
+}
+var STRONG_POSITIVE = /매우\s*좋|아주\s*좋|정말\s*좋|최고|더할\s*나위|걱정\s*(할\s*것[도은]?\s*)?없|문제\s*(가\s*)?없|순조|탄탄대로|거침없|막힘\s*없|대박|크게\s*이룰/;
+var STRONG_NEGATIVE = /매우\s*나쁘|아주\s*나쁘|최악|가망\s*(이\s*)?없|답이\s*없|암울|절망|크게\s*위험|파산|망(할|한다|합니다|해요)/;
+function contradictsPolarity(text, polarity) {
+  if (typeof text !== "string" || text.length === 0) return false;
+  if (polarity === "CAUTION") return STRONG_POSITIVE.test(text);
+  if (polarity === "FAVORABLE") return STRONG_NEGATIVE.test(text);
+  return false;
+}
+var CERTAINTY_REGEN_DIRECTIVE = '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 승자/1순위/가장 좋음(또는 가장 나쁨)으로 고르는 표현, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 한쪽을 승자로 정하지 말고 각각 설명하며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
 function renderableText(outcome) {
   if (outcome.kind === "ACCEPTED") return composeConsultationText(outcome.result);
   if (outcome.kind === "STRUCTURAL_FALLBACK") return outcome.text;
@@ -8465,16 +8528,31 @@ function lacksMitigation(outcome) {
   if (outcome.kind !== "ACCEPTED") return false;
   return (outcome.result.cautions?.length ?? 0) === 0;
 }
-function outcomeViolates(outcome, requireMitigation) {
+function highSalienceText(outcome) {
+  if (outcome.kind === "ACCEPTED") return `${outcome.result.coreSummary ?? ""} ${outcome.result.coreInterpretation ?? ""}`;
+  if (outcome.kind === "STRUCTURAL_FALLBACK") return outcome.text;
+  return null;
+}
+function outcomeViolates(outcome, opts) {
   const text = renderableText(outcome);
   if (text === null) return false;
   if (containsForbiddenCertainty(text)) return true;
-  if (requireMitigation && lacksMitigation(outcome)) return true;
+  if (opts.forbidWinner && containsWinnerClaim(text)) return true;
+  if (opts.requireMitigation && lacksMitigation(outcome)) return true;
+  if (opts.polarity) {
+    const hs = highSalienceText(outcome);
+    if (hs !== null && contradictsPolarity(hs, opts.polarity)) return true;
+  }
   return false;
 }
 async function classifyWithGuards(args) {
+  const opts = {
+    requireMitigation: args.requireMitigation,
+    forbidWinner: args.forbidWinner ?? false,
+    polarity: args.polarity
+  };
   const first = classifyConsultationOutput(args.raw, args.grounding);
-  if (!outcomeViolates(first, args.requireMitigation)) {
+  if (!outcomeViolates(first, opts)) {
     return { outcome: first, regenerated: false, guardRejected: false };
   }
   let raw2 = null;
@@ -8484,11 +8562,11 @@ async function classifyWithGuards(args) {
     raw2 = null;
   }
   if (typeof raw2 !== "string" || raw2.trim().length === 0) {
-    return { outcome: { kind: "SEMANTIC_REJECTED", reason: "guard_certainty_mitigation" }, regenerated: true, guardRejected: true };
+    return { outcome: { kind: "SEMANTIC_REJECTED", reason: "guard_option_b_polarity" }, regenerated: true, guardRejected: true };
   }
   const second = classifyConsultationOutput(raw2, args.grounding);
-  if (outcomeViolates(second, args.requireMitigation)) {
-    return { outcome: { kind: "SEMANTIC_REJECTED", reason: "guard_certainty_mitigation" }, regenerated: true, guardRejected: true };
+  if (outcomeViolates(second, opts)) {
+    return { outcome: { kind: "SEMANTIC_REJECTED", reason: "guard_option_b_polarity" }, regenerated: true, guardRejected: true };
   }
   return { outcome: second, regenerated: true, guardRejected: false };
 }
@@ -8556,19 +8634,21 @@ function groundingReferenceYear(grounding) {
   }
   return null;
 }
+var groundingReferenceMonth = (grounding) => grounding.status === "available" ? grounding.referenceMonth ?? null : null;
 function buildResolvedTemporalContext(question, nowEpochSeconds, grounding) {
   const civil = kstCivil(nowEpochSeconds);
   const referenceYear = groundingReferenceYear(grounding) ?? civil.year;
+  const referenceMonth = groundingReferenceMonth(grounding) ?? civil.month;
   const q = (question ?? "").trim();
   const years = resolveQuestionYears(q, referenceYear);
-  const months = resolveQuestionMonths(q, referenceYear, null);
+  const months = resolveQuestionMonths(q, referenceYear, referenceMonth);
   const targets = [...years, ...months.targets.map((t) => t.year * 100 + t.month)];
   const qimenActive = grounding.status === "available" && grounding.evidence.qimen.availability === "available";
   return {
     anchorEpochSeconds: nowEpochSeconds,
     timezone: "Asia/Seoul",
     referenceYear,
-    referenceMonth: civil.month,
+    referenceMonth,
     resolvedTargets: Array.from(new Set(targets)),
     qimenActive
   };
@@ -8700,6 +8780,8 @@ ${extraDirective}` : renderAnswerPlanDirective(plan)
     raw,
     grounding: effectiveGrounding,
     requireMitigation: plan.requireMitigation,
+    forbidWinner: plan.intents.includes("COMPARISON") || plan.intents.includes("RANKING"),
+    polarity: plan.polarity,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
@@ -9298,6 +9380,8 @@ ${extraDirective}` : renderAnswerPlanDirective(plan),
     raw,
     grounding: safeGrounding,
     requireMitigation: plan.requireMitigation,
+    forbidWinner: plan.intents.includes("COMPARISON") || plan.intents.includes("RANKING"),
+    polarity: plan.polarity,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));

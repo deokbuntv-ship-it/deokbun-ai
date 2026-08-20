@@ -16,7 +16,7 @@
 //   • both unavailable                    → grounding `unavailable` (nothing fabricated)
 // qimen stays engine_not_connected (§28). Nothing is ever fabricated to fill a slot.
 import type { EngineEvidence } from '@/features/analysis';
-import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
+import { derivePolarity } from '@/features/polarity/polarityKernel';
 import type { ConsultationDraft, BirthInfoDraft } from '@/features/consultation';
 import {
   ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
@@ -48,7 +48,7 @@ import {
 } from '@/features/ziwei';
 import { computeQimenBoard, toQimenEvidence } from '@/features/qimen';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
-import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
+import type { ConsultationGrounding, TargetPolarity } from '@/features/chat/prompts/grounding';
 import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
 import { resolveQimenActivation } from '@/features/chat/selectors/qimenActivation';
 
@@ -90,7 +90,12 @@ export function buildQimenEvidence(question: string | undefined, questionEpochSe
   }
 }
 
-type MyungriOutcome = { evidence: EngineEvidence; engineVersion: string | null; polarity: PolarityTier | null };
+type MyungriOutcome = {
+  evidence: EngineEvidence;
+  engineVersion: string | null;
+  targetPolarities: TargetPolarity[];
+  referenceMonth: number | null;
+};
 
 /** Run the FROZEN Saju engine + Myungri facts. Fail-closed → calculation_failed (never throws up). */
 async function buildMyungriEvidence(
@@ -105,11 +110,11 @@ async function buildMyungriEvidence(
   });
 
   // Normalization/fingerprint failure (invalid/unsupported input) — no fabricated evidence.
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
   const engineResult = execution.engineResult;
   // Engine could not produce a chart (unsupported date / ambiguous boundary / unknown-time-on-
   // boundary all surface here) — fail-closed, never a fabricated pillar (§16).
-  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
+  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
 
   // SUCCESS or PARTIAL (시주 미상) → derive the Myungri facts from the frozen chart (no new calc).
   const fourPillars = engineResult.output.fourPillars;
@@ -209,13 +214,24 @@ async function buildMyungriEvidence(
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null,
   });
 
-  // SERVER-owned overall polarity (Sprint C §5): the shared kernel over the CURRENT 세운 relations — the
-  // year-flow analog of Today's day-pillar / Monthly's month-segment. Same rule, no new astrology semantics.
-  // Present only when the current 세운 is grounded; absent otherwise (never guessed).
-  const polarity: PolarityTier | null =
-    sewoon.capability === 'AVAILABLE' ? derivePolarity(sewoon.relationsToNatal).tier : null;
+  // SERVER-owned TARGET-SCOPED polarity (Sprint C.1 §2-§4): one categorical tier per grounded temporal
+  // target — the current-year 세운, each question-targeted year (extraSewoon), and each question-targeted
+  // month (extraWolwoon). KEYED so the plan binds a conclusion to the question's resolved target. Same
+  // kernel, no new astrology semantics. There is deliberately NO cross-target winner/order.
+  const targetPolarities: TargetPolarity[] = [];
+  if (sewoon.capability === 'AVAILABLE') {
+    targetPolarities.push({ granularity: 'YEAR', targetKey: sewoon.targetYear, polarity: derivePolarity(sewoon.relationsToNatal).tier });
+  }
+  for (const ex of extraSewoon) {
+    if (ex.capability === 'AVAILABLE') targetPolarities.push({ granularity: 'YEAR', targetKey: ex.targetYear, polarity: derivePolarity(ex.relationsToNatal).tier });
+  }
+  for (const ew of extraWolwoon) {
+    if (ew.result.capability === 'AVAILABLE') {
+      targetPolarities.push({ granularity: 'MONTH', targetKey: ew.requestedYear * 100 + ew.requestedMonth, polarity: derivePolarity(ew.result.relationsToNatal).tier });
+    }
+  }
 
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, polarity };
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceMonth: currentCivilMonth };
 }
 
 /**
@@ -236,7 +252,7 @@ export async function buildConsultationGrounding(
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode).
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion, polarity: myungriPolarity } = await buildMyungriEvidence(
+  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceMonth } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? '',
@@ -256,8 +272,9 @@ export async function buildConsultationGrounding(
     evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
     engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
-    // SERVER-owned overall polarity (Sprint C §5) — present only when the current 세운 (Saju) is grounded.
-    ...(myungriPolarity ? { polarity: myungriPolarity } : {}),
+    // Server-derived reference month + target-scoped polarities (Sprint C.1) — present only with Saju.
+    ...(referenceMonth !== null ? { referenceMonth } : {}),
+    ...(targetPolarities.length > 0 ? { targetPolarities } : {}),
   };
 }
 

@@ -22,6 +22,12 @@ function groundingReferenceYear(grounding: ConsultationGrounding): number | null
   return null;
 }
 
+// The server-derived reference MONTH the grounding used (Sprint C.1 §7) — so this context resolves the SAME
+// month targets deriveAnswerPlan does (no more referenceMonth=null mismatch). Falls back to the KST civil
+// month for a safety short-circuit that skipped grounding.
+const groundingReferenceMonth = (grounding: ConsultationGrounding): number | null =>
+  grounding.status === 'available' ? grounding.referenceMonth ?? null : null;
+
 /**
  * Build the deterministic temporal context. `referenceYear` prefers the grounded 세운 reference (立春-based);
  * absent grounding it falls back to the KST civil year. `resolvedTargets` are the periods the question
@@ -34,9 +40,10 @@ export function buildResolvedTemporalContext(
 ): ResolvedTemporalContext {
   const civil = kstCivil(nowEpochSeconds);
   const referenceYear = groundingReferenceYear(grounding) ?? civil.year;
+  const referenceMonth = groundingReferenceMonth(grounding) ?? civil.month;
   const q = (question ?? '').trim();
   const years = resolveQuestionYears(q, referenceYear);
-  const months = resolveQuestionMonths(q, referenceYear, null);
+  const months = resolveQuestionMonths(q, referenceYear, referenceMonth); // SAME target selection as the plan
   const targets = [...years, ...months.targets.map((t) => t.year * 100 + t.month)];
   const qimenActive =
     grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
@@ -44,7 +51,7 @@ export function buildResolvedTemporalContext(
     anchorEpochSeconds: nowEpochSeconds,
     timezone: 'Asia/Seoul',
     referenceYear,
-    referenceMonth: civil.month,
+    referenceMonth,
     resolvedTargets: Array.from(new Set(targets)),
     qimenActive,
   };

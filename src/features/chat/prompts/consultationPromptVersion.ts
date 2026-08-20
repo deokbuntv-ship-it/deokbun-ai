@@ -21,4 +21,8 @@
 // choose a winner / 1순위 (Option B — discuss each grounded candidate, no manufactured winner/order), and
 // the directive now relays the SERVER-owned overall polarity tone + a mitigation instruction on a CAUTION
 // conclusion. Same schema; the answer-shaping directive genuinely changed, so the prompt contract bumps.
-export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.2';
+// 1.4.3 — Sprint C.1 shared-prompt closure: removed the SURVIVING winner-authorizing language from the
+// System Constitution ("2월을 먼저 추천 / 5월보다 7월이 더 유리 / 가장 좋다 / 1순위 / A가 B보다 낫다") and the
+// structured-output instruction ("더 나은 쪽 / 이 시기가 더 유리합니다"). Single decisions stay decisive;
+// cross-candidate winner/order is forbidden across the FULL prompt stack.
+export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.3';

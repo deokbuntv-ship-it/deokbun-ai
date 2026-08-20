@@ -235,6 +235,8 @@ export async function buildServerConsultation(
     raw,
     grounding: effectiveGrounding,
     requireMitigation: plan.requireMitigation,
+    forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
+    polarity: plan.polarity,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));

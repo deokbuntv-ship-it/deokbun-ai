@@ -49,10 +49,10 @@ export type AnswerPlan = {
 };
 
 // Decision-affecting versions. Bumped when the SERVER's decision changes — distinct from the
-// verbalization-only CONSULTATION_PROMPT_VERSION. Sprint C: server-owned polarity + mitigation activation +
-// ranking/winner disabled (Option B) all change the decision, so both bump to 1.1.0.
-export const ANSWER_PLAN_VERSION = 'answer-plan@1.1.0';
-export const DECISION_POLICY_VERSION = 'decision-policy@1.1.0';
+// verbalization-only CONSULTATION_PROMPT_VERSION. Sprint C.1: polarity is now TARGET-SCOPED (was global),
+// the month reference is fixed, and the Option-B/polarity output guards are active — all decision changes.
+export const ANSWER_PLAN_VERSION = 'answer-plan@1.2.0';
+export const DECISION_POLICY_VERSION = 'decision-policy@1.2.0';
 
 const COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 const RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
@@ -89,11 +89,32 @@ const referenceYearOf = (g: ConsultationGrounding): number | null => {
   return null;
 };
 
-// SERVER-owned overall polarity (Sprint C §5): computed upstream in the grounding builder from the current
-// 세운 relations via the shared kernel, and carried on the grounding. deriveAnswerPlan only READS it — it
-// never recomputes or guesses. Absent when the current year flow is not grounded.
-const polarityOf = (g: ConsultationGrounding): PolarityTier | undefined =>
-  g.status === 'available' ? g.polarity ?? undefined : undefined;
+// Server-derived reference month (Sprint C.1 §6) — the SAME value the grounding used to resolve
+// 이번 달/다음 달, so the plan resolves relative months identically. Never the client clock.
+const referenceMonthOf = (g: ConsultationGrounding): number | null =>
+  g.status === 'available' ? g.referenceMonth ?? null : null;
+
+// TARGET-SCOPED polarity (Sprint C.1 §2-§5): bind the conclusion tier to the question's ONE resolved
+// target. Emit ONLY when exactly one target resolves at the resolved granularity AND that target is
+// grounded (present in `targetPolarities`). Multi-candidate (comparison/ranking) → none. Non-temporal /
+// natal (NONE granularity) → none. Never a global/overall guess, never a cross-candidate winner.
+function selectTargetPolarity(
+  g: ConsultationGrounding,
+  granularity: Granularity,
+  monthTargets: readonly { year: number; month: number }[],
+  requestedYears: readonly number[],
+): PolarityTier | undefined {
+  if (g.status !== 'available' || !g.targetPolarities) return undefined;
+  const find = (kind: 'YEAR' | 'MONTH', key: number) =>
+    g.targetPolarities?.find((t) => t.granularity === kind && t.targetKey === key)?.polarity;
+  if (granularity === 'MONTH') {
+    return monthTargets.length === 1 ? find('MONTH', monthTargets[0].year * 100 + monthTargets[0].month) : undefined;
+  }
+  if (granularity === 'YEAR') {
+    return requestedYears.length === 1 ? find('YEAR', requestedYears[0]) : undefined;
+  }
+  return undefined;
+}
 
 export function deriveAnswerPlan(
   question: string,
@@ -102,7 +123,8 @@ export function deriveAnswerPlan(
 ): AnswerPlan {
   const q = (question ?? '').trim();
   const refYear = referenceYearOf(grounding);
-  const monthPlan = resolveQuestionMonths(q, refYear, null);
+  const refMonth = referenceMonthOf(grounding); // Sprint C.1 §6 — resolves 이번 달/다음 달 (was null → bug)
+  const monthPlan = resolveQuestionMonths(q, refYear, refMonth);
   const requestedYears = resolveQuestionYears(q, refYear);
   const gMonths = groundedMonthsOf(grounding);
   const gYears = groundedYearsOf(grounding);
@@ -182,9 +204,10 @@ export function deriveAnswerPlan(
   else if (supportLevel === 'ALTERNATIVE') assertiveness = 'LIMITED';
   else assertiveness = 'LIMITED';
 
-  // SERVER-owned polarity (Sprint C §5) + mitigation activation (§7): a CAUTION conclusion must carry a
-  // practical direction. READ (never recomputed / guessed) from the grounding the kernel already annotated.
-  const polarity = polarityOf(grounding);
+  // TARGET-SCOPED polarity (Sprint C.1 §5) + mitigation activation (§7): the conclusion tier is bound to
+  // the question's resolved target (this year / that year / this month / …). A CAUTION on the RESOLVED
+  // target — never a wrong-timeframe or global guess — activates requireMitigation.
+  const polarity = selectTargetPolarity(grounding, resolvedGranularity, monthPlan.targets, requestedYears);
 
   return {
     mode,

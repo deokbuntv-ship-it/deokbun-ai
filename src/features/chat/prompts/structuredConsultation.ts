@@ -17,8 +17,9 @@ export const STRUCTURED_OUTPUT_INSTRUCTION = [
   '[상담 말투 — 실제 상담가처럼]',
   '· 핵심 결론을 맨 먼저 한두 문장으로 분명히 말한 뒤, 그렇게 보는 이유를 덧붙이십시오. 사용자가 첫',
   '  문장만 읽어도 "좋은가/주의할 흐름인가, 그래서 어떻게 하면 좋은가"를 알 수 있어야 합니다.',
-  '· 결정을 묻는 질문(해도 될까/언제가 좋아/A가 나아 B가 나아)에는 첫 문장에서 방향(추천/비추천/더 나은 쪽)을',
-  '  먼저 밝히고 이유를 잇십시오. 근거가 뒷받침하면 "먼저 추천합니다 / 이 시기가 더 유리합니다"처럼 분명하게.',
+  '· 단일 결정을 묻는 질문(해도 될까/언제가 좋아)에는 첫 문장에서 방향(추천/비추천)을 먼저 밝히고 이유를 잇십시오.',
+  '  근거가 뒷받침하면 "추천합니다 / 좋은 시기입니다"처럼 분명하게. 다만 "A가 나아 B가 나아"처럼 여러 후보를',
+  '  비교하는 질문에서는 한쪽을 승자로 고르거나 1순위를 정하지 말고, 각 후보의 근거를 나란히 설명하십시오.',
   '· 요청한 정확한 범위(예: 특정 달)를 근거로 답하기 어렵더라도 답변을 포기하지 마십시오. 대신 (1) 근거가',
   '  있는 가장 가까운 범위(예: 그 해 전체의 흐름)로 분명히 답하고, (2) 확인 가능한 대안을 제시하십시오. 근거',
   '  없는 특정 달을 지어내지는 말되, "그 해 자체는 이사에 좋은 흐름입니다"처럼 지원되는 답은 분명히 주십시오.',
@@ -249,14 +250,16 @@ type TimingAnchors = {
   years: Set<number>;
   months: Set<number>; // grounded CIVIL months as year*100+month (e.g. 202702)
   referenceYear: number | null;
+  referenceMonth: number | null; // server current civil month — resolves 이번 달/다음 달 (Sprint C.1 §8)
   ageMin: number | null;
   ageMax: number | null;
   hasMonthly: boolean;
 };
 
 function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
-  const anchors: TimingAnchors = { years: new Set(), months: new Set(), referenceYear: null, ageMin: null, ageMax: null, hasMonthly: false };
+  const anchors: TimingAnchors = { years: new Set(), months: new Set(), referenceYear: null, referenceMonth: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== 'available') return anchors;
+  anchors.referenceMonth = grounding.referenceMonth ?? null;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
     if (!ta) continue;
@@ -307,8 +310,14 @@ function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
     const off = Number(m[1]);
     if (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off)) return true;
   }
-  // relative months — no NEXT-month evidence is ever computed; the current month needs 월운 evidence.
-  if (/(다음\s*달|담\s*달|이듬\s*달|다음달)/.test(text)) return true;
+  // relative months (Sprint C.1 §8): "다음 달" is allowed ONLY when its resolved civil month is an actual
+  // grounded month anchor (it was asked → its 월운 was computed); otherwise reject. "이번 달" needs 월운 evidence.
+  if (/(다음\s*달|담\s*달|이듬\s*달|다음달)/.test(text)) {
+    if (anchors.referenceYear === null || anchors.referenceMonth === null) return true;
+    const nextIdx = anchors.referenceYear * 12 + (anchors.referenceMonth - 1) + 1;
+    const nextKey = Math.floor(nextIdx / 12) * 100 + ((nextIdx % 12) + 1);
+    if (!anchors.months.has(nextKey)) return true;
+  }
   if (/(이번\s*달|이달|금월|이번달)/.test(text) && !anchors.hasMonthly) return true;
 
   // ages / decades / life-stages: with NO Daewoon age span, ANY age claim is unsupported (fail-closed).

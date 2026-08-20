@@ -37,11 +37,24 @@ export type ConsultationGrounding =
       assessmentSummary?: string | null;
       engineVersion?: string | null; // Codex-supplied when wired (§37)
       assessmentVersion?: string | null;
-      // SERVER-owned overall polarity (Sprint C §5): the shared kernel's categorical tier over the current
-      // 세운 relations, annotated by the grounding builder. Categorical only — never a numeric score. The
-      // Answer Plan READS it; the prompt renderer does NOT expose it (no harmony/friction reaches the LLM).
-      polarity?: PolarityTier | null;
+      // Server-derived CURRENT civil reference month (Sprint C.1 §6) — the same value the grounding used to
+      // resolve 이번 달/다음 달 targets. The Answer Plan + ResolvedTemporalContext + validator READ it so a
+      // relative month resolves identically everywhere; never the client clock.
+      referenceMonth?: number | null;
+      // SERVER-owned TARGET-SCOPED polarity (Sprint C.1 §2-§4): the shared kernel's categorical tier for each
+      // grounded temporal target (a year's 세운 or a month's 월운), KEYED so a conclusion is bound to THIS
+      // resolved target. Categorical only — never a score, never a winner/order across candidates. The
+      // Answer Plan selects the ONE that matches the question's resolved target; the prompt never exposes it.
+      targetPolarities?: TargetPolarity[];
     };
+
+// One grounded period's categorical polarity, keyed to its target (Sprint C.1 §3). `targetKey` is the year
+// (granularity YEAR) or year*100+month (granularity MONTH). There is deliberately no cross-target ordering.
+export type TargetPolarity = {
+  granularity: 'YEAR' | 'MONTH';
+  targetKey: number;
+  polarity: PolarityTier;
+};
 
 // The current, honest default: no verified calculation is connected.
 export const GROUNDING_UNAVAILABLE: ConsultationGrounding = {
@@ -205,13 +218,27 @@ export function toSafeGrounding(g: ConsultationGrounding | null | undefined): Co
   if (g.assessmentVersion !== undefined && g.assessmentVersion !== null && typeof g.assessmentVersion !== 'string') {
     return GROUNDING_UNAVAILABLE;
   }
-  if (g.polarity !== undefined && g.polarity !== null && !(POLARITY_TIER_VALUES as readonly string[]).includes(g.polarity)) {
+  if (g.referenceMonth !== undefined && g.referenceMonth !== null && !isCivilMonth(g.referenceMonth)) {
+    return GROUNDING_UNAVAILABLE;
+  }
+  if (g.targetPolarities !== undefined && !isValidTargetPolarities(g.targetPolarities)) {
     return GROUNDING_UNAVAILABLE;
   }
   return g;
 }
 
 const POLARITY_TIER_VALUES: readonly PolarityTier[] = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
+const isCivilMonth = (v: unknown): boolean => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 12;
+function isValidTargetPolarities(v: unknown): boolean {
+  if (!Array.isArray(v)) return false;
+  return v.every((t) => {
+    if (t === null || typeof t !== 'object') return false;
+    const o = t as { granularity?: unknown; targetKey?: unknown; polarity?: unknown };
+    if (o.granularity !== 'YEAR' && o.granularity !== 'MONTH') return false;
+    if (typeof o.targetKey !== 'number' || !Number.isInteger(o.targetKey)) return false;
+    return typeof o.polarity === 'string' && (POLARITY_TIER_VALUES as readonly string[]).includes(o.polarity);
+  });
+}
 
 /**
  * Render the grounding as a prompt CONTEXT block (a system message body).

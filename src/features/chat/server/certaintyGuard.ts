@@ -11,6 +11,7 @@ import {
   type ConsultationOutcome,
 } from '@/features/chat/prompts/structuredConsultation';
 import { containsEventGuarantee } from '@/features/monthly/server';
+import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 // Bounded certainty adverb + an ASSERTIVE positive outcome nearby (반드시 성공합니다 / 무조건 잘 됩니다 /
 // 100% 합격 / 틀림없이 부자). The outcome anchor keeps precision high: a bare adverb alone is not flagged.
@@ -48,9 +49,37 @@ export function containsForbiddenCertainty(text: string): boolean {
   return false;
 }
 
-// A short directive appended to the SECOND (only) attempt. Names the fault and re-orients to suitability.
+// ── Option B winner/ranking output guard (Sprint C.1 §11) ──────────────────────────────────────
+// V1 has NO server-decided temporal/comparison winner, so an LLM winner/rank/best/worst claim on a
+// comparison or ranking question is unsupported. Per-sentence + hedge-aware (mirrors the certainty guard):
+// a sentence that DECLINES to pick ("한쪽이 더 낫다고 단정하기 어렵습니다", "1순위를 정하지 않습니다") is NOT flagged.
+const WINNER_CLAIM =
+  /보다\s*(더\s*)?(좋|낫|유리|나은)|(이쪽|저쪽|한쪽|이\s*편|그\s*편)\s*(이|가)?\s*더\s*(좋|낫|유리)|더\s*나은\s*(쪽|편|시기|달|해)|가장\s*(좋|나은|유리|나쁜|안\s*좋)|제일\s*(좋|나은|유리)|최고의\s*(시기|해|달|때)|최악의\s*(시기|해|달)|1\s*순위|우선\s*추천|먼저\s*추천/;
+const WINNER_HEDGE = /단정|어렵|아니|않|없|정하지|고르지|가리기|우열|비슷|팽팽|섣불리/;
+export function containsWinnerClaim(text: string): boolean {
+  if (typeof text !== 'string' || text.length === 0) return false;
+  for (const s of splitSentences(text)) {
+    if (WINNER_CLAIM.test(s) && !WINNER_HEDGE.test(s)) return true;
+  }
+  return false;
+}
+
+// ── Prose ↔ machine-polarity contradiction guard (Sprint C.1 §14) ──────────────────────────────
+// BOUNDED, not full sentiment analysis: a CAUTION conclusion must not read as strongly positive, and a
+// FAVORABLE conclusion must not read as strongly negative, in the high-salience fields. STEADY/DYNAMIC are
+// not gated (no strong directional claim to contradict).
+const STRONG_POSITIVE = /매우\s*좋|아주\s*좋|정말\s*좋|최고|더할\s*나위|걱정\s*(할\s*것[도은]?\s*)?없|문제\s*(가\s*)?없|순조|탄탄대로|거침없|막힘\s*없|대박|크게\s*이룰/;
+const STRONG_NEGATIVE = /매우\s*나쁘|아주\s*나쁘|최악|가망\s*(이\s*)?없|답이\s*없|암울|절망|크게\s*위험|파산|망(할|한다|합니다|해요)/;
+export function contradictsPolarity(text: string, polarity: PolarityTier): boolean {
+  if (typeof text !== 'string' || text.length === 0) return false;
+  if (polarity === 'CAUTION') return STRONG_POSITIVE.test(text);
+  if (polarity === 'FAVORABLE') return STRONG_NEGATIVE.test(text);
+  return false;
+}
+
+// A short directive appended to the SECOND (only) attempt. Names the fault(s) and re-orients the answer.
 export const CERTAINTY_REGEN_DIRECTIVE =
-  '[중요 — 재작성] 앞 답변에 "반드시/무조건/100%/절대/틀림없이" 같은 단정이나 결과 보장(합격합니다·부자가 됩니다·원금 보장 등)이 있었습니다. 사건의 발생이나 결과를 확정·보장하지 말고, 근거 범위 안에서 적합도·흐름·조언으로만 다시 답하십시오.';
+  '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 승자/1순위/가장 좋음(또는 가장 나쁨)으로 고르는 표현, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 한쪽을 승자로 정하지 말고 각각 설명하며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
 
 // The user-facing text an outcome would render (accepted card composed, or structural-fallback prose).
 // SEMANTIC_REJECTED already renders a safe canned message → nothing to guard.
@@ -68,11 +97,25 @@ function lacksMitigation(outcome: ConsultationOutcome): boolean {
   return (outcome.result.cautions?.length ?? 0) === 0;
 }
 
-function outcomeViolates(outcome: ConsultationOutcome, requireMitigation: boolean): boolean {
+// The high-salience conclusion text for the polarity-contradiction check (§14): the card's headline + core
+// interpretation, or the fallback prose — so the guard targets the CONCLUSION, not incidental asides.
+function highSalienceText(outcome: ConsultationOutcome): string | null {
+  if (outcome.kind === 'ACCEPTED') return `${outcome.result.coreSummary ?? ''} ${outcome.result.coreInterpretation ?? ''}`;
+  if (outcome.kind === 'STRUCTURAL_FALLBACK') return outcome.text;
+  return null;
+}
+
+type GuardOpts = { requireMitigation: boolean; forbidWinner: boolean; polarity?: PolarityTier };
+function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts): boolean {
   const text = renderableText(outcome);
   if (text === null) return false;
   if (containsForbiddenCertainty(text)) return true;
-  if (requireMitigation && lacksMitigation(outcome)) return true;
+  if (opts.forbidWinner && containsWinnerClaim(text)) return true;
+  if (opts.requireMitigation && lacksMitigation(outcome)) return true;
+  if (opts.polarity) {
+    const hs = highSalienceText(outcome);
+    if (hs !== null && contradictsPolarity(hs, opts.polarity)) return true;
+  }
   return false;
 }
 
@@ -92,10 +135,19 @@ export async function classifyWithGuards(args: {
   raw: string;
   grounding: ConsultationGrounding;
   requireMitigation: boolean;
+  // Option B (Sprint C.1 §11): set for comparison/ranking questions — reject an LLM-invented winner/rank.
+  forbidWinner?: boolean;
+  // Server-owned target polarity (§14): reject a prose conclusion that clearly contradicts it.
+  polarity?: PolarityTier;
   regenerate: () => Promise<string | null>;
 }): Promise<GuardedClassification> {
+  const opts: GuardOpts = {
+    requireMitigation: args.requireMitigation,
+    forbidWinner: args.forbidWinner ?? false,
+    polarity: args.polarity,
+  };
   const first = classifyConsultationOutput(args.raw, args.grounding);
-  if (!outcomeViolates(first, args.requireMitigation)) {
+  if (!outcomeViolates(first, opts)) {
     return { outcome: first, regenerated: false, guardRejected: false };
   }
 
@@ -106,12 +158,12 @@ export async function classifyWithGuards(args: {
     raw2 = null;
   }
   if (typeof raw2 !== 'string' || raw2.trim().length === 0) {
-    return { outcome: { kind: 'SEMANTIC_REJECTED', reason: 'guard_certainty_mitigation' }, regenerated: true, guardRejected: true };
+    return { outcome: { kind: 'SEMANTIC_REJECTED', reason: 'guard_option_b_polarity' }, regenerated: true, guardRejected: true };
   }
 
   const second = classifyConsultationOutput(raw2, args.grounding);
-  if (outcomeViolates(second, args.requireMitigation)) {
-    return { outcome: { kind: 'SEMANTIC_REJECTED', reason: 'guard_certainty_mitigation' }, regenerated: true, guardRejected: true };
+  if (outcomeViolates(second, opts)) {
+    return { outcome: { kind: 'SEMANTIC_REJECTED', reason: 'guard_option_b_polarity' }, regenerated: true, guardRejected: true };
   }
   return { outcome: second, regenerated: true, guardRejected: false };
 }

@@ -117,8 +117,10 @@ describe('SYSTEM_CONSTITUTION — evidence-calibrated confidence (P0-A §4/§5/�
     expect(C).toMatch(/적합도 평가/);
   });
 
-  it('permits ranked recommendation ONLY with comparison evidence (§19/§22)', () => {
-    expect(C).toMatch(/비교할 근거가 있을 때만|비교 근거가/);
+  it('Option B (Sprint C.1): comparison questions NEVER authorize a winner/1순위 — discuss each candidate', () => {
+    expect(C).toMatch(/승자로 단정하지 마/);
+    expect(C).toMatch(/한쪽을 1순위로 정하지/);
+    expect(C).toMatch(/각 후보의 적합도|각 후보의 근거를 각각/);
   });
 
   it('KEEPS the no-fabricated-score/timing safety floor', () => {
