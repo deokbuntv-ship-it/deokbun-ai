@@ -1,0 +1,168 @@
+import { Redirect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
+import { AppHeader } from '@/components/AppHeader';
+import { Card } from '@/components/Card';
+import { Screen } from '@/components/Screen';
+import { Stack } from '@/components/Stack';
+import { Text } from '@/components/Text';
+import { MaxContentWidth } from '@/constants/theme';
+import { useAuth } from '@/features/auth';
+import {
+  inAppNotificationService,
+  resolveDeepLinkPath,
+  trackRetentionEvent,
+  type InAppNotification,
+} from '@/features/retention';
+import { colors } from '@/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+// 알림 센터 (retention §5) — the in-app EVENT/DELIVERY inbox. This is DISTINCT from 운세우편함 (§5.1): it holds
+// short "새 콘텐츠/일정이 있음" pointers, NEVER the full Today/Monthly/report content. Tapping marks the item
+// read and routes to an ALLOWLISTED destination only (§17) — the resolved path is a relative in-app route, so
+// auth/onboarding continuation still applies (no open redirect). 0 LLM.
+function formatWhen(iso: string): string {
+  const day = iso.slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  if (day === today) return '오늘';
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (day === yesterday) return '어제';
+  const [, m, d] = day.split('-');
+  return m && d ? `${Number(m)}월 ${Number(d)}일` : day;
+}
+
+export default function NotificationsScreen() {
+  const router = useRouter();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const { isAuthenticated } = useAuth();
+
+  const [items, setItems] = useState<InAppNotification[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const reload = useCallback(() => {
+    inAppNotificationService
+      .list()
+      .then((rows) => {
+        setItems(rows);
+        setLoaded(true);
+      })
+      .catch(() => {
+        setItems([]);
+        setLoaded(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) reload();
+  }, [isAuthenticated, reload]);
+
+  const hasUnread = items.some((n) => n.readAt === null);
+
+  const open = (n: InAppNotification) => {
+    // Mark read first (optimistic), then route to the allowlisted destination.
+    if (n.readAt === null) {
+      setItems((cur) => cur.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)));
+      void inAppNotificationService.markRead(n.id);
+    }
+    trackRetentionEvent('notification_opened', { category: n.category, deep_link_target: n.deepLinkTarget });
+    const path = resolveDeepLinkPath(n.deepLinkTarget, n.deepLinkId);
+    router.push(path as never);
+  };
+
+  const markAll = () => {
+    if (!hasUnread) return;
+    const now = new Date().toISOString();
+    setItems((cur) => cur.map((x) => (x.readAt === null ? { ...x, readAt: now } : x)));
+    void inAppNotificationService.markAllRead();
+  };
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
+  if (!isAuthenticated) return <Redirect href="/login" />;
+
+  return (
+    <Screen padded={false} frame>
+      <AppHeader
+        title="알림"
+        showBack
+        onBack={handleBack}
+        rightSlot={
+          hasUnread ? (
+            <Pressable onPress={markAll} accessibilityRole="button" hitSlop={8} style={styles.markAll}>
+              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
+                모두 읽음
+              </Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.wrapper}>
+          {loaded && items.length === 0 ? (
+            <Card radius="xl">
+              <Text variant="bodyMedium" colorToken="textSecondary">
+                새로운 알림이 없어요.
+              </Text>
+            </Card>
+          ) : (
+            <Stack gap="sm">
+              {items.map((n) => {
+                const unread = n.readAt === null;
+                return (
+                  <Pressable key={n.id} onPress={() => open(n)} accessibilityRole="button">
+                    <Card radius="lg">
+                      <View style={styles.row}>
+                        <View
+                          style={[
+                            styles.dot,
+                            { backgroundColor: unread ? theme.primary : 'transparent' },
+                          ]}
+                        />
+                        <View style={styles.flex1}>
+                          <View style={styles.titleRow}>
+                            <Text
+                              variant="bodyMedium"
+                              numberOfLines={1}
+                              style={[styles.title, unread ? styles.titleUnread : null]}
+                            >
+                              {n.title}
+                            </Text>
+                            <Text variant="bodySmall" colorToken="textSecondary">
+                              {formatWhen(n.createdAt)}
+                            </Text>
+                          </View>
+                          {n.body ? (
+                            <Text variant="bodySmall" colorToken="textSecondary" numberOfLines={2}>
+                              {n.body}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    </Card>
+                  </Pressable>
+                );
+              })}
+            </Stack>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40, alignItems: 'center' },
+  wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  markAll: { minHeight: 44, justifyContent: 'center', paddingLeft: 8 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  dot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
+  flex1: { flex: 1, gap: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  title: { flex: 1 },
+  titleUnread: { fontWeight: '700' },
+});

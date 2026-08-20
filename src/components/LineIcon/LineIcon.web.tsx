@@ -15,7 +15,8 @@ export type LineIconName =
   | 'sparkle'
   | 'warning'
   | 'calendar'
-  | 'send';
+  | 'send'
+  | 'bell';
 
 type Props = {
   name: LineIconName;
@@ -125,6 +126,13 @@ export function LineIcon({ name, size = 22, color = '#44474C', strokeWidth = 1.7
       return (
         <svg {...common}>
           <path d="M12 19V6M6 11l6-6 6 6" />
+        </svg>
+      );
+    case 'bell':
+      return (
+        <svg {...common}>
+          <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4.2 1.5 5.5 1.5 5.5H5s1.5-1.3 1.5-5.5z" />
+          <path d="M10 19a2 2 0 0 0 4 0" />
         </svg>
       );
   }

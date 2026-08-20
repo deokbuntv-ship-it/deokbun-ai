@@ -1,9 +1,12 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LineIcon } from '@/components/LineIcon';
 import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
+
+import { notificationBadgeText } from './notificationBadge';
 
 // Consumer TopAppBar (Stitch header spec, no hamburger):
 //  - Home:     brand "덕분AI"            + 나 ▾ switcher   (brand + showSwitcher)
@@ -24,7 +27,33 @@ type AppHeaderProps = {
   onSwitcher?: () => void;
   rightSlot?: React.ReactNode;
   centerTitle?: boolean;
+  // Notification bell (retention §5). Rendered before the switcher/rightSlot when onBell is set. The badge is
+  // BOUNDED (1..9, then 9+) so a large unread count can never blow out the header.
+  onBell?: () => void;
+  bellCount?: number;
 };
+
+function Bell({ onPress, count, danger }: { onPress?: () => void; count: number; danger: string }) {
+  const badge = notificationBadgeText(count);
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={badge ? `알림 ${badge}개` : '알림'}
+      hitSlop={8}
+      style={styles.bell}
+    >
+      <LineIcon name="bell" size={22} />
+      {badge ? (
+        <View style={[styles.badge, { backgroundColor: danger }]}>
+          <Text variant="bodySmall" style={styles.badgeText}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
 
 function Switcher({ label, onPress }: { label: string; onPress?: () => void }) {
   return (
@@ -55,6 +84,8 @@ export function AppHeader({
   onSwitcher,
   rightSlot,
   centerTitle = false,
+  onBell,
+  bellCount = 0,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
@@ -74,9 +105,17 @@ export function AppHeader({
     </Pressable>
   ) : null;
 
-  const right = rightSlot ?? (showSwitcher ? (
+  const rightInner = rightSlot ?? (showSwitcher ? (
     <Switcher label={subjectLabel} onPress={onSwitcher} />
   ) : null);
+  // Bell sits to the LEFT of the switcher/rightSlot. Grouped so both share the right edge.
+  const right =
+    onBell || rightInner ? (
+      <View style={styles.rightGroup}>
+        {onBell ? <Bell onPress={onBell} count={bellCount} danger={theme.danger} /> : null}
+        {rightInner}
+      </View>
+    ) : null;
 
   const wrapStyle = [
     styles.header,
@@ -154,5 +193,33 @@ const styles = StyleSheet.create({
   },
   switcherLabel: {
     fontWeight: '600',
+  },
+  rightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  bell: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
   },
 });

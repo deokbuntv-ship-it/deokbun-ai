@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -24,7 +24,7 @@ import {
   useConsultationDraft,
   useConsultationSubjects,
 } from '@/features/consultation';
-import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
+import { birthMonthDay, inAppNotificationService, isBirthdayTodayKst } from '@/features/retention';
 import {
   popularQuestionIcon,
   resolveActivePopularQuestions,
@@ -112,6 +112,24 @@ export default function HomeScreen() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 알림 unread badge (retention §5). Refreshed each time Home gains focus (initial + on return from
+  // /notifications) so reading notifications clears the badge. Single COUNT query — 0 LLM, no N+1.
+  const [unreadCount, setUnreadCount] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      inAppNotificationService
+        .unreadCount()
+        .then((c) => {
+          if (active) setUnreadCount(c);
+        })
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   // 오늘의 운세 Home card (§31–§34): read the latest stored record for a lightweight preview. NO LLM is
   // fired on Home render — generation happens only when the user opens /today.
@@ -293,6 +311,8 @@ export default function HomeScreen() {
           setSheetForConsult(false);
           setSheetVisible(true);
         }}
+        onBell={() => router.push('/notifications')}
+        bellCount={unreadCount}
       />
       <ScrollView
         contentContainerStyle={styles.scroll}

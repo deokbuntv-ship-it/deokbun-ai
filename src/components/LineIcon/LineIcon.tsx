@@ -15,7 +15,8 @@ export type LineIconName =
   | 'sparkle'
   | 'warning'
   | 'calendar'
-  | 'send';
+  | 'send'
+  | 'bell';
 
 type Props = {
   name: LineIconName;

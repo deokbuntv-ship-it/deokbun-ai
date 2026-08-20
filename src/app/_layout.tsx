@@ -60,7 +60,10 @@ export default function RootLayout() {
             <Stack.Screen name="monthly" options={{ headerShown: false }} />
             {/* Retention: notification preferences + life-event management (pushed from MY). */}
             <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
             <Stack.Screen name="life-events" options={{ headerShown: false }} />
+            <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+            <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
             {/* Public content / famous surface (consumer-facing, no auth). */}
             <Stack.Screen name="content/index" options={{ headerShown: false }} />
             <Stack.Screen name="content/[slug]" options={{ headerShown: false }} />
