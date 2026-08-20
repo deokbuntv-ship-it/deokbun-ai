@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Switch, View } from 'react-native';
 
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminPageHeader } from '@/features/admin';
 import { adminTheme } from '@/features/admin/adminTheme';
+import {
+  fetchGlobalGenerationGuard,
+  setGlobalGenerationEnabled,
+  type GlobalGenerationGuard,
+} from '@/features/admin/services/globalGenerationGuardService';
 
 // ADMIN_10_SYSTEM_SETTINGS (Stitch final_lock_8). Platform-wide settings. No
 // settings-persistence API is connected, so toggles reflect LOCAL UI state only
@@ -81,6 +86,74 @@ function SelectRow({ label, value, hint }: { label: string; value: string; hint?
   );
 }
 
+function InfoRow({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+      <Text variant="bodyMedium" style={{ color: adminTheme.ink }}>{label}</Text>
+      <Text variant="bodyMedium" style={{ color: tone ?? adminTheme.inkVariant, fontWeight: '600' }}>{value}</Text>
+    </View>
+  );
+}
+
+// REAL global generation guard (Sprint D §D8) — reads backend truth + the kill switch. Fail-clean: on any
+// error / no admin access it shows a "연동 필요" note instead of faking state (제3조). Limits are read-only
+// here (100/hour · 1000/day technical defaults pending owner approval).
+function GenerationGuardCard() {
+  const [guard, setGuard] = useState<GlobalGenerationGuard | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    const g = await fetchGlobalGenerationGuard();
+    setGuard(g);
+    setLoaded(true);
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const onToggle = useCallback(
+    async (next: boolean) => {
+      if (!guard || saving) return;
+      setSaving(true);
+      const ok = await setGlobalGenerationEnabled(next, guard.hourlyLimit, guard.dailyLimit);
+      if (ok) await load();
+      setSaving(false);
+    },
+    [guard, saving, load],
+  );
+
+  const warnTone =
+    guard?.warningLevel === 'CRITICAL_95' ? adminTheme.warning : guard?.warningLevel === 'WARNING_80' ? adminTheme.warning : adminTheme.inkVariant;
+
+  return (
+    <Card title="생성 제어 (전역 비용 가드)">
+      {!loaded ? (
+        <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>불러오는 중…</Text>
+      ) : guard === null ? (
+        <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>
+          연동 필요 — 관리자 권한이 있고 마이그레이션이 적용된 뒤 전역 생성 상태가 표시됩니다.
+        </Text>
+      ) : (
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text variant="bodyMedium" style={{ color: adminTheme.ink }}>LLM 생성 사용</Text>
+              <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>
+                끄면 새 유료 생성이 즉시 중단됩니다(캐시·기존 답변은 계속 제공).
+              </Text>
+            </View>
+            <Switch value={guard.generationEnabled} disabled={saving} onValueChange={onToggle} trackColor={{ true: adminTheme.navy }} />
+          </View>
+          <InfoRow label="시간당 사용/한도" value={`${guard.hourlyUsed} / ${guard.hourlyLimit}`} />
+          <InfoRow label="일일 사용/한도" value={`${guard.dailyUsed} / ${guard.dailyLimit}`} />
+          <InfoRow label="사용률 · 경고 단계" value={`${guard.utilizationPercent}% · ${guard.warningLevel}`} tone={warnTone} />
+        </>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminSystemSettingsScreen() {
   return (
     <Stack gap="xl">
@@ -116,19 +189,7 @@ export default function AdminSystemSettingsScreen() {
         </Stack>
 
         <Stack gap="lg" style={{ flex: 1, minWidth: 280 }}>
-          <Card title="서비스 설정">
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text variant="bodyMedium" style={{ color: adminTheme.ink }}>
-                전체 서비스 운영
-              </Text>
-              <Text variant="bodySmall" style={{ color: adminTheme.inkMuted, fontWeight: '600' }}>
-                상태 미연결
-              </Text>
-            </View>
-            <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>
-              점검 모드 전환은 서비스 제어 API 연동 후 활성화됩니다.
-            </Text>
-          </Card>
+          <GenerationGuardCard />
           <Card title="관리자 설정">
             <ToggleRow label="2단계 인증 (2FA) 강제" />
             <ToggleRow label="관리자 활동 로그 기록" />
