@@ -64,7 +64,8 @@ export default function NotificationsScreen() {
     }
   }, [isAuthenticated, reload, refresh]);
 
-  const hasUnread = items.some((n) => n.readAt === null);
+  const unreadInList = items.filter((n) => n.readAt === null).length;
+  const hasUnread = unreadInList > 0;
 
   const open = (n: InAppNotification) => {
     // Mark read first (optimistic), then route to the allowlisted destination.
@@ -102,8 +103,8 @@ export default function NotificationsScreen() {
         rightSlot={
           hasUnread ? (
             <Pressable onPress={markAll} accessibilityRole="button" hitSlop={8} style={styles.markAll}>
-              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
-                모두 읽음
+              <Text variant="bodySmall" colorToken="primary" style={{ fontWeight: '700' }}>
+                모두 읽기
               </Text>
             </Pressable>
           ) : undefined
@@ -111,6 +112,12 @@ export default function NotificationsScreen() {
       />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
+          {/* Small unread summary — only when there is something unread, so it never reads as a status line. */}
+          {unreadInList > 0 ? (
+            <Text variant="bodySmall" colorToken="textSecondary" style={styles.summary}>
+              읽지 않은 알림 {unreadInList}개
+            </Text>
+          ) : null}
           {loaded && items.length === 0 ? (
             <Card radius="xl">
               <Text variant="bodyMedium" colorToken="textSecondary">
@@ -123,7 +130,9 @@ export default function NotificationsScreen() {
                 const unread = n.readAt === null;
                 return (
                   <Pressable key={n.id} onPress={() => open(n)} accessibilityRole="button">
-                    <Card radius="lg">
+                    {/* Unread rows get a subtle surface tint (existing token) + bold title + dot; read rows
+                        are plain. No aggressive color — keeps the premium tone. */}
+                    <Card radius="lg" style={unread ? { backgroundColor: theme.backgroundSelected } : undefined}>
                       <View style={styles.row}>
                         <View
                           style={[
@@ -167,6 +176,7 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40, alignItems: 'center' },
   wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   markAll: { minHeight: 44, justifyContent: 'center', paddingLeft: 8 },
+  summary: { paddingHorizontal: 4, paddingBottom: 10 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
   flex1: { flex: 1, gap: 2 },

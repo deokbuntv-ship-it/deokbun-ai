@@ -57,6 +57,30 @@ describe('excluded focused / auth-flow screens do NOT expose the bell', () => {
   });
 });
 
+describe('notification readability (UX addendum)', () => {
+  const screen = read('app/notifications.tsx');
+  it('the mark-all action reads as an ACTION ("모두 읽기"), gated on there being unread', () => {
+    expect(screen).toMatch(/모두 읽기/);
+    expect(screen).not.toMatch(/모두 읽음/); // old status-looking label removed
+    expect(screen).toMatch(/hasUnread \?/); // shown only when unread > 0
+    expect(screen).toMatch(/unreadInList > 0/); // derived from the actual unread count
+  });
+  it('unread rows are visually distinct via existing tokens (tint + bold title + dot)', () => {
+    expect(screen).toMatch(/unread \? \{ backgroundColor: theme\.backgroundSelected \}/);
+    expect(screen).toMatch(/titleUnread/);
+    expect(screen).toMatch(/backgroundColor: unread \? theme\.primary/); // the leading dot
+  });
+  it('shows an unread summary only when there is something unread', () => {
+    expect(screen).toMatch(/읽지 않은 알림 \{unreadInList\}개/);
+    expect(screen).toMatch(/\{unreadInList > 0 \?/);
+  });
+  it('preserves the read lifecycle wired to the shared provider', () => {
+    expect(screen).toMatch(/markOneRead\(\)/);
+    expect(screen).toMatch(/markAllReadShared\(\)/);
+    expect(screen).toMatch(/resolveDeepLinkPath/);
+  });
+});
+
 describe('admin/dev test-notification drafts (pipeline verification)', () => {
   it('has the three canonical drafts pointing at allowlisted destinations', () => {
     expect(TEST_NOTIFICATION_DRAFTS).toHaveLength(3);
