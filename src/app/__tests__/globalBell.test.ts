@@ -93,7 +93,8 @@ describe('notification unread state is user-scoped (privacy §B1)', () => {
   });
   it('clears the badge immediately on a user change (effect keyed on userId)', () => {
     expect(ctx).toMatch(/\}, \[userId, refresh\]\)/);
-    expect(ctx).toMatch(/setUnreadCount\(0\)/);
+    expect(ctx).toMatch(/setUnreadState\(\{ ownerUserId: userId, count: 0 \}\)/);
+    expect(ctx).toMatch(/unreadState\.ownerUserId === userId/);
   });
 });
 

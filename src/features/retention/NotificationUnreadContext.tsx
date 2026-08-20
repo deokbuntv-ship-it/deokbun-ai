@@ -25,20 +25,25 @@ export function NotificationUnreadProvider({ children }: { children: ReactNode }
   // in-flight count response from a previous user before it can land.
   const { authState } = useAuth();
   const userId = authState.user?.id ?? null;
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadState, setUnreadState] = useState<{ ownerUserId: string | null; count: number }>({
+    ownerUserId: null,
+    count: 0,
+  });
+  // Render-time owner check closes the passive-effect window during a direct A→B account switch.
+  const unreadCount = unreadState.ownerUserId === userId ? unreadState.count : 0;
   const tokenRef = useRef(0);
 
   const refresh = useCallback(() => {
     const token = ++tokenRef.current; // invalidate any earlier in-flight response
     if (!userId) {
-      setUnreadCount(0);
+      setUnreadState({ ownerUserId: null, count: 0 });
       return;
     }
     inAppNotificationService
       .unreadCount()
       .then((n) => {
         if (token !== tokenRef.current) return; // a newer refresh (or a user change) superseded this one
-        setUnreadCount(Number.isFinite(n) && n > 0 ? n : 0);
+        setUnreadState({ ownerUserId: userId, count: Number.isFinite(n) && n > 0 ? n : 0 });
       })
       .catch(() => {
         /* non-blocking — a failed count never breaks a header */
@@ -49,7 +54,7 @@ export function NotificationUnreadProvider({ children }: { children: ReactNode }
   // discard A's in-flight response (token bump inside refresh), then fetch for the current user.
   useEffect(() => {
     tokenRef.current += 1;
-    setUnreadCount(0);
+    setUnreadState({ ownerUserId: userId, count: 0 });
     refresh();
   }, [userId, refresh]);
 
@@ -62,8 +67,9 @@ export function NotificationUnreadProvider({ children }: { children: ReactNode }
     return () => sub.remove();
   }, [refresh]);
 
-  const markOneRead = useCallback(() => setUnreadCount((c) => Math.max(0, c - 1)), []);
-  const markAllRead = useCallback(() => setUnreadCount(0), []);
+  const markOneRead = useCallback(() => setUnreadState((s) =>
+    s.ownerUserId === userId ? { ...s, count: Math.max(0, s.count - 1) } : { ownerUserId: userId, count: 0 }), [userId]);
+  const markAllRead = useCallback(() => setUnreadState({ ownerUserId: userId, count: 0 }), [userId]);
 
   const value = useMemo<NotificationUnreadValue>(
     () => ({ unreadCount, refresh, markOneRead, markAllRead }),
