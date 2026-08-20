@@ -41,6 +41,18 @@ export function previousDecisionFrom(vm: StructuredConsultationViewModel | undef
   };
 }
 
+/** Extract the previous decision directly from a server-loaded decisionMeta (Sprint E live path). */
+export function previousDecisionFromMeta(meta: ConsultationDecisionMeta | null | undefined): PreviousDecision | null {
+  if (!meta) return null;
+  return {
+    polarity: meta.polarity,
+    resolvedGranularity: meta.resolvedGranularity,
+    resolvedTargets: meta.resolvedTargets,
+    decisionMeta: meta,
+    hasComparisonSet: meta.resolvedTargets.length >= 2,
+  };
+}
+
 export type FollowUpIntent = 'WHY' | 'NEXT_YEAR' | 'BETWEEN_CANDIDATES' | 'WHEN' | 'NONE';
 
 /** Deterministically classify a follow-up question into one of the minimum V1 intents. */
@@ -77,5 +89,38 @@ export function resolveFollowUpAction(intent: FollowUpIntent, previous: Previous
       return { kind: 'DEFER_V1_1' };
     default:
       return { kind: 'NONE' };
+  }
+}
+
+const POLARITY_LABEL: Record<PolarityTier, string> = {
+  FAVORABLE: '좋은 편', STEADY: '무난한 편', DYNAMIC: '변화가 많은 편', CAUTION: '조심이 필요한 편',
+};
+
+/**
+ * Build a system directive that applies a follow-up action to the CURRENT consultation turn (Sprint E).
+ * Only appended when there is a recoverable previous decision — it never fabricates candidates from prose.
+ * Returns null for NONE / DEFER_V1_1 (the normal path handles those).
+ */
+export function renderFollowUpDirective(action: FollowUpAction, previous: PreviousDecision | null): string | null {
+  switch (action.kind) {
+    case 'EXPLAIN_PREVIOUS': {
+      const parts = [
+        '[후속 지침 — "왜?"] 새로운 결론을 새로 만들지 마십시오. 앞선 상담의 결론을 그대로 두고, 그렇게 본 이유만 설명하십시오.',
+      ];
+      if (previous?.polarity) parts.push(`앞선 결론의 전반 흐름은 "${POLARITY_LABEL[previous.polarity]}"였습니다 — 이 방향을 바꾸지 마십시오.`);
+      if (action.versionMismatch) {
+        parts.push('저장된 이전 판단을 그대로 설명하고, 지금 규칙으로 다시 계산해 다른 결론을 내지 마십시오.');
+      }
+      return parts.join(' ');
+    }
+    case 'RECALC_NEXT_YEAR': {
+      const dom = previous?.decisionMeta?.domain && previous.decisionMeta.domain !== '전반' ? previous.decisionMeta.domain : null;
+      return `[후속 지침 — "그럼 내년은?"] ${dom ? `앞선 주제(${dom})를 이어서 ` : ''}내년(다음 해)의 흐름을 새로 설명하십시오. 앞선 해의 결론을 그대로 옮기지 말고, 내년 근거에 따라 판단하십시오.`;
+    }
+    case 'DESCRIBE_CANDIDATES_NO_WINNER':
+      if (action.candidates.length < 2) return null; // no recoverable candidate set → normal path
+      return '[후속 지침 — "둘 중에는?"] 앞서 살펴본 후보들을 각각 설명하되, 한쪽을 승자/1순위로 고르거나 더 낫다고 단정하지 마십시오. 지금 규칙으로는 한쪽을 우열로 정하지 않습니다.';
+    default:
+      return null;
   }
 }

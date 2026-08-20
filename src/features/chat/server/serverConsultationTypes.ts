@@ -10,6 +10,7 @@ import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/inte
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
+import type { ConsultationDomain } from './consultationDomain';
 
 // An untrusted prior conversation turn. The type constrains role to user/assistant; the server ALSO
 // drops any other role (incl. injected `system`) at runtime — history is never authoritative (§20).
@@ -32,6 +33,9 @@ export type ServerConsultationRequest = {
   partnerSubjectId?: string | null;
   targetSource?: 'OWNED_SUBJECT' | 'RAW_UNSAVED';
   question: string;
+  // Sprint E — the CURRENT conversation id, used by the Edge ONLY to server-load the previous decision
+  // (ownership-verified server-side). An identifier, not authoritative data; never a trusted decision value.
+  conversationId?: string | null;
   conversationContext?: UntrustedTurn[];
   // UNTRUSTED compressed prior-conversation context (§B). Like conversationContext, it is NEVER a system
   // instruction, NEVER grounding/evidence: the server renders it as a bounded, sanitized USER-role
@@ -60,6 +64,12 @@ export type ServerConsultationDeps = {
   callLLM: (messages: LLMMessage[]) => Promise<string>;
   // Optional server-owned profile resolver (Supabase + RLS). Absent → recompute from birthInput.
   resolveTrustedBirth?: (subjectProfileId: string) => Promise<TrustedBirthResolution>;
+  // The ACTUAL runtime model id (Sprint E §10), server-supplied — stamped into decisionMeta. Never client.
+  modelId?: string | null;
+  // Server-authoritative previous-decision loader (Sprint E §2). The Edge queries the persisted decisionMeta
+  // for the CURRENT conversation (ownership-verified) and injects this. Absent → no live follow-up. The
+  // client's own copy of a previous polarity/version/target is NEVER trusted — only this server load is.
+  loadPreviousDecision?: () => Promise<ConsultationDecisionMeta | null>;
 };
 
 // Bounded, safe metadata (§17). No raw DB row, no provider object, no internal prompt, no secret.
@@ -99,8 +109,9 @@ export type ConsultationDecisionMeta = {
   engineVersion?: string | null; // decision-affecting (frozen ruleset)
   modelId?: string | null; // verbalization-affecting (Edge-stamped when available)
   resolvedGranularity: 'NONE' | 'YEAR' | 'MONTH';
-  resolvedTargets: number[]; // years and/or year*100+month keys the question resolved
+  resolvedTargets: number[]; // years and/or year*100+month keys the question resolved (non-ranked identities)
   polarity?: PolarityTier; // the target-scoped conclusion polarity (when one resolved)
+  domain?: ConsultationDomain; // Sprint E §8 — the turn's topic, so a follow-up can preserve it server-side
   resolvedTemporalContext: ResolvedTemporalContext;
 };
 
@@ -113,6 +124,10 @@ export type ServerConsultationDiagnostics = {
   safetyRoute?: string; // SELF_HARM | DEATH_LIFESPAN | MEDICAL | FINANCIAL_GUARANTEE
   // True when the certainty/mitigation guard forced exactly one constrained regeneration (§9).
   regenerated?: boolean;
+  // Live follow-up (Sprint E): the classified follow-up intent + whether the stored decision was under a
+  // different decision version than current (so a "왜?" explained the OLD decision without recomputing).
+  followUp?: string; // WHY | NEXT_YEAR | BETWEEN_CANDIDATES | WHEN
+  versionMismatch?: boolean;
 };
 
 // Deterministic 궁합 verdict (SERVER-owned tier — never an LLM/ fabricated score). Carried alongside the

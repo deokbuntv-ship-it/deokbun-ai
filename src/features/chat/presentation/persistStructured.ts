@@ -14,6 +14,7 @@ import { toConsumerAssessmentView } from '@/features/intelligence/presentation/a
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 import type { ConsultationDecisionMeta } from '@/features/chat/server/serverConsultationTypes';
+import { parseDecisionMeta } from '@/features/chat/server/decisionMeta';
 
 export type PersistedStructured = {
   coreSummary?: string;
@@ -36,37 +37,6 @@ export type PersistedStructured = {
 const POLARITY_TIERS: readonly PolarityTier[] = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
 const polarityTier = (v: unknown): PolarityTier | undefined =>
   typeof v === 'string' && (POLARITY_TIERS as readonly string[]).includes(v) ? (v as PolarityTier) : undefined;
-const numArray = (v: unknown): number[] => (Array.isArray(v) ? v.filter((n): n is number => typeof n === 'number') : []);
-
-// Fail-closed parse of the persisted decision meta (Sprint D §D1). Malformed → undefined (never a silent
-// default that pretends a legacy row used the current versions).
-function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefined {
-  if (v === null || typeof v !== 'object') return undefined;
-  const o = v as Record<string, unknown>;
-  if (typeof o.answerPlanVersion !== 'string' || typeof o.decisionPolicyVersion !== 'string' || typeof o.promptVersion !== 'string') return undefined;
-  if (o.resolvedGranularity !== 'NONE' && o.resolvedGranularity !== 'YEAR' && o.resolvedGranularity !== 'MONTH') return undefined;
-  const rtc = o.resolvedTemporalContext as Record<string, unknown> | null;
-  if (rtc === null || typeof rtc !== 'object' || typeof rtc.anchorEpochSeconds !== 'number') return undefined;
-  const p = polarityTier(o.polarity);
-  return {
-    answerPlanVersion: o.answerPlanVersion,
-    decisionPolicyVersion: o.decisionPolicyVersion,
-    promptVersion: o.promptVersion,
-    ...(typeof o.engineVersion === 'string' ? { engineVersion: o.engineVersion } : {}),
-    ...(typeof o.modelId === 'string' ? { modelId: o.modelId } : {}),
-    resolvedGranularity: o.resolvedGranularity,
-    resolvedTargets: numArray(o.resolvedTargets),
-    ...(p ? { polarity: p } : {}),
-    resolvedTemporalContext: {
-      anchorEpochSeconds: rtc.anchorEpochSeconds,
-      timezone: 'Asia/Seoul',
-      referenceYear: typeof rtc.referenceYear === 'number' ? rtc.referenceYear : null,
-      referenceMonth: typeof rtc.referenceMonth === 'number' ? rtc.referenceMonth : null,
-      resolvedTargets: numArray(rtc.resolvedTargets),
-      qimenActive: rtc.qimenActive === true,
-    },
-  };
-}
 
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim().length > 0 ? v : undefined;

@@ -46,6 +46,7 @@ export {
   MAX_REQUEST_BODY_CHARS,
   MAX_REQUEST_BODY_BYTES,
 } from './inputBounds';
+export { buildConsultationDecisionMeta, isDecisionVersionMismatch, parseDecisionMeta } from './decisionMeta';
 export { runCanonicalGeneration, runIdempotentPaidRequest } from './economicGuards';
 export type {
   CanonicalGenerationResult,

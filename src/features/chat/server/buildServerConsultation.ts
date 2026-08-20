@@ -38,9 +38,16 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
+import {
+  classifyFollowUpIntent,
+  previousDecisionFromMeta,
+  renderFollowUpDirective,
+  resolveFollowUpAction,
+} from '@/features/chat/services/followUpContext';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
 import type {
+  ConsultationDecisionMeta,
   ServerConsultationDeps,
   ServerConsultationDiagnostics,
   ServerConsultationRequest,
@@ -183,6 +190,28 @@ export async function buildServerConsultation(
     grounding = GROUNDING_UNAVAILABLE;
   }
 
+  // 2b) LIVE FOLLOW-UP (Sprint E). Safety already ran and precedes everything (§13). When the CURRENT
+  //     question is a follow-up AND the Edge supplied a SERVER-loaded previous decision (never client-
+  //     trusted), apply the deterministic follow-up action as an appended directive: "왜?" explains the
+  //     STORED conclusion (no new decision, even under a version mismatch); "그럼 내년은?" carries the prior
+  //     domain onto the NEW next-year target (polarity re-derived by the normal target-scoped path);
+  //     "둘 중에는?" describes the prior candidates with NO winner (Option B). "그럼 언제?" stays deferred.
+  const followUpIntent = classifyFollowUpIntent(question);
+  let followUpDirective: string | null = null;
+  let followUpVersionMismatch = false;
+  if (followUpIntent !== 'NONE' && deps.loadPreviousDecision) {
+    let prevMeta: ConsultationDecisionMeta | null = null;
+    try {
+      prevMeta = await deps.loadPreviousDecision();
+    } catch {
+      prevMeta = null;
+    }
+    const previous = previousDecisionFromMeta(prevMeta);
+    const action = resolveFollowUpAction(followUpIntent, previous);
+    if (action.kind === 'EXPLAIN_PREVIOUS') followUpVersionMismatch = action.versionMismatch;
+    followUpDirective = renderFollowUpDirective(action, previous);
+  }
+
   // 3) SERVER-owned prompt. buildPrompt hardcodes the system layers + puts each history turn's role from
   //    the (already sanitized) message, so no client-authored system block can enter.
   const recentMessages = sanitizeConversation(request.conversationContext);
@@ -193,20 +222,22 @@ export async function buildServerConsultation(
   // permissions. Reads only deterministic anchors; never authorizes an ungrounded claim.
   let effectiveGrounding = grounding;
   let plan = deriveAnswerPlan(question, effectiveGrounding);
-  // One message builder reused for the first attempt AND the single constrained regeneration (§9), so the
-  // strengthened directive rides the exact same server-authored prompt.
-  const buildMessages = (extraDirective?: string) =>
-    buildPrompt({
+  // One message builder reused for the first attempt AND the single constrained regeneration (§9); the
+  // follow-up directive (when present) rides the exact same server-authored prompt.
+  const buildMessages = (extraDirective?: string) => {
+    const base = followUpDirective
+      ? `${renderAnswerPlanDirective(plan)}\n${followUpDirective}`
+      : renderAnswerPlanDirective(plan);
+    return buildPrompt({
       selectedContext,
       conversationSummary: request.conversationSummary ?? null,
       recentMessages,
       currentUserMessage: question,
       mode,
       grounding: effectiveGrounding,
-      answerPlanDirective: extraDirective
-        ? `${renderAnswerPlanDirective(plan)}\n${extraDirective}`
-        : renderAnswerPlanDirective(plan),
+      answerPlanDirective: extraDirective ? `${base}\n${extraDirective}` : base,
     });
+  };
 
   let messages;
   try {
@@ -250,7 +281,7 @@ export async function buildServerConsultation(
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(plan, effectiveGrounding, resolvedTemporalContext);
+  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null);
   const structuredResult =
     outcome.kind === 'ACCEPTED'
       ? {
@@ -272,6 +303,8 @@ export async function buildServerConsultation(
     outputClassification: outcome.kind,
     ...(guard.regenerated ? { regenerated: true } : {}),
     ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
+    ...(followUpIntent !== 'NONE' ? { followUp: followUpIntent } : {}),
+    ...(followUpVersionMismatch ? { versionMismatch: true } : {}),
     ...(outcome.kind === 'ACCEPTED'
       ? {}
       : {

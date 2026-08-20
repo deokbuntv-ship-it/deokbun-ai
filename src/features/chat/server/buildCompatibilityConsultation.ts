@@ -301,7 +301,7 @@ export async function buildCompatibilityConsultation(
   // Server-owned polarity + decision/audit meta injection (Sprint C §8 / Sprint D §D1). For 궁합 the solo
   // year-flow polarity is normally absent (the pair tier is the compatibility meta).
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(plan, safeGrounding, resolvedTemporalContext);
+  const decisionMeta = buildConsultationDecisionMeta(question, plan, safeGrounding, resolvedTemporalContext, deps.modelId ?? null);
   const structuredResult =
     outcome.kind === 'ACCEPTED'
       ? {

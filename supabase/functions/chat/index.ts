@@ -35,6 +35,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 import {
   buildServerConsultation,
   buildCompatibilityConsultation,
+  parseDecisionMeta,
   buildTodayFortune,
   dailyFortuneResponseFormat,
   buildMonthlyFortune,
@@ -542,6 +543,10 @@ type ConsultationRequestBody = {
   question?: unknown;
   conversationContext?: unknown;
   conversationSummary?: unknown;
+  // Sprint E — the CURRENT conversation id, used ONLY to server-load the previous decision (ownership-
+  // verified below). It is an identifier, not authoritative decision data; the client's own copy of a
+  // previous polarity/version/target is never trusted.
+  conversationId?: unknown;
   requestMetadata?: { clientQuestionTimeEpoch?: number | null; requestId?: string | null } | null;
   // 궁합(compatibility) mode: the partner's untrusted birth INPUT (server recomputes the pair). Absent →
   // the existing single-subject consultation path is used unchanged.
@@ -1011,6 +1016,34 @@ export default {
         const conversationSummary =
           typeof body.conversationSummary === 'string' ? body.conversationSummary : null;
         // 궁합(compatibility) mode routes to the pairwise orchestrator (SAME one-LLM-call boundary + validator);
+        // Sprint E — SERVER-AUTHORITATIVE previous-decision loader for live follow-ups (solo path). Ownership
+        // is verified (the conversation must belong to this user) BEFORE reading the latest assistant row's
+        // persisted decisionMeta. Fail-clean: any gap → undefined → no follow-up (normal behavior).
+        const conversationId =
+          typeof body.conversationId === 'string' && body.conversationId.length > 0 ? body.conversationId : null;
+        const loadPreviousDecision =
+          admin && userId && conversationId
+            ? async () => {
+                try {
+                  const { data: conv } = await admin
+                    .from('conversations').select('id').eq('id', conversationId).eq('user_id', userId).maybeSingle();
+                  if (!conv) return null; // not the caller's conversation → never leak another user's decision
+                  const { data: msg } = await admin
+                    .from('conversation_messages')
+                    .select('structured_result')
+                    .eq('conversation_id', conversationId)
+                    .eq('role', 'assistant')
+                    .order('seq', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                  const sr = (msg as { structured_result?: { decisionMeta?: unknown } } | null)?.structured_result;
+                  return parseDecisionMeta(sr?.decisionMeta) ?? null;
+                } catch {
+                  return null;
+                }
+              }
+            : undefined;
+
         // solo path is unchanged. Both return the identical ServerConsultationResult shape.
         const result =
           body.consultationMode === 'compatibility'
@@ -1033,6 +1066,7 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
+                  modelId: model, // Sprint E §10 — actual runtime model id into decisionMeta
                 },
               )
             : await buildServerConsultation(
@@ -1051,6 +1085,8 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
+                  modelId: model, // Sprint E §10 — actual runtime model id into decisionMeta
+                  ...(loadPreviousDecision ? { loadPreviousDecision } : {}),
                 },
               );
 

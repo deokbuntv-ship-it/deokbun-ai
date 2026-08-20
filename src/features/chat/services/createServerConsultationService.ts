@@ -68,6 +68,7 @@ export function createServerConsultationService(
     try {
       const result = await transport.requestConsultation({
         question: trimmedUserMessage,
+        ...(input.conversationId ? { conversationId: input.conversationId } : {}),
         conversationContext,
         // Recent turns + the compressed summary of OLDER turns (§26) — so long conversations don't
         // re-send the whole history. UNTRUSTED: the server renders it as a bounded, sanitized user

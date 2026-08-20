@@ -334,6 +334,7 @@ export default function ChatScreen() {
         draft,
         messages: context,
         conversationMemory,
+        ...(activeConversationId ? { conversationId: activeConversationId } : {}),
         ...(retryRequestId ? { requestId: retryRequestId } : {}),
       });
 

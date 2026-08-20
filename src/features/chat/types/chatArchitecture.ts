@@ -95,6 +95,9 @@ export type ChatServiceInput = {
   conversationMemory: ConversationMemoryState;
   // A retry reuses the first attempt's opaque id so the Edge can return the completed response at 0 LLM.
   requestId?: string;
+  // Sprint E — the CURRENT conversation id (when one exists), so the Edge can server-load the previous
+  // decision for a follow-up. An identifier only; never authoritative decision data.
+  conversationId?: string | null;
 };
 
 export type ChatServiceResult =
