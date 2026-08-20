@@ -244,9 +244,11 @@ export async function buildServerConsultation(
     },
   });
   const outcome = guard.outcome;
+  // SERVER-owned polarity is INJECTED into the structured result from the plan (Sprint C §8) — the LLM
+  // verbalizes the conclusion but never decides this machine value.
   const structuredResult =
     outcome.kind === 'ACCEPTED'
-      ? buildStructuredConsultationResult(outcome.result, effectiveGrounding)
+      ? { ...buildStructuredConsultationResult(outcome.result, effectiveGrounding), ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}) }
       : undefined;
   const text =
     outcome.kind === 'ACCEPTED'

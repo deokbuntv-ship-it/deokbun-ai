@@ -290,8 +290,12 @@ export async function buildCompatibilityConsultation(
     },
   });
   const outcome = guard.outcome;
+  // Server-owned polarity injection (Sprint C §8). For 궁합 the solo year-flow polarity is normally absent
+  // (the pair tier is the compatibility meta); the spread is a no-op when the plan has no polarity.
   const structuredResult =
-    outcome.kind === 'ACCEPTED' ? buildStructuredConsultationResult(outcome.result, safeGrounding) : undefined;
+    outcome.kind === 'ACCEPTED'
+      ? { ...buildStructuredConsultationResult(outcome.result, safeGrounding), ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}) }
+      : undefined;
   const text =
     outcome.kind === 'ACCEPTED'
       ? composeConsultationText(outcome.result)

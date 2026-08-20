@@ -27,13 +27,16 @@ const birth: BirthInfoDraft = {
   birthMinute: '0', approximateTimePeriod: null, birthPlace: '서울',
 };
 
-// A valid structured answer the LLM "returns" — grounded, no violations.
+// A valid structured answer the LLM "returns" — grounded, no violations. Carries a caution so it satisfies
+// the mitigation guard when the birth-derived server polarity is CAUTION (Sprint C §7) — a valid answer for
+// a cautionary flow always includes a practical direction.
 const GOOD_ANSWER = JSON.stringify({
   coreSummary: '차분한 흐름입니다.',
   coreInterpretation:
     '사주로 보면 일간을 중심으로 차분함과 추진력이 균형을 이루는 구조이며 월지의 기운과 십신 배치가 이를 뒷받침합니다. ' +
     '꾸준히 쌓아 올리면 좋고 조급하게 서두르면 흐름이 흐트러지기 쉬우니 속도를 조절하는 편이 좋습니다.',
   strengths: ['끈기'],
+  cautions: ['조급하게 서두르기보다 속도를 조절하는 편이 좋습니다.'],
   followUps: ['어떤 방식이 맞을까요?'],
 });
 

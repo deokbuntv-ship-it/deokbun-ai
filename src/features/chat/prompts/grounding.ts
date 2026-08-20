@@ -11,6 +11,7 @@
 // the myungri/ziwei/qimen triplet from `@/features/analysis` — it introduces NO new
 // evidence/assessment model. Codex owns the SEMANTICS that fill `summary`.
 import type { EngineEvidence } from '@/features/analysis';
+import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 export type GroundingUnavailableReason =
   | 'engine_not_connected' // pipeline not wired yet (current default)
@@ -36,6 +37,10 @@ export type ConsultationGrounding =
       assessmentSummary?: string | null;
       engineVersion?: string | null; // Codex-supplied when wired (§37)
       assessmentVersion?: string | null;
+      // SERVER-owned overall polarity (Sprint C §5): the shared kernel's categorical tier over the current
+      // 세운 relations, annotated by the grounding builder. Categorical only — never a numeric score. The
+      // Answer Plan READS it; the prompt renderer does NOT expose it (no harmony/friction reaches the LLM).
+      polarity?: PolarityTier | null;
     };
 
 // The current, honest default: no verified calculation is connected.
@@ -200,8 +205,13 @@ export function toSafeGrounding(g: ConsultationGrounding | null | undefined): Co
   if (g.assessmentVersion !== undefined && g.assessmentVersion !== null && typeof g.assessmentVersion !== 'string') {
     return GROUNDING_UNAVAILABLE;
   }
+  if (g.polarity !== undefined && g.polarity !== null && !(POLARITY_TIER_VALUES as readonly string[]).includes(g.polarity)) {
+    return GROUNDING_UNAVAILABLE;
+  }
   return g;
 }
+
+const POLARITY_TIER_VALUES: readonly PolarityTier[] = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
 
 /**
  * Render the grounding as a prompt CONTEXT block (a system message body).

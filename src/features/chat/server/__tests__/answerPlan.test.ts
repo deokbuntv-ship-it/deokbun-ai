@@ -32,20 +32,20 @@ describe('deriveAnswerPlan — the server owns the decision', () => {
     expect(p.comparisonSupported).toBe(false);
   });
 
-  it('month-vs-month with BOTH grounded → COMPARISON, comparisonSupported, VERY_STRONG', () => {
+  it('month-vs-month with BOTH grounded → comparisonSupported (candidate capability), but STRONG not VERY_STRONG (Option B — no winner)', () => {
     const p = deriveAnswerPlan('2027년 2월이 좋아 5월이 좋아?', g([2026, 2027], [202702, 202705]));
     expect(p.intents).toContain('COMPARISON');
-    expect(p.comparisonSupported).toBe(true);
+    expect(p.comparisonSupported).toBe(true); // candidates ARE grounded (discuss each) …
     expect(p.supportLevel).toBe('DIRECT');
-    expect(p.assertiveness).toBe('VERY_STRONG');
+    expect(p.assertiveness).toBe('STRONG'); // … but permission never escalates certainty to VERY_STRONG
   });
 
-  it('BEST month over 12 grounded → RANKING, rankingSupported, VERY_STRONG', () => {
+  it('BEST month over 12 grounded → rankingSupported (candidate capability), STRONG not VERY_STRONG (Option B — no 1순위)', () => {
     const months = Array.from({ length: 12 }, (_, i) => 202701 + i);
     const p = deriveAnswerPlan('2027년에 이사 언제 하는 게 제일 좋아?', g([2027], months));
     expect(p.intents).toContain('RANKING');
     expect(p.rankingSupported).toBe(true);
-    expect(p.assertiveness).toBe('VERY_STRONG');
+    expect(p.assertiveness).toBe('STRONG');
   });
 
   it('month requested but NOT grounded, year IS → ALTERNATIVE, LIMITED (best-supported-alternative)', () => {
@@ -85,10 +85,15 @@ describe('deriveAnswerPlan — the server owns the decision', () => {
 });
 
 describe('renderAnswerPlanDirective — server decision → prompt (no field names leak to the user)', () => {
-  it('VERY_STRONG comparison → tells the model to pick the better option clearly', () => {
+  it('supported comparison → tells the model to DISCUSS each candidate, NOT pick a winner (Option B)', () => {
     const d = renderAnswerPlanDirective(deriveAnswerPlan('2027년 2월이 좋아 5월이 좋아?', g([2027], [202702, 202705])));
-    expect(d).toMatch(/더 나은 쪽|1순위|분명/);
     expect(d).toContain('결론을 맨 먼저');
+    expect(d).toMatch(/나란히 설명|각 후보/); // discuss each
+    expect(d).toMatch(/단정하지/); // no winner
+    // The winner-authorizing phrasings from the old VERY_STRONG/comparison directive are GONE.
+    expect(d).not.toContain('더 나은 쪽을 고르십시오');
+    expect(d).not.toContain('1순위 또는 상위 그룹을 제시');
+    expect(d).not.toContain('1순위로 추천');
   });
 
   it('EVENT_PREDICTION → tells the model NOT to guarantee the event, answer suitability instead', () => {

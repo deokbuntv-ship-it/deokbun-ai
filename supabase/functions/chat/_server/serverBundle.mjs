@@ -2,7 +2,7 @@
 // Regenerate: node supabase/functions/chat/_server/build.mjs
 
 // src/features/chat/prompts/consultationPromptVersion.ts
-var CONSULTATION_PROMPT_VERSION = "consultation@1.4.1";
+var CONSULTATION_PROMPT_VERSION = "consultation@1.4.2";
 
 // src/features/chat/prompts/consultationMode.ts
 var FOLLOW_UP_CUES = /(그중|그 중|그때|그 때|그럼|그러면|그건|그 시기|그 달|아까|방금|위에서|말한 것 중|어느 쪽)/;
@@ -145,8 +145,12 @@ function toSafeGrounding(g) {
   if (g.assessmentVersion !== void 0 && g.assessmentVersion !== null && typeof g.assessmentVersion !== "string") {
     return GROUNDING_UNAVAILABLE;
   }
+  if (g.polarity !== void 0 && g.polarity !== null && !POLARITY_TIER_VALUES.includes(g.polarity)) {
+    return GROUNDING_UNAVAILABLE;
+  }
   return g;
 }
+var POLARITY_TIER_VALUES = ["FAVORABLE", "STEADY", "DYNAMIC", "CAUTION"];
 function renderGroundingContext(grounding) {
   if (grounding.status === "unavailable") {
     return [
@@ -740,6 +744,37 @@ function selectConsultationContext(draft) {
     birthTimeAccuracy,
     inputCalendar: birthInfo.calendarType === "lunar" ? "LUNAR" : "SOLAR"
   };
+}
+
+// src/features/polarity/polarityKernel.ts
+var HARMONY_BRANCH = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
+var FRICTION_BRANCH = /* @__PURE__ */ new Set([
+  "BRANCH_CLASH",
+  "BRANCH_PUNISHMENT",
+  "BRANCH_SELF_PUNISHMENT",
+  "BRANCH_DESTRUCTION",
+  "BRANCH_HARM"
+]);
+function valenceFromRelations(rel) {
+  let harmony = 0;
+  let friction = 0;
+  for (const s of rel.stem) {
+    if (s.relation.kind === "STEM_COMBINATION") harmony += 1;
+    else if (s.relation.kind === "STEM_CLASH") friction += 1;
+  }
+  for (const b of rel.branch) {
+    if (HARMONY_BRANCH.has(b.relation.kind)) harmony += 1;
+    else if (FRICTION_BRANCH.has(b.relation.kind)) friction += 1;
+  }
+  return { harmony, friction };
+}
+function polarityTierFromValence(harmony, friction) {
+  if (friction === 0) return harmony >= 1 ? "FAVORABLE" : "STEADY";
+  return harmony >= friction ? "DYNAMIC" : "CAUTION";
+}
+function derivePolarity(rel) {
+  const evidence = valenceFromRelations(rel);
+  return { tier: polarityTierFromValence(evidence.harmony, evidence.friction), evidence };
 }
 
 // src/features/interpretation/contracts/sajuRules.ts
@@ -7471,9 +7506,9 @@ async function buildMyungriEvidence(draft, deps, question) {
     digestProvider: deps.digestProvider,
     historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
   });
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
   const engineResult = execution.engineResult;
-  if (engineResult.status === "UNAVAILABLE") return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null };
+  if (engineResult.status === "UNAVAILABLE") return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
   const fourPillars = engineResult.output.fourPillars;
   const natal = natalContextFromFourPillars(fourPillars);
   const natalRelations = calculateNatalRelations(natal);
@@ -7533,7 +7568,8 @@ async function buildMyungriEvidence(draft, deps, question) {
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null
   });
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion };
+  const polarity = sewoon.capability === "AVAILABLE" ? derivePolarity(sewoon.relationsToNatal).tier : null;
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, polarity };
 }
 async function buildConsultationGrounding(draft, deps, question) {
   if (draft.subject === null || draft.birthInfo === null) {
@@ -7542,7 +7578,7 @@ async function buildConsultationGrounding(draft, deps, question) {
   const withBirth = draft;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(
+  const { evidence: myungri, engineVersion: myungriVersion, polarity: myungriPolarity } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? ""
@@ -7556,7 +7592,9 @@ async function buildConsultationGrounding(draft, deps, question) {
     status: "available",
     evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
-    engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION
+    engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
+    // SERVER-owned overall polarity (Sprint C §5) — present only when the current 세운 (Saju) is grounded.
+    ...myungriPolarity ? { polarity: myungriPolarity } : {}
   };
 }
 
@@ -7705,8 +7743,8 @@ function buildStructuredConsultationResult(parsed, grounding) {
 }
 
 // src/features/chat/server/answerPlan.ts
-var ANSWER_PLAN_VERSION = "answer-plan@1.0.0";
-var DECISION_POLICY_VERSION = "decision-policy@1.0.0";
+var ANSWER_PLAN_VERSION = "answer-plan@1.1.0";
+var DECISION_POLICY_VERSION = "decision-policy@1.1.0";
 var COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 var RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
 var EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
@@ -7737,6 +7775,7 @@ var referenceYearOf = (g) => {
   }
   return null;
 };
+var polarityOf = (g) => g.status === "available" ? g.polarity ?? void 0 : void 0;
 function deriveAnswerPlan(question, grounding, mode = "solo") {
   const q = (question ?? "").trim();
   const refYear = referenceYearOf(grounding);
@@ -7792,10 +7831,11 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
   const comparisonSupported = isCompare && groundedCandidates >= 2;
   const rankingSupported = isRanking && groundedCandidates >= 2;
   let assertiveness = "LIMITED";
-  if (supportLevel === "DIRECT") assertiveness = comparisonSupported || rankingSupported ? "VERY_STRONG" : "STRONG";
+  if (supportLevel === "DIRECT") assertiveness = "STRONG";
   else if (supportLevel === "PARTIAL") assertiveness = "MODERATE";
   else if (supportLevel === "ALTERNATIVE") assertiveness = "LIMITED";
   else assertiveness = "LIMITED";
+  const polarity = polarityOf(grounding);
   return {
     mode,
     intents,
@@ -7806,30 +7846,43 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
     comparisonSupported,
     rankingSupported,
     forbidEventCertainty: intents.includes("EVENT_PREDICTION"),
-    // V1: no deterministic polarity signal exists yet (the kernel is a later sprint), so we never assert a
-    // cautionary conclusion here. Kept explicit so the enforcement path is wired + testable today.
-    requireMitigation: false
+    requireMitigation: polarity === "CAUTION",
+    ...polarity ? { polarity } : {}
   };
 }
 var ASSERTIVENESS_LINE = {
-  VERY_STRONG: '근거가 충분합니다. 결론과 추천/비교를 분명하게 말하십시오(예: "5월을 1순위로 추천합니다", "이쪽이 더 낫습니다"). 흐리지 마십시오.',
+  // VERY_STRONG is no longer produced (Sprint C §10/§11 — comparison/ranking no longer escalates certainty).
+  // Kept for the type; deliberately winner-free so no directive can authorize choosing a winner/1순위.
+  VERY_STRONG: "근거가 충분합니다. 결론을 분명하게 말하십시오. 습관적으로 유보하지 마십시오.",
   STRONG: '근거가 뒷받침됩니다. 결론을 분명하게 말하십시오(예: "추천합니다", "좋은 시기입니다"). 습관적으로 유보하지 마십시오.',
   MODERATE: '근거가 부분적입니다. "상대적으로 유리한 편", "우선 후보" 정도로 방향은 주되 과도한 단정은 피하십시오.',
   LIMITED: "요청한 정확한 범위의 근거는 부족합니다. 확인 가능한 더 넓은 범위로 분명히 답하고 대안을 제시하되, 없는 근거를 지어내지 마십시오."
+};
+var POLARITY_TONE = {
+  FAVORABLE: "전반적인 흐름은 좋은 편입니다",
+  STEADY: "전반적인 흐름은 무난한 편입니다",
+  DYNAMIC: "전반적인 흐름은 변화가 많은 편입니다",
+  CAUTION: "전반적인 흐름은 조심이 필요한 편입니다"
 };
 function renderAnswerPlanDirective(plan) {
   const lines = ["[상담 지침 — 서버 판단(사용자에게 그대로 노출하지 말 것)]"];
   lines.push("· 사용자는 답을 찾으러 왔습니다. 결론을 맨 먼저, 근거 범위 안에서 가능한 한 분명하게 말하십시오.");
   lines.push(`· ${ASSERTIVENESS_LINE[plan.assertiveness]}`);
+  if (plan.polarity) {
+    lines.push(`· ${POLARITY_TONE[plan.polarity]}(서버가 판단한 전반 흐름). 이 방향과 어긋나게 서술하지 말되, 없는 근거로 과장하지도 마십시오.`);
+  }
+  if (plan.requireMitigation) {
+    lines.push('· 주의가 필요한 흐름입니다. 두려움만 남기지 말고, 실질적으로 대처·관리할 방향을 최소 한 가지 "주의할 점"에 함께 제시하십시오.');
+  }
   if (plan.mode === "compatibility") {
     lines.push('· 이 상담은 두 사람의 "궁합"입니다. 한 사람만 풀이하지 말고, 두 사람 사이에서 무엇이 잘 맞고(강점) 무엇이 부딪히는지(마찰), 그래서 이 관계를 어떻게 가져가면 좋은지를 관계 중심으로 답하십시오.');
     lines.push('· 근거가 분명하면 "전체적으로 잘 맞는 편입니다"처럼 분명하게, 섞여 있으면 강점과 마찰을 함께 짚고, 근거가 약하면 가장 가까운 유효한 관계 해석을 주십시오. "궁합은 여러 요소에 따라 다릅니다"로 끝내지 마십시오.');
     lines.push('· 관계의 결과(결혼 성공/이별/바람 등)를 사건으로 확정하지 마십시오. 대신 두 사람의 결이 맞는 정도(적합도)와 조율 포인트로 답하십시오. "헤어져야 한다 / 결혼하면 실패한다 / 이 사람은 나쁜 사람이다"처럼 단정하지 마십시오.');
     lines.push('· 상대의 속마음을 사실로 단정하지 마십시오(예: "상대는 당신을 사랑합니다"). 관계의 흐름·표현 방식·(질문에 시점이 있으면) 타이밍으로 설명하고, 알 수 없는 내면은 구분해 말하십시오.');
   }
-  if (plan.comparisonSupported) lines.push("· 비교 근거가 충분합니다. 두 후보를 실제로 비교해 더 나은 쪽을 고르십시오(근거가 팽팽하면 그렇다고 말하십시오).");
-  else if (plan.intents.includes("COMPARISON")) lines.push("· 비교 근거가 충분하지 않습니다. 한쪽을 승자로 단정하지 말고, 근거가 있는 범위까지만 답하십시오.");
-  if (plan.rankingSupported) lines.push("· 순위 근거(후보군)가 있습니다. 1순위 또는 상위 그룹을 제시하십시오. 없는 정밀 점수는 만들지 마십시오.");
+  if (plan.comparisonSupported) lines.push('· 두 후보 모두 근거를 확인할 수 있습니다. 각 후보의 특징과 유리한/유의할 지점을 나란히 설명하되, 지금 규칙으로는 한쪽을 "더 낫다/승자"로 단정하지 마십시오. 한쪽을 골라 달라는 질문이라도 "지금은 한쪽을 1순위로 단정하지 않는다"고 정직하게 밝히고 각 근거를 설명하십시오.');
+  else if (plan.intents.includes("COMPARISON")) lines.push("· 비교할 후보 근거가 충분하지 않습니다. 한쪽을 승자로 단정하지 말고, 근거가 있는 범위까지만 답하십시오.");
+  if (plan.rankingSupported) lines.push('· 여러 후보(시기)의 근거를 확인할 수 있습니다. 각 후보의 흐름을 설명하되, "1순위/가장 좋은 때"를 하나로 단정하지 마십시오. 순위·점수·등급을 만들지 마십시오.');
   else if (plan.intents.includes("RANKING")) lines.push('· 순위를 매길 후보군 근거가 부족합니다. "가장 좋다"를 하나로 단정하지 마십시오.');
   if (plan.forbidEventCertainty) lines.push('· 사건의 발생 자체를 확정하지 마십시오(예: "반드시 이사합니다"). 대신 시기 적합도로 답하십시오(예: "이사 시기를 고른다면 …는 좋은 후보입니다").');
   if (plan.supportLevel === "ALTERNATIVE") lines.push("· 요청한 세부 시점 대신, 근거가 있는 더 넓은 시기의 흐름으로 답하고 다음으로 좁힐 수 있음을 안내하십시오. 사용자에게 다시 물으라고 미루지 마십시오.");
@@ -8017,23 +8070,17 @@ function deriveCoverage(segments, primaryDomain, cautionDomain) {
   ];
   return { secondaryDomains, coverageOrder };
 }
-var HARMONY_BRANCH = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
-var FRICTION_BRANCH = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
-function tierFromTally(harmony, friction) {
-  return friction === 0 && harmony >= 1 ? "기회를 살리기 좋은 달" : friction === 0 ? "안정적으로 운영할 달" : harmony >= friction ? "변화가 많은 달" : "속도를 조절할 달";
-}
+var MONTHLY_TIER_BY_POLARITY = {
+  FAVORABLE: "기회를 살리기 좋은 달",
+  STEADY: "안정적으로 운영할 달",
+  DYNAMIC: "변화가 많은 달",
+  CAUTION: "속도를 조절할 달"
+};
 function deriveSegmentSignal(seg) {
-  let harmonyCount = 0;
-  let frictionCount = 0;
-  for (const s of seg.relationsToNatal.stem) {
-    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
-    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
-  }
-  for (const b of seg.relationsToNatal.branch) {
-    if (HARMONY_BRANCH.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
-  }
-  const tier = tierFromTally(harmonyCount, frictionCount);
+  const polarity = derivePolarity(seg.relationsToNatal);
+  const harmonyCount = polarity.evidence.harmony;
+  const frictionCount = polarity.evidence.friction;
+  const tier = MONTHLY_TIER_BY_POLARITY[polarity.tier];
   const strongestDomain = tenGodDomain(seg.stemTenGod);
   const cautionDomain = frictionCount > 0 ? tenGodDomain(seg.branchTenGod) : null;
   const primaryMode = derivePrimaryMode(tier, strongestDomain);
@@ -8662,7 +8709,7 @@ ${extraDirective}` : renderAnswerPlanDirective(plan)
     }
   });
   const outcome = guard.outcome;
-  const structuredResult = outcome.kind === "ACCEPTED" ? buildStructuredConsultationResult(outcome.result, effectiveGrounding) : void 0;
+  const structuredResult = outcome.kind === "ACCEPTED" ? { ...buildStructuredConsultationResult(outcome.result, effectiveGrounding), ...plan.polarity ? { conclusionPolarity: plan.polarity } : {} } : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
@@ -9260,7 +9307,7 @@ ${extraDirective}` : renderAnswerPlanDirective(plan),
     }
   });
   const outcome = guard.outcome;
-  const structuredResult = outcome.kind === "ACCEPTED" ? buildStructuredConsultationResult(outcome.result, safeGrounding) : void 0;
+  const structuredResult = outcome.kind === "ACCEPTED" ? { ...buildStructuredConsultationResult(outcome.result, safeGrounding), ...plan.polarity ? { conclusionPolarity: plan.polarity } : {} } : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
@@ -9774,8 +9821,12 @@ function deriveDomainSignals2(tone, strongestDomain, cautionDomain) {
   }
   return signals;
 }
-var HARMONY_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
-var FRICTION_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+var TODAY_TONE_BY_TIER = {
+  FAVORABLE: "좋은 흐름",
+  STEADY: "무난한 흐름",
+  DYNAMIC: "변화가 많은 날",
+  CAUTION: "조심해서 움직일 날"
+};
 function deriveDailyPlan(evidence) {
   const base = {
     fortuneDate: evidence.fortuneDate,
@@ -9800,18 +9851,10 @@ function deriveDailyPlan(evidence) {
       frictionCount: 0
     };
   }
-  const rel = evidence.dayLuck.relationsToNatal;
-  let harmonyCount = 0;
-  let frictionCount = 0;
-  for (const s of rel.stem) {
-    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
-    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
-  }
-  for (const b of rel.branch) {
-    if (HARMONY_BRANCH2.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH2.has(b.relation.kind)) frictionCount += 1;
-  }
-  const overallTone = frictionCount === 0 && harmonyCount >= 1 ? "좋은 흐름" : frictionCount === 0 ? "무난한 흐름" : harmonyCount >= frictionCount ? "변화가 많은 날" : "조심해서 움직일 날";
+  const polarity = derivePolarity(evidence.dayLuck.relationsToNatal);
+  const harmonyCount = polarity.evidence.harmony;
+  const frictionCount = polarity.evidence.friction;
+  const overallTone = TODAY_TONE_BY_TIER[polarity.tier];
   const strongestDomain = tenGodDomain2(evidence.dayStemTenGod);
   const cautionDomain = frictionCount > 0 ? tenGodDomain2(evidence.dayBranchTenGod) : null;
   const primaryMode = derivePrimaryMode2(overallTone, strongestDomain);

@@ -5,6 +5,7 @@
 // transition (초반/중반 이후). The tier comes from a TRANSPARENT harmony/friction tally, never a fabricated
 // numeric score (§14). All from evidence that already exists; no new engine semantics. Pure + tested. The LLM
 // verbalizes this plan; it NEVER chooses the tier / mode / domain status / transition.
+import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { MonthlyDomain, MonthlyFortuneEvidence, MonthlySegmentEvidence } from '@/features/monthly/engine/monthlyEvidence';
 
@@ -138,18 +139,14 @@ function deriveCoverage(
   return { secondaryDomains, coverageOrder };
 }
 
-const HARMONY_BRANCH = new Set(['BRANCH_SIX_COMBINATION', 'BRANCH_HALF_THREE_HARMONY']);
-const FRICTION_BRANCH = new Set(['BRANCH_CLASH', 'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT', 'BRANCH_DESTRUCTION', 'BRANCH_HARM']);
-
-function tierFromTally(harmony: number, friction: number): MonthlyOverallTier {
-  return friction === 0 && harmony >= 1
-    ? '기회를 살리기 좋은 달'
-    : friction === 0
-      ? '안정적으로 운영할 달'
-      : harmony >= friction
-        ? '변화가 많은 달'
-        : '속도를 조절할 달';
-}
+// Surface-specific wording for the shared categorical polarity tier. The tier DECISION is the kernel's
+// (identical to the previously inline tally); Monthly only maps it to its own label set.
+const MONTHLY_TIER_BY_POLARITY: Record<PolarityTier, MonthlyOverallTier> = {
+  FAVORABLE: '기회를 살리기 좋은 달',
+  STEADY: '안정적으로 운영할 달',
+  DYNAMIC: '변화가 많은 달',
+  CAUTION: '속도를 조절할 달',
+};
 
 type SegmentSignal = {
   weight: number;
@@ -163,17 +160,11 @@ type SegmentSignal = {
 };
 
 function deriveSegmentSignal(seg: MonthlySegmentEvidence): SegmentSignal {
-  let harmonyCount = 0;
-  let frictionCount = 0;
-  for (const s of seg.relationsToNatal.stem) {
-    if (s.relation.kind === 'STEM_COMBINATION') harmonyCount += 1;
-    else if (s.relation.kind === 'STEM_CLASH') frictionCount += 1;
-  }
-  for (const b of seg.relationsToNatal.branch) {
-    if (HARMONY_BRANCH.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
-  }
-  const tier = tierFromTally(harmonyCount, frictionCount);
+  // SHARED KERNEL: the segment's polarity tier + its harmony/friction evidence (was an inline tally here).
+  const polarity = derivePolarity(seg.relationsToNatal);
+  const harmonyCount = polarity.evidence.harmony;
+  const frictionCount = polarity.evidence.friction;
+  const tier = MONTHLY_TIER_BY_POLARITY[polarity.tier];
   const strongestDomain = tenGodDomain(seg.stemTenGod);
   const cautionDomain = frictionCount > 0 ? tenGodDomain(seg.branchTenGod) : null;
   const primaryMode = derivePrimaryMode(tier, strongestDomain);

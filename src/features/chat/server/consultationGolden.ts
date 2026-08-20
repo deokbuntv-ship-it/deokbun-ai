@@ -117,11 +117,12 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'F4', question: '지금 사람이랑 계속 만나는 게 나아 헤어지는 게 나아?', domain: '연애', shape: 'domain-comparison', scenario: AV([2026]),
     expect: { intents: ['COMPARISON'], comparisonSupported: false, supportLevel: 'DIRECT', assertivenessIn: ['STRONG'] } },
 
-  // ── G. month-vs-month comparison — BOTH grounded → supported / VERY_STRONG ; ONE grounded → not ──
+  // ── G. month-vs-month comparison — BOTH grounded → candidates supported / STRONG (Option B: discuss each,
+  //     NO server winner, Sprint C §9-§11) ; ONE grounded → not supported ──
   { id: 'G1', question: '2027년 3월이 좋아 7월이 좋아?', domain: '이사', shape: 'month-comparison', scenario: AV([2027], mo(2027, [3, 7]), 2027),
-    expect: { intents: ['COMPARISON'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', comparisonSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['COMPARISON'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', comparisonSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'G2', question: '2028년 5월 결혼 vs 2028년 11월 결혼 뭐가 좋아?', domain: '결혼', shape: 'month-comparison', scenario: AV([2028], mo(2028, [5, 11]), 2028),
-    expect: { intents: ['COMPARISON'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', comparisonSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['COMPARISON'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', comparisonSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'G3', question: '2027년 3월이랑 9월 중에 언제가 더 좋아?', domain: '이직', shape: 'month-comparison', scenario: AV([2027], mo(2027, [3]), 2027),
     expect: { intents: ['COMPARISON'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'PARTIAL', comparisonSupported: false, assertivenessIn: ['MODERATE'] } },
 
@@ -141,15 +142,16 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'J2', question: '2027년 6월 시험 붙을까?', domain: '시험', shape: 'month-alternative', scenario: AV([2027], [], 2027),
     expect: { intents: ['TIMING'], requestedGranularity: 'MONTH', resolvedGranularity: 'YEAR', supportLevel: 'ALTERNATIVE', assertivenessIn: ['LIMITED'] } },
 
-  // ── K. best-month ranking — all 12 grounded → supported / VERY_STRONG ; none grounded → alternative ──
+  // ── K. best-month ranking — all 12 grounded → candidates supported / STRONG (Option B: describe each,
+  //     NO 1순위/best manufactured, Sprint C §9-§11) ; none grounded → alternative ──
   { id: 'K1', question: '2027년에 이사 언제 하는 게 제일 좋아?', domain: '이사', shape: 'best-month', scenario: AV([2027], year12(2027), 2027),
-    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'K2', question: '그럼 언제가 좋아?', domain: '사업', shape: 'best-month', scenario: AV([2026], year12(2026), 2026),
-    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'K3', question: '2027년 상반기 중 이사 언제가 좋아?', domain: '이사', shape: 'best-month', scenario: AV([2027], mo(2027, [1, 2, 3, 4, 5, 6]), 2027),
-    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'K4', question: '2027년 하반기 재물운 어때?', domain: '재물', shape: 'best-month', scenario: AV([2027], mo(2027, [7, 8, 9, 10, 11, 12]), 2027),
-    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'MONTH', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'K5', question: '2027년 중에 재물운 가장 좋은 달이 언제야?', domain: '재물', shape: 'best-month-alternative', scenario: AV([2027], [], 2027),
     expect: { intents: ['RANKING'], requestedGranularity: 'MONTH', resolvedGranularity: 'YEAR', supportLevel: 'ALTERNATIVE', rankingSupported: false, assertivenessIn: ['LIMITED'] } },
   { id: 'K6', question: '언제 이직하는 게 가장 좋아?', domain: '직업', shape: 'best-month-alternative', scenario: AV([2026], [], 2026),
@@ -157,11 +159,11 @@ export const GOLDEN_CASES: GoldenCase[] = [
 
   // ── L. year comparison / best-year ──
   { id: 'L1', question: '2027년이 나아 2028년이 나아?', domain: '이직', shape: 'year-comparison', scenario: AV([2027, 2028], [], 2027),
-    expect: { intents: ['COMPARISON'], requestedGranularity: 'YEAR', resolvedGranularity: 'YEAR', supportLevel: 'DIRECT', comparisonSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['COMPARISON'], requestedGranularity: 'YEAR', resolvedGranularity: 'YEAR', supportLevel: 'DIRECT', comparisonSupported: true, assertivenessIn: ['STRONG'] } },
   { id: 'L2', question: '2027년하고 2028년 중 사업 확장은 어느 해가 더 좋아?', domain: '사업', shape: 'year-comparison', scenario: AV([2027], [], 2027),
     expect: { intents: ['COMPARISON', 'ACTION'], requestedGranularity: 'YEAR', resolvedGranularity: 'YEAR', supportLevel: 'PARTIAL', comparisonSupported: false, assertivenessIn: ['MODERATE'] } },
   { id: 'L3', question: '앞으로 3년 중 재물운이 가장 좋은 해는?', domain: '재물', shape: 'best-year', scenario: AV([2026, 2027, 2028], [], 2026),
-    expect: { intents: ['RANKING'], requestedGranularity: 'YEAR', resolvedGranularity: 'YEAR', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['VERY_STRONG'] } },
+    expect: { intents: ['RANKING'], requestedGranularity: 'YEAR', resolvedGranularity: 'YEAR', supportLevel: 'DIRECT', rankingSupported: true, assertivenessIn: ['STRONG'] } },
 
   // ── M. EVENT prediction — forbid event certainty, still a usable timing/suitability plan ──
   { id: 'M1', question: '2027년에 이사하게 될까?', domain: '이사', shape: 'event', scenario: AV([2026, 2027], [], 2026),

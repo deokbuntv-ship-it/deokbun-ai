@@ -17,4 +17,8 @@
 // 1.4.1 — Compatibility answer-quality refinement: relationship-specific follow-up examples (no generic
 // "더 궁금한 점?"), relationship-type adaptation (연인/친구/사업파트너/가족), and an explicit no-gender-
 // stereotype rule in the 궁합 response policy. Solo prompt/schema unchanged; compatibility-only wording.
-export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.1';
+// 1.4.2 — Sprint C directive change: the comparison/ranking directive no longer authorizes the model to
+// choose a winner / 1순위 (Option B — discuss each grounded candidate, no manufactured winner/order), and
+// the directive now relays the SERVER-owned overall polarity tone + a mitigation instruction on a CAUTION
+// conclusion. Same schema; the answer-shaping directive genuinely changed, so the prompt contract bumps.
+export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.2';

@@ -16,6 +16,7 @@
 //   • both unavailable                    → grounding `unavailable` (nothing fabricated)
 // qimen stays engine_not_connected (§28). Nothing is ever fabricated to fill a slot.
 import type { EngineEvidence } from '@/features/analysis';
+import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
 import type { ConsultationDraft, BirthInfoDraft } from '@/features/consultation';
 import {
   ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
@@ -89,7 +90,7 @@ export function buildQimenEvidence(question: string | undefined, questionEpochSe
   }
 }
 
-type MyungriOutcome = { evidence: EngineEvidence; engineVersion: string | null };
+type MyungriOutcome = { evidence: EngineEvidence; engineVersion: string | null; polarity: PolarityTier | null };
 
 /** Run the FROZEN Saju engine + Myungri facts. Fail-closed → calculation_failed (never throws up). */
 async function buildMyungriEvidence(
@@ -104,11 +105,11 @@ async function buildMyungriEvidence(
   });
 
   // Normalization/fingerprint failure (invalid/unsupported input) — no fabricated evidence.
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
   const engineResult = execution.engineResult;
   // Engine could not produce a chart (unsupported date / ambiguous boundary / unknown-time-on-
   // boundary all surface here) — fail-closed, never a fabricated pillar (§16).
-  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null };
+  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, polarity: null };
 
   // SUCCESS or PARTIAL (시주 미상) → derive the Myungri facts from the frozen chart (no new calc).
   const fourPillars = engineResult.output.fourPillars;
@@ -207,7 +208,14 @@ async function buildMyungriEvidence(
     timeAxis,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null,
   });
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion };
+
+  // SERVER-owned overall polarity (Sprint C §5): the shared kernel over the CURRENT 세운 relations — the
+  // year-flow analog of Today's day-pillar / Monthly's month-segment. Same rule, no new astrology semantics.
+  // Present only when the current 세운 is grounded; absent otherwise (never guessed).
+  const polarity: PolarityTier | null =
+    sewoon.capability === 'AVAILABLE' ? derivePolarity(sewoon.relationsToNatal).tier : null;
+
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, polarity };
 }
 
 /**
@@ -228,7 +236,7 @@ export async function buildConsultationGrounding(
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode).
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion } = await buildMyungriEvidence(
+  const { evidence: myungri, engineVersion: myungriVersion, polarity: myungriPolarity } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? '',
@@ -248,6 +256,8 @@ export async function buildConsultationGrounding(
     evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
     engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
+    // SERVER-owned overall polarity (Sprint C §5) — present only when the current 세운 (Saju) is grounded.
+    ...(myungriPolarity ? { polarity: myungriPolarity } : {}),
   };
 }
 

@@ -12,6 +12,7 @@
 import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
 import { toConsumerAssessmentView } from '@/features/intelligence/presentation/assessmentView';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
+import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 export type PersistedStructured = {
   coreSummary?: string;
@@ -24,7 +25,14 @@ export type PersistedStructured = {
   futureFlow?: string;
   followUps?: string[];
   state?: StructuredConsultationViewModel['state'];
+  // SERVER-owned conclusion polarity (Sprint C §8) — persisted for the audit trail + future follow-up
+  // version-mismatch handling. Backward-compatible: legacy rows lack it → undefined.
+  conclusionPolarity?: PolarityTier;
 };
+
+const POLARITY_TIERS: readonly PolarityTier[] = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
+const polarityTier = (v: unknown): PolarityTier | undefined =>
+  typeof v === 'string' && (POLARITY_TIERS as readonly string[]).includes(v) ? (v as PolarityTier) : undefined;
 
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim().length > 0 ? v : undefined;
@@ -53,6 +61,7 @@ export function serializeStructuredForPersistence(vm: StructuredConsultationView
     futureFlow: str(vm.futureFlow),
     followUps: strArr(vm.followUps),
     state: vm.state,
+    conclusionPolarity: polarityTier(vm.conclusionPolarity),
   };
 }
 
@@ -90,5 +99,6 @@ export function parsePersistedStructured(raw: unknown): StructuredConsultationVi
     grounding: GROUNDING_UNAVAILABLE,
     followUps: strArr(p.followUps),
     state: p.state,
+    conclusionPolarity: polarityTier(p.conclusionPolarity),
   };
 }

@@ -4,6 +4,7 @@
 // prose must obey. The tier + mode + domain statuses come from a TRANSPARENT harmony/friction tally crossed
 // with the day-stem 십신 (like the compatibility tier) — never a fabricated numeric score (§11/§14). All of
 // this is derived from evidence that ALREADY exists; no new engine semantics are introduced. Pure + tested.
+import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { TodayDomain, TodayFortuneEvidence } from '@/features/today/engine/todayEvidence';
 
@@ -108,8 +109,14 @@ function deriveDomainSignals(
   return signals;
 }
 
-const HARMONY_BRANCH = new Set(['BRANCH_SIX_COMBINATION', 'BRANCH_HALF_THREE_HARMONY']);
-const FRICTION_BRANCH = new Set(['BRANCH_CLASH', 'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT', 'BRANCH_DESTRUCTION', 'BRANCH_HARM']);
+// Surface-specific wording for the shared categorical polarity tier. The tier DECISION is the kernel's
+// (identical to the previously inline tally); Today only maps it to its own label set.
+const TODAY_TONE_BY_TIER: Record<PolarityTier, DailyOverallTone> = {
+  FAVORABLE: '좋은 흐름',
+  STEADY: '무난한 흐름',
+  DYNAMIC: '변화가 많은 날',
+  CAUTION: '조심해서 움직일 날',
+};
 
 export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
   const base = {
@@ -137,26 +144,11 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
     };
   }
 
-  const rel = evidence.dayLuck.relationsToNatal;
-  let harmonyCount = 0;
-  let frictionCount = 0;
-  for (const s of rel.stem) {
-    if (s.relation.kind === 'STEM_COMBINATION') harmonyCount += 1;
-    else if (s.relation.kind === 'STEM_CLASH') frictionCount += 1;
-  }
-  for (const b of rel.branch) {
-    if (HARMONY_BRANCH.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
-  }
-
-  const overallTone: DailyOverallTone =
-    frictionCount === 0 && harmonyCount >= 1
-      ? '좋은 흐름'
-      : frictionCount === 0
-        ? '무난한 흐름'
-        : harmonyCount >= frictionCount
-          ? '변화가 많은 날'
-          : '조심해서 움직일 날';
+  // SHARED KERNEL: the day's polarity tier + its harmony/friction evidence (was an inline tally here).
+  const polarity = derivePolarity(evidence.dayLuck.relationsToNatal);
+  const harmonyCount = polarity.evidence.harmony;
+  const frictionCount = polarity.evidence.friction;
+  const overallTone = TODAY_TONE_BY_TIER[polarity.tier];
 
   const strongestDomain = tenGodDomain(evidence.dayStemTenGod);
   const cautionDomain = frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null;
