@@ -1,5 +1,11 @@
 import type { BirthInfoDraft } from '@/features/consultation';
 import { isAuthTransportError } from '@/features/chat/adapters/llmError';
+import {
+  claimFortuneGeneration,
+  ensureClaimedGeneration,
+  releaseFortuneGeneration,
+  waitForCanonical,
+} from '@/features/fortune/generationClaim';
 import { clientCurrentMonthGuess } from '@/features/monthly/engine/monthDate';
 import type { MonthlyFortuneRecord, MonthlyFortuneResult, MonthlyOverallTier } from '@/features/monthly/types';
 import { getSupabaseClient } from '@/services/supabase';
@@ -140,20 +146,27 @@ export type EnsureMonthOutcome =
   | { status: 'unavailable' }
   | { status: 'error' };
 
-// Load-or-create for the current month: cache hit → 0 LLM; miss → ONE edge generation → persist → return.
+// Load-or-create for the current month: cache hit → 0 LLM; miss → ONE edge generation → persist → return. An
+// atomic generation claim (§A5) ensures only ONE of N concurrent first-loads calls the LLM; losers wait for
+// the winner's persisted result. Fail-open — a claim outage degrades to plain generation.
 async function ensureCurrentMonth(input: { birthInput: BirthInfoDraft; subjectId?: string | null }): Promise<EnsureMonthOutcome> {
   const guess = clientCurrentMonthGuess(Date.now());
-  const cached = await getByMonth(guess.year, guess.month);
-  if (cached) return { status: 'ok', record: cached, cacheHit: true };
-
-  const gen = await generateViaEdge(input.birthInput);
-  if (gen.status === 'auth') return { status: 'auth' };
-  if (gen.status === 'unavailable') return { status: 'unavailable' };
-  if (gen.status === 'error') return { status: 'error' };
-
-  const record = await persist(gen.gen, input.subjectId ?? null);
-  if (!record) return { status: 'error' };
-  return { status: 'ok', record, cacheHit: false };
+  const claimKey = `${guess.year}-${String(guess.month).padStart(2, '0')}`;
+  return ensureClaimedGeneration<MonthlyFortuneRecord>({
+    readCanonical: () => getByMonth(guess.year, guess.month),
+    claim: () => claimFortuneGeneration('monthly', claimKey),
+    release: () => releaseFortuneGeneration('monthly', claimKey),
+    waitForWinner: () => waitForCanonical(() => getByMonth(guess.year, guess.month), { attempts: 8, delayMs: 1200 }),
+    generateAndPersist: async () => {
+      const gen = await generateViaEdge(input.birthInput);
+      if (gen.status === 'auth') return { status: 'auth' };
+      if (gen.status === 'unavailable') return { status: 'unavailable' };
+      if (gen.status === 'error') return { status: 'error' };
+      const record = await persist(gen.gen, input.subjectId ?? null);
+      if (!record) return { status: 'error' };
+      return { status: 'ok', record, cacheHit: false };
+    },
+  });
 }
 
 export const monthlyFortuneService = {

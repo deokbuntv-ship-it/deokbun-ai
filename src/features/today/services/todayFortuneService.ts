@@ -1,5 +1,11 @@
 import type { BirthInfoDraft } from '@/features/consultation';
 import { isAuthTransportError } from '@/features/chat/adapters/llmError';
+import {
+  claimFortuneGeneration,
+  ensureClaimedGeneration,
+  releaseFortuneGeneration,
+  waitForCanonical,
+} from '@/features/fortune/generationClaim';
 import { clientTodayFortuneDateGuess } from '@/features/today/engine/fortuneDate';
 import type { DailyFortuneRecord, DailyFortuneResult, DailyOverallTone } from '@/features/today/types';
 import { getSupabaseClient } from '@/services/supabase';
@@ -123,20 +129,26 @@ export type EnsureTodayOutcome =
   | { status: 'unavailable' } // chart could not ground a daily fortune
   | { status: 'error' };
 
-// Load-or-create for today: cache hit → 0 LLM; miss → ONE edge generation → persist → return.
+// Load-or-create for today: cache hit → 0 LLM; miss → ONE edge generation → persist → return. An atomic
+// generation claim (§A5) ensures only ONE of N concurrent first-loads calls the LLM; the losers wait for the
+// winner's persisted result. Fail-open — a claim outage degrades to plain generation.
 async function ensureToday(input: { birthInput: BirthInfoDraft; subjectId?: string | null }): Promise<EnsureTodayOutcome> {
   const guess = clientTodayFortuneDateGuess(Date.now());
-  const cached = await getByDate(guess);
-  if (cached) return { status: 'ok', record: cached, cacheHit: true };
-
-  const gen = await generateViaEdge(input.birthInput);
-  if (gen.status === 'auth') return { status: 'auth' };
-  if (gen.status === 'unavailable') return { status: 'unavailable' };
-  if (gen.status === 'error') return { status: 'error' };
-
-  const record = await persist(gen.gen, input.subjectId ?? null);
-  if (!record) return { status: 'error' };
-  return { status: 'ok', record, cacheHit: false };
+  return ensureClaimedGeneration<DailyFortuneRecord>({
+    readCanonical: () => getByDate(guess),
+    claim: () => claimFortuneGeneration('today', guess),
+    release: () => releaseFortuneGeneration('today', guess),
+    waitForWinner: () => waitForCanonical(() => getByDate(guess), { attempts: 8, delayMs: 1200 }),
+    generateAndPersist: async () => {
+      const gen = await generateViaEdge(input.birthInput);
+      if (gen.status === 'auth') return { status: 'auth' };
+      if (gen.status === 'unavailable') return { status: 'unavailable' };
+      if (gen.status === 'error') return { status: 'error' };
+      const record = await persist(gen.gen, input.subjectId ?? null);
+      if (!record) return { status: 'error' };
+      return { status: 'ok', record, cacheHit: false };
+    },
+  });
 }
 
 export const todayFortuneService = {

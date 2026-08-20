@@ -10,7 +10,20 @@ const store: { byDate: Record<string, Row>; invoke: { data: unknown; error: unkn
 
 jest.mock('@/services/supabase', () => ({
   getSupabaseClient: () => ({
-    from: () => {
+    from: (table: string) => {
+      // fortune_generation_claims: model a WON claim (single first-load) so the happy path is unchanged; the
+      // concurrent loser/stale paths are covered by generationClaim.test.ts.
+      if (table === 'fortune_generation_claims') {
+        const cq: Record<string, unknown> = {};
+        Object.assign(cq, {
+          upsert: () => cq,
+          select: () => cq,
+          eq: () => cq,
+          delete: () => cq,
+          maybeSingle: () => Promise.resolve({ data: { claim_key: 'k' }, error: null }), // 'won'
+        });
+        return cq;
+      }
       const q: Record<string, unknown> = {};
       let eqDate: string | null = null;
       Object.assign(q, {
