@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
 import { useAuth } from '@/features/auth';
@@ -20,26 +20,38 @@ type NotificationUnreadValue = {
 const NotificationUnreadContext = createContext<NotificationUnreadValue | null>(null);
 
 export function NotificationUnreadProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  // Scope the unread state to the ACTUAL user id (not just isAuthenticated) so an account switch cannot leak
+  // one user's count into another's session (privacy §B1). A monotonically-increasing token discards any
+  // in-flight count response from a previous user before it can land.
+  const { authState } = useAuth();
+  const userId = authState.user?.id ?? null;
   const [unreadCount, setUnreadCount] = useState(0);
+  const tokenRef = useRef(0);
 
   const refresh = useCallback(() => {
-    if (!isAuthenticated) {
+    const token = ++tokenRef.current; // invalidate any earlier in-flight response
+    if (!userId) {
       setUnreadCount(0);
       return;
     }
     inAppNotificationService
       .unreadCount()
-      .then((n) => setUnreadCount(Number.isFinite(n) && n > 0 ? n : 0))
+      .then((n) => {
+        if (token !== tokenRef.current) return; // a newer refresh (or a user change) superseded this one
+        setUnreadCount(Number.isFinite(n) && n > 0 ? n : 0);
+      })
       .catch(() => {
         /* non-blocking — a failed count never breaks a header */
       });
-  }, [isAuthenticated]);
+  }, [userId]);
 
-  // Fetch once per auth transition (login/logout). Logout zeroes the badge immediately.
+  // On ANY user change (login / logout / A→B switch): clear the badge IMMEDIATELY (so B never sees A's count),
+  // discard A's in-flight response (token bump inside refresh), then fetch for the current user.
   useEffect(() => {
+    tokenRef.current += 1;
+    setUnreadCount(0);
     refresh();
-  }, [refresh]);
+  }, [userId, refresh]);
 
   // Refresh when the app/tab regains focus so notifications created while away (e.g. a trigger) surface —
   // ONE listener for the whole app, not a per-screen fetch.

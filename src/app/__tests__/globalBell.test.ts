@@ -81,6 +81,22 @@ describe('notification readability (UX addendum)', () => {
   });
 });
 
+describe('notification unread state is user-scoped (privacy §B1)', () => {
+  const ctx = read('features/retention/NotificationUnreadContext.tsx');
+  it('scopes on the user id, not just isAuthenticated', () => {
+    expect(ctx).toMatch(/authState\.user\?\.id/);
+    expect(ctx).toMatch(/const userId/);
+  });
+  it('discards a stale in-flight response from a previous user via a token', () => {
+    expect(ctx).toMatch(/tokenRef/);
+    expect(ctx).toMatch(/token !== tokenRef\.current/);
+  });
+  it('clears the badge immediately on a user change (effect keyed on userId)', () => {
+    expect(ctx).toMatch(/\}, \[userId, refresh\]\)/);
+    expect(ctx).toMatch(/setUnreadCount\(0\)/);
+  });
+});
+
 describe('admin/dev test-notification drafts (pipeline verification)', () => {
   it('has the three canonical drafts pointing at allowlisted destinations', () => {
     expect(TEST_NOTIFICATION_DRAFTS).toHaveLength(3);
