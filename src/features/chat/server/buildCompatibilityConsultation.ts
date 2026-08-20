@@ -12,7 +12,6 @@ import {
   type ConsultationGrounding,
 } from '@/features/chat/prompts/grounding';
 import {
-  classifyConsultationOutput,
   composeConsultationText,
   firstStructuredRejectionReason,
   SEMANTIC_REJECTION_MESSAGE,
@@ -31,10 +30,23 @@ import {
   type SajuEngineResult,
 } from '@/features/interpretation';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
-import { deriveAnswerPlan, renderAnswerPlanDirective } from './answerPlan';
+import {
+  ANSWER_PLAN_VERSION,
+  DECISION_POLICY_VERSION,
+  deriveAnswerPlan,
+  renderAnswerPlanDirective,
+} from './answerPlan';
+import { CERTAINTY_REGEN_DIRECTIVE, classifyWithGuards } from './certaintyGuard';
+import {
+  classifyConsultationSafetyRoute,
+  isHardStopRoute,
+  safeResponseForRoute,
+} from './consultationSafety';
+import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import type {
   CompatibilityResultMeta,
   ServerConsultationDeps,
+  ServerConsultationDiagnostics,
   ServerConsultationRequest,
   ServerConsultationResult,
   ServerGroundingMeta,
@@ -118,6 +130,8 @@ function metaFrom(grounding: ConsultationGrounding): ServerGroundingMeta {
     engineVersion: grounding.status === 'available' ? grounding.engineVersion ?? null : null,
     engines,
     promptVersion: CONSULTATION_PROMPT_VERSION,
+    answerPlanVersion: ANSWER_PLAN_VERSION,
+    decisionPolicyVersion: DECISION_POLICY_VERSION,
     mode: 'compatibility',
     questionTimeSource: 'SERVER_RECEIPT_TIME',
   };
@@ -134,6 +148,21 @@ export async function buildCompatibilityConsultation(
 ): Promise<ServerConsultationResult> {
   const question = (request.question ?? '').trim();
   if (question.length === 0) return { ok: false, reason: 'INVALID_INPUT' };
+
+  // 0) Pre-LLM SAFETY ROUTER (Sprint A §2-§7) — the SAME hard-stop as the solo path, applied to 궁합 too
+  //    (self-harm / death-lifespan / medical questions must never reach fortune interpretation). Runs
+  //    before birth resolution so it never depends on either person's birth input.
+  const safetyRoute = classifyConsultationSafetyRoute(question);
+  if (isHardStopRoute(safetyRoute)) {
+    return {
+      ok: true,
+      text: safeResponseForRoute(safetyRoute) ?? SEMANTIC_REJECTION_MESSAGE,
+      groundingMeta: metaFrom(GROUNDING_UNAVAILABLE),
+      diagnostics: { outputClassification: 'SAFETY_ROUTED', safetyRoute },
+      resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, GROUNDING_UNAVAILABLE),
+    };
+  }
+
   if (!hasMinimalBirthInput(request.birthInput)) return { ok: false, reason: 'INVALID_INPUT' };
   if (!hasMinimalBirthInput(request.partnerBirthInput)) return { ok: false, reason: 'INVALID_INPUT' };
 
@@ -219,32 +248,48 @@ export async function buildCompatibilityConsultation(
 
   const safeGrounding = toSafeGrounding(grounding);
 
-  // 3) SERVER-owned Decision Engine (mode='compatibility') → directive the LLM verbalizes.
+  // 3) SERVER-owned Decision Engine (mode='compatibility') → directive the LLM verbalizes. One message
+  //    builder reused for the first attempt AND the single constrained regeneration (§9).
   const recentMessages = sanitizeConversation(request.conversationContext);
-  const answerPlanDirective = renderAnswerPlanDirective(deriveAnswerPlan(question, safeGrounding, 'compatibility'));
+  const plan = deriveAnswerPlan(question, safeGrounding, 'compatibility');
+  const buildMessages = (extraDirective?: string) =>
+    buildCompatibilityPrompt({
+      self: selfContext,
+      target: targetContext,
+      relationship: request.partnerLabel ?? null,
+      grounding: safeGrounding,
+      answerPlanDirective: extraDirective
+        ? `${renderAnswerPlanDirective(plan)}\n${extraDirective}`
+        : renderAnswerPlanDirective(plan),
+      conversationSummary: request.conversationSummary ?? null,
+      recentMessages,
+      currentUserMessage: question,
+    });
 
-  const messages = buildCompatibilityPrompt({
-    self: selfContext,
-    target: targetContext,
-    relationship: request.partnerLabel ?? null,
-    grounding: safeGrounding,
-    answerPlanDirective,
-    conversationSummary: request.conversationSummary ?? null,
-    recentMessages,
-    currentUserMessage: question,
-  });
-
-  // 4) The single outbound trust exit.
+  // 4) The single outbound trust exit (first attempt).
   let raw: string;
   try {
-    raw = await deps.callLLM(messages);
+    raw = await deps.callLLM(buildMessages());
   } catch {
     return { ok: false, reason: 'LLM_FAILED' };
   }
   if (typeof raw !== 'string' || raw.trim().length === 0) return { ok: false, reason: 'LLM_FAILED' };
 
-  // 5) SERVER-authoritative output validation — the SAME validator as solo.
-  const outcome = classifyConsultationOutput(raw, safeGrounding);
+  // 5) SERVER-authoritative output validation — the SAME validator as solo — plus the certainty/mitigation
+  //    guard (one constrained regeneration → safe fallback, Sprint A §8-§10).
+  const guard = await classifyWithGuards({
+    raw,
+    grounding: safeGrounding,
+    requireMitigation: plan.requireMitigation,
+    regenerate: async () => {
+      try {
+        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+      } catch {
+        return null;
+      }
+    },
+  });
+  const outcome = guard.outcome;
   const structuredResult =
     outcome.kind === 'ACCEPTED' ? buildStructuredConsultationResult(outcome.result, safeGrounding) : undefined;
   const text =
@@ -254,9 +299,17 @@ export async function buildCompatibilityConsultation(
         ? outcome.text
         : SEMANTIC_REJECTION_MESSAGE;
 
-  const diagnostics = {
+  const diagnostics: ServerConsultationDiagnostics = {
     outputClassification: outcome.kind,
-    ...(outcome.kind === 'ACCEPTED' ? {} : { rejectionReason: firstStructuredRejectionReason(raw, safeGrounding) }),
+    ...(guard.regenerated ? { regenerated: true } : {}),
+    ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
+    ...(outcome.kind === 'ACCEPTED'
+      ? {}
+      : {
+          rejectionReason: guard.guardRejected
+            ? 'GUARD_CERTAINTY_MITIGATION'
+            : firstStructuredRejectionReason(raw, safeGrounding),
+        }),
   };
 
   return {
@@ -265,6 +318,7 @@ export async function buildCompatibilityConsultation(
     ...(structuredResult ? { structuredResult } : {}),
     groundingMeta: metaFrom(safeGrounding),
     diagnostics,
+    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding),
     ...(compatibility ? { compatibility } : {}),
   };
 }

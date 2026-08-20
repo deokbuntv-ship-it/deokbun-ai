@@ -7705,6 +7705,8 @@ function buildStructuredConsultationResult(parsed, grounding) {
 }
 
 // src/features/chat/server/answerPlan.ts
+var ANSWER_PLAN_VERSION = "answer-plan@1.0.0";
+var DECISION_POLICY_VERSION = "decision-policy@1.0.0";
 var COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 var RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
 var EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
@@ -7803,7 +7805,10 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
     assertiveness,
     comparisonSupported,
     rankingSupported,
-    forbidEventCertainty: intents.includes("EVENT_PREDICTION")
+    forbidEventCertainty: intents.includes("EVENT_PREDICTION"),
+    // V1: no deterministic polarity signal exists yet (the kernel is a later sprint), so we never assert a
+    // cautionary conclusion here. Kept explicit so the enforcement path is wired + testable today.
+    requireMitigation: false
   };
 }
 var ASSERTIVENESS_LINE = {
@@ -7829,6 +7834,697 @@ function renderAnswerPlanDirective(plan) {
   if (plan.forbidEventCertainty) lines.push('· 사건의 발생 자체를 확정하지 마십시오(예: "반드시 이사합니다"). 대신 시기 적합도로 답하십시오(예: "이사 시기를 고른다면 …는 좋은 후보입니다").');
   if (plan.supportLevel === "ALTERNATIVE") lines.push("· 요청한 세부 시점 대신, 근거가 있는 더 넓은 시기의 흐름으로 답하고 다음으로 좁힐 수 있음을 안내하십시오. 사용자에게 다시 물으라고 미루지 마십시오.");
   return lines.join("\n");
+}
+
+// src/features/monthly/engine/monthDate.ts
+var KST_OFFSET_SECONDS2 = 32400;
+var FORTUNE_TIMEZONE = "Asia/Seoul";
+var pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
+function currentTargetMonth(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
+}
+function monthMidpointEpochSeconds(m) {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
+}
+function civilMonthStartEpoch(m) {
+  return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1e3) - KST_OFFSET_SECONDS2;
+}
+function nextCivilMonth(m) {
+  return m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 };
+}
+function kstDateString(epochSeconds) {
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
+  return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())}`;
+}
+function monthKey(m) {
+  return `${m.year}-${pad2(m.month)}`;
+}
+function formatMonthLabel(m) {
+  return `${m.year}년 ${m.month}월`;
+}
+
+// src/features/monthly/engine/civilMonthSegments.ts
+function resolveCivilMonthSajuSegments(target) {
+  const start = civilMonthStartEpoch(target);
+  const end = civilMonthStartEpoch(nextCivilMonth(target));
+  const a = resolveSajuTemporalForInstant(start);
+  const b = resolveSajuTemporalForInstant(end - 1);
+  if (!a || !b) return null;
+  const seg = (s, e, sajuYear, ord) => ({
+    startEpoch: s,
+    endEpoch: e,
+    durationSeconds: e - s,
+    sajuYear,
+    sajuMonthOrdinal: ord,
+    startCivilDate: kstDateString(s)
+  });
+  if (a.sajuYear === b.sajuYear && a.jieMonthOrdinal === b.jieMonthOrdinal) {
+    return [seg(start, end, a.sajuYear, a.jieMonthOrdinal)];
+  }
+  let lo = start;
+  let hi = end;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    const m = resolveSajuTemporalForInstant(mid);
+    if (m && m.sajuYear === b.sajuYear && m.jieMonthOrdinal === b.jieMonthOrdinal) hi = mid;
+    else lo = mid;
+  }
+  const t = hi;
+  return [seg(start, t, a.sajuYear, a.jieMonthOrdinal), seg(t, end, b.sajuYear, b.jieMonthOrdinal)];
+}
+
+// src/features/monthly/engine/monthlyEvidence.ts
+var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.1.0";
+var ALL_DOMAINS = ["overall", "work", "wealth", "relationship", "action"];
+async function buildMonthlyFortuneEvidence(input, deps) {
+  const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
+  const unavailable9 = (reason) => ({
+    available: false,
+    year: target.year,
+    month: target.month,
+    timezone: FORTUNE_TIMEZONE,
+    reason,
+    evidenceVersion: MONTHLY_EVIDENCE_VERSION
+  });
+  let execution;
+  try {
+    execution = await executeSajuFromBirthInput(toSajuEngineInput(input.birthInfo), {
+      digestProvider: deps.digestProvider,
+      historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
+    });
+  } catch {
+    return unavailable9("CHART_EXECUTION_THREW");
+  }
+  if (!execution.success) return unavailable9("CHART_INPUT_INVALID");
+  const engineResult = execution.engineResult;
+  if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
+  const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
+  const rawSegments = resolveCivilMonthSajuSegments(target);
+  if (!rawSegments || rawSegments.length === 0) return unavailable9("CIVIL_MONTH_SEGMENTS_UNAVAILABLE");
+  const totalSeconds = rawSegments.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const segments = [];
+  for (const s of rawSegments) {
+    const midEpoch = s.startEpoch + Math.floor(s.durationSeconds / 2);
+    const w = calculateWolwoonForInstant({ natal, instantEpochSeconds: midEpoch });
+    if (w.capability !== "AVAILABLE") return unavailable9(`WOLWOON_${w.reason}`);
+    segments.push({
+      sajuMonthOrdinal: s.sajuMonthOrdinal,
+      durationSeconds: s.durationSeconds,
+      weight: totalSeconds > 0 ? s.durationSeconds / totalSeconds : 1,
+      startCivilDate: s.startCivilDate,
+      stemTenGod: w.tenGods.stemTenGod,
+      branchTenGod: w.tenGods.branchMainTenGod,
+      relationsToNatal: w.relationsToNatal
+    });
+  }
+  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: monthMidpointEpochSeconds(target) });
+  return {
+    available: true,
+    year: target.year,
+    month: target.month,
+    timezone: FORTUNE_TIMEZONE,
+    segments,
+    transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
+    sewoonAvailable: sewoon.capability === "AVAILABLE",
+    supportedDomains: ALL_DOMAINS,
+    evidenceVersion: MONTHLY_EVIDENCE_VERSION
+  };
+}
+
+// src/features/monthly/engine/monthlyPlan.ts
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.2.0";
+var MONTHLY_MODE_LABEL = {
+  EXPAND: "확장·추진",
+  MANAGE: "점검·관리",
+  CONNECT: "관계·조율",
+  ADJUST: "조정·조율",
+  STABILIZE: "정비·속도조절"
+};
+function tenGodDomain(tg3) {
+  switch (tg3) {
+    case "DIRECT_WEALTH":
+    case "INDIRECT_WEALTH":
+      return "wealth";
+    case "DIRECT_OFFICER":
+    case "SEVEN_KILLINGS":
+      return "work";
+    case "EATING_GOD":
+    case "HURTING_OFFICER":
+      return "action";
+    case "PEER":
+    case "ROB_WEALTH":
+      return "relationship";
+    case "DIRECT_RESOURCE":
+    case "INDIRECT_RESOURCE":
+      return "overall";
+  }
+}
+function derivePrimaryMode(tier, strongestDomain) {
+  if (tier === "속도를 조절할 달") return "STABILIZE";
+  if (tier === "변화가 많은 달") return "ADJUST";
+  switch (strongestDomain) {
+    case "work":
+    case "action":
+      return "EXPAND";
+    case "wealth":
+    case "overall":
+      return "MANAGE";
+    case "relationship":
+      return "CONNECT";
+  }
+}
+function deriveDomainSignals(tier, strongestDomain, cautionDomain) {
+  const emphasisStatus = tier === "기회를 살리기 좋은 달" ? "좋음" : "무난";
+  const signals = [{ domain: strongestDomain, status: emphasisStatus }];
+  if (cautionDomain !== null && cautionDomain !== strongestDomain) {
+    signals.push({ domain: cautionDomain, status: "주의" });
+  }
+  return signals;
+}
+function deriveCoverage(segments, primaryDomain, cautionDomain) {
+  const candidates = [];
+  for (const seg of segments) {
+    candidates.push(tenGodDomain(seg.stemTenGod));
+    candidates.push(tenGodDomain(seg.branchTenGod));
+  }
+  const distinct = [...new Set(candidates)];
+  const secondaryDomains = distinct.filter((d) => d !== primaryDomain && d !== cautionDomain).slice(0, 2);
+  const coverageOrder = [
+    primaryDomain,
+    ...secondaryDomains,
+    ...cautionDomain && cautionDomain !== primaryDomain && !secondaryDomains.includes(cautionDomain) ? [cautionDomain] : []
+  ];
+  return { secondaryDomains, coverageOrder };
+}
+var HARMONY_BRANCH = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
+var FRICTION_BRANCH = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+function tierFromTally(harmony, friction) {
+  return friction === 0 && harmony >= 1 ? "기회를 살리기 좋은 달" : friction === 0 ? "안정적으로 운영할 달" : harmony >= friction ? "변화가 많은 달" : "속도를 조절할 달";
+}
+function deriveSegmentSignal(seg) {
+  let harmonyCount = 0;
+  let frictionCount = 0;
+  for (const s of seg.relationsToNatal.stem) {
+    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
+    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
+  }
+  for (const b of seg.relationsToNatal.branch) {
+    if (HARMONY_BRANCH.has(b.relation.kind)) harmonyCount += 1;
+    else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
+  }
+  const tier = tierFromTally(harmonyCount, frictionCount);
+  const strongestDomain = tenGodDomain(seg.stemTenGod);
+  const cautionDomain = frictionCount > 0 ? tenGodDomain(seg.branchTenGod) : null;
+  const primaryMode = derivePrimaryMode(tier, strongestDomain);
+  return {
+    weight: seg.weight,
+    tier,
+    primaryMode,
+    primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
+    strongestDomain,
+    cautionDomain,
+    harmonyCount,
+    frictionCount
+  };
+}
+function deriveMonthlyPlan(evidence) {
+  const base = {
+    year: evidence.year,
+    month: evidence.month,
+    maxOpportunities: 3,
+    maxCautions: 2,
+    maxActions: 3,
+    forbidEventCertainty: true,
+    forbidExactDates: true,
+    evidenceVersion: evidence.evidenceVersion,
+    planVersion: MONTHLY_PLAN_VERSION
+  };
+  if (!evidence.available || evidence.segments.length === 0) {
+    return {
+      ...base,
+      available: false,
+      overallTier: "안정적으로 운영할 달",
+      primaryMode: "MANAGE",
+      primaryModeLabel: MONTHLY_MODE_LABEL.MANAGE,
+      strongestDomain: "overall",
+      cautionDomain: null,
+      domainSignals: [],
+      secondaryDomains: [],
+      coverageOrder: [],
+      supportedDomains: [],
+      harmonyCount: 0,
+      frictionCount: 0,
+      segmentCount: 0,
+      hasMeaningfulTransition: false,
+      transition: null
+    };
+  }
+  const signals = evidence.segments.map(deriveSegmentSignal);
+  let dominant = signals[0];
+  for (const s of signals) if (s.weight >= dominant.weight) dominant = s;
+  const overallTier = dominant.tier;
+  const strongestDomain = dominant.strongestDomain;
+  const cautionDomain = dominant.cautionDomain;
+  const primaryMode = dominant.primaryMode;
+  const coverage = deriveCoverage(evidence.segments, strongestDomain, cautionDomain);
+  let hasMeaningfulTransition = false;
+  let transition = null;
+  if (signals.length === 2 && evidence.transitionCivilDate) {
+    const [early, later] = signals;
+    if (early.tier !== later.tier || early.primaryMode !== later.primaryMode) {
+      hasMeaningfulTransition = true;
+      transition = {
+        transitionCivilDate: evidence.transitionCivilDate,
+        early: { tier: early.tier, modeLabel: early.primaryModeLabel, strongestDomain: early.strongestDomain },
+        later: { tier: later.tier, modeLabel: later.primaryModeLabel, strongestDomain: later.strongestDomain }
+      };
+    }
+  }
+  return {
+    ...base,
+    available: true,
+    overallTier,
+    primaryMode,
+    primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
+    strongestDomain,
+    cautionDomain,
+    domainSignals: deriveDomainSignals(overallTier, strongestDomain, cautionDomain),
+    secondaryDomains: coverage.secondaryDomains,
+    coverageOrder: coverage.coverageOrder,
+    supportedDomains: evidence.supportedDomains,
+    harmonyCount: dominant.harmonyCount,
+    frictionCount: dominant.frictionCount,
+    segmentCount: signals.length,
+    hasMeaningfulTransition,
+    transition
+  };
+}
+
+// src/features/monthly/types.ts
+var MONTHLY_DOMAIN_LABEL = {
+  overall: "전체 흐름",
+  work: "일·사업",
+  wealth: "재물",
+  relationship: "인간관계·연애",
+  action: "행동·변화"
+};
+var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
+var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.2.0";
+
+// src/features/monthly/server/monthlyFortunePrompt.ts
+function buildMonthlyFortunePrompt(plan) {
+  const label = formatMonthLabel({ year: plan.year, month: plan.month });
+  const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
+  const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
+  const secondaryLabels = plan.secondaryDomains.map((d) => MONTHLY_DOMAIN_LABEL[d]);
+  const coverageDirective = secondaryLabels.length > 0 ? `opportunities는 서로 다른 영역을 다루십시오 — 우선 "${emphasized}", 그다음 ${secondaryLabels.map((l) => `"${l}"`).join(", ")} 순으로 넓히십시오. 같은 영역(예: 관계=연애·대화·소통)을 다른 말로 반복하지 말고 지원되는 다른 영역으로 넓히십시오.` : `이번 달은 "${emphasized}" 영역이 중심입니다. 억지로 다른 영역을 만들지 말고, "${emphasized}" 안에서 서로 다른 측면(실행·조율·점검 등)을 다루십시오.`;
+  const transitionDirective = plan.hasMeaningfulTransition && plan.transition ? `이번 달은 초반과 중반 이후의 흐름이 다릅니다. 초반은 "${plan.transition.early.tier}", 중반 이후는 "${plan.transition.later.tier}" 흐름입니다. verdict와 overallSummary에서 "초반에는 ~, 중반 이후에는 ~"처럼 이 변화를 자연스럽게 설명하십시오. 단, 특정 날짜가 "가장 좋다"고 단정하지 말고 "초반 / 중반 이후" 표현을 쓰십시오.` : null;
+  const system = [
+    `당신은 덕분이의 "이번 달 운세"입니다. 한 사람의 사주를 ${label}에 대입해 나온 "이번 달의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 이번 달이 어떤 달이고 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답해야 합니다.`,
+    "반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.",
+    '서버가 이미 판단한 이번 달의 결(반드시 그대로 따를 것 — 당신은 이 판단을 "말로 풀어내는" 역할입니다):',
+    `- 이번 달 전반 기운: "${plan.overallTier}"`,
+    `- 이번 달 권하는 방식: "${plan.primaryModeLabel}"`,
+    `- 기운이 실리는 영역: "${emphasized}"`,
+    cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 이번 달은 크게 부딪히는 기운은 없습니다.",
+    ...transitionDirective ? [transitionDirective] : [],
+    "작성 규칙(반드시 지킬 것):",
+    '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
+    "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
+    '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
+    `- opportunities: 최대 ${plan.maxOpportunities}개. 서로 다른 새로운 정보. 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
+    `- ${coverageDirective}`,
+    `- cautions: 최대 ${plan.maxCautions}개. "조심하세요"로 끝내지 말고 무엇을 어떻게 조심할지 구체적으로. ${cautionLabel ? "위 조절 영역 중심으로." : "특별한 마찰이 없으면 억지로 만들지 말고 0~1개만."}`,
+    `- actions: 이번 달을 어떻게 보내면 좋은지 구체적 행동 ${plan.maxActions}개 이내("그래서 이번 달 어떻게 보내면 되지?"에 답).`,
+    "- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 이번 달 결정), 3) 시기/실행 순으로.",
+    '정확한 날짜·주간을 지어내지 마십시오(§24): 이번 달 근거는 "달" 단위입니다. "8월 17~21일이 가장 좋다"처럼 특정 날짜/주를 단정하지 말고, 더 구체적인 시기가 궁금하면 상담에서 날짜를 비교해볼 수 있다고 안내하십시오.',
+    '사건을 확정하지 마십시오(§32): "돈이 들어옵니다 / 계약이 성사됩니다 / 연락이 옵니다 / 이직합니다 / 헤어집니다"처럼 쓰지 말고, "~하기에 좋은 흐름", "~은 조건을 확인하고 움직이는 편이 낫습니다"처럼 적합도·기회로 쓰십시오. 행운의 색·방향·숫자·점수도 만들지 마십시오.',
+    "건강은 진단·치료가 아니라 컨디션 관리·생활 리듬으로만. 돈은 특정 종목 매수 권유 금지, 흐름·조율로만. 관계는 상대의 속마음을 사실로 단정하지 마십시오.",
+    "JSON 스키마(deokbun_monthly_fortune)에 맞춰 그 형식으로만 답하십시오. 글은 모바일에서 읽기 좋게 간결하게(긴 에세이 금지)."
+  ].join("\n");
+  const user = [
+    `이번 달: ${label}`,
+    `전반 기운: ${plan.overallTier}`,
+    `권하는 방식: ${plan.primaryModeLabel}`,
+    `기운이 실리는 영역: ${emphasized}`,
+    `조율이 필요한 영역: ${cautionLabel ?? "특별히 없음"}`,
+    ...plan.hasMeaningfulTransition && plan.transition ? [`이번 달 흐름 변화: 초반 "${plan.transition.early.tier}" → 중반 이후 "${plan.transition.later.tier}" ("초반/중반 이후"로만 표현, 특정 날짜 단정 금지)`] : [],
+    `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
+    "",
+    `위 판단을 바탕으로, 이번 달 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답하는 ${label} 운세를 스키마 형식의 JSON으로 작성하십시오.`
+  ].join("\n");
+  return [
+    { role: "system", content: system },
+    { role: "user", content: user }
+  ];
+}
+
+// src/features/monthly/server/buildMonthlyFortune.ts
+var clean2 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
+function firstSentence(s) {
+  const m = /^[^.!?。\n]*[.!?。]?/.exec(s.trim());
+  return (m ? m[0] : s).trim();
+}
+function toDisplayLabel(rawLabel, question) {
+  const base = (rawLabel || question).trim().replace(/[?？.!。·\s]+$/u, "");
+  return base.length <= 20 ? base : `${base.slice(0, 18).trim()}…`;
+}
+var CATEGORY_PATTERNS = [
+  { key: "RUSH", re: /서두르|성급|(?<!마)무리|급하게|급한|밀어붙이|조급/ },
+  { key: "ORGANIZE", re: /정리|점검|마무리|재점검|정돈|조건을?\s*(다시\s*)?확인/ },
+  { key: "PACE", re: /속도|천천히|여유|리듬|쉬어|휴식|무리하지/ },
+  { key: "RELATION", re: /관계|사람|소통|말을?\s*아끼|경청|협의|대화/ },
+  { key: "DECIDE", re: /결정|판단|선택|계약|서명|협상/ },
+  { key: "MONEY", re: /지출|비용|예산|투자|자금|씀씀이|수익/ },
+  { key: "EXPAND", re: /확장|추진|도전|시작|새로운\s*일|벌이/ }
+];
+function semanticCategory(text) {
+  for (const c of CATEGORY_PATTERNS) if (c.re.test(text)) return c.key;
+  return null;
+}
+var EVENT_GUARANTEE = /(돈|재물|자금|목돈)[^.\n]{0,8}(들어옵니다|들어와요|생깁니다|생겨요)|(합격|당첨|승진|성사|성공|이직|퇴사)(합니다|됩니다|해요|돼요)|(연락|전화|고백)[^.\n]{0,8}(옵니다|와요|받습니다)|(헤어집니다|이혼합니다|사고가\s*납니다)/;
+function containsEventGuarantee(text) {
+  return EVENT_GUARANTEE.test(text);
+}
+var UNSUPPORTED_DATE = /\d{1,2}\s*[~\-–]\s*\d{1,2}\s*일|\d{1,2}\s*일[^\d]{0,8}(가장|제일|최고|좋|유리|추천|길|적합)|\d{1,2}\s*월\s*\d{1,2}\s*일|(첫째|둘째|셋째|넷째|마지막)\s*주[^\d]{0,8}(가장|제일|좋|유리|추천)/;
+function containsUnsupportedDatePrecision(text) {
+  return UNSUPPORTED_DATE.test(text);
+}
+function parseMonthlyFortune(raw, plan) {
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!obj || typeof obj !== "object") return null;
+  const o = obj;
+  const headline = clean2(o.headline);
+  const overallSummary = clean2(o.overallSummary);
+  if (headline.length === 0 || overallSummary.length === 0) return null;
+  const verdict = clean2(o.verdict) || firstSentence(overallSummary);
+  const seen = /* @__PURE__ */ new Set();
+  const opportunities = [];
+  for (const h of Array.isArray(o.opportunities) ? o.opportunities : []) {
+    const hh = h ?? {};
+    const domain = clean2(hh.domain);
+    const title = clean2(hh.title);
+    const body = clean2(hh.body);
+    if (title.length === 0 || body.length === 0) continue;
+    const cat = semanticCategory(`${title} ${body}`);
+    if (cat && seen.has(cat)) continue;
+    if (cat) seen.add(cat);
+    opportunities.push({ domain, title, body });
+    if (opportunities.length >= plan.maxOpportunities) break;
+  }
+  const covered = /* @__PURE__ */ new Set([...seen]);
+  for (const t of [verdict, headline]) {
+    const c = semanticCategory(t);
+    if (c) covered.add(c);
+  }
+  const cautions = [];
+  for (const c of Array.isArray(o.cautions) ? o.cautions : []) {
+    const cc = c ?? {};
+    const title = clean2(cc.title);
+    const body = clean2(cc.body);
+    if (title.length === 0 || body.length === 0) continue;
+    const cat = semanticCategory(`${title} ${body}`);
+    if (cat && covered.has(cat)) continue;
+    if (cat) covered.add(cat);
+    cautions.push({ title, body });
+    if (cautions.length >= plan.maxCautions) break;
+  }
+  const actionSeen = /* @__PURE__ */ new Set();
+  const actions = [];
+  for (const a of Array.isArray(o.actions) ? o.actions : []) {
+    const text = clean2(a);
+    if (text.length === 0) continue;
+    const cat = semanticCategory(text);
+    if (cat && actionSeen.has(cat)) continue;
+    if (cat) actionSeen.add(cat);
+    actions.push(text);
+    if (actions.length >= plan.maxActions) break;
+  }
+  const followUps = [];
+  const rawFollowUps = Array.isArray(o.followUps) ? o.followUps : Array.isArray(o.consultationPrompts) ? o.consultationPrompts : [];
+  for (const f of rawFollowUps) {
+    let displayLabel = "";
+    let question = "";
+    if (typeof f === "string") {
+      question = clean2(f);
+    } else if (f && typeof f === "object") {
+      const ff = f;
+      displayLabel = clean2(ff.displayLabel);
+      question = clean2(ff.question);
+    }
+    if (question.length === 0) continue;
+    followUps.push({ displayLabel: toDisplayLabel(displayLabel, question), question });
+    if (followUps.length >= 3) break;
+  }
+  if (verdict.length === 0 || actions.length === 0) return null;
+  const surfaced = [
+    headline,
+    verdict,
+    overallSummary,
+    ...opportunities.flatMap((h) => [h.title, h.body]),
+    ...cautions.flatMap((c) => [c.title, c.body]),
+    ...actions,
+    ...followUps.flatMap((f) => [f.displayLabel, f.question])
+  ].join(" ");
+  if (containsRawGanji(surfaced)) return null;
+  if (containsEventGuarantee(surfaced)) return null;
+  if (containsUnsupportedDatePrecision(surfaced)) return null;
+  return {
+    headline,
+    verdict,
+    overallSummary,
+    overallTier: plan.overallTier,
+    primaryMode: plan.primaryMode,
+    primaryModeLabel: plan.primaryModeLabel,
+    domainSignals: plan.domainSignals,
+    opportunities,
+    cautions,
+    actions,
+    followUps,
+    // Server-owned within-month transition (§5) — the LLM never emits the 節 date; it comes from the plan.
+    transition: plan.transition ? {
+      transitionDate: plan.transition.transitionCivilDate,
+      early: { tierLabel: plan.transition.early.tier, modeLabel: plan.transition.early.modeLabel },
+      later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel }
+    } : null
+  };
+}
+async function buildMonthlyFortune(request, deps) {
+  const evidence = await buildMonthlyFortuneEvidence(
+    { birthInfo: request.birthInput },
+    { digestProvider: deps.digestProvider, historicalTimezoneResolver: deps.historicalTimezoneResolver, nowEpochSeconds: deps.nowEpochSeconds }
+  );
+  if (!evidence.available) return { ok: false, reason: "EVIDENCE_UNAVAILABLE", year: evidence.year, month: evidence.month };
+  const plan = deriveMonthlyPlan(evidence);
+  const messages = buildMonthlyFortunePrompt(plan);
+  let raw;
+  try {
+    raw = await deps.callLLM(messages);
+  } catch {
+    return { ok: false, reason: "LLM_FAILED", year: plan.year, month: plan.month };
+  }
+  const result = parseMonthlyFortune(raw, plan);
+  if (result === null) return { ok: false, reason: "INVALID_OUTPUT", year: plan.year, month: plan.month };
+  return {
+    ok: true,
+    year: plan.year,
+    month: plan.month,
+    overallTier: plan.overallTier,
+    result,
+    policyVersion: MONTHLY_POLICY_VERSION,
+    evidenceVersion: plan.evidenceVersion,
+    planVersion: plan.planVersion
+  };
+}
+
+// src/features/monthly/server/monthlyFortuneSchema.ts
+var MONTHLY_FORTUNE_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    // headline: a concrete one-liner answering "이번 달은 어떤 달인가" (§19).
+    headline: { type: "string" },
+    // verdict: 1-3 sentences — overall judgment + strongest opportunity + primary caution (§20).
+    verdict: { type: "string" },
+    overallSummary: { type: "string" },
+    opportunities: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { domain: { type: "string" }, title: { type: "string" }, body: { type: "string" } },
+        required: ["domain", "title", "body"]
+      }
+    },
+    cautions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { title: { type: "string" }, body: { type: "string" } },
+        required: ["title", "body"]
+      }
+    },
+    // actions: the month's plan — concrete "이렇게 보내세요" steps (§23).
+    actions: { type: "array", items: { type: "string" } },
+    // followUps: SHORT chip label + the RICH question actually carried into 상담 (§65-§67).
+    followUps: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { displayLabel: { type: "string" }, question: { type: "string" } },
+        required: ["displayLabel", "question"]
+      }
+    }
+  },
+  required: ["headline", "verdict", "overallSummary", "opportunities", "cautions", "actions", "followUps"]
+};
+function monthlyFortuneResponseFormat() {
+  return { type: "json_schema", name: "deokbun_monthly_fortune", strict: true, schema: MONTHLY_FORTUNE_JSON_SCHEMA };
+}
+
+// src/features/chat/server/certaintyGuard.ts
+var CERTAINTY_GUARANTEE = /(반드시|무조건|틀림없이|꼭|100\s*%|100\s*퍼)[^.!?。\n]{0,14}(성공|합격|부자|이뤄|이룹|잘\s*(된|됩|돼|될)|좋아[집지]|벌(어|게|ㄹ|립|린)|해결|성사|이깁|생깁|들어[와옵]|풀립|됩니다|돼요|될\s*겁)/;
+var ABSOLUTE_NEGATIVE_GUARANTEE = /절대[^.!?。\n]{0,10}(실패|망하|잃|틀리|안\s*(됩|돼|되|해)|못\s*[한할해])/;
+var FINANCIAL_GUARANTEE = /원금\s*보장|수익[^.!?。\n]{0,6}보장|보장[^.!?。\n]{0,6}수익|확정\s*수익|(무조건|반드시)[^.!?。\n]{0,8}(수익|이득|벌)|손실\s*(이\s*)?없(어|이|습|다)/;
+var HEDGE = /없|아니|않|어렵|힘들|불가|단정|장담|모르|수도\s*있|일\s*수\s*있|가능성|경향|편(이|입니다)|참고|보장(은|할)/;
+function splitSentences(text) {
+  return text.split(/(?<=[.!?。\n])/).map((s) => s.trim()).filter((s) => s.length > 0);
+}
+function containsForbiddenCertainty(text) {
+  if (typeof text !== "string" || text.length === 0) return false;
+  for (const s of splitSentences(text)) {
+    if (containsEventGuarantee(s)) return true;
+    const hedged = HEDGE.test(s);
+    if (!hedged && FINANCIAL_GUARANTEE.test(s)) return true;
+    if (!hedged && (CERTAINTY_GUARANTEE.test(s) || ABSOLUTE_NEGATIVE_GUARANTEE.test(s))) return true;
+  }
+  return false;
+}
+var CERTAINTY_REGEN_DIRECTIVE = '[중요 — 재작성] 앞 답변에 "반드시/무조건/100%/절대/틀림없이" 같은 단정이나 결과 보장(합격합니다·부자가 됩니다·원금 보장 등)이 있었습니다. 사건의 발생이나 결과를 확정·보장하지 말고, 근거 범위 안에서 적합도·흐름·조언으로만 다시 답하십시오.';
+function renderableText(outcome) {
+  if (outcome.kind === "ACCEPTED") return composeConsultationText(outcome.result);
+  if (outcome.kind === "STRUCTURAL_FALLBACK") return outcome.text;
+  return null;
+}
+function lacksMitigation(outcome) {
+  if (outcome.kind !== "ACCEPTED") return false;
+  return (outcome.result.cautions?.length ?? 0) === 0;
+}
+function outcomeViolates(outcome, requireMitigation) {
+  const text = renderableText(outcome);
+  if (text === null) return false;
+  if (containsForbiddenCertainty(text)) return true;
+  if (requireMitigation && lacksMitigation(outcome)) return true;
+  return false;
+}
+async function classifyWithGuards(args) {
+  const first = classifyConsultationOutput(args.raw, args.grounding);
+  if (!outcomeViolates(first, args.requireMitigation)) {
+    return { outcome: first, regenerated: false, guardRejected: false };
+  }
+  let raw2 = null;
+  try {
+    raw2 = await args.regenerate();
+  } catch {
+    raw2 = null;
+  }
+  if (typeof raw2 !== "string" || raw2.trim().length === 0) {
+    return { outcome: { kind: "SEMANTIC_REJECTED", reason: "guard_certainty_mitigation" }, regenerated: true, guardRejected: true };
+  }
+  const second = classifyConsultationOutput(raw2, args.grounding);
+  if (outcomeViolates(second, args.requireMitigation)) {
+    return { outcome: { kind: "SEMANTIC_REJECTED", reason: "guard_certainty_mitigation" }, regenerated: true, guardRejected: true };
+  }
+  return { outcome: second, regenerated: true, guardRejected: false };
+}
+
+// src/features/chat/server/consultationSafety.ts
+var SELF_HARM = /자살|자해|죽고\s*싶|죽어\s*버리고?\s*싶|죽어\s*버릴|살기\s*(가\s*)?싫|살고\s*싶지\s*않|목숨을?\s*끊|스스로\s*목숨|세상을?\s*(떠나|등지)고\s*싶|사라지고\s*싶|죽는\s*게\s*(낫|나을|더\s*나)|(살아야|살아갈|살아가는|버틸|버텨야|버티고)[^.\n]{0,7}(이유|의미)[^.\n]{0,7}(없|모르겠|있을까|있나|있냐|있는지|있어\s*\?|있어요\s*\?)/;
+var DEATH_LIFESPAN = /수명|몇\s*살(까지|에)?[^.\n]{0,6}(죽|사망|눈\s*감)|언제\s*죽|죽을\s*(운|팔자|나이|때)|죽는\s*(날|시기|때|나이)|사망\s*(시기|시점|나이|운)|얼마나\s*(더\s*)?(오래\s*)?살|오래\s*살(까|겠|\s*수\s*있|게\s*될)/;
+var MEDICAL = /(사주|팔자|명(에|이|리)|역학)[^.\n]{0,10}(암|병|질병|불치|중병|큰\s*병|종양)|(암|중병|불치병|큰\s*병|종양)[^.\n]{0,6}(이야|인가|일까|걸리|생기|있(어|나|을까|는지|나요))|이\s*(병|증상|질환)[^.\n]{0,8}(나(을까|아|아요|을지)|낫|치료|완치|호전|경과)|무슨\s*병|진단[^.\n]{0,4}(해|되|받|명)|완치(\s*(되|될|가능|여부))|불치/;
+var FINANCIAL_GUARANTEE2 = /원금\s*보장|손실\s*(이\s*)?없(어|이|나|을|는)|수익[^.\n]{0,6}보장|보장[^.\n]{0,6}수익|확정\s*수익|(무조건|반드시|틀림없이|꼭|100\s*%)[^.\n]{0,10}(수익|이득|벌(어|게|ㄹ|립|린)|부자|대박|성공)|(투자|주식|코인|비트코인|부동산|재테크)[^.\n]{0,12}(무조건|반드시|확실히|틀림없이|보장|대박|100\s*%)/;
+function classifyConsultationSafetyRoute(question) {
+  const q = (question ?? "").trim();
+  if (q.length === 0) return "NORMAL";
+  if (SELF_HARM.test(q)) return "SELF_HARM";
+  if (DEATH_LIFESPAN.test(q)) return "DEATH_LIFESPAN";
+  if (MEDICAL.test(q)) return "MEDICAL";
+  if (FINANCIAL_GUARANTEE2.test(q)) return "FINANCIAL_GUARANTEE";
+  return "NORMAL";
+}
+function isHardStopRoute(route) {
+  return route === "SELF_HARM" || route === "DEATH_LIFESPAN" || route === "MEDICAL";
+}
+var SELF_HARM_RESPONSE = [
+  "지금 많이 힘드셨겠어요. 이건 운세로 판단할 문제가 아니라, 지금 바로 도움을 받을 수 있는 일이에요.",
+  "혼자 감당하지 마시고, 지금 마음을 아래로 이야기해 주세요.",
+  "",
+  "· 자살예방 상담전화 109 (24시간)",
+  "· 정신건강 상담전화 1577-0199",
+  "· 급하면 112 / 119",
+  "",
+  "덕분이는 이런 순간에 사주 풀이를 드리지 않아요. 당신의 이야기를 들어줄 사람이 있어요."
+].join("\n");
+var DEATH_LIFESPAN_RESPONSE = [
+  "덕분이는 수명이나 세상을 떠나는 시기를 사주로 단정하지 않아요. 그건 운세가 정할 수 있는 영역이 아니거든요.",
+  "대신, 지금의 삶을 더 건강하고 단단하게 가꿔가는 이야기라면 함께 나눌 수 있어요.",
+  "요즘 마음이나 건강, 앞으로의 방향 중 무엇이 궁금하신지 편하게 말씀해 주세요."
+].join("\n");
+var MEDICAL_RESPONSE = [
+  "덕분이는 사주로 질병을 진단하거나 병의 경과·완치 여부를 판정하지 않아요.",
+  "건강이 염려되신다면 증상은 꼭 의료 전문가와 상담해 주세요. 그게 가장 정확하고 안전한 길이에요.",
+  "대신 전반적인 건강 관리의 흐름이나 생활에서 신경 쓰면 좋은 부분 정도라면 함께 살펴볼 수 있어요."
+].join("\n");
+function safeResponseForRoute(route) {
+  switch (route) {
+    case "SELF_HARM":
+      return SELF_HARM_RESPONSE;
+    case "DEATH_LIFESPAN":
+      return DEATH_LIFESPAN_RESPONSE;
+    case "MEDICAL":
+      return MEDICAL_RESPONSE;
+    default:
+      return null;
+  }
+}
+
+// src/features/chat/server/resolvedTemporalContext.ts
+function kstCivil(epochSeconds) {
+  const d = new Date((epochSeconds + 9 * 3600) * 1e3);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
+}
+function groundingReferenceYear(grounding) {
+  if (grounding.status !== "available") return null;
+  for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const r = ev.timingAnchors?.referenceYear;
+    if (typeof r === "number") return r;
+  }
+  return null;
+}
+function buildResolvedTemporalContext(question, nowEpochSeconds, grounding) {
+  const civil = kstCivil(nowEpochSeconds);
+  const referenceYear = groundingReferenceYear(grounding) ?? civil.year;
+  const q = (question ?? "").trim();
+  const years = resolveQuestionYears(q, referenceYear);
+  const months = resolveQuestionMonths(q, referenceYear, null);
+  const targets = [...years, ...months.targets.map((t) => t.year * 100 + t.month)];
+  const qimenActive = grounding.status === "available" && grounding.evidence.qimen.availability === "available";
+  return {
+    anchorEpochSeconds: nowEpochSeconds,
+    timezone: "Asia/Seoul",
+    referenceYear,
+    referenceMonth: civil.month,
+    resolvedTargets: Array.from(new Set(targets)),
+    qimenActive
+  };
 }
 
 // src/features/chat/server/buildServerConsultation.ts
@@ -7865,6 +8561,8 @@ function metaFrom(grounding, mode) {
     engineVersion: grounding.status === "available" ? grounding.engineVersion ?? null : null,
     engines,
     promptVersion: CONSULTATION_PROMPT_VERSION,
+    answerPlanVersion: ANSWER_PLAN_VERSION,
+    decisionPolicyVersion: DECISION_POLICY_VERSION,
     mode,
     questionTimeSource: "SERVER_RECEIPT_TIME"
   };
@@ -7872,6 +8570,16 @@ function metaFrom(grounding, mode) {
 async function buildServerConsultation(request, deps) {
   const question = (request.question ?? "").trim();
   if (question.length === 0) return { ok: false, reason: "INVALID_INPUT" };
+  const safetyRoute = classifyConsultationSafetyRoute(question);
+  if (isHardStopRoute(safetyRoute)) {
+    return {
+      ok: true,
+      text: safeResponseForRoute(safetyRoute) ?? SEMANTIC_REJECTION_MESSAGE,
+      groundingMeta: metaFrom(GROUNDING_UNAVAILABLE, "safety"),
+      diagnostics: { outputClassification: "SAFETY_ROUTED", safetyRoute },
+      resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, GROUNDING_UNAVAILABLE)
+    };
+  }
   let birthInfo;
   let subjectLabel = request.subjectLabel ?? null;
   if (request.subjectProfileId && deps.resolveTrustedBirth) {
@@ -7913,28 +8621,24 @@ async function buildServerConsultation(request, deps) {
   const recentMessages = sanitizeConversation(request.conversationContext);
   const mode = classifyConsultationMode(question, recentMessages.length > 0);
   let effectiveGrounding = grounding;
+  let plan = deriveAnswerPlan(question, effectiveGrounding);
+  const buildMessages = (extraDirective) => buildPrompt({
+    selectedContext,
+    conversationSummary: request.conversationSummary ?? null,
+    recentMessages,
+    currentUserMessage: question,
+    mode,
+    grounding: effectiveGrounding,
+    answerPlanDirective: extraDirective ? `${renderAnswerPlanDirective(plan)}
+${extraDirective}` : renderAnswerPlanDirective(plan)
+  });
   let messages;
   try {
-    messages = buildPrompt({
-      selectedContext,
-      conversationSummary: request.conversationSummary ?? null,
-      recentMessages,
-      currentUserMessage: question,
-      mode,
-      grounding,
-      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, grounding))
-    });
+    messages = buildMessages();
   } catch {
     effectiveGrounding = GROUNDING_UNAVAILABLE;
-    messages = buildPrompt({
-      selectedContext,
-      conversationSummary: request.conversationSummary ?? null,
-      recentMessages,
-      currentUserMessage: question,
-      mode,
-      grounding: GROUNDING_UNAVAILABLE,
-      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, GROUNDING_UNAVAILABLE))
-    });
+    plan = deriveAnswerPlan(question, effectiveGrounding);
+    messages = buildMessages();
   }
   let raw;
   try {
@@ -7945,19 +8649,36 @@ async function buildServerConsultation(request, deps) {
   if (typeof raw !== "string" || raw.trim().length === 0) {
     return { ok: false, reason: "LLM_FAILED" };
   }
-  const outcome = classifyConsultationOutput(raw, effectiveGrounding);
+  const guard = await classifyWithGuards({
+    raw,
+    grounding: effectiveGrounding,
+    requireMitigation: plan.requireMitigation,
+    regenerate: async () => {
+      try {
+        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+      } catch {
+        return null;
+      }
+    }
+  });
+  const outcome = guard.outcome;
   const structuredResult = outcome.kind === "ACCEPTED" ? buildStructuredConsultationResult(outcome.result, effectiveGrounding) : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
-    ...outcome.kind === "ACCEPTED" ? {} : { rejectionReason: firstStructuredRejectionReason(raw, effectiveGrounding) }
+    ...guard.regenerated ? { regenerated: true } : {},
+    ...safetyRoute !== "NORMAL" ? { safetyRoute } : {},
+    ...outcome.kind === "ACCEPTED" ? {} : {
+      rejectionReason: guard.guardRejected ? "GUARD_CERTAINTY_MITIGATION" : firstStructuredRejectionReason(raw, effectiveGrounding)
+    }
   };
   return {
     ok: true,
     text,
     ...structuredResult ? { structuredResult } : {},
     groundingMeta: metaFrom(effectiveGrounding, mode),
-    diagnostics
+    diagnostics,
+    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding)
   };
 }
 
@@ -8414,6 +9135,8 @@ function metaFrom2(grounding) {
     engineVersion: grounding.status === "available" ? grounding.engineVersion ?? null : null,
     engines,
     promptVersion: CONSULTATION_PROMPT_VERSION,
+    answerPlanVersion: ANSWER_PLAN_VERSION,
+    decisionPolicyVersion: DECISION_POLICY_VERSION,
     mode: "compatibility",
     questionTimeSource: "SERVER_RECEIPT_TIME"
   };
@@ -8421,6 +9144,16 @@ function metaFrom2(grounding) {
 async function buildCompatibilityConsultation(request, deps) {
   const question = (request.question ?? "").trim();
   if (question.length === 0) return { ok: false, reason: "INVALID_INPUT" };
+  const safetyRoute = classifyConsultationSafetyRoute(question);
+  if (isHardStopRoute(safetyRoute)) {
+    return {
+      ok: true,
+      text: safeResponseForRoute(safetyRoute) ?? SEMANTIC_REJECTION_MESSAGE,
+      groundingMeta: metaFrom2(GROUNDING_UNAVAILABLE),
+      diagnostics: { outputClassification: "SAFETY_ROUTED", safetyRoute },
+      resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, GROUNDING_UNAVAILABLE)
+    };
+  }
   if (!hasMinimalBirthInput2(request.birthInput)) return { ok: false, reason: "INVALID_INPUT" };
   if (!hasMinimalBirthInput2(request.partnerBirthInput)) return { ok: false, reason: "INVALID_INPUT" };
   const selfBirth = request.birthInput;
@@ -8495,30 +9228,47 @@ async function buildCompatibilityConsultation(request, deps) {
   }
   const safeGrounding = toSafeGrounding(grounding);
   const recentMessages = sanitizeConversation2(request.conversationContext);
-  const answerPlanDirective = renderAnswerPlanDirective(deriveAnswerPlan(question, safeGrounding, "compatibility"));
-  const messages = buildCompatibilityPrompt({
+  const plan = deriveAnswerPlan(question, safeGrounding, "compatibility");
+  const buildMessages = (extraDirective) => buildCompatibilityPrompt({
     self: selfContext,
     target: targetContext,
     relationship: request.partnerLabel ?? null,
     grounding: safeGrounding,
-    answerPlanDirective,
+    answerPlanDirective: extraDirective ? `${renderAnswerPlanDirective(plan)}
+${extraDirective}` : renderAnswerPlanDirective(plan),
     conversationSummary: request.conversationSummary ?? null,
     recentMessages,
     currentUserMessage: question
   });
   let raw;
   try {
-    raw = await deps.callLLM(messages);
+    raw = await deps.callLLM(buildMessages());
   } catch {
     return { ok: false, reason: "LLM_FAILED" };
   }
   if (typeof raw !== "string" || raw.trim().length === 0) return { ok: false, reason: "LLM_FAILED" };
-  const outcome = classifyConsultationOutput(raw, safeGrounding);
+  const guard = await classifyWithGuards({
+    raw,
+    grounding: safeGrounding,
+    requireMitigation: plan.requireMitigation,
+    regenerate: async () => {
+      try {
+        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+      } catch {
+        return null;
+      }
+    }
+  });
+  const outcome = guard.outcome;
   const structuredResult = outcome.kind === "ACCEPTED" ? buildStructuredConsultationResult(outcome.result, safeGrounding) : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
-    ...outcome.kind === "ACCEPTED" ? {} : { rejectionReason: firstStructuredRejectionReason(raw, safeGrounding) }
+    ...guard.regenerated ? { regenerated: true } : {},
+    ...safetyRoute !== "NORMAL" ? { safetyRoute } : {},
+    ...outcome.kind === "ACCEPTED" ? {} : {
+      rejectionReason: guard.guardRejected ? "GUARD_CERTAINTY_MITIGATION" : firstStructuredRejectionReason(raw, safeGrounding)
+    }
   };
   return {
     ok: true,
@@ -8526,6 +9276,7 @@ async function buildCompatibilityConsultation(request, deps) {
     ...structuredResult ? { structuredResult } : {},
     groundingMeta: metaFrom2(safeGrounding),
     diagnostics,
+    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding),
     ...compatibility ? { compatibility } : {}
   };
 }
@@ -8863,56 +9614,17 @@ var TODAY_DOMAIN_LABEL = {
 var TODAY_POLICY_VERSION = "today@1.1.0";
 var TODAY_CANONICAL_VERSION = "today-canonical@1.1.0";
 
-// src/features/monthly/types.ts
-var MONTHLY_DOMAIN_LABEL = {
-  overall: "전체 흐름",
-  work: "일·사업",
-  wealth: "재물",
-  relationship: "인간관계·연애",
-  action: "행동·변화"
-};
-var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
-var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.2.0";
-
 // src/features/today/engine/fortuneDate.ts
-var KST_OFFSET_SECONDS2 = 32400;
-var FORTUNE_TIMEZONE = "Asia/Seoul";
-var pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
+var KST_OFFSET_SECONDS3 = 32400;
+var FORTUNE_TIMEZONE2 = "Asia/Seoul";
+var pad22 = (n) => n < 10 ? `0${n}` : `${n}`;
 function epochToKstCivilDate(epochSeconds) {
-  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
+  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
   return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
 }
 function fortuneDateStringFromEpoch(epochSeconds) {
   const d = epochToKstCivilDate(epochSeconds);
-  return `${d.year}-${pad2(d.month)}-${pad2(d.day)}`;
-}
-
-// src/features/monthly/engine/monthDate.ts
-var KST_OFFSET_SECONDS3 = 32400;
-var FORTUNE_TIMEZONE2 = "Asia/Seoul";
-var pad22 = (n) => n < 10 ? `0${n}` : `${n}`;
-function currentTargetMonth(epochSeconds) {
-  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
-  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
-}
-function monthMidpointEpochSeconds(m) {
-  return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
-}
-function civilMonthStartEpoch(m) {
-  return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1e3) - KST_OFFSET_SECONDS3;
-}
-function nextCivilMonth(m) {
-  return m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 };
-}
-function kstDateString(epochSeconds) {
-  const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS3) * 1e3);
-  return `${shifted.getUTCFullYear()}-${pad22(shifted.getUTCMonth() + 1)}-${pad22(shifted.getUTCDate())}`;
-}
-function monthKey(m) {
-  return `${m.year}-${pad22(m.month)}`;
-}
-function formatMonthLabel(m) {
-  return `${m.year}년 ${m.month}월`;
+  return `${d.year}-${pad22(d.month)}-${pad22(d.day)}`;
 }
 
 // src/features/chat/server/consultationSchema.ts
@@ -8971,13 +9683,13 @@ function calculateDayLuck(input) {
 
 // src/features/today/engine/todayEvidence.ts
 var TODAY_EVIDENCE_VERSION = "today-evidence@1.0.0";
-var ALL_DOMAINS = ["overall", "work", "wealth", "relationship", "action"];
+var ALL_DOMAINS2 = ["overall", "work", "wealth", "relationship", "action"];
 async function buildTodayFortuneEvidence(input, deps) {
   const fortuneDate = fortuneDateStringFromEpoch(input.nowEpochSeconds);
   const unavailable9 = (reason) => ({
     available: false,
     fortuneDate,
-    timezone: FORTUNE_TIMEZONE,
+    timezone: FORTUNE_TIMEZONE2,
     reason,
     evidenceVersion: TODAY_EVIDENCE_VERSION
   });
@@ -9001,13 +9713,13 @@ async function buildTodayFortuneEvidence(input, deps) {
   return {
     available: true,
     fortuneDate,
-    timezone: FORTUNE_TIMEZONE,
+    timezone: FORTUNE_TIMEZONE2,
     dayLuck,
     dayStemTenGod: dayLuck.tenGods.stemTenGod,
     dayBranchTenGod: dayLuck.tenGods.branchMainTenGod,
     sewoonAvailable: sewoon.capability === "AVAILABLE",
     wolwoonAvailable: wolwoon.capability === "AVAILABLE",
-    supportedDomains: ALL_DOMAINS,
+    supportedDomains: ALL_DOMAINS2,
     evidenceVersion: TODAY_EVIDENCE_VERSION
   };
 }
@@ -9021,7 +9733,7 @@ var PRIMARY_MODE_LABEL = {
   ADJUST: "조정·조율",
   STABILIZE: "속도 조절·정리"
 };
-function tenGodDomain(tg3) {
+function tenGodDomain2(tg3) {
   switch (tg3) {
     case "DIRECT_WEALTH":
     case "INDIRECT_WEALTH":
@@ -9040,7 +9752,7 @@ function tenGodDomain(tg3) {
       return "overall";
   }
 }
-function derivePrimaryMode(tone, strongestDomain) {
+function derivePrimaryMode2(tone, strongestDomain) {
   if (tone === "조심해서 움직일 날") return "STABILIZE";
   if (tone === "변화가 많은 날") return "ADJUST";
   switch (strongestDomain) {
@@ -9054,7 +9766,7 @@ function derivePrimaryMode(tone, strongestDomain) {
       return "CONNECT";
   }
 }
-function deriveDomainSignals(tone, strongestDomain, cautionDomain) {
+function deriveDomainSignals2(tone, strongestDomain, cautionDomain) {
   const emphasisStatus = tone === "좋은 흐름" ? "좋음" : "무난";
   const signals = [{ domain: strongestDomain, status: emphasisStatus }];
   if (cautionDomain !== null && cautionDomain !== strongestDomain) {
@@ -9062,8 +9774,8 @@ function deriveDomainSignals(tone, strongestDomain, cautionDomain) {
   }
   return signals;
 }
-var HARMONY_BRANCH = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
-var FRICTION_BRANCH = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+var HARMONY_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
+var FRICTION_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
 function deriveDailyPlan(evidence) {
   const base = {
     fortuneDate: evidence.fortuneDate,
@@ -9096,13 +9808,13 @@ function deriveDailyPlan(evidence) {
     else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
   }
   for (const b of rel.branch) {
-    if (HARMONY_BRANCH.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH.has(b.relation.kind)) frictionCount += 1;
+    if (HARMONY_BRANCH2.has(b.relation.kind)) harmonyCount += 1;
+    else if (FRICTION_BRANCH2.has(b.relation.kind)) frictionCount += 1;
   }
   const overallTone = frictionCount === 0 && harmonyCount >= 1 ? "좋은 흐름" : frictionCount === 0 ? "무난한 흐름" : harmonyCount >= frictionCount ? "변화가 많은 날" : "조심해서 움직일 날";
-  const strongestDomain = tenGodDomain(evidence.dayStemTenGod);
-  const cautionDomain = frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null;
-  const primaryMode = derivePrimaryMode(overallTone, strongestDomain);
+  const strongestDomain = tenGodDomain2(evidence.dayStemTenGod);
+  const cautionDomain = frictionCount > 0 ? tenGodDomain2(evidence.dayBranchTenGod) : null;
+  const primaryMode = derivePrimaryMode2(overallTone, strongestDomain);
   return {
     ...base,
     available: true,
@@ -9111,7 +9823,7 @@ function deriveDailyPlan(evidence) {
     primaryModeLabel: PRIMARY_MODE_LABEL[primaryMode],
     strongestDomain,
     cautionDomain,
-    domainSignals: deriveDomainSignals(overallTone, strongestDomain, cautionDomain),
+    domainSignals: deriveDomainSignals2(overallTone, strongestDomain, cautionDomain),
     supportedDomains: evidence.supportedDomains,
     harmonyCount,
     frictionCount
@@ -9159,16 +9871,16 @@ function buildTodayFortunePrompt(plan) {
 }
 
 // src/features/today/server/buildTodayFortune.ts
-var clean2 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
-function firstSentence(s) {
+var clean3 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
+function firstSentence2(s) {
   const m = /^[^.!?。\n]*[.!?。]?/.exec(s.trim());
   return (m ? m[0] : s).trim();
 }
-function toDisplayLabel(rawLabel, question) {
+function toDisplayLabel2(rawLabel, question) {
   const base = (rawLabel || question).trim().replace(/[?？.!。·\s]+$/u, "");
   return base.length <= 20 ? base : `${base.slice(0, 18).trim()}…`;
 }
-var CATEGORY_PATTERNS = [
+var CATEGORY_PATTERNS2 = [
   { key: "RUSH", re: /서두르|성급|(?<!마)무리|급하게|급한|밀어붙이|조급/ },
   // (?<!마) so 마무리(finishing) ≠ 무리(overdoing)
   { key: "ORGANIZE", re: /정리|점검|마무리|재점검|정돈|조건을?\s*(다시\s*)?확인/ },
@@ -9177,13 +9889,13 @@ var CATEGORY_PATTERNS = [
   { key: "DECIDE", re: /결정|판단|선택|확답|계약서|서명/ },
   { key: "MONEY", re: /지출|비용|예산|투자|자금|씀씀이/ }
 ];
-function semanticCategory(text) {
-  for (const c of CATEGORY_PATTERNS) if (c.re.test(text)) return c.key;
+function semanticCategory2(text) {
+  for (const c of CATEGORY_PATTERNS2) if (c.re.test(text)) return c.key;
   return null;
 }
-var EVENT_GUARANTEE = /(돈|재물|자금|목돈)[^.\n]{0,8}(들어옵니다|들어와요|들어옴|생깁니다|생겨요)|(합격|당첨|승진|성사|성공)(합니다|됩니다|해요|돼요)|(연락|전화|고백)[^.\n]{0,8}(옵니다|와요|받습니다|올\s*거예요)/;
-function containsEventGuarantee(text) {
-  return EVENT_GUARANTEE.test(text);
+var EVENT_GUARANTEE2 = /(돈|재물|자금|목돈)[^.\n]{0,8}(들어옵니다|들어와요|들어옴|생깁니다|생겨요)|(합격|당첨|승진|성사|성공)(합니다|됩니다|해요|돼요)|(연락|전화|고백)[^.\n]{0,8}(옵니다|와요|받습니다|올\s*거예요)/;
+function containsEventGuarantee2(text) {
+  return EVENT_GUARANTEE2.test(text);
 }
 function parseDailyFortune(raw, plan) {
   let obj;
@@ -9194,20 +9906,20 @@ function parseDailyFortune(raw, plan) {
   }
   if (!obj || typeof obj !== "object") return null;
   const o = obj;
-  const headline = clean2(o.headline);
-  const overallSummary = clean2(o.overallSummary);
-  const actionTip = clean2(o.actionTip);
+  const headline = clean3(o.headline);
+  const overallSummary = clean3(o.overallSummary);
+  const actionTip = clean3(o.actionTip);
   if (headline.length === 0 || overallSummary.length === 0 || actionTip.length === 0) return null;
-  const verdict = clean2(o.verdict) || firstSentence(overallSummary);
+  const verdict = clean3(o.verdict) || firstSentence2(overallSummary);
   const seenCategories = /* @__PURE__ */ new Set();
   const highlights = [];
   for (const h of Array.isArray(o.highlights) ? o.highlights : []) {
     const hh = h ?? {};
-    const domain = clean2(hh.domain);
-    const title = clean2(hh.title);
-    const body = clean2(hh.body);
+    const domain = clean3(hh.domain);
+    const title = clean3(hh.title);
+    const body = clean3(hh.body);
     if (title.length === 0 || body.length === 0) continue;
-    const cat = semanticCategory(`${title} ${body}`);
+    const cat = semanticCategory2(`${title} ${body}`);
     if (cat && seenCategories.has(cat)) continue;
     if (cat) seenCategories.add(cat);
     highlights.push({ domain, title, body });
@@ -9215,16 +9927,16 @@ function parseDailyFortune(raw, plan) {
   }
   const coveredByOthers = /* @__PURE__ */ new Set([...seenCategories]);
   for (const t of [verdict, headline]) {
-    const c = semanticCategory(t);
+    const c = semanticCategory2(t);
     if (c) coveredByOthers.add(c);
   }
   const cautions = [];
   for (const c of Array.isArray(o.cautions) ? o.cautions : []) {
     const cc = c ?? {};
-    const title = clean2(cc.title);
-    const body = clean2(cc.body);
+    const title = clean3(cc.title);
+    const body = clean3(cc.body);
     if (title.length === 0 || body.length === 0) continue;
-    const cat = semanticCategory(`${title} ${body}`);
+    const cat = semanticCategory2(`${title} ${body}`);
     if (cat && coveredByOthers.has(cat)) continue;
     if (cat) coveredByOthers.add(cat);
     cautions.push({ title, body });
@@ -9236,14 +9948,14 @@ function parseDailyFortune(raw, plan) {
     let displayLabel = "";
     let question = "";
     if (typeof f === "string") {
-      question = clean2(f);
+      question = clean3(f);
     } else if (f && typeof f === "object") {
       const ff = f;
-      displayLabel = clean2(ff.displayLabel);
-      question = clean2(ff.question);
+      displayLabel = clean3(ff.displayLabel);
+      question = clean3(ff.question);
     }
     if (question.length === 0) continue;
-    followUps.push({ displayLabel: toDisplayLabel(displayLabel, question), question });
+    followUps.push({ displayLabel: toDisplayLabel2(displayLabel, question), question });
     if (followUps.length >= 3) break;
   }
   const surfaced = [
@@ -9256,7 +9968,7 @@ function parseDailyFortune(raw, plan) {
     ...followUps.flatMap((f) => [f.displayLabel, f.question])
   ].join(" ");
   if (containsRawGanji(surfaced)) return null;
-  if (containsEventGuarantee(surfaced)) return null;
+  if (containsEventGuarantee2(surfaced)) return null;
   return {
     headline,
     verdict,
@@ -9342,521 +10054,6 @@ var DAILY_FORTUNE_JSON_SCHEMA = {
 };
 function dailyFortuneResponseFormat() {
   return { type: "json_schema", name: "deokbun_today_fortune", strict: true, schema: DAILY_FORTUNE_JSON_SCHEMA };
-}
-
-// src/features/monthly/engine/civilMonthSegments.ts
-function resolveCivilMonthSajuSegments(target) {
-  const start = civilMonthStartEpoch(target);
-  const end = civilMonthStartEpoch(nextCivilMonth(target));
-  const a = resolveSajuTemporalForInstant(start);
-  const b = resolveSajuTemporalForInstant(end - 1);
-  if (!a || !b) return null;
-  const seg = (s, e, sajuYear, ord) => ({
-    startEpoch: s,
-    endEpoch: e,
-    durationSeconds: e - s,
-    sajuYear,
-    sajuMonthOrdinal: ord,
-    startCivilDate: kstDateString(s)
-  });
-  if (a.sajuYear === b.sajuYear && a.jieMonthOrdinal === b.jieMonthOrdinal) {
-    return [seg(start, end, a.sajuYear, a.jieMonthOrdinal)];
-  }
-  let lo = start;
-  let hi = end;
-  while (hi - lo > 1) {
-    const mid = Math.floor((lo + hi) / 2);
-    const m = resolveSajuTemporalForInstant(mid);
-    if (m && m.sajuYear === b.sajuYear && m.jieMonthOrdinal === b.jieMonthOrdinal) hi = mid;
-    else lo = mid;
-  }
-  const t = hi;
-  return [seg(start, t, a.sajuYear, a.jieMonthOrdinal), seg(t, end, b.sajuYear, b.jieMonthOrdinal)];
-}
-
-// src/features/monthly/engine/monthlyEvidence.ts
-var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.1.0";
-var ALL_DOMAINS2 = ["overall", "work", "wealth", "relationship", "action"];
-async function buildMonthlyFortuneEvidence(input, deps) {
-  const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
-  const unavailable9 = (reason) => ({
-    available: false,
-    year: target.year,
-    month: target.month,
-    timezone: FORTUNE_TIMEZONE2,
-    reason,
-    evidenceVersion: MONTHLY_EVIDENCE_VERSION
-  });
-  let execution;
-  try {
-    execution = await executeSajuFromBirthInput(toSajuEngineInput(input.birthInfo), {
-      digestProvider: deps.digestProvider,
-      historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
-    });
-  } catch {
-    return unavailable9("CHART_EXECUTION_THREW");
-  }
-  if (!execution.success) return unavailable9("CHART_INPUT_INVALID");
-  const engineResult = execution.engineResult;
-  if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
-  const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
-  const rawSegments = resolveCivilMonthSajuSegments(target);
-  if (!rawSegments || rawSegments.length === 0) return unavailable9("CIVIL_MONTH_SEGMENTS_UNAVAILABLE");
-  const totalSeconds = rawSegments.reduce((sum, s) => sum + s.durationSeconds, 0);
-  const segments = [];
-  for (const s of rawSegments) {
-    const midEpoch = s.startEpoch + Math.floor(s.durationSeconds / 2);
-    const w = calculateWolwoonForInstant({ natal, instantEpochSeconds: midEpoch });
-    if (w.capability !== "AVAILABLE") return unavailable9(`WOLWOON_${w.reason}`);
-    segments.push({
-      sajuMonthOrdinal: s.sajuMonthOrdinal,
-      durationSeconds: s.durationSeconds,
-      weight: totalSeconds > 0 ? s.durationSeconds / totalSeconds : 1,
-      startCivilDate: s.startCivilDate,
-      stemTenGod: w.tenGods.stemTenGod,
-      branchTenGod: w.tenGods.branchMainTenGod,
-      relationsToNatal: w.relationsToNatal
-    });
-  }
-  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: monthMidpointEpochSeconds(target) });
-  return {
-    available: true,
-    year: target.year,
-    month: target.month,
-    timezone: FORTUNE_TIMEZONE2,
-    segments,
-    transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
-    sewoonAvailable: sewoon.capability === "AVAILABLE",
-    supportedDomains: ALL_DOMAINS2,
-    evidenceVersion: MONTHLY_EVIDENCE_VERSION
-  };
-}
-
-// src/features/monthly/engine/monthlyPlan.ts
-var MONTHLY_PLAN_VERSION = "monthly-plan@1.2.0";
-var MONTHLY_MODE_LABEL = {
-  EXPAND: "확장·추진",
-  MANAGE: "점검·관리",
-  CONNECT: "관계·조율",
-  ADJUST: "조정·조율",
-  STABILIZE: "정비·속도조절"
-};
-function tenGodDomain2(tg3) {
-  switch (tg3) {
-    case "DIRECT_WEALTH":
-    case "INDIRECT_WEALTH":
-      return "wealth";
-    case "DIRECT_OFFICER":
-    case "SEVEN_KILLINGS":
-      return "work";
-    case "EATING_GOD":
-    case "HURTING_OFFICER":
-      return "action";
-    case "PEER":
-    case "ROB_WEALTH":
-      return "relationship";
-    case "DIRECT_RESOURCE":
-    case "INDIRECT_RESOURCE":
-      return "overall";
-  }
-}
-function derivePrimaryMode2(tier, strongestDomain) {
-  if (tier === "속도를 조절할 달") return "STABILIZE";
-  if (tier === "변화가 많은 달") return "ADJUST";
-  switch (strongestDomain) {
-    case "work":
-    case "action":
-      return "EXPAND";
-    case "wealth":
-    case "overall":
-      return "MANAGE";
-    case "relationship":
-      return "CONNECT";
-  }
-}
-function deriveDomainSignals2(tier, strongestDomain, cautionDomain) {
-  const emphasisStatus = tier === "기회를 살리기 좋은 달" ? "좋음" : "무난";
-  const signals = [{ domain: strongestDomain, status: emphasisStatus }];
-  if (cautionDomain !== null && cautionDomain !== strongestDomain) {
-    signals.push({ domain: cautionDomain, status: "주의" });
-  }
-  return signals;
-}
-function deriveCoverage(segments, primaryDomain, cautionDomain) {
-  const candidates = [];
-  for (const seg of segments) {
-    candidates.push(tenGodDomain2(seg.stemTenGod));
-    candidates.push(tenGodDomain2(seg.branchTenGod));
-  }
-  const distinct = [...new Set(candidates)];
-  const secondaryDomains = distinct.filter((d) => d !== primaryDomain && d !== cautionDomain).slice(0, 2);
-  const coverageOrder = [
-    primaryDomain,
-    ...secondaryDomains,
-    ...cautionDomain && cautionDomain !== primaryDomain && !secondaryDomains.includes(cautionDomain) ? [cautionDomain] : []
-  ];
-  return { secondaryDomains, coverageOrder };
-}
-var HARMONY_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_SIX_COMBINATION", "BRANCH_HALF_THREE_HARMONY"]);
-var FRICTION_BRANCH2 = /* @__PURE__ */ new Set(["BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
-function tierFromTally(harmony, friction) {
-  return friction === 0 && harmony >= 1 ? "기회를 살리기 좋은 달" : friction === 0 ? "안정적으로 운영할 달" : harmony >= friction ? "변화가 많은 달" : "속도를 조절할 달";
-}
-function deriveSegmentSignal(seg) {
-  let harmonyCount = 0;
-  let frictionCount = 0;
-  for (const s of seg.relationsToNatal.stem) {
-    if (s.relation.kind === "STEM_COMBINATION") harmonyCount += 1;
-    else if (s.relation.kind === "STEM_CLASH") frictionCount += 1;
-  }
-  for (const b of seg.relationsToNatal.branch) {
-    if (HARMONY_BRANCH2.has(b.relation.kind)) harmonyCount += 1;
-    else if (FRICTION_BRANCH2.has(b.relation.kind)) frictionCount += 1;
-  }
-  const tier = tierFromTally(harmonyCount, frictionCount);
-  const strongestDomain = tenGodDomain2(seg.stemTenGod);
-  const cautionDomain = frictionCount > 0 ? tenGodDomain2(seg.branchTenGod) : null;
-  const primaryMode = derivePrimaryMode2(tier, strongestDomain);
-  return {
-    weight: seg.weight,
-    tier,
-    primaryMode,
-    primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
-    strongestDomain,
-    cautionDomain,
-    harmonyCount,
-    frictionCount
-  };
-}
-function deriveMonthlyPlan(evidence) {
-  const base = {
-    year: evidence.year,
-    month: evidence.month,
-    maxOpportunities: 3,
-    maxCautions: 2,
-    maxActions: 3,
-    forbidEventCertainty: true,
-    forbidExactDates: true,
-    evidenceVersion: evidence.evidenceVersion,
-    planVersion: MONTHLY_PLAN_VERSION
-  };
-  if (!evidence.available || evidence.segments.length === 0) {
-    return {
-      ...base,
-      available: false,
-      overallTier: "안정적으로 운영할 달",
-      primaryMode: "MANAGE",
-      primaryModeLabel: MONTHLY_MODE_LABEL.MANAGE,
-      strongestDomain: "overall",
-      cautionDomain: null,
-      domainSignals: [],
-      secondaryDomains: [],
-      coverageOrder: [],
-      supportedDomains: [],
-      harmonyCount: 0,
-      frictionCount: 0,
-      segmentCount: 0,
-      hasMeaningfulTransition: false,
-      transition: null
-    };
-  }
-  const signals = evidence.segments.map(deriveSegmentSignal);
-  let dominant = signals[0];
-  for (const s of signals) if (s.weight >= dominant.weight) dominant = s;
-  const overallTier = dominant.tier;
-  const strongestDomain = dominant.strongestDomain;
-  const cautionDomain = dominant.cautionDomain;
-  const primaryMode = dominant.primaryMode;
-  const coverage = deriveCoverage(evidence.segments, strongestDomain, cautionDomain);
-  let hasMeaningfulTransition = false;
-  let transition = null;
-  if (signals.length === 2 && evidence.transitionCivilDate) {
-    const [early, later] = signals;
-    if (early.tier !== later.tier || early.primaryMode !== later.primaryMode) {
-      hasMeaningfulTransition = true;
-      transition = {
-        transitionCivilDate: evidence.transitionCivilDate,
-        early: { tier: early.tier, modeLabel: early.primaryModeLabel, strongestDomain: early.strongestDomain },
-        later: { tier: later.tier, modeLabel: later.primaryModeLabel, strongestDomain: later.strongestDomain }
-      };
-    }
-  }
-  return {
-    ...base,
-    available: true,
-    overallTier,
-    primaryMode,
-    primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
-    strongestDomain,
-    cautionDomain,
-    domainSignals: deriveDomainSignals2(overallTier, strongestDomain, cautionDomain),
-    secondaryDomains: coverage.secondaryDomains,
-    coverageOrder: coverage.coverageOrder,
-    supportedDomains: evidence.supportedDomains,
-    harmonyCount: dominant.harmonyCount,
-    frictionCount: dominant.frictionCount,
-    segmentCount: signals.length,
-    hasMeaningfulTransition,
-    transition
-  };
-}
-
-// src/features/monthly/server/monthlyFortunePrompt.ts
-function buildMonthlyFortunePrompt(plan) {
-  const label = formatMonthLabel({ year: plan.year, month: plan.month });
-  const emphasized = MONTHLY_DOMAIN_LABEL[plan.strongestDomain];
-  const cautionLabel = plan.cautionDomain ? MONTHLY_DOMAIN_LABEL[plan.cautionDomain] : null;
-  const secondaryLabels = plan.secondaryDomains.map((d) => MONTHLY_DOMAIN_LABEL[d]);
-  const coverageDirective = secondaryLabels.length > 0 ? `opportunities는 서로 다른 영역을 다루십시오 — 우선 "${emphasized}", 그다음 ${secondaryLabels.map((l) => `"${l}"`).join(", ")} 순으로 넓히십시오. 같은 영역(예: 관계=연애·대화·소통)을 다른 말로 반복하지 말고 지원되는 다른 영역으로 넓히십시오.` : `이번 달은 "${emphasized}" 영역이 중심입니다. 억지로 다른 영역을 만들지 말고, "${emphasized}" 안에서 서로 다른 측면(실행·조율·점검 등)을 다루십시오.`;
-  const transitionDirective = plan.hasMeaningfulTransition && plan.transition ? `이번 달은 초반과 중반 이후의 흐름이 다릅니다. 초반은 "${plan.transition.early.tier}", 중반 이후는 "${plan.transition.later.tier}" 흐름입니다. verdict와 overallSummary에서 "초반에는 ~, 중반 이후에는 ~"처럼 이 변화를 자연스럽게 설명하십시오. 단, 특정 날짜가 "가장 좋다"고 단정하지 말고 "초반 / 중반 이후" 표현을 쓰십시오.` : null;
-  const system = [
-    `당신은 덕분이의 "이번 달 운세"입니다. 한 사람의 사주를 ${label}에 대입해 나온 "이번 달의 판단"을 씁니다. 일반적인 생활 조언이 아니라, 이번 달이 어떤 달이고 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답해야 합니다.`,
-    "반드시 일반 사용자의 말로만 쓰십시오. 간지·천간·지지·일간·십신·합충형파해·오행, 엔진/근거/검증 같은 내부 용어를 절대 노출하지 마십시오.",
-    '서버가 이미 판단한 이번 달의 결(반드시 그대로 따를 것 — 당신은 이 판단을 "말로 풀어내는" 역할입니다):',
-    `- 이번 달 전반 기운: "${plan.overallTier}"`,
-    `- 이번 달 권하는 방식: "${plan.primaryModeLabel}"`,
-    `- 기운이 실리는 영역: "${emphasized}"`,
-    cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 이번 달은 크게 부딪히는 기운은 없습니다.",
-    ...transitionDirective ? [transitionDirective] : [],
-    "작성 규칙(반드시 지킬 것):",
-    '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
-    "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
-    '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
-    `- opportunities: 최대 ${plan.maxOpportunities}개. 서로 다른 새로운 정보. 각 항목 = domain 라벨 + 짧은 title + 1~2문장 body.`,
-    `- ${coverageDirective}`,
-    `- cautions: 최대 ${plan.maxCautions}개. "조심하세요"로 끝내지 말고 무엇을 어떻게 조심할지 구체적으로. ${cautionLabel ? "위 조절 영역 중심으로." : "특별한 마찰이 없으면 억지로 만들지 말고 0~1개만."}`,
-    `- actions: 이번 달을 어떻게 보내면 좋은지 구체적 행동 ${plan.maxActions}개 이내("그래서 이번 달 어떻게 보내면 되지?"에 답).`,
-    "- followUps: 정확히 3개. 각 항목 = displayLabel(10~18자 내외의 짧은 질문형, 마침표 없이) + question(상담에 그대로 전달할 자연스러운 한 문장). 1) 기운이 실리는 영역, 2) 조율/주의 영역(없으면 이번 달 결정), 3) 시기/실행 순으로.",
-    '정확한 날짜·주간을 지어내지 마십시오(§24): 이번 달 근거는 "달" 단위입니다. "8월 17~21일이 가장 좋다"처럼 특정 날짜/주를 단정하지 말고, 더 구체적인 시기가 궁금하면 상담에서 날짜를 비교해볼 수 있다고 안내하십시오.',
-    '사건을 확정하지 마십시오(§32): "돈이 들어옵니다 / 계약이 성사됩니다 / 연락이 옵니다 / 이직합니다 / 헤어집니다"처럼 쓰지 말고, "~하기에 좋은 흐름", "~은 조건을 확인하고 움직이는 편이 낫습니다"처럼 적합도·기회로 쓰십시오. 행운의 색·방향·숫자·점수도 만들지 마십시오.',
-    "건강은 진단·치료가 아니라 컨디션 관리·생활 리듬으로만. 돈은 특정 종목 매수 권유 금지, 흐름·조율로만. 관계는 상대의 속마음을 사실로 단정하지 마십시오.",
-    "JSON 스키마(deokbun_monthly_fortune)에 맞춰 그 형식으로만 답하십시오. 글은 모바일에서 읽기 좋게 간결하게(긴 에세이 금지)."
-  ].join("\n");
-  const user = [
-    `이번 달: ${label}`,
-    `전반 기운: ${plan.overallTier}`,
-    `권하는 방식: ${plan.primaryModeLabel}`,
-    `기운이 실리는 영역: ${emphasized}`,
-    `조율이 필요한 영역: ${cautionLabel ?? "특별히 없음"}`,
-    ...plan.hasMeaningfulTransition && plan.transition ? [`이번 달 흐름 변화: 초반 "${plan.transition.early.tier}" → 중반 이후 "${plan.transition.later.tier}" ("초반/중반 이후"로만 표현, 특정 날짜 단정 금지)`] : [],
-    `내부 참고(그대로 노출하지 말 것): 조화 ${plan.harmonyCount} · 마찰 ${plan.frictionCount}`,
-    "",
-    `위 판단을 바탕으로, 이번 달 무엇을 밀고 무엇을 조심하면 좋은지 분명히 답하는 ${label} 운세를 스키마 형식의 JSON으로 작성하십시오.`
-  ].join("\n");
-  return [
-    { role: "system", content: system },
-    { role: "user", content: user }
-  ];
-}
-
-// src/features/monthly/server/buildMonthlyFortune.ts
-var clean3 = (s) => typeof s === "string" ? stripEngineLabels(s).trim() : "";
-function firstSentence2(s) {
-  const m = /^[^.!?。\n]*[.!?。]?/.exec(s.trim());
-  return (m ? m[0] : s).trim();
-}
-function toDisplayLabel2(rawLabel, question) {
-  const base = (rawLabel || question).trim().replace(/[?？.!。·\s]+$/u, "");
-  return base.length <= 20 ? base : `${base.slice(0, 18).trim()}…`;
-}
-var CATEGORY_PATTERNS2 = [
-  { key: "RUSH", re: /서두르|성급|(?<!마)무리|급하게|급한|밀어붙이|조급/ },
-  { key: "ORGANIZE", re: /정리|점검|마무리|재점검|정돈|조건을?\s*(다시\s*)?확인/ },
-  { key: "PACE", re: /속도|천천히|여유|리듬|쉬어|휴식|무리하지/ },
-  { key: "RELATION", re: /관계|사람|소통|말을?\s*아끼|경청|협의|대화/ },
-  { key: "DECIDE", re: /결정|판단|선택|계약|서명|협상/ },
-  { key: "MONEY", re: /지출|비용|예산|투자|자금|씀씀이|수익/ },
-  { key: "EXPAND", re: /확장|추진|도전|시작|새로운\s*일|벌이/ }
-];
-function semanticCategory2(text) {
-  for (const c of CATEGORY_PATTERNS2) if (c.re.test(text)) return c.key;
-  return null;
-}
-var EVENT_GUARANTEE2 = /(돈|재물|자금|목돈)[^.\n]{0,8}(들어옵니다|들어와요|생깁니다|생겨요)|(합격|당첨|승진|성사|성공|이직|퇴사)(합니다|됩니다|해요|돼요)|(연락|전화|고백)[^.\n]{0,8}(옵니다|와요|받습니다)|(헤어집니다|이혼합니다|사고가\s*납니다)/;
-function containsEventGuarantee2(text) {
-  return EVENT_GUARANTEE2.test(text);
-}
-var UNSUPPORTED_DATE = /\d{1,2}\s*[~\-–]\s*\d{1,2}\s*일|\d{1,2}\s*일[^\d]{0,8}(가장|제일|최고|좋|유리|추천|길|적합)|\d{1,2}\s*월\s*\d{1,2}\s*일|(첫째|둘째|셋째|넷째|마지막)\s*주[^\d]{0,8}(가장|제일|좋|유리|추천)/;
-function containsUnsupportedDatePrecision(text) {
-  return UNSUPPORTED_DATE.test(text);
-}
-function parseMonthlyFortune(raw, plan) {
-  let obj;
-  try {
-    obj = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!obj || typeof obj !== "object") return null;
-  const o = obj;
-  const headline = clean3(o.headline);
-  const overallSummary = clean3(o.overallSummary);
-  if (headline.length === 0 || overallSummary.length === 0) return null;
-  const verdict = clean3(o.verdict) || firstSentence2(overallSummary);
-  const seen = /* @__PURE__ */ new Set();
-  const opportunities = [];
-  for (const h of Array.isArray(o.opportunities) ? o.opportunities : []) {
-    const hh = h ?? {};
-    const domain = clean3(hh.domain);
-    const title = clean3(hh.title);
-    const body = clean3(hh.body);
-    if (title.length === 0 || body.length === 0) continue;
-    const cat = semanticCategory2(`${title} ${body}`);
-    if (cat && seen.has(cat)) continue;
-    if (cat) seen.add(cat);
-    opportunities.push({ domain, title, body });
-    if (opportunities.length >= plan.maxOpportunities) break;
-  }
-  const covered = /* @__PURE__ */ new Set([...seen]);
-  for (const t of [verdict, headline]) {
-    const c = semanticCategory2(t);
-    if (c) covered.add(c);
-  }
-  const cautions = [];
-  for (const c of Array.isArray(o.cautions) ? o.cautions : []) {
-    const cc = c ?? {};
-    const title = clean3(cc.title);
-    const body = clean3(cc.body);
-    if (title.length === 0 || body.length === 0) continue;
-    const cat = semanticCategory2(`${title} ${body}`);
-    if (cat && covered.has(cat)) continue;
-    if (cat) covered.add(cat);
-    cautions.push({ title, body });
-    if (cautions.length >= plan.maxCautions) break;
-  }
-  const actionSeen = /* @__PURE__ */ new Set();
-  const actions = [];
-  for (const a of Array.isArray(o.actions) ? o.actions : []) {
-    const text = clean3(a);
-    if (text.length === 0) continue;
-    const cat = semanticCategory2(text);
-    if (cat && actionSeen.has(cat)) continue;
-    if (cat) actionSeen.add(cat);
-    actions.push(text);
-    if (actions.length >= plan.maxActions) break;
-  }
-  const followUps = [];
-  const rawFollowUps = Array.isArray(o.followUps) ? o.followUps : Array.isArray(o.consultationPrompts) ? o.consultationPrompts : [];
-  for (const f of rawFollowUps) {
-    let displayLabel = "";
-    let question = "";
-    if (typeof f === "string") {
-      question = clean3(f);
-    } else if (f && typeof f === "object") {
-      const ff = f;
-      displayLabel = clean3(ff.displayLabel);
-      question = clean3(ff.question);
-    }
-    if (question.length === 0) continue;
-    followUps.push({ displayLabel: toDisplayLabel2(displayLabel, question), question });
-    if (followUps.length >= 3) break;
-  }
-  if (verdict.length === 0 || actions.length === 0) return null;
-  const surfaced = [
-    headline,
-    verdict,
-    overallSummary,
-    ...opportunities.flatMap((h) => [h.title, h.body]),
-    ...cautions.flatMap((c) => [c.title, c.body]),
-    ...actions,
-    ...followUps.flatMap((f) => [f.displayLabel, f.question])
-  ].join(" ");
-  if (containsRawGanji(surfaced)) return null;
-  if (containsEventGuarantee2(surfaced)) return null;
-  if (containsUnsupportedDatePrecision(surfaced)) return null;
-  return {
-    headline,
-    verdict,
-    overallSummary,
-    overallTier: plan.overallTier,
-    primaryMode: plan.primaryMode,
-    primaryModeLabel: plan.primaryModeLabel,
-    domainSignals: plan.domainSignals,
-    opportunities,
-    cautions,
-    actions,
-    followUps,
-    // Server-owned within-month transition (§5) — the LLM never emits the 節 date; it comes from the plan.
-    transition: plan.transition ? {
-      transitionDate: plan.transition.transitionCivilDate,
-      early: { tierLabel: plan.transition.early.tier, modeLabel: plan.transition.early.modeLabel },
-      later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel }
-    } : null
-  };
-}
-async function buildMonthlyFortune(request, deps) {
-  const evidence = await buildMonthlyFortuneEvidence(
-    { birthInfo: request.birthInput },
-    { digestProvider: deps.digestProvider, historicalTimezoneResolver: deps.historicalTimezoneResolver, nowEpochSeconds: deps.nowEpochSeconds }
-  );
-  if (!evidence.available) return { ok: false, reason: "EVIDENCE_UNAVAILABLE", year: evidence.year, month: evidence.month };
-  const plan = deriveMonthlyPlan(evidence);
-  const messages = buildMonthlyFortunePrompt(plan);
-  let raw;
-  try {
-    raw = await deps.callLLM(messages);
-  } catch {
-    return { ok: false, reason: "LLM_FAILED", year: plan.year, month: plan.month };
-  }
-  const result = parseMonthlyFortune(raw, plan);
-  if (result === null) return { ok: false, reason: "INVALID_OUTPUT", year: plan.year, month: plan.month };
-  return {
-    ok: true,
-    year: plan.year,
-    month: plan.month,
-    overallTier: plan.overallTier,
-    result,
-    policyVersion: MONTHLY_POLICY_VERSION,
-    evidenceVersion: plan.evidenceVersion,
-    planVersion: plan.planVersion
-  };
-}
-
-// src/features/monthly/server/monthlyFortuneSchema.ts
-var MONTHLY_FORTUNE_JSON_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    // headline: a concrete one-liner answering "이번 달은 어떤 달인가" (§19).
-    headline: { type: "string" },
-    // verdict: 1-3 sentences — overall judgment + strongest opportunity + primary caution (§20).
-    verdict: { type: "string" },
-    overallSummary: { type: "string" },
-    opportunities: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: { domain: { type: "string" }, title: { type: "string" }, body: { type: "string" } },
-        required: ["domain", "title", "body"]
-      }
-    },
-    cautions: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: { title: { type: "string" }, body: { type: "string" } },
-        required: ["title", "body"]
-      }
-    },
-    // actions: the month's plan — concrete "이렇게 보내세요" steps (§23).
-    actions: { type: "array", items: { type: "string" } },
-    // followUps: SHORT chip label + the RICH question actually carried into 상담 (§65-§67).
-    followUps: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: { displayLabel: { type: "string" }, question: { type: "string" } },
-        required: ["displayLabel", "question"]
-      }
-    }
-  },
-  required: ["headline", "verdict", "overallSummary", "opportunities", "cautions", "actions", "followUps"]
-};
-function monthlyFortuneResponseFormat() {
-  return { type: "json_schema", name: "deokbun_monthly_fortune", strict: true, schema: MONTHLY_FORTUNE_JSON_SCHEMA };
 }
 export {
   CONSULTATION_JSON_SCHEMA,

@@ -1,0 +1,99 @@
+// Pre-LLM deterministic safety router (Sprint A §2-§7). Runs BEFORE any grounding or LLM work so a
+// high-risk question can NEVER reach fortune interpretation. This is application-layer routing for
+// 덕분이 only — NOT a general mental-health system and NOT a redesign of provider safety.
+//
+// Constitution 제25조 (안정성·상담 품질·보안 우선) + PASS 2 finding: consultation safety was prompt-only.
+// The classifier is PURE + high-precision (conservative cues → few false positives). A HARD-STOP route
+// returns a controlled, honest response and supplies NO astrology evidence and makes NO LLM call.
+// The static responses are a REAL feature (제3조 — not a mock): a deterministic, correct safe answer.
+
+export type SafetyRoute =
+  | 'NORMAL'
+  | 'SELF_HARM'
+  | 'DEATH_LIFESPAN'
+  | 'MEDICAL'
+  | 'FINANCIAL_GUARANTEE';
+
+// SELF_HARM — direct or reasonably-clear self-harm / suicidal intent. CONSERVATIVE: matches personal
+// intent phrasings, NOT the bare noun 죽음 (so "죽음의 철학적 의미" is not routed) and NOT general distress
+// ("힘들어") — we do not build a mental-health conversational system, only a safe hard stop.
+const SELF_HARM =
+  /자살|자해|죽고\s*싶|죽어\s*버리고?\s*싶|죽어\s*버릴|살기\s*(가\s*)?싫|살고\s*싶지\s*않|목숨을?\s*끊|스스로\s*목숨|세상을?\s*(떠나|등지)고\s*싶|사라지고\s*싶|죽는\s*게\s*(낫|나을|더\s*나)|(살아야|살아갈|살아가는|버틸|버텨야|버티고)[^.\n]{0,7}(이유|의미)[^.\n]{0,7}(없|모르겠|있을까|있나|있냐|있는지|있어\s*\?|있어요\s*\?)/;
+
+// DEATH_LIFESPAN — asking fortune to predict lifespan or death timing. Checked AFTER self-harm so a
+// self-harm phrasing that also mentions dying routes to SELF_HARM first.
+const DEATH_LIFESPAN =
+  /수명|몇\s*살(까지|에)?[^.\n]{0,6}(죽|사망|눈\s*감)|언제\s*죽|죽을\s*(운|팔자|나이|때)|죽는\s*(날|시기|때|나이)|사망\s*(시기|시점|나이|운)|얼마나\s*(더\s*)?(오래\s*)?살|오래\s*살(까|겠|\s*수\s*있|게\s*될)/;
+
+// MEDICAL diagnosis / prognosis from fortune. Requires disease/diagnosis terms — NOT bare 건강, so a
+// low-stakes wellness question ("요즘 건강운 어때?") stays NORMAL and is handled by the existing caution policy.
+const MEDICAL =
+  /(사주|팔자|명(에|이|리)|역학)[^.\n]{0,10}(암|병|질병|불치|중병|큰\s*병|종양)|(암|중병|불치병|큰\s*병|종양)[^.\n]{0,6}(이야|인가|일까|걸리|생기|있(어|나|을까|는지|나요))|이\s*(병|증상|질환)[^.\n]{0,8}(나(을까|아|아요|을지)|낫|치료|완치|호전|경과)|무슨\s*병|진단[^.\n]{0,4}(해|되|받|명)|완치(\s*(되|될|가능|여부))|불치/;
+
+// FINANCIAL_GUARANTEE — a demand for a GUARANTEED financial outcome. NOT a hard stop: the normal
+// suitability discussion may proceed, but the plan already forbids event-certainty (GUARANTEE_CUE) and
+// the post-output certainty validator (certaintyGuard) rejects any guarantee language in the answer.
+const FINANCIAL_GUARANTEE =
+  /원금\s*보장|손실\s*(이\s*)?없(어|이|나|을|는)|수익[^.\n]{0,6}보장|보장[^.\n]{0,6}수익|확정\s*수익|(무조건|반드시|틀림없이|꼭|100\s*%)[^.\n]{0,10}(수익|이득|벌(어|게|ㄹ|립|린)|부자|대박|성공)|(투자|주식|코인|비트코인|부동산|재테크)[^.\n]{0,12}(무조건|반드시|확실히|틀림없이|보장|대박|100\s*%)/;
+
+/**
+ * Deterministically classify a consultation question into a safety route. Order matters: the highest-harm
+ * category wins, and SELF_HARM is evaluated first. Returns 'NORMAL' when no cue matches.
+ */
+export function classifyConsultationSafetyRoute(question: string): SafetyRoute {
+  const q = (question ?? '').trim();
+  if (q.length === 0) return 'NORMAL';
+  if (SELF_HARM.test(q)) return 'SELF_HARM';
+  if (DEATH_LIFESPAN.test(q)) return 'DEATH_LIFESPAN';
+  if (MEDICAL.test(q)) return 'MEDICAL';
+  if (FINANCIAL_GUARANTEE.test(q)) return 'FINANCIAL_GUARANTEE';
+  return 'NORMAL';
+}
+
+// A HARD-STOP route must short-circuit BEFORE grounding + LLM (no astrology evidence, no fortune, no LLM
+// call). FINANCIAL_GUARANTEE is intentionally NOT a hard stop.
+export function isHardStopRoute(route: SafetyRoute): boolean {
+  return route === 'SELF_HARM' || route === 'DEATH_LIFESPAN' || route === 'MEDICAL';
+}
+
+// Controlled, honest responses. No fortune, no prediction. The crisis contacts are Korea's public lines;
+// the OWNER should verify/localize them before launch (see Sprint A report).
+const SELF_HARM_RESPONSE = [
+  '지금 많이 힘드셨겠어요. 이건 운세로 판단할 문제가 아니라, 지금 바로 도움을 받을 수 있는 일이에요.',
+  '혼자 감당하지 마시고, 지금 마음을 아래로 이야기해 주세요.',
+  '',
+  '· 자살예방 상담전화 109 (24시간)',
+  '· 정신건강 상담전화 1577-0199',
+  '· 급하면 112 / 119',
+  '',
+  '덕분이는 이런 순간에 사주 풀이를 드리지 않아요. 당신의 이야기를 들어줄 사람이 있어요.',
+].join('\n');
+
+const DEATH_LIFESPAN_RESPONSE = [
+  '덕분이는 수명이나 세상을 떠나는 시기를 사주로 단정하지 않아요. 그건 운세가 정할 수 있는 영역이 아니거든요.',
+  '대신, 지금의 삶을 더 건강하고 단단하게 가꿔가는 이야기라면 함께 나눌 수 있어요.',
+  '요즘 마음이나 건강, 앞으로의 방향 중 무엇이 궁금하신지 편하게 말씀해 주세요.',
+].join('\n');
+
+const MEDICAL_RESPONSE = [
+  '덕분이는 사주로 질병을 진단하거나 병의 경과·완치 여부를 판정하지 않아요.',
+  '건강이 염려되신다면 증상은 꼭 의료 전문가와 상담해 주세요. 그게 가장 정확하고 안전한 길이에요.',
+  '대신 전반적인 건강 관리의 흐름이나 생활에서 신경 쓰면 좋은 부분 정도라면 함께 살펴볼 수 있어요.',
+].join('\n');
+
+/**
+ * The controlled response for a hard-stop route. Returns null for routes that are NOT a hard stop
+ * (NORMAL / FINANCIAL_GUARANTEE) — the caller then runs the normal consultation.
+ */
+export function safeResponseForRoute(route: SafetyRoute): string | null {
+  switch (route) {
+    case 'SELF_HARM':
+      return SELF_HARM_RESPONSE;
+    case 'DEATH_LIFESPAN':
+      return DEATH_LIFESPAN_RESPONSE;
+    case 'MEDICAL':
+      return MEDICAL_RESPONSE;
+    default:
+      return null;
+  }
+}

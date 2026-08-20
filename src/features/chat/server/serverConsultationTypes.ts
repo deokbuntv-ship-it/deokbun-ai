@@ -62,20 +62,41 @@ export type ServerConsultationDeps = {
 };
 
 // Bounded, safe metadata (§17). No raw DB row, no provider object, no internal prompt, no secret.
+// Carries the decision/audit version bundle (Sprint A §11): `engineVersion` = frozen engine ruleset
+// (decision-affecting), `answerPlanVersion` + `decisionPolicyVersion` (decision-affecting), `promptVersion`
+// (verbalization-affecting). The model id is stamped at the Edge layer (it owns the provider), not here.
 export type ServerGroundingMeta = {
   grounded: boolean;
   engineVersion: string | null;
   engines: { myungri: string; ziwei: string; qimen: string }; // availability states only
   promptVersion: string;
+  answerPlanVersion: string;
+  decisionPolicyVersion: string;
   mode: string;
   questionTimeSource: 'SERVER_RECEIPT_TIME';
+};
+
+// Server-owned temporal context (Sprint A §12). The reproducibility substrate: the question instant is the
+// server receipt time, never the client clock. `resolvedTargets` are the referenced periods (years and
+// year*100+month month-keys); `referenceYear` prefers the grounded 세운 reference (立春-based).
+export type ResolvedTemporalContext = {
+  anchorEpochSeconds: number;
+  timezone: 'Asia/Seoul';
+  referenceYear: number | null;
+  referenceMonth: number | null;
+  resolvedTargets: number[];
+  qimenActive: boolean;
 };
 
 // Safe output diagnostics (no content) — how the LLM output was classified + the exact reason it was not
 // rendered as a card. For Edge [chat.diag] logs only; the Edge does NOT return this to the client.
 export type ServerConsultationDiagnostics = {
-  outputClassification: string; // ACCEPTED | STRUCTURAL_FALLBACK | SEMANTIC_REJECTED
-  rejectionReason?: string; // FORBIDDEN_THEORY | CROSS_ENGINE_CONSENSUS | UNGROUNDED_QIMEN_CLAIM | …
+  outputClassification: string; // ACCEPTED | STRUCTURAL_FALLBACK | SEMANTIC_REJECTED | SAFETY_ROUTED
+  rejectionReason?: string; // FORBIDDEN_THEORY | CROSS_ENGINE_CONSENSUS | GUARD_CERTAINTY_MITIGATION | …
+  // Set when a pre-LLM safety route fired (Sprint A §2) — hard-stop routes never reached grounding/LLM.
+  safetyRoute?: string; // SELF_HARM | DEATH_LIFESPAN | MEDICAL | FINANCIAL_GUARANTEE
+  // True when the certainty/mitigation guard forced exactly one constrained regeneration (§9).
+  regenerated?: boolean;
 };
 
 // Deterministic 궁합 verdict (SERVER-owned tier — never an LLM/ fabricated score). Carried alongside the
@@ -99,6 +120,8 @@ export type ServerConsultationResult =
       structuredResult?: StructuredConsultationViewModel;
       groundingMeta: ServerGroundingMeta;
       diagnostics?: ServerConsultationDiagnostics;
+      // Server-owned reproducibility/audit substrate (Sprint A §12). Always present on success.
+      resolvedTemporalContext: ResolvedTemporalContext;
       // Present only for consultationMode === 'compatibility'. Deterministic; no extra LLM call.
       compatibility?: CompatibilityResultMeta;
     }

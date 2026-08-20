@@ -17,7 +17,6 @@ import {
 } from '@/features/chat/prompts/grounding';
 import { buildPrompt } from '@/features/chat/prompts/promptBuilder';
 import {
-  classifyConsultationOutput,
   composeConsultationText,
   firstStructuredRejectionReason,
   SEMANTIC_REJECTION_MESSAGE,
@@ -25,11 +24,24 @@ import {
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import { buildConsultationGrounding } from '@/features/chat/services/consultationGrounding';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
-import { deriveAnswerPlan, renderAnswerPlanDirective } from './answerPlan';
+import {
+  ANSWER_PLAN_VERSION,
+  DECISION_POLICY_VERSION,
+  deriveAnswerPlan,
+  renderAnswerPlanDirective,
+} from './answerPlan';
+import { CERTAINTY_REGEN_DIRECTIVE, classifyWithGuards } from './certaintyGuard';
+import {
+  classifyConsultationSafetyRoute,
+  isHardStopRoute,
+  safeResponseForRoute,
+} from './consultationSafety';
+import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
 import type {
   ServerConsultationDeps,
+  ServerConsultationDiagnostics,
   ServerConsultationRequest,
   ServerConsultationResult,
   ServerGroundingMeta,
@@ -86,6 +98,8 @@ function metaFrom(grounding: ConsultationGrounding, mode: string): ServerGroundi
     engineVersion: grounding.status === 'available' ? grounding.engineVersion ?? null : null,
     engines,
     promptVersion: CONSULTATION_PROMPT_VERSION,
+    answerPlanVersion: ANSWER_PLAN_VERSION,
+    decisionPolicyVersion: DECISION_POLICY_VERSION,
     mode,
     questionTimeSource: 'SERVER_RECEIPT_TIME',
   };
@@ -106,6 +120,21 @@ export async function buildServerConsultation(
 ): Promise<ServerConsultationResult> {
   const question = (request.question ?? '').trim();
   if (question.length === 0) return { ok: false, reason: 'INVALID_INPUT' };
+
+  // 0) Pre-LLM SAFETY ROUTER (Sprint A §2-§7). A hard-stop category (self-harm / death-lifespan / medical)
+  //    must never reach fortune interpretation: return a controlled, honest response with NO grounding and
+  //    NO LLM call. Runs before birth resolution so even a missing/invalid birth still yields the safe
+  //    response. FINANCIAL_GUARANTEE is NOT a hard stop (handled by the plan + the output certainty guard).
+  const safetyRoute = classifyConsultationSafetyRoute(question);
+  if (isHardStopRoute(safetyRoute)) {
+    return {
+      ok: true,
+      text: safeResponseForRoute(safetyRoute) ?? SEMANTIC_REJECTION_MESSAGE,
+      groundingMeta: metaFrom(GROUNDING_UNAVAILABLE, 'safety'),
+      diagnostics: { outputClassification: 'SAFETY_ROUTED', safetyRoute },
+      resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, GROUNDING_UNAVAILABLE),
+    };
+  }
 
   // 1) Resolve TRUSTED birth. A server-owned profile (when addressed + available) wins and the client
   //    birthInput is ignored; otherwise the server recomputes from the untrusted birthInput.
@@ -162,31 +191,32 @@ export async function buildServerConsultation(
   // server (not the model) decides the support level, assertiveness, and comparison/ranking/claim
   // permissions. Reads only deterministic anchors; never authorizes an ungrounded claim.
   let effectiveGrounding = grounding;
+  let plan = deriveAnswerPlan(question, effectiveGrounding);
+  // One message builder reused for the first attempt AND the single constrained regeneration (§9), so the
+  // strengthened directive rides the exact same server-authored prompt.
+  const buildMessages = (extraDirective?: string) =>
+    buildPrompt({
+      selectedContext,
+      conversationSummary: request.conversationSummary ?? null,
+      recentMessages,
+      currentUserMessage: question,
+      mode,
+      grounding: effectiveGrounding,
+      answerPlanDirective: extraDirective
+        ? `${renderAnswerPlanDirective(plan)}\n${extraDirective}`
+        : renderAnswerPlanDirective(plan),
+    });
+
   let messages;
   try {
-    messages = buildPrompt({
-      selectedContext,
-      conversationSummary: request.conversationSummary ?? null,
-      recentMessages,
-      currentUserMessage: question,
-      mode,
-      grounding,
-      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, grounding)),
-    });
+    messages = buildMessages();
   } catch {
     effectiveGrounding = GROUNDING_UNAVAILABLE;
-    messages = buildPrompt({
-      selectedContext,
-      conversationSummary: request.conversationSummary ?? null,
-      recentMessages,
-      currentUserMessage: question,
-      mode,
-      grounding: GROUNDING_UNAVAILABLE,
-      answerPlanDirective: renderAnswerPlanDirective(deriveAnswerPlan(question, GROUNDING_UNAVAILABLE)),
-    });
+    plan = deriveAnswerPlan(question, effectiveGrounding);
+    messages = buildMessages();
   }
 
-  // 4) The single outbound trust exit.
+  // 4) The single outbound trust exit (first attempt).
   let raw: string;
   try {
     raw = await deps.callLLM(messages);
@@ -197,8 +227,23 @@ export async function buildServerConsultation(
     return { ok: false, reason: 'LLM_FAILED' };
   }
 
-  // 5) SERVER-authoritative output validation (§16). SEMANTIC_REJECTED raw text is never returned.
-  const outcome = classifyConsultationOutput(raw, effectiveGrounding);
+  // 5) SERVER-authoritative output validation (§16) + certainty/mitigation guard (Sprint A §8-§10). On a
+  //    guarantee/event-certainty (or, once the kernel activates it, missing-mitigation) violation, exactly
+  //    ONE constrained regeneration is allowed; a second violation → SEMANTIC_REJECTED (safe fallback).
+  //    SEMANTIC_REJECTED raw text is never returned.
+  const guard = await classifyWithGuards({
+    raw,
+    grounding: effectiveGrounding,
+    requireMitigation: plan.requireMitigation,
+    regenerate: async () => {
+      try {
+        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+      } catch {
+        return null;
+      }
+    },
+  });
+  const outcome = guard.outcome;
   const structuredResult =
     outcome.kind === 'ACCEPTED'
       ? buildStructuredConsultationResult(outcome.result, effectiveGrounding)
@@ -212,11 +257,17 @@ export async function buildServerConsultation(
 
   // Safe diagnostics (no content): how the model output was classified and — when NOT rendered as a card
   // — the exact reason. Surfaced to the Edge for [chat.diag]; NOT returned to the client.
-  const diagnostics = {
+  const diagnostics: ServerConsultationDiagnostics = {
     outputClassification: outcome.kind,
+    ...(guard.regenerated ? { regenerated: true } : {}),
+    ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
     ...(outcome.kind === 'ACCEPTED'
       ? {}
-      : { rejectionReason: firstStructuredRejectionReason(raw, effectiveGrounding) }),
+      : {
+          rejectionReason: guard.guardRejected
+            ? 'GUARD_CERTAINTY_MITIGATION'
+            : firstStructuredRejectionReason(raw, effectiveGrounding),
+        }),
   };
 
   return {
@@ -225,5 +276,6 @@ export async function buildServerConsultation(
     ...(structuredResult ? { structuredResult } : {}),
     groundingMeta: metaFrom(effectiveGrounding, mode),
     diagnostics,
+    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding),
   };
 }

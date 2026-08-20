@@ -35,7 +35,18 @@ export type AnswerPlan = {
   comparisonSupported: boolean;
   rankingSupported: boolean;
   forbidEventCertainty: boolean;
+  // A cautionary conclusion must carry ≥1 practical direction (Sprint A §10). This is a DECIDED_OUTPUT
+  // that only the deterministic polarity kernel (a LATER sprint) can truthfully set. Until then there is
+  // no deterministic caution signal, so it stays false — the field + validator + tests are wired and
+  // ready to activate without any code change once the kernel supplies polarity (never faked here, 제3조).
+  requireMitigation: boolean;
 };
+
+// Decision-affecting versions (Sprint A §11/§14). The answer plan's own schema/semantics version, and the
+// broader decision-policy bundle (safety router + certainty/mitigation guards + plan). Bumped when the
+// SERVER's decision changes — distinct from the verbalization-only CONSULTATION_PROMPT_VERSION.
+export const ANSWER_PLAN_VERSION = 'answer-plan@1.0.0';
+export const DECISION_POLICY_VERSION = 'decision-policy@1.0.0';
 
 const COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 const RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
@@ -167,6 +178,9 @@ export function deriveAnswerPlan(
     comparisonSupported,
     rankingSupported,
     forbidEventCertainty: intents.includes('EVENT_PREDICTION'),
+    // V1: no deterministic polarity signal exists yet (the kernel is a later sprint), so we never assert a
+    // cautionary conclusion here. Kept explicit so the enforcement path is wired + testable today.
+    requireMitigation: false,
   };
 }
 
