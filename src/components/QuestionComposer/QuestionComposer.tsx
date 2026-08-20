@@ -16,7 +16,7 @@ type QuestionComposerProps = {
 };
 
 export function QuestionComposer({
-  placeholder = '덕분AI에게 무엇이든 물어보세요',
+  placeholder = '덕분이에게 무엇이든 물어보세요',
   onSubmit,
 }: QuestionComposerProps) {
   const [value, setValue] = useState('');

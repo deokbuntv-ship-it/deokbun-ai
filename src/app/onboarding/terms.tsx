@@ -84,7 +84,7 @@ export default function OnboardingTermsScreen() {
               <Text variant="bodySmall" colorToken="textSecondary">
                 1 / 2 · 약관 동의
               </Text>
-              <Text variant="headingLarge">덕분AI 이용을 위해{'\n'}약관에 동의해 주세요.</Text>
+              <Text variant="headingLarge">덕분이 이용을 위해{'\n'}약관에 동의해 주세요.</Text>
             </Stack>
 
             {/* 전체 동의 */}

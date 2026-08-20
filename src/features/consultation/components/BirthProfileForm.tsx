@@ -189,7 +189,7 @@ export function BirthProfileForm({
         {timeAccuracy === 'approximate' ? <SelectField options={PERIOD_OPTIONS} value={period} onSelect={setPeriod} /> : null}
         {timeAccuracy === 'unknown' ? (
           <Text variant="bodySmall" colorToken="textSecondary">
-            태어난 시간을 모르면 일부 해석 범위가 제한될 수 있어요. 덕분AI는 모르는 시간을 임의로 추측하지 않아요.
+            태어난 시간을 모르면 일부 해석 범위가 제한될 수 있어요. 덕분이는 모르는 시간을 임의로 추측하지 않아요.
           </Text>
         ) : null}
       </Stack>

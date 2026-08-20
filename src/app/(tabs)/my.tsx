@@ -137,7 +137,7 @@ export default function MyScreen() {
             ) : null}
 
             <Text variant="caption" colorToken="textSecondary" style={styles.disclaimer}>
-              덕분AI의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
+              덕분이의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
               의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
             </Text>
           </Stack>

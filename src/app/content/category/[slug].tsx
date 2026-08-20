@@ -59,8 +59,8 @@ export default function PublicContentCategoryScreen() {
   return (
     <PublicScreen>
       <SeoHead
-        title={`${label} 콘텐츠 | 덕분AI`}
-        description={`덕분AI ${label} 카테고리 콘텐츠`}
+        title={`${label} 콘텐츠 | 덕분이`}
+        description={`덕분이 ${label} 카테고리 콘텐츠`}
       />
       <Stack gap="xl">
         <Stack gap="xs">

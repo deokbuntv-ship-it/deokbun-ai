@@ -9,7 +9,7 @@ import { colors, spacing } from '@/theme';
 import { notificationBadgeText } from './notificationBadge';
 
 // Consumer TopAppBar (Stitch header spec, no hamburger):
-//  - Home:     brand "덕분AI"            + 나 ▾ switcher   (brand + showSwitcher)
+//  - Home:     brand "덕분이"            + 나 ▾ switcher   (brand + showSwitcher)
 //  - Top tabs: "상담" / "운세우편함"      + 나 ▾ switcher   (title + showSwitcher)
 //  - Centered: "AI 상담" / "MY"          (centerTitle; optional back/switcher)
 //  - Detail:   "← 운세우편"  + rightSlot (showBack + rightSlot)
@@ -139,7 +139,7 @@ export function AppHeader({
       <View style={styles.leftGroup}>
         {back}
         <Text variant="headingMedium" style={styles.title} numberOfLines={1}>
-          {brand ? '덕분AI' : title}
+          {brand ? '덕분이' : title}
         </Text>
       </View>
       {right}

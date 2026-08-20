@@ -21,7 +21,7 @@ function GateHoldOverlay({ state, onRetry }: { state: OnboardingState; onRetry: 
   return (
     <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: theme.background }]}>
       <VStack gap="md" align="center">
-        <Text variant="headingLarge">덕분AI</Text>
+        <Text variant="headingLarge">덕분이</Text>
         {state === 'ERROR' ? (
           <VStack gap="sm" align="center">
             <Text variant="bodyMedium" colorToken="textSecondary">

@@ -62,7 +62,7 @@ export default function PublicFamousDetailScreen() {
     <PublicScreen>
       {item ? (
         <SeoHead
-          title={`${item.seoTitle ?? item.name} | 덕분AI`}
+          title={`${item.seoTitle ?? item.name} | 덕분이`}
           description={item.seoDescription ?? item.shortDescription}
           canonical={item.canonicalUrl ?? canonicalForFamous(item.slug)}
           noindex={item.indexPolicy === 'noindex'}
@@ -80,7 +80,7 @@ export default function PublicFamousDetailScreen() {
           }}
         />
       ) : (
-        <SeoHead title="유명인 | 덕분AI" />
+        <SeoHead title="유명인 | 덕분이" />
       )}
 
       <Stack direction="row" gap="sm" align="center">

@@ -97,7 +97,7 @@ export function ShareReportSheet({
       setNotice('공유 도메인이 설정되지 않아 링크를 만들 수 없어요.');
       return;
     }
-    const result = await copyOrShareLink(g.url, '덕분AI 상담 보고서를 공유했어요.');
+    const result = await copyOrShareLink(g.url, '덕분이 상담 보고서를 공유했어요.');
     setNotice(
       result === 'copied'
         ? '공유 링크를 복사했어요.'
@@ -113,10 +113,10 @@ export function ShareReportSheet({
       setNotice('공유 링크를 만들지 못했어요.');
       return;
     }
-    const subject = encodeURIComponent('덕분AI 상담 보고서');
+    const subject = encodeURIComponent('덕분이 상담 보고서');
     // Body carries an invitation + the link ONLY — never the report content (§33).
     const body = encodeURIComponent(
-      `덕분AI 상담 보고서를 공유했어요.\n로그인 후 확인할 수 있습니다.\n\n${g.url}`,
+      `덕분이 상담 보고서를 공유했어요.\n로그인 후 확인할 수 있습니다.\n\n${g.url}`,
     );
     Linking.openURL(`mailto:?subject=${subject}&body=${body}`).catch(() =>
       setNotice('메일 앱을 열 수 없어요.'),
@@ -130,7 +130,7 @@ export function ShareReportSheet({
       return;
     }
     // No Kakao SDK yet (OWNER_ACTION). Interim: OS share sheet (native) / copy (web).
-    const result = await copyOrShareLink(g.url, '덕분AI 상담 보고서를 공유했어요.');
+    const result = await copyOrShareLink(g.url, '덕분이 상담 보고서를 공유했어요.');
     setNotice(
       result === 'shared'
         ? '공유 시트에서 카카오톡을 선택해 주세요.'

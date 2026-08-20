@@ -61,7 +61,7 @@ export default function PublicContentDetailScreen() {
     <PublicScreen>
       {item ? (
         <SeoHead
-          title={`${item.seoTitle ?? item.title} | 덕분AI`}
+          title={`${item.seoTitle ?? item.title} | 덕분이`}
           description={item.seoDescription ?? item.summary}
           canonical={canonicalForContent(item.slug)}
           image={item.heroImageUrl}
@@ -79,7 +79,7 @@ export default function PublicContentDetailScreen() {
           }}
         />
       ) : (
-        <SeoHead title="콘텐츠 | 덕분AI" />
+        <SeoHead title="콘텐츠 | 덕분이" />
       )}
 
       <Stack direction="row" gap="sm" align="center">

@@ -50,7 +50,7 @@ export default function OnboardingResolverScreen() {
     <Screen frame>
       <View style={styles.center}>
         <Stack gap="md" align="center">
-          <Text variant="headingLarge">덕분AI</Text>
+          <Text variant="headingLarge">덕분이</Text>
           {state === 'ERROR' ? (
             <Stack gap="sm" align="center">
               <Text variant="bodyMedium" colorToken="textSecondary">

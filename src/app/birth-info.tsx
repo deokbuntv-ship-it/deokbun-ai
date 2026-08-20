@@ -611,7 +611,7 @@ export default function BirthInfoScreen() {
 
               {birthTimeAccuracy === 'unknown' ? (
                 <Text variant="bodySmall" colorToken="textSecondary">
-                  출생시간에 따라 일부 해석 범위가 제한될 수 있습니다. 덕분AI는
+                  출생시간에 따라 일부 해석 범위가 제한될 수 있습니다. 덕분이는
                   알 수 없는 출생시간을 임의로 추측하지 않습니다.
                 </Text>
               ) : null}

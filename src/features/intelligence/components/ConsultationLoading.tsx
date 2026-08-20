@@ -13,7 +13,7 @@ import { colors, spacing } from '@/theme';
 // that is deliberately non-committal about what is happening under the hood. The rotating
 // copy is presentation only; it does not represent any backend state.
 
-const PRIMARY = '덕분AI가 지금 질문과 흐름을 함께 살펴보고 있어요.';
+const PRIMARY = '덕분이가 지금 질문과 흐름을 함께 살펴보고 있어요.';
 
 // Non-progress, non-engine subtitles. None implies a stage or a percentage.
 const SUBTITLES = [

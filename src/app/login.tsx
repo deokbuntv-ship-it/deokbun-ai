@@ -58,7 +58,7 @@ export default function LoginScreen() {
     <Screen frame>
       <Stack style={{ flex: 1, paddingTop: 24 }} align="center" justify="center" gap="xl">
         <Stack gap="sm" align="center">
-          <Text variant="displayMedium">덕분AI</Text>
+          <Text variant="displayMedium">덕분이</Text>
           <Text variant="bodyLarge" colorToken="textSecondary" style={{ textAlign: 'center' }}>
             내 사주를 기반으로{'\n'}지금 필요한 답을 찾아주는{'\n'}AI 운세 상담
           </Text>

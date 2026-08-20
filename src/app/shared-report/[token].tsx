@@ -147,9 +147,9 @@ export default function SharedReportScreen() {
                 <Card radius="xl">
                   <Stack gap="sm">
                     <Text variant="bodySmall" colorToken="textSecondary">
-                      덕분AI에서 나만의 상담 보고서도 만들어 볼 수 있어요.
+                      덕분이에서 나만의 상담 보고서도 만들어 볼 수 있어요.
                     </Text>
-                    <Button label="덕분AI 홈으로" variant="secondary" radius="lg" onPress={() => router.replace('/')} />
+                    <Button label="덕분이 홈으로" variant="secondary" radius="lg" onPress={() => router.replace('/')} />
                   </Stack>
                 </Card>
               }
@@ -162,7 +162,7 @@ export default function SharedReportScreen() {
                 <Text variant="bodyMedium" colorToken="textSecondary">
                   공유가 종료되었거나 링크가 만료되었을 수 있어요.
                 </Text>
-                <Button label="덕분AI 홈으로" radius="lg" onPress={() => router.replace('/')} />
+                <Button label="덕분이 홈으로" radius="lg" onPress={() => router.replace('/')} />
               </Stack>
             </Card>
           )}

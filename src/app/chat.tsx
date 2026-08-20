@@ -55,7 +55,7 @@ import type { FeedbackVerdict } from '@/features/intelligence';
 import { spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
-  '안녕하세요. 덕분AI입니다. 😊\n\n출생정보 등록이 완료되었습니다.\n상담을 시작할 준비가 되었습니다.\n\n궁금한 점이나 고민이 있으시면 편하게 말씀해 주세요.';
+  '안녕하세요. 덕분이입니다. 😊\n\n출생정보 등록이 완료되었습니다.\n상담을 시작할 준비가 되었습니다.\n\n궁금한 점이나 고민이 있으시면 편하게 말씀해 주세요.';
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome-message',
