@@ -1,4 +1,5 @@
 import type { ChatMessage } from '@/features/chat/types/chat';
+import { newRequestId } from '@/features/analysis';
 import { getSupabaseClient } from '@/services/supabase';
 
 // Conversation-summary transport (Server-Trust §8/§20). Memory compression is a generic LLM call that
@@ -18,6 +19,7 @@ export const supabaseEdgeSummaryAdapter: SummaryTransport = {
           mode: 'summary',
           existingSummary: existingSummary ?? null,
           turns: turns.map((m) => ({ role: m.role, content: m.text })),
+          requestMetadata: { requestId: newRequestId() },
         },
       });
       if (error) return null;

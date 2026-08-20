@@ -93,6 +93,8 @@ export type ChatServiceInput = {
   draft: ConsultationDraft;
   messages: ChatMessage[];
   conversationMemory: ConversationMemoryState;
+  // A retry reuses the first attempt's opaque id so the Edge can return the completed response at 0 LLM.
+  requestId?: string;
 };
 
 export type ChatServiceResult =

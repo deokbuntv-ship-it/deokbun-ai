@@ -211,7 +211,7 @@ export default function ChatScreen() {
   // bubble. `lastAttemptRef` holds the failed question + its context so "다시 시도" can
   // re-send the SAME message without duplicating the user bubble or its persistence (§30/§37).
   const [sendError, setSendError] = useState<ConsultationErrorView | null>(null);
-  const lastAttemptRef = useRef<{ text: string; context: ChatMessage[] } | null>(null);
+  const lastAttemptRef = useRef<{ text: string; context: ChatMessage[]; requestId: string } | null>(null);
   // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
   // same-frame double-tap cannot start two sends (§30/§e).
   const isSendingRef = useRef(false);
@@ -312,12 +312,11 @@ export default function ChatScreen() {
 
   // Send `text` with the given prior-message context. Used by both the first send and
   // the retry, so a recoverable retry re-sends the SAME message WITHOUT adding a second
-  // user bubble or re-persisting it (§30/§37). (It cannot double-PERSIST or duplicate the
-  // bubble; true end-to-end idempotency against a succeeded-server-but-failed-client
-  // response would need a request key — tracked as a follow-up.) Login-before-LLM is
+  // user bubble or re-persisting it (§30/§37). The original request key is retained so a
+  // succeeded-server/lost-response retry returns the persisted answer with zero new LLM. Login-before-LLM is
   // unchanged — the service gates on auth and returns AUTH_REQUIRED before any adapter
   // call, and authGuard reads LIVE auth state so an expired session re-gates on retry (§57).
-  const runSend = async (text: string, context: ChatMessage[]) => {
+  const runSend = async (text: string, context: ChatMessage[], retryRequestId?: string) => {
     setIsSending(true);
     // Popular-question funnel: the first send of a popular-origin consultation enters the request lifecycle
     // exactly once — strictly after, and distinct from, the Home click. Retries never re-fire (guarded).
@@ -335,6 +334,7 @@ export default function ChatScreen() {
         draft,
         messages: context,
         conversationMemory,
+        ...(retryRequestId ? { requestId: retryRequestId } : {}),
       });
 
       if (result.success) {
@@ -368,7 +368,9 @@ export default function ChatScreen() {
           setPendingConsultationIntent({ question: text, returnTo: '/chat' });
         }
         setSendError(view);
-        lastAttemptRef.current = view.canRetry ? { text, context } : null;
+        lastAttemptRef.current = view.canRetry && result.requestId
+          ? { text, context, requestId: result.requestId }
+          : null;
         // The error card is fixed above the composer (always visible) — no scroll needed.
       }
     } finally {
@@ -433,7 +435,7 @@ export default function ChatScreen() {
     }
     isSendingRef.current = true; // lock synchronously (mirror handleSend)
     setSendError(null);
-    await runSend(attempt.text, attempt.context);
+    await runSend(attempt.text, attempt.context, attempt.requestId);
   };
 
   // ─── Consultation report CTA (Commercial UX V4 §5/§6/§8/§9/§29) ─────────────

@@ -133,8 +133,8 @@ export default function CompatibilityChatScreen() {
     setSending(true);
     try {
       const result = await serviceRef.current.sendMessage({
-        self: { birthInfo: self.birthInfo, label: self.displayName },
-        target: { birthInfo: target.birthInfo, label: target.displayName, relationship: target.relationship },
+        self: { id: self.id, birthInfo: self.birthInfo, label: self.displayName },
+        target: { id: target.id, birthInfo: target.birthInfo, label: target.displayName, relationship: target.relationship },
         userMessage: q,
         messages: history,
         conversationMemory: { summary: null, lastSummarizedMessageId: null },

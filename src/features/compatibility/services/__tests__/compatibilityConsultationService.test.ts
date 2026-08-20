@@ -1,5 +1,5 @@
-// Client 궁합 service (Compatibility V1 §73). Mocks ONLY the transport: verifies the request carries
-// consultationMode='compatibility' + BOTH people's birth input, that the tier meta is returned, and the
+// Client 궁합 service (Compatibility V1 §73). Mocks ONLY the transport: verifies canonical SELF is omitted,
+// the explicit raw target is carried, the tier meta is returned, and the
 // auth/validation fail-closed paths. No network, no LLM.
 import type {
   ConsultationTransport,
@@ -50,7 +50,7 @@ const input = () => ({
 });
 
 describe('createCompatibilityConsultationService', () => {
-  it('sends a compatibility request with BOTH births + returns the tier meta', async () => {
+  it('uses server canonical SELF and sends an explicit raw target + returns the tier meta', async () => {
     const { transport, last } = mockTransport();
     const svc = createCompatibilityConsultationService(transport, () => true);
     const r = await svc.sendMessage(input());
@@ -59,8 +59,10 @@ describe('createCompatibilityConsultationService', () => {
     expect(r.compatibility?.overall).toBe('GOOD');
     const req = last()!;
     expect(req.consultationMode).toBe('compatibility');
-    expect(req.birthInput.birthYear).toBe('1992');
+    expect(req.birthInput).toBeUndefined();
     expect(req.partnerBirthInput?.birthYear).toBe('1992');
+    expect(req.partnerSubjectId).toBeNull();
+    expect(req.targetSource).toBe('RAW_UNSAVED');
     expect(req.partnerLabel).toContain('김민준');
     expect(req.partnerLabel).toContain('연인'); // relationship folded into the partner label
   });

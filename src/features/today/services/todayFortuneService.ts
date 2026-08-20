@@ -1,159 +1,83 @@
 import type { BirthInfoDraft } from '@/features/consultation';
 import { isAuthTransportError } from '@/features/chat/adapters/llmError';
-import {
-  claimFortuneGeneration,
-  ensureClaimedGeneration,
-  releaseFortuneGeneration,
-  waitForCanonical,
-} from '@/features/fortune/generationClaim';
 import { clientTodayFortuneDateGuess } from '@/features/today/engine/fortuneDate';
-import type { DailyFortuneRecord, DailyFortuneResult, DailyOverallTone } from '@/features/today/types';
+import {
+  TODAY_CANONICAL_VERSION,
+  type DailyFortuneRecord,
+  type DailyFortuneResult,
+  type DailyOverallTone,
+} from '@/features/today/types';
 import { getSupabaseClient } from '@/services/supabase';
 
-// Client persistence + load-or-create for 오늘의 운세. READS (Home preview, detail, 운세우편함) hit
-// daily_fortunes directly under owner RLS — zero LLM, zero edge. GENERATION goes through the stateless Edge
-// generator, which owns the authoritative fortune_date (server time); the client writes THAT date as the key
-// (its own guess is only a cache-read hint, §29). The unique(user_id, fortune_date) index guarantees ONE row
-// per day even under a race (§23/§25).
-
+// Reads are owner-RLS cache hits. On a miss the authenticated Edge owns canonical SELF/date, the DB-clock
+// lease, paid reservation and persistence. The client never writes or claims a fortune.
 const TABLE = 'daily_fortunes';
 const COLUMNS = 'id, fortune_date, timezone, overall_tone, result_json, evidence_version, policy_version, model, created_at, updated_at';
-
-type Row = {
-  id: string;
-  fortune_date: string;
-  timezone: string;
-  overall_tone: string;
-  result_json: DailyFortuneResult;
-  evidence_version: string | null;
-  policy_version: string | null;
-  model: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type Row = { id: string; fortune_date: string; timezone: string; overall_tone: string; result_json: DailyFortuneResult;
+  evidence_version: string | null; policy_version: string | null; model: string | null; created_at: string; updated_at: string };
 
 function mapRow(row: Row): DailyFortuneRecord {
-  return {
-    id: row.id,
-    fortuneDate: row.fortune_date,
-    timezone: row.timezone,
-    overallTone: row.overall_tone as DailyOverallTone,
-    result: row.result_json,
-    evidenceVersion: row.evidence_version,
-    policyVersion: row.policy_version,
-    model: row.model,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  return { id: row.id, fortuneDate: row.fortune_date, timezone: row.timezone,
+    overallTone: row.overall_tone as DailyOverallTone, result: row.result_json,
+    evidenceVersion: row.evidence_version, policyVersion: row.policy_version, model: row.model,
+    createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-// ── reads (0 LLM) ────────────────────────────────────────────────────────────
-async function getByDate(fortuneDate: string): Promise<DailyFortuneRecord | null> {
+async function getByDate(fortuneDate: string, subjectId?: string | null): Promise<DailyFortuneRecord | null> {
   try {
-    const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS).eq('fortune_date', fortuneDate).maybeSingle();
+    let query = getSupabaseClient().from(TABLE).select(COLUMNS).eq('fortune_date', fortuneDate)
+      .eq('tier', 'FREE').eq('semantic_version', TODAY_CANONICAL_VERSION);
+    if (subjectId) query = query.eq('subject_id', subjectId);
+    const { data } = await query.maybeSingle();
     return data ? mapRow(data as Row) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function loadLatest(): Promise<DailyFortuneRecord | null> {
   try {
-    const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS).order('fortune_date', { ascending: false }).limit(1).maybeSingle();
+    const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS)
+      .eq('tier', 'FREE').eq('semantic_version', TODAY_CANONICAL_VERSION)
+      .order('fortune_date', { ascending: false }).limit(1).maybeSingle();
     return data ? mapRow(data as Row) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function listAll(limit = 60): Promise<DailyFortuneRecord[]> {
   try {
-    const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS).order('fortune_date', { ascending: false }).limit(limit);
+    const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS)
+      .eq('tier', 'FREE').eq('semantic_version', TODAY_CANONICAL_VERSION)
+      .order('fortune_date', { ascending: false }).limit(limit);
     return ((data as Row[] | null) ?? []).map(mapRow);
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
-// ── generation (edge) + persist ──────────────────────────────────────────────
 type EdgeGenResult =
-  | { ok: true; fortuneDate: string; overallTone: DailyOverallTone; result: DailyFortuneResult; policyVersion?: string; evidenceVersion?: string; model?: string }
+  | { ok: true; fortuneDate: string; overallTone: DailyOverallTone; result: DailyFortuneResult }
   | { ok: false; reason: string; fortuneDate?: string };
-
-async function generateViaEdge(
-  birthInput: BirthInfoDraft,
-): Promise<{ status: 'ok'; gen: Extract<EdgeGenResult, { ok: true }> } | { status: 'auth' } | { status: 'unavailable' } | { status: 'error' }> {
+async function generateViaEdge(): Promise<{ status: 'ok'; gen: Extract<EdgeGenResult, { ok: true }> }
+  | { status: 'auth' | 'unavailable' | 'error' }> {
   try {
-    const { data, error } = await getSupabaseClient().functions.invoke('chat', { body: { kind: 'today_fortune', birthInput } });
+    const { data, error } = await getSupabaseClient().functions.invoke('chat', { body: { kind: 'today_fortune' } });
     if (error) return { status: isAuthTransportError(error) ? 'auth' : 'error' };
     const gen = data as EdgeGenResult | null;
-    if (gen && gen.ok === false && gen.reason === 'EVIDENCE_UNAVAILABLE') return { status: 'unavailable' };
-    if (!gen || gen.ok !== true || typeof gen.fortuneDate !== 'string' || !gen.result) return { status: 'error' };
-    return { status: 'ok', gen };
-  } catch {
-    return { status: 'error' };
-  }
-}
-
-async function persist(
-  gen: Extract<EdgeGenResult, { ok: true }>,
-  subjectId: string | null,
-): Promise<DailyFortuneRecord | null> {
-  try {
-    // Upsert on the authoritative (user, fortune_date). ignoreDuplicates so a concurrent winner is not
-    // overwritten; then read back the canonical row (whoever won).
-    await getSupabaseClient()
-      .from(TABLE)
-      .upsert(
-        {
-          fortune_date: gen.fortuneDate,
-          timezone: 'Asia/Seoul',
-          overall_tone: gen.overallTone,
-          result_json: gen.result,
-          evidence_version: gen.evidenceVersion ?? null,
-          policy_version: gen.policyVersion ?? null,
-          model: gen.model ?? null,
-          ...(subjectId ? { subject_id: subjectId } : {}),
-        },
-        { onConflict: 'user_id,fortune_date', ignoreDuplicates: true },
-      );
-  } catch {
-    /* fall through to a read — the row may already exist from a concurrent write */
-  }
-  return getByDate(gen.fortuneDate);
+    if (gen?.ok === false && gen.reason === 'EVIDENCE_UNAVAILABLE') return { status: 'unavailable' };
+    return gen?.ok === true && typeof gen.fortuneDate === 'string' && !!gen.result
+      ? { status: 'ok', gen } : { status: 'error' };
+  } catch { return { status: 'error' }; }
 }
 
 export type EnsureTodayOutcome =
   | { status: 'ok'; record: DailyFortuneRecord; cacheHit: boolean }
-  | { status: 'auth' }
-  | { status: 'unavailable' } // chart could not ground a daily fortune
-  | { status: 'error' };
+  | { status: 'auth' | 'unavailable' | 'error' };
 
-// Load-or-create for today: cache hit → 0 LLM; miss → ONE edge generation → persist → return. An atomic
-// generation claim (§A5) ensures only ONE of N concurrent first-loads calls the LLM; the losers wait for the
-// winner's persisted result. Fail-open — a claim outage degrades to plain generation.
 async function ensureToday(input: { birthInput: BirthInfoDraft; subjectId?: string | null }): Promise<EnsureTodayOutcome> {
   const guess = clientTodayFortuneDateGuess(Date.now());
-  return ensureClaimedGeneration<DailyFortuneRecord>({
-    readCanonical: () => getByDate(guess),
-    claim: () => claimFortuneGeneration('today', guess),
-    release: () => releaseFortuneGeneration('today', guess),
-    waitForWinner: () => waitForCanonical(() => getByDate(guess), { attempts: 8, delayMs: 1200 }),
-    generateAndPersist: async () => {
-      const gen = await generateViaEdge(input.birthInput);
-      if (gen.status === 'auth') return { status: 'auth' };
-      if (gen.status === 'unavailable') return { status: 'unavailable' };
-      if (gen.status === 'error') return { status: 'error' };
-      const record = await persist(gen.gen, input.subjectId ?? null);
-      if (!record) return { status: 'error' };
-      return { status: 'ok', record, cacheHit: false };
-    },
-  });
+  const cached = await getByDate(guess, input.subjectId);
+  if (cached) return { status: 'ok', record: cached, cacheHit: true };
+  const generated = await generateViaEdge();
+  if (generated.status !== 'ok') return generated;
+  const record = await getByDate(generated.gen.fortuneDate, input.subjectId);
+  return record ? { status: 'ok', record, cacheHit: false } : { status: 'error' };
 }
 
-export const todayFortuneService = {
-  getByDate,
-  loadLatest,
-  listAll,
-  ensureToday,
-};
+export const todayFortuneService = { getByDate, loadLatest, listAll, ensureToday };

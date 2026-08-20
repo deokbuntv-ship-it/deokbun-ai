@@ -1,10 +1,9 @@
 // Server-backed consultation service (Server-Trust sprint §18/§19/§20) — the PRODUCTION chat path.
 //
 // This replaces the client-authoritative pipeline in production: the client does NOT build grounding, a
-// system prompt, or engine evidence. It collects the question + subject birth INPUT + untrusted recent
-// turns, sends them to the Edge, and renders the SERVER-validated result. The legacy `createChatService`
-// (which builds grounding/prompt/classify locally) is kept only as an offline/preview pipeline and as the
-// harness that unit-tests that shared logic — it never reaches the real Edge in production.
+// system prompt, engine evidence, birth input, or subject authority. It sends only the question + untrusted
+// recent turns. Canonical SELF and consent are resolved from server storage. The legacy `createChatService`
+// is kept only as an offline/preview pipeline and test harness; it never reaches the real Edge in production.
 import {
   appErrorEvent,
   boundRecentByChars,
@@ -29,7 +28,7 @@ export function createServerConsultationService(
   authGuard: AuthGuard,
 ) {
   async function sendMessage(input: ChatServiceInput): Promise<ChatServiceResult> {
-    const requestId = newRequestId();
+    const requestId = input.requestId ?? newRequestId();
     const logFailure = (
       errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED',
       severity: 'warning' | 'error',
@@ -58,12 +57,6 @@ export function createServerConsultationService(
       return { success: false, errorCode: 'AUTH_REQUIRED', requestId };
     }
 
-    // The subject birth INPUT is the only deterministic thing the client provides — and the server
-    // RECOMPUTES every fact from it, so it is untrusted input, never trusted facts.
-    if (input.draft.subject === null || input.draft.birthInfo === null) {
-      return { success: false, errorCode: 'INVALID_INPUT', requestId };
-    }
-
     // Untrusted recent turns (bounded). The server additionally drops any non user/assistant role.
     const memoryResult = computeConversationMemory(input.messages, input.conversationMemory);
     const boundedRecent = boundRecentByChars(memoryResult.recentMessages, (m) => m.text);
@@ -74,9 +67,6 @@ export function createServerConsultationService(
 
     try {
       const result = await transport.requestConsultation({
-        subjectProfileId: null, // V1: no persisted profile UI yet → server recomputes from birthInput
-        birthInput: input.draft.birthInfo,
-        subjectLabel: input.draft.subject.displayName,
         question: trimmedUserMessage,
         conversationContext,
         // Recent turns + the compressed summary of OLDER turns (§26) — so long conversations don't

@@ -1,6 +1,6 @@
 // Client → server 궁합 consultation service (Compatibility V1 §73). The PRODUCTION pair-chat path.
-// Same trust posture as the solo `createServerConsultationService`: the client provides only the two
-// people's birth INPUT + the question; the SERVER recomputes both charts, builds the pairwise evidence,
+// Same trust posture as the solo `createServerConsultationService`: canonical SELF comes from server storage;
+// the client supplies only an owned partner ID or an explicitly marked raw unsaved target. The server builds pairwise evidence,
 // and returns a validated structured answer + a deterministic tier. Reuses the same transport, gateway,
 // memory, and auth guard — it just sends consultationMode='compatibility' + the partner input.
 import {
@@ -20,11 +20,12 @@ import type { StructuredConsultationViewModel } from '@/features/intelligence/ty
 import type { BirthInfoDraft } from '@/features/consultation';
 
 export type CompatibilityChatInput = {
-  self: { birthInfo: BirthInfoDraft; label: string };
-  target: { birthInfo: BirthInfoDraft; label: string; relationship?: string | null };
+  self: { id?: string; birthInfo: BirthInfoDraft; label: string };
+  target: { id?: string; birthInfo: BirthInfoDraft; label: string; relationship?: string | null };
   userMessage: string;
   messages: ChatMessage[];
   conversationMemory: { summary: string | null; lastSummarizedMessageId: string | null };
+  requestId?: string;
 };
 
 export type CompatibilityChatResult =
@@ -55,7 +56,7 @@ export function createCompatibilityConsultationService(
   authGuard: AuthGuard,
 ) {
   async function sendMessage(input: CompatibilityChatInput): Promise<CompatibilityChatResult> {
-    const requestId = newRequestId();
+    const requestId = input.requestId ?? newRequestId();
     const logFailure = (
       errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED',
       severity: 'warning' | 'error',
@@ -74,7 +75,7 @@ export function createCompatibilityConsultationService(
       return { success: false, errorCode: 'AUTH_REQUIRED', requestId };
     }
 
-    if (!hasBirth(input.self.birthInfo) || !hasBirth(input.target.birthInfo)) {
+    if (!hasBirth(input.target.birthInfo)) {
       return { success: false, errorCode: 'INVALID_INPUT', requestId };
     }
 
@@ -85,9 +86,9 @@ export function createCompatibilityConsultationService(
     try {
       const result = await transport.requestConsultation({
         consultationMode: 'compatibility',
-        birthInput: input.self.birthInfo,
-        subjectLabel: input.self.label,
         partnerBirthInput: input.target.birthInfo,
+        partnerSubjectId: input.target.id ?? null,
+        targetSource: input.target.id ? 'OWNED_SUBJECT' : 'RAW_UNSAVED',
         partnerLabel: input.target.relationship
           ? `${input.target.label} (${input.target.relationship})`
           : input.target.label,

@@ -34,7 +34,7 @@ function transport(result: ConsultationTransportResult) {
 const OK: ConsultationTransportResult = { ok: true, text: '차분한 흐름입니다.' };
 
 describe('createServerConsultationService — sends inputs only, maps server result', () => {
-  it('posts birthInput + question + conversationContext and NO grounding/messages', async () => {
+  it('posts question + conversationContext only; canonical SELF stays server-owned', async () => {
     const { t, sent } = transport(OK);
     const svc = createServerConsultationService(t, () => true);
     const r = await svc.sendMessage(
@@ -50,8 +50,9 @@ describe('createServerConsultationService — sends inputs only, maps server res
     expect(sent).toHaveLength(1);
     const req = sent[0] as ServerConsultationRequest & Record<string, unknown>;
     expect(req.question).toBe('지금 이 일을 시작해도 될까요?');
-    expect(req.birthInput.birthYear).toBe('1990');
-    expect(req.subjectProfileId).toBeNull();
+    expect(req.birthInput).toBeUndefined();
+    expect(req.subjectProfileId).toBeUndefined();
+    expect(req.subjectLabel).toBeUndefined();
     expect(req.conversationContext).toEqual([
       { role: 'user', content: '안녕하세요' },
       { role: 'assistant', content: '무엇을 도와드릴까요?' },
@@ -93,12 +94,19 @@ describe('createServerConsultationService — sends inputs only, maps server res
     expect(sent).toHaveLength(0);
   });
 
-  it('missing birthInfo → INVALID_INPUT (server would have nothing trusted to recompute)', async () => {
+  it('missing client birthInfo still delegates to canonical server SELF', async () => {
     const { t, sent } = transport(OK);
     const noBirth = input({ draft: { subject: { id: 's', displayName: 'x', relationship: null }, birthInfo: null } });
     const r = await createServerConsultationService(t, () => true).sendMessage(noBirth);
-    expect(r.success).toBe(false);
-    expect(sent).toHaveLength(0);
+    expect(r.success).toBe(true);
+    expect(sent).toHaveLength(1);
+  });
+
+  it('reuses a caller-supplied requestId for a retry', async () => {
+    const { t, sent } = transport(OK);
+    const r = await createServerConsultationService(t, () => true).sendMessage(input({ requestId: 'retry-1' }));
+    expect(r.requestId).toBe('retry-1');
+    expect(sent[0].requestMetadata.requestId).toBe('retry-1');
   });
 
   it('transport AUTH_REQUIRED / REQUEST_FAILED map to the same client error codes', async () => {
