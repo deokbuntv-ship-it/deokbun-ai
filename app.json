@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DeokbunAI",
+    "name": "덕분이",
     "slug": "DeokbunAI",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,9 +8,12 @@
     "scheme": "deokbunai",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.deokbun.app",
+      "supportsTablet": false
     },
     "android": {
+      "package": "com.deokbun.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
