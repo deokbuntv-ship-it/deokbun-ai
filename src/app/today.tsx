@@ -119,7 +119,7 @@ export default function TodayScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="오늘의 운세" showBack onBack={handleBack} />
+      <AppHeader title="오늘의 운세" showBack showBell onBack={handleBack} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           {status === 'loading' ? (

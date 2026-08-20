@@ -1,8 +1,10 @@
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LineIcon } from '@/components/LineIcon';
 import { Text } from '@/components/Text';
+import { useNotificationUnread } from '@/features/retention/NotificationUnreadContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
 
@@ -27,10 +29,11 @@ type AppHeaderProps = {
   onSwitcher?: () => void;
   rightSlot?: React.ReactNode;
   centerTitle?: boolean;
-  // Notification bell (retention §5). Rendered before the switcher/rightSlot when onBell is set. The badge is
-  // BOUNDED (1..9, then 9+) so a large unread count can never blow out the header.
-  onBell?: () => void;
-  bellCount?: number;
+  // Global notification bell. When true, AppHeader renders the ONE shared bell — it reads the shared unread
+  // count (useNotificationUnread) and navigates to /notifications; no per-screen wiring, no per-screen fetch.
+  // The badge is BOUNDED (1..9, then 9+) so a large unread count can never blow out the header. Eligible
+  // authenticated consumer screens set this; focused/auth-flow screens do not.
+  showBell?: boolean;
 };
 
 function Bell({ onPress, count, danger }: { onPress?: () => void; count: number; danger: string }) {
@@ -84,12 +87,13 @@ export function AppHeader({
   onSwitcher,
   rightSlot,
   centerTitle = false,
-  onBell,
-  bellCount = 0,
+  showBell = false,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const router = useRouter();
+  const { unreadCount } = useNotificationUnread();
 
   const back = showBack ? (
     <Pressable
@@ -110,9 +114,11 @@ export function AppHeader({
   ) : null);
   // Bell sits to the LEFT of the switcher/rightSlot. Grouped so both share the right edge.
   const right =
-    onBell || rightInner ? (
+    showBell || rightInner ? (
       <View style={styles.rightGroup}>
-        {onBell ? <Bell onPress={onBell} count={bellCount} danger={theme.danger} /> : null}
+        {showBell ? (
+          <Bell onPress={() => router.push('/notifications')} count={unreadCount} danger={theme.danger} />
+        ) : null}
         {rightInner}
       </View>
     ) : null;

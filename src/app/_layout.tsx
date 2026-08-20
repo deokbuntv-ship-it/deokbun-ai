@@ -10,6 +10,7 @@ import { appErrorEvent, consoleErrorLogger } from '@/features/analysis/logging';
 import { AuthProvider } from '@/features/auth';
 import { ConsultationDraftProvider } from '@/features/consultation';
 import { OnboardingGate, OnboardingProvider } from '@/features/onboarding';
+import { NotificationUnreadProvider } from '@/features/retention';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 SplashScreen.preventAutoHideAsync();
@@ -46,6 +47,7 @@ export default function RootLayout() {
             {/* Signup-first gate (§7): one centralized, fail-closed authority that keeps anonymous /
                 un-onboarded users out of personalized surfaces and routes them through login → terms →
                 birth profile. Public routes (login, content, famous, admin, shared-report) pass through. */}
+            <NotificationUnreadProvider>
             <OnboardingGate>
               <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -94,6 +96,7 @@ export default function RootLayout() {
             <Stack.Screen name="famous/[slug]" options={{ headerShown: false }} />
               </Stack>
             </OnboardingGate>
+            </NotificationUnreadProvider>
           </ConsultationDraftProvider>
         </OnboardingProvider>
       </AuthProvider>

@@ -13,6 +13,7 @@ import {
   inAppNotificationService,
   resolveDeepLinkPath,
   trackRetentionEvent,
+  useNotificationUnread,
   type InAppNotification,
 } from '@/features/retention';
 import { colors } from '@/theme';
@@ -37,6 +38,8 @@ export default function NotificationsScreen() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
   const { isAuthenticated } = useAuth();
+  // The shared global unread state — keep the header badge in sync as items are read here (global-bell §6).
+  const { refresh, markOneRead, markAllRead: markAllReadShared } = useNotificationUnread();
 
   const [items, setItems] = useState<InAppNotification[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -55,8 +58,11 @@ export default function NotificationsScreen() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) reload();
-  }, [isAuthenticated, reload]);
+    if (isAuthenticated) {
+      reload();
+      refresh(); // sync the shared badge count with the server when the list opens
+    }
+  }, [isAuthenticated, reload, refresh]);
 
   const hasUnread = items.some((n) => n.readAt === null);
 
@@ -65,6 +71,7 @@ export default function NotificationsScreen() {
     if (n.readAt === null) {
       setItems((cur) => cur.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)));
       void inAppNotificationService.markRead(n.id);
+      markOneRead(); // shared badge decrement
     }
     trackRetentionEvent('notification_opened', { category: n.category, deep_link_target: n.deepLinkTarget });
     const path = resolveDeepLinkPath(n.deepLinkTarget, n.deepLinkId);
@@ -76,6 +83,7 @@ export default function NotificationsScreen() {
     const now = new Date().toISOString();
     setItems((cur) => cur.map((x) => (x.readAt === null ? { ...x, readAt: now } : x)));
     void inAppNotificationService.markAllRead();
+    markAllReadShared(); // shared badge → 0
   };
 
   const handleBack = () => {

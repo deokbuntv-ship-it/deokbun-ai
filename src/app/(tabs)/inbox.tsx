@@ -121,6 +121,7 @@ export default function FortuneInboxScreen() {
       <AppHeader
         title="운세우편함"
         showSwitcher
+        showBell
         subjectLabel={subject?.displayName ?? '나'}
         onSwitcher={() => setSheetVisible(true)}
       />

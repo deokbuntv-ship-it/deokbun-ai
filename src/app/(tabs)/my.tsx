@@ -27,7 +27,7 @@ export default function MyScreen() {
 
   return (
     <Screen padded={false}>
-      <AppHeader title="MY" centerTitle />
+      <AppHeader title="MY" centerTitle showBell />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

@@ -67,7 +67,7 @@ export default function ConsultationReportDetailScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="상담 보고서" showBack onBack={handleBack} />
+      <AppHeader title="상담 보고서" showBack showBell onBack={handleBack} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           {status === 'loading' || authState.status === 'loading' ? (

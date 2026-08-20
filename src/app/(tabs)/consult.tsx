@@ -116,6 +116,7 @@ export default function ConsultationListScreen() {
       <AppHeader
         title="상담"
         showSwitcher
+        showBell
         subjectLabel={subject?.displayName ?? '나'}
         onSwitcher={() => setSheetVisible(true)}
       />

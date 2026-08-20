@@ -145,7 +145,7 @@ export default function CompatibilityScreen() {
 
   return (
     <Screen padded={false}>
-      <AppHeader title="궁합" />
+      <AppHeader title="궁합" showBell />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="lg">
