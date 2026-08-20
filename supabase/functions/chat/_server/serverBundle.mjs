@@ -8518,7 +8518,28 @@ function contradictsPolarity(text, polarity) {
   if (polarity === "FAVORABLE") return STRONG_NEGATIVE.test(text);
   return false;
 }
+var COMPAT_BREAKUP = /헤어지(세요|십시오|는\s*게\s*(답|낫|좋|맞)|어라)|이혼(하세요|하십시오|하는\s*게\s*(답|낫|좋)|해야)|(결국|반드시|틀림없이|무조건)\s*[^.!?。\n]{0,8}(헤어|이혼)|헤어질\s*수밖에|만나지\s*마(세요|십시오)|(그만|이제)\s*(만나지|정리)/;
+var COMPAT_MINDREAD = /상대[는가]?\s*[^.!?。\n]{0,6}(당신을\s*)?(사랑하지\s*않|좋아하지\s*않|마음이\s*없|관심이\s*없)|속으로\s*[^.!?。\n]{0,8}(다른|딴)\s*(사람|생각|마음)|(진심|속마음)[은는이가]\s*[^.!?。\n]{0,10}(다른|없|아니)/;
+var COMPAT_CONDEMN = /(이\s*사람|상대)[은는이가]?\s*[^.!?。\n]{0,4}(나쁜\s*사람|못된\s*사람|글러|인간성이|사람이\s*안\s*[됐된])|성격이\s*[^.!?。\n]{0,4}(최악|파탄|쓰레기|글러먹)/;
+var COMPAT_FATE = /천생연분(이\s*확실|입니다|이에요|이야)|(절대|무조건)\s*[^.!?。\n]{0,4}(안\s*맞|잘\s*맞)|운명(입니다|이에요|이야|적으로\s*맞)|(반드시|틀림없이)\s*[^.!?。\n]{0,6}(잘\s*맞|안\s*맞)/;
+var COMPAT_OTHER_BEHAVIOR = /상대[는가]?\s*[^.!?。\n]{0,8}(반드시|틀림없이|무조건|분명히)\s*[^.!?。\n]{0,8}(할\s*겁|합니다|됩니다|해요|바람|떠날|돌아올)/;
+var COMPAT_HEDGE = /단정|알\s*수\s*없|속단|확신할\s*수\s*없|섣불리|라고\s*(볼|말할)\s*수\s*(는\s*)?없|아닐\s*수|모릅니다/;
+function containsCompatibilityHarm(text) {
+  if (typeof text !== "string" || text.length === 0) return false;
+  for (const s of splitSentences(text)) {
+    if (COMPAT_HEDGE.test(s)) continue;
+    if (COMPAT_BREAKUP.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
+      return true;
+    }
+  }
+  return false;
+}
+var CONSTRUCTIVE_DIRECTION = /맞춰|조율|대화|소통|이해|배려|노력하면|관리하면|신경\s*쓰면|방식을\s*맞추|시간을\s*두고|천천히|존중|표현하|먼저\s*다가|거리를\s*조절/;
+function hasConstructiveDirection(text) {
+  return typeof text === "string" && CONSTRUCTIVE_DIRECTION.test(text);
+}
 var CERTAINTY_REGEN_DIRECTIVE = '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 승자/1순위/가장 좋음(또는 가장 나쁨)으로 고르는 표현, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 한쪽을 승자로 정하지 말고 각각 설명하며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
+var COMPAT_REGEN_DIRECTIVE = '[중요 — 궁합 재작성] 헤어짐/이혼을 지시하거나 확정하지 말고, 상대의 속마음·성격·미래 행동을 사실로 단정하지 말며, "천생연분/절대 안 맞음" 같은 절대적 궁합 운명을 단정하지 마십시오. 두 사람의 결·마찰·리스크를 설명하고, 관계를 어떻게 조율·관리하면 좋은지 실질적 방향을 최소 한 가지 함께 제시하십시오.';
 function renderableText(outcome) {
   if (outcome.kind === "ACCEPTED") return composeConsultationText(outcome.result);
   if (outcome.kind === "STRUCTURAL_FALLBACK") return outcome.text;
@@ -8538,7 +8559,9 @@ function outcomeViolates(outcome, opts) {
   if (text === null) return false;
   if (containsForbiddenCertainty(text)) return true;
   if (opts.forbidWinner && containsWinnerClaim(text)) return true;
+  if (opts.forbidCompatibilityHarm && containsCompatibilityHarm(text)) return true;
   if (opts.requireMitigation && lacksMitigation(outcome)) return true;
+  if (opts.requireConstructive && !hasConstructiveDirection(text)) return true;
   if (opts.polarity) {
     const hs = highSalienceText(outcome);
     if (hs !== null && contradictsPolarity(hs, opts.polarity)) return true;
@@ -8549,7 +8572,9 @@ async function classifyWithGuards(args) {
   const opts = {
     requireMitigation: args.requireMitigation,
     forbidWinner: args.forbidWinner ?? false,
-    polarity: args.polarity
+    polarity: args.polarity,
+    forbidCompatibilityHarm: args.forbidCompatibilityHarm ?? false,
+    requireConstructive: args.requireConstructive ?? false
   };
   const first = classifyConsultationOutput(args.raw, args.grounding);
   if (!outcomeViolates(first, opts)) {
@@ -8619,6 +8644,20 @@ function safeResponseForRoute(route) {
     default:
       return null;
   }
+}
+
+// src/features/chat/server/decisionMeta.ts
+function buildConsultationDecisionMeta(plan, grounding, resolvedTemporalContext) {
+  return {
+    answerPlanVersion: ANSWER_PLAN_VERSION,
+    decisionPolicyVersion: DECISION_POLICY_VERSION,
+    promptVersion: CONSULTATION_PROMPT_VERSION,
+    ...grounding.status === "available" && grounding.engineVersion ? { engineVersion: grounding.engineVersion } : {},
+    resolvedGranularity: plan.resolvedGranularity,
+    resolvedTargets: resolvedTemporalContext.resolvedTargets,
+    ...plan.polarity ? { polarity: plan.polarity } : {},
+    resolvedTemporalContext
+  };
 }
 
 // src/features/chat/server/resolvedTemporalContext.ts
@@ -8791,7 +8830,13 @@ ${extraDirective}` : renderAnswerPlanDirective(plan)
     }
   });
   const outcome = guard.outcome;
-  const structuredResult = outcome.kind === "ACCEPTED" ? { ...buildStructuredConsultationResult(outcome.result, effectiveGrounding), ...plan.polarity ? { conclusionPolarity: plan.polarity } : {} } : void 0;
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
+  const decisionMeta = buildConsultationDecisionMeta(plan, effectiveGrounding, resolvedTemporalContext);
+  const structuredResult = outcome.kind === "ACCEPTED" ? {
+    ...buildStructuredConsultationResult(outcome.result, effectiveGrounding),
+    ...plan.polarity ? { conclusionPolarity: plan.polarity } : {},
+    decisionMeta
+  } : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
@@ -8807,7 +8852,7 @@ ${extraDirective}` : renderAnswerPlanDirective(plan)
     ...structuredResult ? { structuredResult } : {},
     groundingMeta: metaFrom(effectiveGrounding, mode),
     diagnostics,
-    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding)
+    resolvedTemporalContext
   };
 }
 
@@ -9376,22 +9421,32 @@ ${extraDirective}` : renderAnswerPlanDirective(plan),
     return { ok: false, reason: "LLM_FAILED" };
   }
   if (typeof raw !== "string" || raw.trim().length === 0) return { ok: false, reason: "LLM_FAILED" };
+  const negativePairTier = compatibility?.overall === "NEEDS_CARE" || compatibility?.overall === "CHALLENGING";
   const guard = await classifyWithGuards({
     raw,
     grounding: safeGrounding,
     requireMitigation: plan.requireMitigation,
     forbidWinner: plan.intents.includes("COMPARISON") || plan.intents.includes("RANKING"),
     polarity: plan.polarity,
+    forbidCompatibilityHarm: true,
+    requireConstructive: negativePairTier,
     regenerate: async () => {
       try {
-        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+        return await deps.callLLM(buildMessages(`${CERTAINTY_REGEN_DIRECTIVE}
+${COMPAT_REGEN_DIRECTIVE}`));
       } catch {
         return null;
       }
     }
   });
   const outcome = guard.outcome;
-  const structuredResult = outcome.kind === "ACCEPTED" ? { ...buildStructuredConsultationResult(outcome.result, safeGrounding), ...plan.polarity ? { conclusionPolarity: plan.polarity } : {} } : void 0;
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding);
+  const decisionMeta = buildConsultationDecisionMeta(plan, safeGrounding, resolvedTemporalContext);
+  const structuredResult = outcome.kind === "ACCEPTED" ? {
+    ...buildStructuredConsultationResult(outcome.result, safeGrounding),
+    ...plan.polarity ? { conclusionPolarity: plan.polarity } : {},
+    decisionMeta
+  } : void 0;
   const text = outcome.kind === "ACCEPTED" ? composeConsultationText(outcome.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
@@ -9407,7 +9462,7 @@ ${extraDirective}` : renderAnswerPlanDirective(plan),
     ...structuredResult ? { structuredResult } : {},
     groundingMeta: metaFrom2(safeGrounding),
     diagnostics,
-    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding),
+    resolvedTemporalContext,
     ...compatibility ? { compatibility } : {}
   };
 }
