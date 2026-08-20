@@ -113,6 +113,24 @@ export default function OnboardingTermsScreen() {
               </Stack>
             </Card>
 
+            {/* Policy documents are reachable here too (§9) — a consent screen must let the user read what
+                they are agreeing to. Viewing does not change the checkbox state. */}
+            <View style={styles.policyLinks}>
+              <Pressable onPress={() => router.push('/privacy-policy')} accessibilityRole="button" hitSlop={6}>
+                <Text variant="bodySmall" colorToken="textSecondary" style={styles.policyLink}>
+                  개인정보 처리방침
+                </Text>
+              </Pressable>
+              <Text variant="bodySmall" colorToken="textSecondary">
+                ·
+              </Text>
+              <Pressable onPress={() => router.push('/terms-of-service')} accessibilityRole="button" hitSlop={6}>
+                <Text variant="bodySmall" colorToken="textSecondary" style={styles.policyLink}>
+                  서비스 이용약관
+                </Text>
+              </Pressable>
+            </View>
+
             <Stack gap="sm">
               <Button label={saving ? '저장 중...' : '동의하고 계속'} onPress={submit} disabled={!allRequiredChecked || saving} />
               {error ? (
@@ -136,4 +154,6 @@ const styles = StyleSheet.create({
   wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 48, paddingVertical: spacing.xs },
   rowLabel: { flex: 1 },
+  policyLinks: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xs },
+  policyLink: { textDecorationLine: 'underline', fontWeight: '600' },
 });

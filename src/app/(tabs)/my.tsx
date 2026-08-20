@@ -8,7 +8,6 @@ import { Card } from '@/components/Card';
 import { LineIcon } from '@/components/LineIcon';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
-import { StatusBadge } from '@/components/StatusBadge';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
@@ -101,13 +100,24 @@ export default function MyScreen() {
                   <Text variant="bodyLarge" style={styles.rowLabel}>중요한 일정</Text>
                   <Text variant="bodyLarge" style={styles.chevron}>›</Text>
                 </Pressable>
-                <View style={[styles.rowStatic, { borderTopWidth: 1, borderTopColor: theme.border }]}>
+                <Pressable
+                  onPress={() => router.push('/privacy-policy')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
                   <LineIcon name="shield" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>
-                    약관 및 정책
-                  </Text>
-                  <StatusBadge label="준비 중" tone="neutral" pill />
-                </View>
+                  <Text variant="bodyLarge" style={styles.rowLabel}>개인정보 처리방침</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/terms-of-service')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
+                  <LineIcon name="shield" size={22} color={theme.secondary} />
+                  <Text variant="bodyLarge" style={styles.rowLabel}>서비스 이용약관</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
               </View>
             </Card>
 
@@ -161,13 +171,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     minHeight: 48,
-  },
-  rowStatic: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 56,
-    paddingVertical: spacing.sm,
   },
   rowLabel: {
     flex: 1,
