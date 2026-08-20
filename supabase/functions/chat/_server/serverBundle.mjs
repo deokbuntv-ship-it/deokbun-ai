@@ -8742,6 +8742,35 @@ function classifyQuestionComplexity(question) {
   return "STANDARD";
 }
 
+// src/features/chat/server/inputBounds.ts
+var MAX_QUESTION_CHARS = 2e3;
+var MAX_CONTEXT_ITEMS = 100;
+var MAX_CONTEXT_ITEM_CHARS = 4e3;
+var LLM_RATE_LIMITED_REQUEST_TYPES = ["chat", "today_fortune", "monthly_fortune"];
+function strTooLong(v, max) {
+  return typeof v === "string" && v.length > max;
+}
+function arrTooLong(v, max) {
+  return Array.isArray(v) && v.length > max;
+}
+function validateConsultationInputBounds(body) {
+  const b = body ?? {};
+  if (strTooLong(b.question, MAX_QUESTION_CHARS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
+  if (arrTooLong(b.conversationContext, MAX_CONTEXT_ITEMS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
+  if (arrTooLong(b.turns, MAX_CONTEXT_ITEMS)) return { ok: false, code: "REQUEST_TOO_LARGE" };
+  for (const arr of [b.conversationContext, b.turns]) {
+    if (Array.isArray(arr)) {
+      for (const item of arr) {
+        const t = item;
+        if (t && (strTooLong(t.text, MAX_CONTEXT_ITEM_CHARS) || strTooLong(t.content, MAX_CONTEXT_ITEM_CHARS))) {
+          return { ok: false, code: "REQUEST_TOO_LARGE" };
+        }
+      }
+    }
+  }
+  return { ok: true };
+}
+
 // src/features/chat/server/consultationSchema.ts
 var CONSULTATION_JSON_SCHEMA = {
   type: "object",
@@ -9749,7 +9778,11 @@ export {
   DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
   DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
   HARD_MAX_OUTPUT_TOKENS,
+  LLM_RATE_LIMITED_REQUEST_TYPES,
+  MAX_CONTEXT_ITEMS,
+  MAX_CONTEXT_ITEM_CHARS,
   MAX_EXISTING_SUMMARY_CHARS,
+  MAX_QUESTION_CHARS,
   MAX_SUMMARY_SOURCE_CHARS,
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
@@ -9773,5 +9806,6 @@ export {
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,
-  sanitizeSummarySource
+  sanitizeSummarySource,
+  validateConsultationInputBounds
 };

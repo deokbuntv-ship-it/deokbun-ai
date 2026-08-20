@@ -35,6 +35,14 @@ export {
 export type { ConsultationProfile, ReasoningEffort } from './llmBudget';
 export { classifyQuestionComplexity } from './questionComplexity';
 export type { QuestionComplexity } from './questionComplexity';
+export {
+  validateConsultationInputBounds,
+  LLM_RATE_LIMITED_REQUEST_TYPES,
+  MAX_QUESTION_CHARS,
+  MAX_CONTEXT_ITEMS,
+  MAX_CONTEXT_ITEM_CHARS,
+} from './inputBounds';
+export type { InputBoundsVerdict } from './inputBounds';
 export { consultationResponseFormat, CONSULTATION_JSON_SCHEMA } from './consultationSchema';
 // 오늘의 운세 (Today Fortune V1) — the daily generator is part of the SAME server graph so the Edge bundle
 // includes it (no new external dependency). The Edge dispatches a `today_fortune` request to buildTodayFortune.

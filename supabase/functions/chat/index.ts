@@ -48,6 +48,8 @@ import {
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,
+  validateConsultationInputBounds,
+  LLM_RATE_LIMITED_REQUEST_TYPES,
 } from './_server/serverBundle.mjs';
 
 // Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
@@ -297,7 +299,10 @@ async function checkBurstRateLimit(userId: string | null, now: number): Promise<
       .from('ai_usage_logs')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('request_type', 'chat')
+      // Count EVERY paid-LLM request type in the window — not just 'chat' — so 오늘의 운세 / 이번 달 운세
+      // generations are throttled too (§A2). Previously today/monthly logged under their own request_type and
+      // slipped the counter entirely, leaving an effectively unbounded paid path for a cache-bypassing client.
+      .in('request_type', [...LLM_RATE_LIMITED_REQUEST_TYPES])
       .gte('created_at', cutoffIso);
     if (error || count === null) return { limited: false };
     if (count >= RATE_MAX_REQUESTS) return { limited: true, retryAfterMs: RATE_WINDOW_MS };
@@ -335,6 +340,7 @@ type ConsultationRequestBody = {
 
 const REASON_STATUS: Record<string, number> = {
   INVALID_INPUT: 400,
+  REQUEST_TOO_LARGE: 413,
   SUBJECT_FORBIDDEN: 403,
   SUBJECT_NOT_FOUND: 404,
   LLM_FAILED: 502,
@@ -377,12 +383,20 @@ export default {
         if (body === null || typeof body !== 'object') {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
+        const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
+
+        // Server-authoritative input bounds (§A3) — reject clearly oversized untrusted payloads BEFORE any
+        // grounding/LLM work, so a modified client cannot inflate prompt cost past the client UI's maxLength.
+        const bounds = validateConsultationInputBounds(body);
+        if (!bounds.ok) {
+          logDiag(requestId, 'INPUT', 'REQUEST_TOO_LARGE', {});
+          return Response.json({ error: bounds.code }, { status: REASON_STATUS[bounds.code] ?? 413 });
+        }
 
         // Summary output budget (small, free text). The CONSULTATION config is built PER-QUESTION after the
         // question is validated (below) so its output ceiling + reasoning effort follow the question's
         // complexity (Overnight Sprint §4/§8) — SIMPLE/STANDARD run cheaper 'low' reasoning, DEEP 'medium'.
         const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary };
-        const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 
         // 오늘의 운세 (Today Fortune V1): a stateless daily-fortune generation. The SERVER owns the date
         // (nowEpochSeconds = receipt time, §6/§29), builds the deterministic daily evidence + plan from the
