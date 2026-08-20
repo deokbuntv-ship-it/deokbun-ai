@@ -77,9 +77,48 @@ export function contradictsPolarity(text: string, polarity: PolarityTier): boole
   return false;
 }
 
+// ── Compatibility relationship-safety guard (Sprint D §D5) ─────────────────────────────────────
+// The 궁합 answer may describe relationship dynamics/friction/risks, but must NOT (as fortune facts):
+// command/predict a breakup or divorce, read the other person's private feelings, condemn their immutable
+// personality, assert absolute relationship-fate, or claim certainty about their future behavior. Per-
+// sentence + hedge-aware. Hedged framings ("단정할 수 없습니다", "알 수 없습니다") are NOT flagged.
+const COMPAT_BREAKUP =
+  /헤어지(세요|십시오|는\s*게\s*(답|낫|좋|맞)|어라)|이혼(하세요|하십시오|하는\s*게\s*(답|낫|좋)|해야)|(결국|반드시|틀림없이|무조건)\s*[^.!?。\n]{0,8}(헤어|이혼)|헤어질\s*수밖에|만나지\s*마(세요|십시오)|(그만|이제)\s*(만나지|정리)/;
+const COMPAT_MINDREAD =
+  /상대[는가]?\s*[^.!?。\n]{0,6}(당신을\s*)?(사랑하지\s*않|좋아하지\s*않|마음이\s*없|관심이\s*없)|속으로\s*[^.!?。\n]{0,8}(다른|딴)\s*(사람|생각|마음)|(진심|속마음)[은는이가]\s*[^.!?。\n]{0,10}(다른|없|아니)/;
+const COMPAT_CONDEMN =
+  /(이\s*사람|상대)[은는이가]?\s*[^.!?。\n]{0,4}(나쁜\s*사람|못된\s*사람|글러|인간성이|사람이\s*안\s*[됐된])|성격이\s*[^.!?。\n]{0,4}(최악|파탄|쓰레기|글러먹)/;
+const COMPAT_FATE =
+  /천생연분(이\s*확실|입니다|이에요|이야)|(절대|무조건)\s*[^.!?。\n]{0,4}(안\s*맞|잘\s*맞)|운명(입니다|이에요|이야|적으로\s*맞)|(반드시|틀림없이)\s*[^.!?。\n]{0,6}(잘\s*맞|안\s*맞)/;
+const COMPAT_OTHER_BEHAVIOR =
+  /상대[는가]?\s*[^.!?。\n]{0,8}(반드시|틀림없이|무조건|분명히)\s*[^.!?。\n]{0,8}(할\s*겁|합니다|됩니다|해요|바람|떠날|돌아올)/;
+const COMPAT_HEDGE = /단정|알\s*수\s*없|속단|확신할\s*수\s*없|섣불리|라고\s*(볼|말할)\s*수\s*(는\s*)?없|아닐\s*수|모릅니다/;
+
+export function containsCompatibilityHarm(text: string): boolean {
+  if (typeof text !== 'string' || text.length === 0) return false;
+  for (const s of splitSentences(text)) {
+    if (COMPAT_HEDGE.test(s)) continue;
+    if (COMPAT_BREAKUP.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Negative-compatibility mitigation (§D6): a poor-tier answer must carry ≥1 constructive relationship-
+// management direction, not fear/fatalism only.
+const CONSTRUCTIVE_DIRECTION = /맞춰|조율|대화|소통|이해|배려|노력하면|관리하면|신경\s*쓰면|방식을\s*맞추|시간을\s*두고|천천히|존중|표현하|먼저\s*다가|거리를\s*조절/;
+export function hasConstructiveDirection(text: string): boolean {
+  return typeof text === 'string' && CONSTRUCTIVE_DIRECTION.test(text);
+}
+
 // A short directive appended to the SECOND (only) attempt. Names the fault(s) and re-orients the answer.
 export const CERTAINTY_REGEN_DIRECTIVE =
   '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 승자/1순위/가장 좋음(또는 가장 나쁨)으로 고르는 표현, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 한쪽을 승자로 정하지 말고 각각 설명하며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
+
+// Appended to the compatibility regeneration (§D5/§D6).
+export const COMPAT_REGEN_DIRECTIVE =
+  '[중요 — 궁합 재작성] 헤어짐/이혼을 지시하거나 확정하지 말고, 상대의 속마음·성격·미래 행동을 사실로 단정하지 말며, "천생연분/절대 안 맞음" 같은 절대적 궁합 운명을 단정하지 마십시오. 두 사람의 결·마찰·리스크를 설명하고, 관계를 어떻게 조율·관리하면 좋은지 실질적 방향을 최소 한 가지 함께 제시하십시오.';
 
 // The user-facing text an outcome would render (accepted card composed, or structural-fallback prose).
 // SEMANTIC_REJECTED already renders a safe canned message → nothing to guard.
@@ -105,13 +144,21 @@ function highSalienceText(outcome: ConsultationOutcome): string | null {
   return null;
 }
 
-type GuardOpts = { requireMitigation: boolean; forbidWinner: boolean; polarity?: PolarityTier };
+type GuardOpts = {
+  requireMitigation: boolean;
+  forbidWinner: boolean;
+  polarity?: PolarityTier;
+  forbidCompatibilityHarm?: boolean; // §D5 — 궁합 relationship-safety
+  requireConstructive?: boolean; // §D6 — negative-tier 궁합 must carry a management direction
+};
 function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts): boolean {
   const text = renderableText(outcome);
   if (text === null) return false;
   if (containsForbiddenCertainty(text)) return true;
   if (opts.forbidWinner && containsWinnerClaim(text)) return true;
+  if (opts.forbidCompatibilityHarm && containsCompatibilityHarm(text)) return true;
   if (opts.requireMitigation && lacksMitigation(outcome)) return true;
+  if (opts.requireConstructive && !hasConstructiveDirection(text)) return true;
   if (opts.polarity) {
     const hs = highSalienceText(outcome);
     if (hs !== null && contradictsPolarity(hs, opts.polarity)) return true;
@@ -139,12 +186,17 @@ export async function classifyWithGuards(args: {
   forbidWinner?: boolean;
   // Server-owned target polarity (§14): reject a prose conclusion that clearly contradicts it.
   polarity?: PolarityTier;
+  // 궁합 relationship-safety (§D5) + negative-tier constructive-direction requirement (§D6).
+  forbidCompatibilityHarm?: boolean;
+  requireConstructive?: boolean;
   regenerate: () => Promise<string | null>;
 }): Promise<GuardedClassification> {
   const opts: GuardOpts = {
     requireMitigation: args.requireMitigation,
     forbidWinner: args.forbidWinner ?? false,
     polarity: args.polarity,
+    forbidCompatibilityHarm: args.forbidCompatibilityHarm ?? false,
+    requireConstructive: args.requireConstructive ?? false,
   };
   const first = classifyConsultationOutput(args.raw, args.grounding);
   if (!outcomeViolates(first, opts)) {

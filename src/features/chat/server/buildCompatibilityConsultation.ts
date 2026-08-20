@@ -36,7 +36,7 @@ import {
   deriveAnswerPlan,
   renderAnswerPlanDirective,
 } from './answerPlan';
-import { CERTAINTY_REGEN_DIRECTIVE, classifyWithGuards } from './certaintyGuard';
+import { CERTAINTY_REGEN_DIRECTIVE, COMPAT_REGEN_DIRECTIVE, classifyWithGuards } from './certaintyGuard';
 import {
   classifyConsultationSafetyRoute,
   isHardStopRoute,
@@ -277,15 +277,20 @@ export async function buildCompatibilityConsultation(
 
   // 5) SERVER-authoritative output validation — the SAME validator as solo — plus the certainty/mitigation
   //    guard (one constrained regeneration → safe fallback, Sprint A §8-§10).
+  // 궁합 relationship-safety (§D5) is ALWAYS enforced; a poor pair tier additionally requires a constructive
+  // management direction (§D6). The deterministic tier drives requireConstructive — no tier recalculation.
+  const negativePairTier = compatibility?.overall === 'NEEDS_CARE' || compatibility?.overall === 'CHALLENGING';
   const guard = await classifyWithGuards({
     raw,
     grounding: safeGrounding,
     requireMitigation: plan.requireMitigation,
     forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
     polarity: plan.polarity,
+    forbidCompatibilityHarm: true,
+    requireConstructive: negativePairTier,
     regenerate: async () => {
       try {
-        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+        return await deps.callLLM(buildMessages(`${CERTAINTY_REGEN_DIRECTIVE}\n${COMPAT_REGEN_DIRECTIVE}`));
       } catch {
         return null;
       }
