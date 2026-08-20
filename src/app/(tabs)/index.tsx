@@ -26,9 +26,8 @@ import {
 } from '@/features/consultation';
 import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
 import {
-  DEFAULT_POPULAR_QUESTIONS,
   popularQuestionIcon,
-  popularQuestionService,
+  resolveActivePopularQuestions,
   trackPopularQuestionClick,
   trackPopularQuestionImpression,
   type PopularQuestion,
@@ -64,9 +63,10 @@ const MONTHLY_TONE_COLOR: Record<ReturnType<typeof monthlyToneVariant>, string> 
 
 // 01_HOME — Personal AI Consultation Hub. FINAL V1 IA (Home IA sprint): greeting + composer → 오늘의 운세 →
 // 이번 달 운세 → 궁합 → 지금 많이 물어보는 질문 → 최근 상담 → 최근 운세우편. The composer is the single primary
-// CTA (the old quick-prompt pills below it were removed). "지금 많이 물어보는 질문" is now an admin-managed,
-// analytics-backed conversion surface loaded from popularQuestionService (curated defaults as a resilient
-// fallback). Recent items come from real services; fortune mail is empty until the engine ships (no mock).
+// CTA (the old quick-prompt pills below it were removed). "지금 많이 물어보는 질문" is an admin-managed,
+// analytics-backed conversion surface whose questions come ONLY from the authoritative DB config; if that
+// config cannot load, the section is omitted (never a stale/curated fallback). Recent items come from real
+// services; fortune mail is empty until the engine ships (no mock).
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -164,26 +164,25 @@ export default function HomeScreen() {
     router.push('/monthly');
   };
 
-  // 지금 많이 물어보는 질문 — admin-managed, analytics-backed conversion surface. Loaded from the DB (active +
-  // owner-ordered); the curated DEFAULT set is the initial paint AND the fallback when the table is
-  // unavailable (pre-migration) or unreachable, so the section never regresses to empty. NO LLM, NO ranking.
-  const [popularQuestions, setPopularQuestions] = useState<PopularQuestion[]>(() =>
-    DEFAULT_POPULAR_QUESTIONS.slice(0, 5),
-  );
+  // 지금 많이 물어보는 질문 — admin-managed, analytics-backed conversion surface. The DB is the SINGLE source of
+  // truth: we start EMPTY and only render what active-question loading returns. On any failure (pre-migration /
+  // unreachable) or 0 active rows the list stays empty and the section is omitted — we never substitute
+  // curated/stale questions in production (that would show unauthorised config and fabricate impressions).
+  // NO LLM, NO ranking.
+  const [popularQuestions, setPopularQuestions] = useState<PopularQuestion[]>([]);
   const [popularLoaded, setPopularLoaded] = useState(false);
   const impressedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     let active = true;
-    popularQuestionService
-      .listActive()
-      .then((rows) => {
+    // resolveActivePopularQuestions applies the display policy (DB-truth, empty on failure + safe log); it
+    // never rejects, so success/failure both settle here with the exact list to show (possibly empty).
+    resolveActivePopularQuestions(5)
+      .then((qs) => {
         if (!active) return;
-        // A successful query with 0 active rows means the owner deactivated all → respect that (empty section).
-        setPopularQuestions(rows.slice(0, 5));
+        setPopularQuestions(qs);
         setPopularLoaded(true);
       })
       .catch(() => {
-        // Pre-migration / DB unreachable → keep the curated defaults already in state (no empty flash).
         if (active) setPopularLoaded(true);
       });
     return () => {

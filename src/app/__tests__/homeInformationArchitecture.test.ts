@@ -7,7 +7,7 @@ import { resolve } from 'path';
 //   • the five quick-prompt pills below the composer are gone (composer is the single primary CTA);
 //   • section order is greeting+composer → Today → Monthly → 궁합 → 지금 많이 물어보는 질문 → 최근 상담 →
 //     최근 운세우편 (궁합 sits ABOVE the popular questions);
-//   • the popular-question list is loaded from the service (with curated defaults), not a hard-coded array;
+//   • the popular-question list is loaded from the authoritative DB config (never a curated runtime fallback);
 //   • the impression/click funnel is wired and a typed composer question carries no origin.
 const home = readFileSync(resolve(__dirname, '..', '(tabs)', 'index.tsx'), 'utf8');
 
@@ -26,14 +26,41 @@ describe('popular questions are data-driven, not a hard-coded array', () => {
     // The old array was `const POPULAR_QUESTIONS: {...}[] = [`. Any such declaration must be gone.
     expect(home).not.toMatch(/const\s+POPULAR_QUESTIONS\s*[:=]/);
   });
-  it('loads active questions from the service with a curated fallback', () => {
-    // Method chain may wrap across lines — assert the service and the call independently.
-    expect(home).toMatch(/popularQuestionService/);
-    expect(home).toMatch(/\.listActive\(\)/);
-    expect(home).toMatch(/DEFAULT_POPULAR_QUESTIONS/);
+  it('loads active questions via the DB-truth policy resolver', () => {
+    expect(home).toMatch(/resolveActivePopularQuestions\(/);
   });
   it('renders from the popularQuestions state', () => {
     expect(home).toMatch(/popularQuestions\.map\(/);
+  });
+});
+
+describe('fail-clean fallback policy — config unavailable → omit, never fabricate', () => {
+  it('F. production Home does not import the seed constant', () => {
+    expect(home).not.toMatch(/DEFAULT_POPULAR_QUESTIONS/);
+  });
+  it('starts from an EMPTY list (no curated first paint)', () => {
+    expect(home).toMatch(/useState<PopularQuestion\[\]>\(\[\]\)/);
+  });
+  it('goes through the policy resolver, not raw data access', () => {
+    expect(home).toMatch(/resolveActivePopularQuestions\(/);
+    expect(home).not.toMatch(/popularQuestionService/);
+  });
+  it('omits the whole section when there are no questions (length-gated)', () => {
+    expect(home).toMatch(/popularQuestions\.length > 0 \?/);
+  });
+  it('D. keeps the rest of Home ungated on popular questions (stays usable) — the only length-gate is the section itself', () => {
+    const gates = home.match(/popularQuestions\.length/g) ?? [];
+    expect(gates.length).toBe(1);
+    // the durable sections render unconditionally (not wrapped by the popular-question gate)
+    ['QuestionComposer', '{/* 오늘의 운세', '{/* 이번 달 운세', '{/* 궁합', '{/* 최근 상담', '{/* 최근 운세우편'].forEach(
+      (marker) => expect(home).toMatch(new RegExp(marker.replace(/[/*]/g, '\\$&'))),
+    );
+  });
+  it('E. impressions fire only while iterating the loaded list (empty list → zero events)', () => {
+    const iterAt = home.indexOf('popularQuestions.forEach');
+    const imprCallAt = home.indexOf('trackPopularQuestionImpression({'); // the CALL, not the import
+    expect(iterAt).toBeGreaterThanOrEqual(0);
+    expect(imprCallAt).toBeGreaterThan(iterAt); // the track call lives inside the forEach body
   });
 });
 

@@ -1,10 +1,12 @@
 import type { PopularQuestion } from './types';
 
-// The canonical curated set of popular consultation questions. This is the SINGLE source shared by:
-//   1. the OWNER_APPLY migration seed (same analyticsKey / text / category / order), and
-//   2. the client FALLBACK when the DB table is unavailable (pre-migration) or unreachable.
-// Because the fallback carries the SAME stable analyticsKeys as the seed, the conversion funnel is identical
-// whether a question was served from the DB or from this fallback — editing history never fragments.
+// The canonical curated set of popular consultation questions — SEED / TEST-FIXTURE / DEV-SEED ONLY.
+//
+// This is the source for the OWNER_APPLY migration seed (same analyticsKey / text / category / order) and for
+// tests. It is NOT a production runtime fallback: production Home treats the DB as the single source of truth
+// and OMITS the popular-question section when the config cannot be loaded (see resolveActivePopularQuestions).
+// Keeping the seed keys identical to these means the DB rows the migration inserts carry the same stable
+// analyticsKeys, so the conversion funnel is continuous from first deploy.
 //
 // Curation rules (§ sprint): concise, high-intent, decision/guidance-oriented. NO fear-based or dark-pattern
 // framing — the wellbeing question asks how to *manage* condition, never what to *fear*.

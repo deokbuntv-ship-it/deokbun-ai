@@ -209,3 +209,19 @@ export const popularQuestionService = {
   swapDisplayOrder,
   loadMetrics,
 };
+
+// Display POLICY for the consumer surface (Home). The DB is the single authoritative source of truth for
+// this owner-managed conversion list: on ANY load failure we return an EMPTY list so Home OMITS the section
+// entirely — we never substitute stale/curated questions in production (that would show config that the owner
+// did not authorise, and would fabricate impressions). A safe, PII-free operational warning is logged; nothing
+// sensitive is ever emitted. A successful query with zero active rows is likewise an empty list (owner intent).
+export async function resolveActivePopularQuestions(limit = 5): Promise<PopularQuestion[]> {
+  try {
+    const rows = await listActive();
+    return rows.slice(0, Math.max(0, limit));
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn('[popular-questions] active configuration unavailable — omitting Home section');
+    return [];
+  }
+}

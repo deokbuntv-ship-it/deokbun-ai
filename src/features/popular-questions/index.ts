@@ -11,12 +11,14 @@ export type {
   PopularQuestionInput,
 } from './types';
 
+// Seed / test-fixture / dev-seed ONLY — NOT a production runtime fallback. Production Home must never import
+// this: when the authoritative DB config is unavailable the section is omitted (see resolveActivePopularQuestions).
 export { DEFAULT_POPULAR_QUESTIONS } from './defaults';
 export { popularQuestionIcon } from './presentation';
 export { computeConversionRates, formatRate } from './metrics';
 export type { PopularQuestionRates } from './metrics';
 
-export { popularQuestionService } from './services/popularQuestionService';
+export { popularQuestionService, resolveActivePopularQuestions } from './services/popularQuestionService';
 
 export {
   trackPopularQuestionImpression,
