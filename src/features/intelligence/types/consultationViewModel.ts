@@ -8,6 +8,7 @@
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsumerAssessmentView } from '@/features/intelligence/presentation/assessmentView';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
+import type { ConsultationDecisionMeta } from '@/features/chat/server/serverConsultationTypes';
 
 // Whole-result truthful state (overrides the body when set). Fail-closed UX states.
 export type ConsultationState =
@@ -49,4 +50,7 @@ export type StructuredConsultationViewModel = {
   // SERVER-owned conclusion polarity (Sprint C §8). Set from the Answer Plan (the shared kernel), NEVER by
   // the LLM — the model verbalizes the conclusion but does not decide this machine value.
   conclusionPolarity?: PolarityTier;
+  // SERVER-owned decision/audit context (Sprint D §D1) — versions + resolved target/temporal context, for
+  // version-mismatch handling + structured follow-up. Persisted in structured_result JSON; never LLM-authored.
+  decisionMeta?: ConsultationDecisionMeta;
 };

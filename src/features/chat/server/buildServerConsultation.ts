@@ -36,6 +36,7 @@ import {
   isHardStopRoute,
   safeResponseForRoute,
 } from './consultationSafety';
+import { buildConsultationDecisionMeta } from './decisionMeta';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
@@ -246,11 +247,17 @@ export async function buildServerConsultation(
     },
   });
   const outcome = guard.outcome;
-  // SERVER-owned polarity is INJECTED into the structured result from the plan (Sprint C §8) — the LLM
-  // verbalizes the conclusion but never decides this machine value.
+  // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
+  // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
+  const decisionMeta = buildConsultationDecisionMeta(plan, effectiveGrounding, resolvedTemporalContext);
   const structuredResult =
     outcome.kind === 'ACCEPTED'
-      ? { ...buildStructuredConsultationResult(outcome.result, effectiveGrounding), ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}) }
+      ? {
+          ...buildStructuredConsultationResult(outcome.result, effectiveGrounding),
+          ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}),
+          decisionMeta,
+        }
       : undefined;
   const text =
     outcome.kind === 'ACCEPTED'
@@ -280,6 +287,6 @@ export async function buildServerConsultation(
     ...(structuredResult ? { structuredResult } : {}),
     groundingMeta: metaFrom(effectiveGrounding, mode),
     diagnostics,
-    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding),
+    resolvedTemporalContext,
   };
 }

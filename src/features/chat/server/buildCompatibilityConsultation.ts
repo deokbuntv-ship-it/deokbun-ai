@@ -37,6 +37,7 @@ import {
   renderAnswerPlanDirective,
 } from './answerPlan';
 import { CERTAINTY_REGEN_DIRECTIVE, COMPAT_REGEN_DIRECTIVE, classifyWithGuards } from './certaintyGuard';
+import { buildConsultationDecisionMeta } from './decisionMeta';
 import {
   classifyConsultationSafetyRoute,
   isHardStopRoute,
@@ -297,11 +298,17 @@ export async function buildCompatibilityConsultation(
     },
   });
   const outcome = guard.outcome;
-  // Server-owned polarity injection (Sprint C §8). For 궁합 the solo year-flow polarity is normally absent
-  // (the pair tier is the compatibility meta); the spread is a no-op when the plan has no polarity.
+  // Server-owned polarity + decision/audit meta injection (Sprint C §8 / Sprint D §D1). For 궁합 the solo
+  // year-flow polarity is normally absent (the pair tier is the compatibility meta).
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding);
+  const decisionMeta = buildConsultationDecisionMeta(plan, safeGrounding, resolvedTemporalContext);
   const structuredResult =
     outcome.kind === 'ACCEPTED'
-      ? { ...buildStructuredConsultationResult(outcome.result, safeGrounding), ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}) }
+      ? {
+          ...buildStructuredConsultationResult(outcome.result, safeGrounding),
+          ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}),
+          decisionMeta,
+        }
       : undefined;
   const text =
     outcome.kind === 'ACCEPTED'
@@ -329,7 +336,7 @@ export async function buildCompatibilityConsultation(
     ...(structuredResult ? { structuredResult } : {}),
     groundingMeta: metaFrom(safeGrounding),
     diagnostics,
-    resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, safeGrounding),
+    resolvedTemporalContext,
     ...(compatibility ? { compatibility } : {}),
   };
 }

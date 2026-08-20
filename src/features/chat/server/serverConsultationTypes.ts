@@ -9,6 +9,7 @@ import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/interpretation';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
+import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 // An untrusted prior conversation turn. The type constrains role to user/assistant; the server ALSO
 // drops any other role (incl. injected `system`) at runtime — history is never authoritative (§20).
@@ -86,6 +87,21 @@ export type ResolvedTemporalContext = {
   referenceMonth: number | null;
   resolvedTargets: number[];
   qimenActive: boolean;
+};
+
+// Persisted decision/audit context (Sprint D §D1) — server-produced, stored INSIDE the structured_result
+// JSON (no migration). Enables version-mismatch handling (§D4) + structured follow-up (§D2/§D3).
+// Backward-compatible: legacy rows lack it → undefined (never assume they used the current versions).
+export type ConsultationDecisionMeta = {
+  answerPlanVersion: string; // decision-affecting
+  decisionPolicyVersion: string; // decision-affecting
+  promptVersion: string; // verbalization-affecting
+  engineVersion?: string | null; // decision-affecting (frozen ruleset)
+  modelId?: string | null; // verbalization-affecting (Edge-stamped when available)
+  resolvedGranularity: 'NONE' | 'YEAR' | 'MONTH';
+  resolvedTargets: number[]; // years and/or year*100+month keys the question resolved
+  polarity?: PolarityTier; // the target-scoped conclusion polarity (when one resolved)
+  resolvedTemporalContext: ResolvedTemporalContext;
 };
 
 // Safe output diagnostics (no content) — how the LLM output was classified + the exact reason it was not
