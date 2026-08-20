@@ -16,6 +16,7 @@ type NavHref =
   | '/admin/consultations'
   | '/admin/consultation-intelligence'
   | '/admin/popular-questions'
+  | '/admin/retention'
   | '/admin/ads'
   | '/admin/fortune-mail'
   | '/admin/ai-usage'
@@ -28,6 +29,7 @@ const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '상담 관리', href: '/admin/consultations' },
   { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
   { label: '홈 인기질문', href: '/admin/popular-questions' },
+  { label: '리텐션 · 알림', href: '/admin/retention' },
   { label: '광고', href: '/admin/ads' },
   { label: '운세우편 관리', href: '/admin/fortune-mail' },
   { label: 'AI 사용량 · 비용', href: '/admin/ai-usage' },
