@@ -19,6 +19,7 @@ import {
   type ImageAspectRatio,
 } from './imagePolicy.ts';
 import { buildImagePrompt, promptHash, IMAGE_PROMPT_VERSION } from './prompts.ts';
+import { globalSpendGuardFailure, reserveGlobalPaidGeneration } from '../_shared/globalSpendGuard.ts';
 
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
 const STORAGE_BUCKET = 'content-media';
@@ -175,6 +176,12 @@ export default {
         const prompt = buildImagePrompt({ subject, category, targetUse });
         const size = sizeForAspect(aspectRatio);
         const { width, height } = dimsForAspect(aspectRatio);
+
+        const spend = await reserveGlobalPaidGeneration(admin, userId, 'image_generation');
+        if (spend.status !== 'allowed') {
+          const failure = globalSpendGuardFailure(spend);
+          return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+        }
 
         // ---- Provider call (timeout-guarded) ------------------------------
         stage = 'provider_request';

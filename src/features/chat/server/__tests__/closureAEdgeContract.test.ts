@@ -28,6 +28,7 @@ describe('Closure A Edge/client authority contract', () => {
     expect(EDGE).toContain("admin.rpc('reserve_paid_work'");
     expect(EDGE).toContain("admin.rpc('acquire_paid_request'");
     expect(EDGE).toContain("admin.rpc('complete_paid_request'");
+    expect(EDGE).toContain('reserveGlobalPaidGeneration');
   });
 
   it('official Today/Monthly clients neither claim nor persist nor send SELF birth', () => {

@@ -57,6 +57,11 @@ import {
   monthKey,
   MAX_REQUEST_BODY_BYTES,
 } from './_server/serverBundle.mjs';
+import {
+  globalSpendGuardFailure,
+  reserveGlobalPaidGeneration,
+  type GlobalSpendGuardVerdict,
+} from '../_shared/globalSpendGuard.ts';
 
 // Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
 // extensionless/directory/@/ specifier to Deno. They mirror the source contracts; the authoritative
@@ -433,7 +438,9 @@ type PaidRequestContext = { admin: AdminClient; userId: string; workload: PaidRe
 type PaidRequestStart =
   | { status: 'acquired'; context: PaidRequestContext }
   | { status: 'completed'; response: Record<string, unknown> }
-  | { status: 'processing' | 'rate_limited' | 'unavailable'; retryAfterMs?: number };
+  | { status: 'processing' | 'rate_limited' | 'unavailable'; retryAfterMs?: number }
+  | { status: 'generation_disabled' }
+  | { status: 'global_limit_reached'; period: 'hourly' | 'daily'; retryAfterMs: number };
 
 async function acquirePaidRequest(
   admin: AdminClient | null, userId: string | null, workload: PaidRequestWorkload, requestId: string | null,
@@ -458,6 +465,19 @@ async function acquirePaidRequest(
       return reservation.status === 'rate_limited'
         ? { status: 'rate_limited', retryAfterMs: reservation.retryAfterMs }
         : { status: 'unavailable' };
+    }
+    const global = await reserveGlobalPaidGeneration(admin, userId, workload);
+    if (global.status !== 'allowed') {
+      await admin.rpc('release_paid_request', {
+        p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_token: row.lease_token,
+      });
+      if (global.status === 'disabled') return { status: 'generation_disabled' };
+      if (global.status === 'exhausted') {
+        return {
+          status: 'global_limit_reached', period: global.period, retryAfterMs: global.retryAfterMs,
+        };
+      }
+      return { status: 'unavailable' };
     }
     return { status: 'acquired', context: { admin, userId, workload, requestId, token: row.lease_token } };
   } catch {
@@ -624,12 +644,21 @@ export default {
           let todayErrorCode: string | null = null;
           let todayOutcome: OpenAiCall | null = null;
           let nonPaidFailure: Record<string, unknown> | null = null;
+          const globalGuard = {
+            failure: null as Exclude<GlobalSpendGuardVerdict, { status: 'allowed' }> | null,
+          };
           const guarded = await runCanonicalGeneration({
             readCanonical: () => readCanonicalFortune(admin, identity),
             acquireLease: () => acquireFortuneLease(admin, identity),
-            reservePaidWork: () => apiKey.length > 0
-              ? reservePaidWorkAtomic(admin, userId, 'today_fortune')
-              : Promise.resolve({ status: 'unavailable' as const }),
+            reservePaidWork: async () => {
+              if (apiKey.length === 0) return { status: 'unavailable' as const };
+              const userReservation = await reservePaidWorkAtomic(admin, userId, 'today_fortune');
+              if (userReservation.status !== 'allowed') return userReservation;
+              const global = await reserveGlobalPaidGeneration(admin, userId, 'today_fortune');
+              if (global.status === 'allowed') return { status: 'allowed' as const };
+              globalGuard.failure = global;
+              return { status: 'unavailable' as const };
+            },
             generate: async () => {
               const fortune = await buildTodayFortune(
                 { birthInput: authority.birthInfo },
@@ -680,6 +709,10 @@ export default {
             { error: 'RATE_LIMITED', retryAfterMs: guarded.retryAfterMs },
             { status: 429, headers: { 'Retry-After': String(Math.ceil(guarded.retryAfterMs / 1000)) } },
           );
+          if (globalGuard.failure) {
+            const failure = globalSpendGuardFailure(globalGuard.failure);
+            return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+          }
           if (nonPaidFailure) return Response.json(nonPaidFailure);
           if (guarded.status === 'generation_failed') {
             logDiag(requestId, 'OPENAI_RESPONSE', todayErrorCode ?? 'LLM_FAILED', {
@@ -713,12 +746,21 @@ export default {
           let monthlyErrorCode: string | null = null;
           let monthlyOutcome: OpenAiCall | null = null;
           let nonPaidFailure: Record<string, unknown> | null = null;
+          const globalGuard = {
+            failure: null as Exclude<GlobalSpendGuardVerdict, { status: 'allowed' }> | null,
+          };
           const guarded = await runCanonicalGeneration({
             readCanonical: () => readCanonicalFortune(admin, identity),
             acquireLease: () => acquireFortuneLease(admin, identity),
-            reservePaidWork: () => apiKey.length > 0
-              ? reservePaidWorkAtomic(admin, userId, 'monthly_fortune')
-              : Promise.resolve({ status: 'unavailable' as const }),
+            reservePaidWork: async () => {
+              if (apiKey.length === 0) return { status: 'unavailable' as const };
+              const userReservation = await reservePaidWorkAtomic(admin, userId, 'monthly_fortune');
+              if (userReservation.status !== 'allowed') return userReservation;
+              const global = await reserveGlobalPaidGeneration(admin, userId, 'monthly_fortune');
+              if (global.status === 'allowed') return { status: 'allowed' as const };
+              globalGuard.failure = global;
+              return { status: 'unavailable' as const };
+            },
             generate: async () => {
               const monthly = await buildMonthlyFortune(
                 { birthInput: authority.birthInfo },
@@ -769,6 +811,10 @@ export default {
             { error: 'RATE_LIMITED', retryAfterMs: guarded.retryAfterMs },
             { status: 429, headers: { 'Retry-After': String(Math.ceil(guarded.retryAfterMs / 1000)) } },
           );
+          if (globalGuard.failure) {
+            const failure = globalSpendGuardFailure(globalGuard.failure);
+            return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+          }
           if (nonPaidFailure) return Response.json(nonPaidFailure);
           if (guarded.status === 'generation_failed') {
             logDiag(requestId, 'OPENAI_RESPONSE', monthlyErrorCode ?? 'LLM_FAILED', {
@@ -793,6 +839,13 @@ export default {
           if (paid.status === 'rate_limited') return Response.json(
             { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
             { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+          );
+          if (paid.status === 'generation_disabled') {
+            return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 });
+          }
+          if (paid.status === 'global_limit_reached') return Response.json(
+            { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
           );
           if (paid.status !== 'acquired') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
           if (apiKey.length === 0) {
@@ -895,6 +948,13 @@ export default {
         if (paid.status === 'rate_limited') return Response.json(
           { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
           { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+        );
+        if (paid.status === 'generation_disabled') {
+          return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 });
+        }
+        if (paid.status === 'global_limit_reached') return Response.json(
+          { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
+          { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
         );
         if (paid.status !== 'acquired') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         if (apiKey.length === 0) {

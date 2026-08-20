@@ -15,6 +15,7 @@
 
 import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
+import { globalSpendGuardFailure, reserveGlobalPaidGeneration } from '../_shared/globalSpendGuard.ts';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const PROMPT_VERSION = 'famous_suggest_v1';
@@ -222,6 +223,12 @@ export default {
 
         const model = premiumModel();
         const maxOutputTokens = premiumMaxTokens();
+
+        const spend = await reserveGlobalPaidGeneration(serviceClient(), userId, 'famous_suggestion');
+        if (spend.status !== 'allowed') {
+          const failure = globalSpendGuardFailure(spend);
+          return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+        }
 
         stage = 'openai_request';
         let providerResponse: Response;
