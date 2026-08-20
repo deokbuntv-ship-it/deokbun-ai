@@ -31,7 +31,7 @@ Legend: **DONE** shipped in-repo · **PARTIAL** works but has a named gap · **M
 | **Monitoring** | **PARTIAL→improved (this sprint)** | PII-safe logging seam + **root ErrorBoundary added**; **no Sentry** (seam ready, OWNER credential later). |
 | **Backup / recovery** | DOCS (this sprint) | see §B; live Supabase PITR/backup settings are OWNER-verify. |
 | App store config | PARTIAL (this sprint) | name → 덕분이, bundle IDs added (`com.deokbun.app`); **OWNER confirm final IDs + store accounts**. |
-| **Consumer brand → 덕분이** | **DONE (this sprint)** | all user-facing surfaces migrated; internal identifiers preserved; **LLM prompt self-name pending next edge deploy** (OWNER). |
+| **Consumer brand → 덕분이** | **DONE (this sprint)** | all user-facing surfaces + LLM prompt self-name migrated; serverBundle regenerated; internal identifiers preserved. **OWNER: deploy chat edge** to activate the prompt self-name. |
 | Push (external) | MISSING | provider abstraction only (noop); OWNER: FCM/APNs credentials. |
 | Email (external) | MISSING | OWNER: email provider + API key. |
 | Payment / monetization | MISSING (by design) | see §C — **review required before V1 freeze**. |
@@ -115,9 +115,12 @@ version constants, the operator-only admin console brand, and the **edge-bundled
 Bundle identifiers were **not** changed by the brand rename (they are independent). Locked by
 `src/app/__tests__/consumerBrand.test.ts`.
 
-**OWNER (next edge deploy):** update the AI self-name from 덕분AI to 덕분이 in `todayFortunePrompt.ts`,
-`monthlyFortunePrompt.ts`, `consultationPolicy.ts`, then rebuild `serverBundle.mjs` and deploy — so generated
-answers self-refer as 덕분이.
+The AI self-name in the consultation / Today / Monthly system prompts is now 덕분이 (edge/server code changed
+because the name is verbalized to the consumer), and `serverBundle.mjs` was regenerated + audited (덕분이
+present, zero 덕분AI, 3 engine externals, no secrets, no client leak). **OWNER: `supabase functions deploy chat`
+to activate the new persona** — until deployed, the running edge still self-refers as 덕분AI. Prompt versions
+were intentionally not bumped (cosmetic self-name; absent from structured output → no fortune-cache
+regeneration).
 
 ## D. Owner actions
 
@@ -128,7 +131,9 @@ answers self-refer as 덕분이.
    `20260824000000` popular_consultation_questions · `20260825000000` product_events_rate_limit ·
    `20260826000000` admin_retention_overview.
    *(Earlier product migrations `20260817*`–`20260820*` if not already applied.)*
-3. No Edge redeploy is required for this sprint (no `supabase/functions/**` change).
+3. **Deploy the chat edge** (`supabase functions deploy chat`) — the regenerated `serverBundle.mjs` carries the
+   consumer-visible 덕분이 prompt self-name. Until deployed, generated answers still self-refer as 덕분AI.
+   (This is the only edge change in the sprint.)
 
 **Later (external, owner-only):**
 - Final lawyer-reviewed privacy policy / terms wording.
