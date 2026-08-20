@@ -1,15 +1,34 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AppErrorFallback } from '@/components/AppErrorFallback';
 import { AcquisitionBridge } from '@/features/ads/acquisition/AcquisitionBridge';
+import { appErrorEvent, consoleErrorLogger } from '@/features/analysis/logging';
 import { AuthProvider } from '@/features/auth';
 import { ConsultationDraftProvider } from '@/features/consultation';
 import { OnboardingGate, OnboardingProvider } from '@/features/onboarding';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 SplashScreen.preventAutoHideAsync();
+
+// Root crash boundary (monitoring §55-59). Expo Router renders this in place of a route subtree that throws
+// during render, instead of a blank screen. We log through the existing PII-safe seam — ONLY the error class
+// name + a critical severity, NEVER the message/stack (which could echo user content) — and show a friendly
+// retry. `retry` re-mounts the crashed subtree. Backing this with Sentry later is a one-adapter change.
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    consoleErrorLogger.log(
+      appErrorEvent('UNKNOWN', 'ui-boundary', {
+        severity: 'critical',
+        safeMetadata: { name: error?.name ?? 'Error' },
+      }),
+    );
+  }, [error]);
+  return <AppErrorFallback onRetry={() => void retry()} />;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
