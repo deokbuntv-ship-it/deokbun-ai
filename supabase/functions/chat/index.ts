@@ -25,7 +25,7 @@
 // (package-lock: 2.112.1), and @supabase/server (a Deno-only helper, not in the app lockfile) to the
 // owner-verified current version 1.4.1.
 import { withSupabase } from 'npm:@supabase/server@1.4.1';
-import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.112.1';
 
 // The server orchestrator + its whole runtime-neutral graph (108 files incl. the FROZEN Saju engine) is
 // pre-bundled by esbuild into ONE Deno-safe ESM file (build: _server/build.mjs). Deno's Edge runtime
@@ -530,6 +530,52 @@ async function completePaidRequest(
   return null;
 }
 
+async function verifyOwnedConversation(
+  admin: SupabaseClient,
+  userId: string,
+  conversationId: string,
+): Promise<boolean> {
+  try {
+    const { data, error } = await admin.from('conversations').select('id')
+      .eq('id', conversationId).eq('user_id', userId).maybeSingle();
+    return !error && (data as { id?: unknown } | null)?.id === conversationId;
+  } catch {
+    return false;
+  }
+}
+
+async function completeConsultationWithDecision(
+  ctx: PaidRequestContext,
+  response: Record<string, unknown>,
+  conversationId: string,
+  decisionMeta: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.rpc('complete_consultation_request_with_decision', {
+      p_user_id: ctx.userId,
+      p_workload: ctx.workload,
+      p_request_id: ctx.requestId,
+      p_lease_token: ctx.token,
+      p_response_json: response,
+      p_conversation_id: conversationId,
+      p_decision_meta: decisionMeta,
+      p_answer_plan_version: typeof decisionMeta.answerPlanVersion === 'string' ? decisionMeta.answerPlanVersion : null,
+      p_decision_policy_version: typeof decisionMeta.decisionPolicyVersion === 'string' ? decisionMeta.decisionPolicyVersion : null,
+      p_engine_version: typeof decisionMeta.engineVersion === 'string' ? decisionMeta.engineVersion : null,
+      p_model_id: typeof decisionMeta.modelId === 'string' ? decisionMeta.modelId : null,
+    });
+    if (!error && typeof data === 'string' && data.length > 0) return response;
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  } catch {
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  }
+  logDiag(ctx.requestId, 'RESPONSE_VALIDATION', 'DECISION_PERSIST_FAILED', { path: 'consultation' });
+  await releasePaidRequest(ctx);
+  return null;
+}
+
 // ---- request contract (§7) --------------------------------------------------
 // The client sends ONLY untrusted inputs. No messages / grounding / system prompt.
 //   mode 'consultation' (default): question + untrusted turns; server resolves canonical SELF and grounds.
@@ -947,6 +993,19 @@ export default {
           return Response.json({ text: crisisStop.text, groundingMeta: crisisStop.groundingMeta });
         }
 
+        // E.2 authority boundary: a solo paid consultation must be keyed by an already-created owned
+        // conversation before reservation/LLM work. A supplied cross-user UUID is rejected, not merely
+        // filtered at read time, and the same verified id is reused for both loader and atomic writer.
+        const suppliedConversationId =
+          typeof body.conversationId === 'string' && body.conversationId.length > 0 ? body.conversationId : null;
+        if (body.consultationMode !== 'compatibility' && !suppliedConversationId) {
+          return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+        if (suppliedConversationId && !await verifyOwnedConversation(admin, userId, suppliedConversationId)) {
+          return Response.json({ error: 'CONVERSATION_FORBIDDEN' }, { status: 403 });
+        }
+        const verifiedConversationId = suppliedConversationId;
+
         let partnerBirthInput: BirthInfoDraft | null = null;
         let partnerLabel: string | null = null;
         if (body.consultationMode === 'compatibility') {
@@ -1038,8 +1097,6 @@ export default {
         // Sprint E — SERVER-AUTHORITATIVE previous-decision loader for live follow-ups (solo path). Ownership
         // is verified (the conversation must belong to this user) BEFORE reading the latest assistant row's
         // persisted decisionMeta. Fail-clean: any gap → undefined → no follow-up (normal behavior).
-        const conversationId =
-          typeof body.conversationId === 'string' && body.conversationId.length > 0 ? body.conversationId : null;
         // BLOCKER 1 (§1-§4) — the previous decision is read from the SERVER-OWNED consultation_decisions store,
         // which only the service-role Edge can write (RLS denies all client writes). The prior Sprint E loader
         // read conversation_messages.structured_result.decisionMeta — a CLIENT-written row — so a modified
@@ -1048,15 +1105,16 @@ export default {
         // enforced by the user_id filter (a cross-user conversation returns no row). Fail-closed: any gap /
         // legacy / malformed row → null → no follow-up (normal behavior). Never reads client message rows.
         const loadPreviousDecision =
-          admin && userId && conversationId
+          admin && userId && verifiedConversationId
             ? async () => {
                 try {
                   const { data: dec } = await admin
                     .from('consultation_decisions')
                     .select('decision_meta')
-                    .eq('conversation_id', conversationId)
+                    .eq('conversation_id', verifiedConversationId)
                     .eq('user_id', userId)
                     .order('created_at', { ascending: false })
+                    .order('id', { ascending: false })
                     .limit(1)
                     .maybeSingle();
                   const meta = (dec as { decision_meta?: unknown } | null)?.decision_meta;
@@ -1179,32 +1237,6 @@ export default {
           });
         }
 
-        // BLOCKER 1 (§3) — persist the AUTHORITATIVE decision to the SERVER-OWNED store, but ONLY after safety
-        // + output validation + acceptance (never for a safety-routed / fallback / semantically-rejected turn),
-        // and only when a conversation keys it. This is the ONLY writer of consultation_decisions; the client
-        // cannot write it (RLS). The follow-up loader reads this row next turn instead of trusting the client's
-        // message copy. Best-effort: a write failure must NEVER fail the answer already produced for the user.
-        if (
-          admin && userId && conversationId &&
-          result.diagnostics?.outputClassification === 'ACCEPTED' &&
-          result.structuredResult?.decisionMeta
-        ) {
-          const dm = result.structuredResult.decisionMeta;
-          try {
-            await admin.from('consultation_decisions').insert({
-              conversation_id: conversationId,
-              user_id: userId,
-              decision_meta: dm,
-              answer_plan_version: dm.answerPlanVersion,
-              decision_policy_version: dm.decisionPolicyVersion,
-              engine_version: dm.engineVersion ?? null,
-              model_id: dm.modelId ?? null,
-            });
-          } catch {
-            logDiag(requestId, 'RESPONSE_VALIDATION', 'DECISION_PERSIST_FAILED', { path: 'consultation' });
-          }
-        }
-
         // Bounded response (§17): server-validated text + optional structured view-model + safe meta.
         // `diagnostics` is intentionally NOT returned to the client — it is log-only.
         const response = {
@@ -1214,7 +1246,18 @@ export default {
           // Deterministic 궁합 tier (compatibility mode only) — the client renders/persists it (no extra LLM).
           ...(result.compatibility ? { compatibility: result.compatibility } : {}),
         };
-        const completed = await completePaidRequest(paid.context, response);
+        const acceptedDecision =
+          result.diagnostics?.outputClassification === 'ACCEPTED' &&
+          result.diagnostics?.followUp !== 'WHY' &&
+          result.structuredResult?.decisionMeta &&
+          verifiedConversationId
+            ? result.structuredResult.decisionMeta as Record<string, unknown>
+            : null;
+        // Accepted authoritative decisions are committed atomically with paid-request completion. Any RPC /
+        // insert failure is fail-closed (503); it is never logged-and-ignored as if follow-up state existed.
+        const completed = acceptedDecision && verifiedConversationId
+          ? await completeConsultationWithDecision(paid.context, response, verifiedConversationId, acceptedDecision)
+          : await completePaidRequest(paid.context, response);
         return completed
           ? Response.json(completed)
           : Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
