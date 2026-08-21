@@ -23,7 +23,8 @@ const GOOD = JSON.stringify({
 
 const META = (over: Partial<ConsultationDecisionMeta> = {}): ConsultationDecisionMeta => ({
   answerPlanVersion: ANSWER_PLAN_VERSION, decisionPolicyVersion: DECISION_POLICY_VERSION, promptVersion: 'consultation@1.4.3',
-  resolvedGranularity: 'YEAR', resolvedTargets: [2026], polarity: 'CAUTION', domain: '사업',
+  engineVersion: 'deokbunai.saju-rules.v1', resolvedGranularity: 'YEAR', resolvedTargets: [2026], polarity: 'CAUTION', domain: '사업',
+  evidenceSnapshot: { schemaVersion: 'decision-evidence@1.0.0', target: { granularity: 'YEAR', key: 2026 }, polarity: 'CAUTION', derivation: { harmony: 0, friction: 1, stemRelations: [], branchRelations: [{ position: 'DAY', kind: 'BRANCH_CLASH' }] }, supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['TIMING'], engineVersion: 'deokbunai.saju-rules.v1' },
   resolvedTemporalContext: { anchorEpochSeconds: NOW, timezone: 'Asia/Seoul', referenceYear: 2026, referenceMonth: 7, resolvedTargets: [2026], qimenActive: false },
   ...over,
 });

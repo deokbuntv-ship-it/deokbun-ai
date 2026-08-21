@@ -29,7 +29,9 @@ const rtc = (over: Partial<ResolvedTemporalContext> = {}): ResolvedTemporalConte
 });
 const META = (over: Partial<ConsultationDecisionMeta> = {}): ConsultationDecisionMeta => ({
   answerPlanVersion: ANSWER_PLAN_VERSION, decisionPolicyVersion: DECISION_POLICY_VERSION, promptVersion: 'consultation@1.4.3',
-  resolvedGranularity: 'YEAR', resolvedTargets: [2026], polarity: 'CAUTION', domain: '사업', resolvedTemporalContext: rtc(),
+  engineVersion: 'deokbunai.saju-rules.v1', resolvedGranularity: 'YEAR', resolvedTargets: [2026], polarity: 'CAUTION', domain: '사업',
+  evidenceSnapshot: { schemaVersion: 'decision-evidence@1.0.0', target: { granularity: 'YEAR', key: 2026 }, polarity: 'CAUTION', derivation: { harmony: 0, friction: 1, stemRelations: [], branchRelations: [{ position: 'DAY', kind: 'BRANCH_CLASH' }] }, supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['TIMING'], engineVersion: 'deokbunai.saju-rules.v1' },
+  resolvedTemporalContext: rtc(),
   ...over,
 });
 
@@ -105,7 +107,7 @@ describe('§5-6 "왜?" explains the STORED decision/evidence (A), not the curren
   it('renders the stored target, polarity, and support level — and not the current-turn year', () => {
     const stored = previousDecisionFromMeta(META({
       resolvedGranularity: 'YEAR', resolvedTargets: [2028], polarity: 'CAUTION',
-      evidence: { supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['TIMING'] },
+      evidenceSnapshot: { schemaVersion: 'decision-evidence@1.0.0', target: { granularity: 'YEAR', key: 2028 }, polarity: 'CAUTION', derivation: { harmony: 0, friction: 2, stemRelations: [{ position: 'MONTH', kind: 'STEM_CLASH' }], branchRelations: [{ position: 'DAY', kind: 'BRANCH_CLASH' }] }, supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['TIMING'], engineVersion: 'deokbunai.saju-rules.v1' },
       resolvedTemporalContext: rtc({ referenceYear: 2028, resolvedTargets: [2028] }),
     }));
     const action = resolveFollowUpAction('WHY', stored);
@@ -160,23 +162,23 @@ describe('§18 buildConsultationDecisionMeta persists a carried domain for a NEX
 });
 
 // ── PARSE — new fields are fail-closed + backward compatible ──────────────────────────────────────────────
-describe('parseDecisionMeta round-trips comparisonContext + evidence, and rejects malformed shapes', () => {
+describe('parseDecisionMeta round-trips authority metadata and rejects malformed shapes', () => {
   it('preserves a well-formed comparison context and evidence snapshot', () => {
-    const meta = META({ comparisonContext: { isComparison: true, candidates: [202702, 202705] }, evidence: { supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['COMPARISON', 'TIMING'] } });
+    const meta = META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], polarity: undefined, evidenceSnapshot: undefined, comparisonContext: { isComparison: true, candidates: [202702, 202705] } });
     const parsed = parseDecisionMeta(JSON.parse(JSON.stringify(meta)));
     expect(parsed?.comparisonContext).toEqual({ isComparison: true, candidates: [202702, 202705] });
-    expect(parsed?.evidence).toEqual({ supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['COMPARISON', 'TIMING'] });
+    expect(parsed?.evidenceSnapshot).toBeUndefined();
   });
-  it('a malformed comparison context → dropped (never a silent isComparison:true)', () => {
+  it('a malformed comparison context rejects the whole authority row', () => {
     const parsed = parseDecisionMeta({ ...JSON.parse(JSON.stringify(META())), comparisonContext: { candidates: [1, 2] } });
-    expect(parsed?.comparisonContext).toBeUndefined();
+    expect(parsed).toBeUndefined();
   });
   it('a legacy record without the new fields still parses (backward compatible)', () => {
     const legacy = JSON.parse(JSON.stringify(META()));
-    delete legacy.comparisonContext; delete legacy.evidence;
+    delete legacy.comparisonContext; delete legacy.evidenceSnapshot;
     const parsed = parseDecisionMeta(legacy);
     expect(parsed).toBeDefined();
     expect(parsed?.comparisonContext).toBeUndefined();
-    expect(parsed?.evidence).toBeUndefined();
+    expect(parsed?.evidenceSnapshot).toBeUndefined();
   });
 });

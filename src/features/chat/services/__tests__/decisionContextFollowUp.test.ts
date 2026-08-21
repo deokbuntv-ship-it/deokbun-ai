@@ -18,6 +18,7 @@ const META = (over: Partial<ConsultationDecisionMeta> = {}): ConsultationDecisio
   resolvedGranularity: 'YEAR',
   resolvedTargets: [2027],
   polarity: 'CAUTION',
+  evidenceSnapshot: { schemaVersion: 'decision-evidence@1.0.0', target: { granularity: 'YEAR', key: 2027 }, polarity: 'CAUTION', derivation: { harmony: 0, friction: 1, stemRelations: [], branchRelations: [{ position: 'DAY', kind: 'BRANCH_CLASH' }] }, supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['TIMING'], engineVersion: 'saju@1' },
   resolvedTemporalContext: { anchorEpochSeconds: 1_700_000_000, timezone: 'Asia/Seoul', referenceYear: 2026, referenceMonth: 8, resolvedTargets: [2027], qimenActive: false },
   ...over,
 });

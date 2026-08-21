@@ -18,7 +18,8 @@ describe('§8 classifyConsultationDomain', () => {
 
 const META = (over: Partial<ConsultationDecisionMeta> = {}): ConsultationDecisionMeta => ({
   answerPlanVersion: ANSWER_PLAN_VERSION, decisionPolicyVersion: DECISION_POLICY_VERSION, promptVersion: 'consultation@1.4.3',
-  resolvedGranularity: 'YEAR', resolvedTargets: [2026], polarity: 'CAUTION', domain: '사업', modelId: 'gpt-5-mini',
+  engineVersion: 'deokbunai.saju-rules.v1', resolvedGranularity: 'YEAR', resolvedTargets: [2026], polarity: 'CAUTION', domain: '사업', modelId: 'gpt-5-mini',
+  evidenceSnapshot: { schemaVersion: 'decision-evidence@1.0.0', target: { granularity: 'YEAR', key: 2026 }, polarity: 'CAUTION', derivation: { harmony: 0, friction: 1, stemRelations: [], branchRelations: [{ position: 'DAY', kind: 'BRANCH_CLASH' }] }, supportLevel: 'DIRECT', assertiveness: 'STRONG', intents: ['TIMING'], engineVersion: 'deokbunai.saju-rules.v1' },
   resolvedTemporalContext: { anchorEpochSeconds: 1_700_000_000, timezone: 'Asia/Seoul', referenceYear: 2026, referenceMonth: 8, resolvedTargets: [2026], qimenActive: false },
   ...over,
 });
@@ -47,7 +48,7 @@ describe('§18 persist → reload → follow-up resolver', () => {
   it('NEXT_YEAR + COMPARE_PREVIOUS survive persistence (domain + candidate identities)', () => {
     // §16-17 — a REAL stored comparison persists its explicit flag + candidate identities (resolvedTargets
     // length alone is no longer treated as a comparison).
-    const reloaded = parsePersistedStructured(serializeStructuredForPersistence(vm(META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], domain: '이사', comparisonContext: { isComparison: true, candidates: [202702, 202705] } }))));
+    const reloaded = parsePersistedStructured(serializeStructuredForPersistence(vm(META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], polarity: undefined, evidenceSnapshot: undefined, domain: '이사', comparisonContext: { isComparison: true, candidates: [202702, 202705] } }))));
     const prev = previousDecisionFromMeta(reloaded?.decisionMeta);
     expect(prev?.decisionMeta?.domain).toBe('이사');
     expect(resolveFollowUpAction('NEXT_YEAR', prev)).toEqual({ kind: 'RECALC_NEXT_YEAR' });

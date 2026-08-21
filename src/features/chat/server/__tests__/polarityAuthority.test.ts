@@ -33,8 +33,8 @@ function gTargets(opts: {
   const years = Object.keys(opts.years ?? {}).map(Number);
   const months = Object.keys(opts.months ?? {}).map(Number);
   const targetPolarities: TargetPolarity[] = [
-    ...Object.entries(opts.years ?? {}).map(([y, p]) => ({ granularity: 'YEAR' as const, targetKey: Number(y), polarity: p })),
-    ...Object.entries(opts.months ?? {}).map(([k, p]) => ({ granularity: 'MONTH' as const, targetKey: Number(k), polarity: p })),
+    ...Object.entries(opts.years ?? {}).map(([y, p]) => ({ granularity: 'YEAR' as const, targetKey: Number(y), polarity: p, derivation: { harmony: 0, friction: 0, stemRelations: [], branchRelations: [] } })),
+    ...Object.entries(opts.months ?? {}).map(([k, p]) => ({ granularity: 'MONTH' as const, targetKey: Number(k), polarity: p, derivation: { harmony: 0, friction: 0, stemRelations: [], branchRelations: [] } })),
   ];
   return {
     status: 'available',
@@ -124,7 +124,7 @@ describe('toSafeGrounding preserves the target-scoped fields, rejects bogus', ()
       referenceMonth?: number; targetPolarities?: TargetPolarity[];
     };
     expect(safe.referenceMonth).toBe(8);
-    expect(safe.targetPolarities?.[0]).toEqual({ granularity: 'YEAR', targetKey: 2026, polarity: 'FAVORABLE' });
+    expect(safe.targetPolarities?.[0]).toEqual({ granularity: 'YEAR', targetKey: 2026, polarity: 'FAVORABLE', derivation: { harmony: 0, friction: 0, stemRelations: [], branchRelations: [] } });
   });
   it('rejects a bogus tier / bad month → fail-closed', () => {
     const badTier = { ...gTargets({}), targetPolarities: [{ granularity: 'YEAR', targetKey: 2026, polarity: 'GREAT' }] } as unknown as ConsultationGrounding;
