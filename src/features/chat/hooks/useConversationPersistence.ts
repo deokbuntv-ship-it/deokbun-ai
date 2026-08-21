@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth';
 import { supabaseEdgeSummaryAdapter } from '@/features/chat/adapters/supabaseEdgeSummaryAdapter';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
+import { assertAuthenticatedForConversation } from '@/features/chat/services/conversationBoundSend';
 import {
   conversationService,
   type ConversationSubjectSnapshot,
@@ -262,6 +263,17 @@ export function useConversationPersistence(
   const ensureConversationId = (): Promise<string> => {
     if (conversationIdRef.current !== null) {
       return Promise.resolve(conversationIdRef.current);
+    }
+    // Sprint F §B — AUTHENTICATION precedes conversation creation. Fail closed BEFORE any INSERT for an
+    // unauthenticated caller so the first turn returns AUTH_REQUIRED (not a bare RLS-denied REQUEST_FAILED)
+    // and creates no row / reserves no paid work / calls no LLM / persists no decision.
+    try {
+      assertAuthenticatedForConversation({
+        status: authState.status,
+        userId: authState.user?.id ?? null,
+      });
+    } catch (error) {
+      return Promise.reject(error);
     }
     if (creationRef.current !== null) {
       return creationRef.current;

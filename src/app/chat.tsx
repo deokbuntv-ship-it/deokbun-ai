@@ -21,6 +21,7 @@ import {
     ChatInput,
     createServerConsultationService,
     executeConversationBoundSend,
+    isConversationAuthRequiredError,
     mapConsultationError,
     supabaseEdgeConsultationAdapter,
     useConversationPersistence,
@@ -426,9 +427,17 @@ export default function ChatScreen() {
         sendConsultation: (ensuredConversationId) =>
           runSend(trimmed, previousMessages, undefined, ensuredConversationId),
       });
-    } catch {
-      setSendError(mapConsultationError('REQUEST_FAILED'));
-      lastAttemptRef.current = { text: trimmed, context: previousMessages };
+    } catch (error) {
+      // §B — an unauthenticated first turn fails closed at conversation creation → AUTH_REQUIRED (preserve the
+      // question so login resumes here), never the generic REQUEST_FAILED that would look like a server fault.
+      if (isConversationAuthRequiredError(error)) {
+        setPendingConsultationIntent({ question: trimmed, returnTo: '/chat' });
+        setSendError(mapConsultationError('AUTH_REQUIRED'));
+        lastAttemptRef.current = null;
+      } else {
+        setSendError(mapConsultationError('REQUEST_FAILED'));
+        lastAttemptRef.current = { text: trimmed, context: previousMessages };
+      }
       setIsSending(false);
       isSendingRef.current = false;
     }
@@ -461,8 +470,15 @@ export default function ChatScreen() {
     try {
       const ensuredConversationId = await ensureConversation();
       await runSend(attempt.text, attempt.context, attempt.requestId, ensuredConversationId);
-    } catch {
-      setSendError(mapConsultationError('REQUEST_FAILED'));
+    } catch (error) {
+      // §B — same auth-precedes-conversation boundary on retry (an expired session re-gates cleanly).
+      if (isConversationAuthRequiredError(error)) {
+        setPendingConsultationIntent({ question: attempt.text, returnTo: '/chat' });
+        setSendError(mapConsultationError('AUTH_REQUIRED'));
+        lastAttemptRef.current = null;
+      } else {
+        setSendError(mapConsultationError('REQUEST_FAILED'));
+      }
       setIsSending(false);
       isSendingRef.current = false;
     }
