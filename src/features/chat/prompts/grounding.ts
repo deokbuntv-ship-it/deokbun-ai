@@ -56,6 +56,21 @@ export type TargetPolarity = {
   granularity: 'YEAR' | 'MONTH';
   targetKey: number;
   polarity: PolarityTier;
+  // The exact bounded relation facts consumed by the shared polarity kernel. This is audit evidence,
+  // not prose and not a new score: harmony/friction are the kernel's existing categorical inputs.
+  derivation: TargetPolarityDerivation;
+};
+
+export type TargetPolarityRelation = {
+  position: 'YEAR' | 'MONTH' | 'DAY' | 'HOUR';
+  kind: string;
+};
+
+export type TargetPolarityDerivation = {
+  harmony: number;
+  friction: number;
+  stemRelations: TargetPolarityRelation[];
+  branchRelations: TargetPolarityRelation[];
 };
 
 // The current, honest default: no verified calculation is connected.
@@ -238,11 +253,34 @@ function isValidTargetPolarities(v: unknown): boolean {
   if (!Array.isArray(v)) return false;
   return v.every((t) => {
     if (t === null || typeof t !== 'object') return false;
-    const o = t as { granularity?: unknown; targetKey?: unknown; polarity?: unknown };
+    const o = t as { granularity?: unknown; targetKey?: unknown; polarity?: unknown; derivation?: unknown };
     if (o.granularity !== 'YEAR' && o.granularity !== 'MONTH') return false;
     if (typeof o.targetKey !== 'number' || !Number.isInteger(o.targetKey)) return false;
-    return typeof o.polarity === 'string' && (POLARITY_TIER_VALUES as readonly string[]).includes(o.polarity);
+    if (typeof o.polarity !== 'string' || !(POLARITY_TIER_VALUES as readonly string[]).includes(o.polarity)) return false;
+    return isValidTargetPolarityDerivation(o.derivation);
   });
+}
+
+const PILLAR_POSITIONS = ['YEAR', 'MONTH', 'DAY', 'HOUR'];
+const STEM_RELATION_KINDS = ['STEM_COMBINATION', 'STEM_CLASH'];
+const BRANCH_RELATION_KINDS = [
+  'BRANCH_SIX_COMBINATION', 'BRANCH_CLASH', 'BRANCH_HALF_THREE_HARMONY',
+  'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT', 'BRANCH_DESTRUCTION', 'BRANCH_HARM',
+];
+function isValidTargetPolarityDerivation(v: unknown): boolean {
+  if (v === null || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  const validCount = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 8;
+  if (!validCount(o.harmony) || !validCount(o.friction)) return false;
+  const validRelations = (relations: unknown, kinds: readonly string[]) =>
+    Array.isArray(relations) && relations.length <= 8 && relations.every((relation) => {
+      if (relation === null || typeof relation !== 'object') return false;
+      const r = relation as Record<string, unknown>;
+      return typeof r.position === 'string' && PILLAR_POSITIONS.includes(r.position) &&
+        typeof r.kind === 'string' && kinds.includes(r.kind);
+    });
+  return validRelations(o.stemRelations, STEM_RELATION_KINDS) &&
+    validRelations(o.branchRelations, BRANCH_RELATION_KINDS);
 }
 
 /**

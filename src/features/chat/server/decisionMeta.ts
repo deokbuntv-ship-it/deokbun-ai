@@ -30,13 +30,64 @@ export function buildConsultationDecisionMeta(
     ...(plan.polarity ? { polarity: plan.polarity } : {}),
     domain,
     comparisonContext: plan.comparisonContext,
-    evidence: { supportLevel: plan.supportLevel, assertiveness: plan.assertiveness, intents: plan.intents },
+    ...(plan.selectedTargetPolarity && grounding.status === 'available' && grounding.engineVersion
+      ? {
+          evidenceSnapshot: {
+            schemaVersion: 'decision-evidence@1.0.0' as const,
+            target: {
+              granularity: plan.selectedTargetPolarity.granularity,
+              key: plan.selectedTargetPolarity.targetKey,
+            },
+            polarity: plan.selectedTargetPolarity.polarity,
+            derivation: plan.selectedTargetPolarity.derivation,
+            supportLevel: plan.supportLevel,
+            assertiveness: plan.assertiveness,
+            intents: plan.intents,
+            engineVersion: grounding.engineVersion,
+          },
+        }
+      : {}),
     resolvedTemporalContext,
   };
 }
 
 const POLARITY_TIERS = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
-const numArray = (v: unknown): number[] => (Array.isArray(v) ? v.filter((n): n is number => typeof n === 'number') : []);
+const DOMAINS = ['사업', '창업', '이직', '직업', '재물', '결혼', '연애', '관계', '건강', '시험', '이사', '계약', '전반'];
+const PILLAR_POSITIONS = ['YEAR', 'MONTH', 'DAY', 'HOUR'];
+const STEM_RELATION_KINDS = ['STEM_COMBINATION', 'STEM_CLASH'];
+const BRANCH_RELATION_KINDS = [
+  'BRANCH_SIX_COMBINATION', 'BRANCH_CLASH', 'BRANCH_HALF_THREE_HARMONY',
+  'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT', 'BRANCH_DESTRUCTION', 'BRANCH_HARM',
+];
+const isFiniteInteger = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v);
+const strictNumArray = (v: unknown): number[] | undefined =>
+  Array.isArray(v) && v.length <= 24 && v.every(isFiniteInteger) ? v : undefined;
+const validRelationArray = (v: unknown, kinds: readonly string[]): boolean =>
+  Array.isArray(v) && v.length <= 8 && v.every((item) => {
+    if (item === null || typeof item !== 'object') return false;
+    const r = item as Record<string, unknown>;
+    return typeof r.position === 'string' && PILLAR_POSITIONS.includes(r.position) &&
+      typeof r.kind === 'string' && kinds.includes(r.kind);
+  });
+
+function parseEvidenceSnapshot(v: unknown): ConsultationDecisionMeta['evidenceSnapshot'] | undefined {
+  if (v === null || typeof v !== 'object') return undefined;
+  const ev = v as Record<string, unknown>;
+  const target = ev.target as Record<string, unknown> | null;
+  const derivation = ev.derivation as Record<string, unknown> | null;
+  if (ev.schemaVersion !== 'decision-evidence@1.0.0' || !target || typeof target !== 'object') return undefined;
+  if ((target.granularity !== 'YEAR' && target.granularity !== 'MONTH') || !isFiniteInteger(target.key)) return undefined;
+  if (typeof ev.polarity !== 'string' || !POLARITY_TIERS.includes(ev.polarity)) return undefined;
+  if (!derivation || typeof derivation !== 'object') return undefined;
+  if (!isFiniteInteger(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) return undefined;
+  if (!isFiniteInteger(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) return undefined;
+  if (!validRelationArray(derivation.stemRelations, STEM_RELATION_KINDS) ||
+      !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS)) return undefined;
+  if (typeof ev.supportLevel !== 'string' || typeof ev.assertiveness !== 'string' || typeof ev.engineVersion !== 'string' || ev.engineVersion.length === 0) return undefined;
+  if (!Array.isArray(ev.intents) || ev.intents.length > 8 || !ev.intents.every((x) => typeof x === 'string')) return undefined;
+  return ev as ConsultationDecisionMeta['evidenceSnapshot'];
+}
 
 /**
  * Fail-closed parse of a persisted decisionMeta (Sprint D/E). Malformed → undefined (never a silent default
@@ -48,26 +99,39 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
   const o = v as Record<string, unknown>;
   if (typeof o.answerPlanVersion !== 'string' || typeof o.decisionPolicyVersion !== 'string' || typeof o.promptVersion !== 'string') return undefined;
   if (o.resolvedGranularity !== 'NONE' && o.resolvedGranularity !== 'YEAR' && o.resolvedGranularity !== 'MONTH') return undefined;
+  const resolvedTargets = strictNumArray(o.resolvedTargets);
+  if (!resolvedTargets) return undefined;
   const rtc = o.resolvedTemporalContext as Record<string, unknown> | null;
-  if (rtc === null || typeof rtc !== 'object' || typeof rtc.anchorEpochSeconds !== 'number') return undefined;
+  if (rtc === null || typeof rtc !== 'object' || !isFiniteInteger(rtc.anchorEpochSeconds)) return undefined;
+  const rtcTargets = strictNumArray(rtc.resolvedTargets);
+  if (!rtcTargets || rtc.timezone !== 'Asia/Seoul' || typeof rtc.qimenActive !== 'boolean') return undefined;
+  if (rtc.referenceYear !== null && !isFiniteInteger(rtc.referenceYear)) return undefined;
+  if (rtc.referenceMonth !== null && (!isFiniteInteger(rtc.referenceMonth) || rtc.referenceMonth < 1 || rtc.referenceMonth > 12)) return undefined;
   const p = typeof o.polarity === 'string' && POLARITY_TIERS.includes(o.polarity) ? (o.polarity as ConsultationDecisionMeta['polarity']) : undefined;
+  if (o.polarity !== undefined && !p) return undefined;
   // Sprint E.1 §16-17 — comparison context is parsed fail-closed: a malformed/absent value → NOT a comparison
   // (never a silent "true" that would let a follow-up invent a winner over ungrounded candidates).
   const cc = o.comparisonContext as Record<string, unknown> | null | undefined;
-  const comparisonContext =
-    cc && typeof cc === 'object' && typeof cc.isComparison === 'boolean'
-      ? { isComparison: cc.isComparison, candidates: numArray(cc.candidates) }
-      : undefined;
-  // Sprint E.1 §5-6 — the stored evidence snapshot; parsed only when fully well-formed.
-  const ev = o.evidence as Record<string, unknown> | null | undefined;
-  const evidence =
-    ev && typeof ev === 'object' && typeof ev.supportLevel === 'string' && typeof ev.assertiveness === 'string'
-      ? {
-          supportLevel: ev.supportLevel,
-          assertiveness: ev.assertiveness,
-          intents: Array.isArray(ev.intents) ? ev.intents.filter((s): s is string => typeof s === 'string') : [],
-        }
-      : undefined;
+  let comparisonContext: ConsultationDecisionMeta['comparisonContext'];
+  if (o.comparisonContext !== undefined) {
+    const candidates = cc && typeof cc === 'object' ? strictNumArray(cc.candidates) : undefined;
+    if (!cc || typeof cc !== 'object' || typeof cc.isComparison !== 'boolean' || !candidates) return undefined;
+    if (cc.isComparison && candidates.length < 2) return undefined;
+    comparisonContext = { isComparison: cc.isComparison, candidates };
+  }
+  // A claimed optional authority object is all-or-nothing. Malformed claims reject the whole row instead of
+  // being silently dropped and letting an action proceed with a weaker authority substrate.
+  const evidenceSnapshot = o.evidenceSnapshot === undefined ? undefined : parseEvidenceSnapshot(o.evidenceSnapshot);
+  if (o.evidenceSnapshot !== undefined && !evidenceSnapshot) return undefined;
+  if (evidenceSnapshot && (
+    p !== evidenceSnapshot.polarity ||
+    o.engineVersion !== evidenceSnapshot.engineVersion ||
+    o.resolvedGranularity !== evidenceSnapshot.target.granularity ||
+    !resolvedTargets.includes(evidenceSnapshot.target.key)
+  )) return undefined;
+  if (comparisonContext?.isComparison &&
+      !comparisonContext.candidates.every((candidate) => resolvedTargets.includes(candidate))) return undefined;
+  if (o.domain !== undefined && (typeof o.domain !== 'string' || !DOMAINS.includes(o.domain))) return undefined;
   return {
     answerPlanVersion: o.answerPlanVersion,
     decisionPolicyVersion: o.decisionPolicyVersion,
@@ -75,18 +139,18 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
     ...(typeof o.engineVersion === 'string' ? { engineVersion: o.engineVersion } : {}),
     ...(typeof o.modelId === 'string' ? { modelId: o.modelId } : {}),
     resolvedGranularity: o.resolvedGranularity,
-    resolvedTargets: numArray(o.resolvedTargets),
+    resolvedTargets,
     ...(p ? { polarity: p } : {}),
     ...(typeof o.domain === 'string' ? { domain: o.domain as ConsultationDecisionMeta['domain'] } : {}),
     ...(comparisonContext ? { comparisonContext } : {}),
-    ...(evidence ? { evidence } : {}),
+    ...(evidenceSnapshot ? { evidenceSnapshot } : {}),
     resolvedTemporalContext: {
       anchorEpochSeconds: rtc.anchorEpochSeconds,
       timezone: 'Asia/Seoul',
       referenceYear: typeof rtc.referenceYear === 'number' ? rtc.referenceYear : null,
       referenceMonth: typeof rtc.referenceMonth === 'number' ? rtc.referenceMonth : null,
-      resolvedTargets: numArray(rtc.resolvedTargets),
-      qimenActive: rtc.qimenActive === true,
+      resolvedTargets: rtcTargets,
+      qimenActive: rtc.qimenActive,
     },
   };
 }

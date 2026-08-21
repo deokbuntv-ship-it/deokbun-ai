@@ -37,6 +37,7 @@ import {
   natalContextFromFourPillars,
   toSajuEvidence,
   type MyungriStemAndBranch,
+  type RelationsToNatal,
 } from '@/features/myungri';
 import { epochForSajuMonth, epochForSajuYear, resolveQuestionYears } from '@/features/chat/services/questionYears';
 import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
@@ -214,15 +215,32 @@ async function buildMyungriEvidence(
   // month (extraWolwoon). KEYED so the plan binds a conclusion to the question's resolved target. Same
   // kernel, no new astrology semantics. There is deliberately NO cross-target winner/order.
   const targetPolarities: TargetPolarity[] = [];
+  const toTargetPolarity = (
+    granularity: 'YEAR' | 'MONTH',
+    targetKey: number,
+    relations: RelationsToNatal,
+  ): TargetPolarity => {
+    const polarity = derivePolarity(relations);
+    return {
+      granularity,
+      targetKey,
+      polarity: polarity.tier,
+      derivation: {
+        ...polarity.evidence,
+        stemRelations: relations.stem.map(({ position, relation }) => ({ position, kind: relation.kind })),
+        branchRelations: relations.branch.map(({ position, relation }) => ({ position, kind: relation.kind })),
+      },
+    };
+  };
   if (sewoon.capability === 'AVAILABLE') {
-    targetPolarities.push({ granularity: 'YEAR', targetKey: sewoon.targetYear, polarity: derivePolarity(sewoon.relationsToNatal).tier });
+    targetPolarities.push(toTargetPolarity('YEAR', sewoon.targetYear, sewoon.relationsToNatal));
   }
   for (const ex of extraSewoon) {
-    if (ex.capability === 'AVAILABLE') targetPolarities.push({ granularity: 'YEAR', targetKey: ex.targetYear, polarity: derivePolarity(ex.relationsToNatal).tier });
+    if (ex.capability === 'AVAILABLE') targetPolarities.push(toTargetPolarity('YEAR', ex.targetYear, ex.relationsToNatal));
   }
   for (const ew of extraWolwoon) {
     if (ew.result.capability === 'AVAILABLE') {
-      targetPolarities.push({ granularity: 'MONTH', targetKey: ew.requestedYear * 100 + ew.requestedMonth, polarity: derivePolarity(ew.result.relationsToNatal).tier });
+      targetPolarities.push(toTargetPolarity('MONTH', ew.requestedYear * 100 + ew.requestedMonth, ew.result.relationsToNatal));
     }
   }
 

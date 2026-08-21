@@ -10,6 +10,7 @@ import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/inte
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
+import type { TargetPolarityDerivation } from '@/features/chat/prompts/grounding';
 import type { ConsultationDomain } from './consultationDomain';
 
 // An untrusted prior conversation turn. The type constrains role to user/assistant; the server ALSO
@@ -118,7 +119,16 @@ export type ConsultationDecisionMeta = {
   comparisonContext?: { isComparison: boolean; candidates: number[] };
   // Sprint E.1 §5-6 — the MINIMUM deterministic evidence snapshot behind THIS decision, so a later "왜?"
   // explains the stored decision/evidence instead of re-grounding under the follow-up turn's own context.
-  evidence?: { supportLevel: string; assertiveness: string; intents: string[] };
+  evidenceSnapshot?: {
+    schemaVersion: 'decision-evidence@1.0.0';
+    target: { granularity: 'YEAR' | 'MONTH'; key: number };
+    polarity: PolarityTier;
+    derivation: TargetPolarityDerivation;
+    supportLevel: string;
+    assertiveness: string;
+    intents: string[];
+    engineVersion: string;
+  };
   resolvedTemporalContext: ResolvedTemporalContext;
 };
 

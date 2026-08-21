@@ -99,7 +99,16 @@ export function resolveFollowUpAction(
 ): FollowUpAction {
   switch (intent) {
     case 'WHY':
-      return { kind: 'EXPLAIN_PREVIOUS', versionMismatch: isDecisionVersionMismatch(previous?.decisionMeta, current) };
+      // WHY has authority only when decision A carries its actual deterministic derivation. Legacy rows or
+      // internally inconsistent snapshots fail closed instead of explaining from current decision B.
+      if (!previous?.decisionMeta?.evidenceSnapshot || !previous.polarity) return { kind: 'NONE' };
+      if (
+        previous.decisionMeta.evidenceSnapshot.polarity !== previous.polarity ||
+        previous.decisionMeta.engineVersion !== previous.decisionMeta.evidenceSnapshot.engineVersion ||
+        previous.decisionMeta.resolvedGranularity !== previous.decisionMeta.evidenceSnapshot.target.granularity ||
+        !previous.resolvedTargets.includes(previous.decisionMeta.evidenceSnapshot.target.key)
+      ) return { kind: 'NONE' };
+      return { kind: 'EXPLAIN_PREVIOUS', versionMismatch: isDecisionVersionMismatch(previous.decisionMeta, current) };
     case 'NEXT_YEAR':
       return { kind: 'RECALC_NEXT_YEAR' };
     case 'BETWEEN_CANDIDATES':
@@ -125,7 +134,7 @@ const POLARITY_LABEL: Record<PolarityTier, string> = {
 function formatTargets(targets: number[]): string | null {
   const labels = targets
     .filter((t) => typeof t === 'number' && t > 0)
-    .map((t) => (t >= 100000 ? `${Math.floor(t / 100)}년 ${t % 100}월` : `${t}년`));
+    .map((t) => (t >= 100000 ? `${Math.floor(t / 100)}년 ${t % 100}월(${t})` : `${t}년`));
   return labels.length > 0 ? labels.join(', ') : null;
 }
 
@@ -145,8 +154,19 @@ export function renderFollowUpDirective(action: FollowUpAction, previous: Previo
       const targetPhrase = formatTargets(previous?.resolvedTargets ?? []);
       if (targetPhrase) parts.push(`앞선 판단의 대상은 ${targetPhrase}였습니다 — 지금 시점으로 대상을 바꾸지 마십시오.`);
       if (previous?.polarity) parts.push(`앞선 결론의 전반 흐름은 "${POLARITY_LABEL[previous.polarity]}"였습니다 — 이 방향을 바꾸지 마십시오.`);
-      const support = previous?.decisionMeta?.evidence?.supportLevel;
+      const snapshot = previous?.decisionMeta?.evidenceSnapshot;
+      if (!snapshot) return null;
+      const support = snapshot.supportLevel;
       if (support) parts.push(`그때의 근거 수준(${support})에 근거해 설명하고, 지금 근거로 새로 계산하지 마십시오.`);
+      parts.push(
+        `저장된 실제 도출 입력은 harmony=${snapshot.derivation.harmony}, friction=${snapshot.derivation.friction}였습니다.`,
+        `저장 근거 규칙 버전은 ${snapshot.engineVersion}입니다.`,
+      );
+      const relations = [
+        ...snapshot.derivation.stemRelations.map((r) => `천간 ${r.position}:${r.kind}`),
+        ...snapshot.derivation.branchRelations.map((r) => `지지 ${r.position}:${r.kind}`),
+      ];
+      if (relations.length > 0) parts.push(`당시 관계 사실: ${relations.join(', ')}.`);
       if (action.versionMismatch) {
         parts.push('저장된 이전 판단을 그대로 설명하고, 지금 규칙으로 다시 계산해 다른 결론을 내지 마십시오.');
       }
@@ -158,7 +178,7 @@ export function renderFollowUpDirective(action: FollowUpAction, previous: Previo
     }
     case 'DESCRIBE_CANDIDATES_NO_WINNER':
       if (action.candidates.length < 2) return null; // no recoverable candidate set → normal path
-      return '[후속 지침 — "둘 중에는?"] 앞서 살펴본 후보들을 각각 설명하되, 한쪽을 승자/1순위로 고르거나 더 낫다고 단정하지 마십시오. 지금 규칙으로는 한쪽을 우열로 정하지 않습니다.';
+      return `[후속 지침 — "둘 중에는?"] 서버에 저장된 권위 있는 후보는 ${formatTargets(action.candidates)}입니다. 이 후보들만 각각 설명하되, 한쪽을 승자/1순위로 고르거나 더 낫다고 단정하지 마십시오. 지금 규칙으로는 한쪽을 우열로 정하지 않습니다.`;
     default:
       return null;
   }

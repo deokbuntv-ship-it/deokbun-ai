@@ -38,7 +38,9 @@ import {
   type SafetyRoute,
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
+import { groundingFromStoredDecision } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
+import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
 import {
   classifyFollowUpIntent,
   previousDecisionFromMeta,
@@ -202,26 +204,9 @@ export async function buildServerConsultation(
   const selectedContext = selectConsultationContext(draft);
   if (selectedContext === null) return { ok: false, reason: 'INVALID_INPUT' };
 
-  // 2) SERVER-owned grounding. nowEpochSeconds is the server receipt time → the Qimen question time and
-  //    the current-year 세운/월운 are server-owned (§10). Fail-closed: any throw → UNAVAILABLE.
-  let grounding: ConsultationGrounding = GROUNDING_UNAVAILABLE;
-  try {
-    grounding = toSafeGrounding(
-      await buildConsultationGrounding(
-        draft,
-        {
-          digestProvider: deps.digestProvider,
-          historicalTimezoneResolver: deps.historicalTimezoneResolver,
-          nowEpochSeconds: deps.nowEpochSeconds,
-        },
-        question,
-      ),
-    );
-  } catch {
-    grounding = GROUNDING_UNAVAILABLE;
-  }
-
-  // 2b) LIVE FOLLOW-UP (Sprint E). Safety already ran and precedes everything (§13). When the CURRENT
+  // 2) LIVE FOLLOW-UP authority is resolved BEFORE current grounding. In particular, WHY must never run the
+  //    current chart and then accidentally explain decision B: it may use only decision A's stored snapshot.
+  //    Safety already ran and precedes everything (§13). When the CURRENT
   //     question is a follow-up AND the Edge supplied a SERVER-loaded previous decision (never client-
   //     trusted), apply the deterministic follow-up action as an appended directive: "왜?" explains the
   //     STORED conclusion (no new decision, even under a version mismatch); "그럼 내년은?" carries the prior
@@ -231,20 +216,44 @@ export async function buildServerConsultation(
   let followUpDirective: string | null = null;
   let followUpVersionMismatch = false;
   let previousDecision: PreviousDecision | null = null;
+  let previousMeta: ConsultationDecisionMeta | null = null;
   if (followUpIntent !== 'NONE' && deps.loadPreviousDecision) {
-    let prevMeta: ConsultationDecisionMeta | null = null;
     try {
-      prevMeta = await deps.loadPreviousDecision();
+      previousMeta = await deps.loadPreviousDecision();
     } catch {
-      prevMeta = null;
+      previousMeta = null;
     }
-    previousDecision = previousDecisionFromMeta(prevMeta);
-    // engineVersion mismatch (§7): compare the stored decision's engine ruleset against the current one.
+    previousDecision = previousDecisionFromMeta(previousMeta);
+    // Compare to the current frozen ruleset constant without calculating current decision B.
     const action = resolveFollowUpAction(followUpIntent, previousDecision, {
-      engineVersion: grounding.status === 'available' ? grounding.engineVersion ?? null : null,
+      engineVersion: DEOKBUNAI_SAJU_RULE_SET_VERSION,
     });
     if (action.kind === 'EXPLAIN_PREVIOUS') followUpVersionMismatch = action.versionMismatch;
     followUpDirective = renderFollowUpDirective(action, previousDecision);
+  }
+
+  // 2b) SERVER-owned grounding. WHY is a strict special case: reconstruct from stored A or remain
+  //     unavailable. Every other turn uses the current server receipt time and deterministic engines.
+  let grounding: ConsultationGrounding = GROUNDING_UNAVAILABLE;
+  if (followUpIntent === 'WHY') {
+    grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
+    if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
+  } else {
+    try {
+      grounding = toSafeGrounding(
+        await buildConsultationGrounding(
+          draft,
+          {
+            digestProvider: deps.digestProvider,
+            historicalTimezoneResolver: deps.historicalTimezoneResolver,
+            nowEpochSeconds: deps.nowEpochSeconds,
+          },
+          question,
+        ),
+      );
+    } catch {
+      grounding = GROUNDING_UNAVAILABLE;
+    }
   }
   // §18 — a "그럼 내년은?" follow-up inherits the prior topic: the bare question classifies as 전반 on its own,
   // so the NEW decision must persist the CARRIED domain. Only for NEXT_YEAR, only a real prior domain.
@@ -255,7 +264,12 @@ export async function buildServerConsultation(
 
   // 3) SERVER-owned prompt. buildPrompt hardcodes the system layers + puts each history turn's role from
   //    the (already sanitized) message, so no client-authored system block can enter.
-  const recentMessages = sanitizeConversation(request.conversationContext);
+  const hasAuthoritativeFollowUp = followUpDirective !== null &&
+    (followUpIntent === 'WHY' || followUpIntent === 'BETWEEN_CANDIDATES');
+  // For authority-sensitive follow-ups, untrusted conversation prose is excluded entirely. The system
+  // directive and stored server row are sufficient; forged candidate ids or a stale rationale cannot leak.
+  const recentMessages = hasAuthoritativeFollowUp ? [] : sanitizeConversation(request.conversationContext);
+  const safeConversationSummary = hasAuthoritativeFollowUp ? null : request.conversationSummary ?? null;
   const mode = classifyConsultationMode(question, recentMessages.length > 0);
   // SERVER-owned Decision Engine (Answer-Seeking V1.4): compute the deterministic answer plan from the
   // question + the grounding's evidence inventory, and hand the LLM a directive it verbalizes — so the
@@ -271,7 +285,7 @@ export async function buildServerConsultation(
       : renderAnswerPlanDirective(plan);
     return buildPrompt({
       selectedContext,
-      conversationSummary: request.conversationSummary ?? null,
+      conversationSummary: safeConversationSummary,
       recentMessages,
       currentUserMessage: question,
       mode,
@@ -307,9 +321,9 @@ export async function buildServerConsultation(
   const guard = await classifyWithGuards({
     raw,
     grounding: effectiveGrounding,
-    requireMitigation: plan.requireMitigation,
+    requireMitigation: followUpIntent === 'WHY' ? false : plan.requireMitigation,
     forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
-    polarity: plan.polarity,
+    polarity: followUpIntent === 'WHY' ? previousDecision?.polarity : plan.polarity,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
@@ -322,12 +336,16 @@ export async function buildServerConsultation(
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain);
+  const isAuthoritativeWhy = followUpIntent === 'WHY' && followUpDirective !== null && previousMeta !== null;
+  const decisionMeta: ConsultationDecisionMeta = isAuthoritativeWhy
+    ? previousMeta!
+    : buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain);
+  const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
   const structuredResult =
     outcome.kind === 'ACCEPTED'
       ? {
           ...buildStructuredConsultationResult(outcome.result, effectiveGrounding),
-          ...(plan.polarity ? { conclusionPolarity: plan.polarity } : {}),
+          ...(conclusionPolarity ? { conclusionPolarity } : {}),
           decisionMeta,
         }
       : undefined;

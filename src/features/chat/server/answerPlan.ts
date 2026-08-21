@@ -8,7 +8,7 @@
 // SAFETY: the plan can only make the answer clearer or SAFER — it never authorizes an ungrounded claim
 // (the semantic validator remains the final boundary) and it never fabricates evidence. It reads only the
 // deterministic grounding anchors (years/months), never the conversation summary.
-import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
+import type { ConsultationGrounding, TargetPolarity } from '@/features/chat/prompts/grounding';
 import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
 import { resolveQuestionYears } from '@/features/chat/services/questionYears';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
@@ -46,6 +46,7 @@ export type AnswerPlan = {
   // DECIDED_OUTPUT: the server-owned overall polarity tier (Sprint C §5), from the shared kernel over the
   // current 세운 relations. Absent when the year flow is not grounded — never guessed by the LLM.
   polarity?: PolarityTier;
+  selectedTargetPolarity?: TargetPolarity;
   // Sprint E.1 §16-17 — EXPLICIT comparison recognition. `isComparison` is true ONLY for a real, grounded
   // ≥2-candidate comparison (identical to `comparisonSupported`); `candidates` are the comparable period
   // identities (same granularity), never a ranked/scored list. A single question resolving BOTH a year and a
@@ -56,8 +57,8 @@ export type AnswerPlan = {
 // Decision-affecting versions. Bumped when the SERVER's decision changes — distinct from the
 // verbalization-only CONSULTATION_PROMPT_VERSION. Sprint C.1: polarity is now TARGET-SCOPED (was global),
 // the month reference is fixed, and the Option-B/polarity output guards are active — all decision changes.
-export const ANSWER_PLAN_VERSION = 'answer-plan@1.2.0';
-export const DECISION_POLICY_VERSION = 'decision-policy@1.2.0';
+export const ANSWER_PLAN_VERSION = 'answer-plan@1.3.0';
+export const DECISION_POLICY_VERSION = 'decision-policy@1.3.0';
 
 const COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
 const RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
@@ -111,10 +112,10 @@ function selectTargetPolarity(
   granularity: Granularity,
   monthTargets: readonly { year: number; month: number }[],
   requestedYears: readonly number[],
-): PolarityTier | undefined {
+): TargetPolarity | undefined {
   if (g.status !== 'available' || !g.targetPolarities) return undefined;
   const find = (kind: 'YEAR' | 'MONTH', key: number) =>
-    g.targetPolarities?.find((t) => t.granularity === kind && t.targetKey === key)?.polarity;
+    g.targetPolarities?.find((t) => t.granularity === kind && t.targetKey === key);
   if (granularity === 'MONTH') {
     return monthTargets.length === 1 ? find('MONTH', monthTargets[0].year * 100 + monthTargets[0].month) : undefined;
   }
@@ -224,7 +225,8 @@ export function deriveAnswerPlan(
   // TARGET-SCOPED polarity (Sprint C.1 §5) + mitigation activation (§7): the conclusion tier is bound to
   // the question's resolved target (this year / that year / this month / …). A CAUTION on the RESOLVED
   // target — never a wrong-timeframe or global guess — activates requireMitigation.
-  const polarity = selectTargetPolarity(grounding, resolvedGranularity, monthPlan.targets, requestedYears);
+  const selectedTargetPolarity = selectTargetPolarity(grounding, resolvedGranularity, monthPlan.targets, requestedYears);
+  const polarity = selectedTargetPolarity?.polarity;
 
   return {
     mode,
@@ -238,6 +240,7 @@ export function deriveAnswerPlan(
     forbidEventCertainty: intents.includes('EVENT_PREDICTION'),
     requireMitigation: polarity === 'CAUTION',
     ...(polarity ? { polarity } : {}),
+    ...(selectedTargetPolarity ? { selectedTargetPolarity } : {}),
     comparisonContext: { isComparison: comparisonSupported, candidates: comparisonCandidates },
   };
 }
