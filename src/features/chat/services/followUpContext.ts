@@ -77,10 +77,14 @@ export type FollowUpAction =
  * Map a follow-up intent + the previous decision to a deterministic action. Encodes the version-mismatch
  * contract (§D4) and Option B (§D3.C). Does NOT recompute anything itself.
  */
-export function resolveFollowUpAction(intent: FollowUpIntent, previous: PreviousDecision | null): FollowUpAction {
+export function resolveFollowUpAction(
+  intent: FollowUpIntent,
+  previous: PreviousDecision | null,
+  current?: { engineVersion?: string | null },
+): FollowUpAction {
   switch (intent) {
     case 'WHY':
-      return { kind: 'EXPLAIN_PREVIOUS', versionMismatch: isDecisionVersionMismatch(previous?.decisionMeta) };
+      return { kind: 'EXPLAIN_PREVIOUS', versionMismatch: isDecisionVersionMismatch(previous?.decisionMeta, current) };
     case 'NEXT_YEAR':
       return { kind: 'RECALC_NEXT_YEAR' };
     case 'BETWEEN_CANDIDATES':

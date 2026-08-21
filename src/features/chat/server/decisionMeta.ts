@@ -68,10 +68,14 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
 // True when a persisted decision was produced under a DIFFERENT decision version than the current server
 // (§D4). Compares only the decision-affecting versions (engine ruleset + answer plan + decision policy) —
 // a prompt/model change alone is verbalization-only and does not count as a decision mismatch.
-export function isDecisionVersionMismatch(persisted: ConsultationDecisionMeta | undefined): boolean {
+export function isDecisionVersionMismatch(
+  persisted: ConsultationDecisionMeta | undefined,
+  current?: { engineVersion?: string | null },
+): boolean {
   if (!persisted) return false; // legacy row with no meta → caller decides how to treat (never silently equal)
-  return (
-    persisted.answerPlanVersion !== ANSWER_PLAN_VERSION ||
-    persisted.decisionPolicyVersion !== DECISION_POLICY_VERSION
-  );
+  if (persisted.answerPlanVersion !== ANSWER_PLAN_VERSION) return true;
+  if (persisted.decisionPolicyVersion !== DECISION_POLICY_VERSION) return true;
+  // engineVersion is decision-affecting too (Sprint E.1 §7) — compared when a current value is available.
+  if (current?.engineVersion && persisted.engineVersion && persisted.engineVersion !== current.engineVersion) return true;
+  return false;
 }

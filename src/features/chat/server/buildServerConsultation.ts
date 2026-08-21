@@ -207,7 +207,10 @@ export async function buildServerConsultation(
       prevMeta = null;
     }
     const previous = previousDecisionFromMeta(prevMeta);
-    const action = resolveFollowUpAction(followUpIntent, previous);
+    // engineVersion mismatch (§7): compare the stored decision's engine ruleset against the current one.
+    const action = resolveFollowUpAction(followUpIntent, previous, {
+      engineVersion: grounding.status === 'available' ? grounding.engineVersion ?? null : null,
+    });
     if (action.kind === 'EXPLAIN_PREVIOUS') followUpVersionMismatch = action.versionMismatch;
     followUpDirective = renderFollowUpDirective(action, previous);
   }

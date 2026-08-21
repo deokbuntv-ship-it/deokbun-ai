@@ -63,6 +63,13 @@ describe('§D4 decision-version mismatch', () => {
   it('no persisted meta → not treated as silently equal (false, caller decides)', () => {
     expect(isDecisionVersionMismatch(undefined)).toBe(false);
   });
+
+  it('§7 engineVersion is decision-affecting: a differing current engine version → mismatch', () => {
+    const persisted = META({ engineVersion: 'saju@1' });
+    expect(isDecisionVersionMismatch(persisted, { engineVersion: 'saju@2' })).toBe(true);
+    expect(isDecisionVersionMismatch(persisted, { engineVersion: 'saju@1' })).toBe(false);
+    expect(isDecisionVersionMismatch(persisted)).toBe(false); // no current → engine not compared
+  });
 });
 
 describe('§D2/§D3 follow-up foundation', () => {
