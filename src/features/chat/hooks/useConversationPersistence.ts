@@ -45,6 +45,9 @@ type UseConversationPersistenceResult = {
   // created). Surfaced reactively so the screen can offer conversation-level
   // actions (e.g. "상담 보고서 만들기") once a real conversation row exists.
   activeConversationId: string | null;
+  // Required before the first Edge request: creates/restores the owned conversation and returns its id.
+  // The caller passes this exact id directly, avoiding a stale React-state closure on the first turn.
+  ensureConversation: () => Promise<string>;
   persistMessage: (message: ChatMessage) => void;
 };
 
@@ -422,6 +425,7 @@ export function useConversationPersistence(
     conversationMemory,
     restoredSubjectSnapshot,
     activeConversationId,
+    ensureConversation: ensureConversationId,
     persistMessage,
   };
 }

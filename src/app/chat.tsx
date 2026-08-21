@@ -20,6 +20,7 @@ import {
     ChatBubble,
     ChatInput,
     createServerConsultationService,
+    executeConversationBoundSend,
     mapConsultationError,
     supabaseEdgeConsultationAdapter,
     useConversationPersistence,
@@ -131,6 +132,7 @@ export default function ChatScreen() {
     conversationMemory,
     restoredSubjectSnapshot,
     activeConversationId,
+    ensureConversation,
     persistMessage,
   } = useConversationPersistence({
     startNew: startNewRef.current,
@@ -211,7 +213,7 @@ export default function ChatScreen() {
   // bubble. `lastAttemptRef` holds the failed question + its context so "다시 시도" can
   // re-send the SAME message without duplicating the user bubble or its persistence (§30/§37).
   const [sendError, setSendError] = useState<ConsultationErrorView | null>(null);
-  const lastAttemptRef = useRef<{ text: string; context: ChatMessage[]; requestId: string } | null>(null);
+  const lastAttemptRef = useRef<{ text: string; context: ChatMessage[]; requestId?: string } | null>(null);
   // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
   // same-frame double-tap cannot start two sends (§30/§e).
   const isSendingRef = useRef(false);
@@ -316,7 +318,12 @@ export default function ChatScreen() {
   // succeeded-server/lost-response retry returns the persisted answer with zero new LLM. Login-before-LLM is
   // unchanged — the service gates on auth and returns AUTH_REQUIRED before any adapter
   // call, and authGuard reads LIVE auth state so an expired session re-gates on retry (§57).
-  const runSend = async (text: string, context: ChatMessage[], retryRequestId?: string) => {
+  const runSend = async (
+    text: string,
+    context: ChatMessage[],
+    retryRequestId?: string,
+    ensuredConversationId?: string,
+  ) => {
     setIsSending(true);
     // Popular-question funnel: the first send of a popular-origin consultation enters the request lifecycle
     // exactly once — strictly after, and distinct from, the Home click. Retries never re-fire (guarded).
@@ -334,7 +341,9 @@ export default function ChatScreen() {
         draft,
         messages: context,
         conversationMemory,
-        ...(activeConversationId ? { conversationId: activeConversationId } : {}),
+        ...((ensuredConversationId ?? activeConversationId)
+          ? { conversationId: ensuredConversationId ?? activeConversationId }
+          : {}),
         ...(retryRequestId ? { requestId: retryRequestId } : {}),
       });
 
@@ -407,9 +416,22 @@ export default function ChatScreen() {
     setSendError(null);
     // Anchor to the user's own message start (question at top, loading below) (§G).
     pendingAnchorRef.current = userMessage.id;
-    persistMessage(userMessage);
-
-    await runSend(trimmed, previousMessages);
+    setIsSending(true);
+    try {
+      // E.2 authority boundary: the very first paid request must already carry an owned conversation id.
+      // Await the hook's single-flight creation and pass the returned id directly (state may render later).
+      await executeConversationBoundSend({
+        ensureConversation,
+        persistUserMessage: () => persistMessage(userMessage),
+        sendConsultation: (ensuredConversationId) =>
+          runSend(trimmed, previousMessages, undefined, ensuredConversationId),
+      });
+    } catch {
+      setSendError(mapConsultationError('REQUEST_FAILED'));
+      lastAttemptRef.current = { text: trimmed, context: previousMessages };
+      setIsSending(false);
+      isSendingRef.current = false;
+    }
   };
 
   const handleSend = () => {
@@ -436,7 +458,14 @@ export default function ChatScreen() {
     }
     isSendingRef.current = true; // lock synchronously (mirror handleSend)
     setSendError(null);
-    await runSend(attempt.text, attempt.context, attempt.requestId);
+    try {
+      const ensuredConversationId = await ensureConversation();
+      await runSend(attempt.text, attempt.context, attempt.requestId, ensuredConversationId);
+    } catch {
+      setSendError(mapConsultationError('REQUEST_FAILED'));
+      setIsSending(false);
+      isSendingRef.current = false;
+    }
   };
 
   // ─── Consultation report CTA (Commercial UX V4 §5/§6/§8/§9/§29) ─────────────

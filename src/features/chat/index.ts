@@ -47,6 +47,7 @@ export type {
     LoadedConversation, PersistableMessageRole
 } from './services/conversationService';
 export { useConversationPersistence } from './hooks/useConversationPersistence';
+export { executeConversationBoundSend } from './services/conversationBoundSend';
 export type { MessagesHydrationStatus } from './hooks/useConversationPersistence';
 export { mapConsultationError } from './consultationErrors';
 export type {
