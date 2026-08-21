@@ -84,6 +84,11 @@ export function contradictsPolarity(text: string, polarity: PolarityTier): boole
 // sentence + hedge-aware. Hedged framings ("단정할 수 없습니다", "알 수 없습니다") are NOT flagged.
 const COMPAT_BREAKUP =
   /헤어지(세요|십시오|는\s*게\s*(답|낫|좋|맞)|어라)|이혼(하세요|하십시오|하는\s*게\s*(답|낫|좋)|해야)|(결국|반드시|틀림없이|무조건)\s*[^.!?。\n]{0,8}(헤어|이혼)|헤어질\s*수밖에|만나지\s*마(세요|십시오)|(그만|이제)\s*(만나지|정리)/;
+// Euphemistic breakup/relationship-ENDING recommendations (Sprint E.1 §10). Targets 관계 정리/끝내 + a
+// recommendation frame, and 헤어지는/이혼하는 편이 좋. Preserves "갈등을 정리할 필요가 있습니다" (conflict, not
+// the relationship) — the 정리 must attach to 관계, not 갈등.
+const COMPAT_BREAKUP_EUPHEMISM =
+  /(이\s*)?관계[를은는]?\s*(정리|끝내|접)(하)?(는\s*(게|것이|편이)|할\s*(필요|때))[^.!?。\n]{0,5}(좋|낫|있|겠)|(헤어지|이혼하)는\s*(게|편이|것이)[^.!?。\n]{0,4}(좋|낫)|관계[를은는]?\s*끝내는\s*(게|편이|것이)[^.!?。\n]{0,4}(좋|낫)/;
 const COMPAT_MINDREAD =
   /상대[는가]?\s*[^.!?。\n]{0,6}(당신을\s*)?(사랑하지\s*않|좋아하지\s*않|마음이\s*없|관심이\s*없)|속으로\s*[^.!?。\n]{0,8}(다른|딴)\s*(사람|생각|마음)|(진심|속마음)[은는이가]\s*[^.!?。\n]{0,10}(다른|없|아니)/;
 const COMPAT_CONDEMN =
@@ -98,7 +103,7 @@ export function containsCompatibilityHarm(text: string): boolean {
   if (typeof text !== 'string' || text.length === 0) return false;
   for (const s of splitSentences(text)) {
     if (COMPAT_HEDGE.test(s)) continue;
-    if (COMPAT_BREAKUP.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
+    if (COMPAT_BREAKUP.test(s) || COMPAT_BREAKUP_EUPHEMISM.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
       return true;
     }
   }

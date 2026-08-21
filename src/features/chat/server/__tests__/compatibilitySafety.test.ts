@@ -24,6 +24,19 @@ describe('containsCompatibilityHarm — the 6 relationship harms (hedge-aware)',
     }
   });
 
+  it('§10 flags EUPHEMISTIC relationship-ending recommendations', () => {
+    for (const bad of [
+      '관계를 정리하는 게 좋겠습니다.',
+      '관계를 정리하는 편이 낫습니다.',
+      '관계를 끝내는 것이 좋습니다.',
+      '이 관계는 정리할 필요가 있습니다.',
+      '헤어지는 편이 좋겠습니다.',
+      '이혼하는 편이 낫습니다.',
+    ]) {
+      expect(containsCompatibilityHarm(bad)).toBe(true);
+    }
+  });
+
   it('does NOT flag hedged / descriptive / constructive relationship language', () => {
     for (const ok of [
       '헤어지라고 단정할 수는 없습니다.',
@@ -31,6 +44,7 @@ describe('containsCompatibilityHarm — the 6 relationship harms (hedge-aware)',
       '두 사람은 대화 방식이 달라 조율이 필요한 관계입니다.',
       '갈등이 생길 수 있으니 서로의 방식을 미리 맞추는 게 좋습니다.',
       '관계의 결이 잘 맞는 편입니다.',
+      '관계를 유지하려면 갈등을 정리할 필요가 있습니다.', // 갈등 정리 (not 관계 정리) — safe
     ]) {
       expect(containsCompatibilityHarm(ok)).toBe(false);
     }
@@ -66,6 +80,14 @@ describe('classifyWithGuards — compatibility safety (§D5)', () => {
     const raw = card('조율이 필요한 관계입니다.', LONG_OK);
     const out = await classifyWithGuards({ raw, grounding: GROUNDING_UNAVAILABLE, requireMitigation: false, forbidCompatibilityHarm: true, regenerate: async () => raw });
     expect(out.outcome.kind).toBe('ACCEPTED');
+  });
+
+  it('§11 a euphemistic breakup in the SUMMARY ALONE is rejected — even with a fully constructive body', async () => {
+    // The body is entirely safe/constructive; only coreSummary carries the euphemism. Must still reject.
+    const raw = card('관계를 정리하는 게 좋겠습니다.', LONG_OK);
+    const out = await classifyWithGuards({ raw, grounding: GROUNDING_UNAVAILABLE, requireMitigation: false, forbidCompatibilityHarm: true, regenerate: async () => raw });
+    expect(out.outcome.kind).toBe('SEMANTIC_REJECTED');
+    expect(out.guardRejected).toBe(true);
   });
 });
 
