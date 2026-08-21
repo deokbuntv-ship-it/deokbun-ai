@@ -35,6 +35,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.1';
 import {
   buildServerConsultation,
   buildCompatibilityConsultation,
+  evaluateConsultationSafetyStop,
   parseDecisionMeta,
   buildTodayFortune,
   dailyFortuneResponseFormat,
@@ -928,6 +929,24 @@ export default {
         if (body.question.trim().length === 0) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         if (!requestId) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
 
+        // §12-14 (HIGH 5) — CRISIS HARD-STOP PRECEDES ALL PAID / GLOBAL WORK. A self-harm / death-timing /
+        // medical question must receive the controlled safe response EVEN WHEN the paid kill-switch is off, the
+        // per-user or global generation limit is exhausted, the reserve RPC fails, or the provider is down —
+        // so we classify + short-circuit HERE, before partner resolution, acquirePaidRequest (paid reservation
+        // + global-spend guard), the previous-decision loader, any astrology grounding, and any LLM call. No
+        // cost is incurred → no ai_usage row and no reservation to release. Deterministic + idempotent (same
+        // input → same safe text), so replay-safety needs no idempotency key. Uses the SAME pure evaluator the
+        // orchestrator runs internally, so the Edge pre-check and buildServerConsultation can never drift.
+        const crisisStop = evaluateConsultationSafetyStop(body.question, Math.floor(startedAt / 1000));
+        if (crisisStop && crisisStop.ok) {
+          logDiag(requestId, 'RESPONSE_VALIDATION', 'SAFETY_ROUTED', {
+            path: 'consultation',
+            validationCategory: 'SAFETY_ROUTED',
+            safetyRoute: crisisStop.diagnostics?.safetyRoute,
+          });
+          return Response.json({ text: crisisStop.text, groundingMeta: crisisStop.groundingMeta });
+        }
+
         let partnerBirthInput: BirthInfoDraft | null = null;
         let partnerLabel: string | null = null;
         if (body.consultationMode === 'compatibility') {
@@ -1021,23 +1040,27 @@ export default {
         // persisted decisionMeta. Fail-clean: any gap → undefined → no follow-up (normal behavior).
         const conversationId =
           typeof body.conversationId === 'string' && body.conversationId.length > 0 ? body.conversationId : null;
+        // BLOCKER 1 (§1-§4) — the previous decision is read from the SERVER-OWNED consultation_decisions store,
+        // which only the service-role Edge can write (RLS denies all client writes). The prior Sprint E loader
+        // read conversation_messages.structured_result.decisionMeta — a CLIENT-written row — so a modified
+        // client could forge the polarity/domain/target/versions of the "previous" decision and steer this
+        // turn. We now query the latest server-written decision for (conversation_id, user_id). Ownership is
+        // enforced by the user_id filter (a cross-user conversation returns no row). Fail-closed: any gap /
+        // legacy / malformed row → null → no follow-up (normal behavior). Never reads client message rows.
         const loadPreviousDecision =
           admin && userId && conversationId
             ? async () => {
                 try {
-                  const { data: conv } = await admin
-                    .from('conversations').select('id').eq('id', conversationId).eq('user_id', userId).maybeSingle();
-                  if (!conv) return null; // not the caller's conversation → never leak another user's decision
-                  const { data: msg } = await admin
-                    .from('conversation_messages')
-                    .select('structured_result')
+                  const { data: dec } = await admin
+                    .from('consultation_decisions')
+                    .select('decision_meta')
                     .eq('conversation_id', conversationId)
-                    .eq('role', 'assistant')
-                    .order('seq', { ascending: false })
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
-                  const sr = (msg as { structured_result?: { decisionMeta?: unknown } } | null)?.structured_result;
-                  return parseDecisionMeta(sr?.decisionMeta) ?? null;
+                  const meta = (dec as { decision_meta?: unknown } | null)?.decision_meta;
+                  return parseDecisionMeta(meta) ?? null;
                 } catch {
                   return null;
                 }
@@ -1154,6 +1177,32 @@ export default {
             validationCategory: result.diagnostics.outputClassification,
             grounded: result.groundingMeta.grounded,
           });
+        }
+
+        // BLOCKER 1 (§3) — persist the AUTHORITATIVE decision to the SERVER-OWNED store, but ONLY after safety
+        // + output validation + acceptance (never for a safety-routed / fallback / semantically-rejected turn),
+        // and only when a conversation keys it. This is the ONLY writer of consultation_decisions; the client
+        // cannot write it (RLS). The follow-up loader reads this row next turn instead of trusting the client's
+        // message copy. Best-effort: a write failure must NEVER fail the answer already produced for the user.
+        if (
+          admin && userId && conversationId &&
+          result.diagnostics?.outputClassification === 'ACCEPTED' &&
+          result.structuredResult?.decisionMeta
+        ) {
+          const dm = result.structuredResult.decisionMeta;
+          try {
+            await admin.from('consultation_decisions').insert({
+              conversation_id: conversationId,
+              user_id: userId,
+              decision_meta: dm,
+              answer_plan_version: dm.answerPlanVersion,
+              decision_policy_version: dm.decisionPolicyVersion,
+              engine_version: dm.engineVersion ?? null,
+              model_id: dm.modelId ?? null,
+            });
+          } catch {
+            logDiag(requestId, 'RESPONSE_VALIDATION', 'DECISION_PERSIST_FAILED', { path: 'consultation' });
+          }
         }
 
         // Bounded response (§17): server-validated text + optional structured view-model + safe meta.

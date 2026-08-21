@@ -3,7 +3,7 @@
 // the previous decision (§D2/§D3) and detect a decision-version mismatch (§D4). Pure; no LLM, no I/O.
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { ANSWER_PLAN_VERSION, DECISION_POLICY_VERSION, type AnswerPlan } from './answerPlan';
-import { classifyConsultationDomain } from './consultationDomain';
+import { classifyConsultationDomain, type ConsultationDomain } from './consultationDomain';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
 
@@ -13,7 +13,12 @@ export function buildConsultationDecisionMeta(
   grounding: ConsultationGrounding,
   resolvedTemporalContext: ResolvedTemporalContext,
   modelId?: string | null,
+  // Sprint E.1 §18 — a follow-up ("그럼 내년은?") that inherits the prior topic supplies it here, so the NEW
+  // decision persists the CARRIED domain (the bare follow-up question classifies as 전반 on its own). When
+  // absent/전반, the domain is classified fresh from the question.
+  carriedDomain?: ConsultationDomain | null,
 ): ConsultationDecisionMeta {
+  const domain = carriedDomain && carriedDomain !== '전반' ? carriedDomain : classifyConsultationDomain(question);
   return {
     answerPlanVersion: ANSWER_PLAN_VERSION,
     decisionPolicyVersion: DECISION_POLICY_VERSION,
@@ -23,7 +28,9 @@ export function buildConsultationDecisionMeta(
     resolvedGranularity: plan.resolvedGranularity,
     resolvedTargets: resolvedTemporalContext.resolvedTargets,
     ...(plan.polarity ? { polarity: plan.polarity } : {}),
-    domain: classifyConsultationDomain(question),
+    domain,
+    comparisonContext: plan.comparisonContext,
+    evidence: { supportLevel: plan.supportLevel, assertiveness: plan.assertiveness, intents: plan.intents },
     resolvedTemporalContext,
   };
 }
@@ -44,6 +51,23 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
   const rtc = o.resolvedTemporalContext as Record<string, unknown> | null;
   if (rtc === null || typeof rtc !== 'object' || typeof rtc.anchorEpochSeconds !== 'number') return undefined;
   const p = typeof o.polarity === 'string' && POLARITY_TIERS.includes(o.polarity) ? (o.polarity as ConsultationDecisionMeta['polarity']) : undefined;
+  // Sprint E.1 §16-17 — comparison context is parsed fail-closed: a malformed/absent value → NOT a comparison
+  // (never a silent "true" that would let a follow-up invent a winner over ungrounded candidates).
+  const cc = o.comparisonContext as Record<string, unknown> | null | undefined;
+  const comparisonContext =
+    cc && typeof cc === 'object' && typeof cc.isComparison === 'boolean'
+      ? { isComparison: cc.isComparison, candidates: numArray(cc.candidates) }
+      : undefined;
+  // Sprint E.1 §5-6 — the stored evidence snapshot; parsed only when fully well-formed.
+  const ev = o.evidence as Record<string, unknown> | null | undefined;
+  const evidence =
+    ev && typeof ev === 'object' && typeof ev.supportLevel === 'string' && typeof ev.assertiveness === 'string'
+      ? {
+          supportLevel: ev.supportLevel,
+          assertiveness: ev.assertiveness,
+          intents: Array.isArray(ev.intents) ? ev.intents.filter((s): s is string => typeof s === 'string') : [],
+        }
+      : undefined;
   return {
     answerPlanVersion: o.answerPlanVersion,
     decisionPolicyVersion: o.decisionPolicyVersion,
@@ -54,6 +78,8 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
     resolvedTargets: numArray(o.resolvedTargets),
     ...(p ? { polarity: p } : {}),
     ...(typeof o.domain === 'string' ? { domain: o.domain as ConsultationDecisionMeta['domain'] } : {}),
+    ...(comparisonContext ? { comparisonContext } : {}),
+    ...(evidence ? { evidence } : {}),
     resolvedTemporalContext: {
       anchorEpochSeconds: rtc.anchorEpochSeconds,
       timezone: 'Asia/Seoul',

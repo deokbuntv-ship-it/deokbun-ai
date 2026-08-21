@@ -74,11 +74,18 @@ describe('§D4 decision-version mismatch', () => {
 
 describe('§D2/§D3 follow-up foundation', () => {
   it('previousDecisionFrom extracts structured state; null when absent', () => {
-    const prev = previousDecisionFrom(vm({ conclusionPolarity: 'CAUTION', decisionMeta: META({ resolvedTargets: [2027, 2028] }) }));
+    // §16-17 — a REAL comparison carries the explicit flag; resolvedTargets.length alone no longer implies it.
+    const prev = previousDecisionFrom(vm({ conclusionPolarity: 'CAUTION', decisionMeta: META({ resolvedTargets: [2027, 2028], comparisonContext: { isComparison: true, candidates: [2027, 2028] } }) }));
     expect(prev?.polarity).toBe('CAUTION');
     expect(prev?.resolvedTargets).toEqual([2027, 2028]);
     expect(prev?.hasComparisonSet).toBe(true);
     expect(previousDecisionFrom(vm())).toBeNull();
+  });
+
+  it('§16-17 a single year+month resolution is NOT a comparison (no explicit flag)', () => {
+    const prev = previousDecisionFrom(vm({ decisionMeta: META({ resolvedGranularity: 'MONTH', resolvedTargets: [2027, 202705] }) }));
+    expect(prev?.hasComparisonSet).toBe(false);
+    expect(resolveFollowUpAction('BETWEEN_CANDIDATES', prev)).toEqual({ kind: 'DESCRIBE_CANDIDATES_NO_WINNER', candidates: [] });
   });
 
   it('classifyFollowUpIntent recognizes the minimum V1 set', () => {
@@ -91,7 +98,7 @@ describe('§D2/§D3 follow-up foundation', () => {
   });
 
   it('resolveFollowUpAction honors the version-mismatch + Option B contracts', () => {
-    const prev = previousDecisionFrom(vm({ decisionMeta: META({ resolvedTargets: [2027, 2028] }) }));
+    const prev = previousDecisionFrom(vm({ decisionMeta: META({ resolvedTargets: [2027, 2028], comparisonContext: { isComparison: true, candidates: [2027, 2028] } }) }));
     expect(resolveFollowUpAction('WHY', prev)).toEqual({ kind: 'EXPLAIN_PREVIOUS', versionMismatch: false });
     const stale = previousDecisionFrom(vm({ decisionMeta: META({ answerPlanVersion: 'answer-plan@1.0.0' }) }));
     expect(resolveFollowUpAction('WHY', stale)).toEqual({ kind: 'EXPLAIN_PREVIOUS', versionMismatch: true });

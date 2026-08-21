@@ -35,6 +35,7 @@ import {
   classifyConsultationSafetyRoute,
   isHardStopRoute,
   safeResponseForRoute,
+  type SafetyRoute,
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -43,7 +44,9 @@ import {
   previousDecisionFromMeta,
   renderFollowUpDirective,
   resolveFollowUpAction,
+  type PreviousDecision,
 } from '@/features/chat/services/followUpContext';
+import type { ConsultationDomain } from './consultationDomain';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
 import type {
@@ -114,6 +117,40 @@ function metaFrom(grounding: ConsultationGrounding, mode: string): ServerGroundi
 }
 
 /**
+ * CRISIS HARD-STOP, exposed as a PURE pre-check (Sprint E.1 §12-14 / HIGH 5). Returns the controlled safe
+ * result for a hard-stop route (self-harm / death-lifespan / medical), or `null` for NORMAL /
+ * FINANCIAL_GUARANTEE (the caller then runs the normal consultation). It takes ONLY the question + the server
+ * receipt time — NO birth, NO grounding, NO LLM, NO I/O — so the Edge can enforce the stop BEFORE any paid
+ * reservation, global-spend guard, previous-decision load, or provider call. This is the SINGLE source of the
+ * hard-stop response shape: `buildServerConsultation` calls it too, so the Edge pre-check and the orchestrator
+ * can never drift.
+ */
+function safetyStopResult(
+  route: SafetyRoute,
+  question: string,
+  nowEpochSeconds: number,
+): ServerConsultationResult {
+  return {
+    ok: true,
+    text: safeResponseForRoute(route) ?? SEMANTIC_REJECTION_MESSAGE,
+    groundingMeta: metaFrom(GROUNDING_UNAVAILABLE, 'safety'),
+    diagnostics: { outputClassification: 'SAFETY_ROUTED', safetyRoute: route },
+    resolvedTemporalContext: buildResolvedTemporalContext(question, nowEpochSeconds, GROUNDING_UNAVAILABLE),
+  };
+}
+
+export function evaluateConsultationSafetyStop(
+  question: string,
+  nowEpochSeconds: number,
+): ServerConsultationResult | null {
+  const q = (question ?? '').trim();
+  if (q.length === 0) return null;
+  const route = classifyConsultationSafetyRoute(q);
+  if (!isHardStopRoute(route)) return null;
+  return safetyStopResult(route, q, nowEpochSeconds);
+}
+
+/**
  * Build a full consultation entirely on the server (trusted). Reason codes fail closed:
  *  - INVALID_INPUT      → empty question / unusable birth input
  *  - SUBJECT_FORBIDDEN  → a profile id owned by another user (never leaks their data)
@@ -129,20 +166,14 @@ export async function buildServerConsultation(
   const question = (request.question ?? '').trim();
   if (question.length === 0) return { ok: false, reason: 'INVALID_INPUT' };
 
-  // 0) Pre-LLM SAFETY ROUTER (Sprint A §2-§7). A hard-stop category (self-harm / death-lifespan / medical)
-  //    must never reach fortune interpretation: return a controlled, honest response with NO grounding and
-  //    NO LLM call. Runs before birth resolution so even a missing/invalid birth still yields the safe
-  //    response. FINANCIAL_GUARANTEE is NOT a hard stop (handled by the plan + the output certainty guard).
+  // 0) Pre-LLM SAFETY ROUTER (Sprint A §2-§7, hardened Sprint E.1 §12-14). A hard-stop category (self-harm /
+  //    death-lifespan / medical) must never reach fortune interpretation: return a controlled, honest response
+  //    with NO grounding and NO LLM call. Runs before birth resolution so even a missing/invalid birth still
+  //    yields the safe response. The Edge enforces this SAME stop BEFORE any paid reservation / global spend
+  //    via the shared evaluateConsultationSafetyStop — this call is the in-orchestrator backstop.
+  //    FINANCIAL_GUARANTEE is NOT a hard stop (handled by the plan + the output certainty guard).
   const safetyRoute = classifyConsultationSafetyRoute(question);
-  if (isHardStopRoute(safetyRoute)) {
-    return {
-      ok: true,
-      text: safeResponseForRoute(safetyRoute) ?? SEMANTIC_REJECTION_MESSAGE,
-      groundingMeta: metaFrom(GROUNDING_UNAVAILABLE, 'safety'),
-      diagnostics: { outputClassification: 'SAFETY_ROUTED', safetyRoute },
-      resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, GROUNDING_UNAVAILABLE),
-    };
-  }
+  if (isHardStopRoute(safetyRoute)) return safetyStopResult(safetyRoute, question, deps.nowEpochSeconds);
 
   // 1) Resolve TRUSTED birth. A server-owned profile (when addressed + available) wins and the client
   //    birthInput is ignored; otherwise the server recomputes from the untrusted birthInput.
@@ -199,6 +230,7 @@ export async function buildServerConsultation(
   const followUpIntent = classifyFollowUpIntent(question);
   let followUpDirective: string | null = null;
   let followUpVersionMismatch = false;
+  let previousDecision: PreviousDecision | null = null;
   if (followUpIntent !== 'NONE' && deps.loadPreviousDecision) {
     let prevMeta: ConsultationDecisionMeta | null = null;
     try {
@@ -206,14 +238,20 @@ export async function buildServerConsultation(
     } catch {
       prevMeta = null;
     }
-    const previous = previousDecisionFromMeta(prevMeta);
+    previousDecision = previousDecisionFromMeta(prevMeta);
     // engineVersion mismatch (§7): compare the stored decision's engine ruleset against the current one.
-    const action = resolveFollowUpAction(followUpIntent, previous, {
+    const action = resolveFollowUpAction(followUpIntent, previousDecision, {
       engineVersion: grounding.status === 'available' ? grounding.engineVersion ?? null : null,
     });
     if (action.kind === 'EXPLAIN_PREVIOUS') followUpVersionMismatch = action.versionMismatch;
-    followUpDirective = renderFollowUpDirective(action, previous);
+    followUpDirective = renderFollowUpDirective(action, previousDecision);
   }
+  // §18 — a "그럼 내년은?" follow-up inherits the prior topic: the bare question classifies as 전반 on its own,
+  // so the NEW decision must persist the CARRIED domain. Only for NEXT_YEAR, only a real prior domain.
+  const carriedDomain: ConsultationDomain | null =
+    followUpIntent === 'NEXT_YEAR' && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== '전반'
+      ? previousDecision.decisionMeta.domain
+      : null;
 
   // 3) SERVER-owned prompt. buildPrompt hardcodes the system layers + puts each history turn's role from
   //    the (already sanitized) message, so no client-authored system block can enter.
@@ -284,7 +322,7 @@ export async function buildServerConsultation(
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null);
+  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain);
   const structuredResult =
     outcome.kind === 'ACCEPTED'
       ? {

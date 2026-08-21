@@ -45,7 +45,9 @@ describe('§18 persist → reload → follow-up resolver', () => {
   });
 
   it('NEXT_YEAR + COMPARE_PREVIOUS survive persistence (domain + candidate identities)', () => {
-    const reloaded = parsePersistedStructured(serializeStructuredForPersistence(vm(META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], domain: '이사' }))));
+    // §16-17 — a REAL stored comparison persists its explicit flag + candidate identities (resolvedTargets
+    // length alone is no longer treated as a comparison).
+    const reloaded = parsePersistedStructured(serializeStructuredForPersistence(vm(META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], domain: '이사', comparisonContext: { isComparison: true, candidates: [202702, 202705] } }))));
     const prev = previousDecisionFromMeta(reloaded?.decisionMeta);
     expect(prev?.decisionMeta?.domain).toBe('이사');
     expect(resolveFollowUpAction('NEXT_YEAR', prev)).toEqual({ kind: 'RECALC_NEXT_YEAR' });

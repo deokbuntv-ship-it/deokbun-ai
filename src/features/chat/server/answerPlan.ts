@@ -46,6 +46,11 @@ export type AnswerPlan = {
   // DECIDED_OUTPUT: the server-owned overall polarity tier (Sprint C §5), from the shared kernel over the
   // current 세운 relations. Absent when the year flow is not grounded — never guessed by the LLM.
   polarity?: PolarityTier;
+  // Sprint E.1 §16-17 — EXPLICIT comparison recognition. `isComparison` is true ONLY for a real, grounded
+  // ≥2-candidate comparison (identical to `comparisonSupported`); `candidates` are the comparable period
+  // identities (same granularity), never a ranked/scored list. A single question resolving BOTH a year and a
+  // month is NOT a comparison, so a later "둘 중에는?" cannot be misled by `resolvedTargets.length >= 2`.
+  comparisonContext: { isComparison: boolean; candidates: number[] };
 };
 
 // Decision-affecting versions. Bumped when the SERVER's decision changes — distinct from the
@@ -192,11 +197,20 @@ export function deriveAnswerPlan(
   }
 
   // Comparison / ranking permission — deterministic: the candidate set must actually be grounded (§12/§13).
-  const groundedMonthCandidates = requestedMonthKeys.filter((k) => gMonths.has(k)).length;
-  const groundedYearCandidates = requestedYears.filter((y) => gYears.has(y)).length;
+  const groundedMonthKeys = requestedMonthKeys.filter((k) => gMonths.has(k));
+  const groundedYearKeys = requestedYears.filter((y) => gYears.has(y));
+  const groundedMonthCandidates = groundedMonthKeys.length;
+  const groundedYearCandidates = groundedYearKeys.length;
   const groundedCandidates = Math.max(groundedMonthCandidates, groundedYearCandidates);
   const comparisonSupported = isCompare && groundedCandidates >= 2;
   const rankingSupported = isRanking && groundedCandidates >= 2;
+  // Sprint E.1 §16-17 — the comparable candidate identities (same granularity as the grounded set), captured
+  // ONLY for a real grounded comparison. Month keys win when they dominate; never a mixed year+month set.
+  const comparisonCandidates = comparisonSupported
+    ? groundedMonthCandidates >= groundedYearCandidates
+      ? groundedMonthKeys
+      : groundedYearKeys
+    : [];
 
   // Assertiveness follows the evidence, not the model's mood (§10/§29). A DIRECT answer is STRONG — it is
   // NEVER escalated to VERY_STRONG by comparison/ranking permission, because V1 authorizes NO winner/order
@@ -224,6 +238,7 @@ export function deriveAnswerPlan(
     forbidEventCertainty: intents.includes('EVENT_PREDICTION'),
     requireMitigation: polarity === 'CAUTION',
     ...(polarity ? { polarity } : {}),
+    comparisonContext: { isComparison: comparisonSupported, candidates: comparisonCandidates },
   };
 }
 

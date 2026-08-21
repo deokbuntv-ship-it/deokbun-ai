@@ -112,6 +112,13 @@ export type ConsultationDecisionMeta = {
   resolvedTargets: number[]; // years and/or year*100+month keys the question resolved (non-ranked identities)
   polarity?: PolarityTier; // the target-scoped conclusion polarity (when one resolved)
   domain?: ConsultationDomain; // Sprint E §8 — the turn's topic, so a follow-up can preserve it server-side
+  // Sprint E.1 §16-17 — explicit comparison recognition. isComparison is true ONLY for a real grounded ≥2
+  // candidate comparison; candidates are the comparable period identities (never ranked/scored). A single
+  // year+month resolution is NOT a comparison, so a later "둘 중에는?" is not misled by resolvedTargets length.
+  comparisonContext?: { isComparison: boolean; candidates: number[] };
+  // Sprint E.1 §5-6 — the MINIMUM deterministic evidence snapshot behind THIS decision, so a later "왜?"
+  // explains the stored decision/evidence instead of re-grounding under the follow-up turn's own context.
+  evidence?: { supportLevel: string; assertiveness: string; intents: string[] };
   resolvedTemporalContext: ResolvedTemporalContext;
 };
 

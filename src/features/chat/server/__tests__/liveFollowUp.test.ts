@@ -72,6 +72,9 @@ describe('§5 "그럼 내년은?" — carry prior domain onto a NEW next-year ta
     expect(sys).toContain('앞선 주제(사업)');
     expect(sys).toContain('내년');
     expect(r.structuredResult?.decisionMeta?.resolvedGranularity).toBe('YEAR'); // new next-year target resolved
+    // §18 (gate K) — the bare "그럼 내년은?" classifies as 전반 on its own, but the NEW decision PERSISTS the
+    // carried prior domain so a further follow-up keeps the thread's topic.
+    expect(r.structuredResult?.decisionMeta?.domain).toBe('사업');
     expect(r.diagnostics?.followUp).toBe('NEXT_YEAR');
   });
 });
@@ -79,7 +82,8 @@ describe('§5 "그럼 내년은?" — carry prior domain onto a NEW next-year ta
 describe('§6/§14 "둘 중에는?" — describe candidates, never a winner', () => {
   it('appends the no-winner directive; an invented winner is rejected to a safe fallback', async () => {
     const winner = JSON.stringify({ coreSummary: '5월이 더 좋습니다.', coreInterpretation: '5월이 2월보다 더 좋습니다. 사주로 보면 일간을 중심으로 흐름이 이어지고 월지의 기운이 이를 뒷받침하여 꾸준히 준비하면 도움이 됩니다.', strengths: ['추진력'] });
-    const h = harness(winner, META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], polarity: undefined }));
+    // A REAL stored comparison carries the explicit comparisonContext (isComparison + the candidate set).
+    const h = harness(winner, META({ resolvedGranularity: 'MONTH', resolvedTargets: [202702, 202705], polarity: undefined, comparisonContext: { isComparison: true, candidates: [202702, 202705] } }));
     const r = await buildServerConsultation(req('그래서 둘 중 뭐가 더 좋아?'), h.deps);
     expect(r.ok).toBe(true);
     if (!r.ok) return;

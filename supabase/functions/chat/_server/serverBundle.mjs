@@ -145,6 +145,9 @@ function toSafeGrounding(g) {
   if (g.assessmentVersion !== void 0 && g.assessmentVersion !== null && typeof g.assessmentVersion !== "string") {
     return GROUNDING_UNAVAILABLE;
   }
+  if (g.referenceYear !== void 0 && g.referenceYear !== null && !isPlausibleYear(g.referenceYear)) {
+    return GROUNDING_UNAVAILABLE;
+  }
   if (g.referenceMonth !== void 0 && g.referenceMonth !== null && !isCivilMonth(g.referenceMonth)) {
     return GROUNDING_UNAVAILABLE;
   }
@@ -475,6 +478,7 @@ function mainBodyText(p) {
 function timingAnchorsOf(grounding) {
   const anchors = { years: /* @__PURE__ */ new Set(), months: /* @__PURE__ */ new Set(), referenceYear: null, referenceMonth: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== "available") return anchors;
+  anchors.referenceYear = grounding.referenceYear ?? null;
   anchors.referenceMonth = grounding.referenceMonth ?? null;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
@@ -7528,9 +7532,9 @@ async function buildMyungriEvidence(draft, deps, question) {
     digestProvider: deps.digestProvider,
     historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
   });
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null };
   const engineResult = execution.engineResult;
-  if (engineResult.status === "UNAVAILABLE") return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
+  if (engineResult.status === "UNAVAILABLE") return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null };
   const fourPillars = engineResult.output.fourPillars;
   const natal = natalContextFromFourPillars(fourPillars);
   const natalRelations = calculateNatalRelations(natal);
@@ -7542,17 +7546,14 @@ async function buildMyungriEvidence(draft, deps, question) {
   );
   const daewoonTenGods = daewoon.capability === "AVAILABLE" ? calculateDaewoonTenGods({ dayMaster: natal.dayMaster, cycles: daewoon.cycles }) : null;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
+  const kstNow = new Date((now + 9 * 3600) * 1e3);
+  const civilYear = kstNow.getUTCFullYear();
+  const currentCivilMonth = kstNow.getUTCMonth() + 1;
   const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: now });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
   const currentSajuYearForTargets = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
-  const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets).filter((y) => y !== currentSajuYearForTargets).map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) })).filter((s) => s.capability === "AVAILABLE");
-  const kstNow = new Date((now + 9 * 3600) * 1e3);
-  const currentCivilMonth = kstNow.getUTCMonth() + 1;
-  const extraWolwoon = resolveQuestionMonths(
-    question,
-    currentSajuYearForTargets ?? kstNow.getUTCFullYear(),
-    currentCivilMonth
-  ).targets.map((t) => ({
+  const extraSewoon = resolveQuestionYears(question, civilYear).filter((y) => y !== currentSajuYearForTargets).map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) })).filter((s) => s.capability === "AVAILABLE");
+  const extraWolwoon = resolveQuestionMonths(question, civilYear, currentCivilMonth).targets.map((t) => ({
     requestedYear: t.year,
     requestedMonth: t.month,
     result: calculateWolwoonForInstant({ natal, instantEpochSeconds: epochForSajuMonth(t.year, t.month) })
@@ -7602,7 +7603,7 @@ async function buildMyungriEvidence(draft, deps, question) {
       targetPolarities.push({ granularity: "MONTH", targetKey: ew.requestedYear * 100 + ew.requestedMonth, polarity: derivePolarity(ew.result.relationsToNatal).tier });
     }
   }
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceMonth: currentCivilMonth };
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceYear: civilYear, referenceMonth: currentCivilMonth };
 }
 async function buildConsultationGrounding(draft, deps, question) {
   if (draft.subject === null || draft.birthInfo === null) {
@@ -7611,7 +7612,7 @@ async function buildConsultationGrounding(draft, deps, question) {
   const withBirth = draft;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceMonth } = await buildMyungriEvidence(
+  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceYear, referenceMonth } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? ""
@@ -7626,7 +7627,8 @@ async function buildConsultationGrounding(draft, deps, question) {
     evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
     engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
-    // Server-derived reference month + target-scoped polarities (Sprint C.1) — present only with Saju.
+    // Server-derived CIVIL reference year+month + target-scoped polarities — present only with Saju.
+    ...referenceYear !== null ? { referenceYear } : {},
     ...referenceMonth !== null ? { referenceMonth } : {},
     ...targetPolarities.length > 0 ? { targetPolarities } : {}
   };
@@ -7803,6 +7805,7 @@ var groundedYearsOf = (g) => {
 };
 var referenceYearOf = (g) => {
   if (g.status !== "available") return null;
+  if (typeof g.referenceYear === "number") return g.referenceYear;
   for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
     const r = ev.timingAnchors?.referenceYear;
     if (typeof r === "number") return r;
@@ -7871,11 +7874,14 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
       supportLevel = "DIRECT";
     }
   }
-  const groundedMonthCandidates = requestedMonthKeys.filter((k) => gMonths.has(k)).length;
-  const groundedYearCandidates = requestedYears.filter((y) => gYears.has(y)).length;
+  const groundedMonthKeys = requestedMonthKeys.filter((k) => gMonths.has(k));
+  const groundedYearKeys = requestedYears.filter((y) => gYears.has(y));
+  const groundedMonthCandidates = groundedMonthKeys.length;
+  const groundedYearCandidates = groundedYearKeys.length;
   const groundedCandidates = Math.max(groundedMonthCandidates, groundedYearCandidates);
   const comparisonSupported = isCompare && groundedCandidates >= 2;
   const rankingSupported = isRanking && groundedCandidates >= 2;
+  const comparisonCandidates = comparisonSupported ? groundedMonthCandidates >= groundedYearCandidates ? groundedMonthKeys : groundedYearKeys : [];
   let assertiveness = "LIMITED";
   if (supportLevel === "DIRECT") assertiveness = "STRONG";
   else if (supportLevel === "PARTIAL") assertiveness = "MODERATE";
@@ -7893,7 +7899,8 @@ function deriveAnswerPlan(question, grounding, mode = "solo") {
     rankingSupported,
     forbidEventCertainty: intents.includes("EVENT_PREDICTION"),
     requireMitigation: polarity === "CAUTION",
-    ...polarity ? { polarity } : {}
+    ...polarity ? { polarity } : {},
+    comparisonContext: { isComparison: comparisonSupported, candidates: comparisonCandidates }
   };
 }
 var ASSERTIVENESS_LINE = {
@@ -8519,6 +8526,7 @@ function contradictsPolarity(text, polarity) {
   return false;
 }
 var COMPAT_BREAKUP = /헤어지(세요|십시오|는\s*게\s*(답|낫|좋|맞)|어라)|이혼(하세요|하십시오|하는\s*게\s*(답|낫|좋)|해야)|(결국|반드시|틀림없이|무조건)\s*[^.!?。\n]{0,8}(헤어|이혼)|헤어질\s*수밖에|만나지\s*마(세요|십시오)|(그만|이제)\s*(만나지|정리)/;
+var COMPAT_BREAKUP_EUPHEMISM = /(이\s*)?관계[를은는]?\s*(정리|끝내|접)(하)?(는\s*(게|것이|편이)|할\s*(필요|때))[^.!?。\n]{0,5}(좋|낫|있|겠)|(헤어지|이혼하)는\s*(게|편이|것이)[^.!?。\n]{0,4}(좋|낫)|관계[를은는]?\s*끝내는\s*(게|편이|것이)[^.!?。\n]{0,4}(좋|낫)/;
 var COMPAT_MINDREAD = /상대[는가]?\s*[^.!?。\n]{0,6}(당신을\s*)?(사랑하지\s*않|좋아하지\s*않|마음이\s*없|관심이\s*없)|속으로\s*[^.!?。\n]{0,8}(다른|딴)\s*(사람|생각|마음)|(진심|속마음)[은는이가]\s*[^.!?。\n]{0,10}(다른|없|아니)/;
 var COMPAT_CONDEMN = /(이\s*사람|상대)[은는이가]?\s*[^.!?。\n]{0,4}(나쁜\s*사람|못된\s*사람|글러|인간성이|사람이\s*안\s*[됐된])|성격이\s*[^.!?。\n]{0,4}(최악|파탄|쓰레기|글러먹)/;
 var COMPAT_FATE = /천생연분(이\s*확실|입니다|이에요|이야)|(절대|무조건)\s*[^.!?。\n]{0,4}(안\s*맞|잘\s*맞)|운명(입니다|이에요|이야|적으로\s*맞)|(반드시|틀림없이)\s*[^.!?。\n]{0,6}(잘\s*맞|안\s*맞)/;
@@ -8528,7 +8536,7 @@ function containsCompatibilityHarm(text) {
   if (typeof text !== "string" || text.length === 0) return false;
   for (const s of splitSentences(text)) {
     if (COMPAT_HEDGE.test(s)) continue;
-    if (COMPAT_BREAKUP.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
+    if (COMPAT_BREAKUP.test(s) || COMPAT_BREAKUP_EUPHEMISM.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
       return true;
     }
   }
@@ -8665,7 +8673,8 @@ function classifyConsultationDomain(question) {
 }
 
 // src/features/chat/server/decisionMeta.ts
-function buildConsultationDecisionMeta(question, plan, grounding, resolvedTemporalContext, modelId) {
+function buildConsultationDecisionMeta(question, plan, grounding, resolvedTemporalContext, modelId, carriedDomain) {
+  const domain = carriedDomain && carriedDomain !== "전반" ? carriedDomain : classifyConsultationDomain(question);
   return {
     answerPlanVersion: ANSWER_PLAN_VERSION,
     decisionPolicyVersion: DECISION_POLICY_VERSION,
@@ -8676,7 +8685,9 @@ function buildConsultationDecisionMeta(question, plan, grounding, resolvedTempor
     resolvedGranularity: plan.resolvedGranularity,
     resolvedTargets: resolvedTemporalContext.resolvedTargets,
     ...plan.polarity ? { polarity: plan.polarity } : {},
-    domain: classifyConsultationDomain(question),
+    domain,
+    comparisonContext: plan.comparisonContext,
+    evidence: { supportLevel: plan.supportLevel, assertiveness: plan.assertiveness, intents: plan.intents },
     resolvedTemporalContext
   };
 }
@@ -8690,6 +8701,14 @@ function parseDecisionMeta(v) {
   const rtc = o.resolvedTemporalContext;
   if (rtc === null || typeof rtc !== "object" || typeof rtc.anchorEpochSeconds !== "number") return void 0;
   const p = typeof o.polarity === "string" && POLARITY_TIERS.includes(o.polarity) ? o.polarity : void 0;
+  const cc = o.comparisonContext;
+  const comparisonContext = cc && typeof cc === "object" && typeof cc.isComparison === "boolean" ? { isComparison: cc.isComparison, candidates: numArray(cc.candidates) } : void 0;
+  const ev = o.evidence;
+  const evidence = ev && typeof ev === "object" && typeof ev.supportLevel === "string" && typeof ev.assertiveness === "string" ? {
+    supportLevel: ev.supportLevel,
+    assertiveness: ev.assertiveness,
+    intents: Array.isArray(ev.intents) ? ev.intents.filter((s) => typeof s === "string") : []
+  } : void 0;
   return {
     answerPlanVersion: o.answerPlanVersion,
     decisionPolicyVersion: o.decisionPolicyVersion,
@@ -8700,6 +8719,8 @@ function parseDecisionMeta(v) {
     resolvedTargets: numArray(o.resolvedTargets),
     ...p ? { polarity: p } : {},
     ...typeof o.domain === "string" ? { domain: o.domain } : {},
+    ...comparisonContext ? { comparisonContext } : {},
+    ...evidence ? { evidence } : {},
     resolvedTemporalContext: {
       anchorEpochSeconds: rtc.anchorEpochSeconds,
       timezone: "Asia/Seoul",
@@ -8710,9 +8731,12 @@ function parseDecisionMeta(v) {
     }
   };
 }
-function isDecisionVersionMismatch(persisted) {
+function isDecisionVersionMismatch(persisted, current) {
   if (!persisted) return false;
-  return persisted.answerPlanVersion !== ANSWER_PLAN_VERSION || persisted.decisionPolicyVersion !== DECISION_POLICY_VERSION;
+  if (persisted.answerPlanVersion !== ANSWER_PLAN_VERSION) return true;
+  if (persisted.decisionPolicyVersion !== DECISION_POLICY_VERSION) return true;
+  if (current?.engineVersion && persisted.engineVersion && persisted.engineVersion !== current.engineVersion) return true;
+  return false;
 }
 
 // src/features/chat/server/resolvedTemporalContext.ts
@@ -8722,6 +8746,7 @@ function kstCivil(epochSeconds) {
 }
 function groundingReferenceYear(grounding) {
   if (grounding.status !== "available") return null;
+  if (typeof grounding.referenceYear === "number") return grounding.referenceYear;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const r = ev.timingAnchors?.referenceYear;
     if (typeof r === "number") return r;
@@ -8749,14 +8774,20 @@ function buildResolvedTemporalContext(question, nowEpochSeconds, grounding) {
 }
 
 // src/features/chat/services/followUpContext.ts
+function comparisonFrom(meta) {
+  const cc = meta?.comparisonContext;
+  return cc?.isComparison ? { isComparison: true, candidates: cc.candidates ?? [] } : { isComparison: false, candidates: [] };
+}
 function previousDecisionFromMeta(meta) {
   if (!meta) return null;
+  const cmp = comparisonFrom(meta);
   return {
     polarity: meta.polarity,
     resolvedGranularity: meta.resolvedGranularity,
     resolvedTargets: meta.resolvedTargets,
     decisionMeta: meta,
-    hasComparisonSet: meta.resolvedTargets.length >= 2
+    hasComparisonSet: cmp.isComparison,
+    comparisonCandidates: cmp.candidates
   };
 }
 function classifyFollowUpIntent(question) {
@@ -8768,14 +8799,17 @@ function classifyFollowUpIntent(question) {
   if (/그럼\s*언제|그러면\s*언제|언제(가|는|쯤)?\s*\??$/.test(q)) return "WHEN";
   return "NONE";
 }
-function resolveFollowUpAction(intent, previous) {
+function resolveFollowUpAction(intent, previous, current) {
   switch (intent) {
     case "WHY":
-      return { kind: "EXPLAIN_PREVIOUS", versionMismatch: isDecisionVersionMismatch(previous?.decisionMeta) };
+      return { kind: "EXPLAIN_PREVIOUS", versionMismatch: isDecisionVersionMismatch(previous?.decisionMeta, current) };
     case "NEXT_YEAR":
       return { kind: "RECALC_NEXT_YEAR" };
     case "BETWEEN_CANDIDATES":
-      return { kind: "DESCRIBE_CANDIDATES_NO_WINNER", candidates: previous?.resolvedTargets ?? [] };
+      return {
+        kind: "DESCRIBE_CANDIDATES_NO_WINNER",
+        candidates: previous?.hasComparisonSet ? previous.comparisonCandidates : []
+      };
     case "WHEN":
       return { kind: "DEFER_V1_1" };
     default:
@@ -8788,13 +8822,21 @@ var POLARITY_LABEL = {
   DYNAMIC: "변화가 많은 편",
   CAUTION: "조심이 필요한 편"
 };
+function formatTargets(targets) {
+  const labels = targets.filter((t) => typeof t === "number" && t > 0).map((t) => t >= 1e5 ? `${Math.floor(t / 100)}년 ${t % 100}월` : `${t}년`);
+  return labels.length > 0 ? labels.join(", ") : null;
+}
 function renderFollowUpDirective(action, previous) {
   switch (action.kind) {
     case "EXPLAIN_PREVIOUS": {
       const parts = [
         '[후속 지침 — "왜?"] 새로운 결론을 새로 만들지 마십시오. 앞선 상담의 결론을 그대로 두고, 그렇게 본 이유만 설명하십시오.'
       ];
+      const targetPhrase = formatTargets(previous?.resolvedTargets ?? []);
+      if (targetPhrase) parts.push(`앞선 판단의 대상은 ${targetPhrase}였습니다 — 지금 시점으로 대상을 바꾸지 마십시오.`);
       if (previous?.polarity) parts.push(`앞선 결론의 전반 흐름은 "${POLARITY_LABEL[previous.polarity]}"였습니다 — 이 방향을 바꾸지 마십시오.`);
+      const support = previous?.decisionMeta?.evidence?.supportLevel;
+      if (support) parts.push(`그때의 근거 수준(${support})에 근거해 설명하고, 지금 근거로 새로 계산하지 마십시오.`);
       if (action.versionMismatch) {
         parts.push("저장된 이전 판단을 그대로 설명하고, 지금 규칙으로 다시 계산해 다른 결론을 내지 마십시오.");
       }
@@ -8852,19 +8894,27 @@ function metaFrom(grounding, mode) {
     questionTimeSource: "SERVER_RECEIPT_TIME"
   };
 }
+function safetyStopResult(route, question, nowEpochSeconds) {
+  return {
+    ok: true,
+    text: safeResponseForRoute(route) ?? SEMANTIC_REJECTION_MESSAGE,
+    groundingMeta: metaFrom(GROUNDING_UNAVAILABLE, "safety"),
+    diagnostics: { outputClassification: "SAFETY_ROUTED", safetyRoute: route },
+    resolvedTemporalContext: buildResolvedTemporalContext(question, nowEpochSeconds, GROUNDING_UNAVAILABLE)
+  };
+}
+function evaluateConsultationSafetyStop(question, nowEpochSeconds) {
+  const q = (question ?? "").trim();
+  if (q.length === 0) return null;
+  const route = classifyConsultationSafetyRoute(q);
+  if (!isHardStopRoute(route)) return null;
+  return safetyStopResult(route, q, nowEpochSeconds);
+}
 async function buildServerConsultation(request, deps) {
   const question = (request.question ?? "").trim();
   if (question.length === 0) return { ok: false, reason: "INVALID_INPUT" };
   const safetyRoute = classifyConsultationSafetyRoute(question);
-  if (isHardStopRoute(safetyRoute)) {
-    return {
-      ok: true,
-      text: safeResponseForRoute(safetyRoute) ?? SEMANTIC_REJECTION_MESSAGE,
-      groundingMeta: metaFrom(GROUNDING_UNAVAILABLE, "safety"),
-      diagnostics: { outputClassification: "SAFETY_ROUTED", safetyRoute },
-      resolvedTemporalContext: buildResolvedTemporalContext(question, deps.nowEpochSeconds, GROUNDING_UNAVAILABLE)
-    };
-  }
+  if (isHardStopRoute(safetyRoute)) return safetyStopResult(safetyRoute, question, deps.nowEpochSeconds);
   let birthInfo;
   let subjectLabel = request.subjectLabel ?? null;
   if (request.subjectProfileId && deps.resolveTrustedBirth) {
@@ -8906,6 +8956,7 @@ async function buildServerConsultation(request, deps) {
   const followUpIntent = classifyFollowUpIntent(question);
   let followUpDirective = null;
   let followUpVersionMismatch = false;
+  let previousDecision = null;
   if (followUpIntent !== "NONE" && deps.loadPreviousDecision) {
     let prevMeta = null;
     try {
@@ -8913,11 +8964,14 @@ async function buildServerConsultation(request, deps) {
     } catch {
       prevMeta = null;
     }
-    const previous = previousDecisionFromMeta(prevMeta);
-    const action = resolveFollowUpAction(followUpIntent, previous);
+    previousDecision = previousDecisionFromMeta(prevMeta);
+    const action = resolveFollowUpAction(followUpIntent, previousDecision, {
+      engineVersion: grounding.status === "available" ? grounding.engineVersion ?? null : null
+    });
     if (action.kind === "EXPLAIN_PREVIOUS") followUpVersionMismatch = action.versionMismatch;
-    followUpDirective = renderFollowUpDirective(action, previous);
+    followUpDirective = renderFollowUpDirective(action, previousDecision);
   }
+  const carriedDomain = followUpIntent === "NEXT_YEAR" && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== "전반" ? previousDecision.decisionMeta.domain : null;
   const recentMessages = sanitizeConversation(request.conversationContext);
   const mode = classifyConsultationMode(question, recentMessages.length > 0);
   let effectiveGrounding = grounding;
@@ -8969,7 +9023,7 @@ ${extraDirective}` : base
   });
   const outcome = guard.outcome;
   const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
-  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null);
+  const decisionMeta = buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain);
   const structuredResult = outcome.kind === "ACCEPTED" ? {
     ...buildStructuredConsultationResult(outcome.result, effectiveGrounding),
     ...plan.polarity ? { conclusionPolarity: plan.polarity } : {},
@@ -10410,6 +10464,7 @@ export {
   consultationResponseFormat,
   currentTargetMonth,
   dailyFortuneResponseFormat,
+  evaluateConsultationSafetyStop,
   extractResponsesText,
   fortuneDateStringFromEpoch,
   isDecisionVersionMismatch,
