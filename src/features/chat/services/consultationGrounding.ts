@@ -94,6 +94,7 @@ type MyungriOutcome = {
   evidence: EngineEvidence;
   engineVersion: string | null;
   targetPolarities: TargetPolarity[];
+  referenceYear: number | null; // KST CIVIL year (§8)
   referenceMonth: number | null;
 };
 
@@ -110,11 +111,11 @@ async function buildMyungriEvidence(
   });
 
   // Normalization/fingerprint failure (invalid/unsupported input) — no fabricated evidence.
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null };
   const engineResult = execution.engineResult;
   // Engine could not produce a chart (unsupported date / ambiguous boundary / unknown-time-on-
   // boundary all surface here) — fail-closed, never a fabricated pillar (§16).
-  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceMonth: null };
+  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null };
 
   // SUCCESS or PARTIAL (시주 미상) → derive the Myungri facts from the frozen chart (no new calc).
   const fourPillars = engineResult.output.fourPillars;
@@ -132,19 +133,19 @@ async function buildMyungriEvidence(
       : null;
 
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1000);
+  const kstNow = new Date((now + 9 * 3600) * 1000); // Asia/Seoul civil date from the trusted server instant
+  const civilYear = kstNow.getUTCFullYear(); // KST CIVIL year — the linguistic reference for 올해/내년 (Sprint E.1 §8)
+  const currentCivilMonth = kstNow.getUTCMonth() + 1;
   const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: now });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: now });
 
-  // Question-targeted 세운 (Commercial Quality Sprint §2 — TIMING_CLAIM_MISMATCH fix). The 세운 above
-  // covers only the CURRENT year, so a "2027년"/"내년" question produced an answer the validator then
-  // rejected as unsupported. Resolve the SPECIFIC years the question names and compute each one's 세운
-  // from the FROZEN engine (same rules, no recompute) — this grounds the answer in real target-year
-  // facts AND legitimises the timing anchor. Bounded (≤3) + range-checked; an ungroundable year is
-  // simply skipped, so a fabricated future year is still rejected (validator unchanged).
+  // Question-targeted 세운. 올해/내년/N년 resolve from the KST CIVIL year (Sprint E.1 §8 — NOT the 立春-based
+  // 세운 year), then each civil year is grounded via the FROZEN engine at a mid-year epoch (→ the saju year
+  // that governs that civil year). The current standalone 세운 already covers its own year, so it is skipped
+  // to avoid a duplicate; between Jan 1 and 立春 the civil year differs from the current 세운 year, so BOTH are
+  // correctly grounded (fixing the pre-立春 "올해"→wrong-year bug). Bounded + range-checked; ungroundable → skipped.
   const currentSajuYearForTargets = sewoon.capability === 'AVAILABLE' ? sewoon.targetYear : null;
-  // resolveQuestionYears now INCLUDES the reference year; skip it here (its 세운 is already `sewoon`) so a
-  // "올해"/range-including-this-year question adds no duplicate. Ranges ("앞으로 10년") yield the rest.
-  const extraSewoon = resolveQuestionYears(question, currentSajuYearForTargets)
+  const extraSewoon = resolveQuestionYears(question, civilYear)
     .filter((y) => y !== currentSajuYearForTargets)
     .map((y) => calculateSewoonForInstant({ natal, instantEpochSeconds: epochForSajuYear(y) }))
     .filter((s) => s.capability === 'AVAILABLE');
@@ -154,13 +155,7 @@ async function buildMyungriEvidence(
   // and label it by the CIVIL month asked. Bounded (≤12) + fail-closed (an ungroundable month is skipped,
   // so a fabricated month is still rejected). Deterministic; ZERO extra LLM calls. Cost-guarded by the
   // resolver's intent (EXACT=1, COMPARE=2, RANGE=window, BEST≤12; year-level/non-timing questions → 0).
-  const kstNow = new Date((now + 9 * 3600) * 1000); // Asia/Seoul civil date from the trusted server instant
-  const currentCivilMonth = kstNow.getUTCMonth() + 1;
-  const extraWolwoon = resolveQuestionMonths(
-    question,
-    currentSajuYearForTargets ?? kstNow.getUTCFullYear(),
-    currentCivilMonth,
-  )
+  const extraWolwoon = resolveQuestionMonths(question, civilYear, currentCivilMonth)
     .targets.map((t) => ({
       requestedYear: t.year,
       requestedMonth: t.month,
@@ -231,7 +226,7 @@ async function buildMyungriEvidence(
     }
   }
 
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceMonth: currentCivilMonth };
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceYear: civilYear, referenceMonth: currentCivilMonth };
 }
 
 /**
@@ -252,7 +247,7 @@ export async function buildConsultationGrounding(
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode).
   const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceMonth } = await buildMyungriEvidence(
+  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceYear, referenceMonth } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? '',
@@ -272,7 +267,8 @@ export async function buildConsultationGrounding(
     evidence: { myungri, ziwei, qimen },
     // Prefer the Saju rule version (spine); fall back to the Ziwei ruleset in Ziwei-only mode.
     engineVersion: myungriVersion ?? ZIWEI_RULESET_VERSION,
-    // Server-derived reference month + target-scoped polarities (Sprint C.1) — present only with Saju.
+    // Server-derived CIVIL reference year+month + target-scoped polarities — present only with Saju.
+    ...(referenceYear !== null ? { referenceYear } : {}),
     ...(referenceMonth !== null ? { referenceMonth } : {}),
     ...(targetPolarities.length > 0 ? { targetPolarities } : {}),
   };

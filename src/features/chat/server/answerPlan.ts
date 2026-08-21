@@ -82,6 +82,9 @@ const groundedYearsOf = (g: ConsultationGrounding): Set<number> => {
 };
 const referenceYearOf = (g: ConsultationGrounding): number | null => {
   if (g.status !== 'available') return null;
+  // Prefer the KST CIVIL reference year (Sprint E.1 §8) — the linguistic anchor for 올해/내년. Fall back to
+  // the saju 세운 year only on a grounding built before this field existed.
+  if (typeof g.referenceYear === 'number') return g.referenceYear;
   for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
     const r = ev.timingAnchors?.referenceYear;
     if (typeof r === 'number') return r;

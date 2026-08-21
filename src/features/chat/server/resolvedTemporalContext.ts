@@ -12,9 +12,11 @@ function kstCivil(epochSeconds: number): { year: number; month: number } {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
 }
 
-// The saju 세운 reference year (rolls at 立春) when grounded — the same anchor deriveAnswerPlan reads.
+// The KST CIVIL reference year (Sprint E.1 §8) — the same linguistic anchor deriveAnswerPlan reads. Falls
+// back to the saju 세운 year only on a grounding built before the civil field existed.
 function groundingReferenceYear(grounding: ConsultationGrounding): number | null {
   if (grounding.status !== 'available') return null;
+  if (typeof grounding.referenceYear === 'number') return grounding.referenceYear;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const r = ev.timingAnchors?.referenceYear;
     if (typeof r === 'number') return r;

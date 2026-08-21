@@ -37,9 +37,11 @@ export type ConsultationGrounding =
       assessmentSummary?: string | null;
       engineVersion?: string | null; // Codex-supplied when wired (§37)
       assessmentVersion?: string | null;
-      // Server-derived CURRENT civil reference month (Sprint C.1 §6) — the same value the grounding used to
-      // resolve 이번 달/다음 달 targets. The Answer Plan + ResolvedTemporalContext + validator READ it so a
-      // relative month resolves identically everywhere; never the client clock.
+      // Server-derived CURRENT KST CIVIL reference year + month (Sprint C.1 §6 / Sprint E.1 §8). These are
+      // the LINGUISTIC anchors for 올해/내년/이번 달/다음 달 — CIVIL calendar, NOT the saju 立春-based 세운 year.
+      // The Answer Plan + ResolvedTemporalContext + validator READ them so relative periods resolve
+      // identically everywhere; never the client clock. (The saju 세운 year stays internal to the engine.)
+      referenceYear?: number | null;
       referenceMonth?: number | null;
       // SERVER-owned TARGET-SCOPED polarity (Sprint C.1 §2-§4): the shared kernel's categorical tier for each
       // grounded temporal target (a year's 세운 or a month's 월운), KEYED so a conclusion is bound to THIS
@@ -216,6 +218,9 @@ export function toSafeGrounding(g: ConsultationGrounding | null | undefined): Co
     return GROUNDING_UNAVAILABLE;
   }
   if (g.assessmentVersion !== undefined && g.assessmentVersion !== null && typeof g.assessmentVersion !== 'string') {
+    return GROUNDING_UNAVAILABLE;
+  }
+  if (g.referenceYear !== undefined && g.referenceYear !== null && !isPlausibleYear(g.referenceYear)) {
     return GROUNDING_UNAVAILABLE;
   }
   if (g.referenceMonth !== undefined && g.referenceMonth !== null && !isCivilMonth(g.referenceMonth)) {

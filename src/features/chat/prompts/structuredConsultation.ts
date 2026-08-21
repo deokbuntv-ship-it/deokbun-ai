@@ -259,6 +259,9 @@ type TimingAnchors = {
 function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
   const anchors: TimingAnchors = { years: new Set(), months: new Set(), referenceYear: null, referenceMonth: null, ageMin: null, ageMax: null, hasMonthly: false };
   if (grounding.status !== 'available') return anchors;
+  // Prefer the CIVIL reference year+month (Sprint E.1 §8) so the validator resolves 올해/내년/이번 달/다음 달
+  // exactly as the plan did. The saju 세운 year from ev.timingAnchors is only a fallback (below).
+  anchors.referenceYear = grounding.referenceYear ?? null;
   anchors.referenceMonth = grounding.referenceMonth ?? null;
   for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
     const ta = ev.timingAnchors;
