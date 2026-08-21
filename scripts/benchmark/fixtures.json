@@ -1,0 +1,56 @@
+{
+  "_note": "Sprint F §L — SYNTHETIC, PII-FREE benchmark fixtures. No real user data. Birth info is fabricated. Used only to measure token/cost per workload; never seeded into production.",
+  "syntheticSelf": {
+    "displayName": "벤치샘플",
+    "gender": "female",
+    "calendarType": "solar",
+    "lunarMonthType": null,
+    "birthYear": "1990",
+    "birthMonth": "5",
+    "birthDay": "12",
+    "birthTimeAccuracy": "exact",
+    "birthHour": "10",
+    "birthMinute": "30",
+    "approximateTimePeriod": null,
+    "birthPlace": "서울"
+  },
+  "syntheticPartner": {
+    "displayName": "상대샘플",
+    "gender": "male",
+    "calendarType": "solar",
+    "lunarMonthType": null,
+    "birthYear": "1988",
+    "birthMonth": "11",
+    "birthDay": "3",
+    "birthTimeAccuracy": "exact",
+    "birthHour": "6",
+    "birthMinute": "0",
+    "approximateTimePeriod": null,
+    "birthPlace": "부산"
+  },
+  "general": [
+    { "id": "gen-1", "question": "요즘 일이 잘 안 풀리는데 전반적인 흐름이 어떤가요?" },
+    { "id": "gen-2", "question": "올해 저의 재물 흐름은 어떤 편인가요?" },
+    { "id": "gen-3", "question": "지금 하는 일을 계속 이어가는 게 저와 잘 맞을까요?" },
+    { "id": "gen-4", "question": "대인 관계에서 제가 신경 쓰면 좋은 부분이 있을까요?" },
+    { "id": "gen-5", "question": "제 성향의 강점과 주의할 점을 알려주세요." }
+  ],
+  "specificTiming": [
+    { "id": "time-1", "question": "이직을 준비 중인데 올해 안에서 언제쯤이 상대적으로 나은 편인가요?" },
+    { "id": "time-2", "question": "내년 상반기 사업 확장 흐름은 어떤가요?" },
+    { "id": "time-3", "question": "이번 달과 다음 달 중 계약을 진행하기에 어느 쪽이 더 무난한가요?" }
+  ],
+  "compatibility": [
+    { "id": "compat-1", "question": "두 사람의 전반적인 결이 어떤지 봐주세요." },
+    { "id": "compat-2", "question": "장기적으로 함께할 때 신경 쓰면 좋은 부분이 있을까요?" },
+    { "id": "compat-3", "question": "대화 방식에서 서로 맞춰가면 좋은 지점이 궁금해요." },
+    { "id": "compat-4", "question": "두 사람의 강점이 잘 살아나는 관계인가요?" },
+    { "id": "compat-5", "question": "갈등이 생길 때 서로 어떻게 조율하면 좋을까요?" }
+  ],
+  "whyFollowUp": [
+    { "id": "why-1", "primer": "올해 재물 흐름이 어떤가요?", "question": "왜 그렇게 보나요?" },
+    { "id": "why-2", "primer": "이직 시기는 언제가 나은가요?", "question": "왜?" },
+    { "id": "why-3", "primer": "지금 사업을 확장해도 될까요?", "question": "왜 그런가요?" }
+  ],
+  "turnCounts": [1, 3, 5]
+}

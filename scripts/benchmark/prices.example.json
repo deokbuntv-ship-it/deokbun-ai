@@ -1,0 +1,6 @@
+{
+  "_note": "TEMPLATE ONLY. Fill with the owner's VERIFIED provider prices before use. Numbers are per 1,000,000 tokens, in `_currency`. These placeholders are 0 on purpose — the harness must never estimate cost from guessed prices. Map every model id the Edge actually returns (see ai_usage_logs.model).",
+  "_currency": "USD",
+  "gpt-5-mini": { "input": 0, "cached_input": 0, "output": 0 },
+  "TERRA_MODEL_ID_HERE": { "input": 0, "cached_input": 0, "output": 0 }
+}
