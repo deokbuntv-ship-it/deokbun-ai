@@ -39,6 +39,14 @@ export {
   type LightCandleResult,
 } from './dukWalletService';
 export {
+  runBilledConsultation,
+  type FirstTurnDeps,
+  type Reservation,
+  type BillingResult,
+  type BillingEffects,
+  type BillingErrorCode,
+} from './billingOrchestrator';
+export {
   rejectClientAssertedPurchase,
   type BillingAdapter,
   type PurchaseToken,
