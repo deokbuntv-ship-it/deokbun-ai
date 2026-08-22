@@ -149,6 +149,33 @@ export default function MyScreen() {
                   <Text variant="bodyLarge" style={styles.rowLabel}>AI 생성 콘텐츠 안내</Text>
                   <Text variant="bodyLarge" style={styles.chevron}>›</Text>
                 </Pressable>
+                <Pressable
+                  onPress={() => router.push('/duk-policy')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
+                  <LineIcon name="wallet" size={22} color={theme.secondary} />
+                  <Text variant="bodyLarge" style={styles.rowLabel}>덕 유료 이용 정책</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/refund-policy')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
+                  <LineIcon name="shield" size={22} color={theme.secondary} />
+                  <Text variant="bodyLarge" style={styles.rowLabel}>환불·청약철회 정책</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/minor-policy')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
+                  <LineIcon name="shield" size={22} color={theme.secondary} />
+                  <Text variant="bodyLarge" style={styles.rowLabel}>미성년자 이용 안내</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
               </View>
             </Card>
 

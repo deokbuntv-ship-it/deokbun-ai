@@ -10,7 +10,7 @@
 
 export type LegalSection = { heading: string; paragraphs?: string[]; bullets?: string[] };
 export type LegalDocument = {
-  key: 'privacy' | 'terms';
+  key: 'privacy' | 'terms' | 'duk' | 'refund' | 'minor';
   title: string;
   version: string; // bump when the content materially changes
   status: 'DRAFT'; // V1 ships a draft pending legal review
@@ -55,9 +55,10 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      heading: '3. AI 처리 안내',
+      heading: '3. AI 처리 및 처리 위탁',
       paragraphs: [
         '상담과 운세를 제공하기 위해, 이용자가 입력한 정보와 대화 맥락이 AI 처리 과정에서 사용될 수 있습니다. 서비스는 이 과정에서 필요한 최소한의 정보만을 사용하도록 설계되어 있습니다.',
+        '서비스는 기능 제공을 위해 다음 처리자(수탁자)를 이용합니다. 데이터 저장·인증은 Supabase(데이터베이스/인증 인프라)를 통해, AI 해석 생성은 OpenAI(대규모 언어모델 API)를 통해 처리됩니다. 위탁 범위·항목·보유에 관한 확정 사항은 최종 법률 검토 시 명확히 안내됩니다.',
         '본 초안은 데이터 처리 위치에 관한 확정적 약속을 하지 않으며, 관련 세부 사항은 최종 검토 시 명확히 안내됩니다.',
       ],
     },
@@ -123,7 +124,14 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       ],
     },
     {
-      heading: '5. 약관의 변경',
+      heading: '5. 유료 이용(덕)과 상담 세션',
+      paragraphs: [
+        '서비스 내 일부 기능은 “덕”을 사용합니다. 덕의 적립·사용·차감 및 상담 세션의 이용 조건은 별도의 「덕 유료 이용 정책」에 따르며, 유료 이용 관련 환불·취소는 「환불·청약철회 정책」에 따릅니다.',
+        '상담은 세션 단위로 제공되며, 각 상담은 최대 5회 질문·24시간 이용을 기준으로 합니다. 자세한 내용은 위 정책 문서를 참고해 주세요. (본 조항은 초안이며 최종 검토 시 확정됩니다.)',
+      ],
+    },
+    {
+      heading: '6. 약관의 변경',
       paragraphs: [
         '서비스는 필요 시 약관을 변경할 수 있으며, 중요한 변경은 사전에 안내합니다. 구체적 절차와 효력 발생 시점은 최종본에 명시됩니다.',
       ],
@@ -131,4 +139,123 @@ export const TERMS_OF_SERVICE: LegalDocument = {
   ],
 };
 
-export const LEGAL_DOCUMENTS = { privacy: PRIVACY_POLICY, terms: TERMS_OF_SERVICE } as const;
+// ---------------------------------------------------------------------------------------------------------------
+// Sprint J7 §7.6 — DRAFT policy surfaces required before any paid launch. Values mirror economy_policy (staging-
+// validated); a "planned/not-yet-active" item is labeled as such so the policy never states behavior the code
+// does not perform. Each ships with the visible 검토 중 초안 banner (LegalDocumentView). Legal-final wording is
+// an OWNER action — these are structured placeholders for legal review, NOT final terms.
+// ---------------------------------------------------------------------------------------------------------------
+export const DUK_USE_POLICY: LegalDocument = {
+  key: 'duk',
+  title: '덕(Duk) 유료 이용 정책',
+  version: 'duk-policy@2026-08-draft-1',
+  status: 'DRAFT',
+  updatedLabel: '2026년 8월 기준 초안',
+  intro: [
+    '덕(Duk)은 서비스 내에서 상담·궁합 등 일부 기능을 이용하기 위한 앱 내 재화입니다. 본 문서는 덕의 적립·사용·차감 방식을 이용자가 이해할 수 있도록 설명한 초안입니다.',
+  ],
+  sections: [
+    {
+      heading: '1. 덕의 종류',
+      bullets: [
+        '보상 덕(REWARD): 가입 보상, 촛불 등 무료로 지급되는 덕',
+        '결제 덕(PAID): 향후 구매를 통해 충전되는 덕(현재 결제 기능은 준비 중)',
+        'PLUS 덕: 구독 기반 지급 덕(현재 미제공)',
+      ],
+    },
+    {
+      heading: '2. 적립',
+      bullets: [
+        '가입 시 10덕(1회, 약관 동의 시점에 서버에서 지급)',
+        '하루 한 번 촛불 +1덕(24시간마다)',
+        '이벤트성 지급이 있을 수 있습니다.',
+        '생일 보상은 정책상 정의되어 있으나 현재 지급이 활성화되어 있지 않습니다(추후 안내).',
+      ],
+    },
+    {
+      heading: '3. 사용과 가격',
+      bullets: ['일반 상담 5덕', '궁합 12덕', '프리미엄 리포트 50덕'],
+      paragraphs: ['차감 순서는 PLUS → 보상 → 결제 덕 순입니다.'],
+    },
+    {
+      heading: '4. 상담 세션',
+      paragraphs: [
+        '하나의 상담 세션은 최대 5회 질문, 24시간 동안 유효합니다. 세션 요금은 세션의 첫 성공 답변 시 1회 차감되며, 이후 같은 세션의 추가 질문에는 추가로 차감되지 않습니다. 세션 만료 또는 이용자의 중단으로 미사용된 부분은 환불 대상이 아닙니다(자세한 내용은 환불 정책 참고).',
+      ],
+    },
+    {
+      heading: '5. 유효기간·양도',
+      paragraphs: [
+        '현재 덕에는 별도의 유효기간이 설정되어 있지 않습니다. 덕은 계정에 귀속되며 타인에게 양도하거나 현금으로 환전할 수 없습니다. 유효기간 정책이 도입될 경우 사전에 안내합니다.',
+      ],
+    },
+  ],
+};
+
+export const REFUND_POLICY: LegalDocument = {
+  key: 'refund',
+  title: '환불·청약철회 정책',
+  version: 'refund-policy@2026-08-draft-1',
+  status: 'DRAFT',
+  updatedLabel: '2026년 8월 기준 초안',
+  intro: [
+    '본 문서는 유료 재화(덕) 및 상담 이용에 대한 환불·청약철회 기준의 초안입니다. 결제 기능은 현재 준비 중이며, 실제 결제 도입 시 관련 법령(전자상거래법 등)에 따라 최종 확정됩니다.',
+  ],
+  sections: [
+    {
+      heading: '1. 적용 범위',
+      paragraphs: ['덕 충전(결제) 및 결제 덕을 사용한 상담 등에 적용됩니다. 무료로 지급된 보상 덕은 환불 대상이 아닙니다.'],
+    },
+    {
+      heading: '2. 사용 전/후',
+      bullets: [
+        '미사용 결제 덕: 관련 법령이 정하는 청약철회 기간·요건에 따라 환불이 가능할 수 있습니다.',
+        '이미 사용된(차감된) 덕: 상담의 첫 성공 답변 시점에 이용이 개시된 것으로 보아, 사용분에 대한 환불이 제한될 수 있습니다.',
+        '세션 만료 또는 이용자의 자발적 중단으로 미사용된 세션 부분은 환불되지 않습니다.',
+      ],
+    },
+    {
+      heading: '3. 결제 취소·부분 취소로 인한 조정',
+      paragraphs: [
+        '스토어(App Store·Google Play)를 통한 환불이 발생하면, 해당 금액에 상응하는 덕이 차감되며, 잔액이 부족한 경우 부족분은 채무(잔여 조정 대상)로 기록되어 향후 충전 시 우선 상계될 수 있습니다. 보상 덕은 이 상계에 사용되지 않습니다.',
+      ],
+    },
+    {
+      heading: '4. 문의',
+      paragraphs: ['환불 요청 및 문의 절차는 결제 기능 도입 시 앱 내에서 안내합니다.'],
+    },
+  ],
+};
+
+export const MINOR_USE_POLICY: LegalDocument = {
+  key: 'minor',
+  title: '미성년자 이용 및 결제 안내',
+  version: 'minor-policy@2026-08-draft-1',
+  status: 'DRAFT',
+  updatedLabel: '2026년 8월 기준 초안',
+  intro: [
+    '본 문서는 미성년자의 서비스 이용 및 결제에 관한 기준의 초안입니다. 세부 기준은 관련 법령과 최종 법률 검토를 거쳐 확정됩니다.',
+  ],
+  sections: [
+    {
+      heading: '1. 연령 기준',
+      paragraphs: [
+        '현재 가입 시 “만 14세 이상”임을 확인하는 절차를 두고 있습니다. 향후 결제 도입 시에는 미성년자 보호를 위한 추가 확인 절차를 마련할 예정입니다.',
+      ],
+    },
+    {
+      heading: '2. 미성년자 결제',
+      paragraphs: [
+        '미성년자의 결제에는 법정대리인의 동의가 필요할 수 있으며, 관련 법령에 따라 법정대리인이 취소할 수 있습니다. 구체적 절차는 결제 기능 도입 및 법률 검토 후 확정됩니다(검토 필요 항목).',
+      ],
+    },
+  ],
+};
+
+export const LEGAL_DOCUMENTS = {
+  privacy: PRIVACY_POLICY,
+  terms: TERMS_OF_SERVICE,
+  duk: DUK_USE_POLICY,
+  refund: REFUND_POLICY,
+  minor: MINOR_USE_POLICY,
+} as const;

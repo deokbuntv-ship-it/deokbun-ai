@@ -86,6 +86,9 @@ export default function RootLayout() {
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
             <Stack.Screen name="ai-notice" options={{ headerShown: false }} />
+            <Stack.Screen name="duk-policy" options={{ headerShown: false }} />
+            <Stack.Screen name="refund-policy" options={{ headerShown: false }} />
+            <Stack.Screen name="minor-policy" options={{ headerShown: false }} />
             {/* Public content / famous surface (consumer-facing, no auth). */}
             <Stack.Screen name="content/index" options={{ headerShown: false }} />
             <Stack.Screen name="content/[slug]" options={{ headerShown: false }} />

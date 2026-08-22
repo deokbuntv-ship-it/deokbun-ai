@@ -50,7 +50,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "preflight": "node scripts/preflight.mjs"
+    "preflight": "node scripts/preflight.mjs",
+    "release-preflight": "node scripts/release-preflight.mjs"
   },
   "private": true
 }
