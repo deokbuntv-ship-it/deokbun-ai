@@ -49,19 +49,54 @@ export function containsForbiddenCertainty(text: string): boolean {
   return false;
 }
 
-// ── Option B winner/ranking output guard (Sprint C.1 §11) ──────────────────────────────────────
-// V1 has NO server-decided temporal/comparison winner, so an LLM winner/rank/best/worst claim on a
-// comparison or ranking question is unsupported. Per-sentence + hedge-aware (mirrors the certainty guard):
-// a sentence that DECLINES to pick ("한쪽이 더 낫다고 단정하기 어렵습니다", "1순위를 정하지 않습니다") is NOT flagged.
+// ── Option B winner/ranking output guard (Sprint C.1 §11, hardened Sprint F.1 §B-§F) ────────────
+// V1 has NO server-decided temporal/comparison winner, so the LLM must never manufacture one — EXPLICIT
+// ("가장 좋은", "1순위") OR IMPLICIT (선택/추천/진행하세요/무게를 둔다/A보다 낫다/더 적합/피하고 택한다). The server
+// owns candidate identity; the LLM may only describe each candidate. Per-sentence + hedge-aware: a sentence that
+// DECLINES to pick ("한쪽이 더 낫다고 단정하기 어렵습니다", "1순위를 정하지 않습니다") is NOT flagged. Structural fields
+// for a winner (§C) are also forbidden — see WINNER_FIELD below.
 const WINNER_CLAIM =
   /보다\s*(더\s*)?(좋|낫|유리|나은)|(이쪽|저쪽|한쪽|이\s*편|그\s*편)\s*(이|가)?\s*더\s*(좋|낫|유리)|더\s*나은\s*(쪽|편|시기|달|해)|가장\s*(좋|나은|유리|나쁜|안\s*좋)|제일\s*(좋|나은|유리)|최고의\s*(시기|해|달|때)|최악의\s*(시기|해|달)|1\s*순위|우선\s*추천|먼저\s*추천/;
-const WINNER_HEDGE = /단정|어렵|아니|않|없|정하지|고르지|가리기|우열|비슷|팽팽|섣불리/;
+// IMPLICIT winner: recommendation / selection / direction / weighting / comparative-preference / avoidance.
+const IMPLICIT_WINNER = new RegExp(
+  [
+    // recommend / advise one side
+    '추천', '권합니다', '권해', '권하', '권장', '권유',
+    // choose / select as a preference or directive
+    '선택하(는\\s*(게|것이|편)|세요|시길|길|시는\\s*걸)', '택하(는\\s*(게|것이|편)|세요|시)',
+    '(고르|골라)(는\\s*(게|편)|면|서|야|주)', '고른다면', '고를\\s*(게|까요)?',
+    // "if it were me / if I choose … it's X"
+    '저라면', '제가\\s*(고르|고른다면|선택|택한다면|본다면|한다면|정한다면)', '굳이\\s*(하나\\s*)?(고르|고른다면|선택|정한다)', '둘\\s*중이?라면',
+    // imperative direction: go with / proceed with X
+    '로\\s*(진행하|하|가|정하)(세요|십시오|시)', '진행하시는\\s*것', '진행하는\\s*(게|것이|편이)\\s*(좋|낫|맞|적합)',
+    // weight / lean toward one side
+    '무게를?\\s*(두|싣|실)', '힘을?\\s*(싣|실|실어)', '(쪽|편)에\\s*(무게|비중)', '손을?\\s*들',
+    // comparative preference "better than" (allow words between 보다 and the predicate)
+    '보다\\s*는?\\s*[^.!?。\\n]{0,12}(더\\s*)?(좋|낫|나아|유리|적합|편|맞|나은)',
+    // one side is better / recommended (side-anchored predicate)
+    '(쪽|편)(으로|이|을|에|은|가)?\\s*[^.!?。\\n]{0,6}(권|추천|가시|택|선택|무게|낫|나아|유리|적합|맞)',
+    // comparative adjectives that imply ranking
+    '(조금|좀|약간|상대적으로|여러모로|아무래도)?\\s*더\\s*(적합|유리|나은|나아|적절)',
+    '(조금|좀|약간|상대적으로|여러모로)\\s*더\\s*(좋|낫|맞|편)',
+    '더\\s*나은\\s*선택',
+    // bare preference conclusion / avoidance of one side
+    '낫겠|낫습니다|나은\\s*편', '피하(시는|는|고|세요|십시오)',
+  ].join('|'),
+);
+const WINNER_HEDGE = /단정|어렵|아니|않|없|정하지|고르지|가리기|우열|비슷|팽팽|섣불리|못\s*(정|고르|가리)/;
 export function containsWinnerClaim(text: string): boolean {
   if (typeof text !== 'string' || text.length === 0) return false;
   for (const s of splitSentences(text)) {
-    if (WINNER_CLAIM.test(s) && !WINNER_HEDGE.test(s)) return true;
+    if ((WINNER_CLAIM.test(s) || IMPLICIT_WINNER.test(s)) && !WINNER_HEDGE.test(s)) return true;
   }
   return false;
+}
+
+// Structural guard (§C): the LLM output JSON must carry NO winner/ranking field. Even if the prose is neutral,
+// a field like winner/recommendedCandidate/rank/score/best/preference asserts a selection the server never made.
+const WINNER_FIELD = /"(winner|recommendedCandidate|recommended|rank|ranking|score|best|worst|preference|preferred|choice|chosen|pick|top(Choice|Pick)?)"\s*:/i;
+export function containsWinnerField(rawJson: string): boolean {
+  return typeof rawJson === 'string' && WINNER_FIELD.test(rawJson);
 }
 
 // ── Prose ↔ machine-polarity contradiction guard (Sprint C.1 §14) ──────────────────────────────
@@ -119,7 +154,7 @@ export function hasConstructiveDirection(text: string): boolean {
 
 // A short directive appended to the SECOND (only) attempt. Names the fault(s) and re-orients the answer.
 export const CERTAINTY_REGEN_DIRECTIVE =
-  '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 승자/1순위/가장 좋음(또는 가장 나쁨)으로 고르는 표현, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 한쪽을 승자로 정하지 말고 각각 설명하며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
+  '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 고르거나 미는 표현 — 승자/1순위/가장 좋음뿐 아니라 "A로 진행하세요/A를 추천/권합니다/선택하는 편이 좋다/A가 더 낫다·적합하다/A에 무게를 둔다/B를 피하라/저라면 A" 같은 은근한 추천·선택·방향 제시도 모두 금지, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 어느 한쪽도 고르거나 권하지 말고 각 후보의 장점과 주의점을 균형 있게 설명한 뒤 "지금 기준으로는 한쪽을 더 낫다고 정하지 않습니다"로 맺으며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
 
 // Appended to the compatibility regeneration (§D5/§D6).
 export const COMPAT_REGEN_DIRECTIVE =
@@ -156,7 +191,9 @@ type GuardOpts = {
   forbidCompatibilityHarm?: boolean; // §D5 — 궁합 relationship-safety
   requireConstructive?: boolean; // §D6 — negative-tier 궁합 must carry a management direction
 };
-function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts): boolean {
+function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts, rawJson?: string): boolean {
+  // Structural winner field (§C): even neutral prose is rejected if the raw JSON asserts a selection field.
+  if (opts.forbidWinner && typeof rawJson === 'string' && containsWinnerField(rawJson)) return true;
   const text = renderableText(outcome);
   if (text === null) return false;
   if (containsForbiddenCertainty(text)) return true;
@@ -204,7 +241,7 @@ export async function classifyWithGuards(args: {
     requireConstructive: args.requireConstructive ?? false,
   };
   const first = classifyConsultationOutput(args.raw, args.grounding);
-  if (!outcomeViolates(first, opts)) {
+  if (!outcomeViolates(first, opts, args.raw)) {
     return { outcome: first, regenerated: false, guardRejected: false };
   }
 
@@ -219,7 +256,7 @@ export async function classifyWithGuards(args: {
   }
 
   const second = classifyConsultationOutput(raw2, args.grounding);
-  if (outcomeViolates(second, opts)) {
+  if (outcomeViolates(second, opts, raw2)) {
     return { outcome: { kind: 'SEMANTIC_REJECTED', reason: 'guard_option_b_polarity' }, regenerated: true, guardRejected: true };
   }
   return { outcome: second, regenerated: true, guardRejected: false };
