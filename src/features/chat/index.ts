@@ -54,6 +54,8 @@ export {
   ConversationAuthRequiredError,
 } from './services/conversationBoundSend';
 export type { ConversationAuthSnapshot } from './services/conversationBoundSend';
+export { createSingleFlight } from './services/singleFlight';
+export type { SingleFlight } from './services/singleFlight';
 export type { MessagesHydrationStatus } from './hooks/useConversationPersistence';
 export { mapConsultationError } from './consultationErrors';
 export type {

@@ -11,7 +11,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
-import { ChatInput, conversationService, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
+import { ChatInput, conversationService, createSingleFlight, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
 import { feedbackService } from '@/features/chat/services/feedbackService';
 import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
@@ -43,6 +43,10 @@ export default function CompatibilityChatScreen() {
   const params = useLocalSearchParams<{ selfId?: string; targetId?: string; new?: string }>();
   const startNew = params.new === '1';
   const { isAuthenticated } = useAuth();
+  // §J (Sprint F.1) — read LIVE auth, not a value captured once. The service's auth guard reads this ref, so a
+  // login while the screen stays mounted is seen immediately (no stale AUTH_REQUIRED after logging in).
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
   const { subjects, status } = useConsultationSubjects();
 
   const self = useMemo(
@@ -55,7 +59,7 @@ export default function CompatibilityChatScreen() {
   );
 
   const serviceRef = useRef(
-    createCompatibilityConsultationService(supabaseEdgeConsultationAdapter, () => isAuthenticated),
+    createCompatibilityConsultationService(supabaseEdgeConsultationAdapter, () => isAuthenticatedRef.current),
   );
   const [messages, setMessages] = useState<CompatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -77,8 +81,38 @@ export default function CompatibilityChatScreen() {
     });
   };
   const conversationIdRef = useRef<string | null>(null);
+  // §K (Sprint F.1) — single-flight conversation creation. Two concurrent sends must never both observe
+  // conversationIdRef.current === null and create two conversations; the in-flight promise is shared.
+  const createConversationSingleFlight = useRef(createSingleFlight<string>());
+  // Synchronous re-entrancy lock (the `sending` STATE updates a tick later) so a same-frame double-tap
+  // cannot start two sends.
+  const sendingRef = useRef(false);
   const persistedIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<ScrollView>(null);
+
+  // Create-or-restore the owned 궁합 conversation exactly once (single-flight). Auth precedes creation
+  // (§B/§J): never INSERT for an unauthenticated caller. Returns the owned conversation id.
+  const ensureCompatConversationId = (tierForCreate: CompatibilityResultMeta | null): Promise<string> => {
+    if (conversationIdRef.current !== null) return Promise.resolve(conversationIdRef.current);
+    if (!isAuthenticatedRef.current || !self || !target) {
+      return Promise.reject(new Error('AUTH_OR_SUBJECT_REQUIRED'));
+    }
+    return createConversationSingleFlight.current(() =>
+      conversationService
+        .createConversation(
+          target.id,
+          {
+            self: { id: self.id, displayName: self.displayName },
+            target: { id: target.id, displayName: target.displayName, relationship: target.relationship },
+          },
+          { consultationMode: 'compatibility', compatibilityMeta: tierForCreate ?? undefined },
+        )
+        .then((id) => {
+          conversationIdRef.current = id;
+          return id;
+        }),
+    );
+  };
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -93,19 +127,10 @@ export default function CompatibilityChatScreen() {
     assistantMsg: CompatMessage,
     tierForCreate: CompatibilityResultMeta | null,
   ) => {
-    if (!isAuthenticated || !self || !target) return;
+    if (!isAuthenticatedRef.current || !self || !target) return;
     try {
-      if (conversationIdRef.current === null) {
-        conversationIdRef.current = await conversationService.createConversation(
-          target.id,
-          {
-            self: { id: self.id, displayName: self.displayName },
-            target: { id: target.id, displayName: target.displayName, relationship: target.relationship },
-          },
-          { consultationMode: 'compatibility', compatibilityMeta: tierForCreate ?? undefined },
-        );
-      }
-      const cid = conversationIdRef.current;
+      // §K — single-flight; concurrent sends share one creation and can never double-create.
+      const cid = await ensureCompatConversationId(tierForCreate);
       for (const m of [userMsg, assistantMsg]) {
         if (persistedIdsRef.current.has(m.id)) continue;
         persistedIdsRef.current.add(m.id);
@@ -122,9 +147,12 @@ export default function CompatibilityChatScreen() {
   };
 
   const send = async (question: string) => {
-    if (!self || !target || sending) return;
+    // §K — synchronous re-entrancy lock (before any await/state update) so a same-frame double-tap
+    // cannot start two sends (the `sending` state updates a tick later).
+    if (!self || !target || sending || sendingRef.current) return;
     const q = question.trim();
     if (q.length === 0) return;
+    sendingRef.current = true;
     setErrorText(null);
     setInput('');
     const userMsg: CompatMessage = { id: newId('user'), role: 'user', text: q };
@@ -163,6 +191,7 @@ export default function CompatibilityChatScreen() {
       void persistPair(userMsg, assistantMsg, result.compatibility ?? tier);
     } finally {
       setSending(false);
+      sendingRef.current = false;
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     }
   };
