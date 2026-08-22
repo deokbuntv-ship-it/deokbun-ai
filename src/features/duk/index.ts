@@ -46,6 +46,7 @@ export {
   type BillingEffects,
   type BillingErrorCode,
 } from './billingOrchestrator';
+export * from './iap';
 export {
   rejectClientAssertedPurchase,
   type BillingAdapter,
