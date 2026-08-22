@@ -8,6 +8,9 @@ import type { OnboardingState } from '@/features/onboarding/onboardingState';
 export const LOGIN_PATH = '/login';
 export const ONBOARDING_RESOLVER_PATH = '/onboarding';
 export const ONBOARDING_TERMS_PATH = '/onboarding/terms';
+// Optional post-consent interstitial (§2). NOT a required gating step — the required contract stays
+// terms → birth; this is a skippable detour shown between them.
+export const ONBOARDING_CHANNEL_PATH = '/onboarding/channel';
 export const ONBOARDING_BIRTH_PATH = '/onboarding/birth';
 export const HOME_PATH = '/';
 
@@ -36,7 +39,12 @@ export function normalizePath(path: string | null | undefined): string {
 
 export function classifyConsumerPath(rawPath: string | null | undefined): PathClass {
   const path = normalizePath(rawPath);
-  if (path === ONBOARDING_RESOLVER_PATH || path === ONBOARDING_TERMS_PATH || path === ONBOARDING_BIRTH_PATH) {
+  if (
+    path === ONBOARDING_RESOLVER_PATH ||
+    path === ONBOARDING_TERMS_PATH ||
+    path === ONBOARDING_CHANNEL_PATH ||
+    path === ONBOARDING_BIRTH_PATH
+  ) {
     return 'onboarding';
   }
   for (const prefix of PUBLIC_PREFIXES) {
@@ -73,6 +81,11 @@ export function resolveGateDecision(state: OnboardingState, rawPath: string | nu
     if (state === 'AUTHENTICATED_LOADING' || state === 'ERROR') return loading;
     // The resolver route is always allowed to render — it decides/forwards (and consumes continuation).
     if (path === ONBOARDING_RESOLVER_PATH) return render;
+    // Optional Kakao-channel interstitial (§2): renders once consent is done (post-terms), never gates. Before
+    // consent it bounces to the required step; it's fully skippable so it is not part of neededStepPath.
+    if (path === ONBOARDING_CHANNEL_PATH) {
+      return state === 'NEEDS_TERMS' ? redirect(ONBOARDING_TERMS_PATH) : render;
+    }
     // A specific step renders only when it is the step the state requires; otherwise bounce to the resolver
     // so the user can never skip ahead or linger on a finished step.
     const needed = neededStepPath(state);

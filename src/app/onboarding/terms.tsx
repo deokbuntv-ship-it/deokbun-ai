@@ -53,8 +53,9 @@ export default function OnboardingTermsScreen() {
     try {
       await profileService.saveConsent(userId, { termsVersion: TERMS_VERSION, marketingOptIn: marketing });
       void trackOnboardingEvent('onboarding_terms_completed', { completion_step: 'terms' });
-      reload(); // refresh shared facts → resolver advances to the birth step
-      router.replace('/onboarding');
+      reload(); // refresh shared facts (→ NEEDS_BIRTH_PROFILE)
+      // Show the OPTIONAL Kakao-channel step next (§2); it is skippable and continues to the birth step.
+      router.replace('/onboarding/channel');
     } catch {
       // Keep selections; consent MUST be durably recorded before advancing (§59).
       setError('약관 동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');

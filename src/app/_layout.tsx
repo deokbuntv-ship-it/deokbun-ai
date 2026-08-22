@@ -57,6 +57,7 @@ export default function RootLayout() {
             {/* Signup-first onboarding steps (gate-driven): resolver → terms → birth profile. */}
             <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding/terms" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding/channel" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding/birth" options={{ headerShown: false }} />
             {/* Provider-neutral OAuth return route (web popup completion; native
                 intercepts the deep link and never mounts this). */}

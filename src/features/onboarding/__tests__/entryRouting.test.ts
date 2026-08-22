@@ -26,7 +26,7 @@ describe('classifyConsumerPath — fail-closed default', () => {
       expect(classifyConsumerPath(p)).toBe('public');
   });
   it('onboarding routes are onboarding', () => {
-    for (const p of ['/onboarding', '/onboarding/terms', '/onboarding/birth'])
+    for (const p of ['/onboarding', '/onboarding/terms', '/onboarding/channel', '/onboarding/birth'])
       expect(classifyConsumerPath(p)).toBe('onboarding');
   });
   it('every product surface (incl. unknown) is gated by default', () => {
@@ -75,6 +75,16 @@ describe('resolveGateDecision — onboarding routes (no skipping, no lingering)'
   it('NEEDS_BIRTH renders the birth step but bounces a finished terms step to the resolver', () => {
     expect(resolveGateDecision('NEEDS_BIRTH_PROFILE', '/onboarding/birth')).toEqual({ kind: 'render' });
     expect(resolveGateDecision('NEEDS_BIRTH_PROFILE', '/onboarding/terms')).toEqual(redirect('/onboarding'));
+  });
+
+  it('the optional channel step renders post-consent, but never before terms; still skippable (not a needed step)', () => {
+    // Before consent → sent to the required terms step (can't see the optional step early).
+    expect(resolveGateDecision('NEEDS_TERMS', '/onboarding/channel')).toEqual(redirect('/onboarding/terms'));
+    // After consent (and even when COMPLETE, e.g. re-entering) → renders; it never gates progression.
+    expect(resolveGateDecision('NEEDS_BIRTH_PROFILE', '/onboarding/channel')).toEqual({ kind: 'render' });
+    expect(resolveGateDecision('COMPLETE', '/onboarding/channel')).toEqual({ kind: 'render' });
+    // Anonymous still bounced to login.
+    expect(resolveGateDecision('ANONYMOUS', '/onboarding/channel')).toEqual(redirect('/login'));
   });
   it('COMPLETE lingering on a step → resolver (which sends them onward)', () => {
     expect(resolveGateDecision('COMPLETE', '/onboarding/terms')).toEqual(redirect('/onboarding'));

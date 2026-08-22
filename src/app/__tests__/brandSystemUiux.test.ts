@@ -71,6 +71,42 @@ describe('social login keeps each provider signature; never orange (§10/§37)',
     expect(new Set(bgs).size).toBe(bgs.length);
     expect(bgs.length).toBeGreaterThanOrEqual(3);
   });
+  it('has an official mark slot, currently pending (no hand-drawn/emoji/bundled logo)', () => {
+    // The slot exists (Image render gated on a mark), and every provider mark is null
+    // (OFFICIAL_MARK_ASSET_PENDING) — no asset is bundled and no emoji stands in for a logo.
+    expect(sb).toMatch(/p\.mark\s*!=\s*null\s*\?\s*<Image/);
+    expect((sb.match(/mark:\s*null/g) || []).length).toBeGreaterThanOrEqual(4);
+    expect(sb).not.toMatch(/mark:\s*require\(/); // no bundled/approximated asset yet
+  });
+});
+
+describe('Kakao channel onboarding step — optional, honest, separate from marketing (§2/§3)', () => {
+  const ch = read('app/onboarding/channel.tsx');
+  it('is always skippable', () => {
+    expect(ch).toMatch(/건너뛰기/);
+  });
+  it('states the add is 준비 중 (EXTERNAL_NOT_CONFIGURED), never a fake success', () => {
+    expect(ch).toMatch(/준비 중/);
+    // No success-claim copy — the screen never tells the user the channel was added/connected.
+    expect(ch).not.toMatch(/추가되었|연결되었|추가 완료|연결 완료/);
+  });
+  it('explicitly separates marketing consent from adding the channel', () => {
+    expect(ch).toMatch(/별개/);
+  });
+  it('both add and skip continue to the required flow (resolver → birth), never a dead-end', () => {
+    expect(ch).toMatch(/router\.replace\('\/onboarding'\)/);
+  });
+  it('the terms step routes into the optional channel step after consent', () => {
+    expect(read('app/onboarding/terms.tsx')).toMatch(/router\.replace\('\/onboarding\/channel'\)/);
+  });
+});
+
+describe('compatibility long-form fallback uses the Body token, not the 14px caption size (§6)', () => {
+  const cc = read('app/compatibility-chat.tsx');
+  it('the fallback answer card renders at bodyLarge without an arbitrary lineHeight', () => {
+    expect(cc).toMatch(/<Text variant="bodyLarge">\s*\n?\s*\{m\.text\}/);
+    expect(cc).not.toMatch(/variant="bodyMedium" style=\{\{ lineHeight: 23 \}\}/);
+  });
 });
 
 describe('login screen renders provider-distinct social buttons, not the orange Button (§11)', () => {

@@ -336,7 +336,8 @@ export default function CompatibilityChatScreen() {
     }
     return (
       <Card key={m.id} radius="xl">
-        <Text variant="bodyMedium" style={{ lineHeight: 23 }}>
+        {/* Long-form interpretive fallback → Body (16/24) for comfortable reading (§6), not the 14px caption size. */}
+        <Text variant="bodyLarge">
           {m.text}
         </Text>
       </Card>
