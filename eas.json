@@ -1,5 +1,8 @@
 {
-  "cli": { "version": ">= 5.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 5.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -7,16 +10,20 @@
       "channel": "development",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-Ti1LWxshsLR2uuwjYwyVA_FP77uHkI"
       },
-      "ios": { "simulator": true }
+      "ios": {
+        "simulator": true
+      }
     },
     "staging": {
       "distribution": "internal",
       "channel": "staging",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "staging",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-Ti1LWxshsLR2uuwjYwyVA_FP77uHkI"
       }
     },
     "production": {
@@ -29,5 +36,7 @@
       "autoIncrement": true
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }
