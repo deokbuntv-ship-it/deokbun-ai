@@ -50,3 +50,27 @@ verify_jwt = true
 [functions.naver-auth]
 enabled = true
 verify_jwt = false
+
+[functions.ad-track]
+enabled = true
+verify_jwt = false
+
+# IAP purchase verification (Sprint I). Authenticated user submits an OPAQUE store token; the server verifies
+# it with the store and grants Duk. JWT ON — only an authenticated user may request verification.
+[functions.verify-purchase]
+enabled = true
+verify_jwt = true
+
+# App Store Server Notifications V2 webhook. Apple posts a signed JWS with NO Supabase JWT, so platform JWT
+# verification MUST be off — but the function still verifies the Apple JWS signature before ANY effect (its
+# trust is the Apple signature, not a Supabase JWT). Never mutates entitlements from unverified JSON.
+[functions.apple-notifications-v2]
+enabled = true
+verify_jwt = false
+
+# Google Play RTDN webhook. Pub/Sub posts an OIDC token (not a Supabase JWT), so platform JWT verification MUST
+# be off — the function authenticates the push + re-fetches authoritative Play state before any effect. The RTDN
+# body is only a change signal, never the purchase truth.
+[functions.google-rtdn]
+enabled = true
+verify_jwt = false

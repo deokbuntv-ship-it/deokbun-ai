@@ -23,3 +23,24 @@ export function isAuthTransportError(error: unknown): boolean {
 export function isAuthLLMError(error: unknown): boolean {
   return error instanceof LLMRequestError && error.authError;
 }
+
+// A functions.invoke 402 carries the authoritative INSUFFICIENT_DUK payload on the Response body
+// (`error.context`). Returns the server's {balance,required,shortfall} — NEVER client-calculated — or null
+// when the error is not an insufficient-Duk 402. Reads the body only for a 402 (status is checked first).
+export async function parseInsufficientDuk(
+  error: unknown,
+): Promise<{ balance: number; required: number; shortfall: number } | null> {
+  const ctx = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx || ctx.status !== 402 || typeof ctx.json !== 'function') return null;
+  try {
+    const body = (await ctx.json()) as { error?: unknown; balance?: unknown; required?: unknown; shortfall?: unknown };
+    if (!body || body.error !== 'INSUFFICIENT_DUK') return null;
+    return {
+      balance: Number(body.balance ?? 0),
+      required: Number(body.required ?? 0),
+      shortfall: Number(body.shortfall ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}

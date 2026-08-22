@@ -118,6 +118,10 @@ export type ChatServiceResult =
         | 'NOT_CONFIGURED'
         | 'INVALID_INPUT'
         | 'REQUEST_FAILED'
-        | 'AUTH_REQUIRED';
+        | 'AUTH_REQUIRED'
+        | 'INSUFFICIENT_DUK';
       requestId?: string;
+      // Authoritative server balance snapshot — present ONLY for errorCode 'INSUFFICIENT_DUK'. The UI uses
+      // these for a top-up/paywall prompt; they are NEVER computed client-side.
+      insufficientDuk?: { balance: number; required: number; shortfall: number };
     };

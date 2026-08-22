@@ -17,7 +17,9 @@ export type ConsultationTransportResult =
       // Present only for a compatibility (궁합) request — the deterministic tier meta.
       compatibility?: CompatibilityResultMeta;
     }
-  | { ok: false; error: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' };
+  | { ok: false; error: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' }
+  // Authoritative HTTP 402 from the Edge — the server's balance/required/shortfall (never client-calculated).
+  | { ok: false; error: 'INSUFFICIENT_DUK'; balance: number; required: number; shortfall: number };
 
 export type ConsultationTransport = {
   requestConsultation(request: ServerConsultationRequest): Promise<ConsultationTransportResult>;

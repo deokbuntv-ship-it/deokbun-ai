@@ -1,4 +1,4 @@
-import { isAuthTransportError } from '@/features/chat/adapters/llmError';
+import { isAuthTransportError, parseInsufficientDuk } from '@/features/chat/adapters/llmError';
 import type {
   ConsultationTransport,
   ConsultationTransportResult,
@@ -17,6 +17,12 @@ export const supabaseEdgeConsultationAdapter: ConsultationTransport = {
     const { data, error } = await supabase.functions.invoke('chat', { body: request });
 
     if (error) {
+      // 402 → authoritative INSUFFICIENT_DUK: surface the server's balance/required/shortfall so the client can
+      // route to a top-up/paywall instead of a misleading generic failure (§13/§14).
+      const insufficient = await parseInsufficientDuk(error);
+      if (insufficient) {
+        return { ok: false, error: 'INSUFFICIENT_DUK', balance: insufficient.balance, required: insufficient.required, shortfall: insufficient.shortfall };
+      }
       // 401 → session expired/invalid: surface as auth so the client routes to login+resume (§15).
       return { ok: false, error: isAuthTransportError(error) ? 'AUTH_REQUIRED' : 'REQUEST_FAILED' };
     }

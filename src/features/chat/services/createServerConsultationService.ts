@@ -22,6 +22,7 @@ import type {
   ChatServiceInput,
   ChatServiceResult,
 } from '@/features/chat/types/chatArchitecture';
+import { trackProductEvent } from '@/services/productEvents';
 
 export function createServerConsultationService(
   transport: ConsultationTransport,
@@ -65,6 +66,14 @@ export function createServerConsultationService(
       content: m.text,
     }));
 
+    // Analytics (CLIENT_INTENT) — a legitimate solo consultation request is beginning (post validation + auth).
+    // Non-blocking + privacy-safe; never carries prompt/answer text; a failure here never affects the request.
+    void trackProductEvent('consultation_started', {
+      surface: 'consultation',
+      consultationMode: 'solo',
+      properties: { product: 'general' },
+    }).catch(() => {}); // never let analytics affect the consultation
+
     try {
       const result = await transport.requestConsultation({
         question: trimmedUserMessage,
@@ -85,6 +94,15 @@ export function createServerConsultationService(
         if (result.error === 'INVALID_INPUT') {
           return { success: false, errorCode: 'INVALID_INPUT', requestId };
         }
+        if (result.error === 'INSUFFICIENT_DUK') {
+          // Authoritative server balance — surface distinctly (not a generic failure) for a top-up prompt.
+          return {
+            success: false,
+            errorCode: 'INSUFFICIENT_DUK',
+            insufficientDuk: { balance: result.balance, required: result.required, shortfall: result.shortfall },
+            requestId,
+          };
+        }
         logFailure('REQUEST_FAILED', 'error');
         return { success: false, errorCode: 'REQUEST_FAILED', requestId };
       }
@@ -92,6 +110,17 @@ export function createServerConsultationService(
       // `mode` is a UI-shaping hint only (facts stay server-authoritative); classify it locally so meta
       // is a valid ConsultationResponseMetadata regardless of what the server echoes.
       const mode = classifyConsultationMode(trimmedUserMessage, boundedRecent.length > 0);
+      // Analytics (CLIENT_OBSERVED_SERVER_OUTCOME) — emit ONLY after a successful accepted server response.
+      // Categorical/boolean props only (no prompt/answer text); non-blocking.
+      void trackProductEvent('consultation_completed', {
+        surface: 'consultation',
+        consultationMode: 'solo',
+        properties: {
+          product: 'general',
+          outcome: 'success',
+          ...(result.groundingMeta?.engineVersion ? { engine_version: result.groundingMeta.engineVersion } : {}),
+        },
+      }).catch(() => {}); // never let analytics affect the consultation
       return {
         success: true,
         responseText: result.text,

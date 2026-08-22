@@ -12,6 +12,7 @@ import {
 } from '@/features/analysis';
 import { evaluateMessage } from '@/features/chat/gateway/AIGateway';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
+import { trackProductEvent } from '@/services/productEvents';
 import type { AuthGuard } from '@/features/chat/services/chatService';
 import type { ConsultationTransport } from '@/features/chat/services/consultationTransport';
 import type { CompatibilityResultMeta, UntrustedTurn } from '@/features/chat/server';
@@ -38,8 +39,10 @@ export type CompatibilityChatResult =
     }
   | {
       success: false;
-      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED';
+      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK';
       requestId: string;
+      // Authoritative server balance — present ONLY for 'INSUFFICIENT_DUK' (drives the top-up/paywall UX).
+      insufficientDuk?: { balance: number; required: number; shortfall: number };
     };
 
 function hasBirth(b: BirthInfoDraft | null | undefined): b is BirthInfoDraft {
@@ -104,6 +107,20 @@ export function createCompatibilityConsultationService(
           return { success: false, errorCode: 'AUTH_REQUIRED', requestId };
         }
         if (result.error === 'INVALID_INPUT') return { success: false, errorCode: 'INVALID_INPUT', requestId };
+        if (result.error === 'INSUFFICIENT_DUK') {
+          // Analytics from AUTHORITATIVE server values only (never client-calculated); non-blocking.
+          void trackProductEvent('compatibility_insufficient_duk', {
+            surface: 'compatibility_chat',
+            consultationMode: 'compatibility',
+            properties: { product: 'compatibility', amount: result.required, duk_balance: result.balance, duk_shortfall: result.shortfall },
+          }).catch(() => {});
+          return {
+            success: false,
+            errorCode: 'INSUFFICIENT_DUK',
+            insufficientDuk: { balance: result.balance, required: result.required, shortfall: result.shortfall },
+            requestId,
+          };
+        }
         logFailure('REQUEST_FAILED', 'error');
         return { success: false, errorCode: 'REQUEST_FAILED', requestId };
       }

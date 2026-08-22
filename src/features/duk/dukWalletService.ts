@@ -3,6 +3,7 @@
 // NEVER grants/spends/reserves/commits/releases/reverses Duk or modifies debt — those are service-role RPCs
 // invoked by the Edge after the LLM. Non-blocking reads (a failure yields a safe empty/locked state).
 import { getSupabaseClient } from '@/services/supabase';
+import { trackProductEvent } from '@/services/productEvents';
 import { candleAvailability, type CandleAvailability } from './candle';
 
 export type WalletState = {
@@ -67,7 +68,16 @@ export async function lightCandle(): Promise<LightCandleResult> {
     const { data, error } = await supabase.rpc('light_candle');
     if (error || !data || typeof data !== 'object') return { granted: false, nextAvailableAt: null, rewardAmount: 0 };
     const d = data as { granted?: boolean; next_available_at?: string | null; reward_amount?: number };
-    return { granted: d.granted === true, nextAvailableAt: d.next_available_at ?? null, rewardAmount: Number(d.reward_amount ?? 0) };
+    const result = { granted: d.granted === true, nextAvailableAt: d.next_available_at ?? null, rewardAmount: Number(d.reward_amount ?? 0) };
+    // Analytics (CLIENT_OBSERVED_SERVER_OUTCOME) — emit ONLY on an authoritative grant, never on cooldown/failure.
+    // Non-blocking + privacy-safe (allowlisted props); a failure here never affects the candle outcome.
+    if (result.granted) {
+      void trackProductEvent('candle_lit', {
+        surface: 'candle',
+        properties: { amount: result.rewardAmount, bucket: 'REWARD', reason: 'CANDLE' },
+      }).catch(() => {}); // never let analytics affect the candle outcome
+    }
+    return result;
   } catch {
     return { granted: false, nextAvailableAt: null, rewardAmount: 0 };
   }

@@ -8,9 +8,10 @@ export type ConsultationErrorCode =
   | 'AUTH_REQUIRED'
   | 'NOT_CONFIGURED'
   | 'INVALID_INPUT'
-  | 'REQUEST_FAILED';
+  | 'REQUEST_FAILED'
+  | 'INSUFFICIENT_DUK';
 
-export type ConsultationErrorKind = 'auth' | 'recoverable' | 'blocked' | 'input';
+export type ConsultationErrorKind = 'auth' | 'recoverable' | 'blocked' | 'input' | 'insufficient';
 
 export type ConsultationErrorView = {
   kind: ConsultationErrorKind;
@@ -44,6 +45,14 @@ export function mapConsultationError(code: ConsultationErrorCode): ConsultationE
       return {
         kind: 'input',
         message: '메시지를 다시 확인해 주세요.',
+        canRetry: false,
+      };
+    case 'INSUFFICIENT_DUK':
+      // Retrying the same request will not help until the wallet is topped up; a future top-up/paywall UX
+      // uses the authoritative server balance on the service result (never a client-calculated amount).
+      return {
+        kind: 'insufficient',
+        message: '덕이 부족해서 상담을 진행할 수 없어요.\n덕을 충전한 뒤 다시 시도해 주세요.',
         canRetry: false,
       };
   }
