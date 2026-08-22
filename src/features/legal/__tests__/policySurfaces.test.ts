@@ -24,9 +24,12 @@ describe('policy surfaces (§7.6)', () => {
     expect(text).toContain(`${DUK_PRICES.premium_report}덕`); // 50덕
   });
 
-  it('the Duk policy is honest about birthday reward NOT being granted yet', () => {
-    // contradiction #1 guard: never claim birthday Duk is granted while the code does not grant it
-    expect(JSON.stringify(DUK_USE_POLICY)).toMatch(/생일.*비활성|비활성.*생일|지급이 활성화되어 있지 않/);
+  it('the Duk policy states birthday reward 5덕 (now granted at runtime — contradiction resolved)', () => {
+    // Batch3 Phase 0: birthday +5 is implemented + staging-proven (economy_policy.birthday_reward=5), so the
+    // policy now states it as granted rather than "not active".
+    const text = JSON.stringify(DUK_USE_POLICY);
+    expect(text).toContain('생일 보상 5덕');
+    expect(text).not.toMatch(/지급이 활성화되어 있지 않/); // no longer claims it's inactive
   });
 
   it('privacy now names the third-party processors', () => {
