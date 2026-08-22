@@ -7,7 +7,7 @@
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } });
 
 function googleConfigured(): boolean {
-  return Boolean(Deno.env.get('GOOGLE_PLAY_PACKAGE_NAME') && Deno.env.get('GOOGLE_PLAY_SERVICE_ACCOUNT'));
+  return Boolean(Deno.env.get('GOOGLE_PLAY_PACKAGE_NAME') && Deno.env.get('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'));
 }
 
 Deno.serve(async (req: Request) => {

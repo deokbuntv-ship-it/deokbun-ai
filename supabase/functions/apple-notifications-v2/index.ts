@@ -9,7 +9,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 function appleConfigured(): boolean {
   return Boolean(
     Deno.env.get('APPLE_IAP_ISSUER_ID') && Deno.env.get('APPLE_IAP_KEY_ID') &&
-    Deno.env.get('APPLE_IAP_PRIVATE_KEY') && Deno.env.get('APPLE_BUNDLE_ID'),
+    Deno.env.get('APPLE_IAP_PRIVATE_KEY') && Deno.env.get('APPLE_IAP_BUNDLE_ID'),
   );
 }
 

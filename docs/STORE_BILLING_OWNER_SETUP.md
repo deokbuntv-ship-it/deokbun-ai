@@ -6,7 +6,7 @@
 
 ## 1. Apple (App Store Server API + Notifications V2)
 Owner provides:
-- App Store Connect access; the app + bundle id (`APPLE_BUNDLE_ID`), and `APPLE_ENVIRONMENT` (`Sandbox`/`Production`).
+- App Store Connect access; the app + bundle id (`APPLE_IAP_BUNDLE_ID`), and `APPLE_ENVIRONMENT` (`Sandbox`/`Production`).
 - In-app purchase products (consumables): map to internal keys `DUK_FIRST_20` / `DUK_BASE_50` / `DUK_LARGE_120`.
 - App Store Server API key: `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_KEY_ID`, `APPLE_IAP_PRIVATE_KEY` (.p8, secret).
 - App Store Server Notifications **V2** URL → point to the `apple-notifications-v2` Edge.
@@ -18,7 +18,7 @@ Edge `supabase/functions/apple-notifications-v2`.
 Owner provides:
 - Play Console access; the package name (`GOOGLE_PLAY_PACKAGE_NAME`).
 - One-time products mapped to the same internal keys.
-- Play Developer API access via a service account (`GOOGLE_PLAY_SERVICE_ACCOUNT`, JSON secret) with the right grants.
+- Play Developer API access via a service account (`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, JSON secret) with the right grants.
 - Cloud Pub/Sub topic + RTDN configured to push to the `google-rtdn` Edge; the OIDC audience (`GOOGLE_PLAY_PUBSUB_AUDIENCE`).
 - A license tester account.
 Code seam: `src/features/duk/iap/google.ts` (state mapping + RTDN decode; inject the Developer-API client) + Edge
