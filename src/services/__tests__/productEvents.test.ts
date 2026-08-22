@@ -1,10 +1,14 @@
 // Product analytics foundation (§37/§38/§40). Locks the PROPERTY ALLOWLIST (the PII guard) and the
-// non-blocking insert. Supabase mocked.
+// non-blocking write. Supabase mocked. Sprint F.1 §T: trackProductEvent now prefers the server-validated RPC;
+// this suite exercises the TRANSITION FALLBACK (RPC not deployed yet → PGRST202 → direct insert), so the
+// sanitize/allowlist + non-blocking guarantees are still asserted on the insert path.
 let inserted: Record<string, unknown> | null = null;
 let throwOnInsert = false;
 
 jest.mock('@/services/supabase', () => ({
   getSupabaseClient: () => ({
+    // RPC not deployed in this suite → function-missing → the client falls back to a direct insert.
+    rpc: () => Promise.resolve({ error: { code: 'PGRST202', message: 'Could not find the function' } }),
     from: () => ({
       insert: (body: Record<string, unknown>) => {
         if (throwOnInsert) throw new Error('db down');
