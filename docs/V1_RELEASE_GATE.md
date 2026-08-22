@@ -7,8 +7,8 @@
 |---|---|---|---|
 | **G1 Consultation Core** | authority pipeline, safety, follow-ups, atomic persistence, auth boundary | **FINAL FREEZE APPROVED** (F.1) | none (owner: apply migrations, redeploy Edge) |
 | **G2 LLM Cost Benchmark** | real token/cost per workload + model (Mini/Terra) | **HARNESS FINALIZED / LIVE BLOCKED_EXTERNAL** (G) | official pricing + FX + caching analysis wired; no local key → owner runs live |
-| **G3 Duk Economy Backend** | ledger, buckets, spend priority, debt, session billing | **BACKEND CORE + MIGRATIONS + WALLET SERVICE** (G) | Edge wiring of spend/reserve into billing order + apply migrations (LIVE_DB_UNVERIFIED) |
-| **G4 IAP** | Duk packs + PLUS, receipt validation, store products | **SPEC ONLY** | create store products; build receipt-validation Edge |
+| **G3 Duk Economy Backend** | ledger, buckets, spend priority, debt, session billing | **RUNTIME WIRED (flag-gated) + MIGRATIONS** (H) | apply migrations + set DUK_BILLING_ENABLED; LIVE_DB_UNVERIFIED |
+| **G4 IAP** | Duk packs + PLUS, receipt validation, store products | **SERVER-AUTHORITY FOUNDATION** (H) / BLOCKED_EXTERNAL | implement provider verifiers + credentials + store products |
 | **G5 Global Spend Guard** | daily/monthly budget, thresholds, kill switch, per-model | **PARTIAL (live) + MODEL ROUTER (G)** | per-model attribution now feasible (router stamps modelId); add monthly window; §N request-id fix |
 | **G6 Policy / Terms** | 8 documents matching code | **REQUIREMENT MAP DONE** | owner/counsel drafts Korean text |
 | **G7 Analytics** | Duk + acquisition funnel events | **CONTRACT DONE + SERVER ENFORCEMENT DRAFTED** (F.1) | apply record_product_event migration + STEP 2 revoke; implement emitters |
