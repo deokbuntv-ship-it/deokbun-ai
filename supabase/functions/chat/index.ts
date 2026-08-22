@@ -42,6 +42,7 @@ import {
   buildMonthlyFortune,
   monthlyFortuneResponseFormat,
   buildServerSummary,
+  summaryContainsHardStop,
   classifyQuestionComplexity,
   consultationResponseFormat,
   extractResponsesText,
@@ -885,6 +886,15 @@ export default {
         if (body.mode === 'summary') {
           stage = 'summary_request';
           if (!requestId) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          // §G/§H (Sprint F.1) — SAFETY PRECEDES SPEND for the summary workload too. Classify the CURRENT
+          // summary source (turns + prior summary) BEFORE any paid/global reserve or LLM. A crisis-bearing
+          // summary (self-harm / death / medical) is never LLM-summarized: no reserve, no LLM, no grounding,
+          // no previous-fortune context. The client simply keeps its prior summary (memory unaffected). This
+          // reuses the deterministic safety router — no new medical/mental-health semantics.
+          if (summaryContainsHardStop({ existingSummary: typeof body.existingSummary === 'string' ? body.existingSummary : null, turns: body.turns })) {
+            logDiag(requestId, 'RESPONSE_VALIDATION', 'SUMMARY_SAFETY_SKIPPED', { path: 'summary' });
+            return Response.json({ text: typeof body.existingSummary === 'string' ? body.existingSummary : '' });
+          }
           const paid = await acquirePaidRequest(admin, userId, 'summary', requestId);
           if (paid.status === 'completed') return Response.json(paid.response);
           if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
@@ -931,6 +941,12 @@ export default {
             { callLLM: summaryCallLLM },
           );
           if (!summary.ok) {
+            if (summary.reason === 'SAFETY_SKIPPED') {
+              // Backstop (should be unreachable — the pre-check above already returned): never spend on crisis.
+              logDiag(requestId, 'RESPONSE_VALIDATION', 'SUMMARY_SAFETY_SKIPPED', { path: 'summary' });
+              await releasePaidRequest(paid.context);
+              return Response.json({ text: typeof body.existingSummary === 'string' ? body.existingSummary : '' });
+            }
             if (summary.reason === 'LLM_FAILED') {
               // OpenAI WAS attempted → log the error (consistent with consultation; counts in the window).
               await logAiUsage(

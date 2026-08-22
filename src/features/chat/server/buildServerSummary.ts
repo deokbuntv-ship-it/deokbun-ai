@@ -8,6 +8,7 @@
 import { buildSummaryPrompt } from '@/features/chat/prompts/summaryPromptBuilder';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
+import { classifyConsultationSafetyRoute, isHardStopRoute } from './consultationSafety';
 
 // Conservative server-side bounds (fixed by tests). Summaries are short + internal; these blunt oversized
 // or abusive payloads regardless of what the client claims.
@@ -21,7 +22,7 @@ export type ServerSummaryRequest = { existingSummary?: string | null; turns?: un
 export type ServerSummaryDeps = { callLLM: (messages: LLMMessage[]) => Promise<string> };
 export type ServerSummaryResult =
   | { ok: true; text: string }
-  | { ok: false; reason: 'INVALID_INPUT' | 'LLM_FAILED' };
+  | { ok: false; reason: 'INVALID_INPUT' | 'LLM_FAILED' | 'SAFETY_SKIPPED' };
 
 // Sanitize + bound the summary source, server-side. Exported for direct testing.
 export function sanitizeSummarySource(request: ServerSummaryRequest): {
@@ -58,10 +59,26 @@ export function sanitizeSummarySource(request: ServerSummaryRequest): {
   return { existingSummary, turns };
 }
 
+/**
+ * Sprint F.1 §G/§H — safety-before-spend for the summary workload. Returns true when the (sanitized) summary
+ * SOURCE contains a hard-stop crisis category (self-harm / death-lifespan / medical), so the Edge can skip the
+ * paid/global reserve and the LLM entirely for a crisis-bearing summary. PURE (no I/O). Classifies the SAME
+ * bounded content the LLM would receive, over the joined turns + prior summary. Reuses the existing
+ * deterministic safety router — no new medical/mental-health semantics.
+ */
+export function summaryContainsHardStop(request: ServerSummaryRequest): boolean {
+  const { existingSummary, turns } = sanitizeSummarySource(request);
+  const joined = [existingSummary ?? '', ...turns.map((t) => t.text)].join('\n');
+  if (joined.trim().length === 0) return false;
+  return isHardStopRoute(classifyConsultationSafetyRoute(joined));
+}
+
 export async function buildServerSummary(
   request: ServerSummaryRequest,
   deps: ServerSummaryDeps,
 ): Promise<ServerSummaryResult> {
+  // §G/§H backstop: never LLM-summarize crisis content (the Edge already skips reserve+LLM before this).
+  if (summaryContainsHardStop(request)) return { ok: false, reason: 'SAFETY_SKIPPED' };
   const { existingSummary, turns } = sanitizeSummarySource(request);
   // Nothing summarizable after sanitization → INVALID_INPUT (pre-flight; no LLM call, no usage).
   if (turns.length === 0) return { ok: false, reason: 'INVALID_INPUT' };

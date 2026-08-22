@@ -5,6 +5,7 @@ export { buildCompatibilityConsultation } from './buildCompatibilityConsultation
 export {
   buildServerSummary,
   sanitizeSummarySource,
+  summaryContainsHardStop,
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
   MAX_EXISTING_SUMMARY_CHARS,
