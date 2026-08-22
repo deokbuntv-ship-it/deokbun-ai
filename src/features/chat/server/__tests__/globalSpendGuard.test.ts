@@ -131,7 +131,11 @@ describe('paid provider wiring contract', () => {
   it('chat covers canonical Today/Monthly plus idempotent chat/compatibility/summary', () => {
     const source = readFileSync(resolve(process.cwd(), 'supabase/functions/chat/index.ts'), 'utf8');
     expect(source.match(/const global = await reserveGlobalPaidGeneration/g)).toHaveLength(3);
-    expect(source).toContain('const global = await reserveGlobalPaidGeneration(admin, userId, workload)');
+    // Sprint I §4 — the chat path now uses the request-scoped (idempotent-capable) call; today/monthly keep the
+    // 3-arg form. All three still route through reserveGlobalPaidGeneration.
+    expect(source).toMatch(/reserveGlobalPaidGeneration\(admin, userId, workload, \{[\s\S]*requestId,[\s\S]*idempotent:/);
+    expect(source).toContain("reserveGlobalPaidGeneration(admin, userId, 'today_fortune')");
+    expect(source).toContain("reserveGlobalPaidGeneration(admin, userId, 'monthly_fortune')");
     expect(source).toContain("{ error: 'GENERATION_DISABLED' }");
     expect(source).toContain("error: 'GLOBAL_GENERATION_LIMIT_REACHED'");
   });
