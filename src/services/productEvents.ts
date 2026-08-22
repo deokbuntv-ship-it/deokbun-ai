@@ -60,7 +60,32 @@ export type ProductEventName =
   | 'popular_question_impression'
   | 'popular_question_click'
   | 'popular_question_consultation_start'
-  | 'popular_question_first_answer_success';
+  | 'popular_question_first_answer_success'
+  // Duk economy / monetization funnel (Sprint G §AL/§AM). All categorical/numeric, non-PII.
+  | 'home_compatibility_impression'
+  | 'first_action_after_onboarding'
+  | 'welcome_duk_granted'
+  | 'candle_lit'
+  | 'birthday_duk_granted'
+  | 'duk_reserved'
+  | 'duk_committed'
+  | 'duk_released'
+  | 'duk_spent'
+  | 'duk_exhausted'
+  | 'compatibility_insufficient_duk'
+  | 'consultation_started'
+  | 'consultation_completed'
+  | 'paywall_viewed'
+  | 'first_pack_purchased'
+  | 'repeat_purchase'
+  | 'session_started'
+  | 'session_turn_completed'
+  | 'session_expired'
+  | 'plus_viewed'
+  | 'plus_subscribed'
+  | 'refund_processed'
+  | 'duk_debt_created'
+  | 'duk_debt_offset';
 
 // The ONLY property keys that may be persisted. Everything else is dropped (§38). No name / birth /
 // question / answer / email / phone can appear here — those keys are simply not on the allowlist.

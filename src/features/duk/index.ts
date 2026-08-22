@@ -38,3 +38,13 @@ export {
   type WalletState,
   type LightCandleResult,
 } from './dukWalletService';
+export {
+  rejectClientAssertedPurchase,
+  type BillingAdapter,
+  type PurchaseToken,
+  type VerifiedPurchase,
+  type VerifyResult,
+  type GrantResult,
+  type RevokeResult,
+  type SubscriptionState,
+} from './billingAdapter';
