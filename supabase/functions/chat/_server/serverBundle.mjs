@@ -9266,6 +9266,46 @@ ${extraDirective}` : base
   };
 }
 
+// src/features/chat/server/modelRouter.ts
+var MODEL_ROUTING_POLICY_VERSION = "model-routing@1.0.0";
+var DEFAULT_MINI_MODEL = "gpt-5-mini";
+var DEFAULT_TERRA_MODEL = "gpt-5.6-terra";
+var PRODUCT_OF = {
+  general_consultation: "general",
+  general_followup: "general",
+  compatibility: "compatibility",
+  deep_consultation: "deep",
+  specific_period_deep: "deep",
+  premium_report: "premium_report",
+  today_fortune: "today",
+  monthly_fortune: "monthly",
+  summary: "summary"
+};
+var MINI_WORKLOADS = /* @__PURE__ */ new Set([
+  "general_consultation",
+  "general_followup",
+  "today_fortune",
+  "monthly_fortune",
+  "summary"
+]);
+function resolveModelRoute(workload, config) {
+  const mini = config?.miniModel && config.miniModel.trim() || DEFAULT_MINI_MODEL;
+  const terra = config?.terraModel && config.terraModel.trim() || DEFAULT_TERRA_MODEL;
+  const productType = PRODUCT_OF[workload];
+  if (MINI_WORKLOADS.has(workload)) {
+    return { workload, productType, modelId: mini, routingPolicyVersion: MODEL_ROUTING_POLICY_VERSION, reasonCode: "GENERAL_MINI" };
+  }
+  if (workload === "compatibility") {
+    const mode = config?.compatibilityModelMode ?? "FULL_TERRA";
+    return { workload, productType, modelId: terra, routingPolicyVersion: MODEL_ROUTING_POLICY_VERSION, reasonCode: mode === "SMART_HYBRID" ? "COMPAT_TERRA_HYBRID_SEAM" : "COMPAT_TERRA_FULL" };
+  }
+  const reason = workload === "premium_report" ? "PREMIUM_TERRA" : "DEEP_TERRA";
+  return { workload, productType, modelId: terra, routingPolicyVersion: MODEL_ROUTING_POLICY_VERSION, reasonCode: reason };
+}
+function consultationWorkload(consultationMode) {
+  return consultationMode === "compatibility" ? "compatibility" : "general_consultation";
+}
+
 // src/features/chat/prompts/compatibilityPrompt.ts
 function sanitize(raw, maxLen = 60) {
   const c = raw.replace(/[\r\n\t]+/g, " ").replace(/[【】〔〕［］[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
@@ -10658,7 +10698,9 @@ export {
   CONSULTATION_JSON_SCHEMA,
   DAILY_FORTUNE_JSON_SCHEMA,
   DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS,
+  DEFAULT_MINI_MODEL,
   DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS,
+  DEFAULT_TERRA_MODEL,
   HARD_MAX_OUTPUT_TOKENS,
   LLM_RATE_LIMITED_REQUEST_TYPES,
   MAX_BIRTH_FIELD_CHARS,
@@ -10673,6 +10715,7 @@ export {
   MAX_SUMMARY_TURNS,
   MAX_SUMMARY_TURN_CHARS,
   MIN_MAX_OUTPUT_TOKENS,
+  MODEL_ROUTING_POLICY_VERSION,
   MONTHLY_CANONICAL_VERSION,
   MONTHLY_FORTUNE_JSON_SCHEMA,
   SAFE_DIAG_KEYS,
@@ -10685,6 +10728,7 @@ export {
   buildTodayFortune,
   classifyQuestionComplexity,
   consultationResponseFormat,
+  consultationWorkload,
   currentTargetMonth,
   dailyFortuneResponseFormat,
   evaluateConsultationSafetyStop,
@@ -10701,6 +10745,7 @@ export {
   redactDiag,
   resolveConsultationProfile,
   resolveLlmBudgets,
+  resolveModelRoute,
   runCanonicalGeneration,
   runIdempotentPaidRequest,
   sanitizeSummarySource,

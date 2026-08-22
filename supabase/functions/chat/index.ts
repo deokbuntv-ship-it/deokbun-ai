@@ -43,6 +43,8 @@ import {
   monthlyFortuneResponseFormat,
   buildServerSummary,
   summaryContainsHardStop,
+  resolveModelRoute,
+  consultationWorkload,
   classifyQuestionComplexity,
   consultationResponseFormat,
   extractResponsesText,
@@ -1072,17 +1074,30 @@ export default {
           maxOutputTokens: Deno.env.get('LLM_CONSULTATION_MAX_OUTPUT_TOKENS'),
           reasoningEffort: Deno.env.get('LLM_CONSULTATION_REASONING_EFFORT'),
         });
+        // Sprint G §D–§H — SERVER-OWNED model routing. The model is resolved by WORKLOAD (product), never by
+        // the client and never by membership: solo general → Mini, compatibility → Terra. Env can pin the real
+        // ids (LLM_MODEL_MINI / LLM_MODEL_TERRA); a client-supplied model is ignored. A routing change is
+        // output-layer metadata only — it never alters the frozen deterministic decision.
+        const modelRoute = resolveModelRoute(
+          consultationWorkload(body.consultationMode === 'compatibility' ? 'compatibility' : 'solo'),
+          {
+            miniModel: Deno.env.get('LLM_MODEL_MINI') ?? Deno.env.get('LLM_MODEL') ?? null,
+            terraModel: Deno.env.get('LLM_MODEL_TERRA') ?? null,
+            compatibilityModelMode:
+              (Deno.env.get('COMPATIBILITY_MODEL_MODE') as 'FULL_TERRA' | 'SMART_HYBRID' | null) ?? null,
+          },
+        );
+        const routedModel = modelRoute.modelId;
         const consultationCfg = {
           apiKey,
-          model,
+          model: routedModel,
           maxOutputTokens: profile.maxOutputTokens,
           reasoningEffort: profile.reasoningEffort,
           responseFormat: consultationResponseFormat(),
         };
-        // SAFE routing breadcrumb — only the class + tuning scalars, never question/PII. Lets the owner
-        // confirm the router is live and see the per-question effort/ceiling in edge logs.
+        // SAFE routing breadcrumb — the class + tuning scalars + the resolved model/policy. Never question/PII.
         console.log(
-          `[chat.route] req=${requestId} complexity=${complexity} effort=${profile.reasoningEffort} cap=${profile.maxOutputTokens}`,
+          `[chat.route] req=${requestId} workload=${modelRoute.workload} model=${routedModel} policy=${modelRoute.routingPolicyVersion} reason=${modelRoute.reasonCode} complexity=${complexity} effort=${profile.reasoningEffort} cap=${profile.maxOutputTokens}`,
         );
 
         // The single outbound trust exit. Captures the classified OpenAI outcome so a 502 can be attributed
@@ -1163,7 +1178,7 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
-                  modelId: model, // Sprint E §10 — actual runtime model id into decisionMeta
+                  modelId: routedModel, // Sprint E §10 — actual runtime model id into decisionMeta
                 },
               )
             : await buildServerConsultation(
@@ -1182,7 +1197,7 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
-                  modelId: model, // Sprint E §10 — actual runtime model id into decisionMeta
+                  modelId: routedModel, // Sprint E §10 — actual runtime model id into decisionMeta
                   ...(loadPreviousDecision ? { loadPreviousDecision } : {}),
                 },
               );
@@ -1195,7 +1210,7 @@ export default {
             // token counts — enough to tell WHY without exposing prompt, birth, question, or the answer.
             logDiag(requestId, 'OPENAI_RESPONSE', code, {
               path: 'consultation',
-              model,
+              model: routedModel,
               upstreamStatus: capturedOutcome?.statusCode || undefined,
               responseStatus: capturedOutcome?.responseStatus,
               incompleteReason: capturedOutcome?.incompleteReason,
@@ -1204,7 +1219,7 @@ export default {
             });
             await logAiUsage(
               {
-                user_id: userId, model, request_type: 'chat',
+                user_id: userId, model: routedModel, request_type: 'chat',
                 input_tokens: null, output_tokens: null, total_tokens: null,
                 latency_ms: Date.now() - startedAt, status: 'error',
                 error_code: code,
@@ -1226,7 +1241,7 @@ export default {
         const usageDetails = parseUsageDetails(capturedUsage);
         await logAiUsage(
           {
-            user_id: userId, model, request_type: 'chat',
+            user_id: userId, model: routedModel, request_type: 'chat',
             input_tokens: toNullableInt(capturedUsage.input_tokens),
             output_tokens: toNullableInt(capturedUsage.output_tokens),
             total_tokens: toNullableInt(capturedUsage.total_tokens),
@@ -1247,7 +1262,7 @@ export default {
         if (result.diagnostics && result.diagnostics.outputClassification !== 'ACCEPTED') {
           logDiag(requestId, 'RESPONSE_VALIDATION', result.diagnostics.rejectionReason ?? 'UNKNOWN', {
             path: 'consultation',
-            model,
+            model: routedModel,
             validationCategory: result.diagnostics.outputClassification,
             grounded: result.groundingMeta.grounded,
           });

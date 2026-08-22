@@ -1,6 +1,19 @@
 // Server trust boundary — public surface. The Edge Function imports `buildServerConsultation` /
 // `buildServerSummary`; the client imports the request/response types to shape its inputs-only request.
 export { buildServerConsultation, evaluateConsultationSafetyStop } from './buildServerConsultation';
+export {
+  resolveModelRoute,
+  consultationWorkload,
+  MODEL_ROUTING_POLICY_VERSION,
+  DEFAULT_MINI_MODEL,
+  DEFAULT_TERRA_MODEL,
+} from './modelRouter';
+export type {
+  ModelWorkload,
+  CompatibilityModelMode,
+  ResolvedModelRoute,
+  ModelRouterConfig,
+} from './modelRouter';
 export { buildCompatibilityConsultation } from './buildCompatibilityConsultation';
 export {
   buildServerSummary,
