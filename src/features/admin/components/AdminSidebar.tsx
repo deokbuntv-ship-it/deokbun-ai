@@ -19,6 +19,7 @@ type NavHref =
   | '/admin/retention'
   | '/admin/ads'
   | '/admin/fortune-mail'
+  | '/admin/economy'
   | '/admin/ai-usage'
   | '/admin/engine-status'
   | '/admin/system-settings';
@@ -32,6 +33,7 @@ const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '리텐션 · 알림', href: '/admin/retention' },
   { label: '광고', href: '/admin/ads' },
   { label: '운세우편 관리', href: '/admin/fortune-mail' },
+  { label: '덕 경제', href: '/admin/economy' },
   { label: 'AI 사용량 · 비용', href: '/admin/ai-usage' },
   { label: '해석엔진 상태', href: '/admin/engine-status' },
   { label: '시스템 설정', href: '/admin/system-settings' },

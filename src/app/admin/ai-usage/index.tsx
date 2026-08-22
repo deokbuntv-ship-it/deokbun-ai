@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { Stack } from '@/components/Stack';
@@ -15,6 +15,8 @@ import {
   type AdminColumn,
 } from '@/features/admin';
 import { adminTheme } from '@/features/admin/adminTheme';
+import { aggregateUsageCost } from '@/features/admin/operational/operationalContracts';
+import { adminPricingRepository, UNPRICED_LABEL } from '@/features/admin/operational/modelPricing';
 
 // ADMIN_08_AI_COST (Stitch ai_final_lock). Cost KPIs / trend / thresholds require
 // a pricing/settlement contract that is not connected → they render truthful
@@ -99,6 +101,47 @@ function formatCount(n: number | null | undefined): string {
   return typeof n === 'number' ? n.toLocaleString() : '–';
 }
 
+// Model-breakdown cost from the CURRENTLY-LOADED usage rows (§5.5/§5.6). Verified-pricing models show a real USD
+// cost; unverified models (e.g. gpt-5.6-terra) show "가격 미확인" — never a fabricated number. Windowed all-time
+// cost still needs server aggregation, so this is scoped to the loaded page and labeled as such.
+function CostByModel({ items }: { items: AdminAiUsageItem[] }) {
+  const agg = useMemo(
+    () =>
+      aggregateUsageCost(
+        items.map((i) => ({
+          model: i.model ?? 'unknown',
+          inputTokens: i.inputTokens ?? 0,
+          cachedInputTokens: 0,
+          outputTokens: i.outputTokens ?? 0,
+        })),
+        adminPricingRepository.asMap(),
+      ),
+    [items],
+  );
+  if (agg.byModel.length === 0) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text variant="headingMedium" style={{ color: adminTheme.ink }}>
+        모델별 비용 · 현재 조회된 로그 기준
+      </Text>
+      <Text variant="caption" style={{ color: adminTheme.inkMuted }}>
+        검증된 단가 모델만 비용(USD)을 표시합니다. 단가 미확인 모델은 “가격 미확인”으로 표시돼요. 전체 기간 집계는 정산 연동 후 제공됩니다.
+      </Text>
+      {agg.byModel.map((m) => (
+        <View key={m.model} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+          <Text variant="bodySmall" style={{ color: adminTheme.ink }}>
+            {m.model}
+          </Text>
+          <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>
+            {m.requests}건 · 입력 {m.inputTokens.toLocaleString()} · 출력 {m.outputTokens.toLocaleString()} ·{' '}
+            {m.cost ? `$${m.cost.total.toFixed(4)}` : UNPRICED_LABEL}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function AdminAiUsageScreen() {
   const [items, setItems] = useState<AdminAiUsageItem[]>([]);
   const [status, setStatus] = useState<Status>('loading');
@@ -147,6 +190,8 @@ export default function AdminAiUsageScreen() {
       />
 
       <AiCostHeader />
+
+      <CostByModel items={items} />
 
       <Text variant="headingMedium" style={{ color: adminTheme.ink }}>
         모델별 사용량 로그
