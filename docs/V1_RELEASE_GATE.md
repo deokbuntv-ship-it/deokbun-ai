@@ -6,10 +6,10 @@
 | Gate | Scope | Status | Blocking items |
 |---|---|---|---|
 | **G1 Consultation Core** | authority pipeline, safety, follow-ups, atomic persistence, auth boundary | **FINAL FREEZE APPROVED** (F.1) | none (owner: apply migrations, redeploy Edge) |
-| **G2 LLM Cost Benchmark** | real token/cost per workload + model (Mini/Terra) | **HARNESS READY / NOT EXECUTED** | no local API key (server-only secret); owner runs benchmark |
-| **G3 Duk Economy Backend** | ledger, buckets, spend priority, debt, session billing | **SPEC ONLY** | build ledger + spend RPC + session charge (design done) |
+| **G2 LLM Cost Benchmark** | real token/cost per workload + model (Mini/Terra) | **HARNESS FINALIZED / LIVE BLOCKED_EXTERNAL** (G) | official pricing + FX + caching analysis wired; no local key → owner runs live |
+| **G3 Duk Economy Backend** | ledger, buckets, spend priority, debt, session billing | **BACKEND CORE + MIGRATIONS + WALLET SERVICE** (G) | Edge wiring of spend/reserve into billing order + apply migrations (LIVE_DB_UNVERIFIED) |
 | **G4 IAP** | Duk packs + PLUS, receipt validation, store products | **SPEC ONLY** | create store products; build receipt-validation Edge |
-| **G5 Global Spend Guard** | daily/monthly budget, thresholds, kill switch, per-model | **PARTIAL (live)** | add monthly window + per-model attribution; verify cached-read exemption |
+| **G5 Global Spend Guard** | daily/monthly budget, thresholds, kill switch, per-model | **PARTIAL (live) + MODEL ROUTER (G)** | per-model attribution now feasible (router stamps modelId); add monthly window; §N request-id fix |
 | **G6 Policy / Terms** | 8 documents matching code | **REQUIREMENT MAP DONE** | owner/counsel drafts Korean text |
 | **G7 Analytics** | Duk + acquisition funnel events | **CONTRACT DONE + SERVER ENFORCEMENT DRAFTED** (F.1) | apply record_product_event migration + STEP 2 revoke; implement emitters |
 | **G8 Device E2E** | real iOS/Android login → consult → pay flow | **NOT STARTED** | owner device QA (needs bundle ids + store setup) |
