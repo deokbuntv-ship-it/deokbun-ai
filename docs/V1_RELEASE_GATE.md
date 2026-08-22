@@ -1,17 +1,17 @@
 # V1 RELEASE GATE (§Y)
 
-> **Status:** GATE DEFINITION (Sprint F). Tracks the nine gates that must close before V1 ships. Status is as of
-> the Sprint F freeze candidate. "Done" = code complete + tested locally; owner/deploy items are marked.
+> **Status:** GATE DEFINITION (updated Sprint F.1). Tracks the nine gates that must close before V1 ships, plus
+> the F.1 sub-gates (§3). "Done" = code complete + tested locally; owner/deploy items are marked.
 
 | Gate | Scope | Status | Blocking items |
 |---|---|---|---|
-| **G1 Consultation Core** | authority pipeline, safety, follow-ups, atomic persistence, auth boundary | **FREEZE CANDIDATE** | none (owner: apply migrations, redeploy Edge) |
+| **G1 Consultation Core** | authority pipeline, safety, follow-ups, atomic persistence, auth boundary | **FINAL FREEZE APPROVED** (F.1) | none (owner: apply migrations, redeploy Edge) |
 | **G2 LLM Cost Benchmark** | real token/cost per workload + model (Mini/Terra) | **HARNESS READY / NOT EXECUTED** | no local API key (server-only secret); owner runs benchmark |
 | **G3 Duk Economy Backend** | ledger, buckets, spend priority, debt, session billing | **SPEC ONLY** | build ledger + spend RPC + session charge (design done) |
 | **G4 IAP** | Duk packs + PLUS, receipt validation, store products | **SPEC ONLY** | create store products; build receipt-validation Edge |
 | **G5 Global Spend Guard** | daily/monthly budget, thresholds, kill switch, per-model | **PARTIAL (live)** | add monthly window + per-model attribution; verify cached-read exemption |
 | **G6 Policy / Terms** | 8 documents matching code | **REQUIREMENT MAP DONE** | owner/counsel drafts Korean text |
-| **G7 Analytics** | Duk + acquisition funnel events | **CONTRACT DONE** | implement `trackEconomyEvent` emitters |
+| **G7 Analytics** | Duk + acquisition funnel events | **CONTRACT DONE + SERVER ENFORCEMENT DRAFTED** (F.1) | apply record_product_event migration + STEP 2 revoke; implement emitters |
 | **G8 Device E2E** | real iOS/Android login → consult → pay flow | **NOT STARTED** | owner device QA (needs bundle ids + store setup) |
 | **G9 Acquisition Attribution** | shortform → install → signup → Duk → compatibility → first purchase, by creative/channel/campaign | **NOT STARTED** | attribution approach (see §2) |
 
@@ -43,7 +43,26 @@ Shortform → tracked link → Store → Install → Signup → DUK → Compatib
 - The existing ad-tracking work (admin CRUD + tracking URL + CAC/CPA, see memory `deokbunai-ads-tracking`) is
   the server-side home for campaign metadata; G9 connects install→signup attribution to it.
 
-## 3. Ship criteria
+## 3. Sprint F.1 sub-gates (adversarial / integrity)
+
+| Sub-gate | Belongs to | Status | Evidence |
+|---|---|---|---|
+| Comparison implicit-winner adversarial corpus | G1 | **DONE** | `implicitWinnerCorpus.test.ts` (32 unsafe + 11 safe + card-level) |
+| Safety-before-spend for EVERY LLM workload | G1 | **DONE** | consultation (E.1) + compatibility (same path) + **summary** (F.1 §G/H); `summarySafetyBeforeSpend.test.ts` |
+| Analytics DB-side PII enforcement | G7 | **DRAFTED** (RPC + client) | migration `20260830000000`; `productEventsPrivacy.test.ts`; owner applies + STEP 2 revoke |
+| Wallet double-spend concurrency | G3 | **CONTRACT + RPC DRAFT** | `spend_duk` advisory-lock + fixed allocation; `DUK_IMPLEMENTATION_CONTRACT.md` §P |
+| Session charge idempotency | G3 | **CONTRACT + RPC DRAFT** | unique `(session_id, reason)` / `charge_id`; §Q |
+| Reserve TTL / fencing | G3 | **CONTRACT + TABLE DRAFT** | `duk_reserve` version fencing; §R (commit RPC = build step) |
+| Refund / revocation replay | G3 | **CONTRACT + RPC DRAFT** | unique `purchase_id` / `revocation_id`; `grant_duk` idempotent; §S |
+| Compatibility auth (live) + single-flight | G1 | **DONE** | `compatibilityConcurrencyAuth.test.ts` |
+| Paid lease / global request idempotency | G1/G5 | **INVARIANT DOC + FIX SPEC** | `RUNTIME_LEASE_GLOBAL_IDEMPOTENCY.md` (§M holds; §N minimal fix specified) |
+| Actual migration / RLS / RPC verification | G3/G7 | **OWNER** | apply drafts in staging; verify RLS no-write + RPC service-role-only |
+| Deployed Edge bundle parity | G1 | **OWNER** | redeploy `chat` Edge with the regenerated bundle |
+| IAP store-server authority | G4 | **SPEC** | receipt validation Edge credits PAID_DUK via `grant_duk` (idempotent) |
+
+**Note:** unimplemented IAP (G4) is a **V1 RELEASE BLOCKER**, but it is **not** a Consultation-Core (G1) blocker.
+
+## 4. Ship criteria
 
 V1 ships when G1 (frozen), G2 (benchmarked → prices set), G3+G4 (Duk + IAP live), G5 (monthly + per-model),
 G6 (policies published), G7 (events emitting), G8 (device E2E passed), and at least a **minimal** G9
