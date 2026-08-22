@@ -162,7 +162,49 @@ repo to production for activation.
 
 ---
 
-STAGING_PREFLIGHT_BLOCKED — immediate owner action: provision a dedicated staging project (ref) separate from
-production `olvkpaldrwvtexxpoaag`.
+# UPDATE — REMOTE INVENTORY (STAGING `aephpsiurgkvqcswyeie` — RESOLVED)
+
+Owner provisioned a dedicated staging project. All inspection below targeted **staging only** via explicit
+`--project-ref aephpsiurgkvqcswyeie`; production `olvkpaldrwvtexxpoaag` was never touched. The repo remains
+linked to production, so no `--linked`/bare command was used and the link was NOT changed (config.toml
+owner-dirty, untouched).
+
+- **Staging project (verified):** `aephpsiurgkvqcswyeie` · "Deokbuni Staging" · **ap-northeast-2** · PG 17 ·
+  ACTIVE_HEALTHY · **linked = false** · distinct name/region/ref from production (ap-northeast-1). Unambiguous.
+- **§9/§10 Remote migration history:** `migration list --project-ref aephpsiurgkvqcswyeie` → **every** local
+  migration (20260817…→20260836…) has `remote = ""`. **Nothing applied.** Fresh DB, no divergence, no
+  unexpected remote-only migrations → **no `migration repair` needed.** (A `db push` will apply the FULL ordered
+  history, not only 829–836 — correct for a from-scratch staging build.)
+- **§11 Schema / RPC:** none of the monetization tables/RPCs exist yet (consistent with zero migrations applied).
+- **§12 Collision risks:** fresh DB → **all migrations SAFE** (no pre-existing objects to collide).
+- **§13 Analytics permission:** product_events not yet created; target state reached after 20260819000300 +
+  20260830 + 20260835.
+- **§14 Edge functions (remote):** `functions list --project-ref aephpsiurgkvqcswyeie` → **none deployed.**
+- **§16 Secrets:** `secrets list --project-ref aephpsiurgkvqcswyeie` → **empty.** All required names must be set
+  on staging: OPENAI_API_KEY, LLM_MODEL_TERRA (+ optional LLM_MODEL_MINI/COMPATIBILITY_MODEL_MODE), and later
+  the Apple/Google config. (SUPABASE_URL/ANON_KEY/SERVICE_ROLE_KEY are auto-injected.)
+- **§17 Feature flags:** DUK_BILLING_ENABLED + GLOBAL_REQ_IDEMPOTENCY_ENABLED absent = **OFF** — the desired
+  initial staging state.
+- **§18 Mini/Terra:** LLM_MODEL_TERRA absent → must be set before compatibility works on staging; LLM_MODEL_MINI
+  optional (defaults to gpt-5-mini).
+
+## Updated BLOCKERS
+1. ~~STAGING_PROJECT_NOT_FOUND~~ — **RESOLVED** (staging `aephpsiurgkvqcswyeie` created, fresh, distinct).
+2. (Deploy-time, owner) add `[functions.*]` blocks for verify-purchase (verify_jwt=true) /
+   apple-notifications-v2 (false) / google-rtdn (false) — config.toml is owner-dirty.
+3. (Config REVIEW, owner) reconcile Apple bundle-id + Google service-account env-name inconsistencies before
+   setting staging secrets.
+
+## OWNER APPROVAL REQUIRED (to begin the mutation phase — Activation 02)
+The read-only preflight is clean. The next phase **mutates staging** and therefore needs explicit owner
+approval. On approval, Activation 02 will (staging only): link to `aephpsiurgkvqcswyeie` → `db push` (full
+ordered history) → `migration list` verify → run `economy_diagnostics.sql` (expect all zero) → verify RLS/grants
+→ (owner adds function config blocks + sets secrets) → deploy chat/verify-purchase/apple-notifications-v2/
+google-rtdn → smoke with billing OFF. Nothing is executed until you say "approve staging migration".
+
+---
+
+READY_FOR_STAGING_MIGRATION_APPROVAL — staging `aephpsiurgkvqcswyeie` is a clean, distinct, fresh project; the
+full migration chain applies SAFE. Awaiting explicit owner approval to begin the staging mutation phase.
 
 OWNER_ACTIVATION_01_PREFLIGHT_COMPLETE
