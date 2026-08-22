@@ -21,9 +21,17 @@ describe('§R getWalletState — combines bucket balances + open debt (read only
     expect(w).toEqual({ plus: 2, reward: 3, paid: 40, debt: 5, totalSpendable: 45 });
   });
 
-  it('a read failure yields a safe empty wallet (non-blocking)', async () => {
+  it('a read failure THROWS (so the caller shows an error, not a false "0덕") — §J9 fix', async () => {
     from.mockImplementation(() => { throw new Error('db down'); });
-    expect(await getWalletState()).toEqual({ plus: 0, reward: 0, paid: 0, debt: 0, totalSpendable: 0 });
+    await expect(getWalletState()).rejects.toThrow();
+  });
+
+  it('a query-level error THROWS instead of returning a false empty wallet — §J9 fix', async () => {
+    from.mockImplementation((table: string) => {
+      if (table === 'duk_balance') return { select: () => Promise.resolve({ data: null, error: { message: 'RLS' } }) };
+      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+    });
+    await expect(getWalletState()).rejects.toBeTruthy();
   });
 
   it('exposes no client spend/grant/reserve verb', async () => {
@@ -36,14 +44,22 @@ describe('§R getWalletState — combines bucket balances + open debt (read only
 });
 
 describe('§AF lightCandle — calls the server RPC, maps the grant result', () => {
-  it('granted result is surfaced', async () => {
+  it('granted result is surfaced (status granted)', async () => {
     rpc.mockResolvedValue({ data: { granted: true, next_available_at: '2026-08-23T00:00:00Z', reward_amount: 1 }, error: null });
     const r = await lightCandle();
     expect(rpc).toHaveBeenCalledWith('light_candle');
-    expect(r).toEqual({ granted: true, nextAvailableAt: '2026-08-23T00:00:00Z', rewardAmount: 1 });
+    expect(r).toEqual({ granted: true, status: 'granted', nextAvailableAt: '2026-08-23T00:00:00Z', rewardAmount: 1 });
   });
-  it('an error yields granted:false (non-blocking)', async () => {
-    rpc.mockResolvedValue({ data: null, error: { message: 'cooldown' } });
-    expect((await lightCandle()).granted).toBe(false);
+  it('a non-grant (cooldown) → status cooldown, not error (§J9)', async () => {
+    rpc.mockResolvedValue({ data: { granted: false, next_available_at: '2026-08-24T00:00:00Z', reward_amount: 1 }, error: null });
+    const r = await lightCandle();
+    expect(r.granted).toBe(false);
+    expect(r.status).toBe('cooldown');
+  });
+  it('a transient RPC error → status error (retryable), NOT cooldown (§J9)', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    const r = await lightCandle();
+    expect(r.granted).toBe(false);
+    expect(r.status).toBe('error');
   });
 });

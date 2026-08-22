@@ -40,9 +40,13 @@ export default function LifeEventsScreen() {
   const [reminder, setReminder] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState(false); // load failure for the events list (distinct from empty)
 
   const reload = () => {
-    lifeEventService.list().then(setEvents).catch(() => setEvents([]));
+    lifeEventService
+      .list()
+      .then((rows) => { setEvents(rows); setListError(false); })
+      .catch(() => setListError(true)); // distinguish load failure from an empty list (§J9)
   };
   useEffect(() => {
     if (isAuthenticated) reload();
@@ -110,7 +114,16 @@ export default function LifeEventsScreen() {
             </Card>
 
             {/* Saved events */}
-            {events.length === 0 ? (
+            {listError ? (
+              <Card radius="xl">
+                <Stack gap="sm">
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+                  </Text>
+                  <Button label="다시 시도" variant="secondary" radius="lg" onPress={reload} />
+                </Stack>
+              </Card>
+            ) : events.length === 0 ? (
               <Card radius="xl">
                 <Text variant="bodyMedium" colorToken="textSecondary">
                   저장된 일정이 없어요. 중요한 날짜를 추가하면 다가올 때 알려드릴게요.

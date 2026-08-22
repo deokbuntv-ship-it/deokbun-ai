@@ -46,11 +46,11 @@ function AiCostHeader() {
           <Text variant="headingMedium" style={{ color: adminTheme.ink }}>비용 임계값 설정</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>주의 임계값</Text>
-            <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>₩500,000 / 일</Text>
+            <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>— (연동 후 설정)</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>위험 임계값</Text>
-            <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>₩1,000,000 / 일</Text>
+            <Text variant="bodySmall" style={{ color: adminTheme.inkVariant }}>— (연동 후 설정)</Text>
           </View>
           <Text variant="caption" style={{ color: adminTheme.warning }}>
             저장 기능 미연결 — 임계값은 설정 저장 API 연동 후 반영됩니다.

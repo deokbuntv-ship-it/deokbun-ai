@@ -16,27 +16,31 @@ export type WalletState = {
 
 const EMPTY: WalletState = { plus: 0, reward: 0, paid: 0, debt: 0, totalSpendable: 0 };
 
-/** Read the server-authoritative wallet (duk_balance view + duk_debt). READ only; never mutates. */
+/**
+ * Read the server-authoritative wallet (duk_balance view + duk_debt). READ only; never mutates.
+ * THROWS on a query error (network / RLS / outage) so the caller (walletStore) can surface an error state — a
+ * read failure must NOT be shown to a paying user as "0덕". Only a genuinely empty wallet returns zeros.
+ */
 export async function getWalletState(): Promise<WalletState> {
-  try {
-    const supabase = getSupabaseClient();
-    const [{ data: balances }, { data: debts }] = await Promise.all([
-      supabase.from('duk_balance').select('bucket,balance'),
-      supabase.from('duk_debt').select('amount').eq('resolved', false),
-    ]);
-    const state: WalletState = { ...EMPTY };
-    for (const row of (balances ?? []) as { bucket?: string; balance?: number }[]) {
-      const v = Number(row.balance ?? 0);
-      if (row.bucket === 'PLUS') state.plus = v;
-      else if (row.bucket === 'REWARD') state.reward = v;
-      else if (row.bucket === 'PAID') state.paid = v;
-    }
-    state.debt = ((debts ?? []) as { amount?: number }[]).reduce((n, d) => n + Number(d.amount ?? 0), 0);
-    state.totalSpendable = Math.max(0, state.plus) + Math.max(0, state.reward) + Math.max(0, state.paid);
-    return state;
-  } catch {
-    return { ...EMPTY };
+  const supabase = getSupabaseClient();
+  const [balRes, debtRes] = await Promise.all([
+    supabase.from('duk_balance').select('bucket,balance'),
+    supabase.from('duk_debt').select('amount').eq('resolved', false),
+  ]);
+  if (balRes.error || debtRes.error) {
+    // Propagate: the store maps this to `error:true` → the wallet/Home show an error + retry, never a false 0.
+    throw balRes.error ?? debtRes.error;
   }
+  const state: WalletState = { ...EMPTY };
+  for (const row of (balRes.data ?? []) as { bucket?: string; balance?: number }[]) {
+    const v = Number(row.balance ?? 0);
+    if (row.bucket === 'PLUS') state.plus = v;
+    else if (row.bucket === 'REWARD') state.reward = v;
+    else if (row.bucket === 'PAID') state.paid = v;
+  }
+  state.debt = ((debtRes.data ?? []) as { amount?: number }[]).reduce((n, d) => n + Number(d.amount ?? 0), 0);
+  state.totalSpendable = Math.max(0, state.plus) + Math.max(0, state.reward) + Math.max(0, state.paid);
+  return state;
 }
 
 /** Read candle availability from candle_state + the active economy policy (server time via `now`). */
@@ -59,16 +63,24 @@ export async function getCandleAvailability(nowEpochSeconds: number): Promise<Ca
   }
 }
 
-export type LightCandleResult = { granted: boolean; nextAvailableAt: string | null; rewardAmount: number };
+export type LightCandleStatus = 'granted' | 'cooldown' | 'error';
+export type LightCandleResult = { granted: boolean; status: LightCandleStatus; nextAvailableAt: string | null; rewardAmount: number };
 
 /** Trigger the server-authoritative candle light (auth RPC; atomic cooldown; idempotent under concurrency). */
 export async function lightCandle(): Promise<LightCandleResult> {
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.rpc('light_candle');
-    if (error || !data || typeof data !== 'object') return { granted: false, nextAvailableAt: null, rewardAmount: 0 };
+    // A transient RPC error is NOT a cooldown — surface it distinctly so the UI offers retry, not "내일 다시".
+    if (error || !data || typeof data !== 'object') return { granted: false, status: 'error', nextAvailableAt: null, rewardAmount: 0 };
     const d = data as { granted?: boolean; next_available_at?: string | null; reward_amount?: number };
-    const result = { granted: d.granted === true, nextAvailableAt: d.next_available_at ?? null, rewardAmount: Number(d.reward_amount ?? 0) };
+    const granted = d.granted === true;
+    const result: LightCandleResult = {
+      granted,
+      status: granted ? 'granted' : 'cooldown',
+      nextAvailableAt: d.next_available_at ?? null,
+      rewardAmount: Number(d.reward_amount ?? 0),
+    };
     // Analytics (CLIENT_OBSERVED_SERVER_OUTCOME) — emit ONLY on an authoritative grant, never on cooldown/failure.
     // Non-blocking + privacy-safe (allowlisted props); a failure here never affects the candle outcome.
     if (result.granted) {
@@ -79,6 +91,6 @@ export async function lightCandle(): Promise<LightCandleResult> {
     }
     return result;
   } catch {
-    return { granted: false, nextAvailableAt: null, rewardAmount: 0 };
+    return { granted: false, status: 'error', nextAvailableAt: null, rewardAmount: 0 };
   }
 }

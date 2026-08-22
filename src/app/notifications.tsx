@@ -43,16 +43,18 @@ export default function NotificationsScreen() {
 
   const [items, setItems] = useState<InAppNotification[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false); // distinguish a load failure from a genuinely empty list (§J9)
 
   const reload = useCallback(() => {
     inAppNotificationService
       .list()
       .then((rows) => {
         setItems(rows);
+        setError(false);
         setLoaded(true);
       })
       .catch(() => {
-        setItems([]);
+        setError(true); // do NOT render as "no notifications" — show an error + retry
         setLoaded(true);
       });
   }, []);
@@ -118,7 +120,18 @@ export default function NotificationsScreen() {
               읽지 않은 알림 {unreadInList}개
             </Text>
           ) : null}
-          {loaded && items.length === 0 ? (
+          {loaded && error ? (
+            <Card radius="xl">
+              <Stack gap="sm">
+                <Text variant="bodyMedium" colorToken="textSecondary">
+                  알림을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+                </Text>
+                <Pressable onPress={reload} accessibilityRole="button" style={styles.markAll}>
+                  <Text variant="bodySmall" colorToken="primary" style={{ fontWeight: '700' }}>다시 시도</Text>
+                </Pressable>
+              </Stack>
+            </Card>
+          ) : loaded && items.length === 0 ? (
             <Card radius="xl">
               <Text variant="bodyMedium" colorToken="textSecondary">
                 새로운 알림이 없어요.

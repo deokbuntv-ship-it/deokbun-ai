@@ -59,8 +59,9 @@ describe('duplicate-submit locks exist (§15)', () => {
   it('compatibility-chat has a synchronous send re-entrancy lock', () => {
     expect(read('app/compatibility-chat.tsx')).toMatch(/sendingRef/);
   });
-  it('candle button is disabled unless eligible', () => {
-    expect(read('app/wallet.tsx')).toMatch(/disabled=\{candle !== 'eligible'\}/);
+  it('candle button is disabled unless eligible (or error, to allow retry — §J9)', () => {
+    // Fix #2: a transient candle error is retryable, so the button is enabled for 'eligible' OR 'error' only.
+    expect(read('app/wallet.tsx')).toMatch(/disabled=\{candle !== 'eligible' && candle !== 'error'\}/);
   });
 });
 

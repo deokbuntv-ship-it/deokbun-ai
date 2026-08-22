@@ -38,8 +38,9 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+// Not-yet-connected settings: the toggle is DISABLED (§J9) so an operator can't flip a control that persists
+// nothing. Re-enable with a real onValueChange when the settings-save API is wired.
 function ToggleRow({ label, hint }: { label: string; hint?: string }) {
-  const [on, setOn] = useState(false);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <View style={{ flex: 1 }}>
@@ -52,7 +53,7 @@ function ToggleRow({ label, hint }: { label: string; hint?: string }) {
           </Text>
         ) : null}
       </View>
-      <Switch value={on} onValueChange={setOn} trackColor={{ true: adminTheme.navy }} />
+      <Switch value={false} disabled trackColor={{ true: adminTheme.navy }} />
     </View>
   );
 }

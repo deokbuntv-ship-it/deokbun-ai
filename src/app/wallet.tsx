@@ -42,11 +42,13 @@ export default function WalletScreen() {
   const onLightCandle = useCallback(async () => {
     setCandle('claiming');
     const r = await lightCandle(); // server-authoritative atomic grant; client never grants
-    if (r.granted) {
+    if (r.status === 'granted') {
       setCandle('granted');
       await refreshAfterGrant(wallet.refresh);
+    } else if (r.status === 'error') {
+      setCandle('error'); // transient failure — offer retry, do NOT imply cooldown
     } else {
-      setCandle('cooldown'); // not eligible now (server said so)
+      setCandle('cooldown'); // genuinely not eligible now (server said so)
     }
   }, [wallet]);
 
@@ -94,7 +96,7 @@ export default function WalletScreen() {
                   <Button
                     label={candleCopy(candle)}
                     radius="lg"
-                    disabled={candle !== 'eligible'}
+                    disabled={candle !== 'eligible' && candle !== 'error'}
                     onPress={() => void onLightCandle()}
                   />
                 </Stack>
