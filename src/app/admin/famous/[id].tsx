@@ -132,6 +132,7 @@ export default function AdminFamousDetailScreen() {
 
           <Stack direction="row" gap="sm" style={{ flexWrap: 'wrap' }}>
             <Button
+              variant="primary"
               label="이 인물로 콘텐츠 만들기"
               onPress={() =>
                 router.push({

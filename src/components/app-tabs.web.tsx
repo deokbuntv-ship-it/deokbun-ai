@@ -33,7 +33,8 @@ type NavItemProps = TabTriggerSlotProps & {
 };
 
 function NavItem({ tab, label, theme, isFocused, ...props }: NavItemProps) {
-  const color = isFocused ? theme.primary : theme.textSecondary;
+  // Selected tab = signature orange (§15); unselected stays calm neutral.
+  const color = isFocused ? theme.brandPrimary : theme.textSecondary;
   return (
     <Pressable {...props} style={styles.navItem}>
       <ConsumerNavGlyph name={tab} color={color} active={!!isFocused} />

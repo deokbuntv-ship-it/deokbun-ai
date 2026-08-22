@@ -328,7 +328,7 @@ export default function AdminEconomyScreen() {
               조정은 되돌릴 수 없는 원장 기록으로 남습니다.
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <Button label={adjBusy ? '적용 중…' : '조정 적용'} onPress={submitAdjust} disabled={!canSubmit} />
+              <Button variant="primary" label={adjBusy ? '적용 중…' : '조정 적용'} onPress={submitAdjust} disabled={!canSubmit} />
               {adjResult ? (
                 <Text
                   variant="bodySmall"

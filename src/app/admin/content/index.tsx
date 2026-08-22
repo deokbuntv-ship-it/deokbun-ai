@@ -174,6 +174,7 @@ export default function AdminContentListScreen() {
           subtitle="채널별 콘텐츠를 하나의 스튜디오에서 관리합니다."
         />
         <Button
+          variant="primary"
           label="새 콘텐츠"
           onPress={() => router.push('/admin/content/new')}
         />

@@ -45,7 +45,7 @@ export function AdminGate({
         </Card>
 
         {variant === 'unauthenticated' && onLogin ? (
-          <Button label="로그인" onPress={onLogin} />
+          <Button variant="primary" label="로그인" onPress={onLogin} />
         ) : null}
 
         {variant !== 'loading' ? (

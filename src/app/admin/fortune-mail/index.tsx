@@ -290,7 +290,7 @@ export default function AdminFortuneMailScreen() {
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            <Button label={creating ? '만드는 중…' : '캠페인 만들기'} onPress={() => void create()} disabled={creating} />
+            <Button variant="primary" label={creating ? '만드는 중…' : '캠페인 만들기'} onPress={() => void create()} disabled={creating} />
           </View>
 
           {createResult ? (
@@ -546,7 +546,7 @@ function CampaignDetailPanel({
           </Field>
 
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            <Button label="지금 발송" onPress={onSendNow} disabled={busy || !canSend} />
+            <Button variant="primary" label="지금 발송" onPress={onSendNow} disabled={busy || !canSend} />
             <Button label="발송 취소" variant="danger" onPress={onCancel} disabled={busy || !canCancel} />
             <Button label="실패 재시도" variant="secondary" onPress={onRetry} disabled={busy || !canRetry} />
           </View>

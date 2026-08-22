@@ -134,7 +134,7 @@ export default function AdminFamousListScreen() {
           title="유명인"
           subtitle="유명인 데이터 / SEO 소스 관리 (읽기/쓰기)."
         />
-        <Button label="새 유명인" onPress={() => router.push('/admin/famous/new')} />
+        <Button variant="primary" label="새 유명인" onPress={() => router.push('/admin/famous/new')} />
       </Stack>
 
       <AdminSearchInput

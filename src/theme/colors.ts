@@ -19,16 +19,23 @@ const palette = {
   warmSurfaceLow: '#F5F3EE', // subtle tonal elevation
   warmSurfaceHigh: '#EAE8E3', // selected/tonal
   borderWarm: '#E5E1D8', // 1px card/nav border
-  navy: '#1A2B3C', // primary (Deep Navy)
+  navy: '#1A2B3C', // primary (Deep Navy) — structure/headings, NOT the CTA color
   teal: '#5E8B8E', // secondary (Muted Teal)
-  orange: '#F28C33', // accent (Warm Orange, sparingly)
+  // SIGNATURE ORANGE — the Deokbuni brand CTA/accent. `orange` is canonical (reused, not re-picked).
+  // Filled CTAs use dark ink text on it (7.5:1, AA) — the Kakao-yellow pattern; white on this hue fails AA.
+  orange: '#F28C33', // brandPrimary
+  orangePressed: '#DE7A24', // brandPrimaryPressed (deeper, press feedback)
+  orangeSoft: '#FCEBDA', // brandPrimarySoft (warm tint — soft fills, selected-soft, Duk chip bg)
   ink: '#1B1C19', // on-surface text
   inkVariant: '#44474C', // on-surface-variant
+  inkMuted: '#6B7280', // textMuted (de-emphasized meta; ~4.7:1 on warm white)
   tealTint: '#EAF3F3', // teal ~10% surface (chips/insight)
   // dark-scheme derivations (consumer is light-first; keep dark on-hue)
   navyDark: '#4F6073',
   tealDark: '#A0CFD2',
   orangeDark: '#FFB781',
+  orangeDarkPressed: '#E7A06C',
+  orangeSoftDark: '#3A2E22',
   warmDarkBg: '#1A1B17',
   warmDarkElevated: '#24261F',
   warmDarkSelected: '#2E312A',
@@ -40,6 +47,7 @@ const palette = {
   red500: '#EF4444',
   green500: '#22C55E',
   amber500: '#F59E0B',
+  blue400: '#60A5FA',
 } as const;
 
 export type Palette = typeof palette;
@@ -52,9 +60,16 @@ export type SemanticColors = {
   border: string;
   textPrimary: string;
   textSecondary: string;
+  textMuted: string; // de-emphasized meta (dates, counts, hints)
   textInverse: string;
   primary: string;
   primaryText: string;
+  // brandPrimary = SIGNATURE ORANGE — the consumer CTA / selected / Duk-reward accent (§2/§3). `primary`
+  // (navy) is reserved for structure/headings, NOT filled CTAs. brandPrimaryText is dark ink (AA on orange).
+  brandPrimary: string;
+  brandPrimaryPressed: string;
+  brandPrimarySoft: string;
+  brandPrimaryText: string;
   // Stitch: `secondary` = muted teal (calm/secondary actions), `accent` = warm
   // orange (sparingly — focus/notify), `accentSurface` = teal tint (chips/insight).
   secondary: string;
@@ -63,6 +78,7 @@ export type SemanticColors = {
   success: string;
   warning: string;
   danger: string;
+  info: string;
 };
 
 const lightColors = {
@@ -73,15 +89,21 @@ const lightColors = {
   border: palette.borderWarm,
   textPrimary: palette.ink,
   textSecondary: palette.inkVariant,
+  textMuted: palette.inkMuted,
   textInverse: palette.white,
   primary: palette.navy,
   primaryText: palette.white,
+  brandPrimary: palette.orange,
+  brandPrimaryPressed: palette.orangePressed,
+  brandPrimarySoft: palette.orangeSoft,
+  brandPrimaryText: palette.ink,
   secondary: palette.teal,
   accent: palette.orange,
   accentSurface: palette.tealTint,
   success: palette.green500,
   warning: palette.amber500,
   danger: palette.red500,
+  info: palette.blue600,
 } satisfies SemanticColors;
 
 const darkColors = {
@@ -92,15 +114,21 @@ const darkColors = {
   border: palette.warmDarkBorder,
   textPrimary: palette.warmDarkText,
   textSecondary: palette.warmDarkTextVariant,
+  textMuted: palette.gray400,
   textInverse: palette.ink,
   primary: palette.navyDark,
   primaryText: palette.white,
+  brandPrimary: palette.orangeDark,
+  brandPrimaryPressed: palette.orangeDarkPressed,
+  brandPrimarySoft: palette.orangeSoftDark,
+  brandPrimaryText: palette.warmDarkBg,
   secondary: palette.tealDark,
   accent: palette.orangeDark,
   accentSurface: palette.tealTintDark,
   success: palette.green500,
   warning: palette.amber500,
   danger: palette.red500,
+  info: palette.blue400,
 } satisfies SemanticColors;
 
 export const colors = {
