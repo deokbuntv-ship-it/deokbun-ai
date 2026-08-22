@@ -24,7 +24,7 @@ import {
   useConsultationDraft,
   useConsultationSubjects,
 } from '@/features/consultation';
-import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
+import { birthMonthDay, isBirthdayTodayKst, trackRetentionEvent } from '@/features/retention';
 import { useAuth } from '@/features/auth';
 import { useWallet } from '@/features/duk/useWallet';
 import { walletHeadline, walletStateOf } from '@/features/duk/consumerDukView';
@@ -385,7 +385,11 @@ export default function HomeScreen() {
                   <Text variant="bodyMedium" colorToken="textSecondary">
                     새로운 한 해의 흐름을 확인해보세요.
                   </Text>
-                  <Button label="이번 달 운세 보기" onPress={openMonthly} radius="lg" />
+                  <Button
+                    label="이번 달 운세 보기"
+                    onPress={() => { trackRetentionEvent('birthday_message_opened'); openMonthly(); }}
+                    radius="lg"
+                  />
                 </Stack>
               </Card>
             ) : null}
