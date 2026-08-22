@@ -10,6 +10,7 @@ let sanitizeEventProperties: typeof import('@/services/productEvents').sanitizeE
 let trackProductEvent: typeof import('@/services/productEvents').trackProductEvent;
 
 beforeEach(() => {
+  (globalThis as { __DEV__?: boolean }).__DEV__ = true; // dev → transition fallback available (§6)
   jest.resetModules();
   rpc.mockReset();
   insert.mockReset();
@@ -61,8 +62,19 @@ describe('§T trackProductEvent — prefers the server-validated RPC', () => {
   });
 
   it('does NOT fall back on a non-missing RPC error (drops the event, never bypasses validation)', async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     rpc.mockResolvedValue({ error: { code: '22001', message: 'value too long' } });
     await trackProductEvent('today_fortune_card_viewed', { surface: 'home' });
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('§6 PRODUCTION (__DEV__ false) never direct-inserts even when the RPC is missing — drops quietly', async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
+    jest.resetModules();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const prod = require('@/services/productEvents');
+    rpc.mockResolvedValue({ error: { code: 'PGRST202', message: 'Could not find the function' } });
+    await prod.trackProductEvent('today_fortune_card_viewed', { surface: 'home' });
+    expect(insert).not.toHaveBeenCalled(); // no insecure production fallback
   });
 });

@@ -173,11 +173,12 @@ export function sanitizeEventProperties(
 // TRANSITION fallback for the window before the RPC migration is deployed; once STEP 2 revokes the insert
 // policy it is inert (RLS-denied → dropped). Cached per session so we don't retry a missing RPC every event.
 let rpcUnavailable = false;
-// §41 RELEASE-GATE: the direct-insert fallback exists ONLY for the transition window before the
-// record_product_event RPC is deployed. It becomes RLS-denied (inert) once migration 20260835 revokes the
-// insert-own policy. Keep true during transition; the migration is the authoritative closure (G7 stays
-// RELEASE_BLOCKED until 20260835 is applied in production).
-const ANALYTICS_INSERT_FALLBACK_ENABLED = true;
+// §5/§6 (Sprint I) — the direct-insert fallback is DEV/LOCAL-ONLY. PRODUCTION never silently falls back to an
+// insecure direct insert: if the validated RPC is unavailable in production, the event is dropped quietly (no
+// UX impact) rather than bypassing server-side validation. In dev it remains available for the pre-migration
+// transition window. Privacy is never traded for telemetry availability.
+const ANALYTICS_INSERT_FALLBACK_ENABLED =
+  typeof __DEV__ !== 'undefined' ? __DEV__ === true : false;
 function isFunctionMissing(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   if (error.code === 'PGRST202') return true; // PostgREST: function not found in schema cache

@@ -1,7 +1,9 @@
 // Product analytics foundation (§37/§38/§40). Locks the PROPERTY ALLOWLIST (the PII guard) and the
-// non-blocking write. Supabase mocked. Sprint F.1 §T: trackProductEvent now prefers the server-validated RPC;
-// this suite exercises the TRANSITION FALLBACK (RPC not deployed yet → PGRST202 → direct insert), so the
-// sanitize/allowlist + non-blocking guarantees are still asserted on the insert path.
+// non-blocking write. Supabase mocked. Sprint F.1 §T: trackProductEvent prefers the server-validated RPC; this
+// suite exercises the DEV transition fallback (RPC not deployed → PGRST202 → direct insert), so the
+// sanitize/allowlist + non-blocking guarantees are asserted on the insert path. Sprint I §6: the fallback is
+// DEV-only, so __DEV__ is set true here.
+(globalThis as { __DEV__?: boolean }).__DEV__ = true;
 let inserted: Record<string, unknown> | null = null;
 let throwOnInsert = false;
 

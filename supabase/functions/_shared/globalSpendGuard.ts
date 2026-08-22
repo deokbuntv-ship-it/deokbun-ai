@@ -47,14 +47,21 @@ export async function reserveGlobalPaidGeneration(
   admin: RpcClient | null,
   userId: string | null,
   workload: GlobalPaidGenerationWorkload,
+  // Sprint I §4 — when a requestId is supplied AND idempotent routing is enabled (owner has applied migration
+  // 20260836), the request-scoped wrapper is used so one logical request consumes AT MOST one global slot
+  // across retries. Ceilings/locking/kill-switch are unchanged. Absent → the legacy RPC (unchanged behavior).
+  opts?: { requestId?: string | null; idempotent?: boolean },
 ): Promise<GlobalSpendGuardVerdict> {
   if (!admin || !userId) return { status: 'unavailable' };
   try {
-    const { data, error } = await admin.rpc('reserve_global_paid_generation', {
-      p_user_id: userId,
-      p_workload: workload,
-      p_units: 1,
-    });
+    const useIdem = opts?.idempotent === true && typeof opts?.requestId === 'string' && opts.requestId.length > 0;
+    const { data, error } = useIdem
+      ? await admin.rpc('reserve_global_paid_generation_idem', {
+          p_user_id: userId, p_workload: workload, p_request_id: opts!.requestId, p_units: 1,
+        })
+      : await admin.rpc('reserve_global_paid_generation', {
+          p_user_id: userId, p_workload: workload, p_units: 1,
+        });
     const raw = Array.isArray(data) ? data[0] : data;
     if (error || !raw || typeof raw !== 'object') return { status: 'unavailable' };
     const row = raw as Record<string, unknown>;

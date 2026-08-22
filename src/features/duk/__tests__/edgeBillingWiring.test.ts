@@ -39,4 +39,12 @@ describe('§5/§6 Edge Duk billing wiring (flag-gated, correct order, release-on
   it('a client-supplied balance / paid / plus flag is never read for billing decisions', () => {
     expect(edge).not.toMatch(/body\.(balance|paid|plus|firstPackEligible|dukAmount|price)\b/);
   });
+
+  it('§4 global reservation is request-scoped (idempotent) when enabled, passing the request id', () => {
+    expect(edge).toContain("Deno.env.get('GLOBAL_REQ_IDEMPOTENCY_ENABLED')");
+    expect(edge).toMatch(/reserveGlobalPaidGeneration\(admin, userId, workload, \{[\s\S]*requestId,[\s\S]*idempotent:/);
+    const shared = readFileSync(resolve(__dirname, '../../../../supabase/functions/_shared/globalSpendGuard.ts'), 'utf8');
+    expect(shared).toContain("reserve_global_paid_generation_idem");
+    expect(shared).toContain("reserve_global_paid_generation'"); // legacy path preserved
+  });
 });

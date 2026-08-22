@@ -471,7 +471,12 @@ async function acquirePaidRequest(
         ? { status: 'rate_limited', retryAfterMs: reservation.retryAfterMs }
         : { status: 'unavailable' };
     }
-    const global = await reserveGlobalPaidGeneration(admin, userId, workload);
+    // §4 — request-scoped global reservation when enabled (owner applied migration 20260836). Same request_id
+    // → at most one global slot across retries. Default OFF → the unchanged legacy reservation.
+    const global = await reserveGlobalPaidGeneration(admin, userId, workload, {
+      requestId,
+      idempotent: (Deno.env.get('GLOBAL_REQ_IDEMPOTENCY_ENABLED') ?? '').toLowerCase() === 'true',
+    });
     if (global.status !== 'allowed') {
       await admin.rpc('release_paid_request', {
         p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_token: row.lease_token,
