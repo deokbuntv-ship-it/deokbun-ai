@@ -3,6 +3,7 @@
 // = EXTERNAL_BLOCKED). Never throws; returns { available:false } when expo-notifications is absent (Expo Go /
 // before the dev build) or on web, and { granted:false } when permission is denied or on a simulator. It does
 // NOT request permission on its own schedule — the caller invokes it contextually (post-onboarding / settings).
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import type { PushDevicePlatform } from '@/features/retention/types';
@@ -14,6 +15,13 @@ type ExpoNotificationsModule = {
   requestPermissionsAsync: () => Promise<PermissionResponse>;
   getExpoPushTokenAsync: (opts?: { projectId?: string }) => Promise<{ data?: string }>;
 };
+
+// EAS projectId (from app.json extra.eas.projectId) — required by getExpoPushTokenAsync on a real build. Absent
+// until the owner runs `eas init`, in which case token acquisition fails closed (caught below).
+function easProjectId(): string | undefined {
+  const extra = (Constants.expoConfig?.extra ?? {}) as { eas?: { projectId?: string } };
+  return extra.eas?.projectId;
+}
 type ExpoDeviceModule = { isDevice?: boolean };
 
 let cachedNotifications: ExpoNotificationsModule | null | undefined;
@@ -65,7 +73,8 @@ export const expoTokenAcquirer: TokenAcquirer = async (): Promise<AcquiredToken>
     if (status !== 'granted') {
       return { available: true, granted: false, token: null, platform: plat, provider: 'expo' };
     }
-    const token = (await Notifications.getExpoPushTokenAsync())?.data ?? null;
+    const projectId = easProjectId();
+    const token = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined))?.data ?? null;
     return { available: true, granted: Boolean(token), token, platform: plat, provider: 'expo' };
   } catch {
     return { available: false, granted: false, token: null, platform: plat, provider: 'expo' };

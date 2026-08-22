@@ -4,6 +4,7 @@
 // The node jest env can't load the RN native module; a minimal Platform mock lets us test the pure fail-closed
 // orchestration (expo-notifications remains genuinely absent → the acquirer degrades to unavailable).
 jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
+jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { extra: {} } } }));
 jest.mock('@/features/retention/services/pushDeviceService', () => ({
   pushDeviceService: { register: jest.fn(async () => {}), disableAllForCurrentUser: jest.fn(async () => {}) },
 }));

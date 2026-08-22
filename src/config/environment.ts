@@ -47,11 +47,15 @@ export function resolveEnvironment(input?: { url?: string | null; declared?: str
  * Supabase config's own required-vars throw. Throws on mismatch; returns the resolved environment otherwise.
  */
 export function assertEnvironmentConsistency(r: ResolvedEnvironment = resolveEnvironment()): ResolvedEnvironment {
-  if (!r.supabaseUrl) return r;
-  if (r.declared && r.projectRef && KNOWN_PROJECT_REFS[r.projectRef] && KNOWN_PROJECT_REFS[r.projectRef] !== r.declared) {
+  if (!r.supabaseUrl || !r.declared || !r.projectRef) return r;
+  const refEnv = KNOWN_PROJECT_REFS[r.projectRef];
+  if (!refEnv) return r; // unknown ref → nothing to assert
+  // Protect the PRODUCTION boundary: a production build must hit production and a non-production build must NOT.
+  // 'development' and 'staging' both legitimately use the staging backend, so only prod↔non-prod is a mismatch.
+  if ((r.declared === 'production') !== (refEnv === 'production')) {
     throw new Error(
-      `Environment mismatch: EXPO_PUBLIC_APP_ENV='${r.declared}' but the Supabase URL targets ` +
-        `'${KNOWN_PROJECT_REFS[r.projectRef]}' (ref ${r.projectRef}). Refusing to start a cross-targeted build.`,
+      `Environment mismatch: EXPO_PUBLIC_APP_ENV='${r.declared}' but the Supabase URL targets '${refEnv}' ` +
+        `(ref ${r.projectRef}). Refusing to start a build across the production boundary.`,
     );
   }
   return r;

@@ -5,18 +5,27 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "env": { "EXPO_PUBLIC_APP_ENV": "development" },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co"
+      },
       "ios": { "simulator": true }
     },
     "staging": {
       "distribution": "internal",
       "channel": "staging",
-      "env": { "EXPO_PUBLIC_APP_ENV": "staging" }
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co"
+      }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
-      "env": { "EXPO_PUBLIC_APP_ENV": "production" },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://olvkpaldrwvtexxpoaag.supabase.co"
+      },
       "autoIncrement": true
     }
   },

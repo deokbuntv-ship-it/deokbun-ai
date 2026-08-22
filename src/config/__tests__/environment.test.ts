@@ -41,6 +41,12 @@ describe('assertEnvironmentConsistency (fail-fast)', () => {
   it('does not throw when declared matches the ref', () => {
     expect(() => assertEnvironmentConsistency(resolveEnvironment({ url: PROD, declared: 'production' }))).not.toThrow();
   });
+  it('allows a DEVELOPMENT build on the staging backend (dev + staging share it)', () => {
+    expect(() => assertEnvironmentConsistency(resolveEnvironment({ url: STAGING, declared: 'development' }))).not.toThrow();
+  });
+  it('throws when a development build targets the production ref (crosses the prod boundary)', () => {
+    expect(() => assertEnvironmentConsistency(resolveEnvironment({ url: PROD, declared: 'development' }))).toThrow(/boundary|mismatch/i);
+  });
   it('does not throw when APP_ENV is unset (inference only)', () => {
     expect(() => assertEnvironmentConsistency(resolveEnvironment({ url: PROD }))).not.toThrow();
   });

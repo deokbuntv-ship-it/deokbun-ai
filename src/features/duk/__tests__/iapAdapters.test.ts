@@ -18,20 +18,20 @@ function b64url(obj: unknown): string {
 }
 const jws = (payload: unknown, header: unknown = { alg: 'ES256' }) => `${b64url(header)}.${b64url(payload)}.sig`;
 const VALID_SIG = async () => true;   // simulate a verified Apple signature
-const APPLE = { bundleId: 'com.deokbuni.app', environment: 'Production' as const };
-const TX = { transactionId: 't-1', bundleId: 'com.deokbuni.app', productId: 'com.deokbuni.duk.first20', environment: 'Production', type: 'Consumable' };
+const APPLE = { bundleId: 'com.deokbun.app', environment: 'Production' as const };
+const TX = { transactionId: 't-1', bundleId: 'com.deokbun.app', productId: 'com.deokbun.duk.first20', environment: 'Production', type: 'Consumable' };
 
 describe('§7-§10 Apple — decode + signature + field validation', () => {
   it('decodeJws splits + decodes header/payload (no signature trust)', () => {
     const d = decodeJws(jws(TX));
-    expect(d?.payload).toMatchObject({ transactionId: 't-1', productId: 'com.deokbuni.duk.first20' });
+    expect(d?.payload).toMatchObject({ transactionId: 't-1', productId: 'com.deokbun.duk.first20' });
     expect(decodeJws('not-a-jws')).toBeNull();
   });
 
   it('a valid signed transaction verifies and normalizes', async () => {
     const v = await verifySignedAppleTransaction(jws(TX), APPLE, VALID_SIG);
     expect(v.ok).toBe(true);
-    if (v.ok) expect(appleToProviderVerification(v)).toEqual({ ok: true, externalTransactionId: 't-1', storeProductId: 'com.deokbuni.duk.first20', isSubscription: false });
+    if (v.ok) expect(appleToProviderVerification(v)).toEqual({ ok: true, externalTransactionId: 't-1', storeProductId: 'com.deokbun.duk.first20', isSubscription: false });
   });
 
   it('a bad signature is rejected (default verifier is NOT_CONFIGURED → never trusts)', async () => {
@@ -86,9 +86,9 @@ describe('§14-§18 Google — state mapping, grant/ack decisions, RTDN change-s
   });
   it('RTDN is a change signal → requiresAuthoritativeFetch; package mismatch fails closed', () => {
     const data = (o: unknown) => (typeof btoa === 'function' ? btoa(JSON.stringify(o)) : Buffer.from(JSON.stringify(o)).toString('base64'));
-    const env = decodeRtdn(data({ packageName: 'com.deokbuni.app', oneTimeProductNotification: { sku: 'duk_base_50', purchaseToken: 'tok' } }), { packageName: 'com.deokbuni.app' });
+    const env = decodeRtdn(data({ packageName: 'com.deokbun.app', oneTimeProductNotification: { sku: 'duk_base_50', purchaseToken: 'tok' } }), { packageName: 'com.deokbun.app' });
     expect(env).toMatchObject({ ok: true, kind: 'ONE_TIME', purchaseToken: 'tok', requiresAuthoritativeFetch: true });
-    expect(decodeRtdn(data({ packageName: 'com.evil' }), { packageName: 'com.deokbuni.app' })).toMatchObject({ ok: false, reason: 'PACKAGE_MISMATCH' });
+    expect(decodeRtdn(data({ packageName: 'com.evil' }), { packageName: 'com.deokbun.app' })).toMatchObject({ ok: false, reason: 'PACKAGE_MISMATCH' });
   });
 });
 
@@ -125,7 +125,7 @@ describe('§23/§25/§34/§35 purchase state machine + reconciliation', () => {
 describe('§43 client-authority attack corpus — client claims carry NO authority', () => {
   it('a client-forged "success" JWS with a good product but NO real signature is rejected', async () => {
     // The attacker supplies a well-formed payload but cannot produce a valid signature → default verifier false.
-    const forged = jws({ ...TX, productId: 'com.deokbuni.duk.large120' });
+    const forged = jws({ ...TX, productId: 'com.deokbun.duk.large120' });
     expect((await verifySignedAppleTransaction(forged, APPLE)).ok).toBe(false);
   });
   it('the ProviderVerification never carries a client-supplied Duk amount (amount is server-catalog only)', async () => {

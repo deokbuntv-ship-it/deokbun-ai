@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
@@ -12,9 +13,13 @@ import { useAuth } from '@/features/auth';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   notificationPreferencesService,
+  registerForPush,
   trackRetentionEvent,
   type NotificationPreferences,
+  type PushRegistrationStatus,
 } from '@/features/retention';
+import { expoTokenAcquirer } from '@/features/retention/push/expoTokenAcquirer';
+import { getOrCreateDeviceId } from '@/features/retention/push/deviceId';
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -39,6 +44,27 @@ export default function NotificationSettingsScreen() {
 
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
   const [loaded, setLoaded] = useState(false);
+  // Device push registration (§J8.6) — contextual (only when the user taps), never at cold start.
+  const [pushStatus, setPushStatus] = useState<PushRegistrationStatus | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const enableDevicePush = async () => {
+    setPushBusy(true);
+    try {
+      const deviceId = await getOrCreateDeviceId();
+      const result = await registerForPush(deviceId, expoTokenAcquirer);
+      setPushStatus(result.status);
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const PUSH_STATUS_COPY: Record<PushRegistrationStatus, string> = {
+    registered: '이 기기에서 알림을 받을 수 있어요.',
+    permission_denied: '기기 설정에서 알림 권한을 허용해 주세요.',
+    no_token: '알림 토큰을 받지 못했어요. 잠시 후 다시 시도해 주세요.',
+    unavailable: '이 빌드에서는 기기 알림이 아직 지원되지 않아요. (준비 중)',
+  };
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -95,6 +121,27 @@ export default function NotificationSettingsScreen() {
 
             <Card radius="xl">
               <Stack gap="md">{renderRow(MARKETING_ROW)}</Stack>
+            </Card>
+
+            {/* Device push registration — contextual opt-in (§J8.6). Honest status; never claims push works when
+                the provider/native build isn't ready. */}
+            <Card radius="xl">
+              <Stack gap="sm">
+                <Text variant="bodyLarge" style={{ fontWeight: '600' }}>기기 푸시 알림</Text>
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  이 기기에서 푸시 알림을 받으려면 아래에서 등록해 주세요. 위의 알림 설정과 별개로 기기 권한이 필요해요.
+                </Text>
+                <Button
+                  label={pushBusy ? '등록 중…' : '기기 알림 켜기'}
+                  variant="secondary"
+                  radius="lg"
+                  disabled={pushBusy}
+                  onPress={() => void enableDevicePush()}
+                />
+                {pushStatus ? (
+                  <Text variant="bodySmall" colorToken="textSecondary">{PUSH_STATUS_COPY[pushStatus]}</Text>
+                ) : null}
+              </Stack>
             </Card>
 
             <Text variant="bodySmall" colorToken="textSecondary" style={styles.note}>

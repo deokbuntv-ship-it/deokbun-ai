@@ -11,6 +11,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
+import { unregisterOnLogout } from '@/features/retention';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
@@ -182,8 +183,10 @@ export default function MyScreen() {
             {/* 로그아웃 */}
             {isAuthenticated ? (
               <Pressable
-                onPress={() => {
-                  void signOut();
+                onPress={async () => {
+                  // Disable this user's push devices WHILE still authenticated (owner RLS), then sign out (§J8.6).
+                  await unregisterOnLogout().catch(() => {});
+                  await signOut();
                 }}
                 accessibilityRole="button"
                 style={styles.logout}
