@@ -94,6 +94,34 @@ const ALLOWED_PROPS = new Set<string>([
   'question_category',
   'placement',
   'position',
+  // Duk economy / acquisition funnel (Sprint F §T/§U) — all categorical/numeric/boolean, non-PII. Kept in sync
+  // with the server allowlist in migration 20260830000000_product_events_server_validation.sql.
+  'amount',
+  'reason',
+  'bucket',
+  'duk_balance',
+  'duk_balance_at_entry',
+  'duk_shortfall',
+  'reward_duk_balance',
+  'paid_duk_balance',
+  'plus_duk_balance',
+  'prior_consultation_count',
+  'days_since_signup',
+  'day_index',
+  'accelerated',
+  'pack_type',
+  'duk_granted',
+  'price_krw',
+  'monthly_duk',
+  'trigger',
+  'turn_count',
+  'outcome',
+  'product',
+  'session_id',
+  'action',
+  'entry',
+  'turns_used',
+  'origin',
 ]);
 const MAX_STR = 64;
 
@@ -115,6 +143,18 @@ export function sanitizeEventProperties(
   return out;
 }
 
+// Sprint F.1 §T — prefer the SERVER-VALIDATED RPC (record_product_event), which re-applies the allowlist +
+// type/length checks server-side so a modified client cannot smuggle PII. The direct insert remains only as a
+// TRANSITION fallback for the window before the RPC migration is deployed; once STEP 2 revokes the insert
+// policy it is inert (RLS-denied → dropped). Cached per session so we don't retry a missing RPC every event.
+let rpcUnavailable = false;
+function isFunctionMissing(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST202') return true; // PostgREST: function not found in schema cache
+  const m = (error.message ?? '').toLowerCase();
+  return m.includes('does not exist') || m.includes('could not find the function') || m.includes('not find');
+}
+
 export async function trackProductEvent(
   eventName: ProductEventName,
   opts?: {
@@ -125,11 +165,27 @@ export async function trackProductEvent(
 ): Promise<void> {
   try {
     const supabase = getSupabaseClient();
+    const surface = opts?.surface ?? null;
+    const consultationMode = opts?.consultationMode ?? null;
+    const properties = sanitizeEventProperties(opts?.properties); // client-side defense-in-depth
+    if (!rpcUnavailable) {
+      const { error } = await supabase.rpc('record_product_event', {
+        p_event_name: eventName,
+        p_surface: surface,
+        p_consultation_mode: consultationMode,
+        p_properties: properties,
+      });
+      if (!error) return;
+      // Only fall back when the RPC is not deployed yet; any other error → drop (fail-open, no bypass).
+      if (isFunctionMissing(error)) rpcUnavailable = true;
+      else return;
+    }
+    // Transition fallback (pre-migration only): direct insert, still client-sanitized.
     await supabase.from('product_events').insert({
       event_name: eventName,
-      surface: opts?.surface ?? null,
-      consultation_mode: opts?.consultationMode ?? null,
-      properties: sanitizeEventProperties(opts?.properties),
+      surface,
+      consultation_mode: consultationMode,
+      properties,
     });
   } catch {
     // non-blocking (§40) — analytics must never surface an error or block the experience.
