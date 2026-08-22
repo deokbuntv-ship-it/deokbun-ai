@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { LineIcon } from '@/components/LineIcon';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -15,9 +15,28 @@ import { unregisterOnLogout } from '@/features/retention';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
-// 07_MY (Stitch my). Account card → 분석 대상자 관리 → 설정/약관 → 로그아웃.
-// Connected to real auth/subject features; no internal auth IDs are shown.
-// 설정/약관 screens don't exist yet, so they carry a truthful 준비 중 marker.
+// 07_MY (§25). Grouped into understandable consumer sections — 서비스 / 알림 / 약관·안내 — instead of one long
+// undifferentiated list. Real auth/subject features; no internal auth IDs shown. Every row routes to a real
+// screen (policies are DRAFT surfaces, owner-owned).
+type MyRow = { icon: LineIconName; label: string; to: Href };
+
+const SERVICE_ROWS: MyRow[] = [
+  { icon: 'wallet', label: '덕', to: '/wallet' },
+  { icon: 'people', label: '분석 대상자 관리', to: '/subjects' },
+];
+const ALERT_ROWS: MyRow[] = [
+  { icon: 'gear', label: '알림 설정', to: '/notification-settings' },
+  { icon: 'calendar', label: '중요한 일정', to: '/life-events' },
+];
+const POLICY_ROWS: MyRow[] = [
+  { icon: 'sparkle', label: 'AI 생성 콘텐츠 안내', to: '/ai-notice' },
+  { icon: 'shield', label: '개인정보 처리방침', to: '/privacy-policy' },
+  { icon: 'shield', label: '서비스 이용약관', to: '/terms-of-service' },
+  { icon: 'wallet', label: '덕 유료 이용 정책', to: '/duk-policy' },
+  { icon: 'shield', label: '환불·청약철회 정책', to: '/refund-policy' },
+  { icon: 'shield', label: '미성년자 이용 안내', to: '/minor-policy' },
+];
+
 export default function MyScreen() {
   const router = useRouter();
   const scheme = useColorScheme();
@@ -26,19 +45,41 @@ export default function MyScreen() {
   const user = authState.user;
   const name = user?.displayName || user?.email || '사용자';
 
+  const chevron = (
+    <Text variant="bodyLarge" style={{ color: theme.textMuted, fontWeight: '600' }}>›</Text>
+  );
+
+  const RowGroup = ({ title, rows }: { title: string; rows: MyRow[] }) => (
+    <Stack gap="sm">
+      <Text variant="caption" colorToken="textMuted" style={styles.sectionLabel}>{title}</Text>
+      <Card radius="xl">
+        <View>
+          {rows.map((r, i) => (
+            <Pressable
+              key={r.label}
+              onPress={() => router.push(r.to)}
+              accessibilityRole="button"
+              accessibilityLabel={r.label}
+              style={[styles.row, i > 0 ? { borderTopWidth: 1, borderTopColor: theme.border } : null]}
+            >
+              <LineIcon name={r.icon} size={22} color={theme.secondary} />
+              <Text variant="bodyLarge" style={styles.rowLabel}>{r.label}</Text>
+              {chevron}
+            </Pressable>
+          ))}
+        </View>
+      </Card>
+    </Stack>
+  );
+
   return (
     <Screen padded={false}>
       <AppHeader title="MY" centerTitle showBell />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="xl">
-            {/* Account */}
+            {/* 내 정보 — tap → 분석 대상자 관리 (canonical SELF birth lives there), one tap away (§9). */}
             {isAuthenticated && user ? (
-              // Tap → 분석 대상자 관리 (where the canonical SELF birth profile is edited) so "my info" is one tap
-              // away, not buried (§9).
               <Card radius="xl">
                 <Pressable
                   onPress={() => router.push('/subjects')}
@@ -48,17 +89,13 @@ export default function MyScreen() {
                 >
                   <Avatar label={name} size={64} />
                   <Stack gap="xs" style={styles.flex1}>
-                    <Text variant="headingMedium" style={styles.accountName}>
-                      {name}
-                    </Text>
+                    <Text variant="headingMedium" style={styles.accountName}>{name}</Text>
                     {user.email ? (
-                      <Text variant="bodyLarge" colorToken="textSecondary">
-                        {user.email}
-                      </Text>
+                      <Text variant="bodyLarge" colorToken="textSecondary">{user.email}</Text>
                     ) : null}
                     <Text variant="bodySmall" colorToken="textSecondary">내 정보 · 분석 대상자 관리</Text>
                   </Stack>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                  {chevron}
                 </Pressable>
               </Card>
             ) : (
@@ -72,115 +109,10 @@ export default function MyScreen() {
               </Card>
             )}
 
-            {/* 덕 (Duk) wallet */}
-            <Card radius="xl">
-              <Pressable
-                onPress={() => router.push('/wallet')}
-                accessibilityRole="button"
-                style={styles.row}
-              >
-                <LineIcon name="wallet" size={22} color={theme.secondary} />
-                <Text variant="bodyLarge" style={styles.rowLabel}>덕</Text>
-                <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-              </Pressable>
-            </Card>
+            <RowGroup title="서비스" rows={SERVICE_ROWS} />
+            <RowGroup title="알림" rows={ALERT_ROWS} />
+            <RowGroup title="약관 및 안내" rows={POLICY_ROWS} />
 
-            {/* 분석 대상자 관리 */}
-            <Card radius="xl">
-              <Pressable
-                onPress={() => router.push('/subjects')}
-                accessibilityRole="button"
-                style={styles.row}
-              >
-                <LineIcon name="people" size={22} color={theme.secondary} />
-                <Text variant="bodyLarge" style={styles.rowLabel}>
-                  분석 대상자 관리
-                </Text>
-                <Text variant="bodyLarge" style={styles.chevron}>
-                  ›
-                </Text>
-              </Pressable>
-            </Card>
-
-            {/* 알림 설정 / 중요한 일정 / 약관 */}
-            <Card radius="xl">
-              <View>
-                <Pressable
-                  onPress={() => router.push('/notification-settings')}
-                  accessibilityRole="button"
-                  style={styles.row}
-                >
-                  <LineIcon name="gear" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>알림 설정</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/life-events')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="calendar" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>중요한 일정</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/privacy-policy')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="shield" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>개인정보 처리방침</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/terms-of-service')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="shield" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>서비스 이용약관</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/ai-notice')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="sparkle" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>AI 생성 콘텐츠 안내</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/duk-policy')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="wallet" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>덕 유료 이용 정책</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/refund-policy')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="shield" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>환불·청약철회 정책</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/minor-policy')}
-                  accessibilityRole="button"
-                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
-                >
-                  <LineIcon name="shield" size={22} color={theme.secondary} />
-                  <Text variant="bodyLarge" style={styles.rowLabel}>미성년자 이용 안내</Text>
-                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
-                </Pressable>
-              </View>
-            </Card>
-
-            {/* 로그아웃 */}
             {isAuthenticated ? (
               <Pressable
                 onPress={async () => {
@@ -189,11 +121,10 @@ export default function MyScreen() {
                   await signOut();
                 }}
                 accessibilityRole="button"
+                accessibilityLabel="로그아웃"
                 style={styles.logout}
               >
-                <Text variant="bodyLarge" colorToken="danger" style={styles.rowLabel}>
-                  로그아웃
-                </Text>
+                <Text variant="bodyLarge" colorToken="danger" style={styles.rowLabel}>로그아웃</Text>
               </Pressable>
             ) : null}
 
@@ -209,52 +140,14 @@ export default function MyScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
-  wrapper: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-  },
-  flex1: {
-    flex: 1,
-  },
-  accountName: {
-    fontWeight: '700',
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 48,
-  },
-  rowLabel: {
-    flex: 1,
-    fontWeight: '600',
-  },
-  chevron: {
-    color: '#C6C9D0',
-    fontWeight: '600',
-  },
-  logout: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    marginTop: spacing.xl,
-  },
-  disclaimer: {
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.none,
-  },
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, alignItems: 'center' },
+  wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  flex1: { flex: 1 },
+  accountName: { fontWeight: '700' },
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sectionLabel: { fontWeight: '700', paddingHorizontal: spacing.xs, letterSpacing: 0.3 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 52 },
+  rowLabel: { flex: 1, fontWeight: '600' },
+  logout: { alignItems: 'center', justifyContent: 'center', minHeight: 48, marginTop: spacing.sm },
+  disclaimer: { paddingTop: spacing.lg, paddingHorizontal: spacing.xs, borderRadius: radius.none },
 });

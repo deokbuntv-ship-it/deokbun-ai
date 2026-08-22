@@ -377,19 +377,25 @@ export default function HomeScreen() {
               </Card>
             ) : null}
 
-            {/* 생일 축하 (deterministic, birthday-only, 0 LLM). A tasteful one-off card, not a permanent banner. */}
+            {/* 생일 축하 (deterministic, birthday-only, 0 LLM). A tasteful one-off card (warm brand tint, not a
+                permanent banner). The birthday 덕 is granted server-side (async job); we INVITE the user to
+                confirm it in the wallet rather than asserting a balance here (§29 honest, no fake number). */}
             {isBirthday ? (
-              <Card radius="xl">
+              <Card radius="xl" style={{ backgroundColor: theme.brandPrimarySoft, borderColor: theme.brandPrimary }}>
                 <Stack gap="sm">
                   <Text variant="bodyLarge" style={{ fontWeight: '700' }}>생일을 축하드려요 🎉</Text>
                   <Text variant="bodyMedium" colorToken="textSecondary">
-                    새로운 한 해의 흐름을 확인해보세요.
+                    오늘은 특별한 날이에요. 생일 선물 덕을 준비했어요 — 지갑에서 확인해보세요.
                   </Text>
-                  <Button
-                    label="이번 달 운세 보기"
-                    onPress={() => { trackRetentionEvent('birthday_message_opened'); openMonthly(); }}
-                    radius="lg"
-                  />
+                  <Stack direction="row" gap="sm">
+                    <Button
+                      label="덕 확인하기"
+                      onPress={() => { trackRetentionEvent('birthday_message_opened'); router.push('/wallet'); }}
+                      radius="lg"
+                      style={{ flex: 1 }}
+                    />
+                    <Button label="이번 달 운세" variant="secondary" onPress={openMonthly} radius="lg" style={{ flex: 1 }} />
+                  </Stack>
                 </Stack>
               </Card>
             ) : null}
@@ -440,6 +446,7 @@ export default function HomeScreen() {
                   )}
                   <Button
                     label="오늘 운세 보기"
+                    variant="secondary"
                     onPress={openToday}
                     radius="lg"
                     accessibilityLabel="오늘의 운세 보기"
@@ -488,6 +495,7 @@ export default function HomeScreen() {
                   )}
                   <Button
                     label="이번 달 운세 보기"
+                    variant="secondary"
                     onPress={openMonthly}
                     radius="lg"
                     accessibilityLabel="이번 달 운세 보기"
@@ -518,7 +526,7 @@ export default function HomeScreen() {
                         본인과 상대방의 사주로 잘 맞는 점·조율할 점을 봐드려요.
                       </Text>
                     </View>
-                    <Text variant="bodyLarge" style={styles.chevron}>
+                    <Text variant="bodyLarge" style={[styles.chevron, { color: theme.textMuted }]}>
                       ›
                     </Text>
                   </Stack>
@@ -716,7 +724,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chevron: {
-    color: '#C6C9D0',
     fontWeight: '600',
   },
   tonePill: {

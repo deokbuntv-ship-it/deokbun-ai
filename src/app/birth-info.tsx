@@ -669,6 +669,7 @@ export default function BirthInfoScreen() {
                         <Stack direction="row" gap="sm">
                           <Button
                             label={isDeleting ? '삭제 중...' : '삭제'}
+                            variant="danger"
                             disabled={isDeleting}
                             onPress={handleDelete}
                           />

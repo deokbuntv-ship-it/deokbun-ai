@@ -129,7 +129,7 @@ export default function SubjectsScreen() {
             </Pressable>
 
             <Stack direction="row" gap="sm" style={styles.actionRow}>
-              <Button label="상담 열기" onPress={() => openConsultation(subject)} />
+              <Button label="상담 열기" variant="secondary" onPress={() => openConsultation(subject)} />
               <Button
                 label="새 상담"
                 variant="secondary"
