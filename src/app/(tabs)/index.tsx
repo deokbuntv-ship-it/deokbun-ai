@@ -28,6 +28,8 @@ import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
 import { useAuth } from '@/features/auth';
 import { useWallet } from '@/features/duk/useWallet';
 import { walletHeadline, walletStateOf } from '@/features/duk/consumerDukView';
+import { CANDLE_DUK, DUK_PRICES, WELCOME_DUK, dukLabel } from '@/features/duk/pricing';
+import { consumeWelcomePending } from '@/features/duk/welcomeSignal';
 import {
   popularQuestionIcon,
   resolveActivePopularQuestions,
@@ -117,6 +119,12 @@ export default function HomeScreen() {
         walletStateOf({ error: wallet.error, totalSpendable: wallet.state?.totalSpendable ?? (wallet.error ? null : 0) }),
         wallet.state?.totalSpendable ?? 0,
       );
+
+  // One-shot post-onboarding welcome/economy card (§6/§7). Consumed once per fresh onboarding; never grants 덕.
+  const [showWelcome, setShowWelcome] = useState(false);
+  useEffect(() => {
+    if (consumeWelcomePending()) setShowWelcome(true);
+  }, []);
 
   const [sheetVisible, setSheetVisible] = useState(false);
   // Distinguish opening the person sheet to START a consultation vs. to SWITCH the
@@ -338,6 +346,35 @@ export default function HomeScreen() {
                 <LineIcon name="wallet" size={16} color={theme.secondary} />
                 <Text variant="bodySmall" colorToken="textSecondary">{dukChipLabel}</Text>
               </Pressable>
+            ) : null}
+
+            {/* 가입 축하 + 덕 사용법 (§6/§7) — one-shot, dismissible, shown once right after onboarding. Explains the
+                economy without a tutorial; the 10덕 itself was granted server-side on consent, not here. */}
+            {showWelcome ? (
+              <Card radius="xl">
+                <Stack gap="sm">
+                  <Text variant="bodyLarge" style={styles.welcomeTitle}>가입을 축하해요 🎉</Text>
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    시작 선물로 {dukLabel(WELCOME_DUK)}을 드렸어요. 덕으로 상담과 궁합을 이용할 수 있어요.
+                  </Text>
+                  <View style={styles.welcomeRow}>
+                    <Text variant="bodySmall" colorToken="textSecondary">일반 상담</Text>
+                    <Text variant="bodySmall" style={styles.welcomeAmt}>{dukLabel(DUK_PRICES.general)}</Text>
+                  </View>
+                  <View style={styles.welcomeRow}>
+                    <Text variant="bodySmall" colorToken="textSecondary">궁합</Text>
+                    <Text variant="bodySmall" style={styles.welcomeAmt}>{dukLabel(DUK_PRICES.compatibility)}</Text>
+                  </View>
+                  <View style={styles.welcomeRow}>
+                    <Text variant="bodySmall" colorToken="textSecondary">하루 한 번 촛불</Text>
+                    <Text variant="bodySmall" style={styles.welcomeAmt}>+{dukLabel(CANDLE_DUK)}</Text>
+                  </View>
+                  <Button label="덕 보러 가기" radius="lg" onPress={() => { setShowWelcome(false); router.push('/wallet'); }} />
+                  <Pressable onPress={() => setShowWelcome(false)} accessibilityRole="button" style={styles.welcomeDismiss}>
+                    <Text variant="bodySmall" colorToken="textSecondary">닫기</Text>
+                  </Pressable>
+                </Stack>
+              </Card>
             ) : null}
 
             {/* 생일 축하 (deterministic, birthday-only, 0 LLM). A tasteful one-off card, not a permanent banner. */}
@@ -643,6 +680,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
     marginTop: -8,
+  },
+  welcomeTitle: {
+    fontWeight: '700',
+  },
+  welcomeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 28,
+  },
+  welcomeAmt: {
+    fontWeight: '700',
+  },
+  welcomeDismiss: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   rowBetween: {
     flexDirection: 'row',

@@ -9,7 +9,7 @@ import { CONSUMER_NAV_ITEMS, type ConsumerNavKey } from './consumerNav';
 import { ConsumerNavGlyph } from './ConsumerNavGlyph';
 
 // Consumer bottom navigation for PUSHED detail screens on WEB (report/[id], shared-report/[token],
-// mail-detail, compatibility-chat). The primary tab bar (app-tabs.web) is bound to the expo-router-ui
+// compatibility-chat). The primary tab bar (app-tabs.web) is bound to the expo-router-ui
 // <Tabs> navigator and its <TabSlot> renders ONLY declared tab routes — a root-Stack detail route cannot
 // be nested into it without the slot falling back to the home tab (verified). So detail screens render
 // THIS bar, a faithful mirror of app-tabs.web. Both consume the SAME CONSUMER_NAV_ITEMS + ConsumerNavGlyph

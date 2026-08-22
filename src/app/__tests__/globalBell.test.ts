@@ -50,7 +50,6 @@ describe('excluded focused / auth-flow screens do NOT expose the bell', () => {
     'app/notifications.tsx', // the notification screen itself
     'app/notification-settings.tsx',
     'app/shared-report/[token].tsx', // public
-    'app/mail-detail.tsx', // focused reading
   ];
   it.each(EXCLUDED)('%s does not set showBell', (rel) => {
     expect(read(rel)).not.toMatch(/showBell/);

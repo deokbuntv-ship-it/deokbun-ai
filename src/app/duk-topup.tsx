@@ -17,7 +17,7 @@ export default function DukTopupScreen() {
   const router = useRouter();
   return (
     <Screen padded={false} frame>
-      <AppHeader title="덕 충전" centerTitle onBack={() => (router.canGoBack() ? router.back() : router.replace('/wallet'))} />
+      <AppHeader title="덕 충전" centerTitle showBack onBack={() => (router.canGoBack() ? router.back() : router.replace('/wallet'))} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="lg">

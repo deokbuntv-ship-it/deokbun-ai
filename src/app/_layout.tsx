@@ -61,8 +61,6 @@ export default function RootLayout() {
             {/* Provider-neutral OAuth return route (web popup completion; native
                 intercepts the deep link and never mounts this). */}
             <Stack.Screen name="login-callback" options={{ headerShown: false }} />
-            {/* 운세우편 상세 (05) — pushed from 운세우편함; own AppHeader back. */}
-            <Stack.Screen name="mail-detail" options={{ headerShown: false }} />
             {/* 상담 보고서 상세 — owner-only (RLS), redirects to login when signed out; renders the real
                 consumer bottom nav via DetailBottomNav. */}
             <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
@@ -87,6 +85,7 @@ export default function RootLayout() {
             <Stack.Screen name="life-events" options={{ headerShown: false }} />
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+            <Stack.Screen name="ai-notice" options={{ headerShown: false }} />
             {/* Public content / famous surface (consumer-facing, no auth). */}
             <Stack.Screen name="content/index" options={{ headerShown: false }} />
             <Stack.Screen name="content/[slug]" options={{ headerShown: false }} />

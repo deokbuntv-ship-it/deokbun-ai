@@ -11,6 +11,7 @@ import { BirthProfileForm } from '@/features/consultation/components/BirthProfil
 import { consultationSubjectService, useConsultationDraft, type BirthInfoDraft } from '@/features/consultation';
 import { useOnboarding } from '@/features/onboarding';
 import { trackOnboardingEvent } from '@/features/onboarding/onboardingAnalytics';
+import { markWelcomePending } from '@/features/duk/welcomeSignal';
 
 // STEP 2/2 — the canonical SELF birth profile (§22–§28). This is a CORE account asset, not a per-consultation
 // input: it is created once here and thereafter reused by 상담 / 궁합 / 운세 (no repeated self entry, §D/§32).
@@ -49,6 +50,9 @@ export default function OnboardingBirthScreen() {
           birthInfo,
         });
         subjectId = created.id;
+        // First-time SELF creation = genuine first onboarding → show the one-shot welcome/economy card on Home
+        // (§6). Display-only; the 10-Duk grant itself is the server consent trigger, never the client.
+        markWelcomePending();
       }
 
       // Seed the active consultation draft with SELF so 상담/궁합 know the user immediately (§32/§33).

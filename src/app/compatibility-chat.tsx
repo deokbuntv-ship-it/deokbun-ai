@@ -21,6 +21,8 @@ import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
 import { insufficientView } from '@/features/duk/consumerDukView';
+import { mapConsumerError } from '@/features/errors/consumerErrorCopy';
+import { AiDisclosure } from '@/components/AiDisclosure';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
 import { trackProductEvent } from '@/services/productEvents';
 import { ConsultationLoading, StructuredConsultationResult } from '@/features/intelligence/components';
@@ -177,11 +179,9 @@ export default function CompatibilityChatScreen() {
           // never grants — it only routes to where 덕 can be earned (candle) or topped up.
           setInsufficientSnap(result.insufficientDuk);
         } else {
-          setErrorText(
-            result.errorCode === 'AUTH_REQUIRED'
-              ? '로그인이 필요합니다. 다시 로그인해 주세요.'
-              : '답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.',
-          );
+          // Shared consumer error copy (§10) — distinct wording per code instead of one generic fallback, and
+          // never a raw backend term.
+          setErrorText(mapConsumerError(result.errorCode).message);
         }
         return;
       }
@@ -412,6 +412,8 @@ export default function CompatibilityChatScreen() {
                   </Text>
                 </Card>
               ) : null}
+              {/* AI-generated-content disclosure (§2) — this is analysis/해석, not a certainty or guarantee. */}
+              <AiDisclosure />
             </Stack>
           </View>
         </ScrollView>

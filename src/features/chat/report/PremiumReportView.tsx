@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AiDisclosure } from '@/components/AiDisclosure';
 import { LineIcon } from '@/components/LineIcon';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -98,6 +99,10 @@ export function PremiumReportView({
         </View>
       ))}
 
+      {/* AI-generated-content disclosure (§2) — part of the report artifact, so it travels to both the owner
+          view and the shared read-only view. */}
+      <AiDisclosure variant="card" style={styles.disclosure} />
+
       {footer ? <View style={styles.footer}>{footer}</View> : null}
     </Stack>
   );
@@ -166,5 +171,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: spacing.sm,
+  },
+  disclosure: {
+    marginTop: spacing.lg,
   },
 });

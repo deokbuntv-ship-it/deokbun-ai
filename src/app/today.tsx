@@ -2,6 +2,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AiDisclosure } from '@/components/AiDisclosure';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -231,6 +232,9 @@ export default function TodayScreen() {
                       </Stack>
                     </Stack>
                   ) : null}
+
+                  {/* AI-generated-content disclosure (§2) — one line under the fortune result. */}
+                  <AiDisclosure />
                 </Stack>
               );
             })()

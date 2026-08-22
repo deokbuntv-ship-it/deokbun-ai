@@ -36,8 +36,15 @@ export default function MyScreen() {
           <Stack gap="xl">
             {/* Account */}
             {isAuthenticated && user ? (
+              // Tap → 분석 대상자 관리 (where the canonical SELF birth profile is edited) so "my info" is one tap
+              // away, not buried (§9).
               <Card radius="xl">
-                <Stack direction="row" gap="md" align="center">
+                <Pressable
+                  onPress={() => router.push('/subjects')}
+                  accessibilityRole="button"
+                  accessibilityLabel="내 정보 및 분석 대상자 관리"
+                  style={styles.accountRow}
+                >
                   <Avatar label={name} size={64} />
                   <Stack gap="xs" style={styles.flex1}>
                     <Text variant="headingMedium" style={styles.accountName}>
@@ -48,8 +55,10 @@ export default function MyScreen() {
                         {user.email}
                       </Text>
                     ) : null}
+                    <Text variant="bodySmall" colorToken="textSecondary">내 정보 · 분석 대상자 관리</Text>
                   </Stack>
-                </Stack>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
               </Card>
             ) : (
               <Card radius="xl">
@@ -131,6 +140,15 @@ export default function MyScreen() {
                   <Text variant="bodyLarge" style={styles.rowLabel}>서비스 이용약관</Text>
                   <Text variant="bodyLarge" style={styles.chevron}>›</Text>
                 </Pressable>
+                <Pressable
+                  onPress={() => router.push('/ai-notice')}
+                  accessibilityRole="button"
+                  style={[styles.row, { borderTopWidth: 1, borderTopColor: theme.border }]}
+                >
+                  <LineIcon name="sparkle" size={22} color={theme.secondary} />
+                  <Text variant="bodyLarge" style={styles.rowLabel}>AI 생성 콘텐츠 안내</Text>
+                  <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+                </Pressable>
               </View>
             </Card>
 
@@ -178,6 +196,11 @@ const styles = StyleSheet.create({
   },
   accountName: {
     fontWeight: '700',
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   row: {
     flexDirection: 'row',

@@ -61,7 +61,7 @@ export default function WalletScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="덕" centerTitle onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+      <AppHeader title="덕" centerTitle showBack onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="xl">
@@ -76,6 +76,9 @@ export default function WalletScreen() {
                 )}
                 {!isAuthenticated ? (
                   <Button label="로그인하기" radius="lg" onPress={() => router.push('/login')} style={{ marginTop: spacing.sm }} />
+                ) : walletState === 'error' ? (
+                  // §11 — the balance read failed; offer a retry instead of a dead error headline.
+                  <Button label="다시 시도" variant="secondary" radius="lg" onPress={() => void wallet.refresh()} style={{ marginTop: spacing.sm }} />
                 ) : null}
               </Stack>
             </Card>

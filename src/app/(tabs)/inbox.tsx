@@ -56,6 +56,8 @@ export default function FortuneInboxScreen() {
   const [reports, setReports] = useState<ConsultationReport[]>([]);
   const [reportStatus, setReportStatus] = useState<ReportStatus>('idle');
   const [sheetVisible, setSheetVisible] = useState(false);
+  // §11 — bumping this re-runs the load effects so an error state can offer a real retry button.
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   // 운세 section = the 오늘의 운세 + 이번 달 운세 archive (§44/§45/§61): real generated fortunes, owner-scoped by
   // RLS, newest first. Read-only (0 LLM) — opening a card shows the SAME canonical record on /today or /monthly.
@@ -81,7 +83,7 @@ export default function FortuneInboxScreen() {
     return () => {
       active = false;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, reloadNonce]);
 
   useEffect(() => {
     if (section === 'fortune') trackTodayEvent('today_fortune_mailbox_opened');
@@ -112,7 +114,7 @@ export default function FortuneInboxScreen() {
     return () => {
       active = false;
     };
-  }, [section, isAuthenticated]);
+  }, [section, isAuthenticated, reloadNonce]);
 
   const reportItems = reports.map(toReportListItem);
 
@@ -168,9 +170,12 @@ export default function FortuneInboxScreen() {
                 </Card>
               ) : status === 'error' ? (
                 <Card radius="xl">
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    운세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-                  </Text>
+                  <Stack gap="sm">
+                    <Text variant="bodyMedium" colorToken="textSecondary">
+                      운세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+                    </Text>
+                    <Button label="다시 시도" variant="secondary" radius="lg" onPress={() => setReloadNonce((n) => n + 1)} />
+                  </Stack>
                 </Card>
               ) : fortunes.length === 0 && monthlies.length === 0 ? (
                 <Card radius="xl">
@@ -236,9 +241,12 @@ export default function FortuneInboxScreen() {
               </Card>
             ) : reportStatus === 'error' ? (
               <Card radius="xl">
-                <Text variant="bodyMedium" colorToken="textSecondary">
-                  상담 보고서를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-                </Text>
+                <Stack gap="sm">
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    상담 보고서를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+                  </Text>
+                  <Button label="다시 시도" variant="secondary" radius="lg" onPress={() => setReloadNonce((n) => n + 1)} />
+                </Stack>
               </Card>
             ) : reportItems.length === 0 ? (
               <Card radius="xl">

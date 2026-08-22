@@ -12,6 +12,7 @@ import { MaxContentWidth } from '@/constants/theme';
 import { isSavedSubjectId, useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
+import { mapConsumerError } from '@/features/errors/consumerErrorCopy';
 import { trackProductEvent } from '@/services/productEvents';
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -87,6 +88,17 @@ export default function CompatibilityScreen() {
           <Text variant="bodyMedium" colorToken="textSecondary">
             불러오는 중입니다...
           </Text>
+        </Card>
+      );
+    }
+    // §11 — a load failure must NOT masquerade as "먼저 본인 등록"; show a real error + retry.
+    if (status === 'error') {
+      return (
+        <Card>
+          <Stack gap="sm">
+            <Text variant="bodyMedium">{mapConsumerError('REQUEST_FAILED').message}</Text>
+            <Button label="다시 시도" variant="secondary" onPress={() => reload()} />
+          </Stack>
         </Card>
       );
     }

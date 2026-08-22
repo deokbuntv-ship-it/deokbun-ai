@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AiDisclosure } from '@/components/AiDisclosure';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -670,6 +671,8 @@ export default function ChatScreen() {
                   onOpen={handleOpenReport}
                 />
               ) : null}
+              {/* AI-generated-content disclosure (§2) — one honest footer under the conversation, not per message. */}
+              <AiDisclosure style={{ marginTop: spacing.md }} />
             </Stack>
           </View>
         </ScrollView>
