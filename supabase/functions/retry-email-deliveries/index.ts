@@ -9,9 +9,22 @@ function authorized(req: Request): boolean {
   const secret = Deno.env.get('CRON_SECRET');
   return Boolean(secret) && req.headers.get('x-cron-secret') === secret;
 }
-async function sendEmail(_to: string, _subject: string, _content: string) {
-  if (!Deno.env.get('EMAIL_PROVIDER')) return { ok: false, status: 'not_configured' as const };
-  return { ok: false, status: 'not_configured' as const }; // vendor adapter attaches behind its credential
+async function sendEmail(to: string, subject: string, content: string) {
+  const provider = Deno.env.get('EMAIL_PROVIDER');
+  if (provider !== 'resend') return { ok: false, status: 'not_configured' as const };
+  const key = Deno.env.get('RESEND_API_KEY');
+  const from = Deno.env.get('EMAIL_FROM');
+  if (!key || !from) return { ok: false, status: 'not_configured' as const }; // fail closed without credentials
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ from, to, subject, text: content }),
+    });
+    if (res.ok) return { ok: true, status: 'sent' as const };
+    if (res.status === 422 || res.status === 400) return { ok: false, status: 'invalid_email' as const };
+    return { ok: false, status: 'error' as const };
+  } catch { return { ok: false, status: 'error' as const }; }
 }
 function renderContent(subject: string, r: Record<string, unknown> | null): string {
   const j = r ?? {};

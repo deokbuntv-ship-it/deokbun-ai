@@ -28,6 +28,7 @@ export {
   type PushRegistrationResult,
   type PushRegistrationStatus,
 } from './push/pushRegistration';
+export { expoTokenAcquirer } from './push/expoTokenAcquirer';
 export {
   NOTIFICATION_TYPES,
   notificationTypeSpec,

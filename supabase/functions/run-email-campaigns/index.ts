@@ -16,11 +16,25 @@ function authorized(req: Request): boolean {
 }
 
 type EmailSend = { ok: boolean; status: 'sent' | 'not_configured' | 'invalid_email' | 'error' };
-// No default vendor: without EMAIL_PROVIDER configured this is NOT_CONFIGURED and never marks SENT.
-async function sendEmail(_to: string, _subject: string, _content: string): Promise<EmailSend> {
-  if (!Deno.env.get('EMAIL_PROVIDER')) return { ok: false, status: 'not_configured' };
-  // A concrete vendor adapter (e.g. Resend) attaches here behind its credential. Left unconfigured by design.
-  return { ok: false, status: 'not_configured' };
+// Provider-independent send. No vendor is hard-wired: without EMAIL_PROVIDER configured this is NOT_CONFIGURED
+// and NEVER marks SENT. `resend` is ONE optional adapter (simple REST, no business dependency to add the code);
+// it stays fail-closed until EMAIL_PROVIDER=resend + RESEND_API_KEY + EMAIL_FROM are set. EXTERNAL_BLOCKED.
+async function sendEmail(to: string, subject: string, content: string): Promise<EmailSend> {
+  const provider = Deno.env.get('EMAIL_PROVIDER');
+  if (provider !== 'resend') return { ok: false, status: 'not_configured' };
+  const key = Deno.env.get('RESEND_API_KEY');
+  const from = Deno.env.get('EMAIL_FROM');
+  if (!key || !from) return { ok: false, status: 'not_configured' }; // fail closed without credentials
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ from, to, subject, text: content }),
+    });
+    if (res.ok) return { ok: true, status: 'sent' };
+    if (res.status === 422 || res.status === 400) return { ok: false, status: 'invalid_email' };
+    return { ok: false, status: 'error' };
+  } catch { return { ok: false, status: 'error' }; }
 }
 function classify(r: EmailSend): 'ok' | 'invalid_email' | 'not_configured' | 'retryable' {
   if (r.ok && r.status === 'sent') return 'ok';
