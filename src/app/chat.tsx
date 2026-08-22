@@ -3,7 +3,7 @@ import {
     useRootNavigationState,
     useRouter,
 } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +28,9 @@ import {
     type ChatMessage,
     type ConsultationErrorView,
 } from '@/features/chat';
+import { insufficientView, sessionTurnCopy } from '@/features/duk/consumerDukView';
+import { getSessionStatus } from '@/features/duk/dukClientContract';
+import { refreshWallet } from '@/features/duk/useWallet';
 import {
     consumePendingQuestion,
     consumePendingQuestionOrigin,
@@ -214,6 +217,19 @@ export default function ChatScreen() {
   // bubble. `lastAttemptRef` holds the failed question + its context so "다시 시도" can
   // re-send the SAME message without duplicating the user bubble or its persistence (§30/§37).
   const [sendError, setSendError] = useState<ConsultationErrorView | null>(null);
+  // Authoritative server balance snapshot for the INSUFFICIENT_DUK card (never client-calculated). Sprint J1.
+  const [insufficientSnap, setInsufficientSnap] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
+  // §8 — remaining-turn hint for an ACTIVE paid general session (server-verified, read-only). Null = no active
+  // session (billing off / free / between sessions) → nothing is shown, so the copy is never misleading.
+  const [sessionCopy, setSessionCopy] = useState<string | null>(null);
+  const refreshSession = useCallback(async () => {
+    const s = await getSessionStatus('general');
+    setSessionCopy(s.active ? sessionTurnCopy(s) : null);
+  }, []);
+  useEffect(() => {
+    if (isAuthenticated) void refreshSession();
+    else setSessionCopy(null);
+  }, [isAuthenticated, refreshSession]);
   const lastAttemptRef = useRef<{ text: string; context: ChatMessage[]; requestId?: string } | null>(null);
   // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
   // same-frame double-tap cannot start two sends (§30/§e).
@@ -372,12 +388,19 @@ export default function ChatScreen() {
         }
         // Anchor the viewport to the START of the new answer (§G) — NOT the bottom.
         pendingAnchorRef.current = assistantMessage.id;
+        // §14/§8 — a charged turn changes the balance and the session's remaining turns; refresh both
+        // (server-authoritative, fire-and-forget). No-ops when billing is off / there is no active session.
+        void refreshWallet().catch(() => {});
+        void refreshSession();
       } else {
         const view = mapConsultationError(result.errorCode);
         if (result.errorCode === 'AUTH_REQUIRED') {
           // Preserve the question + resume route so login returns here, not Home (§9/§28).
           setPendingConsultationIntent({ question: text, returnTo: '/chat' });
         }
+        // Sprint J1 — capture the authoritative INSUFFICIENT_DUK snapshot so the card can show a real,
+        // actionable state (earn 덕 / top-up) instead of a dead-end message.
+        setInsufficientSnap(result.errorCode === 'INSUFFICIENT_DUK' ? result.insufficientDuk ?? null : null);
         setSendError(view);
         lastAttemptRef.current = view.canRetry && result.requestId
           ? { text, context, requestId: result.requestId }
@@ -653,24 +676,48 @@ export default function ChatScreen() {
 
         <View style={[styles.inputArea, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={styles.contentWrapper}>
+            {/* §8 — remaining-turn hint; only shown for a live paid session (else null → hidden). */}
+            {sessionCopy ? (
+              <Text variant="bodySmall" colorToken="textSecondary" style={styles.sessionHint}>
+                {sessionCopy}
+              </Text>
+            ) : null}
             {sendError ? (
               <Card style={styles.errorCard}>
-                <Stack gap="sm">
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    {sendError.message}
-                  </Text>
-                  {sendError.kind === 'auth' && !isAuthenticated ? (
-                    <Button label="로그인하기" onPress={() => router.push('/login')} />
-                  ) : null}
-                  {sendError.canRetry ? (
-                    <Button
-                      label="다시 시도"
-                      variant="secondary"
-                      onPress={handleRetry}
-                      disabled={isSending}
-                    />
-                  ) : null}
-                </Stack>
+                {sendError.kind === 'insufficient' && insufficientSnap ? (
+                  // Actionable INSUFFICIENT_DUK state (Sprint J1 §9). Numbers are the authoritative server snapshot;
+                  // we only route to where 덕 can be earned (candle) or topped up — never grant on the client.
+                  <Stack gap="sm">
+                    {insufficientView('general', insufficientSnap, false).lines.map((line, i) => (
+                      <Text
+                        key={line}
+                        variant={i === 0 ? 'bodyMedium' : 'bodySmall'}
+                        colorToken={i === 0 ? 'textPrimary' : 'textSecondary'}
+                      >
+                        {line}
+                      </Text>
+                    ))}
+                    <Button label="덕 받으러 가기" onPress={() => router.push('/wallet')} />
+                    <Button label="덕 충전" variant="secondary" onPress={() => router.push('/duk-topup')} />
+                  </Stack>
+                ) : (
+                  <Stack gap="sm">
+                    <Text variant="bodyMedium" colorToken="textSecondary">
+                      {sendError.message}
+                    </Text>
+                    {sendError.kind === 'auth' && !isAuthenticated ? (
+                      <Button label="로그인하기" onPress={() => router.push('/login')} />
+                    ) : null}
+                    {sendError.canRetry ? (
+                      <Button
+                        label="다시 시도"
+                        variant="secondary"
+                        onPress={handleRetry}
+                        disabled={isSending}
+                      />
+                    ) : null}
+                  </Stack>
+                )}
               </Card>
             ) : null}
             <ChatInput
@@ -713,5 +760,9 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     marginBottom: spacing.sm,
+  },
+  sessionHint: {
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
 });

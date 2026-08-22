@@ -20,6 +20,7 @@ import type { CompatibilityResultMeta } from '@/features/chat/server';
 import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
+import { insufficientView } from '@/features/duk/consumerDukView';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
 import { trackProductEvent } from '@/services/productEvents';
 import { ConsultationLoading, StructuredConsultationResult } from '@/features/intelligence/components';
@@ -66,6 +67,8 @@ export default function CompatibilityChatScreen() {
   const [sending, setSending] = useState(false);
   const [tier, setTier] = useState<CompatibilityResultMeta | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+  // Authoritative server balance snapshot for the INSUFFICIENT_DUK paywall card (Sprint J1 §10). Never client-computed.
+  const [insufficientSnap, setInsufficientSnap] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackVerdict>>({});
@@ -154,6 +157,7 @@ export default function CompatibilityChatScreen() {
     if (q.length === 0) return;
     sendingRef.current = true;
     setErrorText(null);
+    setInsufficientSnap(null);
     setInput('');
     const userMsg: CompatMessage = { id: newId('user'), role: 'user', text: q };
     const history = messages;
@@ -168,11 +172,17 @@ export default function CompatibilityChatScreen() {
         conversationMemory: { summary: null, lastSummarizedMessageId: null },
       });
       if (!result.success) {
-        setErrorText(
-          result.errorCode === 'AUTH_REQUIRED'
-            ? '로그인이 필요합니다. 다시 로그인해 주세요.'
-            : '답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.',
-        );
+        if (result.errorCode === 'INSUFFICIENT_DUK' && result.insufficientDuk) {
+          // Actionable paywall instead of a generic failure (§10). Numbers are the server snapshot; the client
+          // never grants — it only routes to where 덕 can be earned (candle) or topped up.
+          setInsufficientSnap(result.insufficientDuk);
+        } else {
+          setErrorText(
+            result.errorCode === 'AUTH_REQUIRED'
+              ? '로그인이 필요합니다. 다시 로그인해 주세요.'
+              : '답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          );
+        }
         return;
       }
       if (result.compatibility) {
@@ -377,6 +387,23 @@ export default function CompatibilityChatScreen() {
                   }
                   disabled={reportBusy}
                 />
+              ) : null}
+              {insufficientSnap ? (
+                <Card>
+                  <Stack gap="sm">
+                    {insufficientView('compatibility', insufficientSnap, false).lines.map((line, i) => (
+                      <Text
+                        key={line}
+                        variant={i === 0 ? 'bodyMedium' : 'bodySmall'}
+                        colorToken={i === 0 ? 'textPrimary' : 'textSecondary'}
+                      >
+                        {line}
+                      </Text>
+                    ))}
+                    <Button label="덕 받으러 가기" onPress={() => router.push('/wallet')} />
+                    <Button label="덕 충전" variant="secondary" onPress={() => router.push('/duk-topup')} />
+                  </Stack>
+                </Card>
               ) : null}
               {errorText ? (
                 <Card>

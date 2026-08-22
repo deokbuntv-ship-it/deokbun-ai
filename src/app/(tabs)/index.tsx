@@ -25,6 +25,9 @@ import {
   useConsultationSubjects,
 } from '@/features/consultation';
 import { birthMonthDay, isBirthdayTodayKst } from '@/features/retention';
+import { useAuth } from '@/features/auth';
+import { useWallet } from '@/features/duk/useWallet';
+import { walletHeadline, walletStateOf } from '@/features/duk/consumerDukView';
 import {
   popularQuestionIcon,
   resolveActivePopularQuestions,
@@ -99,6 +102,21 @@ export default function HomeScreen() {
 
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+
+  // 덕 balance chip (Sprint J1 §3). Shared server-authoritative wallet; tap → /wallet. Home is behind the
+  // onboarding gate, so this only renders for signed-in users; balance is refreshed when the tab mounts.
+  const { isAuthenticated } = useAuth();
+  const wallet = useWallet();
+  useEffect(() => {
+    if (isAuthenticated) void wallet.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+  const dukChipLabel = wallet.loading && !wallet.state
+    ? walletHeadline('loading', 0)
+    : walletHeadline(
+        walletStateOf({ error: wallet.error, totalSpendable: wallet.state?.totalSpendable ?? (wallet.error ? null : 0) }),
+        wallet.state?.totalSpendable ?? 0,
+      );
 
   const [sheetVisible, setSheetVisible] = useState(false);
   // Distinguish opening the person sheet to START a consultation vs. to SWITCH the
@@ -308,6 +326,19 @@ export default function HomeScreen() {
               {mounted ? greeting() : '안녕하세요.'}
               {'\n'}오늘은 무엇이 궁금하세요?
             </Text>
+
+            {/* 덕 balance chip (§3) — tap opens the wallet. Display-only; never grants or computes balance. */}
+            {isAuthenticated ? (
+              <Pressable
+                onPress={() => router.push('/wallet')}
+                accessibilityRole="button"
+                accessibilityLabel="덕 지갑 열기"
+                style={[styles.dukChip, { borderColor: theme.border }]}
+              >
+                <LineIcon name="wallet" size={16} color={theme.secondary} />
+                <Text variant="bodySmall" colorToken="textSecondary">{dukChipLabel}</Text>
+              </Pressable>
+            ) : null}
 
             {/* 생일 축하 (deterministic, birthday-only, 0 LLM). A tasteful one-off card, not a permanent banner. */}
             {isBirthday ? (
@@ -601,6 +632,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontWeight: '700',
+  },
+  dukChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 999,
+    marginTop: -8,
   },
   rowBetween: {
     flexDirection: 'row',

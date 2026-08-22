@@ -11,6 +11,7 @@ import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { isSavedSubjectId, useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
+import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { trackProductEvent } from '@/services/productEvents';
 import { colors } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -154,7 +155,13 @@ export default function CompatibilityScreen() {
             </Text>
             {renderBody()}
             {self ? (
-              <Button label="궁합 보기" onPress={startCompatibility} disabled={!targetId} />
+              <Stack gap="xs">
+                {/* Price shown before start (Sprint J1 §11) — 덕 label, never internal buckets. */}
+                <Text variant="bodySmall" colorToken="textSecondary" style={styles.priceHint}>
+                  궁합 상담에는 {dukLabel(DUK_PRICES.compatibility)}이 필요해요
+                </Text>
+                <Button label="궁합 보기" onPress={startCompatibility} disabled={!targetId} />
+              </Stack>
             ) : null}
           </Stack>
         </View>
@@ -166,4 +173,5 @@ export default function CompatibilityScreen() {
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, alignItems: 'center' },
   wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  priceHint: { textAlign: 'center' },
 });

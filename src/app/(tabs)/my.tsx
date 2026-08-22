@@ -62,6 +62,19 @@ export default function MyScreen() {
               </Card>
             )}
 
+            {/* 덕 (Duk) wallet */}
+            <Card radius="xl">
+              <Pressable
+                onPress={() => router.push('/wallet')}
+                accessibilityRole="button"
+                style={styles.row}
+              >
+                <LineIcon name="wallet" size={22} color={theme.secondary} />
+                <Text variant="bodyLarge" style={styles.rowLabel}>덕</Text>
+                <Text variant="bodyLarge" style={styles.chevron}>›</Text>
+              </Pressable>
+            </Card>
+
             {/* 분석 대상자 관리 */}
             <Card radius="xl">
               <Pressable

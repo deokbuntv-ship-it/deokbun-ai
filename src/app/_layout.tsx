@@ -79,6 +79,8 @@ export default function RootLayout() {
             <Stack.Screen name="records" options={{ headerShown: false }} />
             <Stack.Screen name="today" options={{ headerShown: false }} />
             <Stack.Screen name="monthly" options={{ headerShown: false }} />
+            <Stack.Screen name="wallet" options={{ headerShown: false }} />
+            <Stack.Screen name="duk-topup" options={{ headerShown: false }} />
             {/* Retention: notification preferences + life-event management (pushed from MY). */}
             <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
             <Stack.Screen name="notifications" options={{ headerShown: false }} />
