@@ -48,6 +48,14 @@ export {
 } from './billingOrchestrator';
 export * from './iap';
 export {
+  getSessionStatus,
+  requestPurchaseVerification,
+  type DukErrorCode,
+  type SessionStatus,
+  type PurchaseVerificationRequest,
+  type PurchaseVerificationResult,
+} from './dukClientContract';
+export {
   rejectClientAssertedPurchase,
   type BillingAdapter,
   type PurchaseToken,
