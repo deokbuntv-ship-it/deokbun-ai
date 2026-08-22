@@ -1,0 +1,8 @@
+{
+  "_note": "Sprint G §D — BENCHMARK pricing metadata ONLY. NOT a permanent business constant, and NEVER mixed into Duk product-pricing logic. Prices are per 1,000,000 tokens, in USD. Update pricing_as_of when refreshed.",
+  "pricing_source": "Sprint G official model contract (prompt-supplied)",
+  "pricing_as_of": "2026-08-22",
+  "_currency": "USD",
+  "gpt-5-mini": { "input": 0.25, "cached_input": 0.025, "output": 2.00 },
+  "gpt-5.6-terra": { "input": 2.00, "cached_input": 0.20, "output": 12.00 }
+}

@@ -42,11 +42,15 @@ function printPlan() {
   for (const p of PLAN) {
     console.log(`  ${p.workload.padEnd(16)} ${p.label}  (${p.items.length} fixtures × turns ${TURN_COUNTS.join('/')})`);
   }
-  console.log('\nMeasured fields per row: workload, model, turn_number, input_tokens, cached_tokens,');
-  console.log('output_tokens, total_tokens, latency_ms, estimated_cost, currency, timestamp,');
-  console.log('prompt_version, engine_version.\n');
+  console.log('\nMeasured fields/row: workload, model, session_index, turn_number, input/cached/output/reasoning/');
+  console.log('total_tokens, latency_ms, estimated_usd, estimated_krw, currency, fx_rate_used, pricing_as_of,');
+  console.log('timestamp, prompt_version, routing_policy_version, engine_version.\n');
+  console.log('Analysis: cache_hit_ratio + session cost (1/3/5) + incremental cost/turn + economy recommendation.');
   console.log('Token source: the Edge\'s own ai_usage_logs rows (real usage), joined by request_id.');
-  console.log('Cost: computed ONLY if BENCHMARK_PRICES is supplied; never hardcoded.\n');
+  const prices = loadPrices();
+  const fx = fxRate();
+  console.log(`Pricing: ${prices ? `${prices.pricing_source} (as_of ${prices.pricing_as_of})` : 'NONE'} · FX (KRW/USD): ${fx ?? 'unset (BENCHMARK_FX_KRW_PER_USD)'}.`);
+  console.log('Premium Report: PREMIUM_LLM_PATH_NOT_YET_AVAILABLE (deterministic composer; no LLM path yet).\n');
 }
 
 function requireEnv(name) {
@@ -77,20 +81,35 @@ async function readUsage(supabaseUrl, serviceKey, requestId) {
 
 function loadPrices() {
   const path = process.env.BENCHMARK_PRICES;
-  if (!path) return null;
-  try { return JSON.parse(readFileSync(resolve(path), 'utf8')); } catch { return null; }
+  // Default to the official Sprint G pricing metadata (benchmark-only, never business logic).
+  const p = path ? resolve(path) : resolve(HERE, 'pricing.official.json');
+  try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; }
 }
 
-function estimateCost(prices, row) {
-  if (!prices) return { estimated_cost: null, currency: null };
+// FX is a runtime-configurable input (§D): BENCHMARK_FX_KRW_PER_USD (KRW per 1 USD). Null when unset.
+function fxRate() {
+  const v = Number(process.env.BENCHMARK_FX_KRW_PER_USD);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+function estimateCost(prices, row, fx) {
+  if (!prices) return { estimated_usd: null, estimated_krw: null, currency: null, fx_rate_used: fx, pricing_as_of: null };
   const p = prices[row.model];
-  if (!p) return { estimated_cost: null, currency: prices._currency ?? null };
+  const pricing_as_of = prices.pricing_as_of ?? null;
+  if (!p) return { estimated_usd: null, estimated_krw: null, currency: prices._currency ?? null, fx_rate_used: fx, pricing_as_of };
   const input = Number(row.input_tokens ?? 0);
   const cached = Number(row.cached_input_tokens ?? 0);
   const output = Number(row.output_tokens ?? 0);
-  // price table units are per-1M tokens by convention; owner supplies the numbers + currency.
-  const cost = ((input - cached) * (p.input ?? 0) + cached * (p.cached_input ?? p.input ?? 0) + output * (p.output ?? 0)) / 1_000_000;
-  return { estimated_cost: Number(cost.toFixed(6)), currency: prices._currency ?? null };
+  // per-1M-token prices; cached input is billed at the cached rate, uncached at the full rate.
+  const usd = ((input - cached) * (p.input ?? 0) + cached * (p.cached_input ?? p.input ?? 0) + output * (p.output ?? 0)) / 1_000_000;
+  const estimated_usd = Number(usd.toFixed(6));
+  return {
+    estimated_usd,
+    estimated_krw: fx ? Math.round(usd * fx * 100) / 100 : null,
+    currency: prices._currency ?? 'USD',
+    fx_rate_used: fx,
+    pricing_as_of,
+  };
 }
 
 async function runLive() {
@@ -99,6 +118,7 @@ async function runLive() {
   const serviceKey = requireEnv('BENCHMARK_SERVICE_KEY');
   const supabaseUrl = requireEnv('BENCHMARK_SUPABASE_URL');
   const prices = loadPrices();
+  const fx = fxRate();
 
   const rows = [];
   let seq = 0;
@@ -123,20 +143,26 @@ async function runLive() {
         const { requestId, status } = await sendTurn(edgeUrl, jwt, { _benchId: `${p.workload}-${turns}-${turn}-${seq}`, payload });
         const latency_ms = Date.now() - started;
         const usage = status === 200 ? await readUsage(supabaseUrl, serviceKey, requestId) : null;
-        const cost = usage ? estimateCost(prices, usage) : { estimated_cost: null, currency: null };
+        const cost = estimateCost(prices, usage ?? { model: null }, fx);
         rows.push({
           workload: p.workload,
           model: usage?.model ?? null,
+          session_index: `${p.workload}-${turns}`,
           turn_number: turn,
           input_tokens: usage?.input_tokens ?? null,
-          cached_tokens: usage?.cached_input_tokens ?? null,
+          cached_input_tokens: usage?.cached_input_tokens ?? null,
           output_tokens: usage?.output_tokens ?? null,
+          reasoning_tokens: usage?.reasoning_tokens ?? null,
           total_tokens: usage?.total_tokens ?? null,
           latency_ms,
-          estimated_cost: cost.estimated_cost,
+          estimated_usd: cost.estimated_usd,
+          estimated_krw: cost.estimated_krw,
           currency: cost.currency,
+          fx_rate_used: cost.fx_rate_used,
+          pricing_as_of: cost.pricing_as_of,
           timestamp: new Date().toISOString(),
           prompt_version: usage?.prompt_version ?? null,
+          routing_policy_version: usage?.routing_policy_version ?? null,
           engine_version: usage?.engine_version ?? null,
           http_status: status,
         });
@@ -144,18 +170,61 @@ async function runLive() {
       }
     }
   }
-  const out = resolve(HERE, 'benchmark-results.json');
-  writeFileSync(out, JSON.stringify(rows, null, 2));
+  const analysis = analyze(rows);
+  writeFileSync(resolve(HERE, 'benchmark-results.json'), JSON.stringify({ rows, analysis }, null, 2));
   const header = Object.keys(rows[0] ?? { workload: 1 }).join(',');
   const csv = [header, ...rows.map((r) => Object.values(r).map((v) => (v === null ? '' : v)).join(','))].join('\n');
   writeFileSync(resolve(HERE, 'benchmark-results.csv'), csv);
   console.log(`LIVE benchmark complete — ${rows.length} rows → scripts/benchmark/benchmark-results.{json,csv}`);
+  console.log(JSON.stringify(analysis, null, 2));
+}
+
+// §K/§M — caching analysis + session cost + economy recommendation from MEASURED rows.
+function analyze(rows) {
+  const bySession = {};
+  for (const r of rows) {
+    (bySession[r.session_index] ??= []).push(r);
+  }
+  const sessions = Object.entries(bySession).map(([key, turns]) => {
+    const input = turns.reduce((n, t) => n + (t.input_tokens ?? 0), 0);
+    const cached = turns.reduce((n, t) => n + (t.cached_input_tokens ?? 0), 0);
+    const usd = turns.reduce((n, t) => n + (t.estimated_usd ?? 0), 0);
+    const krw = turns.reduce((n, t) => n + (t.estimated_krw ?? 0), 0);
+    const incremental_usd = turns.map((t) => t.estimated_usd);
+    return {
+      session_index: key,
+      workload: turns[0]?.workload,
+      model: turns[0]?.model,
+      turns: turns.length,
+      cache_hit_ratio: input > 0 ? Number((cached / input).toFixed(4)) : null,
+      session_usd: Number(usd.toFixed(6)),
+      session_krw: krw ? Number(krw.toFixed(2)) : null,
+      incremental_usd_per_turn: incremental_usd,
+    };
+  });
+  // Economy recommendation: needs both a general (5 Duk) and a compatibility (12 Duk) measured session.
+  const gen = sessions.find((s) => s.workload === 'general' && s.turns >= 5) || sessions.find((s) => s.workload === 'general');
+  const compat = sessions.find((s) => s.workload === 'compatibility' && s.turns >= 5) || sessions.find((s) => s.workload === 'compatibility');
+  const recommendation = (gen && gen.session_usd > 0 && compat && compat.session_usd > 0)
+    ? { general_5duk: recForCost(gen.session_usd), compatibility_12duk: recForCost(compat.session_usd) }
+    : 'INSUFFICIENT_DATA';
+  return { sessions, economy_recommendation: recommendation, note: 'DUK prices are policy values; this is advisory only (owner decides).' };
+}
+// Advisory only: compares measured provider cost against the Duk price hypothesis (Duk≈KRW is NOT assumed;
+// the owner sets the KRW/Duk from packs). Emits a coarse KEEP/REVIEW flag on the raw USD cost magnitude.
+function recForCost(usd) {
+  // Coarse thresholds on provider cost per session (USD): guardrails only, not a pricing decision.
+  if (usd < 0.02) return 'KEEP';
+  if (usd < 0.10) return 'REVIEW';
+  return 'REVIEW_UP';
 }
 
 if (!LIVE) {
   printPlan();
   console.log('BENCHMARK_HARNESS_READY');
-  console.log('LIVE_BENCHMARK_NOT_EXECUTED  (pass --live with the documented env to run; it spends real LLM money)');
+  // §L — no live run here (no local key; a live run spends money + hits an external provider = owner-gated).
+  console.log('LIVE_BENCHMARK_BLOCKED_EXTERNAL  (pass --live with BENCHMARK_EDGE_URL/JWT/SERVICE_KEY/SUPABASE_URL to run)');
+  console.log('ECONOMY_RECOMMENDATION: INSUFFICIENT_DATA  (needs a live run to measure real tokens)');
 } else {
   runLive().catch((e) => { console.error('benchmark failed:', e.message); process.exit(1); });
 }
