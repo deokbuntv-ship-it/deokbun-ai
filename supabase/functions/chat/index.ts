@@ -579,6 +579,76 @@ async function completeConsultationWithDecision(
   return null;
 }
 
+// ---- Sprint H — Duk session billing runtime (flag-gated by DUK_BILLING_ENABLED) ----------------------------
+// All three are thin service-role RPC wrappers. They are only invoked when DUK_BILLING_ENABLED is 'true'; until
+// the owner applies migrations 20260831-20260833 and flips the flag, the consultation path is byte-for-byte
+// unchanged. EDGE_RUNTIME_NOT_EXECUTED — verified by code review + the runtime-neutral orchestrator tests.
+type DukReservation = { reservationId: string; version: number; sessionId: string; chargeId: string };
+type DukReserveOutcome =
+  | { kind: 'RESERVED'; reservation: DukReservation }
+  | { kind: 'ACTIVE_SESSION'; sessionId: string }
+  | { kind: 'INSUFFICIENT'; balance: number; required: number; shortfall: number }
+  | { kind: 'FAILED' };
+
+async function reserveSessionDuk(
+  admin: AdminClient, userId: string, productType: 'general' | 'compatibility' | 'premium_report', requestId: string,
+): Promise<DukReserveOutcome> {
+  try {
+    const { data, error } = await admin.rpc('reserve_session_duk', {
+      p_user_id: userId, p_product_type: productType, p_request_id: requestId,
+    });
+    const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+    if (error || !row || typeof row.kind !== 'string') return { kind: 'FAILED' };
+    if (row.kind === 'RESERVED') {
+      return { kind: 'RESERVED', reservation: {
+        reservationId: String(row.reservation_id), version: Number(row.version ?? 0),
+        sessionId: String(row.session_id), chargeId: String(row.charge_id),
+      } };
+    }
+    if (row.kind === 'ACTIVE_SESSION') return { kind: 'ACTIVE_SESSION', sessionId: String(row.session_id) };
+    if (row.kind === 'INSUFFICIENT') return {
+      kind: 'INSUFFICIENT', balance: Number(row.balance ?? 0), required: Number(row.required ?? 0), shortfall: Number(row.shortfall ?? 0),
+    };
+    return { kind: 'FAILED' };
+  } catch {
+    return { kind: 'FAILED' };
+  }
+}
+
+async function releaseSessionReservation(admin: AdminClient, reservation: DukReservation): Promise<void> {
+  try {
+    await admin.rpc('release_session_reservation', { p_reservation_id: reservation.reservationId, p_version: reservation.version });
+  } catch { /* best-effort; a stale/expired reserve is reconciled by TTL */ }
+}
+
+// ATOMIC decision persist + Duk commit (§21). Falls back to the persisted replay on any failure.
+async function completeConsultationWithBilling(
+  ctx: PaidRequestContext, response: Record<string, unknown>, conversationId: string | null,
+  decisionMeta: Record<string, unknown> | null, reservation: DukReservation | null, followupSessionId: string | null,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.rpc('complete_consultation_with_billing', {
+      p_user_id: ctx.userId, p_workload: ctx.workload, p_request_id: ctx.requestId, p_lease_token: ctx.token,
+      p_response_json: response, p_conversation_id: conversationId, p_decision_meta: decisionMeta,
+      p_answer_plan_version: decisionMeta && typeof decisionMeta.answerPlanVersion === 'string' ? decisionMeta.answerPlanVersion : null,
+      p_decision_policy_version: decisionMeta && typeof decisionMeta.decisionPolicyVersion === 'string' ? decisionMeta.decisionPolicyVersion : null,
+      p_engine_version: decisionMeta && typeof decisionMeta.engineVersion === 'string' ? decisionMeta.engineVersion : null,
+      p_model_id: decisionMeta && typeof decisionMeta.modelId === 'string' ? decisionMeta.modelId : null,
+      p_reservation_id: reservation?.reservationId ?? null,
+      p_reservation_version: reservation?.version ?? null,
+      p_followup_session_id: followupSessionId,
+    });
+    if (!error && typeof data === 'string' && data.length > 0) return response;
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  } catch {
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  }
+  logDiag(ctx.requestId, 'RESPONSE_VALIDATION', 'DECISION_PERSIST_FAILED', { path: 'consultation' });
+  return null;
+}
+
 // ---- request contract (§7) --------------------------------------------------
 // The client sends ONLY untrusted inputs. No messages / grounding / system prompt.
 //   mode 'consultation' (default): question + untrusted turns; server resolves canonical SELF and grounds.
@@ -1043,23 +1113,50 @@ export default {
         }
 
         const requestWorkload: PaidRequestWorkload = body.consultationMode === 'compatibility' ? 'compatibility' : 'chat';
+
+        // §5/§6 (Sprint H) — DUK SESSION BILLING, flag-gated. Reserve the session price BEFORE paid/global
+        // admission so a user with no Duk never consumes a global slot. INSUFFICIENT → 402 (no LLM). An active
+        // session (follow-up) skips the reserve and never re-charges. Inert unless DUK_BILLING_ENABLED='true'.
+        const dukBillingEnabled = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').toLowerCase() === 'true';
+        let dukReservation: DukReservation | null = null;
+        let dukFollowupSessionId: string | null = null;
+        if (dukBillingEnabled && admin && userId) {
+          const productType = body.consultationMode === 'compatibility' ? 'compatibility' : 'general';
+          const rv = await reserveSessionDuk(admin, userId, productType, requestId);
+          if (rv.kind === 'INSUFFICIENT') {
+            return Response.json(
+              { error: 'INSUFFICIENT_DUK', balance: rv.balance, required: rv.required, shortfall: rv.shortfall },
+              { status: 402 },
+            );
+          }
+          if (rv.kind === 'FAILED') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          if (rv.kind === 'RESERVED') dukReservation = rv.reservation;
+          else dukFollowupSessionId = rv.sessionId; // ACTIVE_SESSION → follow-up, no charge
+        }
+        // Release the Duk reserve on any pre-completion failure (best-effort; TTL reconciles otherwise).
+        const releaseDukIfHeld = async () => { if (dukReservation) await releaseSessionReservation(admin!, dukReservation); };
+
         const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId);
+        // 'completed' → idempotent replay (reserve resolved to the committed session, nothing held); 'processing'
+        // → the in-flight worker owns the reserve — in both cases we must NOT release here.
         if (paid.status === 'completed') return Response.json(paid.response);
         if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
-        if (paid.status === 'rate_limited') return Response.json(
+        if (paid.status === 'rate_limited') { await releaseDukIfHeld(); return Response.json(
           { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
           { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
-        );
+        ); }
         if (paid.status === 'generation_disabled') {
+          await releaseDukIfHeld();
           return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 });
         }
-        if (paid.status === 'global_limit_reached') return Response.json(
+        if (paid.status === 'global_limit_reached') { await releaseDukIfHeld(); return Response.json(
           { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
           { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
-        );
-        if (paid.status !== 'acquired') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+        ); }
+        if (paid.status !== 'acquired') { await releaseDukIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
         if (apiKey.length === 0) {
           await releasePaidRequest(paid.context);
+          await releaseDukIfHeld();
           return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         }
 
@@ -1227,11 +1324,13 @@ export default {
               requestId,
             );
             await releasePaidRequest(paid.context);
+            await releaseDukIfHeld(); // first-turn failure → 0 charged (§7)
             return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
           }
           // SUBJECT_FORBIDDEN(403) / SUBJECT_NOT_FOUND(404) / INVALID_INPUT(400) — attribute the stage.
           logDiag(requestId, result.reason === 'INVALID_INPUT' ? 'INPUT' : 'PROFILE_RESOLUTION', result.reason, { path: 'consultation' });
           await releasePaidRequest(paid.context);
+          await releaseDukIfHeld();
           return Response.json({ error: result.reason }, { status });
         }
 
@@ -1286,9 +1385,19 @@ export default {
             : null;
         // Accepted authoritative decisions are committed atomically with paid-request completion. Any RPC /
         // insert failure is fail-closed (503); it is never logged-and-ignored as if follow-up state existed.
-        const completed = acceptedDecision && verifiedConversationId
-          ? await completeConsultationWithDecision(paid.context, response, verifiedConversationId, acceptedDecision)
-          : await completePaidRequest(paid.context, response);
+        // §21: when Duk billing is active, the Duk COMMIT rides the SAME atomic completion (decision + charge,
+        // or paid-complete + charge for compatibility). A non-completed result releases the reserve (0 charged).
+        let completed: Record<string, unknown> | null;
+        if (dukBillingEnabled && (dukReservation || dukFollowupSessionId)) {
+          completed = await completeConsultationWithBilling(
+            paid.context, response, verifiedConversationId, acceptedDecision, dukReservation, dukFollowupSessionId,
+          );
+          if (!completed) await releaseDukIfHeld();
+        } else {
+          completed = acceptedDecision && verifiedConversationId
+            ? await completeConsultationWithDecision(paid.context, response, verifiedConversationId, acceptedDecision)
+            : await completePaidRequest(paid.context, response);
+        }
         return completed
           ? Response.json(completed)
           : Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });

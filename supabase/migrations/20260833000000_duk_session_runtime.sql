@@ -79,12 +79,18 @@ begin
   -- Serialize per-user so two concurrent first-turn starts cannot both create a session + reserve.
   perform pg_advisory_xact_lock(hashtext(p_user_id::text));
 
-  -- §22 idempotency: a retried first-turn (same request_id) returns its existing reservation.
+  -- §22 idempotency: a retried first-turn (same request_id) returns its existing reservation. Match ANY status
+  -- so a replay AFTER commit does NOT create a spurious new hold — a COMMITTED/RELEASED reserve resolves to its
+  -- session with price 0 (no new charge); only a still-RESERVED one is returned as a live reservation.
   select * into v_existing_res from public.duk_reserve
-    where user_id = p_user_id and request_id = p_request_id and status = 'RESERVED' limit 1;
+    where user_id = p_user_id and request_id = p_request_id
+    order by (status = 'RESERVED') desc limit 1;
   if found then
-    return jsonb_build_object('kind','RESERVED','reservation_id',v_existing_res.reservation_id,
-      'session_id',v_existing_res.session_id,'charge_id',v_existing_res.charge_id,'version',v_existing_res.version,'price',v_existing_res.amount);
+    if v_existing_res.status = 'RESERVED' then
+      return jsonb_build_object('kind','RESERVED','reservation_id',v_existing_res.reservation_id,
+        'session_id',v_existing_res.session_id,'charge_id',v_existing_res.charge_id,'version',v_existing_res.version,'price',v_existing_res.amount);
+    end if;
+    return jsonb_build_object('kind','ACTIVE_SESSION','session_id',v_existing_res.session_id,'price',0);
   end if;
 
   -- §9/§18 resume a valid ACTIVE session for THIS product (no new charge) — cross-product isolation via product_type.
@@ -200,11 +206,19 @@ declare v_decision_id uuid; v_ok boolean;
 begin
   if auth.role() <> 'service_role' then raise exception 'service role required' using errcode = '42501'; end if;
 
-  -- Reuse the existing atomic decision+completion (ownership-checked, idempotent replay).
-  v_decision_id := public.complete_consultation_request_with_decision(
-    p_user_id, p_workload, p_request_id, p_lease_token, p_response_json, p_conversation_id,
-    p_decision_meta, p_answer_plan_version, p_decision_policy_version, p_engine_version, p_model_id);
-  if v_decision_id is null then return null; end if;  -- not completed (replay/failed) → no billing side effect
+  if p_conversation_id is not null and p_decision_meta is not null then
+    -- Solo consultation: reuse the existing atomic decision+completion (ownership-checked, idempotent replay).
+    v_decision_id := public.complete_consultation_request_with_decision(
+      p_user_id, p_workload, p_request_id, p_lease_token, p_response_json, p_conversation_id,
+      p_decision_meta, p_answer_plan_version, p_decision_policy_version, p_engine_version, p_model_id);
+    if v_decision_id is null then return null; end if;  -- not completed (replay/failed) → no billing side effect
+  else
+    -- Compatibility / no-decision: complete the paid request only (no decision store write).
+    if not public.complete_paid_request(p_user_id, p_workload, p_request_id, p_lease_token, p_response_json) then
+      return null;  -- replay / not completed → no billing side effect
+    end if;
+    v_decision_id := gen_random_uuid();  -- sentinel non-null: "completed"
+  end if;
 
   if p_reservation_id is not null then
     v_ok := public.commit_session_reservation(p_reservation_id, p_reservation_version);
