@@ -245,22 +245,26 @@ describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)'
 describe('login screen provider wiring (regression lock — source-level)', () => {
   // No RN render harness in this repo (tests are pure/fs-based), so this locks the
   // login.tsx wiring at the source level: all three providers present + naver added,
-  // each via the shared generic handler. Guards against accidental button removal.
+  // each via the shared handler. Post brand sprint the providers render through the
+  // provider-distinct <SocialButton provider="…"> (not the generic orange Button, §10).
   const src = fs.readFileSync(path.join(__dirname, '../../../app/login.tsx'), 'utf8');
+  const socialSrc = fs.readFileSync(path.join(__dirname, '../../../components/SocialButton/SocialButton.tsx'), 'utf8');
 
-  it('wires naver through the existing generic handler', () => {
+  it('wires naver through the existing handler + provider-distinct SocialButton', () => {
     expect(src).toMatch(/handleLogin\('naver'\)/);
-    expect(src).toContain('네이버로 계속하기'); // signup-first CTA copy (§12: "계속하기")
+    expect(src).toMatch(/provider="naver"/);
+    expect(socialSrc).toContain('네이버로 계속하기'); // signup-first CTA copy (§12: "계속하기"), owned by SocialButton
   });
 
   it('keeps kakao + google wired (no regression)', () => {
     expect(src).toMatch(/handleLogin\('kakao'\)/);
     expect(src).toMatch(/handleLogin\('google'\)/);
+    expect(src).toMatch(/provider="kakao"/);
+    expect(src).toMatch(/provider="google"/);
   });
 
-  it('reuses the shared Button component + isSigningIn disabled state', () => {
-    // naver button reuses the same <Button ... disabled={isSigningIn}> pattern.
-    expect(src).toMatch(/label="네이버로 계속하기"[\s\S]*disabled=\{isSigningIn\}/);
+  it('naver SocialButton carries the isSigningIn disabled state', () => {
+    expect(src).toMatch(/provider="naver"[\s\S]*?disabled=\{isSigningIn\}/);
   });
 });
 
