@@ -74,3 +74,22 @@ verify_jwt = false
 [functions.google-rtdn]
 enabled = true
 verify_jwt = false
+
+# Retention worker seams (Sprint J6). Cron-triggered; NOT consumer JWT — each authenticates via the CRON_SECRET
+# header and fails closed without it (verify_jwt = false because the platform JWT check does not apply to cron).
+# Not deployed by this batch (owner deploys). See docs/RETENTION_WORKERS_RUNBOOK.md for scheduling.
+[functions.run-scheduled-notifications]
+enabled = true
+verify_jwt = false
+
+[functions.run-email-campaigns]
+enabled = true
+verify_jwt = false
+
+[functions.retry-notification-deliveries]
+enabled = true
+verify_jwt = false
+
+[functions.retry-email-deliveries]
+enabled = true
+verify_jwt = false
