@@ -75,7 +75,7 @@ export default function LifeEventsScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="중요한 일정" showBack onBack={handleBack} />
+      <AppHeader title="중요한 일정" showBack onBack={handleBack} showBell />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="lg">

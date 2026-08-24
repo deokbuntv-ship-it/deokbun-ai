@@ -9,6 +9,8 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
+import { colors } from '@/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   useConsultationDraft,
   useConsultationSubjects,
@@ -20,6 +22,8 @@ import {
 // (This is the former 상담 tab content, relocated so 상담 can be history-centric.)
 export default function SubjectsScreen() {
   const router = useRouter();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
   const { draft, updateSubject, updateBirthInfo } = useConsultationDraft();
   const { subjects, status, reload } = useConsultationSubjects();
 
@@ -101,23 +105,28 @@ export default function SubjectsScreen() {
     return subjects.map((subject) => {
       const isCurrent = draft.subject?.id === subject.id;
       return (
-        <Card key={subject.id}>
-          <Stack gap="sm">
+        // The selected person is clearly marked (orange border + 선택됨 chip = signature-orange selected state).
+        // Hierarchy (§ real-device QA #5): name → ONE primary action (상담 열기) + secondary (새 상담) → demoted
+        // management (관리 / 상담 기록). No dense equal-weight grid; S8-width safe. All actions preserved.
+        <Card key={subject.id} style={isCurrent ? { borderColor: theme.brandPrimary, borderWidth: 1.5 } : undefined}>
+          <Stack gap="md">
             <Pressable
               onPress={() => openManse(subject)}
               accessibilityRole="button"
               accessibilityLabel={`${subject.displayName} 만세력 보기`}
             >
               <Stack gap="xs">
-                <Stack direction="row" gap="xs" align="center">
-                  <Text variant="bodyLarge" style={{ fontWeight: '600' }}>
+                <Stack direction="row" gap="sm" align="center" style={{ justifyContent: 'space-between' }}>
+                  <Text variant="bodyLarge" style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={1}>
                     {subject.displayName}
                     {subject.isSelf ? ' (본인)' : ''}
                   </Text>
                   {isCurrent ? (
-                    <Text variant="bodySmall" colorToken="textSecondary">
-                      · 선택됨
-                    </Text>
+                    <View style={[styles.selectedChip, { backgroundColor: theme.brandPrimarySoft }]}>
+                      <Text variant="caption" style={{ color: theme.brandPrimaryText, fontWeight: '700' }}>
+                        선택됨
+                      </Text>
+                    </View>
                   ) : null}
                 </Stack>
                 {subject.relationship ? (
@@ -128,23 +137,21 @@ export default function SubjectsScreen() {
               </Stack>
             </Pressable>
 
-            <Stack direction="row" gap="sm" style={styles.actionRow}>
-              <Button label="상담 열기" variant="secondary" onPress={() => openConsultation(subject)} />
-              <Button
-                label="새 상담"
-                variant="secondary"
-                onPress={() => startNewConsultation(subject)}
-              />
-              <Button
-                label="관리"
-                variant="secondary"
-                onPress={() => manageSubject(subject)}
-              />
-              <Button
-                label="상담 기록"
-                variant="secondary"
-                onPress={() => openHistory(subject)}
-              />
+            {/* Primary + secondary — the two consultation actions, equal width, clear emphasis order. */}
+            <Stack direction="row" gap="sm">
+              <View style={styles.flex1}>
+                <Button label="상담 열기" variant="primary" radius="lg" onPress={() => openConsultation(subject)} />
+              </View>
+              <View style={styles.flex1}>
+                <Button label="새 상담" variant="secondary" radius="lg" onPress={() => startNewConsultation(subject)} />
+              </View>
+            </Stack>
+
+            {/* Demoted management actions — text-only, visually quieter. */}
+            <Stack direction="row" gap="xs" align="center">
+              <Button label="관리" variant="tertiary" onPress={() => manageSubject(subject)} />
+              <Text variant="bodySmall" colorToken="textMuted">·</Text>
+              <Button label="상담 기록" variant="tertiary" onPress={() => openHistory(subject)} />
             </Stack>
           </Stack>
         </Card>
@@ -154,7 +161,7 @@ export default function SubjectsScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="분석 대상자 관리" showBack onBack={handleBack} />
+      <AppHeader title="분석 대상자 관리" showBack onBack={handleBack} showBell />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -186,7 +193,12 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  actionRow: {
-    flexWrap: 'wrap',
+  flex1: {
+    flex: 1,
+  },
+  selectedChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
 });

@@ -63,7 +63,7 @@ export default function WalletScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="덕" centerTitle showBack onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+      <AppHeader title="덕" centerTitle showBack onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} showBell />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           <Stack gap="xl">

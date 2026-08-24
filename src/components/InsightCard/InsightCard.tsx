@@ -42,31 +42,30 @@ export function InsightCard({
     <Card radius="xl">
       <Stack gap="sm">
         {tag || timestamp || unread ? (
-          <Stack
-            direction="row"
-            gap="sm"
-            align="center"
-            style={{ justifyContent: 'space-between' }}
-          >
-            <Stack direction="row" gap="sm" align="center">
+          // Meta row wraps instead of overflowing the card: the tag+timestamp group takes the available width
+          // (flex:1) and wraps, and a long timestamp shrinks + flows to a second line on narrow screens
+          // (Galaxy S8) — no clipping, no font-size hacks (§ real-device QA #2).
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, flex: 1 }}>
               {tag ? <StatusBadge label={tag.label} tone={tag.tone ?? 'neutral'} pill /> : null}
               {timestamp ? (
-                <Text variant="bodySmall" colorToken="textSecondary">
+                <Text variant="bodySmall" colorToken="textSecondary" style={{ flexShrink: 1 }}>
                   {timestamp}
                 </Text>
               ) : null}
-            </Stack>
+            </View>
             {unread ? (
               <View
                 style={{
                   width: 8,
                   height: 8,
                   borderRadius: 4,
+                  marginTop: 4,
                   backgroundColor: theme.accent,
                 }}
               />
             ) : null}
-          </Stack>
+          </View>
         ) : null}
         <Text
           variant="headingMedium"
