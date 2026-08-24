@@ -14,6 +14,13 @@ import { ConsumerNavGlyph } from './ConsumerNavGlyph';
 // native (ConsumerNavGlyph resolves per platform), consuming the shared CONSUMER_NAV_ITEMS
 // (홈·상담·궁합·운세우편함·MY) so the 5-item nav never drifts. Icon + label, equal distribution, safe-area aware,
 // ink active state to match the tab bar (DESIGN_FREEZE_FINAL C02).
+//
+// WHERE THE BAR IS HIDDEN — the canonical rule (owner decision, DESIGN_FREEZE_FINAL C02 amendment).
+// Exactly THREE exceptions; every other consumer screen keeps the bar, including the 궁합 결과 and 덕 충전:
+//   1. 몰입형 상담 채팅 (/chat) — the composer owns the bottom safe area.
+//   2. 온보딩 (/login, /onboarding/*) — the user is being routed, not browsing.
+//   3. 미완료 출생정보 입력 (/birth-info) — a critical form. This bar navigates with router.replace, so
+//      offering it here would silently discard whatever the user has typed.
 export type DetailNavKey = ConsumerNavKey;
 
 const NAV_HEIGHT = 56;

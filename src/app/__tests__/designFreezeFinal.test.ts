@@ -153,21 +153,41 @@ describe('덕 부족 is an in-flow block, never an Alert (freeze C07)', () => {
   });
 });
 
-describe('the bottom bar is hidden in exactly two places', () => {
-  // 몰입형 채팅 + 온보딩. Everything else — including the 궁합 결과 and 덕 충전 — keeps it.
-  it.each(['app/wallet.tsx', 'app/duk-topup.tsx', 'app/subjects.tsx', 'app/compatibility-chat.tsx'])(
-    '%s keeps the bottom bar',
-    (rel) => {
-      expect(read(rel)).toMatch(/<DetailBottomNav/);
-    },
-  );
+describe('the bottom bar is hidden in exactly three places', () => {
+  // Owner decision (DESIGN_FREEZE_FINAL C02 amendment): 몰입형 상담 채팅 · 온보딩 · 미완료 출생정보 입력.
+  // Everything else — including the 궁합 결과 and 덕 충전 — keeps the bar so a long read is never a dead end.
+  it.each([
+    'app/wallet.tsx',
+    'app/duk-topup.tsx',
+    'app/subjects.tsx',
+    'app/compatibility-chat.tsx',
+    'app/notifications.tsx',
+    'app/notification-settings.tsx',
+    'app/life-events.tsx',
+    'app/subject-history.tsx',
+    'app/subject-manse.tsx',
+  ])('%s keeps the bottom bar', (rel) => {
+    expect(read(rel)).toMatch(/<DetailBottomNav/);
+  });
 
-  it.each(['app/chat.tsx', 'app/login.tsx', 'app/onboarding/terms.tsx', 'app/onboarding/channel.tsx', 'app/onboarding/birth.tsx'])(
-    '%s hides the bottom bar',
-    (rel) => {
-      expect(read(rel)).not.toMatch(/<DetailBottomNav/);
-    },
-  );
+  it.each([
+    'app/chat.tsx',
+    'app/login.tsx',
+    'app/onboarding/terms.tsx',
+    'app/onboarding/channel.tsx',
+    'app/onboarding/birth.tsx',
+    // 3rd exception: a critical form. DetailBottomNav navigates with router.replace, which would
+    // silently discard unsaved birth input — so the form keeps the user's attention instead.
+    'app/birth-info.tsx',
+  ])('%s hides the bottom bar', (rel) => {
+    expect(read(rel)).not.toMatch(/<DetailBottomNav/);
+  });
+
+  it('the canonical rule is documented where the bar itself is defined', () => {
+    const nav = read('components/DetailBottomNav.tsx');
+    expect(nav).toMatch(/Exactly THREE exceptions/);
+    expect(nav).toMatch(/birth-info/);
+  });
 
   it('the bell follows the same exceptions (login / onboarding / chat / the notification centre itself)', () => {
     ['app/login.tsx', 'app/onboarding/terms.tsx', 'app/onboarding/channel.tsx', 'app/onboarding/birth.tsx', 'app/chat.tsx'].forEach(

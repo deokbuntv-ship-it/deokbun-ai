@@ -101,6 +101,30 @@ Source of Truth 순서: **기존 Product/Business Logic > Architecture/Constitut
 
 ---
 
+## 3-1. Bottom Navigation 노출 규칙 (OWNER DECISION — 확정)
+
+DESIGN_FREEZE_FINAL C02의 "몰입형 채팅 + 온보딩 2곳 예외"를 owner 결정으로 **3곳**으로 확정합니다.
+
+하단 탭바를 숨기는 화면은 **정확히 다음 3곳뿐**입니다:
+
+| # | 예외 | Route | 이유 |
+| --- | --- | --- | --- |
+| 1 | 몰입형 상담 채팅 | `/chat` | 입력창이 하단 safe-area를 차지하는 몰입형 읽기/입력 화면 |
+| 2 | 온보딩 | `/login` · `/onboarding/*` | 사용자가 탐색 중이 아니라 라우팅되는 단계 |
+| 3 | 미완료 출생정보 입력 (critical form) | `/birth-info` | `DetailBottomNav`는 `router.replace`로 이동하므로, 작성 중인 출생정보가 조용히 유실됩니다. 입력값 보호와 critical form 몰입도 유지가 우선 |
+
+그 외 **전 화면은 탭바를 유지**합니다 — 궁합 결과(`/compatibility-chat`)와 덕 충전(`/duk-topup`) 포함.
+탭 화면은 네비게이터가, 푸시 화면은 `DetailBottomNav` 미러가 렌더합니다.
+
+이 규칙의 단일 출처는 `src/components/DetailBottomNav.tsx` 상단 주석이며,
+`src/app/__tests__/designFreezeFinal.test.ts`의 *"the bottom bar is hidden in exactly three places"* 가 이를 고정합니다.
+
+헤더 벨 예외 4곳(로그인 · 온보딩 · 알림센터 자신 · 몰입형 채팅)은 **변경 없음**입니다. `/birth-info`는 `AppHeader`를 사용하지 않으므로 벨 규칙과 무관합니다.
+
+Product Logic 변경 없음 — Presentation/UI navigation rule 문서화 및 테스트 정정만 해당합니다.
+
+---
+
 ## 4. 구현 순서
 
 1. 토큰 (`colors/typography/radius/shadows` + `constants/theme`) + `brandTokens.test` 재작성
