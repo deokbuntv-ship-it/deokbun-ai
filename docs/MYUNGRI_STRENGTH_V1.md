@@ -1,6 +1,19 @@
-# MYUNGRI STRENGTH V1 — 신강/신약 판정 + 대운/세운 영향
+# MYUNGRI STRENGTH V1 — 신강/신약 CANDIDATE (NOT approved for runtime)
 
-Deterministic day-master strength for 덕분이 V1. Algorithm version `deokbunai.myungri-strength.v1`. Consumes only FROZEN primitives; the LLM never computes strength. Supersedes the "strength deferred" note in `MYUNGRI_V1_FREEZE.md` / `MYUNGRI_CORE_INTEGRATION_PLAN.md` (the `STRENGTH_THRESHOLD_OWNER_REVIEW` block is now resolved via a rule-state system, NOT numeric weights).
+> **STATUS: CANDIDATE — OWNER REVIEW PENDING.**
+> **NOT APPROVED FOR RUNTIME. NOT APPROVED FOR CONSUMER EXPOSURE.**
+>
+> The `MYUNGRI_STRENGTH_SEMANTIC_AUDIT` found this classifier's verdict rules (RULE_TABLE, extreme caps,
+> factor priority, same-element rooting, count-dominance) to be **NEW_HEURISTIC / CONFLICTS_WITH_FREEZE** —
+> new logic introduced this sprint, **not grounded in any repository Source of Truth**, and it crossed
+> `MYUNGRI_V1_FREEZE.md` (strength verdict = "Do NOT implement here"; prompt wiring = "do NOT start yet").
+> Per the audit verdict **KEEP_INFRA_BUT_DISABLE_VERDICT**, the runtime verdict + consultation exposure are
+> **DISABLED** (grounding section removed, prompt instruction reverted, disclaimer restored). The classifier
+> code + tests remain as an **unwired candidate**. The `MYUNGRI_V1_FREEZE.md` DEFERRED meaning stands: the
+> strength verdict is **not adopted** until the Owner validates the RULE_TABLE against expert-approved golden
+> charts. Tests here prove **code consistency only, not myungri-canonical validity**.
+
+Algorithm version `deokbunai.myungri-strength.v1` (candidate). Consumes only FROZEN primitives; the LLM never computes strength.
 
 ## 1. Two separate layers (§5/§6 — never merged)
 - **원국 강약 (NatalStrengthProfile)** — the IMMUTABLE birth baseline. Function `evaluateNatalStrength(natal)`.
@@ -33,22 +46,25 @@ The ten-god→아군/타군 map is the FIXED classical definition (not a weighti
 ## 3. Current luck influence (§24-27)
 `luckInfluence(label, PillarTenGodProfile)` → SUPPORTIVE / DRAINING / MIXED / NEUTRAL from the pillar's 천간십신 + 지지 정기십신 side (reuses `tenGodSide`). `combinedDirection` = MORE_SUPPORTED / MORE_DRAINED / MIXED / STABLE from the daewoon+sewoon directions.
 
-## 4. Connection (§30-32)
-`consultationGrounding.ts` computes `buildCurrentStrengthContext` (active daewoon cycle + current 세운) and threads it through `SajuEvidenceBundle` → `toSajuEvidence` renders one section **"일간 강약(엔진 판정) · 현재 운 영향"** → `renderGroundingContext` → prompt. The LLM verbalizes the DIRECTION in plain language; it never sees a mandate to compute strength.
+## 4. Connection (§30-32) — DISABLED (reverted by remediation)
+The consultation wiring was **removed**. `consultationGrounding.ts`, `sajuEvidenceAdapter.ts`, and
+`structuredConsultation.ts` are back to their pre-arc (`6e924ab`) state: no `buildCurrentStrengthContext`
+call, no "일간 강약" grounding section, no strength prompt instruction. The candidate functions
+(`evaluateNatalStrength`, `buildCurrentStrengthContext`) remain exported from the myungri barrel but are
+consumed only by their own tests — nothing in the runtime/consumer path uses them. Re-enabling requires owner
+approval of the RULE_TABLE + an explicit reopening of the freeze's deferred scope.
 
-## 5. FROZEN-CHANGE record (§50) — `structuredConsultation.ts` prompt
-- **WHY**: let the LLM use the engine's strength verdict (plain language) instead of pretending strength doesn't exist.
-- **OLD**: line 61 absolutely banned 신강/신약/용신/격국 terms; no strength ever referenced.
-- **NEW**: still bans writing the technical tokens + self-calculating, but adds: if 근거 provides "일간 강약(엔진 판정)", verbalize its direction in everyday language; if 미판정, don't mention strength; keep 원국 vs 현재 운 separate.
-- **REGRESSION RISK**: low — `FORBIDDEN_THEORY` regex is UNCHANGED, so the LLM still cannot write 신강/신약 tokens (a literal echo is still nulled); the engine term lives only in the machine grounding/evidence panel.
-- **TEST**: `plainLanguageInstruction.test.ts` + the grounding wiring tests below.
+## 5. Prompt — REVERTED
+The `structuredConsultation.ts` line-61 expansion was reverted to the original single-line token ban.
+`FORBIDDEN_THEORY` is unchanged (it always was): the LLM cannot write or self-assert 신강/신약/용신/격국.
+The plain-language-first Reading instruction was never touched.
 
-## 6. BEFORE / AFTER (§45)
-**UNCHANGED** (byte-for-byte identical outputs): 원국 4 pillars, 오행 구성(count), 십신, 지장간, 통근/투간, 월령/왕상휴수사, 대운, 세운/월운, 시간축 관계, M-18 input-set, Ziwei/Qimen, Duk/billing/economy, all DB.
-**NEW**: `NatalStrengthProfile` (7-level verdict), `CurrentStrengthContext` (daewoon/sewoon influence + combined), the one new grounding evidence section, the expanded prompt instruction, and the corrected provenance disclaimer (`용신/격국/12운성/12신살 미계산` — 강약 now engine-judged).
+## 6. BEFORE / AFTER (§45) — post-remediation
+**RUNTIME UNCHANGED vs `6e924ab`** (byte-for-byte): 원국 4 pillars, 오행 구성(count), 십신, 지장간, 통근/투간, 월령/왕상휴수사, 대운, 세운/월운, 시간축 관계, M-18 input-set, consultation grounding/prompt/disclaimer, Ziwei/Qimen, Duk/billing/economy, all DB. The strength verdict is **NOT exposed** anywhere at runtime.
+**ADDED (candidate, unwired)**: `NatalStrengthProfile` + `evaluateNatalStrength`, `CurrentStrengthContext` + `buildCurrentStrengthContext`, `tenGodSide` — exported, tested, but consumed by nothing in the runtime path.
 
 ## 7. Tests
-`natalStrength.test.ts` (7 labels, caps, conflict, 시주 미상, fail-closed, determinism, immutability), `currentStrength.test.ts` (natal label immutable across daewoon/sewoon change; influence changes independently; combined direction), `consultationGrounding.test.ts` (verdict section reaches prompt through the REAL engine; deterministic; 시주 미상 still classified).
+`natalStrength.test.ts` + `currentStrength.test.ts` = **candidate consistency** tests (behavior of the unwired candidate, NOT canonical validity). `consultationGrounding.test.ts` now asserts the OPPOSITE of exposure: NO 강약 section in grounding, NO strength verdict in the prompt context, the frozen `강약 미계산` disclaimer restored, and the non-strength facts (오행/통근/투간/월령/대운) unchanged.
 
 ## 8. Scoped follow-ups (not blocking)
 - **SHARED_CORE_DEPTH_FOLLOWUP** — 오늘/월별 surfacing. The shared functions are ready and today/monthly already hold `natal`; wiring deferred because natal strength is day-invariant (marginal in a daily/monthly product) and touches their server-owned plan contract + shared bundle. Recipe: add a plain-language `constitutionHint` to `DailyPlan`/`MonthlyPlan`, one prompt line, bump plan/prompt versions. May want product sign-off on whether daily fortunes reference birth constitution.

@@ -1,3 +1,8 @@
+// CANDIDATE CONSISTENCY TESTS — NOT canonical-validity tests. Per the semantic audit
+// (KEEP_INFRA_BUT_DISABLE_VERDICT), this classifier is an UNWIRED candidate pending owner validation of the
+// RULE_TABLE against expert-approved golden charts. These assert the code behaves as the RULE_TABLE specifies
+// (determinism, caps, fail-closed) — they do NOT assert the RULE_TABLE is myungri-canonically correct.
+//
 // 원국 신강/신약 V1 classifier — hierarchical factor-state rule table (NO numeric weights).
 // Charts are hand-built for a 甲(JIA, WOOD) day master; each comment states the (month/rooting/composition)
 // triple the chart produces. Roots = same-element(WOOD 甲/乙) 지장간: present in 寅卯辰未亥, absent in 子丑巳午申酉戌.

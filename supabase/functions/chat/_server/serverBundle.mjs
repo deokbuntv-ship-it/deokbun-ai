@@ -391,12 +391,7 @@ var STRUCTURED_OUTPUT_INSTRUCTION = [
   '· 관점을 나눌 때는 자연스러운 학문명으로만: "사주에서 보면 …", "자미두수에서는 …".',
   '· 계산하지 않은 내용은 그냥 언급하지 않으면 됩니다. "이 버전에서는 지원하지 않는다/계산되지',
   '  않았다"처럼 구현 한계를 사용자에게 설명하지 마십시오.',
-  "· 신강·신약·용신·격국·12운성·12신살 같은 전문 용어 자체를 답변에 쓰지 말고, 스스로 계산·단정하지도 마십시오.",
-  '· 단, 근거에 "일간 강약(엔진 판정)"이 제공되면 그 강약 방향과 현재 대운/세운 영향을 해석에 활용하되,',
-  '  반드시 일상 언어로만 풀어 쓰십시오(예: "신약입니다"라고 쓰지 말고 "혼자 밀어붙이기보다 주변의 도움과',
-  '  좋은 환경을 받을 때 힘을 더 잘 쓰는 편이에요"처럼). 강약이 "미판정"이면 강약을 아예 언급하지 마십시오.',
-  "· 원국(타고난) 강약과 현재 대운/세운 흐름은 구분해서 말하십시오. 올해가 지원 흐름이라고 해서 타고난",
-  '  성향 자체가 바뀌는 것처럼 말하지 마십시오("원래는 …한 편인데, 지금은 …한 흐름이 들어와요").',
+  "· 신강·신약·용신·격국·12운성·12신살 같은 전문 용어 자체를 답변에 쓰지 말고 단정하지도 마십시오.",
   "· 천간·지지 한자(甲乙丙丁戊己庚辛壬癸 · 子丑寅卯辰巳午未申酉戌亥)나 그 조합(예: 甲木·寅卯·丙午)을",
   '  사용자 답변에 그대로 쓰지 마십시오. 반드시 뜻을 풀어 일상 언어로 설명하십시오(예: "寅卯의 기운"이',
   '  아니라 "변화와 이동의 흐름이 강해지는 시기"). 근거의 뜻은 살리되, 기호는 노출하지 마십시오.',
@@ -6401,7 +6396,7 @@ function toSajuEvidence(bundle) {
     const relLines = [];
     for (const s of nr.stem) relLines.push(`${STEM_REL[s.relation.kind]} ${stemH(s.relation.stems[0])}${stemH(s.relation.stems[1])}(${s.positions.join("-")})`);
     for (const b of nr.branch) relLines.push(`${BRANCH_REL[b.relation.kind]} ${branchH(b.relation.branches[0])}${branchH(b.relation.branches[1])}(${b.positions.join("-")})`);
-    for (const st2 of nr.sets) relLines.push(`${SET_REL[st2.kind]} ${st2.branches.map(branchH).join("")}`);
+    for (const st of nr.sets) relLines.push(`${SET_REL[st.kind]} ${st.branches.map(branchH).join("")}`);
     sections.push({ label: "원국 관계(합충형파해·삼합/방합)", lines: relLines.length ? relLines : ["특이 관계 없음"] });
   }
   const rt = bundle.rooting;
@@ -6472,23 +6467,6 @@ function toSajuEvidence(bundle) {
     for (const s of ax.branchSetRelations) axisLines.push(`${SET_REL[s.kind]} ${s.branches.map(branchH).join("")}`);
     sections.push({ label: "시간축 연결(원국↔대운↔세운↔월운)", lines: axisLines.length ? axisLines : ["현재 교차 관계 없음"] });
   }
-  const st = bundle.strength;
-  if (st) {
-    const ns = st.natalStrength;
-    const stLines = [];
-    if (ns.status === "CLASSIFIED") {
-      stLines.push(`원국 강약: ${ns.labelKo} · 신뢰도 ${ns.confidence}`);
-      stLines.push(`근거: 월령 ${ns.month.direction}(${ns.month.phase}) · 통근 ${ns.rooting.state}(뿌리 ${ns.rooting.count}지) · 천간구성 아군 ${ns.composition.support}/타군 ${ns.composition.drain}`);
-      if (ns.conflicts.length) stLines.push(`상충: ${ns.conflicts.join(", ")}`);
-      if (ns.warnings.length) stLines.push(`주의: ${ns.warnings.join(" / ")}`);
-    } else {
-      stLines.push(`원국 강약: 미판정(${ns.reason}) — 강약을 사실로 단정 금지`);
-    }
-    if (st.daewoon) stLines.push(`현재 대운 영향: ${st.daewoon.label} → ${st.daewoon.direction}`);
-    if (st.sewoon) stLines.push(`현재 세운 영향: ${st.sewoon.label} → ${st.sewoon.direction}`);
-    stLines.push(`현재 종합 흐름(원국 대비): ${st.combinedDirection}`);
-    sections.push({ label: "일간 강약(엔진 판정) · 현재 운 영향", lines: stLines });
-  }
   const availableExtraWolwoon = (bundle.extraWolwoon ?? []).filter((e) => e.result.capability === "AVAILABLE");
   const hasTimingEvidence = hasDaewoon || se?.capability === "AVAILABLE" || wo?.capability === "AVAILABLE" || availableExtraWolwoon.length > 0;
   const anchorYears = /* @__PURE__ */ new Set();
@@ -6549,7 +6527,7 @@ function toSajuEvidence(bundle) {
   if (assumptions.size > 0) provLines.push(`가정: ${[...assumptions].join(", ")}`);
   if (limitations.size > 0) provLines.push(`한계(계산): ${[...limitations].join(", ")}`);
   provLines.push(fourPillars.hour.status === "AVAILABLE" ? "시주 확정" : "시주 미상(시간 의존 해석 제한)");
-  provLines.push("용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지). 강약(신강/신약)은 엔진 판정값이 제공될 때만 사용");
+  provLines.push("강약/용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지)");
   sections.push({ label: "근거·한계", lines: provLines });
   const summary = `사주 ${gz(fourPillars.year)}·${gz(fourPillars.month)}·${gz(fourPillars.day)}·${hourText(fourPillars.hour)} / 일간 ${stemH(fourPillars.day.stem)}`;
   const detail = sections.map((s) => `[${s.label}] ${s.lines.join(" | ")}`).join("\n");
@@ -6817,249 +6795,6 @@ function calculateMonthCommand(natal) {
     provenance: myungriProvenance(),
     assumptions: ASSUMPTIONS7,
     limitations: LIMITATIONS6
-  };
-}
-
-// src/features/myungri/services/dayMasterStrengthInputs.ts
-var DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1_RULE = {
-  ruleId: "DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1",
-  ruleVersion: "deokbunai.myungri-strength-inputs.v1"
-};
-var TEN_GOD_ROLE = {
-  PEER: { role: "PARALLEL", side: "SUPPORT" },
-  ROB_WEALTH: { role: "PARALLEL", side: "SUPPORT" },
-  DIRECT_RESOURCE: { role: "RESOURCE", side: "SUPPORT" },
-  INDIRECT_RESOURCE: { role: "RESOURCE", side: "SUPPORT" },
-  EATING_GOD: { role: "OUTPUT", side: "DRAIN" },
-  HURTING_OFFICER: { role: "OUTPUT", side: "DRAIN" },
-  DIRECT_WEALTH: { role: "WEALTH", side: "DRAIN" },
-  INDIRECT_WEALTH: { role: "WEALTH", side: "DRAIN" },
-  DIRECT_OFFICER: { role: "OFFICER", side: "DRAIN" },
-  SEVEN_KILLINGS: { role: "OFFICER", side: "DRAIN" }
-};
-function tenGodSide(tenGod) {
-  return TEN_GOD_ROLE[tenGod].side;
-}
-var zeroRoles = () => ({
-  PARALLEL: 0,
-  RESOURCE: 0,
-  OUTPUT: 0,
-  WEALTH: 0,
-  OFFICER: 0
-});
-function calculateDayMasterStrengthInputs(natal) {
-  if (!isValidNatalContext(natal)) return { capability: "UNAVAILABLE", reason: "INVALID_NATAL_CONTEXT" };
-  const dmElement = getStemElement(natal.dayMaster);
-  if (!dmElement.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
-  const positions = [
-    { position: "YEAR", pillar: natal.pillars.year },
-    { position: "MONTH", pillar: natal.pillars.month },
-    { position: "DAY", pillar: natal.pillars.day },
-    ...natal.pillars.hour ? [{ position: "HOUR", pillar: natal.pillars.hour }] : []
-  ];
-  const visibleStems = [];
-  const hiddenStems = [];
-  for (const { position, pillar } of positions) {
-    if (position !== "DAY") {
-      const tg3 = calculateTenGod(natal.dayMaster, pillar.stem);
-      if (!tg3.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
-      const m = TEN_GOD_ROLE[tg3.value];
-      visibleStems.push({ position, stem: pillar.stem, tenGod: tg3.value, role: m.role, side: m.side });
-    }
-    const hidden = getHiddenStems(pillar.branch);
-    if (!hidden.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
-    for (const hs of hidden.value) {
-      const tg3 = calculateTenGod(natal.dayMaster, hs.stem);
-      if (!tg3.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
-      const m = TEN_GOD_ROLE[tg3.value];
-      hiddenStems.push({ position, stem: hs.stem, tenGod: tg3.value, hiddenRole: hs.role, role: m.role, side: m.side });
-    }
-  }
-  const visibleRoleCounts = zeroRoles();
-  const visibleSideCounts = { SUPPORT: 0, DRAIN: 0 };
-  for (const e of visibleStems) {
-    visibleRoleCounts[e.role] += 1;
-    visibleSideCounts[e.side] += 1;
-  }
-  const hiddenRoleCounts = zeroRoles();
-  for (const e of hiddenStems) hiddenRoleCounts[e.role] += 1;
-  return {
-    capability: "AVAILABLE",
-    ruleVersion: DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1_RULE.ruleVersion,
-    dayMaster: { stem: natal.dayMaster, element: dmElement.value },
-    visibleStems,
-    hiddenStems,
-    visibleRoleCounts,
-    visibleSideCounts,
-    hiddenRoleCounts,
-    strengthVerdict: "OWNER_REVIEW_REQUIRED",
-    seryeokScore: null,
-    disclaimer: "구성(십신 역할 구성비)만 집계 — 세력(강약) 가중·점수·신강/신약 판정은 미산정(Owner Review). 오행 분포·월령(왕상휴수사/득령)·통근/투간은 별도 fact 모듈에서 제공."
-  };
-}
-
-// src/features/myungri/services/natalStrength.ts
-var DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE = {
-  ruleId: "DEOKBUNAI_MYUNGRI_STRENGTH_V1",
-  ruleVersion: "deokbunai.myungri-strength.v1"
-};
-var STRENGTH_LABEL_KO = {
-  EXTREMELY_WEAK: "극신약",
-  WEAK: "신약",
-  BALANCED_WEAK: "중화신약",
-  BALANCED: "중화",
-  BALANCED_STRONG: "중화신강",
-  STRONG: "신강",
-  EXTREMELY_STRONG: "극신강"
-};
-var RULE_TABLE = {
-  // month=SUPPORT (득령) — strong-half base
-  "SUPPORT/MULTIPLE/SUPPORT_DOMINANT": "EXTREMELY_STRONG",
-  "SUPPORT/MULTIPLE/MIXED": "STRONG",
-  "SUPPORT/MULTIPLE/DRAIN_DOMINANT": "STRONG",
-  "SUPPORT/SINGLE/SUPPORT_DOMINANT": "STRONG",
-  "SUPPORT/SINGLE/MIXED": "BALANCED_STRONG",
-  "SUPPORT/SINGLE/DRAIN_DOMINANT": "BALANCED_STRONG",
-  "SUPPORT/NONE/SUPPORT_DOMINANT": "BALANCED_STRONG",
-  // rootless cap
-  "SUPPORT/NONE/MIXED": "BALANCED",
-  "SUPPORT/NONE/DRAIN_DOMINANT": "BALANCED_WEAK",
-  // month=DRAIN (실령) — weak-half base
-  "DRAIN/NONE/DRAIN_DOMINANT": "EXTREMELY_WEAK",
-  "DRAIN/NONE/MIXED": "WEAK",
-  "DRAIN/NONE/SUPPORT_DOMINANT": "WEAK",
-  "DRAIN/SINGLE/DRAIN_DOMINANT": "WEAK",
-  "DRAIN/SINGLE/MIXED": "BALANCED_WEAK",
-  "DRAIN/SINGLE/SUPPORT_DOMINANT": "BALANCED_WEAK",
-  "DRAIN/MULTIPLE/DRAIN_DOMINANT": "BALANCED_WEAK",
-  // multi-root cap
-  "DRAIN/MULTIPLE/MIXED": "BALANCED",
-  "DRAIN/MULTIPLE/SUPPORT_DOMINANT": "BALANCED_STRONG"
-};
-var STRONG_HALF = /* @__PURE__ */ new Set(["EXTREMELY_STRONG", "STRONG", "BALANCED_STRONG"]);
-var WEAK_HALF = /* @__PURE__ */ new Set(["EXTREMELY_WEAK", "WEAK", "BALANCED_WEAK"]);
-var rootingState = (count) => count >= 2 ? "MULTIPLE" : count === 1 ? "SINGLE" : "NONE";
-var dir = (support) => support ? "SUPPORT" : "DRAIN";
-function review(reason, warnings) {
-  return { status: "REVIEW_REQUIRED", reason, warnings, algorithmVersion: DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE.ruleVersion };
-}
-function evaluateNatalStrength(natal) {
-  const month = calculateMonthCommand(natal);
-  const inputs = calculateDayMasterStrengthInputs(natal);
-  if (month.capability !== "AVAILABLE") {
-    return review(month.capability === "UNAVAILABLE" && month.reason === "INVALID_NATAL_CONTEXT" ? "INVALID_NATAL_CONTEXT" : "PRIMITIVE_UNAVAILABLE", []);
-  }
-  if (inputs.capability !== "AVAILABLE") {
-    return review(inputs.reason === "INVALID_NATAL_CONTEXT" ? "INVALID_NATAL_CONTEXT" : "PRIMITIVE_UNAVAILABLE", []);
-  }
-  const monthState = month.commandStatus === "IN_COMMAND" ? "SUPPORT" : "DRAIN";
-  const monthDir = dir(monthState === "SUPPORT");
-  const rootPositions = new Set(inputs.hiddenStems.filter((h) => h.role === "PARALLEL").map((h) => h.position));
-  const rootCount = rootPositions.size;
-  const rState = rootingState(rootCount);
-  const rootDir = dir(rState !== "NONE");
-  const support = inputs.visibleSideCounts.SUPPORT;
-  const drain = inputs.visibleSideCounts.DRAIN;
-  const cState = support > drain ? "SUPPORT_DOMINANT" : support < drain ? "DRAIN_DOMINANT" : "MIXED";
-  const compDir = cState === "SUPPORT_DOMINANT" ? "SUPPORT" : cState === "DRAIN_DOMINANT" ? "DRAIN" : "NEUTRAL";
-  const label = RULE_TABLE[`${monthState}/${rState}/${cState}`];
-  const phaseKo = { WANG: "旺", XIANG: "相", XIU: "休", QIU: "囚", SI: "死" };
-  const factors = [
-    {
-      kind: "MONTH_COMMAND",
-      direction: monthDir,
-      state: month.commandStatus,
-      evidence: `월지 ${month.monthElement} · 일간 왕상휴수사=${phaseKo[month.dayMasterSeasonalPhase]}(${month.dayMasterSeasonalPhase}) → ${monthState === "SUPPORT" ? "득령" : "실령"}`
-    },
-    {
-      kind: "ROOTING",
-      direction: rootDir,
-      state: rState,
-      evidence: `동기(비겁·같은 오행)가 뿌리내린 지지 ${rootCount}개 → ${rState === "NONE" ? "무근(득지 실패)" : "득지"}`
-    },
-    {
-      kind: "SUPPORT_DRAIN_COMPOSITION",
-      direction: compDir,
-      state: cState,
-      evidence: `천간 아군(비겁+인성) ${support} vs 타군(식상+재성+관성) ${drain}`
-    },
-    {
-      kind: "HIDDEN_COMPOSITION",
-      direction: inputs.hiddenRoleCounts.PARALLEL + inputs.hiddenRoleCounts.RESOURCE > inputs.hiddenRoleCounts.OUTPUT + inputs.hiddenRoleCounts.WEALTH + inputs.hiddenRoleCounts.OFFICER ? "SUPPORT" : "DRAIN",
-      state: "HIDDEN",
-      evidence: `지장간 아군 ${inputs.hiddenRoleCounts.PARALLEL + inputs.hiddenRoleCounts.RESOURCE} vs 타군 ${inputs.hiddenRoleCounts.OUTPUT + inputs.hiddenRoleCounts.WEALTH + inputs.hiddenRoleCounts.OFFICER} (보조 근거)`
-    }
-  ];
-  const conflicts = [];
-  if (monthDir !== rootDir) conflicts.push(`월령(${monthDir}) vs 통근(${rootDir}) 상충`);
-  if (compDir !== "NEUTRAL" && monthDir !== compDir) conflicts.push(`월령(${monthDir}) vs 구성(${compDir}) 상충`);
-  if (compDir !== "NEUTRAL" && rootDir !== compDir) conflicts.push(`통근(${rootDir}) vs 구성(${compDir}) 상충`);
-  const side = STRONG_HALF.has(label) ? "SUPPORT" : WEAK_HALF.has(label) ? "DRAIN" : "NEUTRAL";
-  const primaryDirs = [monthDir, rootDir, compDir];
-  const agree = side === "NEUTRAL" ? 0 : primaryDirs.filter((d) => d === side).length;
-  let confidence = side === "NEUTRAL" ? "LOW" : agree >= 3 ? "HIGH" : agree === 2 ? "MEDIUM" : "LOW";
-  const warnings = [];
-  if (!natal.pillars.hour) {
-    warnings.push("시주 미상: 시간주 근거 없음 — confidence 하향(자동 UNKNOWN 아님)");
-    if (confidence === "HIGH") confidence = "MEDIUM";
-  }
-  if (label === "EXTREMELY_WEAK" || label === "EXTREMELY_STRONG") {
-    warnings.push("특수격(종격 등) 가능성은 V1 미판정 — 일반 classifier 기준 라벨. 필요 시 SPECIAL_PATTERN_REVIEW.");
-  }
-  return {
-    status: "CLASSIFIED",
-    label,
-    labelKo: STRENGTH_LABEL_KO[label],
-    confidence,
-    dayMaster: inputs.dayMaster,
-    month: { state: monthState, phase: month.dayMasterSeasonalPhase, direction: monthDir },
-    rooting: { state: rState, count: rootCount, direction: rootDir },
-    composition: { state: cState, support, drain, direction: compDir },
-    supportingFactors: factors.filter((f) => f.direction === "SUPPORT"),
-    weakeningFactors: factors.filter((f) => f.direction === "DRAIN"),
-    conflicts,
-    warnings,
-    specialPatternPolicy: "NORMAL_CLASSIFIER_V1",
-    algorithmVersion: DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE.ruleVersion
-  };
-}
-
-// src/features/myungri/services/currentStrength.ts
-function luckInfluence(label, profile) {
-  const stemSide = tenGodSide(profile.stemTenGod);
-  const branchSide = tenGodSide(profile.branchMainTenGod);
-  const direction = stemSide === branchSide ? stemSide === "SUPPORT" ? "SUPPORTIVE" : "DRAINING" : "MIXED";
-  return {
-    label,
-    direction,
-    stemTenGodSide: stemSide,
-    branchTenGodSide: branchSide,
-    evidence: `${label}: 천간십신 ${profile.stemTenGod}(${stemSide}) · 지지 정기 ${profile.branchMainTenGod}(${branchSide}) → ${direction}`
-  };
-}
-function combine(daewoon, sewoon) {
-  const dirs = [daewoon?.direction, sewoon?.direction].filter((d) => !!d);
-  if (dirs.length === 0) return "STABLE";
-  const support = dirs.filter((d) => d === "SUPPORTIVE").length;
-  const drain = dirs.filter((d) => d === "DRAINING").length;
-  if (support > drain) return "MORE_SUPPORTED";
-  if (drain > support) return "MORE_DRAINED";
-  return dirs.every((d) => d === "NEUTRAL") ? "STABLE" : "MIXED";
-}
-function buildCurrentStrengthContext(input) {
-  const natalStrength = evaluateNatalStrength(input.natal);
-  const daewoon = input.daewoon ? luckInfluence(input.daewoon.label, input.daewoon.profile) : null;
-  const sewoon = input.sewoon ? luckInfluence(input.sewoon.label, input.sewoon.profile) : null;
-  const warnings = [];
-  if (!daewoon) warnings.push("현재 대운 미상 — 대운 영향 제외");
-  if (!sewoon) warnings.push("현재 세운 미상 — 세운 영향 제외");
-  return {
-    natalStrength,
-    daewoon,
-    sewoon,
-    combinedDirection: combine(daewoon, sewoon),
-    warnings,
-    algorithmVersion: DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE.ruleVersion
   };
 }
 
@@ -7878,12 +7613,6 @@ async function buildMyungriEvidence(draft, deps, question) {
     targetYear: sewoon.targetYear,
     lunarMonth: wolwoon.capability === "AVAILABLE" ? wolwoon.lunarMonth : null
   }) : null;
-  const activeDaewoonTenGods = daewoonTenGods && daewoonTenGods.capability === "AVAILABLE" && activeCycleOrdinal !== null ? daewoonTenGods.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null : null;
-  const strength = buildCurrentStrengthContext({
-    natal,
-    daewoon: activeDaewoonTenGods ? { label: `제${activeDaewoonTenGods.ordinal}대운(${activeDaewoonTenGods.startAgeInclusive}~${activeDaewoonTenGods.endAgeInclusive}세)`, profile: activeDaewoonTenGods.tenGods } : null,
-    sewoon: sewoon.capability === "AVAILABLE" ? { label: `${sewoon.targetYear} 세운`, profile: sewoon.tenGods } : null
-  });
   const evidence = toSajuEvidence({
     engineResult,
     natalRelations,
@@ -7897,7 +7626,6 @@ async function buildMyungriEvidence(draft, deps, question) {
     extraSewoon,
     extraWolwoon,
     timeAxis,
-    strength,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null
   });
   const targetPolarities = [];
