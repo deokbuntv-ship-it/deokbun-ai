@@ -1,19 +1,22 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
+import { CandleStrip } from '@/components/Candle';
 import { Card } from '@/components/Card';
-import { InsightCard } from '@/components/InsightCard';
+import { Chip } from '@/components/Chip';
+import { DukBalance } from '@/components/DukBalance';
 import { LineIcon } from '@/components/LineIcon';
 import { ListRow } from '@/components/ListRow';
 import { PersonSelectorSheet } from '@/components/PersonSelectorSheet';
+import { PriceConfirmSheet } from '@/components/PriceConfirmSheet';
 import { QuestionComposer } from '@/components/QuestionComposer';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
+import { StateView } from '@/components/StateView';
 import { Text } from '@/components/Text';
-import { MaxContentWidth } from '@/constants/theme';
 import {
   conversationService,
   type ConversationSummaryItem,
@@ -27,11 +30,11 @@ import {
 import { birthMonthDay, isBirthdayTodayKst, trackRetentionEvent } from '@/features/retention';
 import { useAuth } from '@/features/auth';
 import { useWallet } from '@/features/duk/useWallet';
-import { walletHeadline, walletStateOf } from '@/features/duk/consumerDukView';
+import { walletStateOf } from '@/features/duk/consumerDukView';
+import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { CANDLE_DUK, DUK_PRICES, WELCOME_DUK, dukLabel } from '@/features/duk/pricing';
 import { consumeWelcomePending } from '@/features/duk/welcomeSignal';
 import {
-  popularQuestionIcon,
   resolveActivePopularQuestions,
   trackPopularQuestionClick,
   trackPopularQuestionImpression,
@@ -41,7 +44,6 @@ import { fortuneMailService, type FortuneMailItem } from '@/features/fortune';
 import {
   clientTodayFortuneDateGuess,
   todayFortuneService,
-  toneVariant,
   toTodayPreview,
   trackTodayEvent,
   type TodayPreview,
@@ -49,36 +51,36 @@ import {
 import {
   clientCurrentMonthGuess,
   monthlyFortuneService,
-  monthlyToneVariant,
   toMonthlyPreview,
   trackMonthlyEvent,
   type MonthlyPreview,
 } from '@/features/monthly';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors } from '@/theme';
+import { useConsumerLayout } from '@/hooks/useConsumerLayout';
+import { colors, radius, spacing } from '@/theme';
 
-const TODAY_TONE_COLOR: Record<ReturnType<typeof toneVariant>, string> = {
-  positive: '#1F8A54',
-  neutral: '#5B6472',
-  change: '#B26A00',
-  caution: '#C0392B',
-};
-// 이번 달 운세 pills reuse the SAME restrained palette as Today (no new colors).
-const MONTHLY_TONE_COLOR: Record<ReturnType<typeof monthlyToneVariant>, string> = TODAY_TONE_COLOR;
+// D05 HOME — DESIGN_FREEZE_FINAL.
+//
+// The old Home stacked seven identical cards, so nothing had priority and 덕 was invisible. The
+// frozen order answers, WITHOUT SCROLLING, the four questions a returning user actually opens the
+// app with:
+//   ① 오늘 한 줄  — the butter hero, the one colour plane and the only reason to open this daily
+//   ② 🍀 잔액 · 🕯️ 오늘의 초  — what I have / how I get more
+//   ③ 비용 안내 스트립 — what things cost, BEFORE I commit to anything
+//   ④ 질문 입력 — the single primary CTA
+// then 지금 많이 물어봐요 → 궁합 / 이번 달 → 새 운세 → 최근 상담.
+//
+// Data rules that did NOT change: no LLM is fired on render (previews are stored reads); popular
+// questions come ONLY from the authoritative DB config and the section disappears if it is empty
+// (never a curated fallback); impressions fire once per Home view after the list settles; the
+// birthday card is deterministic from the canonical SELF birth date; the bell's unread count is the
+// shared global state, not a per-screen fetch.
 
-// 01_HOME — Personal AI Consultation Hub. FINAL V1 IA (Home IA sprint): greeting + composer → 오늘의 운세 →
-// 이번 달 운세 → 궁합 → 지금 많이 물어보는 질문 → 최근 상담 → 최근 운세우편. The composer is the single primary
-// CTA (the old quick-prompt pills below it were removed). "지금 많이 물어보는 질문" is an admin-managed,
-// analytics-backed conversion surface whose questions come ONLY from the authoritative DB config; if that
-// config cannot load, the section is omitted (never a stale/curated fallback). Recent items come from real
-// services; fortune mail is empty until the engine ships (no mock).
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 5) return '늦은 밤이에요.';
-  if (h < 12) return '좋은 아침이에요.';
-  if (h < 18) return '좋은 오후예요.';
-  return '편안한 저녁이에요.';
+function todayLine(name: string): string {
+  const d = new Date();
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 ${WEEKDAY[d.getDay()]}요일 · ${name}님의 오늘`;
 }
 
 function formatWhen(iso: string | null): string {
@@ -104,21 +106,39 @@ export default function HomeScreen() {
 
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const { hPad, maxWidth, roomyHero } = useConsumerLayout();
 
-  // 덕 balance chip (Sprint J1 §3). Shared server-authoritative wallet; tap → /wallet. Home is behind the
-  // onboarding gate, so this only renders for signed-in users; balance is refreshed when the tab mounts.
+  // 덕 balance (Sprint J1 §3). Shared server-authoritative wallet. Home is behind the onboarding
+  // gate, so this only renders for signed-in users; the balance is refreshed when the tab mounts.
   const { isAuthenticated } = useAuth();
   const wallet = useWallet();
   useEffect(() => {
     if (isAuthenticated) void wallet.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
-  const dukChipLabel = wallet.loading && !wallet.state
-    ? walletHeadline('loading', 0)
-    : walletHeadline(
-        walletStateOf({ error: wallet.error, totalSpendable: wallet.state?.totalSpendable ?? (wallet.error ? null : 0) }),
-        wallet.state?.totalSpendable ?? 0,
-      );
+  const walletState = walletStateOf({
+    signedOut: !isAuthenticated,
+    error: wallet.error,
+    totalSpendable: wallet.loading && !wallet.state ? undefined : wallet.state?.totalSpendable ?? (wallet.error ? null : 0),
+  });
+  const balance = wallet.state?.totalSpendable ?? 0;
+  const displayWalletState = wallet.loading && !wallet.state ? 'loading' : walletState;
+
+  // 🕯️ Home tile copy comes from the SERVER's candle eligibility — the tile itself never lights the
+  // candle (that ritual lives in the wallet) and never invents a countdown.
+  const [candleEligible, setCandleEligible] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    void getCandleAvailability(Math.floor(Date.now() / 1000))
+      .then((a) => {
+        if (active) setCandleEligible(a.canLight);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated]);
 
   // One-shot post-onboarding welcome/economy card (§6/§7). Consumed once per fresh onboarding; never grants 덕.
   const [showWelcome, setShowWelcome] = useState(false);
@@ -132,17 +152,14 @@ export default function HomeScreen() {
   const [sheetForConsult, setSheetForConsult] = useState(false);
   const [recent, setRecent] = useState<ConversationSummaryItem | null>(null);
   const [mail, setMail] = useState<FortuneMailItem | null>(null);
-  // Time-of-day greeting must be deterministic on first render so the web static
-  // export hydrates without a text mismatch (React #418). Resolve after mount.
+  // Time-of-day / date must be deterministic on first render so the web static export hydrates
+  // without a text mismatch (React #418). Resolve after mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 알림 unread badge is now the SHARED global state (useNotificationUnread, surfaced via AppHeader showBell) —
-  // Home no longer fetches its own count, so navigating across screens never re-fetches (global-bell §7).
-
-  // 오늘의 운세 Home card (§31–§34): read the latest stored record for a lightweight preview. NO LLM is
+  // 오늘의 운세 hero (§31–§34): read the latest stored record for a lightweight preview. NO LLM is
   // fired on Home render — generation happens only when the user opens /today.
   const [todayPreview, setTodayPreview] = useState<TodayPreview | null>(null);
   const [todayIsToday, setTodayIsToday] = useState(false);
@@ -167,8 +184,7 @@ export default function HomeScreen() {
     router.push('/today');
   };
 
-  // 이번 달 운세 Home card (§48–§51): read the latest stored record for a lightweight preview. NO LLM is fired
-  // on Home render — generation happens only when the user opens /monthly.
+  // 이번 달 운세 (§48–§51): stored read only; generation happens on /monthly.
   const [monthlyPreview, setMonthlyPreview] = useState<MonthlyPreview | null>(null);
   const [monthlyIsCurrent, setMonthlyIsCurrent] = useState(false);
   useEffect(() => {
@@ -193,7 +209,7 @@ export default function HomeScreen() {
     router.push('/monthly');
   };
 
-  // 지금 많이 물어보는 질문 — admin-managed, analytics-backed conversion surface. The DB is the SINGLE source of
+  // 지금 많이 물어봐요 — admin-managed, analytics-backed conversion surface. The DB is the SINGLE source of
   // truth: we start EMPTY and only render what active-question loading returns. On any failure (pre-migration /
   // unreachable) or 0 active rows the list stays empty and the section is omitted — we never substitute
   // curated/stale questions in production (that would show unauthorised config and fabricate impressions).
@@ -203,8 +219,6 @@ export default function HomeScreen() {
   const impressedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     let active = true;
-    // resolveActivePopularQuestions applies the display policy (DB-truth, empty on failure + safe log); it
-    // never rejects, so success/failure both settle here with the exact list to show (possibly empty).
     resolveActivePopularQuestions(5)
       .then((qs) => {
         if (!active) return;
@@ -277,18 +291,28 @@ export default function HomeScreen() {
     };
   }, [subjectId]);
 
-  // Start a (new) consultation with an optional prefilled question. UI never calls the LLM — this only
-  // navigates into the chat screen. An optional `origin` attributes the consultation to a popular question
-  // (funnel), riding the same ephemeral store as the question; the direct composer passes NO origin (a typed
-  // question must never get a fake question id).
-  const startConsult = (question: string, origin?: { key: string; category: string }) => {
-    // The question rides the EPHEMERAL store (never the URL — it is sensitive, §20) and
-    // is consumed by chat. This covers both the has-subject and no-subject paths.
-    if (question.trim().length > 0) {
+  // ── Consultation entry ─────────────────────────────────────────────────────
+  // The cost sheet (C06) now sits between "I typed a question" and "I am in a paid consultation", so
+  // 보유/필요/남는 덕 are visible BEFORE the first charged turn. The question itself still rides the
+  // EPHEMERAL store (never the URL — it is sensitive, §20) and is consumed by chat; the UI still
+  // never calls the LLM and still never charges anything.
+  const [pendingQuestion, setPendingQuestion] = useState<string>('');
+  const [pendingOrigin, setPendingOrigin] = useState<{ key: string; category: string } | null>(null);
+  const [priceSheetVisible, setPriceSheetVisible] = useState(false);
+
+  const askQuestion = (question: string, origin?: { key: string; category: string }) => {
+    setPendingQuestion(question);
+    setPendingOrigin(origin ?? null);
+    setPriceSheetVisible(true);
+  };
+
+  const confirmConsult = useCallback(() => {
+    setPriceSheetVisible(false);
+    if (pendingQuestion.trim().length > 0) {
       setPendingConsultationIntent({
-        question,
-        ...(origin
-          ? { originQuestionKey: origin.key, originQuestionCategory: origin.category }
+        question: pendingQuestion,
+        ...(pendingOrigin
+          ? { originQuestionKey: pendingOrigin.key, originQuestionCategory: pendingOrigin.category }
           : {}),
       });
     }
@@ -298,10 +322,11 @@ export default function HomeScreen() {
       return;
     }
     router.push({ pathname: '/chat', params: { startNew: '1' } });
-  };
+  }, [pendingQuestion, pendingOrigin, subject, router]);
 
-  // A tap on a popular question: record the click (one tap = one click) then start the consultation carrying
-  // the stable origin so chat can attribute consultation_start / first_answer_success without text-matching.
+  // A tap on a popular question: record the click (one tap = one click) then open the cost sheet
+  // carrying the stable origin so chat can attribute consultation_start / first_answer_success
+  // without text-matching.
   const onPopularPress = (q: PopularQuestion, position: number) => {
     trackPopularQuestionClick({
       questionKey: q.analyticsKey,
@@ -309,15 +334,17 @@ export default function HomeScreen() {
       placement: 'home',
       position,
     });
-    startConsult(q.questionText, { key: q.analyticsKey, category: q.category });
+    askQuestion(q.questionText, { key: q.analyticsKey, category: q.category });
   };
+
+  const subjectName = subject?.displayName ?? '나';
 
   return (
     <Screen padded={false}>
       <AppHeader
         brand
         showSwitcher
-        subjectLabel={subject?.displayName ?? '나'}
+        subjectLabel={subjectName}
         onSwitcher={() => {
           setSheetForConsult(false);
           setSheetVisible(true);
@@ -325,337 +352,271 @@ export default function HomeScreen() {
         showBell
       />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingHorizontal: hPad }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.wrapper}>
+        <View style={[styles.wrapper, { maxWidth }]}>
           <Stack gap="xl">
-            <Text variant="displayMedium">
-              {mounted ? greeting() : '안녕하세요.'}
-              {'\n'}오늘은 무엇이 궁금하세요?
-            </Text>
+            {/* ① 오늘 — the ONE colour plane on this screen. Full-bleed butter, so it reads as the
+                day's headline rather than one more card in a stack. */}
+            <Pressable
+              onPress={openToday}
+              accessibilityRole="button"
+              accessibilityLabel="오늘의 운세 보기"
+              style={({ pressed }) => [
+                styles.hero,
+                {
+                  backgroundColor: pressed ? theme.backgroundSelected : theme.surfaceButter,
+                  marginHorizontal: -hPad,
+                  paddingHorizontal: hPad,
+                },
+              ]}
+            >
+              <Stack gap="sm">
+                <Text variant="bodySmall" style={{ color: theme.onButter, fontWeight: '600' }} numberOfLines={1}>
+                  {mounted ? todayLine(subjectName) : ' '}
+                </Text>
+                <Text
+                  variant={roomyHero ? 'displayLarge' : 'displayMedium'}
+                  style={{ color: theme.onButter }}
+                  numberOfLines={3}
+                >
+                  {todayIsToday && todayPreview ? todayPreview.headline : '오늘의 흐름을\n확인해 보세요'}
+                </Text>
+                {todayIsToday && todayPreview ? (
+                  <View style={styles.heroChips}>
+                    <Chip label={todayPreview.overallTone} tone="sage" />
+                    {todayPreview.primaryModeLabel ? (
+                      <Chip label={todayPreview.primaryModeLabel} tone="sky" />
+                    ) : null}
+                  </View>
+                ) : null}
+                {/* Text CTA, not a button: the freeze bans generic "자세히 / 더보기" and bans making a
+                    text link look like a filled control. The destination is in the words. */}
+                <Text variant="bodySmall" style={[styles.heroCta, { color: theme.onButter }]}>
+                  오늘의 운세 보기 〉
+                </Text>
+              </Stack>
+            </Pressable>
 
-            {/* 덕 balance chip (§3) — tap opens the wallet. Display-only; never grants or computes balance. */}
+            {/* ② 🍀 덕 · 🕯️ 오늘의 초 — 2-up. Both tiles flex, so a wider screen widens the tiles
+                instead of stranding them at a fixed width. */}
             {isAuthenticated ? (
-              <Pressable
-                onPress={() => router.push('/wallet')}
-                accessibilityRole="button"
-                accessibilityLabel="덕 지갑 열기"
-                style={[styles.dukChip, { borderColor: theme.border }]}
-              >
-                <LineIcon name="wallet" size={16} color={theme.secondary} />
-                <Text variant="bodySmall" colorToken="textSecondary">{dukChipLabel}</Text>
-              </Pressable>
+              <View style={styles.twoUp}>
+                <DukBalance
+                  variant="card"
+                  state={displayWalletState}
+                  total={balance}
+                  onPress={() => router.push('/wallet')}
+                  onTopup={() => router.push('/duk-topup')}
+                  style={styles.tile}
+                />
+                <CandleStrip
+                  lit={candleEligible === false}
+                  hint={
+                    candleEligible === null
+                      ? '상태를 확인하는 중이에요'
+                      : candleEligible
+                        ? `밝히면 +${dukLabel(CANDLE_DUK)}`
+                        : '내일 다시 밝힐 수 있어요'
+                  }
+                  onPress={() => router.push('/wallet')}
+                />
+              </View>
             ) : null}
 
-            {/* 가입 축하 + 덕 사용법 (§6/§7) — one-shot, dismissible, shown once right after onboarding. Explains the
-                economy without a tutorial; the 10덕 itself was granted server-side on consent, not here. */}
+            {/* ③ 비용 안내 — answers "얼마지?" before any commitment, and doubles as the 덕 explainer
+                entry point. */}
+            <Pressable
+              onPress={() => router.push('/wallet')}
+              accessibilityRole="button"
+              accessibilityLabel="덕이란? 덕 지갑 열기"
+              style={({ pressed }) => [
+                styles.costStrip,
+                { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElevated },
+              ]}
+            >
+              <Text variant="bodySmall" colorToken="textSecondary" numeric style={styles.flex1} numberOfLines={1}>
+                {`💬 상담 ${dukLabel(DUK_PRICES.general)} · 💕 궁합 ${dukLabel(DUK_PRICES.compatibility)}`}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.textPrimary, fontWeight: '700' }}>
+                덕이란?
+              </Text>
+              <LineIcon name="chevron-right" size={16} color={theme.textSecondary} />
+            </Pressable>
+
+            {/* 가입 축하 + 덕 사용법 (§6/§7) — one-shot, dismissible, shown once right after onboarding.
+                Explains the economy without a tutorial; the 10덕 itself was granted server-side on
+                consent, not here. */}
             {showWelcome ? (
-              <Card radius="xl">
+              <Card use="reward" tone="sage" radius="xl">
                 <Stack gap="sm">
-                  <Text variant="bodyLarge" style={styles.welcomeTitle}>가입을 축하해요 🎉</Text>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
+                  <Text variant="bodyLarge" style={{ color: theme.onSage, fontWeight: '700' }}>
+                    가입을 축하해요 🎉
+                  </Text>
+                  <Text variant="bodyMedium" style={{ color: theme.onSage }}>
                     시작 선물로 {dukLabel(WELCOME_DUK)}을 드렸어요. 덕으로 상담과 궁합을 이용할 수 있어요.
                   </Text>
-                  <View style={styles.welcomeRow}>
-                    <Text variant="bodySmall" colorToken="textSecondary">일반 상담</Text>
-                    <Text variant="bodySmall" style={styles.welcomeAmt}>{dukLabel(DUK_PRICES.general)}</Text>
-                  </View>
-                  <View style={styles.welcomeRow}>
-                    <Text variant="bodySmall" colorToken="textSecondary">궁합</Text>
-                    <Text variant="bodySmall" style={styles.welcomeAmt}>{dukLabel(DUK_PRICES.compatibility)}</Text>
-                  </View>
-                  <View style={styles.welcomeRow}>
-                    <Text variant="bodySmall" colorToken="textSecondary">하루 한 번 촛불</Text>
-                    <Text variant="bodySmall" style={styles.welcomeAmt}>+{dukLabel(CANDLE_DUK)}</Text>
-                  </View>
                   <Button label="덕 보러 가기" radius="lg" onPress={() => { setShowWelcome(false); router.push('/wallet'); }} />
                   <Pressable onPress={() => setShowWelcome(false)} accessibilityRole="button" style={styles.welcomeDismiss}>
-                    <Text variant="bodySmall" colorToken="textSecondary">닫기</Text>
+                    <Text variant="bodySmall" style={{ color: theme.onSage }}>닫기</Text>
                   </Pressable>
                 </Stack>
               </Card>
             ) : null}
 
-            {/* 생일 축하 (deterministic, birthday-only, 0 LLM). A tasteful one-off card (warm brand tint, not a
-                permanent banner). The birthday 덕 is granted server-side (async job); we INVITE the user to
-                confirm it in the wallet rather than asserting a balance here (§29 honest, no fake number). */}
+            {/* 생일 축하 — deterministic, birthday-only, 0 LLM. The birthday 덕 is granted server-side
+                (async job); we INVITE the user to confirm it in the wallet rather than asserting a
+                balance here (§29 honest, no fake number). */}
             {isBirthday ? (
-              <Card radius="xl" style={{ backgroundColor: theme.brandPrimarySoft, borderColor: theme.brandPrimary }}>
+              <Card use="reward" tone="butter" radius="xl">
                 <Stack gap="sm">
-                  <Text variant="bodyLarge" style={{ fontWeight: '700' }}>생일을 축하드려요 🎉</Text>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
+                  <Text variant="bodyLarge" style={{ color: theme.onButter, fontWeight: '700' }}>
+                    생일을 축하드려요 🎂
+                  </Text>
+                  <Text variant="bodyMedium" style={{ color: theme.onButter }}>
                     오늘은 특별한 날이에요. 생일 선물 덕을 준비했어요 — 지갑에서 확인해보세요.
                   </Text>
-                  <Stack direction="row" gap="sm">
-                    <Button
-                      label="덕 확인하기"
-                      onPress={() => { trackRetentionEvent('birthday_message_opened'); router.push('/wallet'); }}
-                      radius="lg"
-                      style={{ flex: 1 }}
-                    />
-                    <Button label="이번 달 운세" variant="secondary" onPress={openMonthly} radius="lg" style={{ flex: 1 }} />
-                  </Stack>
+                  <Button
+                    label="덕 확인하기"
+                    radius="lg"
+                    onPress={() => { trackRetentionEvent('birthday_message_opened'); router.push('/wallet'); }}
+                  />
                 </Stack>
               </Card>
             ) : null}
 
-            <QuestionComposer onSubmit={(q) => startConsult(q)} />
+            {/* ④ 질문 입력 — the single Primary CTA on Home. */}
+            <QuestionComposer costLabel={dukLabel(DUK_PRICES.general)} onSubmit={(q) => askQuestion(q)} />
 
-            {/* 오늘의 운세 — daily retention entry (no LLM on Home; generation happens on /today).
-                Composition (§34): a single CTA <Button> is the ONE interactive control; the card body
-                is display-only. We deliberately do NOT wrap the <Card> in a <Pressable>, because the
-                <Button> already renders a role="button" node — on web RN-Web renders both as real
-                <button> elements, and a <button> nested inside a <button> is invalid DOM (a hydration
-                error). One card = one button. */}
-            <Stack gap="md">
-              <Text variant="bodyLarge" style={styles.sectionTitle}>
-                오늘의 운세
-              </Text>
-              <Card radius="xl">
-                <Stack gap="sm">
-                  {todayIsToday && todayPreview ? (
-                    <>
-                      <View style={styles.rowBetween}>
-                        <View style={styles.todayPills}>
-                          <View style={[styles.tonePill, { borderColor: TODAY_TONE_COLOR[todayPreview.toneVariant] }]}>
-                            <Text variant="bodySmall" style={{ color: TODAY_TONE_COLOR[todayPreview.toneVariant], fontWeight: '700' }}>
-                              {todayPreview.overallTone}
-                            </Text>
-                          </View>
-                          {todayPreview.primaryModeLabel ? (
-                            <View style={[styles.todayModePill, { borderColor: theme.border }]}>
-                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
-                                {todayPreview.primaryModeLabel}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text variant="bodySmall" colorToken="textSecondary">
-                          {todayPreview.dot}
-                        </Text>
-                      </View>
-                      <Text variant="bodyLarge" style={{ fontWeight: '700' }} numberOfLines={2}>
-                        {todayPreview.headline}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text variant="bodyMedium" colorToken="textSecondary">
-                      오늘 하루의 흐름을 확인해보세요. 사주로 오늘을 짚어드릴게요.
-                    </Text>
-                  )}
-                  <Button
-                    label="오늘 운세 보기"
-                    variant="secondary"
-                    onPress={openToday}
-                    radius="lg"
-                    accessibilityLabel="오늘의 운세 보기"
-                  />
-                </Stack>
-              </Card>
-            </Stack>
-
-            {/* 이번 달 운세 — monthly retention entry (no LLM on Home; generation happens on /monthly).
-                Same one-card-one-button composition as Today (no wrapping Pressable → no nested <button>). */}
-            <Stack gap="md">
-              <Text variant="bodyLarge" style={styles.sectionTitle}>
-                이번 달 운세
-              </Text>
-              <Card radius="xl">
-                <Stack gap="sm">
-                  {monthlyIsCurrent && monthlyPreview ? (
-                    <>
-                      <View style={styles.rowBetween}>
-                        <View style={styles.todayPills}>
-                          <View style={[styles.tonePill, { borderColor: MONTHLY_TONE_COLOR[monthlyPreview.toneVariant] }]}>
-                            <Text variant="bodySmall" style={{ color: MONTHLY_TONE_COLOR[monthlyPreview.toneVariant], fontWeight: '700' }}>
-                              {monthlyPreview.overallTier}
-                            </Text>
-                          </View>
-                          {monthlyPreview.primaryModeLabel ? (
-                            <View style={[styles.todayModePill, { borderColor: theme.border }]}>
-                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
-                                {monthlyPreview.primaryModeLabel}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text variant="bodySmall" colorToken="textSecondary">
-                          {monthlyPreview.monthLabel}
-                        </Text>
-                      </View>
-                      <Text variant="bodyLarge" style={{ fontWeight: '700' }} numberOfLines={2}>
-                        {monthlyPreview.headline}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text variant="bodyMedium" colorToken="textSecondary">
-                      이번 달의 큰 흐름을 확인해보세요. 사주로 이번 달을 짚어드릴게요.
-                    </Text>
-                  )}
-                  <Button
-                    label="이번 달 운세 보기"
-                    variant="secondary"
-                    onPress={openMonthly}
-                    radius="lg"
-                    accessibilityLabel="이번 달 운세 보기"
-                  />
-                </Stack>
-              </Card>
-            </Stack>
-
-            {/* 궁합 — discoverable entry to the pushed 궁합 flow (NOT a 5th nav tab). Placed ABOVE the popular
-                questions in the final V1 IA so the primary personal services (Today/Monthly/궁합) lead. */}
-            <Stack gap="md">
-              <Text variant="bodyLarge" style={styles.sectionTitle}>
-                궁합
-              </Text>
-              <Pressable
-                onPress={() => router.push('/compatibility')}
-                accessibilityRole="button"
-                accessibilityLabel="궁합 보러 가기"
-              >
-                <Card radius="xl">
-                  <Stack direction="row" gap="md" align="center">
-                    <LineIcon name="heart" size={22} color={theme.secondary} />
-                    <View style={styles.flex1}>
-                      <Text variant="bodyLarge" style={{ fontWeight: '700' }}>
-                        두 사람 궁합 보기
-                      </Text>
-                      <Text variant="bodySmall" colorToken="textSecondary">
-                        본인과 상대방의 사주로 잘 맞는 점·조율할 점을 봐드려요.
-                      </Text>
-                    </View>
-                    <Text variant="bodyLarge" style={[styles.chevron, { color: theme.textMuted }]}>
-                      ›
-                    </Text>
-                  </Stack>
-                </Card>
-              </Pressable>
-            </Stack>
-
-            {/* 지금 많이 물어보는 질문 — admin-managed conversion surface. Each row is a one-tap consultation
-                entry that carries a stable analytics key through the funnel. Hidden entirely if the owner
-                deactivated every question (respects owner intent — no empty title). */}
+            {/* ⑤ 지금 많이 물어봐요 — admin-managed conversion surface. Each row is a one-tap
+                consultation entry carrying a stable analytics key through the funnel. Hidden entirely
+                if the owner deactivated every question (respects owner intent — no empty title). */}
             {popularQuestions.length > 0 ? (
-              <Stack gap="md">
-                <Text variant="bodyLarge" style={styles.sectionTitle}>
-                  지금 많이 물어보는 질문
-                </Text>
+              <Stack gap="sm">
+                <Text variant="headingMedium">지금 많이 물어봐요</Text>
                 <View>
                   {popularQuestions.map((q, i) => (
                     <View
                       key={q.analyticsKey}
-                      style={
-                        i > 0
-                          ? { borderTopWidth: 1, borderTopColor: theme.border }
-                          : undefined
-                      }
+                      style={i > 0 ? { borderTopWidth: 1, borderTopColor: theme.lineHairline } : undefined}
                     >
-                      <ListRow
-                        label={q.questionText}
-                        leading={
-                          <LineIcon
-                            name={popularQuestionIcon(q.category)}
-                            size={20}
-                            color={theme.textSecondary}
-                          />
-                        }
-                        onPress={() => onPopularPress(q, i + 1)}
-                      />
+                      <ListRow label={q.questionText} onPress={() => onPopularPress(q, i + 1)} />
                     </View>
                   ))}
                 </View>
               </Stack>
             ) : null}
 
-            {/* 최근 상담 (real) */}
-            <Stack gap="md">
-              <Text variant="bodyLarge" style={styles.sectionTitle}>
-                최근 상담
-              </Text>
-              {recent ? (
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: '/chat',
-                      params: { conversationId: recent.id },
-                    })
-                  }
-                  accessibilityRole="button"
-                >
-                  <Card radius="xl">
-                    <Stack gap="sm">
-                      <View style={styles.rowBetween}>
-                        <Text
-                          variant="bodyLarge"
-                          style={styles.recentTitle}
-                          numberOfLines={1}
-                        >
-                          {`${subject?.displayName ?? '나'}님 상담`}
-                        </Text>
-                        <Text variant="bodySmall" colorToken="textSecondary">
-                          {formatWhen(recent.updatedAt)}
-                        </Text>
-                      </View>
-                      <View style={styles.rowBetween}>
-                        <Text
-                          variant="bodyMedium"
-                          colorToken="textSecondary"
-                          numberOfLines={1}
-                          style={styles.flex1}
-                        >
-                          {preview(recent.summary) ?? '상담을 이어가 보세요.'}
-                        </Text>
-                        <Text variant="bodyLarge" style={styles.chevron}>
-                          ›
-                        </Text>
-                      </View>
-                    </Stack>
-                  </Card>
-                </Pressable>
+            {/* ⑥ 궁합 · 이번 달 — 2-up interactive tiles. */}
+            <View style={styles.twoUp}>
+              <Pressable
+                onPress={() => router.push('/compatibility')}
+                accessibilityRole="button"
+                accessibilityLabel="궁합 보러 가기"
+                style={({ pressed }) => [
+                  styles.tile,
+                  styles.miniTile,
+                  { backgroundColor: pressed ? theme.backgroundSelected : theme.surfaceBlush },
+                ]}
+              >
+                <Text style={styles.tileEmoji}>💕</Text>
+                <Text variant="bodySmall" style={{ color: theme.onBlush, fontWeight: '700' }} numberOfLines={1}>
+                  궁합 보기
+                </Text>
+                <Text variant="caption" numeric style={{ color: theme.onBlush }} numberOfLines={1}>
+                  🍀 {dukLabel(DUK_PRICES.compatibility)}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={openMonthly}
+                accessibilityRole="button"
+                accessibilityLabel="이번 달 흐름 보러 가기"
+                style={({ pressed }) => [
+                  styles.tile,
+                  styles.miniTile,
+                  { backgroundColor: pressed ? theme.backgroundSelected : theme.surfaceSky },
+                ]}
+              >
+                <Text style={styles.tileEmoji}>🌼</Text>
+                <Text variant="bodySmall" style={{ color: theme.textPrimary, fontWeight: '700' }} numberOfLines={1}>
+                  이번 달 흐름
+                </Text>
+                <Text variant="caption" colorToken="textSecondary" numberOfLines={1}>
+                  {monthlyIsCurrent && monthlyPreview ? monthlyPreview.monthLabel : '흐름 확인하기'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* ⑦ 새 운세 — one row, not a card stack. Empty until the fortune engine ships (no mock). */}
+            <Stack gap="sm">
+              <Text variant="headingMedium">운세우편함</Text>
+              {mail ? (
+                <ListRow
+                  label={mail.title}
+                  sublabel={mail.preview}
+                  leading={<Text style={styles.rowEmoji}>💌</Text>}
+                  onPress={() => router.push('/inbox')}
+                />
               ) : (
-                <Card radius="xl">
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    아직 상담 내역이 없어요. 위에서 궁금한 점을 물어보세요.
-                  </Text>
-                </Card>
+                <StateView
+                  kind="empty"
+                  emoji="💌"
+                  title="아직 도착한 운세가 없어요"
+                  description="새 운세와 리포트가 도착하면 여기에 모아둘게요."
+                  actionLabel="운세우편함 열기"
+                  onAction={() => router.push('/inbox')}
+                />
               )}
             </Stack>
 
-            {/* 최근 운세우편 (empty until fortune engine — no mock) */}
-            <Stack gap="md">
-              <Text variant="bodyLarge" style={styles.sectionTitle}>
-                최근 운세우편
-              </Text>
-              {mail ? (
-                <InsightCard
-                  tag={{ label: mail.category, tone: mail.categoryTone }}
-                  title={mail.title}
-                  body={mail.preview}
-                  ctaLabel="확인하기"
-                  onCta={() => router.push('/inbox')}
-                />
-              ) : (
+            {/* ⑧ 최근 상담 (real). */}
+            {recent ? (
+              <Stack gap="sm">
+                <Text variant="headingMedium">최근 상담</Text>
                 <Card radius="xl">
-                  <Stack gap="md">
-                    <Text variant="bodyMedium" colorToken="textSecondary">
-                      아직 도착한 운세우편이 없어요. 운세 엔진 연결 후 개인화된
-                      운세가 이곳으로 도착합니다.
-                    </Text>
-                    <Button
-                      label="운세우편함 열기"
-                      variant="secondary"
-                      radius="lg"
-                      onPress={() => router.push('/inbox')}
-                    />
-                  </Stack>
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/chat', params: { conversationId: recent.id } })}
+                    accessibilityRole="button"
+                    accessibilityLabel="최근 상담 이어보기"
+                  >
+                    <Stack gap="sm">
+                      <View style={styles.rowBetween}>
+                        <Text variant="bodyLarge" style={styles.recentTitle} numberOfLines={1}>
+                          {`${subjectName}님 상담`}
+                        </Text>
+                        <Text variant="bodySmall" colorToken="textMuted">
+                          {formatWhen(recent.updatedAt)}
+                        </Text>
+                      </View>
+                      <Text variant="bodyMedium" colorToken="textSecondary" numberOfLines={2}>
+                        {preview(recent.summary) ?? '상담을 이어가 보세요.'}
+                      </Text>
+                    </Stack>
+                  </Pressable>
                 </Card>
-              )}
-            </Stack>
+              </Stack>
+            ) : null}
           </Stack>
         </View>
       </ScrollView>
+
+      <PriceConfirmSheet
+        visible={priceSheetVisible}
+        onClose={() => setPriceSheetVisible(false)}
+        productLabel="상담"
+        required={DUK_PRICES.general}
+        walletState={displayWalletState}
+        balance={balance}
+        subjectName={subjectName}
+        subjectRelationship={subject?.relationship ?? null}
+        onChangeSubject={() => {
+          setPriceSheetVisible(false);
+          setSheetForConsult(false);
+          setSheetVisible(true);
+        }}
+        onConfirm={confirmConsult}
+      />
 
       <PersonSelectorSheet
         visible={sheetVisible}
@@ -669,41 +630,55 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: spacing.xs,
     paddingBottom: 40,
     alignItems: 'center',
   },
   wrapper: {
     width: '100%',
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  sectionTitle: {
-    fontWeight: '700',
+  hero: {
+    paddingVertical: spacing.xl,
   },
-  dukChip: {
+  heroChips: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  heroCta: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+    marginTop: spacing.xs,
+  },
+  twoUp: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'stretch',
+  },
+  tile: {
+    flex: 1,
+    minWidth: 0,
+  },
+  miniTile: {
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: 2,
+    minHeight: 92,
+    justifyContent: 'center',
+  },
+  tileEmoji: { fontSize: 22, lineHeight: 28 },
+  rowEmoji: { fontSize: 22, lineHeight: 28 },
+  costStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderRadius: 999,
-    marginTop: -8,
-  },
-  welcomeTitle: {
-    fontWeight: '700',
-  },
-  welcomeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 28,
-  },
-  welcomeAmt: {
-    fontWeight: '700',
+    gap: spacing.sm,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 48,
   },
   welcomeDismiss: {
     alignItems: 'center',
@@ -714,7 +689,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: spacing.sm,
   },
   recentTitle: {
     flex: 1,
@@ -722,27 +697,5 @@ const styles = StyleSheet.create({
   },
   flex1: {
     flex: 1,
-  },
-  chevron: {
-    fontWeight: '600',
-  },
-  tonePill: {
-    alignSelf: 'flex-start',
-    borderWidth: 1.5,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  todayPills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  todayModePill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
   },
 });

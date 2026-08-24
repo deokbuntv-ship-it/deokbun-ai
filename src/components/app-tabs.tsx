@@ -12,7 +12,7 @@ export default function AppTabs() {
   const scheme = useColorScheme();
   const key = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[key];
-  const brand = semantic[key]; // signature-orange selected state (§15)
+  const brand = semantic[key]; // ink selected state (DESIGN_FREEZE_FINAL C02)
 
   return (
     <NativeTabs

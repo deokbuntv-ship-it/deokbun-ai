@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
@@ -158,6 +159,7 @@ export default function LifeEventsScreen() {
           </Stack>
         </View>
       </ScrollView>
+      <DetailBottomNav active="my" />
     </Screen>
   );
 }

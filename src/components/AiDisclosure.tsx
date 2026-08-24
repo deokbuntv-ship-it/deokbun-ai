@@ -22,7 +22,7 @@ export function AiDisclosure({ variant = 'inline', compact = false, style }: AiD
   const body = (
     <Text
       variant="caption"
-      colorToken="textSecondary"
+      colorToken="textMuted"
       style={styles.text}
       accessibilityLabel={`AI 생성 콘텐츠 안내: ${text}`}
     >
@@ -48,5 +48,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  text: { lineHeight: 18 },
+  text: { fontSize: 11.5, lineHeight: 17 },
 });

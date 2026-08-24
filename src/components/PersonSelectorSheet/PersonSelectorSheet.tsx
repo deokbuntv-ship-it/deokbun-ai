@@ -1,9 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { BottomSheet } from '@/components/BottomSheet';
+import { LineIcon } from '@/components/LineIcon';
+import { StateView } from '@/components/StateView';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import {
@@ -14,10 +16,12 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
-// 06_PERSON_SELECTOR — 분석 대상자 선택 bottom sheet. Lists the user's real saved
-// subjects (no hardcoded 나/배우자/아이). Selecting a person applies it to the
-// consultation draft (subject + birthInfo snapshot), matching the existing
-// consult flow. "새 대상자 추가" routes to the existing /birth-info entry.
+// DESIGN_FREEZE_FINAL C08 — 분석 대상자 선택. Rows H58; the selected person is marked with a 1.5px ink
+// border + check, NOT a background fill — background colour is a scarce budget (max two pastels per
+// screen) and selection does not need to spend it.
+//
+// Lists the user's real saved subjects (no hardcoded 나/배우자/아이). Selecting applies the subject +
+// birthInfo snapshot to the consultation draft, exactly as before; only the presentation changed.
 type PersonSelectorSheetProps = {
   visible: boolean;
   onClose: () => void;
@@ -34,7 +38,6 @@ export function PersonSelectorSheet({
   startConsultationOnSelect = false,
 }: PersonSelectorSheetProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
@@ -67,197 +70,99 @@ export function PersonSelectorSheet({
     router.push('/birth-info');
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+  const addButton = (
+    <Pressable
+      onPress={addSubject}
+      accessibilityRole="button"
+      accessibilityLabel="새 대상 추가"
+      style={({ pressed }) => [
+        styles.addBtn,
+        { borderColor: theme.actionSecondaryBorder, backgroundColor: pressed ? theme.backgroundSelected : 'transparent' },
+      ]}
     >
-      <View style={styles.root}>
-        <Pressable
-          style={styles.backdrop}
-          accessibilityLabel="닫기"
-          onPress={onClose}
+      <Text variant="bodyLarge" colorToken="textSecondary" style={styles.addLabel}>
+        ＋ 새 대상 추가
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title="분석 대상자 선택">
+      {status === 'loading' ? (
+        <StateView kind="loading" skeletonLines={3} />
+      ) : status === 'error' ? (
+        <StateView
+          kind="error"
+          description="대상을 불러오지 못했어요. 네트워크를 확인하고 다시 시도해 주세요."
+          actionLabel="다시 시도"
+          onAction={reload}
         />
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: theme.surface,
-              paddingBottom: insets.bottom + spacing.lg,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: '#C6C9D0' }]} />
-
-          <Stack
-            direction="row"
-            align="center"
-            style={styles.sheetHeader}
-          >
-            <Text variant="headingMedium" style={styles.sheetTitle}>
-              분석 대상자 선택
-            </Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="닫기" hitSlop={8}>
-              <Text variant="headingMedium" colorToken="textSecondary">
-                ✕
-              </Text>
-            </Pressable>
-          </Stack>
-
-          <ScrollView
-            style={styles.list}
-            contentContainerStyle={{ gap: spacing.md }}
-            showsVerticalScrollIndicator={false}
-          >
-            {status === 'loading' ? (
-              <Text variant="bodyMedium" colorToken="textSecondary">
-                대상을 불러오는 중입니다...
-              </Text>
-            ) : status === 'error' ? (
-              <Text variant="bodyMedium" colorToken="textSecondary">
-                대상을 불러오지 못했습니다.
-              </Text>
-            ) : subjects.length === 0 ? (
-              <Text variant="bodyMedium" colorToken="textSecondary">
-                저장된 대상이 없습니다. 아래에서 새 대상자를 추가해 주세요.
-              </Text>
-            ) : (
-              subjects.map((subject) => {
-                const selected = draft.subject?.id === subject.id;
-                return (
-                  <Pressable
-                    key={subject.id}
-                    onPress={() => selectSubject(subject)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    style={[
-                      styles.row,
-                      {
-                        borderColor: selected ? theme.primary : theme.border,
-                        borderWidth: selected ? 1.5 : 1,
-                        backgroundColor: theme.surface,
-                      },
-                    ]}
-                  >
-                    <Avatar label={subject.displayName} selected={selected} size={44} />
-                    <Stack gap="xs" style={styles.rowText}>
-                      <Text variant="bodyLarge" style={styles.rowName}>
-                        {subject.displayName}
-                        {subject.isSelf ? ' (본인)' : ''}
-                      </Text>
-                      {subject.relationship ? (
-                        <Text variant="bodySmall" colorToken="textSecondary">
-                          {subject.relationship}
-                        </Text>
-                      ) : null}
-                    </Stack>
-                    {selected ? (
-                      <View style={[styles.check, { borderColor: theme.textSecondary }]}>
-                        <Text
-                          variant="bodySmall"
-                          style={{ color: theme.textSecondary, fontWeight: '700' }}
-                        >
-                          ✓
-                        </Text>
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })
-            )}
-
+      ) : subjects.length === 0 ? (
+        <StateView
+          kind="empty"
+          emoji="👥"
+          title="아직 등록한 사람이 없어요"
+          description="가족이나 친구를 등록하면 그 사람의 사주도 보고, 궁합도 볼 수 있어요."
+        />
+      ) : (
+        subjects.map((subject) => {
+          const selected = draft.subject?.id === subject.id;
+          return (
             <Pressable
-              onPress={addSubject}
+              key={subject.id}
+              onPress={() => selectSubject(subject)}
               accessibilityRole="button"
-              style={[styles.addBtn, { backgroundColor: theme.backgroundSelected }]}
+              accessibilityState={{ selected }}
+              style={({ pressed }) => [
+                styles.row,
+                {
+                  borderColor: selected ? theme.brandPrimary : theme.border,
+                  borderWidth: selected ? 1.5 : 1,
+                  backgroundColor: pressed ? theme.backgroundSelected : theme.surface,
+                },
+              ]}
             >
-              <Text variant="bodyLarge" style={styles.addLabel}>
-                +  새 대상자 추가
-              </Text>
+              <Avatar label={subject.displayName} selected={selected} size={38} />
+              <Stack gap="xs" style={styles.rowText}>
+                <Text variant="bodyLarge" numberOfLines={1} style={styles.rowName}>
+                  {subject.displayName}
+                  {subject.isSelf ? ' (본인)' : ''}
+                </Text>
+                {subject.relationship ? (
+                  <Text variant="bodySmall" colorToken="textSecondary" numberOfLines={1}>
+                    {subject.relationship}
+                  </Text>
+                ) : null}
+              </Stack>
+              {selected ? <LineIcon name="check" size={20} color={theme.brandPrimary} strokeWidth={2} /> : null}
             </Pressable>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+          );
+        })
+      )}
+      {addButton}
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  sheet: {
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
-    paddingHorizontal: 20,
-    paddingTop: spacing.sm,
-    maxHeight: '80%',
-    // Soft UPWARD shadow so the sheet lifts off the dimmed screen (RN Web maps
-    // shadow* to boxShadow). The shadows token helper only emits downward offsets.
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  sheetHeader: {
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  sheetTitle: {
-    fontWeight: '700',
-  },
-  list: {
-    flexGrow: 0,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     borderRadius: radius.xl,
-    minHeight: 72,
+    minHeight: 58,
   },
-  rowText: {
-    flex: 1,
-  },
-  rowName: {
-    fontWeight: '500',
-  },
-  check: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  rowText: { flex: 1, minWidth: 0 },
+  rowName: { fontWeight: '600' },
   addBtn: {
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
     borderRadius: radius.xl,
-    minHeight: 62,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addLabel: {
-    fontWeight: '700',
-  },
+  addLabel: { fontWeight: '700' },
 });

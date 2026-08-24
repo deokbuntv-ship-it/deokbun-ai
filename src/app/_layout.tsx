@@ -1,4 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
+
+import { colors } from '@/theme';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -31,11 +33,30 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorFallback onRetry={() => void retry()} />;
 }
 
+// React Navigation's default palette is cold grey; the freeze's ground is warm white (#FDFBF6). Only the
+// surface colours are overridden — navigation behaviour is untouched.
+function navigationTheme(scheme: string | null | undefined) {
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const t = scheme === 'dark' ? colors.dark : colors.light;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      background: t.background,
+      card: t.background,
+      text: t.textPrimary,
+      border: t.border,
+      primary: t.brandPrimary,
+      notification: t.danger,
+    },
+  };
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme(colorScheme)}>
       <AuthProvider>
         <OnboardingProvider>
           <ConsultationDraftProvider>

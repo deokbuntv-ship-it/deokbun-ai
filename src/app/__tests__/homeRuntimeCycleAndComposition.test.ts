@@ -39,16 +39,35 @@ describe('intelligence presentation adapters do not import the barrel (require-c
   });
 });
 
-describe('Home 오늘의 운세 card exposes ONE interactive control (no nested <button>)', () => {
+describe('Home 오늘 hero exposes ONE interactive control (no nested <button>)', () => {
   const home = read('app/(tabs)/index.tsx');
+  // DESIGN_FREEZE_FINAL D05 changed the shape: the hero is now a single tappable butter plane whose
+  // CTA is TEXT ("오늘의 운세 보기 〉", 13.5/700 + underline — the freeze bans making a text CTA look
+  // like a filled control). The original crash contract is unchanged and still enforced: exactly one
+  // interactive node, so RN-Web can never emit a <button> inside a <button>.
+  const hero = home.slice(home.indexOf('{/* ① 오늘'), home.indexOf('{/* ② 🍀 덕'));
 
-  it('does not wrap the Today CTA in a <Pressable> (that would nest a <button> in a <button>)', () => {
-    // The crash signature: a <Pressable> bound to the same handler as the CTA <Button>.
-    expect(home).not.toMatch(/<Pressable[^>]*onPress=\{openToday\}/);
+  it('the hero region contains no <Button> (it is a Pressable plane with a text CTA)', () => {
+    expect(hero.length).toBeGreaterThan(0);
+    expect(hero).not.toMatch(/<Button\b/);
   });
 
-  it('still renders the Today CTA as a single <Button>', () => {
-    expect(home).toMatch(/<Button[\s\S]{0,120}label="오늘 운세 보기"/);
+  it('the hero has exactly one Pressable', () => {
+    expect((hero.match(/<Pressable\b/g) ?? []).length).toBe(1);
+  });
+
+  it('the hero CTA is text, and it navigates to /today', () => {
+    expect(hero).toMatch(/오늘의 운세 보기/);
+    expect(hero).toMatch(/onPress=\{openToday\}/);
+    expect(home).toMatch(/router\.push\('\/today'\)/);
+  });
+
+  it('the cost strip is a single Pressable too (no button-in-button)', () => {
+    // Slice ends at the one-shot welcome card, which legitimately owns its own Button.
+    const strip = home.slice(home.indexOf('{/* ③ 비용 안내'), home.indexOf('{/* 가입 축하'));
+    expect(strip.length).toBeGreaterThan(0);
+    expect((strip.match(/<Pressable\b/g) ?? []).length).toBe(1);
+    expect(strip).not.toMatch(/<Button\b/);
   });
 });
 

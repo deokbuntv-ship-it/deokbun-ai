@@ -2,21 +2,27 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/Avatar';
 import { LineIcon } from '@/components/LineIcon';
 import { Text } from '@/components/Text';
 import { useNotificationUnread } from '@/features/retention/NotificationUnreadContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, spacing } from '@/theme';
+import { colors, maxFontScale, spacing } from '@/theme';
 
 import { notificationBadgeText } from './notificationBadge';
 
-// Consumer TopAppBar (Stitch header spec, no hamburger):
-//  - Home:     brand "덕분이"            + 나 ▾ switcher   (brand + showSwitcher)
-//  - Top tabs: "상담" / "운세우편함"      + 나 ▾ switcher   (title + showSwitcher)
-//  - Centered: "AI 상담" / "MY"          (centerTitle; optional back/switcher)
-//  - Detail:   "← 운세우편"  + rightSlot (showBack + rightSlot)
-// Handles the top safe-area inset and the 20px container margin itself, so it can
-// sit above a padded ScrollView inside a Screen(padded={false}).
+// Consumer TopAppBar (DESIGN_FREEZE_FINAL C01). Props are UNCHANGED from the previous header — only
+// the presentation moved — so no screen had to be rewired.
+//  - Home:      brand "덕분이"        + PersonPill      (brand + showSwitcher)
+//  - Top tabs:  "상담" / "운세우편함"  + PersonPill      (title + showSwitcher)
+//  - Centered:  "MY" / "덕"           (centerTitle; optional back/switcher)
+//  - Detail:    "← 운세우편"  + rightSlot                (showBack + rightSlot)
+//  - Immersive: back + PersonPill, NO bell               (chat: showBack + showSwitcher + showBell=false)
+// H56 · 20px margins · title 17/700 · 44×44 bell hit area. Handles the top safe-area inset and the
+// container margin itself, so it can sit above a padded ScrollView inside a Screen(padded={false}).
+//
+// The bell badge stays a COUNT (1..9, then 9+), never a bare dot: a dot throws away the one piece of
+// information the badge exists to carry.
 const H_MARGIN = 20;
 
 type AppHeaderProps = {
@@ -31,12 +37,11 @@ type AppHeaderProps = {
   centerTitle?: boolean;
   // Global notification bell. When true, AppHeader renders the ONE shared bell — it reads the shared unread
   // count (useNotificationUnread) and navigates to /notifications; no per-screen wiring, no per-screen fetch.
-  // The badge is BOUNDED (1..9, then 9+) so a large unread count can never blow out the header. Eligible
-  // authenticated consumer screens set this; focused/auth-flow screens do not.
+  // Bell exceptions are exactly four: login · onboarding · the notification centre itself · immersive chat.
   showBell?: boolean;
 };
 
-function Bell({ onPress, count, danger }: { onPress?: () => void; count: number; danger: string }) {
+function Bell({ onPress, count, danger, ring }: { onPress?: () => void; count: number; danger: string; ring: string }) {
   const badge = notificationBadgeText(count);
   return (
     <Pressable
@@ -48,8 +53,9 @@ function Bell({ onPress, count, danger }: { onPress?: () => void; count: number;
     >
       <LineIcon name="bell" size={22} />
       {badge ? (
-        <View style={[styles.badge, { backgroundColor: danger }]}>
-          <Text variant="bodySmall" style={styles.badgeText}>
+        // 1.5px ring in the header's own background colour keeps the pill legible where it overlaps the glyph.
+        <View style={[styles.badge, { backgroundColor: danger, borderColor: ring }]}>
+          <Text variant="caption" maxFontSizeMultiplier={maxFontScale.control} style={styles.badgeText}>
             {badge}
           </Text>
         </View>
@@ -58,21 +64,27 @@ function Bell({ onPress, count, danger }: { onPress?: () => void; count: number;
   );
 }
 
-function Switcher({ label, onPress }: { label: string; onPress?: () => void }) {
+// C09 PersonPill — always-visible answer to "whose chart am I looking at right now?". Tapping it
+// opens the person selector; it never routes into a consultation.
+function PersonPill({ label, onPress, tint, border, text }: { label: string; onPress?: () => void; tint: string; border: string; text: string }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="분석 대상자 선택"
-      hitSlop={8}
-      style={styles.switcher}
+      accessibilityLabel={`분석 대상자 ${label} 선택`}
+      hitSlop={6}
+      style={({ pressed }) => [styles.pill, { backgroundColor: pressed ? border : tint, borderColor: border }]}
     >
-      <Text variant="bodyMedium" colorToken="textPrimary" style={styles.switcherLabel}>
+      <Avatar label={label} size={22} />
+      <Text
+        variant="bodySmall"
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={[styles.pillLabel, { color: text }]}
+      >
         {label}
       </Text>
-      <Text variant="bodyMedium" colorToken="textSecondary">
-        ▾
-      </Text>
+      <LineIcon name="chevron-down" size={14} color={text} />
     </Pressable>
   );
 }
@@ -103,21 +115,30 @@ export function AppHeader({
       hitSlop={8}
       style={styles.back}
     >
-      <Text variant="headingMedium" colorToken="textPrimary">
-        ←
-      </Text>
+      <LineIcon name="back" size={22} color={theme.textPrimary} />
     </Pressable>
   ) : null;
 
   const rightInner = rightSlot ?? (showSwitcher ? (
-    <Switcher label={subjectLabel} onPress={onSwitcher} />
+    <PersonPill
+      label={subjectLabel}
+      onPress={onSwitcher}
+      tint={theme.backgroundElevated}
+      border={theme.backgroundSelected}
+      text={theme.textPrimary}
+    />
   ) : null);
   // Bell sits to the LEFT of the switcher/rightSlot. Grouped so both share the right edge.
   const right =
     showBell || rightInner ? (
       <View style={styles.rightGroup}>
         {showBell ? (
-          <Bell onPress={() => router.push('/notifications')} count={unreadCount} danger={theme.danger} />
+          <Bell
+            onPress={() => router.push('/notifications')}
+            count={unreadCount}
+            danger={theme.danger}
+            ring={theme.background}
+          />
         ) : null}
         {rightInner}
       </View>
@@ -144,7 +165,7 @@ export function AppHeader({
     <View style={wrapStyle}>
       <View style={styles.leftGroup}>
         {back}
-        <Text variant="headingMedium" style={styles.title} numberOfLines={1}>
+        <Text variant="headingMedium" style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {brand ? '덕분이' : title}
         </Text>
       </View>
@@ -160,7 +181,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: H_MARGIN,
     paddingBottom: spacing.sm,
-    minHeight: 52,
+    minHeight: 56,
     gap: spacing.sm,
   },
   leftGroup: {
@@ -168,6 +189,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     flexShrink: 1,
+    minWidth: 0,
   },
   title: {
     fontWeight: '700',
@@ -190,20 +212,28 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
   },
-  switcher: {
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    minHeight: 44,
-    paddingLeft: spacing.sm,
+    gap: 5,
+    minHeight: 34,
+    maxWidth: 156,
+    paddingLeft: 4,
+    paddingRight: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 1,
   },
-  switcherLabel: {
+  pillLabel: {
     fontWeight: '600',
+    flexShrink: 1,
   },
   rightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexShrink: 1,
+    minWidth: 0,
   },
   bell: {
     minWidth: 44,
@@ -213,19 +243,20 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 4,
-    right: 6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    top: 6,
+    right: 4,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    borderWidth: 1.5,
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: '#FDFBF6',
     fontSize: 10,
-    lineHeight: 14,
+    lineHeight: 13,
     fontWeight: '700',
   },
 });

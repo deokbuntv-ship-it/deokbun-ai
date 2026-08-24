@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
@@ -181,6 +182,7 @@ export default function NotificationsScreen() {
           )}
         </View>
       </ScrollView>
+      <DetailBottomNav active="my" />
     </Screen>
   );
 }

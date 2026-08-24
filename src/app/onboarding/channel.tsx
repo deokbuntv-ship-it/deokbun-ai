@@ -4,6 +4,7 @@ import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { StateView } from '@/components/StateView';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -42,7 +43,7 @@ export default function OnboardingChannelScreen() {
         <View style={styles.wrapper}>
           <Stack gap="xl">
             <Stack gap="xs">
-              <Text variant="bodySmall" colorToken="textMuted">선택 사항</Text>
+              <Text variant="bodySmall" colorToken="textSecondary">선택 사항</Text>
               <Text variant="headingLarge">카카오톡으로{'\n'}덕분이 소식을 받아보세요</Text>
             </Stack>
 
@@ -70,10 +71,12 @@ export default function OnboardingChannelScreen() {
                 // Honest EXTERNAL_NOT_CONFIGURED state — a disabled control + a truthful preparation note. No
                 // tap does anything, so a channel-add can never be faked as successful.
                 <>
-                  <Button label="카카오 채널 추가 (준비 중)" radius="lg" disabled onPress={proceed} />
-                  <Text variant="caption" colorToken="textMuted" style={styles.prepNote}>
-                    카카오 채널 연동은 준비 중이에요. 지금은 건너뛰고 계속할 수 있어요.
-                  </Text>
+                  <StateView
+                    kind="preparing"
+                    title="채널 연결은 준비 중이에요"
+                    description="연결이 열리면 MY에서 다시 설정할 수 있어요."
+                  />
+                  <Button label="채널 추가하기 · 준비 중" radius="lg" disabled onPress={proceed} />
                 </>
               )}
               <Button label="건너뛰기" variant="tertiary" radius="lg" onPress={proceed} />
@@ -89,5 +92,4 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, alignItems: 'center' },
   wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   note: { borderRadius: 8, padding: spacing.md },
-  prepNote: { textAlign: 'center' },
 });

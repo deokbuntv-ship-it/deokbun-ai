@@ -11,11 +11,15 @@ import { AiDisclosure } from '@/components/AiDisclosure';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { InsufficientDuk } from '@/components/InsufficientDuk';
+import { SessionMeter } from '@/components/SessionMeter';
+import { StateView } from '@/components/StateView';
 import { PersonSelectorSheet } from '@/components/PersonSelectorSheet';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { MaxContentWidth } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useConsumerLayout } from '@/hooks/useConsumerLayout';
 import { useAuth } from '@/features/auth';
 import {
     ChatBubble,
@@ -29,8 +33,9 @@ import {
     type ChatMessage,
     type ConsultationErrorView,
 } from '@/features/chat';
-import { insufficientView, sessionTurnCopy } from '@/features/duk/consumerDukView';
-import { getSessionStatus } from '@/features/duk/dukClientContract';
+import { getCandleAvailability } from '@/features/duk/dukWalletService';
+import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
+import { getSessionStatus, type SessionStatus } from '@/features/duk/dukClientContract';
 import { refreshWallet } from '@/features/duk/useWallet';
 import {
     consumePendingQuestion,
@@ -58,7 +63,7 @@ import { reportService } from '@/features/chat/report/reportService';
 import { feedbackService } from '@/features/chat/services/feedbackService';
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import type { FeedbackVerdict } from '@/features/intelligence';
-import { spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 const WELCOME_MESSAGE_TEXT =
   '안녕하세요. 덕분이입니다. 😊\n\n출생정보 등록이 완료되었습니다.\n상담을 시작할 준비가 되었습니다.\n\n궁금한 점이나 고민이 있으시면 편하게 말씀해 주세요.';
@@ -76,6 +81,9 @@ function createMessageId(role: ChatMessage['role']): string {
 export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const { hPad, maxWidth } = useConsumerLayout();
   const params = useLocalSearchParams<{
     startNew?: string;
     conversationId?: string;
@@ -220,17 +228,26 @@ export default function ChatScreen() {
   const [sendError, setSendError] = useState<ConsultationErrorView | null>(null);
   // Authoritative server balance snapshot for the INSUFFICIENT_DUK card (never client-calculated). Sprint J1.
   const [insufficientSnap, setInsufficientSnap] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
-  // §8 — remaining-turn hint for an ACTIVE paid general session (server-verified, read-only). Null = no active
-  // session (billing off / free / between sessions) → nothing is shown, so the copy is never misleading.
-  const [sessionCopy, setSessionCopy] = useState<string | null>(null);
+  // §8/C12 — the SERVER's session object, held raw. The UI derives the remaining-question line from
+  // successfulTurnCount/turnLimit and NEVER counts sends itself, so a failed turn (which does not
+  // consume a successful turn) leaves the number exactly where it was. No optimistic decrement.
+  const [session, setSession] = useState<SessionStatus | null>(null);
+  const [candleEligible, setCandleEligible] = useState(false);
   const refreshSession = useCallback(async () => {
-    const s = await getSessionStatus('general');
-    setSessionCopy(s.active ? sessionTurnCopy(s) : null);
+    setSession(await getSessionStatus('general'));
   }, []);
   useEffect(() => {
-    if (isAuthenticated) void refreshSession();
-    else setSessionCopy(null);
+    if (isAuthenticated) {
+      void refreshSession();
+      void getCandleAvailability(Math.floor(Date.now() / 1000))
+        .then((a) => setCandleEligible(a.canLight))
+        .catch(() => {});
+    } else setSession(null);
   }, [isAuthenticated, refreshSession]);
+  // Exhausted is a SERVER fact: the session exists and its successful-turn count has reached the limit.
+  // (`active` alone is ambiguous — it is also false for an expired session.)
+  const turnsExhausted =
+    session !== null && session.sessionId !== null && session.turnLimit > 0 && session.successfulTurnCount >= session.turnLimit;
   const lastAttemptRef = useRef<{ text: string; context: ChatMessage[]; requestId?: string } | null>(null);
   // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
   // same-frame double-tap cannot start two sends (§30/§e).
@@ -581,8 +598,6 @@ export default function ChatScreen() {
 
   const header = (
     <AppHeader
-      centerTitle
-      title="AI 상담"
       showBack
       onBack={handleBack}
       showSwitcher
@@ -598,13 +613,9 @@ export default function ChatScreen() {
     return (
       <Screen padded={false} frame>
         {header}
-        <Stack style={{ flex: 1, paddingTop: 24 }} align="center">
-          <Card>
-            <Text variant="bodyMedium" colorToken="textSecondary">
-              상담 정보를 불러오는 중입니다...
-            </Text>
-          </Card>
-        </Stack>
+        <View style={{ flex: 1, paddingHorizontal: hPad, paddingTop: spacing.xl }}>
+          <StateView kind="loading" skeletonLines={5} title="상담 정보를 불러오는 중" />
+        </View>
       </Screen>
     );
   }
@@ -630,8 +641,8 @@ export default function ChatScreen() {
       {header}
       <View style={styles.container}>
         <ScrollView ref={scrollViewRef} style={styles.messageScroll} contentContainerStyle={styles.messageScrollContent}>
-          <View style={styles.contentWrapper}>
-            <Stack gap="sm">
+          <View style={[styles.contentWrapper, { maxWidth, paddingHorizontal: hPad }]}>
+            <Stack gap="md">
               {messages.map((message) => (
                 <View
                   key={message.id}
@@ -677,58 +688,75 @@ export default function ChatScreen() {
           </View>
         </ScrollView>
 
-        <View style={[styles.inputArea, { paddingBottom: insets.bottom + spacing.sm }]}>
-          <View style={styles.contentWrapper}>
-            {/* §8 — remaining-turn hint; only shown for a live paid session (else null → hidden). */}
-            {sessionCopy ? (
-              <Text variant="bodySmall" colorToken="textSecondary" style={styles.sessionHint}>
-                {sessionCopy}
-              </Text>
-            ) : null}
+        <View style={[styles.inputArea, { paddingBottom: insets.bottom + spacing.sm, paddingHorizontal: hPad }]}>
+          <View style={[styles.contentWrapper, { maxWidth }]}>
+            {/* C12 — derived from the SERVER's successful-turn count; hidden when there is no live session. */}
+            <SessionMeter session={session} style={styles.sessionHint} />
             {sendError ? (
-              <Card style={styles.errorCard}>
-                {sendError.kind === 'insufficient' && insufficientSnap ? (
-                  // Actionable INSUFFICIENT_DUK state (Sprint J1 §9). Numbers are the authoritative server snapshot;
-                  // we only route to where 덕 can be earned (candle) or topped up — never grant on the client.
+              sendError.kind === 'insufficient' && insufficientSnap ? (
+                // C07 — never an Alert. The three server numbers plus the two ways forward, inline.
+                <InsufficientDuk
+                  product="general"
+                  snapshot={insufficientSnap}
+                  candleEligible={candleEligible}
+                  onCandle={() => router.push('/wallet')}
+                  onTopup={() => router.push('/duk-topup')}
+                  style={styles.errorCard}
+                />
+              ) : (
+                <Card use="status" statusColor={theme.danger} radius="xl" style={styles.errorCard}>
                   <Stack gap="sm">
-                    {insufficientView('general', insufficientSnap, false).lines.map((line, i) => (
-                      <Text
-                        key={line}
-                        variant={i === 0 ? 'bodyMedium' : 'bodySmall'}
-                        colorToken={i === 0 ? 'textPrimary' : 'textSecondary'}
-                      >
-                        {line}
+                    <Text variant="bodyMedium">{sendError.message}</Text>
+                    {/* Say the money and the turn count are untouched BEFORE offering a retry — a
+                        generation failure must never read as "you just spent a question". */}
+                    {sendError.canRetry ? (
+                      <Text variant="bodySmall" colorToken="textSecondary">
+                        이번 질문은 전달되지 않았어요. 질문 횟수는 그대로예요.
                       </Text>
-                    ))}
-                    <Button label="덕 받으러 가기" onPress={() => router.push('/wallet')} />
-                    <Button label="덕 충전" variant="secondary" onPress={() => router.push('/duk-topup')} />
-                  </Stack>
-                ) : (
-                  <Stack gap="sm">
-                    <Text variant="bodyMedium" colorToken="textSecondary">
-                      {sendError.message}
-                    </Text>
+                    ) : null}
                     {sendError.kind === 'auth' && !isAuthenticated ? (
-                      <Button label="로그인하기" onPress={() => router.push('/login')} />
+                      <Button label="로그인하기" radius="lg" onPress={() => router.push('/login')} />
                     ) : null}
                     {sendError.canRetry ? (
                       <Button
                         label="다시 시도"
                         variant="secondary"
+                        radius="lg"
                         onPress={handleRetry}
                         disabled={isSending}
                       />
                     ) : null}
                   </Stack>
-                )}
+                </Card>
+              )
+            ) : null}
+            {/* Turns exhausted — the SERVER confirmed 5 successful turns. The composer is replaced (not
+                merely disabled) so there is no input that silently does nothing, and the next step and
+                its cost are stated in the same block. */}
+            {turnsExhausted ? (
+              <Card radius="xl" style={styles.errorCard}>
+                <Stack gap="sm">
+                  <Text variant="bodyLarge" style={styles.exhaustedTitle}>이번 상담의 남은 질문을 모두 썼어요</Text>
+                  <Text variant="bodyMedium" colorToken="textSecondary">
+                    새 상담을 시작하면 다시 물어볼 수 있어요. 지금까지의 내용은 상담 기록에 남아 있어요.
+                  </Text>
+                  <Button
+                    label={`새 상담 시작하기  🍀 ${dukLabel(DUK_PRICES.general)}`}
+                    radius="lg"
+                    onPress={() => router.replace({ pathname: '/chat', params: { startNew: '1' } })}
+                  />
+                </Stack>
               </Card>
             ) : null}
+            {!turnsExhausted ? (
             <ChatInput
               value={inputText}
               onChangeText={setInputText}
               onSend={handleSend}
+              placeholder={isSending ? '덕분이가 읽는 중이에요…' : undefined}
               disabled={inputText.trim().length === 0 || isSending}
             />
+            ) : null}
           </View>
         </View>
       </View>
@@ -754,7 +782,6 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     width: '100%',
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
   inputArea: {
@@ -766,6 +793,9 @@ const styles = StyleSheet.create({
   },
   sessionHint: {
     marginBottom: spacing.sm,
-    textAlign: 'center',
+    alignSelf: 'center',
+  },
+  exhaustedTitle: {
+    fontWeight: '700',
   },
 });

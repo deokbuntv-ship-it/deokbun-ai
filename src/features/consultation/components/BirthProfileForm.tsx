@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
+import { Chip } from '@/components/Chip';
 import { Input } from '@/components/Input';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -21,8 +21,6 @@ import type {
   Gender,
   LunarMonthType,
 } from '@/features/consultation/types/consultation';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors } from '@/theme';
 
 // Reusable SELF birth-profile form (onboarding). Collects the app birth fields, validates with the SHARED
 // pure validators (birthProfileValidation), and hands a complete BirthInfoDraft to `onSubmit`. It owns no
@@ -64,20 +62,11 @@ function SelectField<T extends string>({
   value: T | null;
   onSelect: (v: T) => void;
 }) {
-  const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? colors.dark : colors.light;
   return (
     <Stack direction="row" gap="sm" style={styles.optionRow}>
-      {options.map((o) => {
-        const selected = o.value === value;
-        return (
-          <Pressable key={o.value} onPress={() => onSelect(o.value)} accessibilityRole="button" accessibilityState={{ selected }}>
-            <Card style={{ borderColor: selected ? theme.primary : theme.border, borderWidth: selected ? 2 : 1 }}>
-              <Text variant="bodyMedium">{o.label}</Text>
-            </Card>
-          </Pressable>
-        );
-      })}
+      {options.map((o) => (
+        <Chip key={o.value} label={o.label} selected={o.value === value} onPress={() => onSelect(o.value)} />
+      ))}
     </Stack>
   );
 }
@@ -189,7 +178,7 @@ export function BirthProfileForm({
         {timeAccuracy === 'approximate' ? <SelectField options={PERIOD_OPTIONS} value={period} onSelect={setPeriod} /> : null}
         {timeAccuracy === 'unknown' ? (
           <Text variant="bodySmall" colorToken="textSecondary">
-            태어난 시간을 모르면 일부 해석 범위가 제한될 수 있어요. 덕분이는 모르는 시간을 임의로 추측하지 않아요.
+            시간을 모르셔도 괜찮아요. 다만 일부 해석 범위가 제한될 수 있고, 덕분이는 모르는 시간을 임의로 추측하지 않아요.
           </Text>
         ) : null}
       </Stack>

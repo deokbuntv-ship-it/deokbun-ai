@@ -1,19 +1,21 @@
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { Text } from '@/components/Text';
+import { LineIcon } from '@/components/LineIcon';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
+// Bottom composer (DESIGN_FREEZE_FINAL D10): a pill text field + a circular ink send button carrying
+// the shared `send` glyph (one icon family — no ad-hoc ↑ character). Disabled is a token surface, not
+// opacity, so the glyph never drops below AA.
 type ChatInputProps = {
   value: string;
   onChangeText: (value: string) => void;
   onSend: () => void;
   disabled?: boolean;
+  placeholder?: string;
 };
 
-// Stitch AI-상담 bottom composer: a full-pill text field + a circular navy send
-// button with a white ↑ glyph (not a rectangular "전송" text button).
-export function ChatInput({ value, onChangeText, onSend, disabled }: ChatInputProps) {
+export function ChatInput({ value, onChangeText, onSend, disabled, placeholder }: ChatInputProps) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
@@ -23,8 +25,8 @@ export function ChatInput({ value, onChangeText, onSend, disabled }: ChatInputPr
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          placeholder="결과에 대해 더 궁금한 점을 물어보세요"
-          placeholderTextColor={theme.textSecondary}
+          placeholder={placeholder ?? '결과에 대해 더 궁금한 점을 물어보세요'}
+          placeholderTextColor={theme.textMuted}
           multiline
           accessibilityLabel="메시지 입력창"
           style={[
@@ -41,12 +43,24 @@ export function ChatInput({ value, onChangeText, onSend, disabled }: ChatInputPr
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel="메시지 전송"
-          style={[
+          accessibilityState={{ disabled: !!disabled }}
+          style={({ pressed }) => [
             styles.send,
-            { backgroundColor: theme.primary, opacity: disabled ? 0.5 : 1 },
+            {
+              backgroundColor: disabled
+                ? theme.actionDisabledBg
+                : pressed
+                  ? theme.brandPrimaryPressed
+                  : theme.brandPrimary,
+            },
           ]}
         >
-          <Text style={styles.sendGlyph}>↑</Text>
+          <LineIcon
+            name="send"
+            size={20}
+            color={disabled ? theme.actionDisabledText : theme.brandPrimaryText}
+            strokeWidth={2}
+          />
         </Pressable>
       </View>
     </View>
@@ -67,11 +81,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.pill,
     paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingVertical: 13,
     minHeight: 48,
     maxHeight: 120,
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
     textAlignVertical: 'top',
   },
   send: {
@@ -80,11 +94,5 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendGlyph: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 22,
   },
 });

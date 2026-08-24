@@ -43,7 +43,7 @@ describe('consumer surfaces use the finalized brand 덕분이', () => {
     expect(read('components/AppHeader/AppHeader.tsx')).toMatch(/'덕분이'/);
     expect(read('app/login.tsx')).toMatch(/덕분이/);
     expect(read('app/chat.tsx')).toMatch(/덕분이입니다/);
-    expect(read('components/QuestionComposer/QuestionComposer.tsx')).toMatch(/덕분이/);
+    expect(read('features/intelligence/components/ConsultationLoading.tsx')).toMatch(/덕분이/);
   });
 });
 

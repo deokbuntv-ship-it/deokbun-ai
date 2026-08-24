@@ -6,10 +6,11 @@ import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { DetailBottomNav } from '@/components/DetailBottomNav';
+import { StateView } from '@/components/StateView';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import { MaxContentWidth } from '@/constants/theme';
+import { useConsumerLayout } from '@/hooks/useConsumerLayout';
 import { useAuth } from '@/features/auth';
 import { ChatInput, conversationService, createSingleFlight, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
 import { feedbackService } from '@/features/chat/services/feedbackService';
@@ -20,7 +21,9 @@ import type { CompatibilityResultMeta } from '@/features/chat/server';
 import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
-import { insufficientView } from '@/features/duk/consumerDukView';
+import { InsufficientDuk } from '@/components/InsufficientDuk';
+import { SessionMeter } from '@/components/SessionMeter';
+import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { mapConsumerError } from '@/features/errors/consumerErrorCopy';
 import { AiDisclosure } from '@/components/AiDisclosure';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
@@ -51,6 +54,21 @@ export default function CompatibilityChatScreen() {
   const isAuthenticatedRef = useRef(isAuthenticated);
   isAuthenticatedRef.current = isAuthenticated;
   const { subjects, status } = useConsultationSubjects();
+  const { hPad, maxWidth } = useConsumerLayout();
+  // Candle eligibility decides the C07 primary action (light today's candle vs come back tomorrow).
+  const [candleEligible, setCandleEligible] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    void getCandleAvailability(Math.floor(Date.now() / 1000))
+      .then((a) => {
+        if (active) setCandleEligible(a.canLight);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated]);
 
   const self = useMemo(
     () => subjects.find((s) => s.id === params.selfId) ?? subjects.find((s) => s.isSelf) ?? null,
@@ -308,11 +326,11 @@ export default function CompatibilityChatScreen() {
     if (m.role === 'user') {
       return (
         <View key={m.id} style={styles.userRow}>
-          <Card radius="lg" style={styles.userBubble}>
-            <Text variant="bodyMedium" style={{ lineHeight: 22 }}>
+          <View style={styles.userBubble}>
+            <Text variant="bodyMedium" style={styles.userText}>
               {m.text}
             </Text>
-          </Card>
+          </View>
         </View>
       );
     }
@@ -352,26 +370,25 @@ export default function CompatibilityChatScreen() {
       <View style={styles.body}>
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, { paddingHorizontal: hPad }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.wrapper}>
+          <View style={[styles.wrapper, { maxWidth }]}>
             <Stack gap="lg">
-              <Text variant="headingMedium" style={{ fontWeight: '700' }}>
-                {pairTitle}
-              </Text>
+              {!tier ? (
+                <Text variant="headingMedium">{pairTitle}</Text>
+              ) : null}
               {status !== 'ready' ? (
-                <Card>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    불러오는 중입니다...
-                  </Text>
-                </Card>
+                <StateView kind="loading" skeletonLines={5} />
               ) : !self || !target ? (
-                <Card>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    대상 정보를 찾을 수 없어요. 다시 선택해 주세요.
-                  </Text>
-                </Card>
+                <StateView
+                  kind="empty"
+                  emoji="👥"
+                  title="대상 정보를 찾을 수 없어요"
+                  description="궁합 탭에서 두 사람을 다시 선택해 주세요."
+                  actionLabel="궁합으로 가기"
+                  onAction={() => router.replace('/compatibility')}
+                />
               ) : null}
 
               {tier ? <CompatibilityTierCard meta={tier} /> : null}
@@ -390,27 +407,22 @@ export default function CompatibilityChatScreen() {
                 />
               ) : null}
               {insufficientSnap ? (
-                <Card>
-                  <Stack gap="sm">
-                    {insufficientView('compatibility', insufficientSnap, false).lines.map((line, i) => (
-                      <Text
-                        key={line}
-                        variant={i === 0 ? 'bodyMedium' : 'bodySmall'}
-                        colorToken={i === 0 ? 'textPrimary' : 'textSecondary'}
-                      >
-                        {line}
-                      </Text>
-                    ))}
-                    <Button label="덕 받으러 가기" onPress={() => router.push('/wallet')} />
-                    <Button label="덕 충전" variant="secondary" onPress={() => router.push('/duk-topup')} />
-                  </Stack>
-                </Card>
+                <InsufficientDuk
+                  product="compatibility"
+                  snapshot={insufficientSnap}
+                  candleEligible={candleEligible}
+                  onCandle={() => router.push('/wallet')}
+                  onTopup={() => router.push('/duk-topup')}
+                />
               ) : null}
               {errorText ? (
-                <Card>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    {errorText}
-                  </Text>
+                <Card use="status" radius="xl">
+                  <Stack gap="xs">
+                    <Text variant="bodyMedium">{errorText}</Text>
+                    <Text variant="bodySmall" colorToken="textSecondary">
+                      이번 질문은 전달되지 않았어요. 질문 횟수는 그대로예요.
+                    </Text>
+                  </Stack>
                 </Card>
               ) : null}
               {/* AI-generated-content disclosure (§2) — this is analysis/해석, not a certainty or guarantee. */}
@@ -418,8 +430,11 @@ export default function CompatibilityChatScreen() {
             </Stack>
           </View>
         </ScrollView>
-        <View style={styles.composer}>
-          <View style={styles.wrapper}>
+        <View style={[styles.composer, { paddingHorizontal: hPad }]}>
+          <View style={[styles.wrapper, { maxWidth }]}>
+            {tier ? (
+              <SessionMeter session={null} label="이어서 물어봐도 덕은 더 들지 않아요" style={styles.meter} />
+            ) : null}
             <ChatInput
               value={input}
               onChangeText={setInput}
@@ -438,9 +453,22 @@ export default function CompatibilityChatScreen() {
 
 const styles = StyleSheet.create({
   body: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, alignItems: 'center' },
-  wrapper: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  scroll: { flexGrow: 1, paddingTop: 12, paddingBottom: 24, alignItems: 'center' },
+  wrapper: { width: '100%', alignSelf: 'center' },
+  meter: { alignSelf: 'center', marginBottom: spacing.sm },
   userRow: { alignItems: 'flex-end' },
-  userBubble: { maxWidth: '86%', backgroundColor: undefined },
-  composer: { paddingHorizontal: 20, paddingTop: spacing.sm, paddingBottom: spacing.sm },
+  userBubble: {
+    maxWidth: '82%',
+    backgroundColor: '#F3EADA',
+    borderColor: '#E9DCC6',
+    borderWidth: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 5,
+    borderBottomLeftRadius: 16,
+  },
+  userText: { fontSize: 14.5, lineHeight: 23 },
+  composer: { paddingTop: spacing.sm, paddingBottom: spacing.sm },
 });

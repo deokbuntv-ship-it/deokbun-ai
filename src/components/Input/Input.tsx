@@ -13,6 +13,9 @@ import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
+// DESIGN_FREEZE_FINAL C18 — H52, R14, 15px. The label ALWAYS sits on its own line above the field;
+// a placeholder is never used as the label (it disappears exactly when the user needs it). focus =
+// 1.5px ink, error = 1.5px state.error + a 12.5px message underneath, disabled = sunken surface.
 type InputProps = Omit<TextInputProps, 'style'> & {
   label?: string;
   error?: string;
@@ -45,14 +48,14 @@ export function Input({
 	const borderColor = hasError
 		? theme.danger
 		: isFocused
-			? theme.primary
+			? theme.brandPrimary
 			: theme.border;
 
 	return (
 		<View style={style}>
 			{label ? (
 				<View style={{ flexDirection: 'row', marginBottom: spacing.xs }}>
-					<Text variant="bodySmall">{label}</Text>
+					<Text variant="bodySmall" style={{ fontWeight: '600' }}>{label}</Text>
 					{required ? (
 						<Text variant="bodySmall" colorToken="danger">
 							{' '}
@@ -64,7 +67,7 @@ export function Input({
 
 			<TextInput
 				editable={!disabled}
-				placeholderTextColor={theme.textSecondary}
+				placeholderTextColor={theme.textMuted}
 				onFocus={(event) => {
 					setIsFocused(true);
 					onFocus?.(event);
@@ -75,14 +78,18 @@ export function Input({
 				}}
 				style={[
 					{
-						borderWidth: isFocused || hasError ? 2 : 1,
+						borderWidth: isFocused || hasError ? 1.5 : 1,
 						borderColor,
 						borderRadius: radius.md,
-						paddingVertical: spacing.sm,
-						paddingHorizontal: spacing.md,
-						backgroundColor: theme.surface,
-						color: theme.textPrimary,
-						opacity: disabled ? 0.5 : 1,
+						paddingVertical: spacing.md,
+						paddingHorizontal: spacing.lg,
+						minHeight: 52,
+						fontSize: 15,
+						lineHeight: 22,
+						// Disabled is a SURFACE change, not opacity — an opacity wrapper would drag the
+						// value text below AA and make a read-only field unreadable (freeze §Acceptance).
+						backgroundColor: disabled ? theme.backgroundElevated : theme.surface,
+						color: disabled ? theme.textSecondary : theme.textPrimary,
 					},
 					inputStyle,
 				]}
@@ -93,7 +100,7 @@ export function Input({
 				<Text
 					variant="bodySmall"
 					colorToken="danger"
-					style={{ marginTop: spacing.xs }}
+					style={{ marginTop: spacing.xs, fontSize: 12.5 }}
 				>
 					{error}
 				</Text>
@@ -101,7 +108,7 @@ export function Input({
 				<Text
 					variant="bodySmall"
 					colorToken="textSecondary"
-					style={{ marginTop: spacing.xs }}
+					style={{ marginTop: spacing.xs, fontSize: 12.5 }}
 				>
 					{helperText}
 				</Text>

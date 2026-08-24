@@ -1,66 +1,91 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Card } from '@/components/Card';
+import { Avatar } from '@/components/Avatar';
+import { Chip } from '@/components/Chip';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import type { CompatibilityResultMeta } from '@/features/chat/server';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
-// The deterministic 궁합 TIER card (§19/§30). Renders the SERVER-computed overall tier + the three
-// dimension signals. It is honest by construction: a categorical tier (no fabricated %), and every
-// dimension shows its plain-language verdict. NO raw 간지 / engine terms reach the user here.
+// DESIGN_FREEZE_FINAL C13/C14 — 궁합 결과 헤더 + 섹션.
+//
+// The freeze bans a SCORE or a GRADE: a relationship must not be reduced to a number or a rank. What
+// is rendered instead is the engine's own plain-language verdict — `overallLabel` is the server's
+// categorical reading, not a computed percentage, and it stays because engine Decision/Evidence
+// semantics are product logic, not presentation. No number is invented, ranked, or derived here.
+//
+// Layout: a blush plane with A × B, the one-line reading, and the dimension titles as keyword chips;
+// the dimension verdicts follow as prose sections.
 export function CompatibilityTierCard({ meta }: { meta: CompatibilityResultMeta }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
-  const signalColor = (signal: string): string => {
-    if (signal === 'POSITIVE') return theme.secondary;
-    if (signal === 'WATCH') return theme.accent;
-    return theme.textSecondary;
-  };
-
   return (
-    <Card radius="xl">
-      <Stack gap="md">
-        <Stack gap="xs">
-          <Text variant="bodySmall" colorToken="textSecondary">
-            종합 궁합
-          </Text>
-          <Text variant="headingMedium" style={{ fontWeight: '700', color: theme.primary }}>
-            {meta.overallLabel}
-          </Text>
-          {meta.reducedPrecision ? (
-            <Text variant="bodySmall" colorToken="textSecondary">
-              ※ 한 분 이상 출생시간이 정확하지 않아 세부 정밀도는 제한될 수 있어요.
+    <Stack gap="lg">
+      <View style={[styles.header, { backgroundColor: theme.surfaceBlush }]}>
+        <View style={styles.pairRow}>
+          <View style={styles.person}>
+            <Avatar label={meta.selfLabel} size={46} />
+            <Text variant="caption" numberOfLines={1} style={{ color: theme.onBlush, fontWeight: '700' }}>
+              {meta.selfLabel}
             </Text>
-          ) : null}
-        </Stack>
+          </View>
+          <Text style={styles.glyph}>💕</Text>
+          <View style={styles.person}>
+            <Avatar label={meta.targetLabel} size={46} />
+            <Text variant="caption" numberOfLines={1} style={{ color: theme.onBlush, fontWeight: '700' }}>
+              {meta.targetLabel}
+            </Text>
+          </View>
+        </View>
 
-        <Stack gap="sm">
+        <Text variant="headingLarge" style={[styles.headline, { color: theme.onBlush }]}>
+          {meta.overallLabel}
+        </Text>
+
+        {/* Dimension titles as keyword chips — the shape of the reading at a glance, no ranking. */}
+        <View style={styles.chips}>
           {meta.dimensions.map((d) => (
-            <View key={d.key} style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }}>
-              <View
-                style={{
-                  marginTop: 3,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: signalColor(d.signal),
-                }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text variant="bodyMedium" style={{ fontWeight: '600' }}>
-                  {d.title}
-                </Text>
-                <Text variant="bodySmall" colorToken="textSecondary" style={{ lineHeight: 20 }}>
-                  {d.verdict}
-                </Text>
-              </View>
-            </View>
+            <Chip key={d.key} label={d.title} tone="blush" />
           ))}
-        </Stack>
+        </View>
+
+        {meta.reducedPrecision ? (
+          <Text variant="bodySmall" style={{ color: theme.onBlush }}>
+            한 분 이상 출생시간이 정확하지 않아 세부 정밀도는 제한될 수 있어요.
+          </Text>
+        ) : null}
+      </View>
+
+      {/* C14 — each dimension as a readable section, not a dot list. */}
+      <Stack gap="lg">
+        {meta.dimensions.map((d) => (
+          <Stack key={d.key} gap="xs">
+            <Text variant="bodyLarge" style={styles.sectionTitle}>
+              {d.title}
+            </Text>
+            <Text variant="bodyLarge" colorToken="textSecondary">
+              {d.verdict}
+            </Text>
+          </Stack>
+        ))}
       </Stack>
-    </Card>
+    </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    borderRadius: radius.xl,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  pairRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
+  person: { alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
+  glyph: { fontSize: 20, lineHeight: 26 },
+  headline: { textAlign: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
+  sectionTitle: { fontWeight: '700' },
+});

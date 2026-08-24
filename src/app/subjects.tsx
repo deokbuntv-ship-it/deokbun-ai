@@ -1,29 +1,40 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
+import { StateView } from '@/components/StateView';
 import { Text } from '@/components/Text';
-import { MaxContentWidth } from '@/constants/theme';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useConsumerLayout } from '@/hooks/useConsumerLayout';
 import {
   useConsultationDraft,
   useConsultationSubjects,
   type ConsultationSubjectRecord,
 } from '@/features/consultation';
 
-// 분석 대상자 관리 (reached from MY). Preserves the existing subject management
-// flow — open/new consultation, edit, history, 만세력 — under the FINAL IA.
-// (This is the former 상담 tab content, relocated so 상담 can be history-centric.)
+// D11 분석 대상자 — DESIGN_FREEZE_FINAL.
+//
+// Selection is shown with a 1.5px ink border + a 선택됨 badge and NOT a coloured fill: the pastel
+// budget is two families per screen and selection does not need to spend one.
+//
+// Action hierarchy is Primary 1 / Secondary 1 / Tertiary 3. The old equal-weight button grid made
+// every action look equally likely and broke at 360dp; here the two consultation actions lead and
+// management is demoted to text.
+//
+// Subject CRUD, the canonical SELF record, and every route are unchanged — presentation only.
 export default function SubjectsScreen() {
   const router = useRouter();
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
+  const { hPad, maxWidth } = useConsumerLayout();
   const { draft, updateSubject, updateBirthInfo } = useConsultationDraft();
   const { subjects, status, reload } = useConsultationSubjects();
 
@@ -49,9 +60,9 @@ export default function SubjectsScreen() {
     router.push('/chat');
   };
 
-  const startNewConsultation = (record: ConsultationSubjectRecord) => {
+  const viewAsSubject = (record: ConsultationSubjectRecord) => {
     applySubjectToDraft(record);
-    router.push({ pathname: '/chat', params: { startNew: '1' } });
+    router.replace('/');
   };
 
   const manageSubject = (record: ConsultationSubjectRecord) => {
@@ -73,109 +84,99 @@ export default function SubjectsScreen() {
 
   const renderList = () => {
     if (status === 'loading') {
-      return (
-        <Card>
-          <Text variant="bodyMedium" colorToken="textSecondary">
-            대상을 불러오는 중입니다...
-          </Text>
-        </Card>
-      );
+      return <StateView kind="loading" skeletonLines={5} />;
     }
     if (status === 'error') {
       return (
-        <Card>
-          <Stack gap="sm">
-            <Text variant="bodyMedium" colorToken="textSecondary">
-              대상을 불러오지 못했습니다.
-            </Text>
-            <Button label="다시 시도" variant="secondary" onPress={reload} />
-          </Stack>
-        </Card>
+        <StateView
+          kind="error"
+          description="대상을 불러오지 못했어요. 네트워크를 확인하고 다시 시도해 주세요."
+          actionLabel="다시 시도"
+          onAction={reload}
+        />
       );
     }
-    if (subjects.length === 0) {
+    // The SELF subject always exists once onboarding completes, so "only me" is the real empty state
+    // for this screen — the user has not added anyone else yet.
+    if (subjects.length === 0 || (subjects.length === 1 && subjects[0].isSelf)) {
       return (
-        <Card>
-          <Text variant="bodyMedium" colorToken="textSecondary">
-            저장된 대상이 없습니다. 아래에서 새 대상을 추가해 주세요.
-          </Text>
-        </Card>
+        <Stack gap="md">
+          {subjects.map((subject) => renderCard(subject))}
+          <StateView
+            kind="empty"
+            emoji="👥"
+            title="아직 등록한 사람이 없어요"
+            description="가족이나 친구를 등록하면 그 사람의 사주도 보고, 궁합도 볼 수 있어요."
+          />
+        </Stack>
       );
     }
-    return subjects.map((subject) => {
-      const isCurrent = draft.subject?.id === subject.id;
-      return (
-        // The selected person is clearly marked (orange border + 선택됨 chip = signature-orange selected state).
-        // Hierarchy (§ real-device QA #5): name → ONE primary action (상담 열기) + secondary (새 상담) → demoted
-        // management (관리 / 상담 기록). No dense equal-weight grid; S8-width safe. All actions preserved.
-        <Card key={subject.id} style={isCurrent ? { borderColor: theme.brandPrimary, borderWidth: 1.5 } : undefined}>
-          <Stack gap="md">
-            <Pressable
-              onPress={() => openManse(subject)}
-              accessibilityRole="button"
-              accessibilityLabel={`${subject.displayName} 만세력 보기`}
-            >
-              <Stack gap="xs">
-                <Stack direction="row" gap="sm" align="center" style={{ justifyContent: 'space-between' }}>
-                  <Text variant="bodyLarge" style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={1}>
-                    {subject.displayName}
-                    {subject.isSelf ? ' (본인)' : ''}
-                  </Text>
-                  {isCurrent ? (
-                    <View style={[styles.selectedChip, { backgroundColor: theme.brandPrimarySoft }]}>
-                      <Text variant="caption" style={{ color: theme.brandPrimaryText, fontWeight: '700' }}>
-                        선택됨
-                      </Text>
-                    </View>
-                  ) : null}
-                </Stack>
-                {subject.relationship ? (
-                  <Text variant="bodySmall" colorToken="textSecondary">
-                    {subject.relationship}
-                  </Text>
-                ) : null}
-              </Stack>
-            </Pressable>
+    return <Stack gap="md">{subjects.map((subject) => renderCard(subject))}</Stack>;
+  };
 
-            {/* Primary + secondary — the two consultation actions, equal width, clear emphasis order. */}
-            <Stack direction="row" gap="sm">
-              <View style={styles.flex1}>
-                <Button label="상담 열기" variant="primary" radius="lg" onPress={() => openConsultation(subject)} />
-              </View>
-              <View style={styles.flex1}>
-                <Button label="새 상담" variant="secondary" radius="lg" onPress={() => startNewConsultation(subject)} />
-              </View>
+  const renderCard = (subject: ConsultationSubjectRecord) => {
+    const isCurrent = draft.subject?.id === subject.id;
+    return (
+      <Card
+        key={subject.id}
+        radius="xl"
+        style={isCurrent ? { borderColor: theme.brandPrimary, borderWidth: 1.5 } : undefined}
+      >
+        <Stack gap="md">
+          <Stack direction="row" gap="md" align="center">
+            <Avatar label={subject.displayName} selected={isCurrent} size={44} />
+            <Stack gap="xs" style={styles.flex1}>
+              <Text variant="bodyLarge" style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+                {subject.displayName}
+                {subject.isSelf ? ' (본인)' : ''}
+              </Text>
+              {subject.relationship ? (
+                <Text variant="bodySmall" colorToken="textSecondary" numberOfLines={1}>
+                  {subject.relationship}
+                </Text>
+              ) : null}
             </Stack>
-
-            {/* Demoted management actions — text-only, visually quieter. */}
-            <Stack direction="row" gap="xs" align="center">
-              <Button label="관리" variant="tertiary" onPress={() => manageSubject(subject)} />
-              <Text variant="bodySmall" colorToken="textMuted">·</Text>
-              <Button label="상담 기록" variant="tertiary" onPress={() => openHistory(subject)} />
-            </Stack>
+            {isCurrent ? (
+              <View style={[styles.selectedChip, { backgroundColor: theme.backgroundSelected }]}>
+                <Text variant="caption" colorToken="textSecondary" style={styles.name}>
+                  선택됨
+                </Text>
+              </View>
+            ) : null}
           </Stack>
-        </Card>
-      );
-    });
+
+          {/* Primary 1 / Secondary 1 */}
+          <Button label="상담 열기" radius="lg" onPress={() => openConsultation(subject)} />
+          {!isCurrent ? (
+            <Button label="이 사람으로 보기" variant="secondary" radius="lg" onPress={() => viewAsSubject(subject)} />
+          ) : null}
+
+          {/* Tertiary 3 — quiet, wrapping, never a grid of equal-weight buttons. */}
+          <View style={styles.tertiaryRow}>
+            <Button label="상담 기록" variant="tertiary" onPress={() => openHistory(subject)} />
+            <Text variant="bodySmall" colorToken="textMuted">·</Text>
+            <Button label="만세력" variant="tertiary" onPress={() => openManse(subject)} />
+            <Text variant="bodySmall" colorToken="textMuted">·</Text>
+            <Button label="관리" variant="tertiary" onPress={() => manageSubject(subject)} />
+          </View>
+        </Stack>
+      </Card>
+    );
   };
 
   return (
-    <Screen padded={false} frame>
-      <AppHeader title="분석 대상자 관리" showBack onBack={handleBack} showBell />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.wrapper}>
+    <Screen padded={false}>
+      <AppHeader title="분석 대상자" centerTitle showBack onBack={handleBack} showBell />
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingHorizontal: hPad }]} showsVerticalScrollIndicator={false}>
+        <View style={[styles.wrapper, { maxWidth }]}>
           <Stack gap="lg">
-            <Text variant="bodyMedium" colorToken="textSecondary">
-              분석·상담 대상을 관리합니다. 이름을 누르면 만세력을 볼 수 있어요.
-            </Text>
-            <Stack gap="sm">{renderList()}</Stack>
-            <Button label="새 대상 추가" onPress={() => router.push('/birth-info')} />
+            {renderList()}
+            <Button label="＋ 새 대상 추가" radius="lg" onPress={() => router.push('/birth-info')} />
           </Stack>
         </View>
       </ScrollView>
+      {/* Reached from MY, so the bar keeps MY active (freeze D11). */}
+      <DetailBottomNav active="my" />
     </Screen>
   );
 }
@@ -183,22 +184,16 @@ export default function SubjectsScreen() {
 const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: spacing.md,
     paddingBottom: 40,
     alignItems: 'center',
   },
   wrapper: {
     width: '100%',
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  flex1: {
-    flex: 1,
-  },
-  selectedChip: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
+  flex1: { flex: 1, minWidth: 0 },
+  name: { fontWeight: '700' },
+  selectedChip: { borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 3 },
+  tertiaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' },
 });

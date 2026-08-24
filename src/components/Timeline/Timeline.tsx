@@ -56,21 +56,22 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
               style={{
                 flex: 1,
                 marginBottom: last ? 0 : spacing.lg,
-                // Highlighted entry sits on a warm peach-tinted rounded block.
-                backgroundColor: item.highlighted ? '#F28C3314' : undefined,
+                // Highlighted entry sits on a solid butter plane (freeze §01) — never an alpha wash,
+                // which would drag the effective contrast of every descendant with it.
+                backgroundColor: item.highlighted ? theme.surfaceButter : undefined,
                 borderRadius: item.highlighted ? radius.lg : 0,
                 padding: item.highlighted ? spacing.md : 0,
               }}
             >
               <Text
                 variant="bodySmall"
-                style={{ color: item.highlighted ? theme.accent : theme.textSecondary, fontWeight: item.highlighted ? '700' : '400' }}
+                style={{ color: item.highlighted ? theme.onButter : theme.textSecondary, fontWeight: item.highlighted ? '700' : '400' }}
               >
                 {item.period}
               </Text>
               <Text
                 variant="bodyLarge"
-                colorToken={item.highlighted ? 'accent' : 'textPrimary'}
+                colorToken={item.highlighted ? 'onButter' : 'textPrimary'}
                 style={{ fontWeight: '700' }}
               >
                 {item.title}

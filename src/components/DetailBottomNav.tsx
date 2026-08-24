@@ -13,7 +13,7 @@ import { ConsumerNavGlyph } from './ConsumerNavGlyph';
 // root-Stack detail route, so detail screens render THIS mirror. ONE authoritative implementation for web +
 // native (ConsumerNavGlyph resolves per platform), consuming the shared CONSUMER_NAV_ITEMS
 // (홈·상담·궁합·운세우편함·MY) so the 5-item nav never drifts. Icon + label, equal distribution, safe-area aware,
-// signature-orange active state to match the tab bar (§ real-device QA #1).
+// ink active state to match the tab bar (DESIGN_FREEZE_FINAL C02).
 export type DetailNavKey = ConsumerNavKey;
 
 const NAV_HEIGHT = 56;
@@ -37,7 +37,7 @@ export function DetailBottomNav({ active }: { active?: DetailNavKey }) {
     >
       {CONSUMER_NAV_ITEMS.map((item) => {
         const isActive = item.key === active;
-        const color = isActive ? theme.brandPrimary : theme.textSecondary;
+        const color = isActive ? theme.brandPrimary : theme.textNavInactive;
         return (
           <Pressable
             key={item.key}
@@ -48,7 +48,7 @@ export function DetailBottomNav({ active }: { active?: DetailNavKey }) {
             accessibilityState={{ selected: isActive }}
           >
             <ConsumerNavGlyph name={item.key} color={color} active={isActive} />
-            <Text style={[styles.navLabel, { color, fontWeight: isActive ? '700' : '600' }]} numberOfLines={1}>
+            <Text style={[styles.navLabel, { color, fontWeight: isActive ? '700' : '500' }]} numberOfLines={1} allowFontScaling maxFontSizeMultiplier={1.2}>
               {item.label}
             </Text>
           </Pressable>
@@ -76,6 +76,8 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontSize: 11,
-    letterSpacing: -0.2,
+    // '운세우편함' is 5 Korean glyphs — it must stay on ONE line at 360dp. Tightening the tracking is
+    // the sanctioned way to buy that room; wrapping is a QA failure.
+    letterSpacing: -0.24,
   },
 });

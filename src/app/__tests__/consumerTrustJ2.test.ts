@@ -59,9 +59,22 @@ describe('duplicate-submit locks exist (§15)', () => {
   it('compatibility-chat has a synchronous send re-entrancy lock', () => {
     expect(read('app/compatibility-chat.tsx')).toMatch(/sendingRef/);
   });
-  it('candle button is disabled unless eligible (or error, to allow retry — §J9)', () => {
-    // Fix #2: a transient candle error is retryable, so the button is enabled for 'eligible' OR 'error' only.
-    expect(read('app/wallet.tsx')).toMatch(/disabled=\{candle !== 'eligible' && candle !== 'error'\}/);
+  it('the candle affordance is offered only for eligible/claiming, and claiming is locked', () => {
+    // The C05 component owns the affordance: the light button renders for 'eligible' | 'claiming' only,
+    // and is disabled while claiming so a double-tap cannot fire a second grant request. A transient
+    // error still offers an explicit 다시 시도.
+    const candle = read('components/Candle/Candle.tsx');
+    expect(candle).toMatch(/state === 'eligible' \|\| state === 'claiming'/);
+    expect(candle).toMatch(/disabled=\{state === 'claiming'\}/);
+    expect(candle).toMatch(/다시 시도/);
+  });
+  it('the wallet guards a re-tap before the request resolves', () => {
+    expect(read('app/wallet.tsx')).toMatch(/if \(candle === 'claiming'\) return;/);
+  });
+  it('the wallet never advances to granted before the server confirms it', () => {
+    // 'granted' is set ONLY inside the r.status === 'granted' branch — no optimistic transition, so a
+    // failed light can never show a balance that rises and then falls back.
+    expect(read('app/wallet.tsx')).toMatch(/r\.status === 'granted'\)\s*\{\s*setCandle\('granted'\);/);
   });
 });
 

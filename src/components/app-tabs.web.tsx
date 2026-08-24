@@ -10,6 +10,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConsumerMaxContentWidth } from '@/constants/theme';
 import { colors, type SemanticColors } from '@/theme';
 
 import { CONSUMER_NAV_ITEMS, type ConsumerNavKey } from './consumerNav';
@@ -19,7 +20,7 @@ import { ConsumerNavGlyph } from './ConsumerNavGlyph';
 // with a real BOTTOM tab bar — NOT a desktop top navigation. The 5-tab IA (홈·상담·궁합·운세우편함·MY) +
 // glyphs come from the SHARED CONSUMER_NAV_ITEMS / ConsumerNavGlyph so the tab bar and the detail-screen
 // mirror (DetailBottomNav) never drift. Native uses NativeTabs (app-tabs.tsx).
-const CANVAS_MAX = 430;
+const CANVAS_MAX = ConsumerMaxContentWidth;
 // Nav body height ex-safe-area (§52). 56 keeps the interactive bar in the owner's 56–64px range and drives
 // the TabSlot content reservation. Unchanged for 5 items — width is absorbed by flex:1, not extra height.
 const NAV_HEIGHT = 56;
@@ -33,12 +34,13 @@ type NavItemProps = TabTriggerSlotProps & {
 };
 
 function NavItem({ tab, label, theme, isFocused, ...props }: NavItemProps) {
-  // Selected tab = signature orange (§15); unselected stays calm neutral.
-  const color = isFocused ? theme.brandPrimary : theme.textSecondary;
+  // Selected tab = the ink action colour (freeze C02); unselected uses the nav token, which is held
+  // at 4.9:1 on purpose — an inactive tab label is still essential navigation text.
+  const color = isFocused ? theme.brandPrimary : theme.textNavInactive;
   return (
     <Pressable {...props} style={styles.navItem}>
       <ConsumerNavGlyph name={tab} color={color} active={!!isFocused} />
-      <Text style={[styles.navLabel, { color }]} numberOfLines={1}>
+      <Text style={[styles.navLabel, { color, fontWeight: isFocused ? '700' : '500' }]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
         {label}
       </Text>
     </Pressable>
@@ -73,7 +75,7 @@ export default function AppTabs() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.viewport, { backgroundColor: theme.backgroundSelected }]}>
+    <View style={[styles.viewport, { backgroundColor: theme.background }]}>
       <View
         style={[
           styles.canvas,
@@ -136,7 +138,6 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    letterSpacing: -0.24,
   },
 });

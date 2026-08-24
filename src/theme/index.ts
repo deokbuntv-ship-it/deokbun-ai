@@ -7,7 +7,7 @@ export type { SpacingToken } from './spacing';
 export { radius } from './radius';
 export type { RadiusToken } from './radius';
 
-export { typography, fontFamily, fontWeight } from './typography';
+export { typography, fontFamily, fontWeight, maxFontScale, koreanText, tabularNums } from './typography';
 export type { TypographyToken, FontFamilyToken } from './typography';
 
 export { shadows } from './shadows';

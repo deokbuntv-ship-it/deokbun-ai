@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/Screen';
 import { SocialButton } from '@/components/SocialButton';
@@ -63,10 +63,15 @@ export default function LoginScreen() {
       <View style={{ flex: 1, paddingHorizontal: 28, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
         {/* Brand + value prop in the upper region — understandable within ~3s (§11). Generous warm-white space. */}
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Stack gap="md">
+          <Stack gap="md" align="center">
+            {/* Brand mark slot. assets/images holds only the Expo default icon, so the wordmark IS the
+                mark for now; a real logo drops into this 64px slot with no layout change. */}
+            <View style={styles.markSlot}>
+              <Text style={styles.markGlyph}>🕯️</Text>
+            </View>
             <Text variant="displayLarge">덕분이</Text>
-            <Text variant="headingMedium" colorToken="textSecondary" style={{ fontWeight: '400', lineHeight: 30 }}>
-              내 사주를 기반으로{'\n'}지금 필요한 답을 찾아주는{'\n'}AI 운세 상담
+            <Text variant="bodyLarge" colorToken="textSecondary" style={styles.valueProp}>
+              태어난 순간의 기운으로{'\n'}오늘의 흐름과 관계를 읽어드려요.
             </Text>
           </Stack>
         </View>
@@ -86,8 +91,25 @@ export default function LoginScreen() {
           <Text variant="caption" colorToken="textMuted" style={{ textAlign: 'center', paddingTop: 8, lineHeight: 17 }}>
             계속하면 서비스 이용약관과 개인정보 처리방침에 동의하는 절차가 진행돼요.
           </Text>
+          {/* C22 — the AI notice is one quiet line, never a warning box. */}
+          <Text variant="caption" colorToken="textMuted" style={{ textAlign: 'center', lineHeight: 17 }}>
+            덕분이의 해석은 AI가 생성하며 참고용이에요.
+          </Text>
         </Stack>
       </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  markSlot: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FDF3D7', // surface.butter — the login screen renders before any theme branch matters
+  },
+  markGlyph: { fontSize: 30, lineHeight: 38 },
+  valueProp: { textAlign: 'center' },
+});

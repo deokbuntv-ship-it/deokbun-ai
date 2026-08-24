@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
@@ -151,6 +152,7 @@ export default function NotificationSettingsScreen() {
           </Stack>
         </View>
       </ScrollView>
+      <DetailBottomNav active="my" />
     </Screen>
   );
 }
