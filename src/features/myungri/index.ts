@@ -128,3 +128,10 @@ export {
   type LuckDirection,
   type LuckInfluence,
 } from './services/currentStrength';
+export {
+  buildMyungriTemporalContext,
+  currentSajuAge,
+  selectActiveDaewoonCycleOrdinal,
+  type ActiveDaewoonContext,
+  type MyungriTemporalContext,
+} from './services/temporalContext';
