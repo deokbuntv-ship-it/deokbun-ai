@@ -134,6 +134,7 @@ export default function TodayScreen() {
                     toneVariant={view.toneVariant}
                     modeLabel={view.primaryModeLabel}
                     meta={`${view.dot}${view.weekday ? ` ${view.weekday}` : ''}`}
+                    leadLabel="오늘의 한마디"
                     headline={view.headline}
                     verdict={view.verdict}
                     signalsTitle="오늘의 핵심"

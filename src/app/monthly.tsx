@@ -135,6 +135,7 @@ export default function MonthlyScreen() {
                     toneVariant={view.toneVariant}
                     modeLabel={view.primaryModeLabel}
                     meta={view.monthLabel}
+                    leadLabel="이번 달 한마디"
                     headline={view.headline}
                     verdict={view.verdict}
                     signalsTitle="이번 달 핵심"

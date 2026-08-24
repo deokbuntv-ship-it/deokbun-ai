@@ -34,12 +34,30 @@ const VARIANT: Record<ReadingVariant, VariantStyle> = {
   action: { surface: null, accent: 'textSecondary', emoji: '💡' },
 };
 
-// The one-line conclusion — the strongest block, visible first (§3/§6). Bold, generous measure.
-export function ReadingLead({ children, sub, style }: { children: string; sub?: string | null; style?: StyleProp<ViewStyle> }) {
+// The one-line conclusion — the strongest block, visible first (§3/§6). An optional small `label` (e.g.
+// "✨ 덕분이의 한마디") gives the top the SAME scannable heading the pastel sections have, without a surface,
+// so a reader can spot the conclusion in 3–5s. Bold conclusion, generous measure; stays neutral/cream (no
+// flood of colour).
+export function ReadingLead({
+  children,
+  sub,
+  label,
+  style,
+}: {
+  children: string;
+  sub?: string | null;
+  label?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
   return (
     <View style={[styles.lead, { borderColor: theme.border, backgroundColor: theme.surface }, style]}>
+      {label ? (
+        <Text variant="bodySmall" style={{ color: theme.textSecondary, fontWeight: '700', marginBottom: 6 }}>
+          {label}
+        </Text>
+      ) : null}
       <Text variant="bodyLarge" style={styles.leadText}>
         {children}
       </Text>

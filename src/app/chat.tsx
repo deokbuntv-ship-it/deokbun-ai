@@ -36,7 +36,7 @@ import {
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { getSessionStatus, type SessionStatus } from '@/features/duk/dukClientContract';
-import { refreshWallet } from '@/features/duk/useWallet';
+import { refreshWallet, useWallet } from '@/features/duk/useWallet';
 import {
     consumePendingQuestion,
     consumePendingQuestionOrigin,
@@ -233,6 +233,12 @@ export default function ChatScreen() {
   // consume a successful turn) leaves the number exactly where it was. No optimistic decrement.
   const [session, setSession] = useState<SessionStatus | null>(null);
   const [candleEligible, setCandleEligible] = useState(false);
+  // Balance pre-flight for the "새 상담 시작하기" CTA. The wallet read is the server-authoritative per-user
+  // balance (getWalletState); required is the fixed policy price. When set, the CTA shows the shared
+  // InsufficientDuk block IN-PLACE instead of the button — so a tap at balance<5 never opens an empty chat,
+  // never creates a session, and never calls the LLM. The server still enforces on any real send.
+  const wallet = useWallet();
+  const [newConsultInsufficient, setNewConsultInsufficient] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
   const refreshSession = useCallback(async () => {
     setSession(await getSessionStatus('general'));
   }, []);
@@ -248,6 +254,10 @@ export default function ChatScreen() {
   // (`active` alone is ambiguous — it is also false for an expired session.)
   const turnsExhausted =
     session !== null && session.sessionId !== null && session.turnLimit > 0 && session.successfulTurnCount >= session.turnLimit;
+  // Refresh the balance when the session is exhausted so the "새 상담 시작하기" pre-flight uses a current number.
+  useEffect(() => {
+    if (turnsExhausted) void refreshWallet().catch(() => {});
+  }, [turnsExhausted]);
   const lastAttemptRef = useRef<{ text: string; context: ChatMessage[]; requestId?: string } | null>(null);
   // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
   // same-frame double-tap cannot start two sends (§30/§e).
@@ -734,19 +744,44 @@ export default function ChatScreen() {
                 merely disabled) so there is no input that silently does nothing, and the next step and
                 its cost are stated in the same block. */}
             {turnsExhausted ? (
-              <Card radius="xl" style={styles.errorCard}>
-                <Stack gap="sm">
-                  <Text variant="bodyLarge" style={styles.exhaustedTitle}>이번 상담의 남은 질문을 모두 썼어요</Text>
-                  <Text variant="bodyMedium" colorToken="textSecondary">
-                    새 상담을 시작하면 다시 물어볼 수 있어요. 지금까지의 내용은 상담 기록에 남아 있어요.
-                  </Text>
-                  <Button
-                    label={`새 상담 시작하기  🍀 ${dukLabel(DUK_PRICES.general)}`}
-                    radius="lg"
-                    onPress={() => router.replace({ pathname: '/chat', params: { startNew: '1' } })}
-                  />
-                </Stack>
-              </Card>
+              newConsultInsufficient ? (
+                // Balance < 5 at the "새 상담" tap → the shared insufficient-Duk block (NOT a dead button, NOT a
+                // new session, NOT an LLM call). Reuses the exact economy UX; the numbers are the authoritative
+                // per-user balance + the fixed price.
+                <InsufficientDuk
+                  product="general"
+                  snapshot={newConsultInsufficient}
+                  candleEligible={candleEligible}
+                  onCandle={() => router.push('/wallet')}
+                  onTopup={() => router.push('/duk-topup')}
+                  style={styles.errorCard}
+                />
+              ) : (
+                <Card radius="xl" style={styles.errorCard}>
+                  <Stack gap="sm">
+                    <Text variant="bodyLarge" style={styles.exhaustedTitle}>이번 상담의 남은 질문을 모두 썼어요</Text>
+                    <Text variant="bodyMedium" colorToken="textSecondary">
+                      새 상담을 시작하면 다시 물어볼 수 있어요. 지금까지의 내용은 상담 기록에 남아 있어요.
+                    </Text>
+                    <Button
+                      label={`새 상담 시작하기  🍀 ${dukLabel(DUK_PRICES.general)}`}
+                      radius="lg"
+                      onPress={() => {
+                        const required = DUK_PRICES.general;
+                        const balance = wallet.state?.totalSpendable ?? 0;
+                        if (balance < required) {
+                          // Show the paywall in-place — never open an empty chat / create a session at balance<5.
+                          setNewConsultInsufficient({ balance, required, shortfall: required - balance });
+                          return;
+                        }
+                        // Balance OK → start a fresh consultation. push (not same-route replace, which does not
+                        // remount → the old dead-tap bug) so the screen re-mounts and re-reads startNew.
+                        router.push({ pathname: '/chat', params: { startNew: '1' } });
+                      }}
+                    />
+                  </Stack>
+                </Card>
+              )
             ) : null}
             {!turnsExhausted ? (
             <ChatInput

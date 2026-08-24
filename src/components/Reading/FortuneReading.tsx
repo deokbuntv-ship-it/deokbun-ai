@@ -21,6 +21,7 @@ export type FortuneReadingProps = {
   toneVariant: FortuneToneVariant;
   modeLabel?: string | null;
   meta: string; // dot+weekday / monthLabel
+  leadLabel?: string; // small hero heading (e.g. "오늘의 한마디") — same scannable cue as the consultation lead
   headline: string;
   verdict: string;
   signalsTitle: string;
@@ -72,7 +73,12 @@ export function FortuneReading(p: FortuneReadingProps) {
             {p.meta}
           </Text>
         </View>
-        <Text variant="headingLarge" style={{ marginTop: spacing.sm }}>
+        {p.leadLabel ? (
+          <Text variant="bodySmall" style={{ color: theme.textSecondary, fontWeight: '700', marginTop: spacing.sm }}>
+            {p.leadLabel}
+          </Text>
+        ) : null}
+        <Text variant="headingLarge" style={{ marginTop: p.leadLabel ? 2 : spacing.sm }}>
           {p.headline}
         </Text>
         <Text variant="reading" style={{ marginTop: spacing.xs, lineHeight: 28 }}>

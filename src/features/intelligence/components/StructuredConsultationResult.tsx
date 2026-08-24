@@ -78,10 +78,16 @@ export function StructuredConsultationResult({
   // reading stays a connected letter, not a colour patchwork. Empty sections are simply absent (fail-closed).
   return (
     <Stack gap="md">
-      {p.headline ? <ReadingLead sub={p.disposition}>{p.headline}</ReadingLead> : null}
+      {p.headline ? (
+        <ReadingLead label="✨ 덕분이의 한마디" sub={p.disposition}>
+          {p.headline}
+        </ReadingLead>
+      ) : null}
 
       {p.summary ? (
-        <ReadingSection variant="neutral">
+        // 상세 해석 — a neutral heading gives the long explanation the same scannable hierarchy as the pastel
+        // sections, without a surface (§A-2). Reading measure keeps it comfortable; content is never changed.
+        <ReadingSection variant="neutral" title="자세히 보면" emoji={null}>
           <Text variant="reading" style={{ lineHeight: 28 }}>
             {p.summary}
           </Text>
