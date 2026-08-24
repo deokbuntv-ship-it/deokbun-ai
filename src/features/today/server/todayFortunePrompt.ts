@@ -6,7 +6,7 @@ import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import { TODAY_DOMAIN_LABEL } from '@/features/today/types';
 import type { DailyPlan } from '@/features/today/engine/todayPlan';
 
-export const TODAY_PROMPT_VERSION = 'today-prompt@1.1.0';
+export const TODAY_PROMPT_VERSION = 'today-prompt@1.2.0';
 
 export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
   const emphasized = TODAY_DOMAIN_LABEL[plan.strongestDomain];
@@ -20,6 +20,14 @@ export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
     `- 오늘 권하는 행동 방식: "${plan.primaryModeLabel}"`,
     `- 오늘 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : '- 오늘은 크게 부딪히는 기운은 없습니다.',
+    ...(plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year)
+      ? [
+          '큰 배경 흐름(이미 계산됨 · 참고용 — 중심은 어디까지나 "오늘"입니다):',
+          plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : '',
+          plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : '',
+          '이 배경은 오늘 흐름을 뒷받침하는 큰 틀로만 자연스럽게 녹이고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오.',
+        ].filter(Boolean)
+      : []),
     '작성 규칙(반드시 지킬 것):',
     `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',

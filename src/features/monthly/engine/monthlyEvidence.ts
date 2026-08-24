@@ -14,17 +14,19 @@ import {
   type HistoricalTimezoneResolver,
 } from '@/features/interpretation';
 import {
-  calculateSewoonForInstant,
+  buildMyungriTemporalContext,
   calculateWolwoonForInstant,
   natalContextFromFourPillars,
+  type MyungriTemporalContext,
 } from '@/features/myungri';
 import type { RelationsToNatal } from '@/features/myungri/domain/contracts';
+import { toZiweiBirthInput } from '@/features/ziwei';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import { resolveCivilMonthSajuSegments } from '@/features/monthly/engine/civilMonthSegments';
 import { currentTargetMonth, FORTUNE_TIMEZONE, monthMidpointEpochSeconds, type TargetMonth } from '@/features/monthly/engine/monthDate';
 
-export const MONTHLY_EVIDENCE_VERSION = 'monthly-evidence@1.1.0';
+export const MONTHLY_EVIDENCE_VERSION = 'monthly-evidence@1.2.0';
 
 // The consumer-facing month domains (§10). Only the domains the 십신 mapping can robustly support are exposed.
 export type MonthlyDomain = 'overall' | 'work' | 'wealth' | 'relationship' | 'action';
@@ -59,6 +61,10 @@ export type MonthlyFortuneEvidence =
       transitionCivilDate: string | null;
       /** The containing 세운 (year flow) availability — lets the prose mention the broader year, not the tier. */
       sewoonAvailable: boolean;
+      /** Shared myungri temporal facts (오행 구성 + active 대운 + current 세운) — the SAME core 상담/오늘 use.
+       *  Context/evidence only; it does NOT drive the month tier (§8/§12). Always set by the builder; optional
+       *  so lightweight test fixtures may omit it. */
+      temporal?: MyungriTemporalContext;
       supportedDomains: MonthlyDomain[];
       evidenceVersion: string;
     };
@@ -124,8 +130,22 @@ export async function buildMonthlyFortuneEvidence(
     });
   }
 
-  // Context (not the tier): the current year flow, read at the civil-month midpoint.
-  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: monthMidpointEpochSeconds(target) });
+  // Shared myungri temporal context (the SAME core 상담/오늘 use): 오행 구성 + active 대운 + current 세운, read
+  // at the civil-month midpoint. Facts only — background context, NOT a driver of the month tier (§8/§12). 세운
+  // is computed once here (§31 no duplicate calc).
+  let solarBirthYear: number | null = null;
+  try {
+    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
+  } catch {
+    solarBirthYear = null;
+  }
+  const temporal = buildMyungriTemporalContext({
+    engineResult,
+    natal,
+    normalizedBirth: execution.normalizedBirth,
+    instantEpochSeconds: monthMidpointEpochSeconds(target),
+    solarBirthYear,
+  });
 
   return {
     available: true,
@@ -134,7 +154,8 @@ export async function buildMonthlyFortuneEvidence(
     timezone: FORTUNE_TIMEZONE,
     segments,
     transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
-    sewoonAvailable: sewoon.capability === 'AVAILABLE',
+    sewoonAvailable: temporal.sewoon !== null,
+    temporal,
     supportedDomains: ALL_DOMAINS,
     evidenceVersion: MONTHLY_EVIDENCE_VERSION,
   };

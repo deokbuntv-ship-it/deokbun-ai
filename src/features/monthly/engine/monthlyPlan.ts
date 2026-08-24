@@ -9,7 +9,17 @@ import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityK
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { MonthlyDomain, MonthlyFortuneEvidence, MonthlySegmentEvidence } from '@/features/monthly/engine/monthlyEvidence';
 
-export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.2.0';
+export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.3.0';
+
+// Neutral BACKGROUND-flow wording for the larger 세운/대운 context (§12). Same shared kernel tier, background
+// wording — this NEVER changes the month tier; it is context the prose may lean on.
+export type BackgroundFlowLabel = '지원적인 흐름' | '무난한 흐름' | '변동이 있는 흐름' | '조심스러운 흐름';
+const BACKGROUND_FLOW_BY_TIER: Record<PolarityTier, BackgroundFlowLabel> = {
+  FAVORABLE: '지원적인 흐름',
+  STEADY: '무난한 흐름',
+  DYNAMIC: '변동이 있는 흐름',
+  CAUTION: '조심스러운 흐름',
+};
 
 export type MonthlyOverallTier = '기회를 살리기 좋은 달' | '안정적으로 운영할 달' | '변화가 많은 달' | '속도를 조절할 달';
 
@@ -63,6 +73,11 @@ export type MonthlyPlan = {
   maxActions: number;
   forbidEventCertainty: boolean;
   forbidExactDates: boolean;
+  /** BACKGROUND (larger flow) — 세운(year) + 대운 neutral flow, from the shared temporal core. SEPARATE from
+   *  the month tier (never folded into overallTier); null when the core is unavailable. */
+  backgroundFlow?: { year: BackgroundFlowLabel | null; daewoon: BackgroundFlowLabel | null } | null;
+  /** 원국 오행 구성 — RAW counts (evidence/context only; not an eval signal). */
+  elementComposition?: Record<string, number> | null;
   evidenceVersion: string;
   planVersion: string;
 };
@@ -243,6 +258,11 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
     }
   }
 
+  // BACKGROUND flow (§12): the larger 세운/대운 context, via the SAME kernel — kept SEPARATE from the month tier.
+  const t = evidence.temporal;
+  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
+  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
+
   return {
     ...base,
     available: true,
@@ -260,5 +280,7 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
     segmentCount: signals.length,
     hasMeaningfulTransition,
     transition,
+    backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    elementComposition: t?.elementCounts ?? null,
   };
 }

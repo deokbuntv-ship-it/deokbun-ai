@@ -8,7 +8,17 @@ import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityK
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { TodayDomain, TodayFortuneEvidence } from '@/features/today/engine/todayEvidence';
 
-export const TODAY_PLAN_VERSION = 'today-plan@1.1.0';
+export const TODAY_PLAN_VERSION = 'today-plan@1.2.0';
+
+// Neutral BACKGROUND-flow phrase for the larger 세운/대운 context (§11). Same shared kernel tier as the day,
+// but a background wording — this NEVER changes the day's tier; it is context the prose may lean on.
+export type BackgroundFlowLabel = '지원적인 흐름' | '무난한 흐름' | '변동이 있는 흐름' | '조심스러운 흐름';
+const BACKGROUND_FLOW_BY_TIER: Record<PolarityTier, BackgroundFlowLabel> = {
+  FAVORABLE: '지원적인 흐름',
+  STEADY: '무난한 흐름',
+  DYNAMIC: '변동이 있는 흐름',
+  CAUTION: '조심스러운 흐름',
+};
 
 export type DailyOverallTone = '좋은 흐름' | '무난한 흐름' | '변화가 많은 날' | '조심해서 움직일 날';
 
@@ -52,6 +62,11 @@ export type DailyPlan = {
   maxCautions: number;
   /** The day is a suitability read, never an event guarantee (§21/§54). */
   forbidEventCertainty: boolean;
+  /** BACKGROUND (larger flow) context — 세운(year) + 대운 neutral flow, from the shared temporal core.
+   *  SEPARATE from the day tier (never folded into overallTone); null when the core is unavailable. */
+  backgroundFlow?: { year: BackgroundFlowLabel | null; daewoon: BackgroundFlowLabel | null } | null;
+  /** 원국 오행 구성 — RAW counts (evidence/context only; not an eval signal). */
+  elementComposition?: Record<string, number> | null;
   evidenceVersion: string;
   planVersion: string;
 };
@@ -154,6 +169,11 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
   const cautionDomain = frictionCount > 0 ? tenGodDomain(evidence.dayBranchTenGod) : null;
   const primaryMode = derivePrimaryMode(overallTone, strongestDomain);
 
+  // BACKGROUND flow (§11): the larger 세운/대운 context, via the SAME kernel — kept SEPARATE from the day tier.
+  const t = evidence.temporal;
+  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
+  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
+
   return {
     ...base,
     available: true,
@@ -166,5 +186,7 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
     supportedDomains: evidence.supportedDomains,
     harmonyCount,
     frictionCount,
+    backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    elementComposition: t?.elementCounts ?? null,
   };
 }

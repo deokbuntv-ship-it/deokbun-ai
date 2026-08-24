@@ -8,7 +8,7 @@ import { MONTHLY_DOMAIN_LABEL } from '@/features/monthly/types';
 import { formatMonthLabel } from '@/features/monthly/engine/monthDate';
 import type { MonthlyPlan } from '@/features/monthly/engine/monthlyPlan';
 
-export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.2.0';
+export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.3.0';
 
 export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
@@ -38,6 +38,14 @@ export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
     `- 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : '- 이번 달은 크게 부딪히는 기운은 없습니다.',
     ...(transitionDirective ? [transitionDirective] : []),
+    ...(plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year)
+      ? [
+          '이번 달을 둘러싼 큰 흐름(이미 계산됨 · 참고용 — 이번 달을 그 안에 자리매김하는 용도):',
+          plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : '',
+          plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : '',
+          '이 배경은 이번 달이 연간·대운 흐름 안에서 어떤 위치인지 자연스럽게 녹이는 데만 쓰고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오.',
+        ].filter(Boolean)
+      : []),
     '작성 규칙(반드시 지킬 것):',
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',

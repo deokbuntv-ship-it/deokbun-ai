@@ -11,16 +11,18 @@ import {
   type HistoricalTimezoneResolver,
 } from '@/features/interpretation';
 import {
-  calculateSewoonForInstant,
+  buildMyungriTemporalContext,
   calculateWolwoonForInstant,
   natalContextFromFourPillars,
+  type MyungriTemporalContext,
 } from '@/features/myungri';
+import { toZiweiBirthInput } from '@/features/ziwei';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import { calculateDayLuck, type DayLuck } from '@/features/today/engine/dayLuck';
 import { epochToKstCivilDate, FORTUNE_TIMEZONE, fortuneDateStringFromEpoch } from '@/features/today/engine/fortuneDate';
 
-export const TODAY_EVIDENCE_VERSION = 'today-evidence@1.0.0';
+export const TODAY_EVIDENCE_VERSION = 'today-evidence@1.1.0';
 
 // The five user-facing daily domains (§10). Codes are internal; labels live in presentation.
 export type TodayDomain = 'overall' | 'work' | 'wealth' | 'relationship' | 'action';
@@ -40,6 +42,10 @@ export type TodayFortuneEvidence =
       /** Context availability (the current year/month flow), not the day itself. */
       sewoonAvailable: boolean;
       wolwoonAvailable: boolean;
+      /** Shared myungri temporal facts (오행 구성 + active 대운 + current 세운) — the SAME core 상담 uses.
+       *  Deterministic context/evidence only; it does NOT drive the day's tier (§8/§11). Always set by the
+       *  builder; optional so lightweight test fixtures may omit it. */
+      temporal?: MyungriTemporalContext;
       supportedDomains: TodayDomain[];
       evidenceVersion: string;
     };
@@ -81,9 +87,22 @@ export async function buildTodayFortuneEvidence(
   const dayLuck = calculateDayLuck({ natal, civilDate: epochToKstCivilDate(input.nowEpochSeconds) });
   if (!dayLuck.available) return unavailable(`DAY_LUCK_${dayLuck.reason}`);
 
-  // Context (not the day): the current year/month flow. Their availability lets the prose mention the
-  // broader flow, but the DAY is the primary signal.
-  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
+  // Shared myungri temporal context (the SAME core 상담 uses): 오행 구성 + active 대운 + current 세운.
+  // Facts only — background context for the prose, NOT a driver of the day's tier (§8/§11). 세운 is computed
+  // once here (§31 no duplicate calc). 월운 availability is still read separately (today's own context).
+  let solarBirthYear: number | null = null;
+  try {
+    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
+  } catch {
+    solarBirthYear = null;
+  }
+  const temporal = buildMyungriTemporalContext({
+    engineResult,
+    natal,
+    normalizedBirth: execution.normalizedBirth,
+    instantEpochSeconds: input.nowEpochSeconds,
+    solarBirthYear,
+  });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
 
   return {
@@ -93,8 +112,9 @@ export async function buildTodayFortuneEvidence(
     dayLuck,
     dayStemTenGod: dayLuck.tenGods.stemTenGod,
     dayBranchTenGod: dayLuck.tenGods.branchMainTenGod,
-    sewoonAvailable: sewoon.capability === 'AVAILABLE',
+    sewoonAvailable: temporal.sewoon !== null,
     wolwoonAvailable: wolwoon.capability === 'AVAILABLE',
+    temporal,
     supportedDomains: ALL_DOMAINS,
     evidenceVersion: TODAY_EVIDENCE_VERSION,
   };

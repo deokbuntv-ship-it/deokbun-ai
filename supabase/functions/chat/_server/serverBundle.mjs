@@ -6798,6 +6798,57 @@ function calculateMonthCommand(natal) {
   };
 }
 
+// src/features/myungri/services/temporalContext.ts
+function selectActiveDaewoonCycleOrdinal(cycles, currentAge) {
+  if (currentAge === null) return null;
+  const active = cycles.find((c) => currentAge >= c.startAgeInclusive && currentAge <= c.endAgeInclusive);
+  return active ? active.ordinal : null;
+}
+function currentSajuAge(sewoonTargetYear, solarBirthYear) {
+  return sewoonTargetYear !== null && solarBirthYear !== null && Number.isFinite(solarBirthYear) ? sewoonTargetYear - solarBirthYear : null;
+}
+function buildMyungriTemporalContext(input) {
+  const warnings = [];
+  const { engineResult, natal } = input;
+  if (engineResult.status !== "SUCCESS" && engineResult.status !== "PARTIAL") {
+    return { elementCounts: null, activeDaewoon: null, sewoon: null, warnings: ["CHART_UNAVAILABLE"] };
+  }
+  const elementCounts = engineResult.output.fiveElementDistribution.direct.counts;
+  const sewoonRaw = calculateSewoonForInstant({ natal, instantEpochSeconds: input.instantEpochSeconds });
+  const sewoon = sewoonRaw.capability === "AVAILABLE" ? sewoonRaw : null;
+  if (!sewoon) warnings.push("SEWOON_UNAVAILABLE");
+  let activeDaewoon = null;
+  const daewoon = calculateSajuDaewoon(
+    {
+      normalizedBirth: input.normalizedBirth,
+      yearPillar: engineResult.output.fourPillars.year,
+      monthPillar: engineResult.output.fourPillars.month
+    },
+    LUNAR_JS_SOLAR_TERM_ADAPTER
+  );
+  if (daewoon.capability !== "AVAILABLE") {
+    warnings.push("DAEWOON_UNAVAILABLE");
+  } else {
+    const age = currentSajuAge(sewoon ? sewoon.targetYear : null, input.solarBirthYear);
+    const ordinal = selectActiveDaewoonCycleOrdinal(daewoon.cycles, age);
+    const activeCycle = ordinal !== null ? daewoon.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
+    const tg3 = calculateDaewoonTenGods({ dayMaster: natal.dayMaster, cycles: daewoon.cycles });
+    const tgCycle = ordinal !== null && tg3.capability === "AVAILABLE" ? tg3.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
+    if (activeCycle && tgCycle) {
+      activeDaewoon = {
+        ordinal: activeCycle.ordinal,
+        startAgeInclusive: activeCycle.startAgeInclusive,
+        endAgeInclusive: activeCycle.endAgeInclusive,
+        tenGods: tgCycle.tenGods,
+        relationsToNatal: buildRelationsToNatal(activeCycle.pillar, natal)
+      };
+    } else {
+      warnings.push("ACTIVE_DAEWOON_UNRESOLVED");
+    }
+  }
+  return { elementCounts, activeDaewoon, sewoon, warnings };
+}
+
 // src/features/chat/services/questionYears.ts
 var SUPPORTED_YEAR_MIN2 = 1970;
 var SUPPORTED_YEAR_MAX2 = 2050;
@@ -8053,7 +8104,7 @@ function resolveCivilMonthSajuSegments(target) {
 }
 
 // src/features/monthly/engine/monthlyEvidence.ts
-var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.1.0";
+var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.2.0";
 var ALL_DOMAINS = ["overall", "work", "wealth", "relationship", "action"];
 async function buildMonthlyFortuneEvidence(input, deps) {
   const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
@@ -8096,7 +8147,19 @@ async function buildMonthlyFortuneEvidence(input, deps) {
       relationsToNatal: w.relationsToNatal
     });
   }
-  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: monthMidpointEpochSeconds(target) });
+  let solarBirthYear = null;
+  try {
+    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
+  } catch {
+    solarBirthYear = null;
+  }
+  const temporal = buildMyungriTemporalContext({
+    engineResult,
+    natal,
+    normalizedBirth: execution.normalizedBirth,
+    instantEpochSeconds: monthMidpointEpochSeconds(target),
+    solarBirthYear
+  });
   return {
     available: true,
     year: target.year,
@@ -8104,14 +8167,21 @@ async function buildMonthlyFortuneEvidence(input, deps) {
     timezone: FORTUNE_TIMEZONE,
     segments,
     transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
-    sewoonAvailable: sewoon.capability === "AVAILABLE",
+    sewoonAvailable: temporal.sewoon !== null,
+    temporal,
     supportedDomains: ALL_DOMAINS,
     evidenceVersion: MONTHLY_EVIDENCE_VERSION
   };
 }
 
 // src/features/monthly/engine/monthlyPlan.ts
-var MONTHLY_PLAN_VERSION = "monthly-plan@1.2.0";
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.3.0";
+var BACKGROUND_FLOW_BY_TIER = {
+  FAVORABLE: "지원적인 흐름",
+  STEADY: "무난한 흐름",
+  DYNAMIC: "변동이 있는 흐름",
+  CAUTION: "조심스러운 흐름"
+};
 var MONTHLY_MODE_LABEL = {
   EXPAND: "확장·추진",
   MANAGE: "점검·관리",
@@ -8253,6 +8323,9 @@ function deriveMonthlyPlan(evidence) {
       };
     }
   }
+  const t = evidence.temporal;
+  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
+  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
   return {
     ...base,
     available: true,
@@ -8269,7 +8342,9 @@ function deriveMonthlyPlan(evidence) {
     frictionCount: dominant.frictionCount,
     segmentCount: signals.length,
     hasMeaningfulTransition,
-    transition
+    transition,
+    backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    elementComposition: t?.elementCounts ?? null
   };
 }
 
@@ -8301,6 +8376,12 @@ function buildMonthlyFortunePrompt(plan) {
     `- 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 이번 달은 크게 부딪히는 기운은 없습니다.",
     ...transitionDirective ? [transitionDirective] : [],
+    ...plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year) ? [
+      "이번 달을 둘러싼 큰 흐름(이미 계산됨 · 참고용 — 이번 달을 그 안에 자리매김하는 용도):",
+      plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : "",
+      plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : "",
+      "이 배경은 이번 달이 연간·대운 흐름 안에서 어떤 위치인지 자연스럽게 녹이는 데만 쓰고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오."
+    ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
@@ -10338,7 +10419,7 @@ function calculateDayLuck(input) {
 }
 
 // src/features/today/engine/todayEvidence.ts
-var TODAY_EVIDENCE_VERSION = "today-evidence@1.0.0";
+var TODAY_EVIDENCE_VERSION = "today-evidence@1.1.0";
 var ALL_DOMAINS2 = ["overall", "work", "wealth", "relationship", "action"];
 async function buildTodayFortuneEvidence(input, deps) {
   const fortuneDate = fortuneDateStringFromEpoch(input.nowEpochSeconds);
@@ -10364,7 +10445,19 @@ async function buildTodayFortuneEvidence(input, deps) {
   const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
   const dayLuck = calculateDayLuck({ natal, civilDate: epochToKstCivilDate(input.nowEpochSeconds) });
   if (!dayLuck.available) return unavailable9(`DAY_LUCK_${dayLuck.reason}`);
-  const sewoon = calculateSewoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
+  let solarBirthYear = null;
+  try {
+    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
+  } catch {
+    solarBirthYear = null;
+  }
+  const temporal = buildMyungriTemporalContext({
+    engineResult,
+    natal,
+    normalizedBirth: execution.normalizedBirth,
+    instantEpochSeconds: input.nowEpochSeconds,
+    solarBirthYear
+  });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
   return {
     available: true,
@@ -10373,15 +10466,22 @@ async function buildTodayFortuneEvidence(input, deps) {
     dayLuck,
     dayStemTenGod: dayLuck.tenGods.stemTenGod,
     dayBranchTenGod: dayLuck.tenGods.branchMainTenGod,
-    sewoonAvailable: sewoon.capability === "AVAILABLE",
+    sewoonAvailable: temporal.sewoon !== null,
     wolwoonAvailable: wolwoon.capability === "AVAILABLE",
+    temporal,
     supportedDomains: ALL_DOMAINS2,
     evidenceVersion: TODAY_EVIDENCE_VERSION
   };
 }
 
 // src/features/today/engine/todayPlan.ts
-var TODAY_PLAN_VERSION = "today-plan@1.1.0";
+var TODAY_PLAN_VERSION = "today-plan@1.2.0";
+var BACKGROUND_FLOW_BY_TIER2 = {
+  FAVORABLE: "지원적인 흐름",
+  STEADY: "무난한 흐름",
+  DYNAMIC: "변동이 있는 흐름",
+  CAUTION: "조심스러운 흐름"
+};
 var PRIMARY_MODE_LABEL = {
   EXECUTE: "실행·추진",
   MANAGE: "점검·관리",
@@ -10467,6 +10567,9 @@ function deriveDailyPlan(evidence) {
   const strongestDomain = tenGodDomain2(evidence.dayStemTenGod);
   const cautionDomain = frictionCount > 0 ? tenGodDomain2(evidence.dayBranchTenGod) : null;
   const primaryMode = derivePrimaryMode2(overallTone, strongestDomain);
+  const t = evidence.temporal;
+  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER2[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
+  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER2[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
   return {
     ...base,
     available: true,
@@ -10478,7 +10581,9 @@ function deriveDailyPlan(evidence) {
     domainSignals: deriveDomainSignals2(overallTone, strongestDomain, cautionDomain),
     supportedDomains: evidence.supportedDomains,
     harmonyCount,
-    frictionCount
+    frictionCount,
+    backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    elementComposition: t?.elementCounts ?? null
   };
 }
 
@@ -10494,6 +10599,12 @@ function buildTodayFortunePrompt(plan) {
     `- 오늘 권하는 행동 방식: "${plan.primaryModeLabel}"`,
     `- 오늘 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 오늘은 크게 부딪히는 기운은 없습니다.",
+    ...plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year) ? [
+      '큰 배경 흐름(이미 계산됨 · 참고용 — 중심은 어디까지나 "오늘"입니다):',
+      plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : "",
+      plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : "",
+      "이 배경은 오늘 흐름을 뒷받침하는 큰 틀로만 자연스럽게 녹이고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오."
+    ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
     `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
