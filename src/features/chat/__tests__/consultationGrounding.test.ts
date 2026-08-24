@@ -124,3 +124,45 @@ describe('SAJU grounding — fail-closed (§16): no fabricated evidence', () => 
     expect(g.status).toBe('unavailable');
   });
 });
+
+describe('SAJU grounding — 일간 강약(신강/신약) engine verdict wiring (§30/§42)', () => {
+  const KO = /(극신약|신약|중화신약|중화|중화신강|신강|극신강)/;
+
+  it('exposes a deterministic strength verdict + current-luck influence section to the prompt', async () => {
+    const g = await build(draft());
+    expect(g.status).toBe('available');
+    if (g.status !== 'available') return;
+    const m = g.evidence.myungri;
+    // engine verdict present as a labeled fact section (never LLM-inferred)
+    const section = m.sections?.find((s) => s.label.includes('일간 강약'));
+    expect(section).toBeTruthy();
+    expect(section!.lines.join(' ')).toMatch(/원국 강약: /);
+    expect(section!.lines.join(' ')).toMatch(KO);
+    expect(section!.lines.join(' ')).toMatch(/현재 종합 흐름/);
+    // it reaches the rendered prompt context
+    const ctx = renderGroundingContext(g);
+    expect(ctx).toContain('일간 강약');
+    // the provenance disclaimer no longer claims 강약 uncomputed, but keeps 용신/격국 uncomputed
+    expect(m.detail).toContain('용신/격국/12운성/12신살은 V1 미계산');
+    expect(m.detail).not.toMatch(/강약\/용신\/격국.*미계산/);
+  });
+
+  it('time-unknown still yields a natal verdict (시주 미상 warning, not UNKNOWN)', async () => {
+    const g = await build(draft({ birthTimeAccuracy: 'unknown', birthHour: null, birthMinute: null }));
+    expect(g.status).toBe('available');
+    if (g.status !== 'available') return;
+    const section = g.evidence.myungri.sections?.find((s) => s.label.includes('일간 강약'));
+    expect(section).toBeTruthy();
+    expect(section!.lines.join(' ')).toMatch(/원국 강약: /);
+    expect(section!.lines.join(' ')).toMatch(KO); // classified, not 미판정
+  });
+
+  it('the same birth info yields the same verdict section (deterministic, no LLM)', async () => {
+    const a = await build(draft());
+    const b = await build(draft());
+    if (a.status !== 'available' || b.status !== 'available') throw new Error('expected available');
+    const sa = a.evidence.myungri.sections?.find((s) => s.label.includes('일간 강약'));
+    const sb = b.evidence.myungri.sections?.find((s) => s.label.includes('일간 강약'));
+    expect(sa).toEqual(sb);
+  });
+});

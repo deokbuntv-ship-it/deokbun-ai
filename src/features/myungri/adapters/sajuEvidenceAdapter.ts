@@ -28,6 +28,7 @@ import {
   type SajuPillarPosition,
   type SexagenaryPillar,
 } from '@/features/interpretation';
+import type { CurrentStrengthContext } from '../services/currentStrength';
 import type { DaewoonTenGodsResult } from '../services/daewoonTenGods';
 import type { MonthCommandResult } from '../services/monthCommand';
 import type { NatalRelationsResult } from '../services/natalRelations';
@@ -67,6 +68,8 @@ export type SajuEvidenceBundle = {
   extraWolwoon?: Array<{ requestedYear: number; requestedMonth: number; result: WolwoonResult }> | null;
   /** Connected 원국↔대운↔세운↔월운 axis (cross-layer relations). */
   timeAxis?: MyungriTimeAxisResult | null;
+  /** 원국 강약(신강/신약) 판정 + 현재 대운/세운 영향 (deterministic engine verdict; the natal label is immutable). */
+  strength?: CurrentStrengthContext | null;
   /** Gregorian birth year — an allowed timing anchor (so "2024년생" is not flagged unsupported). */
   birthGregorianYear?: number | null;
 };
@@ -242,6 +245,26 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
     sections.push({ label: '시간축 연결(원국↔대운↔세운↔월운)', lines: axisLines.length ? axisLines : ['현재 교차 관계 없음'] });
   }
 
+  // 일간 강약(신강/신약) — ENGINE verdict (deterministic). 원국 baseline is IMMUTABLE; 대운/세운 = SEPARATE
+  // current influence (§5/§6). REVIEW_REQUIRED → explicitly "미판정" so the LLM must NOT assert strength (§20/§31).
+  const st = bundle.strength;
+  if (st) {
+    const ns = st.natalStrength;
+    const stLines: string[] = [];
+    if (ns.status === 'CLASSIFIED') {
+      stLines.push(`원국 강약: ${ns.labelKo} · 신뢰도 ${ns.confidence}`);
+      stLines.push(`근거: 월령 ${ns.month.direction}(${ns.month.phase}) · 통근 ${ns.rooting.state}(뿌리 ${ns.rooting.count}지) · 천간구성 아군 ${ns.composition.support}/타군 ${ns.composition.drain}`);
+      if (ns.conflicts.length) stLines.push(`상충: ${ns.conflicts.join(', ')}`);
+      if (ns.warnings.length) stLines.push(`주의: ${ns.warnings.join(' / ')}`);
+    } else {
+      stLines.push(`원국 강약: 미판정(${ns.reason}) — 강약을 사실로 단정 금지`);
+    }
+    if (st.daewoon) stLines.push(`현재 대운 영향: ${st.daewoon.label} → ${st.daewoon.direction}`);
+    if (st.sewoon) stLines.push(`현재 세운 영향: ${st.sewoon.label} → ${st.sewoon.direction}`);
+    stLines.push(`현재 종합 흐름(원국 대비): ${st.combinedDirection}`);
+    sections.push({ label: '일간 강약(엔진 판정) · 현재 운 영향', lines: stLines });
+  }
+
   const availableExtraWolwoon = (bundle.extraWolwoon ?? []).filter((e) => e.result.capability === 'AVAILABLE');
   const hasTimingEvidence =
     hasDaewoon || se?.capability === 'AVAILABLE' || wo?.capability === 'AVAILABLE' || availableExtraWolwoon.length > 0;
@@ -313,7 +336,7 @@ export function toSajuEvidence(bundle: SajuEvidenceBundle): EngineEvidence {
   if (assumptions.size > 0) provLines.push(`가정: ${[...assumptions].join(', ')}`);
   if (limitations.size > 0) provLines.push(`한계(계산): ${[...limitations].join(', ')}`);
   provLines.push(fourPillars.hour.status === 'AVAILABLE' ? '시주 확정' : '시주 미상(시간 의존 해석 제한)');
-  provLines.push('강약/용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지)');
+  provLines.push('용신/격국/12운성/12신살은 V1 미계산(사실로 단정 금지). 강약(신강/신약)은 엔진 판정값이 제공될 때만 사용');
   sections.push({ label: '근거·한계', lines: provLines });
 
   const summary = `사주 ${gz(fourPillars.year)}·${gz(fourPillars.month)}·${gz(fourPillars.day)}·${hourText(fourPillars.hour)} / 일간 ${stemH(fourPillars.day.stem)}`;

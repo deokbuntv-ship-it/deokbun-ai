@@ -27,6 +27,7 @@ import {
   type HistoricalTimezoneResolver,
 } from '@/features/interpretation';
 import {
+  buildCurrentStrengthContext,
   calculateDaewoonTenGods,
   calculateMonthCommand,
   calculateMyungriTimeAxis,
@@ -194,6 +195,20 @@ async function buildMyungriEvidence(
         })
       : null;
 
+  // 원국 강약(신강/신약) 판정 + 현재 대운/세운 영향 (strength integration). The natal verdict is IMMUTABLE;
+  // daewoon/sewoon add a SEPARATE influence direction (§5/§6). Deterministic, engine-owned — never the LLM.
+  const activeDaewoonTenGods =
+    daewoonTenGods && daewoonTenGods.capability === 'AVAILABLE' && activeCycleOrdinal !== null
+      ? daewoonTenGods.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null
+      : null;
+  const strength = buildCurrentStrengthContext({
+    natal,
+    daewoon: activeDaewoonTenGods
+      ? { label: `제${activeDaewoonTenGods.ordinal}대운(${activeDaewoonTenGods.startAgeInclusive}~${activeDaewoonTenGods.endAgeInclusive}세)`, profile: activeDaewoonTenGods.tenGods }
+      : null,
+    sewoon: sewoon.capability === 'AVAILABLE' ? { label: `${sewoon.targetYear} 세운`, profile: sewoon.tenGods } : null,
+  });
+
   const evidence = toSajuEvidence({
     engineResult,
     natalRelations,
@@ -207,6 +222,7 @@ async function buildMyungriEvidence(
     extraSewoon,
     extraWolwoon,
     timeAxis,
+    strength,
     birthGregorianYear: Number.isFinite(solarBirthYear) ? solarBirthYear : null,
   });
 
