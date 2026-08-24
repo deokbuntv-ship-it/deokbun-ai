@@ -96,3 +96,12 @@ export {
   isValidNatalContext,
   myungriProvenance,
 } from './services/pillarFacts';
+export {
+  DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1_RULE,
+  calculateDayMasterStrengthInputs,
+  type DayMasterStrengthInputsResult,
+  type StrengthHiddenEntry,
+  type StrengthRole,
+  type StrengthSide,
+  type StrengthTenGodEntry,
+} from './services/dayMasterStrengthInputs';
