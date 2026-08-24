@@ -23,9 +23,16 @@ const EMPTY: WalletState = { plus: 0, reward: 0, paid: 0, debt: 0, totalSpendabl
  */
 export async function getWalletState(): Promise<WalletState> {
   const supabase = getSupabaseClient();
+  // Scope the read to the authenticated user EXPLICITLY. duk_balance is a plain (non-security_invoker) view, so
+  // the client must not rely on the view to apply the caller's RLS — filtering by uid guarantees we only ever
+  // sum THIS user's balance (never another user's, never all users'). No session → throw, so the caller shows
+  // an error state, never a false "0덕". (device-QA: the wallet must reflect the authoritative per-user balance.)
+  const { data: sessionData } = await supabase.auth.getSession();
+  const uid = sessionData.session?.user?.id;
+  if (!uid) throw new Error('WALLET_NO_SESSION');
   const [balRes, debtRes] = await Promise.all([
-    supabase.from('duk_balance').select('bucket,balance'),
-    supabase.from('duk_debt').select('amount').eq('resolved', false),
+    supabase.from('duk_balance').select('bucket,balance').eq('user_id', uid),
+    supabase.from('duk_debt').select('amount').eq('user_id', uid).eq('resolved', false),
   ]);
   if (balRes.error || debtRes.error) {
     // Propagate: the store maps this to `error:true` → the wallet/Home show an error + retry, never a false 0.

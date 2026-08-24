@@ -2,23 +2,42 @@
 // grants/spends/reserves; those verbs are not even exposed here.
 const from = jest.fn();
 const rpc = jest.fn();
-jest.mock('@/services/supabase', () => ({ getSupabaseClient: () => ({ from, rpc }) }));
+const getSession = jest.fn(async () => ({ data: { session: { user: { id: 'u1' } } } }));
+jest.mock('@/services/supabase', () => ({ getSupabaseClient: () => ({ from, rpc, auth: { getSession } }) }));
 
 import { getWalletState, lightCandle } from '@/features/duk/dukWalletService';
 
-beforeEach(() => { from.mockReset(); rpc.mockReset(); });
+// duk_balance is read user-scoped: .select(...).eq('user_id', uid). Capture the eq arg so tests can assert scoping.
+const balanceEq = jest.fn();
+function mockBalance(rows: unknown, error: unknown = null) {
+  return { select: () => ({ eq: (col: string, val: string) => { balanceEq(col, val); return Promise.resolve({ data: rows, error }); } }) };
+}
+function mockDebt(rows: unknown, error: unknown = null) {
+  // .eq('user_id', uid).eq('resolved', false)
+  return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: rows, error }) }) }) };
+}
+
+beforeEach(() => {
+  from.mockReset(); rpc.mockReset(); balanceEq.mockReset();
+  getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } });
+});
 
 describe('§R getWalletState — combines bucket balances + open debt (read only)', () => {
-  it('sums PLUS/REWARD/PAID and open debt into spendable', async () => {
+  it('sums PLUS/REWARD/PAID and open debt into spendable, scoped to the authed user', async () => {
     from.mockImplementation((table: string) => {
-      if (table === 'duk_balance') return { select: () => Promise.resolve({ data: [
-        { bucket: 'PLUS', balance: 2 }, { bucket: 'REWARD', balance: 3 }, { bucket: 'PAID', balance: 40 },
-      ] }) };
-      if (table === 'duk_debt') return { select: () => ({ eq: () => Promise.resolve({ data: [{ amount: 5 }] }) }) };
+      if (table === 'duk_balance') return mockBalance([{ bucket: 'PLUS', balance: 2 }, { bucket: 'REWARD', balance: 3 }, { bucket: 'PAID', balance: 40 }]);
+      if (table === 'duk_debt') return mockDebt([{ amount: 5 }]);
       return { select: () => Promise.resolve({ data: [] }) };
     });
     const w = await getWalletState();
     expect(w).toEqual({ plus: 2, reward: 3, paid: 40, debt: 5, totalSpendable: 45 });
+    // device-QA guard: the balance read is filtered by the current user's id, never an unscoped view read.
+    expect(balanceEq).toHaveBeenCalledWith('user_id', 'u1');
+  });
+
+  it('no active session THROWS (so an unauth read never shows a false "0덕")', async () => {
+    getSession.mockResolvedValue({ data: { session: null } });
+    await expect(getWalletState()).rejects.toThrow();
   });
 
   it('a read failure THROWS (so the caller shows an error, not a false "0덕") — §J9 fix', async () => {
@@ -28,8 +47,8 @@ describe('§R getWalletState — combines bucket balances + open debt (read only
 
   it('a query-level error THROWS instead of returning a false empty wallet — §J9 fix', async () => {
     from.mockImplementation((table: string) => {
-      if (table === 'duk_balance') return { select: () => Promise.resolve({ data: null, error: { message: 'RLS' } }) };
-      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+      if (table === 'duk_balance') return mockBalance(null, { message: 'RLS' });
+      return mockDebt([]);
     });
     await expect(getWalletState()).rejects.toBeTruthy();
   });
