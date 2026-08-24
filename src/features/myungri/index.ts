@@ -99,9 +99,32 @@ export {
 export {
   DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1_RULE,
   calculateDayMasterStrengthInputs,
+  tenGodSide,
   type DayMasterStrengthInputsResult,
   type StrengthHiddenEntry,
   type StrengthRole,
   type StrengthSide,
   type StrengthTenGodEntry,
 } from './services/dayMasterStrengthInputs';
+export {
+  DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE,
+  STRENGTH_LABEL_KO,
+  evaluateNatalStrength,
+  type CompositionState,
+  type MonthState,
+  type NatalStrengthProfile,
+  type RootingState,
+  type StrengthConfidence,
+  type StrengthDirection,
+  type StrengthFactor,
+  type StrengthFactorKind,
+  type StrengthLabel,
+} from './services/natalStrength';
+export {
+  buildCurrentStrengthContext,
+  luckInfluence,
+  type CombinedDirection,
+  type CurrentStrengthContext,
+  type LuckDirection,
+  type LuckInfluence,
+} from './services/currentStrength';

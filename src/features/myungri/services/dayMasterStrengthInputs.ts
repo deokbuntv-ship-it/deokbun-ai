@@ -53,6 +53,11 @@ const TEN_GOD_ROLE: Record<TenGod, { role: StrengthRole; side: StrengthSide }> =
   SEVEN_KILLINGS: { role: 'OFFICER', side: 'DRAIN' },
 };
 
+/** The fixed classical side of a single 십신 relative to the 일간. Shared with the strength/luck layers. */
+export function tenGodSide(tenGod: TenGod): StrengthSide {
+  return TEN_GOD_ROLE[tenGod].side;
+}
+
 export type StrengthTenGodEntry = {
   position: SajuPillarPosition;
   stem: HeavenlyStem;
