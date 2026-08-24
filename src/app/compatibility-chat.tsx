@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
+import { AnswerBlock, isLongAnswer } from '@/components/AnswerBlock';
 import { Card } from '@/components/Card';
 import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { StateView } from '@/components/StateView';
@@ -352,13 +353,18 @@ export default function CompatibilityChatScreen() {
         </View>
       );
     }
+    // Fallback (no structured result): render the interpretation with the SAME reading system as solo chat —
+    // a long answer becomes an AnswerBlock reading card (not a bubble/plain card), a short one a compact card.
     return (
-      <Card key={m.id} radius="xl">
-        {/* Long-form interpretive fallback → Body (16/24) for comfortable reading (§6), not the 14px caption size. */}
-        <Text variant="bodyLarge">
-          {m.text}
-        </Text>
-      </Card>
+      <View key={m.id}>
+        {isLongAnswer(m.text) ? (
+          <AnswerBlock source={m.text} showDisclosure={false} />
+        ) : (
+          <Card radius="xl">
+            <Text variant="bodyLarge">{m.text}</Text>
+          </Card>
+        )}
+      </View>
     );
   };
 

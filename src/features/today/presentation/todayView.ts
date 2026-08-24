@@ -3,6 +3,7 @@
 // network here. It ALSO normalizes V1.0 records (no verdict/mode/followUps, legacy consultationPrompts) into
 // the V1.1 view shape (§77-§79) so historical daily fortunes keep rendering after the upgrade.
 import { formatFortuneDateLabel } from '@/features/today/engine/fortuneDate';
+import { isInScopeFollowUp } from '@/features/chat/presentation/followUpSafety';
 import { TODAY_DOMAIN_SHORT_LABEL, type DailyFollowUp, type DailyFortuneRecord, type DailyOverallTone, type TodayDomain } from '@/features/today/types';
 
 export type ToneVariant = 'positive' | 'neutral' | 'change' | 'caution';
@@ -38,7 +39,7 @@ function normalizeFollowUps(record: DailyFortuneRecord): DailyFollowUp[] {
   const r = record.result;
   if (r.followUps && r.followUps.length > 0) {
     return r.followUps
-      .filter((f) => f.question.trim().length > 0)
+      .filter((f) => f.question.trim().length > 0 && isInScopeFollowUp(f.question)) // §16 keep 역학 scope only
       .map((f) => ({ displayLabel: (f.displayLabel || f.question).trim(), question: f.question.trim() }));
   }
   if (r.consultationPrompts && r.consultationPrompts.length > 0) {

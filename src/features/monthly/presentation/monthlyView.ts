@@ -2,6 +2,7 @@
 // the /monthly detail, and the 운세우편함 card (presentation may differ, facts must not). No engine or network
 // here. Forward-compatible: reads every optional field defensively so a future V1.1 record still renders.
 import { formatMonthLabel } from '@/features/monthly/engine/monthDate';
+import { isInScopeFollowUp } from '@/features/chat/presentation/followUpSafety';
 import { MONTHLY_DOMAIN_SHORT_LABEL, type MonthlyFollowUp, type MonthlyFortuneRecord, type MonthlyOverallTier, type MonthlyDomain } from '@/features/monthly/types';
 
 export type MonthlyToneVariant = 'positive' | 'neutral' | 'change' | 'caution';
@@ -35,7 +36,7 @@ function normalizeFollowUps(record: MonthlyFortuneRecord): MonthlyFollowUp[] {
   const r = record.result;
   if (r.followUps && r.followUps.length > 0) {
     return r.followUps
-      .filter((f) => f.question.trim().length > 0)
+      .filter((f) => f.question.trim().length > 0 && isInScopeFollowUp(f.question)) // §16 keep 역학 scope only
       .map((f) => ({ displayLabel: (f.displayLabel || f.question).trim(), question: f.question.trim() }));
   }
   return [];

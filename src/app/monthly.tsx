@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { DetailBottomNav } from '@/components/DetailBottomNav';
+import { FortuneReading } from '@/components/Reading';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -26,13 +27,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type Status = 'loading' | 'ready' | 'unavailable' | 'error' | 'no-self' | 'auth';
 
-const TONE_COLOR: Record<ReturnType<typeof monthlyToneVariant>, string> = {
-  positive: '#1F8A54',
-  neutral: '#5B6472',
-  change: '#B26A00',
-  caution: '#C0392B',
-};
-const STATUS_COLOR: Record<string, string> = { positive: '#1F8A54', neutral: '#5B6472', caution: '#C0392B' };
+// Tone/status colours now live in the shared FortuneReading (DESIGN_FREEZE tokens, no hardcoded hex).
 
 // 이번 달 운세 상세 (§52–§55). A gated, pushed screen. On open it load-or-creates the CURRENT month's canonical
 // record (0 LLM on a cache hit); a ?ym=YYYY-MM param opens a PAST record read-only (never regenerates history,
@@ -135,131 +130,32 @@ export default function MonthlyScreen() {
               const view = toMonthlyDetailView(record);
               return (
                 <Stack gap="lg">
-                  {/* HERO — the month, answered (§53). tone + mode, headline, verdict. */}
-                  <Card radius="xl" style={[styles.hero, { borderColor: TONE_COLOR[view.toneVariant] }]}>
-                    <Stack gap="sm">
-                      <View style={styles.heroTop}>
-                        <View style={styles.pillRow}>
-                          <View style={[styles.tonePill, { borderColor: TONE_COLOR[view.toneVariant] }]}>
-                            <Text variant="bodySmall" style={{ color: TONE_COLOR[view.toneVariant], fontWeight: '700' }}>
-                              {view.overallTier}
-                            </Text>
-                          </View>
-                          {view.primaryModeLabel ? (
-                            <View style={[styles.modePill, { borderColor: theme.border }]}>
-                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
-                                {view.primaryModeLabel}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text variant="bodySmall" colorToken="textSecondary">{view.monthLabel}</Text>
-                      </View>
-                      <Text variant="headingLarge">{view.headline}</Text>
-                      <Text variant="bodyLarge" style={styles.verdict}>{view.verdict}</Text>
-                    </Stack>
-                  </Card>
-
-                  {/* 이번 달 핵심 — deterministic domain statuses. */}
-                  {view.domainSignals.length > 0 ? (
-                    <Card radius="lg">
-                      <Stack gap="sm">
-                        <Text variant="bodySmall" colorToken="textSecondary" style={styles.keyTitle}>이번 달 핵심</Text>
-                        {view.domainSignals.map((s, i) => (
-                          <View key={`s${i}`} style={styles.signalRow}>
-                            <Text variant="bodyMedium" style={{ fontWeight: '600' }}>{s.label}</Text>
-                            <Text variant="bodyMedium" style={{ color: STATUS_COLOR[s.variant], fontWeight: '700' }}>{s.status}</Text>
-                          </View>
-                        ))}
-                      </Stack>
-                    </Card>
-                  ) : null}
-
-                  {/* 이번 달 흐름 변화 — deterministic 節 transition (§5), only when the two segments differ. */}
-                  {view.transition ? (
-                    <Card radius="lg">
-                      <Stack gap="sm">
-                        <Text variant="bodySmall" colorToken="textSecondary" style={styles.keyTitle}>이번 달 흐름 변화</Text>
-                        <Text variant="bodyMedium" colorToken="textSecondary">
-                          {view.transition.dateLabel} 무렵부터 흐름이 달라져요.
-                        </Text>
-                        <View style={styles.signalRow}>
-                          <Text variant="bodyMedium" style={{ fontWeight: '600' }}>초반</Text>
-                          <Text variant="bodyMedium" colorToken="textSecondary">{view.transition.early.tierLabel}</Text>
-                        </View>
-                        <View style={styles.signalRow}>
-                          <Text variant="bodyMedium" style={{ fontWeight: '600' }}>중반 이후</Text>
-                          <Text variant="bodyMedium" colorToken="textSecondary">{view.transition.later.tierLabel}</Text>
-                        </View>
-                      </Stack>
-                    </Card>
-                  ) : null}
-
-                  {/* 기회 — grouped rows in ONE card (§55). */}
-                  {view.opportunities.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>이번 달 기회</Text>
-                      <Card radius="lg">
-                        <Stack gap="md">
-                          {view.opportunities.map((h, i) => (
-                            <View key={`h${i}`} style={i > 0 ? styles.rowDivider : undefined}>
-                              <Text variant="bodyMedium" style={{ fontWeight: '700' }}>
-                                {h.domain ? `${h.domain} · ` : ''}{h.title}
-                              </Text>
-                              <Text variant="bodyMedium" colorToken="textSecondary">{h.body}</Text>
-                            </View>
-                          ))}
-                        </Stack>
-                      </Card>
-                    </Stack>
-                  ) : null}
-
-                  {/* 조심할 점 */}
-                  {view.cautions.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>이번 달 조심할 점</Text>
-                      <Card radius="lg">
-                        <Stack gap="md">
-                          {view.cautions.map((c, i) => (
-                            <View key={`c${i}`} style={i > 0 ? styles.rowDivider : undefined}>
-                              <Text variant="bodyMedium" style={{ fontWeight: '700' }}>{c.title}</Text>
-                              <Text variant="bodyMedium" colorToken="textSecondary">{c.body}</Text>
-                            </View>
-                          ))}
-                        </Stack>
-                      </Card>
-                    </Stack>
-                  ) : null}
-
-                  {/* 이번 달 이렇게 보내보세요 — the action plan (§23). */}
-                  {view.actions.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>이번 달 이렇게 보내보세요</Text>
-                      <Card radius="lg" style={{ borderColor: theme.primary, borderWidth: 1 }}>
-                        <Stack gap="sm">
-                          {view.actions.map((a, i) => (
-                            <View key={`a${i}`} style={styles.actionRow}>
-                              <Text variant="bodyMedium" style={{ color: theme.primary, fontWeight: '700' }}>{i + 1}</Text>
-                              <Text variant="bodyMedium" style={styles.flex1}>{a}</Text>
-                            </View>
-                          ))}
-                        </Stack>
-                      </Card>
-                    </Stack>
-                  ) : null}
-
-                  {/* 이어서 물어보기 — SHORT chip labels; the RICH question is sent to 상담 (§65/§68). */}
-                  {view.followUps.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>이어서 물어보기</Text>
-                      <Stack direction="row" gap="sm" style={styles.chipWrap}>
-                        {view.followUps.map((f) => (
-                          <Chip key={f.question} label={f.displayLabel} onPress={() => askInConsultation(f.question)} />
-                        ))}
-                      </Stack>
-                    </Stack>
-                  ) : null}
-
+                  <FortuneReading
+                    toneLabel={view.overallTier}
+                    toneVariant={view.toneVariant}
+                    modeLabel={view.primaryModeLabel}
+                    meta={view.monthLabel}
+                    headline={view.headline}
+                    verdict={view.verdict}
+                    signalsTitle="이번 달 핵심"
+                    domainSignals={view.domainSignals}
+                    transition={
+                      view.transition
+                        ? {
+                            dateLabel: `${view.transition.dateLabel} 무렵부터 흐름이 달라져요.`,
+                            lines: [`초반 · ${view.transition.early.tierLabel}`, `중반 이후 · ${view.transition.later.tierLabel}`],
+                          }
+                        : null
+                    }
+                    highlightsTitle="이번 달 기회"
+                    highlights={view.opportunities}
+                    cautionsTitle="이번 달 조심할 점"
+                    cautions={view.cautions}
+                    actionsTitle="이번 달 이렇게 보내보세요"
+                    actions={view.actions}
+                    followUps={view.followUps}
+                    onFollowUp={askInConsultation}
+                  />
                   {/* AI-generated-content disclosure (§2) — one line under the fortune result. */}
                   <AiDisclosure />
                 </Stack>

@@ -19,6 +19,9 @@ describe('StructuredConsultationResult — no internal/debug leakage in the cons
   });
   it('binds to the commercial presentation VM (conclusion-first) with a collapsed, user-language detail', () => {
     expect(src).toContain('toConsultationPresentation');
-    expect(src).toContain('상세 해석 보기'); // detail-on-demand toggle, not raw 근거
+    // detail-on-demand: the 전문 근거 is collapsed under the consumer-first "왜 이렇게 보나요?" evidence
+    // (DEOKBUNI_READING_EXPERIENCE — replaces the old "상세 해석 보기" toggle), never raw 근거 up front.
+    expect(src).toContain('ReadingEvidence');
+    expect(src).not.toContain('상세 해석 보기');
   });
 });

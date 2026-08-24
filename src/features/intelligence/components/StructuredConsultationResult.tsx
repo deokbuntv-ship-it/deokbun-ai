@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Card } from '@/components/Card';
+import { ReadingBullets, ReadingEvidence, ReadingLead, ReadingSection } from '@/components/Reading';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
@@ -13,6 +12,22 @@ import { colors, spacing } from '@/theme';
 import { ConsultationStateNotice } from './ConsultationStateNotice';
 import { FollowUpSuggestions } from './FollowUpSuggestions';
 import { UserFeedbackControl } from './UserFeedbackControl';
+
+// 전문 근거 detail row — a consumer-language domain title over its interpretation body, inside the collapsed
+// "왜 이렇게 보나요?" evidence. Kept plain (no pastel) so the evidence reads as neutral reference.
+function EvidenceRow({ title, body }: { title: string; body?: string }) {
+  if (!body) return null;
+  return (
+    <Stack gap="xs">
+      <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '700' }}>
+        {title}
+      </Text>
+      <Text variant="reading" style={{ lineHeight: 28 }}>
+        {body}
+      </Text>
+    </Stack>
+  );
+}
 
 // Commercial cleanup (V4 §22/§23/§24): the AssessmentSummary (fail-closed "아직 평가를 보여드리지
 // 않아요" limitation copy) and the InterpretationEvidenceSheet (raw 활용된 관점 / 미사용 engine status,
@@ -33,41 +48,6 @@ import { UserFeedbackControl } from './UserFeedbackControl';
 // contract does not depend on this React-Native component. Re-exported here for existing UI importers.
 export type { StructuredConsultationViewModel };
 
-function Section({ title, body }: { title: string; body?: string }) {
-  if (!body) return null;
-  return (
-    <Stack gap="xs">
-      <Text variant="bodySmall" colorToken="textSecondary">
-        {title}
-      </Text>
-      <Text variant="bodyMedium" style={{ lineHeight: 23 }}>
-        {body}
-      </Text>
-    </Stack>
-  );
-}
-
-function BulletList({ title, items, glyphColor }: { title: string; items?: string[]; glyphColor: string }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <Stack gap="xs">
-      <Text variant="bodySmall" colorToken="textSecondary">
-        {title}
-      </Text>
-      {items.map((it, i) => (
-        <View key={i} style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Text variant="bodyMedium" style={{ color: glyphColor }}>
-            ·
-          </Text>
-          <Text variant="bodyMedium" style={{ flex: 1, lineHeight: 23 }}>
-            {it}
-          </Text>
-        </View>
-      ))}
-    </Stack>
-  );
-}
-
 export function StructuredConsultationResult({
   vm,
   onSelectFollowUp,
@@ -83,7 +63,6 @@ export function StructuredConsultationResult({
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
-  const [detailOpen, setDetailOpen] = useState(false);
 
   // A whole-result truthful state replaces the body — never a fabricated reading.
   if (vm.state) {
@@ -94,75 +73,47 @@ export function StructuredConsultationResult({
   const p = toConsultationPresentation(vm);
   const hasDetail = p.detailSections.length > 0;
 
+  // Reading hierarchy (DEOKBUNI_READING_EXPERIENCE): 결론 → 쉬운 설명 → 🌿 좋은 흐름 → 🕯️ 조심할 점 →
+  // (왜 이렇게 보나요? ▾ 전문 근거) → 이어서 물어보기. Only two sections take a pastel surface (§7), so the
+  // reading stays a connected letter, not a colour patchwork. Empty sections are simply absent (fail-closed).
   return (
-    <Stack gap="lg">
-      {/* 1 — HEADLINE conclusion (visible on the first viewport, §7) + optional disposition line */}
-      {p.headline ? (
-        <Card radius="xl">
-          <Text variant="bodyLarge" style={{ fontWeight: '700', lineHeight: 26 }}>
-            {p.headline}
-          </Text>
-          {p.disposition ? (
-            <Text
-              variant="bodySmall"
-              colorToken="textSecondary"
-              style={{ marginTop: spacing.xs, lineHeight: 21 }}
-            >
-              {p.disposition}
-            </Text>
-          ) : null}
-        </Card>
-      ) : null}
+    <Stack gap="md">
+      {p.headline ? <ReadingLead sub={p.disposition}>{p.headline}</ReadingLead> : null}
 
-      {/* 2 — concise core interpretation (the summary) */}
       {p.summary ? (
-        <Card radius="xl">
-          <Text variant="bodyMedium" style={{ lineHeight: 23 }}>
+        <ReadingSection variant="neutral">
+          <Text variant="reading" style={{ lineHeight: 28 }}>
             {p.summary}
           </Text>
-        </Card>
+        </ReadingSection>
       ) : null}
 
-      {/* 3 — key points + cautions (compact) */}
-      {p.keyPoints.length > 0 || p.cautions.length > 0 ? (
-        <Card radius="xl">
-          <Stack gap="lg">
-            <BulletList title="핵심 포인트" items={p.keyPoints} glyphColor={theme.secondary} />
-            <BulletList title="조심할 점" items={p.cautions} glyphColor={theme.accent} />
-          </Stack>
-        </Card>
+      {p.keyPoints.length > 0 ? (
+        <ReadingSection variant="positive" title="좋은 흐름">
+          <ReadingBullets items={p.keyPoints} glyphColor={theme.onSage} />
+        </ReadingSection>
       ) : null}
 
-      {/* 4 — DETAIL ON DEMAND (§8/§11): normalized, user-language interpretation only — collapsed by
-          default. NO raw engine evidence / 활용됨·미사용 / assessment limitation copy (§22-§24). */}
+      {p.cautions.length > 0 ? (
+        <ReadingSection variant="caution" title="조심할 점">
+          <ReadingBullets items={p.cautions} glyphColor={theme.onButter} />
+        </ReadingSection>
+      ) : null}
+
+      {/* 전문 근거 — collapsed. Normalized user-language interpretation only; NO raw engine evidence /
+          활용됨·미사용 / assessment-limitation copy (§22-§24 upstream keep those off the consumer answer). */}
       {hasDetail ? (
-        <Card radius="xl">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={detailOpen ? '상세 해석 접기' : '상세 해석 보기'}
-            onPress={() => setDetailOpen((o) => !o)}
-            hitSlop={8}
-          >
-            <Text variant="bodyMedium" style={{ fontWeight: '600', color: theme.secondary }}>
-              {detailOpen ? '상세 해석 접기 ▴' : '상세 해석 보기 ▾'}
-            </Text>
-          </Pressable>
-          {detailOpen ? (
-            <Stack gap="lg" style={{ marginTop: spacing.md }}>
-              {p.detailSections.map((d, i) => (
-                <Section key={i} title={d.title} body={d.body} />
-              ))}
-            </Stack>
-          ) : null}
-        </Card>
+        <ReadingEvidence>
+          {p.detailSections.map((d, i) => (
+            <EvidenceRow key={i} title={d.title} body={d.body} />
+          ))}
+        </ReadingEvidence>
       ) : null}
 
-      {/* 5 — recommended follow-ups (composer stays external) */}
       {p.followUps.length > 0 && onSelectFollowUp ? (
         <FollowUpSuggestions suggestions={p.followUps} onSelect={onSelectFollowUp} />
       ) : null}
 
-      {/* feedback — persists via onFeedback; initialFeedback restores the chosen verdict on reload */}
       <UserFeedbackControl onSubmit={onFeedback} initialVerdict={initialFeedback} />
     </Stack>
   );

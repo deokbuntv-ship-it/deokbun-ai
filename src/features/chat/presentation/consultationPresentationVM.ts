@@ -9,6 +9,7 @@
 // hygiene is already applied upstream in buildStructuredConsultationResult (stripEngineLabels).
 
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
+import { filterFollowUpsToScope } from './followUpSafety';
 
 export type PresentationDetailSection = { title: string; body: string };
 
@@ -104,6 +105,8 @@ export function toConsultationPresentation(
     keyPoints,
     cautions,
     detailSections,
-    followUps: dedupe(vm.followUps).slice(0, MAX_POINTS),
+    // §16 — drop any out-of-scope offer (계약서 검토 / 진단 / 종목 추천 …) before dedup/cap, so a suggested
+    // follow-up never implies Deokbuni performs legal/medical/investment professional services.
+    followUps: dedupe(filterFollowUpsToScope(vm.followUps)).slice(0, MAX_POINTS),
   };
 }

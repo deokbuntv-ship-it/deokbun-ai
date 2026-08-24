@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { DetailBottomNav } from '@/components/DetailBottomNav';
+import { FortuneReading } from '@/components/Reading';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -25,14 +26,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type Status = 'loading' | 'ready' | 'unavailable' | 'error' | 'no-self' | 'auth';
 
-const TONE_COLOR: Record<ReturnType<typeof toneVariant>, string> = {
-  positive: '#1F8A54',
-  neutral: '#5B6472',
-  change: '#B26A00',
-  caution: '#C0392B',
-};
-// Domain-status accents reuse the SAME restrained green/gray/red palette as the tones (no new colors, §34).
-const STATUS_COLOR: Record<string, string> = { positive: '#1F8A54', neutral: '#5B6472', caution: '#C0392B' };
+// Tone/status colours now live in the shared FortuneReading (DESIGN_FREEZE tokens, no hardcoded hex).
 
 // 오늘의 운세 상세 (§35–§40). A gated, pushed screen (auth + onboarding guaranteed by the gate). On open it
 // load-or-creates today's canonical record (0 LLM on a cache hit); a ?date= param opens a PAST record
@@ -135,104 +129,24 @@ export default function TodayScreen() {
               const view = toTodayDetailView(record);
               return (
                 <Stack gap="lg">
-                  {/* HERO — the day, answered (§8/§28/§33). The strongest block: tone + mode, headline, verdict. */}
-                  <Card radius="xl" style={[styles.hero, { borderColor: TONE_COLOR[view.toneVariant] }]}>
-                    <Stack gap="sm">
-                      <View style={styles.heroTop}>
-                        <View style={styles.pillRow}>
-                          <View style={[styles.tonePill, { borderColor: TONE_COLOR[view.toneVariant] }]}>
-                            <Text variant="bodySmall" style={{ color: TONE_COLOR[view.toneVariant], fontWeight: '700' }}>
-                              {view.overallTone}
-                            </Text>
-                          </View>
-                          {view.primaryModeLabel ? (
-                            <View style={[styles.modePill, { borderColor: theme.border }]}>
-                              <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '600' }}>
-                                {view.primaryModeLabel}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text variant="bodySmall" colorToken="textSecondary">
-                          {view.dot}{view.weekday ? ` ${view.weekday}` : ''}
-                        </Text>
-                      </View>
-                      <Text variant="headingLarge">{view.headline}</Text>
-                      <Text variant="bodyLarge" style={styles.verdict}>{view.verdict}</Text>
-                    </Stack>
-                  </Card>
-
-                  {/* 오늘의 핵심 — deterministic domain statuses (only what the evidence robustly knows, §13). */}
-                  {view.domainSignals.length > 0 ? (
-                    <Card radius="lg">
-                      <Stack gap="sm">
-                        <Text variant="bodySmall" colorToken="textSecondary" style={styles.keyTitle}>오늘의 핵심</Text>
-                        {view.domainSignals.map((s, i) => (
-                          <View key={`s${i}`} style={styles.signalRow}>
-                            <Text variant="bodyMedium" style={{ fontWeight: '600' }}>{s.label}</Text>
-                            <Text variant="bodyMedium" style={{ color: STATUS_COLOR[s.variant], fontWeight: '700' }}>{s.status}</Text>
-                          </View>
-                        ))}
-                      </Stack>
-                    </Card>
-                  ) : null}
-
-                  {/* 오늘 좋은 흐름 — grouped rows in ONE card (§31: less fragmentation). */}
-                  {view.highlights.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 좋은 흐름</Text>
-                      <Card radius="lg">
-                        <Stack gap="md">
-                          {view.highlights.map((h, i) => (
-                            <View key={`h${i}`} style={i > 0 ? styles.rowDivider : undefined}>
-                              <Text variant="bodyMedium" style={{ fontWeight: '700' }}>
-                                {h.domain ? `${h.domain} · ` : ''}{h.title}
-                              </Text>
-                              <Text variant="bodyMedium" colorToken="textSecondary">{h.body}</Text>
-                            </View>
-                          ))}
-                        </Stack>
-                      </Card>
-                    </Stack>
-                  ) : null}
-
-                  {/* 오늘 조심할 것 */}
-                  {view.cautions.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 조심할 것</Text>
-                      <Card radius="lg">
-                        <Stack gap="md">
-                          {view.cautions.map((c, i) => (
-                            <View key={`c${i}`} style={i > 0 ? styles.rowDivider : undefined}>
-                              <Text variant="bodyMedium" style={{ fontWeight: '700' }}>{c.title}</Text>
-                              <Text variant="bodyMedium" colorToken="textSecondary">{c.body}</Text>
-                            </View>
-                          ))}
-                        </Stack>
-                      </Card>
-                    </Stack>
-                  ) : null}
-
-                  {/* 오늘 이렇게 해보세요 — one accented action card. */}
-                  <Stack gap="sm">
-                    <Text variant="bodyLarge" style={styles.sectionTitle}>오늘 이렇게 해보세요</Text>
-                    <Card radius="lg" style={{ borderColor: theme.primary, borderWidth: 1 }}>
-                      <Text variant="bodyMedium">{view.actionTip}</Text>
-                    </Card>
-                  </Stack>
-
-                  {/* 이어서 물어보기 — SHORT chip labels; the RICH question is sent to 상담 (§37/§47). */}
-                  {view.followUps.length > 0 ? (
-                    <Stack gap="sm">
-                      <Text variant="bodyLarge" style={styles.sectionTitle}>이어서 물어보기</Text>
-                      <Stack direction="row" gap="sm" style={styles.chipWrap}>
-                        {view.followUps.map((f) => (
-                          <Chip key={f.question} label={f.displayLabel} onPress={() => askInConsultation(f.question)} />
-                        ))}
-                      </Stack>
-                    </Stack>
-                  ) : null}
-
+                  <FortuneReading
+                    toneLabel={view.overallTone}
+                    toneVariant={view.toneVariant}
+                    modeLabel={view.primaryModeLabel}
+                    meta={`${view.dot}${view.weekday ? ` ${view.weekday}` : ''}`}
+                    headline={view.headline}
+                    verdict={view.verdict}
+                    signalsTitle="오늘의 핵심"
+                    domainSignals={view.domainSignals}
+                    highlightsTitle="오늘 좋은 흐름"
+                    highlights={view.highlights}
+                    cautionsTitle="오늘 조심할 것"
+                    cautions={view.cautions}
+                    actionsTitle="오늘 이렇게 해보세요"
+                    actions={view.actionTip ? [view.actionTip] : []}
+                    followUps={view.followUps}
+                    onFollowUp={askInConsultation}
+                  />
                   {/* AI-generated-content disclosure (§2) — one line under the fortune result. */}
                   <AiDisclosure />
                 </Stack>
