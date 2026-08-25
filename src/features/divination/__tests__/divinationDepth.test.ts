@@ -240,9 +240,31 @@ describe('G — genuinely insufficient evidence is ALLOWED (no forced decision, 
     expect(v.primaryConclusion).toMatch(/억지로 좋다·나쁘다를 말씀드리지 않겠습니다/);
   });
 
-  it('but a real disagreement never yields INSUFFICIENT (conflict is not an escape hatch)', () => {
-    const v = cross('CAREER', [judgment('MYUNGRI', [sub('CAREER', 'FOR')]), judgment('ZIWEI', [sub('CAREER', 'AGAINST')])]);
+  it('a disagreement with ANY distinguishing reason still yields a direction (not an escape hatch)', () => {
+    // Ziwei names an obstruction; Myungri is only conditionally open → explainable dominance.
+    const v = cross('CAREER', [
+      judgment('MYUNGRI', [sub('CAREER', 'CONDITIONAL_FOR')]),
+      judgment('ZIWEI', [sub('CAREER', 'AGAINST')]),
+    ]);
     expect(isDirectional(v.direction)).toBe(true);
+    expect(v.contradictionResolutions[0].resolution.length).toBeGreaterThan(0);
+  });
+
+  it('V3 §27/§28: a PERFECTLY symmetric conflict refuses to invent a winner', () => {
+    // Identical directness, reliability, firmness AND evidence shape (each side names both a support and an
+    // obstruction) → NO criterion can explain dominance, so inventing one would be a forced decision.
+    const evenPair = (d: JudgmentDomain, stance: Stance) =>
+      sub(d, stance, {
+        evidence: [{ fact: `${stance} 근거`, meaning: 'm', domain: d, temporalScope: 'NATAL', directness: 'DIRECT' }],
+        counterEvidence: [{ fact: `${stance} 반대근거`, meaning: 'm', domain: d, temporalScope: 'NATAL', directness: 'DIRECT' }],
+      });
+    const v = cross('CAREER', [
+      judgment('MYUNGRI', [evenPair('CAREER', 'FOR')]),
+      judgment('ZIWEI', [evenPair('CAREER', 'AGAINST')]),
+    ]);
+    expect(v.direction).toBe('INSUFFICIENT_EVIDENCE');
+    expect(v.primaryConclusion).not.toMatch(/좋은 점도|신중하세요/); // not neutralization either
+    expect(v.contradictionResolutions[0].whyOtherDidNotDominate).toMatch(/억지로 승자를 만들지 않았습니다/);
   });
 });
 

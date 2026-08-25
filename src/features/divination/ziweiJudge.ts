@@ -22,6 +22,7 @@ import type { ZiweiChart, ZiweiPalace } from '@/features/ziwei/domain/ziweiTypes
 
 import {
   NO_SIGNAL,
+  evidenceAdequacy,
   type DataReliability,
   type DivinationJudgment,
   type DomainSubJudgment,
@@ -66,6 +67,28 @@ const SIHUA_MEANING: Record<SihuaKind, string> = {
   GWA: '이름·평판·문서가 따라오는 힘', GI: '막히거나 얽혀서 애를 먹는 힘',
 };
 const SIHUA_POSITIVE: Record<SihuaKind, boolean> = { ROK: true, GWON: true, GWA: true, GI: false };
+
+/**
+ * R2′ (C-class, newly adopted, declared for review) — THE 四化 ARE NOT INTERCHANGEABLE POSITIVES.
+ *
+ * V3 §19–§21: the previous build counted how many non-忌 transformations landed on the 본궁 (`>=2 → STRONGLY_FOR,
+ * ===1 → FOR`). That is a vote engine, and it is wrong on the doctrine's own terms — 祿·權·科 answer DIFFERENT
+ * propositions, so two of them are not "more yes" than one:
+ *   · 祿 재록이 실제로 들어옴          → answers a RECEPTIVE question ("들어올까?") directly
+ *   · 權 주도권을 쥐고 밀어붙임        → answers an AGENCY question ("밀어붙여도 될까?"); for a receptive
+ *                                       question it means "저절로 오지는 않고 내가 밀어야 열린다"
+ *   · 科 이름·평판·문서가 따라옴        → answers STANDING; on a money question it is real but indirect
+ *   · 忌 막히고 얽힘                   → obstruction, and on the 본궁 it is decisive
+ * So the stance follows WHICH transformation landed and whether it answers what was asked.
+ */
+type SihuaRole = 'RECEPTIVE' | 'AGENCY' | 'STANDING';
+const SIHUA_ROLE: Record<Exclude<SihuaKind, 'GI'>, SihuaRole> = { ROK: 'RECEPTIVE', GWON: 'AGENCY', GWA: 'STANDING' };
+const DOMAIN_ASKS: Partial<Record<JudgmentDomain, SihuaRole>> = {
+  MONEY_INFLOW: 'RECEPTIVE', MONEY_RETENTION: 'RECEPTIVE', OPPORTUNITY: 'RECEPTIVE',
+  RELATION_BOND: 'RECEPTIVE', OUTCOME: 'RECEPTIVE',
+  CAREER: 'AGENCY', DECISION: 'AGENCY', CONFLICT: 'AGENCY', INFLUENCE: 'AGENCY', MOVEMENT: 'AGENCY',
+  RELATION_STABILITY: 'STANDING', GENERAL: 'STANDING', HEALTH_ENERGY: 'STANDING',
+};
 
 export type ZiweiJudgeInput = {
   question: string;
@@ -183,30 +206,51 @@ function judgePalaceAxis(
     };
   }
 
-  // 화기 on the 본궁 is the decisive obstruction; elsewhere it is a qualifier.
-  const giOnMain = mainRead.sihua.some((s) => s.kind === 'GI');
-  const posOnMain = mainRead.sihua.filter((s) => SIHUA_POSITIVE[s.kind]).length;
+  // R2′ — read WHICH transformation landed on the 본궁 against WHAT this axis is asking (never a count).
+  const onMain = new Set(mainRead.sihua.map((s) => s.kind));
+  const giOnMain = onMain.has('GI');
+  const rok = onMain.has('ROK');
+  const gwon = onMain.has('GWON');
+  const gwa = onMain.has('GWA');
+  const asking = DOMAIN_ASKS[domain] ?? 'STANDING';
+  const answersAsked = [...onMain]
+    .filter((k): k is Exclude<SihuaKind, 'GI'> => k !== 'GI')
+    .some((k) => SIHUA_ROLE[k] === asking);
   let stance: Stance;
   let conclusion: string;
-  if (giOnMain && posOnMain > 0) {
+  if (giOnMain && onMain.size > 1) {
     stance = 'CONDITIONAL_AGAINST';
-    conclusion = `${main.name}은 힘도 실리지만 걸리는 지점이 함께 있어, 조건을 정리하고 가야 하는 자리입니다.`;
+    conclusion = `${main.name}은 힘도 실리지만 화기로 걸리는 지점이 함께 있어, 조건을 정리하지 않으면 쉽지 않습니다.`;
   } else if (giOnMain) {
     stance = 'AGAINST';
-    conclusion = `${main.name}에 막히는 기운이 들어와, 이 부분은 수월하게 풀리지 않습니다.`;
-  } else if (posOnMain >= 2) {
+    conclusion = `${main.name}에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.`;
+  } else if (rok && gwon) {
+    // 祿權相會 — a NAMED configuration (들어오는 힘과 밀어붙일 힘이 한 자리), not "two positives".
     stance = 'STRONGLY_FOR';
-    conclusion = `${main.name}에 힘이 겹쳐 실려, 분명하게 열려 있는 자리입니다.`;
-  } else if (posOnMain === 1) {
+    conclusion = `${main.name}에 화록과 화권이 함께 들어와, 들어오는 힘과 밀어붙일 힘이 한 자리에 놓인 열려 있는 자리입니다.`;
+  } else if (answersAsked) {
     stance = 'FOR';
-    conclusion = `${main.name}에 힘이 실려 열려 있는 자리입니다.`;
+    conclusion = rok
+      ? `${main.name}에 화록이 들어와, 이 부분은 실제로 들어오는 자리라 진행하셔도 좋습니다.`
+      : gwon
+        ? `${main.name}에 화권이 들어와, 이 부분은 주도권을 쥐고 진행하셔도 되는 자리입니다.`
+        : `${main.name}에 화과가 들어와, 이름과 신뢰가 따라붙어 열려 있는 자리입니다.`;
+  } else if (rok || gwon || gwa) {
+    // A transformation landed, but it answers a different proposition than the one asked. Say that plainly
+    // instead of upgrading it into a yes.
+    stance = 'CONDITIONAL_FOR';
+    conclusion = gwon
+      ? `${main.name}에 화권이 들어와 있어, 저절로 굴러오지는 않지만 직접 미시면 열리는 쪽입니다.`
+      : rok
+        ? `${main.name}에 화록이 들어와 있어 들어오는 몫은 있으나, 끌고 가는 힘까지는 아니라 크게 벌이기는 쉽지 않습니다.`
+        : `${main.name}에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.`;
   } else if (counterEvidence.length > 0) {
     // signal only from 대궁/삼합궁, and it is obstructive
     stance = 'CONDITIONAL_AGAINST';
-    conclusion = `${main.name} 자체보다 맞물린 자리에서 걸리는 기운이 들어옵니다.`;
+    conclusion = `${main.name} 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.`;
   } else {
     stance = 'CONDITIONAL_FOR';
-    conclusion = `${main.name}은 맞물린 자리에서 힘을 받는 편입니다.`;
+    conclusion = `${main.name}은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.`;
   }
 
   return { reads, sub: { domain, stance, conclusion, temporalScope: 'NATAL', directness, reliability: 'EXACT', evidence, counterEvidence } };
@@ -249,7 +293,10 @@ export function judgeZiwei(input: ZiweiJudgeInput): DivinationJudgment {
   }
   const chart = input.chart;
 
-  const results = axesFor(asked)
+  // The ASKED axis is always read first. `axesFor` lists the axes worth reading AROUND the question, and for
+  // several domains (RELATION_BOND, DECISION, OPPORTUNITY…) it omitted the asked one — so 자미두수 had a
+  // palace for the question (부처, 명궁) and never looked at it, which read downstream as "no signal".
+  const results = [...new Set<JudgmentDomain>([asked, ...axesFor(asked)])]
     .map((d) => judgePalaceAxis(chart, d, asked))
     .filter((r): r is { sub: DomainSubJudgment; reads: PalaceRead[] } => r !== null);
   if (results.length === 0) {
@@ -278,14 +325,7 @@ export function judgeZiwei(input: ZiweiJudgeInput): DivinationJudgment {
   }
 
   const directional = subs.filter((s) => s.stance !== NO_SIGNAL);
-  const evidenceStrength: EvidenceStrength =
-    primary.stance === NO_SIGNAL
-      ? 'NONE'
-      : primary.evidence.length + primary.counterEvidence.length >= 3
-        ? 'STRONG'
-        : primary.evidence.length + primary.counterEvidence.length >= 1
-          ? 'MODERATE'
-          : 'WEAK';
+  const evidenceStrength: EvidenceStrength = evidenceAdequacy(primary);
 
   const internalContradictions =
     primary.evidence.length > 0 && primary.counterEvidence.length > 0

@@ -136,8 +136,18 @@ export function readNatalBaseline(input: NatalStructureInput): NatalBaseline {
 
   const rooted = input.rootedCount ?? null;
   const transparent = input.transparentCount ?? null;
+  // V3 §5 — anchoring is read from WHICH branch carries the root, not from "3 or more roots". 월지와 일지는
+  // 통근이 실제로 실리는 자리이고, 년지·시지만 걸린 뿌리는 있어도 얕습니다. That is a named positional rule;
+  // "rooted >= 3" was an invented boundary. Falls back to bare presence only when positions are unavailable.
+  const rootPositions = input.strengthInputs?.dayMasterRootPositions ?? null;
   const anchored: NatalBaseline['anchored'] =
-    rooted === null ? 'UNKNOWN' : rooted >= 3 ? 'ROOTED' : rooted >= 1 ? 'PARTLY_ROOTED' : 'FLOATING';
+    rootPositions === null
+      ? (rooted === null ? 'UNKNOWN' : rooted > 0 ? 'PARTLY_ROOTED' : 'FLOATING')
+      : rootPositions.length === 0
+        ? 'FLOATING'
+        : rootPositions.includes('MONTH') || rootPositions.includes('DAY')
+          ? 'ROOTED'
+          : 'PARTLY_ROOTED';
 
   const evidence: JudgmentEvidence[] = [];
   for (const f of dominantFamilies) {
@@ -201,6 +211,8 @@ export function natalSupportForDomain(baseline: NatalBaseline, domain: JudgmentD
 } {
   const fam = domainFamily(domain);
   if (fam === null) return { support: 'UNKNOWN', note: '' };
+  // A FACT about the chart — how many distinct pillars carry this 십신 family — not a magnitude we invented.
+  // The only boundary drawn is the one the chart itself draws: 한 자리에만 있는가, 여러 자리에 걸쳐 있는가.
   const count = baseline.familyPresence[fam];
   if (count >= 2) return { support: 'STRONG', note: `원국에 ${FAMILY_LABEL[fam]} 자리가 ${count}곳 있어 바탕이 받쳐 줍니다.` };
   if (count === 1) return { support: 'PRESENT', note: `원국에 ${FAMILY_LABEL[fam]} 자리가 하나 있습니다.` };

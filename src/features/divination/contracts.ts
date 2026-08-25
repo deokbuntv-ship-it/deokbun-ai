@@ -21,6 +21,24 @@
 export type Discipline = 'MYUNGRI' | 'ZIWEI' | 'QIMEN';
 
 /**
+ * WHAT KIND OF ANSWER THE QUESTION ACTUALLY WANTS (V3 §8).
+ *
+ * A major V2 failure was forcing decision-style FOR/AGAINST onto questions that were never decisions:
+ * "제 성격이 어떤가요?" came back as an action-like negative verdict, and "왜 자꾸 부딪히나요?" was converted
+ * into a timing stance. A description is not a recommendation and a cause is not a verdict.
+ */
+export type QuestionIntent =
+  | 'DESCRIPTIVE'  // 어떤 사람인가 / 어떤 구조인가 — describe, never recommend
+  | 'CAUSE_WHY'    // 왜 이런 일이 생기나 — explain the mechanism
+  | 'DECISION'     // 해도 될까 — for/against is appropriate
+  | 'TIMING'       // 지금인가 / 언제인가
+  | 'OUTCOME'      // 어떻게 될까 — result-shaped
+  | 'PROBABILITY'; // 가능성이 있나
+
+/** Intents for which a FOR/AGAINST verdict is a category error. */
+export const NON_DECISION_INTENTS: readonly QuestionIntent[] = ['DESCRIPTIVE', 'CAUSE_WHY'] as const;
+
+/**
  * DIRECTIONAL stance. There is deliberately NO `MIXED`: a judge that sees conflicting evidence must resolve
  * it (domain / temporal / directness decomposition) and pick a direction, or — only when genuinely provable —
  * declare INSUFFICIENT_DATA. `NOT_APPLICABLE` means the discipline does not speak to this question at all
@@ -152,6 +170,29 @@ export type DomainSubJudgment = {
  */
 export type EvidenceStrength = 'STRONG' | 'MODERATE' | 'WEAK' | 'NONE';
 
+/**
+ * How well-supported ONE axis claim is — derived from the QUALITY of its support, never from how many bullets
+ * it collected.
+ *
+ * V3 §5/§50: every judge previously did `evidence.length + counterEvidence.length >= 3 ? 'STRONG' : >= 1 ?
+ * 'MODERATE' : 'WEAK'`. Those thresholds are ours, no canon sets them, and three adjacent hints could outrank
+ * one 충 landing squarely on the asked palace. What actually makes support strong is that a named fact speaks
+ * DIRECTLY to this axis and the input it was computed from is exact — so that is what is read.
+ */
+export function evidenceAdequacy(sub: Pick<DomainSubJudgment, 'stance' | 'directness' | 'reliability'> & {
+  evidence?: JudgmentEvidence[];
+  counterEvidence?: JudgmentEvidence[];
+}): EvidenceStrength {
+  if (!isDirectional(sub.stance)) return 'NONE';
+  const all = [...(sub.evidence ?? []), ...(sub.counterEvidence ?? [])];
+  if (all.length === 0) return 'WEAK';
+  const hasDirectFact = all.some((e) => e.directness === 'DIRECT');
+  const exactInput = sub.reliability === 'EXACT';
+  if (hasDirectFact && exactInput) return 'STRONG';
+  if (hasDirectFact || exactInput) return 'MODERATE';
+  return 'WEAK';
+}
+
 /** A stance that asserts nothing: the discipline looked and found no directional signal. */
 export const NO_SIGNAL: Stance = 'INSUFFICIENT_EVIDENCE';
 
@@ -194,6 +235,37 @@ export type DivinationJudgment = {
   /** Named major fact groups this judge actually CONSUMED for this question (depth-utilization reporting §20). */
   factGroupsUsed: string[];
 };
+
+/**
+ * §6 — HOW a claim was arrived at. Only `SINGLE_FACT_RESTATEMENT` is not an inference; everything else
+ * required combining things the engines did not already state together.
+ */
+export type InferenceDerivation =
+  /** One engine fact, reworded. The engine already said this — no reasoning was added. */
+  | 'SINGLE_FACT_RESTATEMENT'
+  /** ≥2 facts inside ONE discipline combined into a claim neither fact states alone. */
+  | 'MULTI_FACT_WITHIN_DISCIPLINE'
+  /** ≥2 disciplines disagreed and the conflict was RESOLVED into one claim with a stated reason. */
+  | 'CROSS_DISCIPLINE_SYNTHESIS'
+  /** Two opposite-looking axes are BOTH true and were framed as one compound truth (돈은 들어오나 남지 않는다). */
+  | 'COMPOUND_TRUTH'
+  /** The conclusion rests on what the chart does NOT contain — an absence no single fact states. */
+  | 'STRUCTURAL_ABSENCE';
+
+/** One claim the verdict makes, with its derivation and the facts it was built from (§6). */
+export type DivinationProposition = {
+  claim: string;
+  derivation: InferenceDerivation;
+  /** Disciplines whose facts were actually consumed to reach this claim. */
+  fromDisciplines: Discipline[];
+  /** The named engine facts this claim rests on — traceable, never prose. */
+  fromFacts: string[];
+};
+
+/** §7 — a verdict that produced ZERO synthetic inferences did no reasoning. Callers treat 0 as a failure. */
+export function countSyntheticInferences(propositions: DivinationProposition[]): number {
+  return propositions.filter((p) => p.derivation !== 'SINGLE_FACT_RESTATEMENT').length;
+}
 
 /** How a cross-discipline disagreement was resolved (§10). NEVER 'NEUTRALIZED' — that is not an option. */
 export type ContradictionResolutionKind =
@@ -262,6 +334,13 @@ export type CrossDivinationVerdict = {
     /** true when disciplines disagreed on THIS axis and the conflict was resolved here. */
     contested: boolean;
   }[];
+
+  /**
+   * §6/§7 — every claim this verdict makes, with HOW it was derived. This is what makes the depth claim
+   * checkable instead of asserted: a verdict whose propositions are all SINGLE_FACT_RESTATEMENT performed no
+   * inference at all, it just reworded the engines' output, and §7 fails such a verdict outright.
+   */
+  propositions: DivinationProposition[];
 
   agreementPoints: string[];
   contradictionPoints: string[];

@@ -41,11 +41,25 @@ export function classifyTimingQuestion(question: string): boolean {
   return q.length > 0 && isTiming(q);
 }
 
-// UTC epoch seconds → Asia/Seoul (UTC+9, fixed) civil wall-clock — the QUESTION instant for Qimen.
-// Korea-only V1 policy (mirrors the Saju V1 Asia/Seoul zone); recorded as an assumption in provenance.
-const SEOUL_OFFSET_SECONDS = 9 * 3600;
+// ── TIME-BASIS CONTRACT (V3 §24 — fixes a real 1-hour instant shift) ───────────────────────────────
+// The Qimen provider derives 節氣 and 時辰 through lunar-javascript, whose calendar math is CHINA STANDARD
+// TIME (UTC+8): it interprets the Y/M/D/H it is handed as CST wall-clock. This code previously handed it
+// SEOUL wall-clock (UTC+9) unchanged, so the board was cast for an instant ONE HOUR LATER than the user's
+// actual question moment. 時辰 are two-hour blocks, so that silently flipped the 시진 near every odd hour and
+// could cross a 節氣 boundary — changing 局, 값부 and 값사 outright.
+//
+// The instant itself is authoritative; only its REPRESENTATION changes here. We now convert the epoch to the
+// provider's expected UTC+8 wall-clock. (The consultation still *describes* the moment to users in Asia/Seoul
+// — that is a display concern and is unaffected.)
+const PROVIDER_OFFSET_SECONDS = 8 * 3600; // lunar-javascript / qimen-dunjia expect CST wall time
+export function epochToProviderQueryTime(epochSeconds: number): QimenQueryTime {
+  const d = new Date((epochSeconds + PROVIDER_OFFSET_SECONDS) * 1000);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours() };
+}
+
+/** @deprecated Kept for callers that genuinely want Seoul wall-clock for DISPLAY, never for the provider. */
 export function epochToSeoulQueryTime(epochSeconds: number): QimenQueryTime {
-  const d = new Date((epochSeconds + SEOUL_OFFSET_SECONDS) * 1000); // UTC fields of the shifted instant = Seoul local
+  const d = new Date((epochSeconds + 9 * 3600) * 1000);
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours() };
 }
 
@@ -57,6 +71,6 @@ export function resolveQimenActivation(question: string, questionEpochSeconds: n
   const isTimingQuestion = classifyTimingQuestion(question);
   return {
     isTimingQuestion,
-    questionTime: isTimingQuestion ? epochToSeoulQueryTime(questionEpochSeconds) : null,
+    questionTime: isTimingQuestion ? epochToProviderQueryTime(questionEpochSeconds) : null,
   };
 }

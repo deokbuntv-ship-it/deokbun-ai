@@ -80,15 +80,17 @@ describe('tri-engine grounding — Qimen activation (§15/§16)', () => {
   });
 });
 
-// ── §17 degraded / fail-closed ───────────────────────────────────────────────────────
-describe('Qimen degraded / fail-closed (§17)', () => {
-  it('timing question but provider-unsupported 節氣 → Qimen calculation_failed; consultation still works', async () => {
-    // KST 2026-06-01 (小满) — qimen-dunjia throws for this term → fail-closed, never a fabricated board.
-    const depsUnsupported = { digestProvider, nowEpochSeconds: Math.floor(Date.UTC(2026, 5, 1, 1, 0, 0) / 1000) };
-    const g = await buildConsultationGrounding(draft(), depsUnsupported, '지금 투자해도 될까요?');
-    if (g.status !== 'available') throw new Error('expected available (Saju/Ziwei still work)');
-    expect(g.evidence.qimen.availability).toBe('calculation_failed');
-    expect(g.evidence.myungri.availability).toBe('available'); // Saju not sacrificed for Qimen failure
+// ── §25 the formerly-broken 節氣 window, on the REAL grounding path ───────────────────
+describe('Qimen 節氣 coverage (V3 §25)', () => {
+  it('a timing question inside the old 小满/芒种 outage now gets a real board E2E', async () => {
+    // KST 2026-06-01 (小满). qimen-dunjia@2.1.0 threw `未知的節氣` for this term, so the product silently
+    // lost Qimen for ~32 days every year; this test previously asserted that outage as expected behaviour.
+    // The 3.1.0 upgrade fixes the name normalisation, so the real path must now produce a board.
+    const depsInWindow = { digestProvider, nowEpochSeconds: Math.floor(Date.UTC(2026, 5, 1, 1, 0, 0) / 1000) };
+    const g = await buildConsultationGrounding(draft(), depsInWindow, '지금 투자해도 될까요?');
+    if (g.status !== 'available') throw new Error('expected available');
+    expect(g.evidence.qimen.availability).toBe('available');
+    expect(g.evidence.myungri.availability).toBe('available');
   });
 });
 

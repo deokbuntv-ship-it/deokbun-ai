@@ -4,6 +4,7 @@
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { ANSWER_PLAN_VERSION, DECISION_POLICY_VERSION, type AnswerPlan } from './answerPlan';
 import { classifyConsultationDomain, type ConsultationDomain } from './consultationDomain';
+import type { CrossDivinationVerdict } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
 
@@ -99,6 +100,28 @@ function parseEvidenceSnapshot(v: unknown): ConsultationDecisionMeta['evidenceSn
  * that pretends a legacy row used the current versions). Server-side so the Edge follow-up loader can reuse
  * it on a row it queried; also used by the client persistence layer.
  */
+/**
+ * V3 §34/§44 — deserialize the persisted cross-discipline verdict. Validates the SHAPE the follow-up turn
+ * actually depends on (direction + per-discipline judgments + axes + evidence), so a truncated or foreign
+ * payload is rejected instead of silently restoring a hollow judgment. Structure only — no astrology here.
+ */
+export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | undefined {
+  if (v === null || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  if (typeof o.direction !== 'string' || typeof o.primaryConclusion !== 'string') return undefined;
+  if (typeof o.verdictVersion !== 'string') return undefined;
+  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return undefined;
+  for (const j of o.disciplineJudgments) {
+    if (j === null || typeof j !== 'object') return undefined;
+    const dj = j as Record<string, unknown>;
+    if (typeof dj.discipline !== 'string' || typeof dj.stance !== 'string' || typeof dj.applicable !== 'boolean') return undefined;
+    if (!Array.isArray(dj.domainSubJudgments)) return undefined;
+  }
+  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return undefined;
+  if (!Array.isArray(o.evidenceReferences)) return undefined;
+  return v as CrossDivinationVerdict;
+}
+
 export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefined {
   if (v === null || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
@@ -128,6 +151,15 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
   // being silently dropped and letting an action proceed with a weaker authority substrate.
   const evidenceSnapshot = o.evidenceSnapshot === undefined ? undefined : parseEvidenceSnapshot(o.evidenceSnapshot);
   if (o.evidenceSnapshot !== undefined && !evidenceSnapshot) return undefined;
+  // V3 §34 — the cross-discipline verdict was WRITTEN by the builder but never read back here, so on the REAL
+  // production path (write → JSONB → parse) it was silently discarded and a follow-up explained a degraded,
+  // Myungri-only judgment. Restored fail-closed: a malformed claim rejects the row rather than downgrading
+  // the session's judgment behind the user's back.
+  const divinationVerdict =
+    o.divinationVerdict === undefined || o.divinationVerdict === null
+      ? undefined
+      : parseDivinationVerdict(o.divinationVerdict);
+  if (o.divinationVerdict !== undefined && o.divinationVerdict !== null && !divinationVerdict) return undefined;
   if (evidenceSnapshot && (
     p !== evidenceSnapshot.polarity ||
     o.engineVersion !== evidenceSnapshot.engineVersion ||
@@ -149,6 +181,7 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
     ...(typeof o.domain === 'string' ? { domain: o.domain as ConsultationDecisionMeta['domain'] } : {}),
     ...(comparisonContext ? { comparisonContext } : {}),
     ...(evidenceSnapshot ? { evidenceSnapshot } : {}),
+    ...(divinationVerdict ? { divinationVerdict } : {}),
     resolvedTemporalContext: {
       anchorEpochSeconds: rtc.anchorEpochSeconds,
       timezone: 'Asia/Seoul',

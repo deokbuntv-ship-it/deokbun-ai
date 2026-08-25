@@ -18,6 +18,7 @@ import type { ZiweiChart } from '@/features/ziwei/domain/ziweiTypes';
 
 import {
   NO_SIGNAL,
+  evidenceAdequacy,
   type DivinationJudgment,
   type DomainSubJudgment,
   type EvidenceStrength,
@@ -74,8 +75,13 @@ export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgme
   if (dayCombo) bondFor.push(ev('일간 천간합', '두 사람이 서로에게 자연히 끌리는 결이 있습니다.', 'RELATION_BOND'));
   if (daySeatHarmony) bondFor.push(ev('일지 육합/반합', '함께 있는 자리가 서로 편안하게 맞물립니다.', 'RELATION_BOND'));
   if (dayClash) bondAgainst.push(ev('일간 천간충', '생각을 정하는 방식에서 정면으로 부딪힙니다.', 'RELATION_BOND'));
-  const bondStance: Stance = bondFor.length > bondAgainst.length ? (bondFor.length >= 2 ? 'STRONGLY_FOR' : 'FOR')
-    : bondAgainst.length > 0 ? 'CONDITIONAL_AGAINST' : NO_SIGNAL;
+  // V3 §31–§33 — not "more for-items than against-items". 천간(마음이 정해지는 층)과 일지(같이 있는 자리)는
+  // 서로 다른 층이므로, 어느 층에서 합이 걸리고 어느 층에서 충이 걸리는지가 결론을 정합니다.
+  const bondStance: Stance =
+    dayClash ? (daySeatHarmony ? 'CONDITIONAL_AGAINST' : 'AGAINST')
+      : dayCombo && daySeatHarmony ? 'STRONGLY_FOR' // 간합·지합이 두 층에서 함께 걸린 자리
+        : dayCombo || daySeatHarmony ? 'FOR'
+          : NO_SIGNAL;
 
   // ── MARRIAGE / DOMESTIC STABILITY (일지 = 배우자 자리) ────────────────────────────────────────────
   const marFor: JudgmentEvidence[] = [];
@@ -111,20 +117,37 @@ export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgme
   } else if (peerLevel) {
     moneyAgainst.push(ev('상호 십신에 비견', '살림의 주도권을 두고 서로 물러서지 않는 편입니다.', 'MONEY_RETENTION'));
   }
-  if (facts.elementComplement.sharedMissing.length >= 2) {
+  const sharedGap = facts.elementComplement.sharedMissing.length > 0;
+  if (sharedGap) {
     moneyAgainst.push(ev(
-      `공통으로 약한 기운 ${facts.elementComplement.sharedMissing.length}가지`,
-      '두 사람 모두 비어 있는 자리가 있어, 그 부분은 서로 메워 주지 못합니다.',
+      `공통으로 약한 기운 ${facts.elementComplement.sharedMissing.join('·')}`,
+      '두 사람 모두 비어 있는 자리라, 그 부분은 서로 메워 주지 못합니다.',
       'MONEY_RETENTION',
     ));
   }
-  if (facts.elementComplement.selfSuppliesTarget.length + facts.elementComplement.targetSuppliesSelf.length >= 2) {
-    moneyFor.push(ev('서로 부족한 기운을 채움', '한쪽이 비는 자리를 다른 쪽이 메워, 살림이 굴러가는 편입니다.', 'MONEY_RETENTION'));
+  // Mutual supply (BOTH directions) is a different structure from one-way supply — not "two supply items".
+  const mutualSupply = facts.elementComplement.selfSuppliesTarget.length > 0
+    && facts.elementComplement.targetSuppliesSelf.length > 0;
+  const oneWaySupply = !mutualSupply
+    && (facts.elementComplement.selfSuppliesTarget.length > 0 || facts.elementComplement.targetSuppliesSelf.length > 0);
+  if (mutualSupply) {
+    moneyFor.push(ev('서로 부족한 기운을 맞바꿔 채움', '한쪽이 비는 자리를 다른 쪽이 메우고 그 반대도 되어, 살림이 굴러가는 편입니다.', 'MONEY_RETENTION'));
+  } else if (oneWaySupply) {
+    moneyFor.push(ev('한쪽이 상대의 빈 기운을 채움', '메워 주는 방향이 한쪽으로만 흘러, 살림의 부담도 그쪽으로 몰립니다.', 'MONEY_RETENTION'));
   }
+
+  // V3 §31–§33 — the household-money stance follows WHICH structure is present, not which list is longer.
+  // 겁재는 이름 그대로 같은 몫을 두고 겨루는 십신이므로 재물 축에서는 결정적이고, 비견은 주도권 다툼이지 재물
+  // 경합은 아닙니다. 공통 결손은 서 있는 약점이지 다툼이 아니므로 결론을 뒤집지 않고 조건을 붙입니다.
+  const wealthAxis = moneyFor.some((e) => e.fact.startsWith('상호 십신에 재성'));
   const moneyStance: Stance =
-    moneyAgainst.length > moneyFor.length ? (rivalry ? 'AGAINST' : 'CONDITIONAL_AGAINST')
-      : moneyFor.length > moneyAgainst.length ? 'FOR'
-        : moneyFor.length > 0 ? 'CONDITIONAL_FOR' : NO_SIGNAL;
+    rivalry ? (mutualSupply ? 'CONDITIONAL_AGAINST' : 'AGAINST')
+      : peerLevel ? 'CONDITIONAL_AGAINST'
+        : wealthAxis ? (sharedGap ? 'CONDITIONAL_FOR' : 'FOR')
+          : mutualSupply ? (sharedGap ? 'CONDITIONAL_FOR' : 'FOR')
+            : oneWaySupply ? 'CONDITIONAL_FOR'
+              : sharedGap ? 'CONDITIONAL_AGAINST'
+                : NO_SIGNAL;
 
   // ── INFLUENCE (who exerts what on whom) ─────────────────────────────────────────────────────────
   const influence: JudgmentEvidence[] = [];
@@ -149,10 +172,7 @@ export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgme
   ];
 
   const primary = subs.find((s) => s.domain === input.questionDomain) ?? subs[0];
-  const evidenceStrength: EvidenceStrength =
-    primary.stance === NO_SIGNAL ? 'NONE'
-      : primary.evidence.length + primary.counterEvidence.length >= 3 ? 'STRONG'
-        : primary.evidence.length + primary.counterEvidence.length >= 1 ? 'MODERATE' : 'WEAK';
+  const evidenceStrength: EvidenceStrength = evidenceAdequacy(primary);
 
   const bondPositive = bondStance === 'FOR' || bondStance === 'STRONGLY_FOR';
   const dominantConclusion =
@@ -243,10 +263,7 @@ export function judgePairZiwei(input: {
   ];
 
   const primary = subs.find((s) => s.domain === input.questionDomain) ?? subs[0];
-  const evidenceStrength: EvidenceStrength =
-    primary.stance === NO_SIGNAL ? 'NONE'
-      : primary.evidence.length + primary.counterEvidence.length >= 3 ? 'STRONG'
-        : primary.evidence.length + primary.counterEvidence.length >= 1 ? 'MODERATE' : 'WEAK';
+  const evidenceStrength: EvidenceStrength = evidenceAdequacy(primary);
 
   return {
     discipline: 'ZIWEI', applicable: true, dataReliability: 'EXACT',

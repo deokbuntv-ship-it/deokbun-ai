@@ -103,22 +103,35 @@ export function analyzeLayer(
   };
 }
 
-/** Weight a layer's disturbance by KIND, not by count: one 충 on the asked axis outweighs three 파/해 elsewhere. */
-export function axisPressure(layer: LayerAnalysis, axis: JudgmentDomain): {
-  friction: number;
-  harmony: number;
+export type AxisPressure = {
+  /** WHICH relation kinds struck this axis (충/형/파/해…). A structure, deliberately never a magnitude. */
+  frictionKinds: string[];
+  harmonyKinds: string[];
+  /** A 충/형 landed directly on this axis — a named structural hit, not a heavier tally. */
   heavyHit: boolean;
+  touched: boolean;
   evidence: JudgmentEvidence[];
   counterEvidence: JudgmentEvidence[];
-} {
+};
+
+/**
+ * What this layer does to ONE axis, as structure.
+ *
+ * V3 §5 — this used to return `friction`/`harmony` integers with 충/형 weighted 2 and 파/해 weighted 1, which
+ * the consumer then compared. That is a score: the weights were ours, no canon sets them, and "friction 3 vs
+ * harmony 2" is a fabricated magnitude. What actually distinguishes these events is KIND and POSITION, both of
+ * which are already carried — so they are handed to the judge intact and the judge names the configuration.
+ */
+export function axisPressure(layer: LayerAnalysis, axis: JudgmentDomain): AxisPressure {
   const onAxis = layer.hits.filter((h) => h.axis === axis);
-  const friction = onAxis.filter((h) => h.friction).reduce((n, h) => n + (h.heavy ? 2 : 1), 0);
-  const harmony = onAxis.filter((h) => !h.friction).reduce((n, h) => n + 1, 0);
+  const friction = onAxis.filter((h) => h.friction);
+  const harmony = onAxis.filter((h) => !h.friction);
   return {
-    friction,
-    harmony,
-    heavyHit: onAxis.some((h) => h.friction && h.heavy),
-    evidence: onAxis.filter((h) => !h.friction).map((h) => h.evidence),
-    counterEvidence: onAxis.filter((h) => h.friction).map((h) => h.evidence),
+    frictionKinds: [...new Set(friction.map((h) => KIND_LABEL[h.kind] ?? h.kind))],
+    harmonyKinds: [...new Set(harmony.map((h) => KIND_LABEL[h.kind] ?? h.kind))],
+    heavyHit: friction.some((h) => h.heavy),
+    touched: onAxis.length > 0,
+    evidence: harmony.map((h) => h.evidence),
+    counterEvidence: friction.map((h) => h.evidence),
   };
 }

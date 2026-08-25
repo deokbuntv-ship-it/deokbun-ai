@@ -55,10 +55,13 @@ describe('epochToSeoulQueryTime (UTC+9 fixed, V1 Korea policy)', () => {
 
 describe('resolveQimenActivation — fresh per question (§18)', () => {
   const now = Math.floor(Date.UTC(2024, 0, 15, 1, 0, 0) / 1000);
-  it('timing question → questionTime at the given instant', () => {
+  it('timing question → questionTime at the given instant, in the PROVIDER\'s time basis', () => {
     const q = resolveQimenActivation('지금 이 계약을 해도 될까?', now);
     expect(q.isTimingQuestion).toBe(true);
-    expect(q.questionTime).toEqual({ year: 2024, month: 1, day: 15, hour: 10 });
+    // V3 §24 — 10:00 KST is 09:00 CST. lunar-javascript / qimen-dunjia derive 절기 and 시진 from CST wall
+    // time, so the query must be CST. Passing Seoul wall time (hour 10) shifted every board by one hour and
+    // could land the wrong 시진 — and, at a term boundary, the wrong 국 entirely.
+    expect(q.questionTime).toEqual({ year: 2024, month: 1, day: 15, hour: 9 });
   });
   it('natal question → NO questionTime (never fabricated)', () => {
     const q = resolveQimenActivation('제 타고난 성격은?', now);

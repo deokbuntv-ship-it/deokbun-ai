@@ -8,25 +8,25 @@
 // previously rejected candidate (`services/natalStrength.ts`): no 18-cell lookup table, no lexicographic
 // 월령>통근>구성 priority, no invented extreme caps, no same-ELEMENT rooting mislabelled as 통근.
 //
-// ⚠ UNRESOLVED OWNER CONFLICT (surfaced, not silently resolved): the owner's own
-// `docs/MYUNGRI_100_ADOPTION_ANALYSIS.md` reaches the OPPOSITE conclusion —
-//   · M-18 강약  → "CONDITIONAL(입력만·판정 제외)", §8.2: "身强/身弱 판정값을 fact로 출력 금지"
-//   · M-20 용신  → "REFERENCE_ONLY", risk 매우높음, §8.6: "결정론적 fact 아님 … LLM 해석 계층에서만 사용"
-// This sprint's instruction is newer and explicit, so the capability is implemented — but it is declared
-// C-class (newly adopted doctrine, PENDING REVIEW), never as a frozen fact. The owner must reconcile this
-// module with M-18/M-20 before it ships to paying users.
+// ⚠ DOCTRINE BLOCKER — the strength CLASS is WITHHELD (V3 §11–§13, `classificationBlocker`).
+// The V2 build turned four structural factors into support-votes vs drain-votes and read a 7-level label off
+// thresholds. The independent re-audit rejected that as factor voting, and §12 forbids it: 월령 is not one equal
+// vote, 통근 and 득지 are not independent tallies, and root count/quality/position cannot collapse into booleans.
+// A legitimate 억부 classification needs an authority this repository does not contain (월령-vs-통근 priority,
+// root quality weighting, band boundaries). The owner's own `docs/MYUNGRI_100_ADOPTION_ANALYSIS.md` lands in the
+// same place from the other side — M-18 강약 "CONDITIONAL(입력만·판정 제외)", §8.2 "身强/身弱 판정값을 fact로
+// 출력 금지"; M-20 용신 "REFERENCE_ONLY", risk 매우높음. §13 therefore applies: build all safe structural
+// preparation, name the gap, report it as a blocker — do NOT return to voting merely to produce a label.
 //
-// ADOPTED METHOD (named, single school — §12 forbids silent school-mixing):
-//   강약 = 억부(扶抑) 구조 판정 over FOUR named structural factors, each read from a frozen result:
+// WHAT THIS MODULE DOES ASSERT (all canonical, all frozen-derived — 억부 구조 요소):
 //     F1 월령   — 일간의 계절 phase (왕/상/휴/수/사) → 득령 여부
 //     F2 통근   — 일간과 同干이 지지 지장간에 있는가 (same-干 identity; NOT same-element)
 //     F3 득지   — 일간과 同오행 비겁이 지지 지장간에 있는가 (labelled 득지, kept DISTINCT from 통근)
 //     F4 구성   — 천간에 드러난 아군(비겁·인성) 대 타군(식상·재성·관성)
-//   Classification counts SATISFIED STRUCTURAL FACTORS. There is deliberately NO hidden numeric weighting
-//   (0.7/0.5/0.3-style scoring is exactly the "가짜 정밀도" the owner's analysis rejects), and when support
-//   and drain are both structurally present the result stays in the 중화 band with the tension recorded.
-//   용신 = 억부용신 only. 조후 is NOT mixed in; when the season is extreme it is surfaced separately as an
-//   explicitly-labelled ALTERNATIVE reading, never blended into the primary.
+//   Each is emitted as named evidence with its own effect. Structural tensions (득령·무근, 실령·유근) are
+//   reported as such. No numeric weighting, no vote tally, no band label.
+//   용신: 억부용신 is derived FROM the class, so with the class withheld none is asserted and — critically —
+//   nothing downstream is allowed to flip on it (§16). 조후 is never blended into the primary (§12).
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 import type { FiveElement, HeavenlyStem } from '@/features/interpretation';
 import type { SajuPillarPosition } from '@/features/interpretation/saju/derived/contracts';
@@ -36,7 +36,11 @@ import type { JudgmentEvidence } from './contracts';
 export const DIVINATION_STRENGTH_METHOD = 'deokbunai.divination-strength.eokbu-structural.v2' as const;
 export const DIVINATION_YONGSHIN_METHOD = 'deokbunai.divination-yongshin.eokbu.v2' as const;
 
-/** 7-level spectrum. Used because the adopted 억부 method distinguishes these bands structurally. */
+/**
+ * The 7-level spectrum remains DECLARED (the product wants it) but is not currently emitted: `UNDETERMINED`
+ * is the only value this module produces until a strength doctrine is adopted. §14 permits the spectrum
+ * "ONLY if structurally and canonically justified" — fabricating precision is worse than withholding it.
+ */
 export type StrengthClassification =
   | 'EXTREMELY_WEAK'   // 극신약
   | 'WEAK'             // 신약
@@ -44,11 +48,13 @@ export type StrengthClassification =
   | 'BALANCED'         // 중화
   | 'BALANCED_STRONG'  // 중화신강
   | 'STRONG'           // 신강
-  | 'EXTREMELY_STRONG';// 극신강
+  | 'EXTREMELY_STRONG' // 극신강
+  | 'UNDETERMINED';    // 채택 학파 미확정 — 판정 보류
 
 export const STRENGTH_LABEL: Record<StrengthClassification, string> = {
   EXTREMELY_WEAK: '극신약', WEAK: '신약', BALANCED_WEAK: '중화신약', BALANCED: '중화',
   BALANCED_STRONG: '중화신강', STRONG: '신강', EXTREMELY_STRONG: '극신강',
+  UNDETERMINED: '강약 판정 보류(학파 미확정)',
 };
 
 export type FactorState = 'SUPPORT' | 'NEUTRAL' | 'DRAIN';
@@ -63,8 +69,13 @@ export type DayMasterStrengthJudgment = {
   transparencyEffect: FactorState;
   compositionEffect: FactorState;
   structuralModifiers: string[];
-  /** Genuine tensions that the classification could NOT resolve — never hidden to look confident. */
+  /** Genuine tensions in the CHART that a classification would have to resolve — never hidden to look confident. */
   ambiguities: string[];
+  /**
+   * Non-null when the strength CLASS is withheld because the repository has no adopted doctrine to determine
+   * it (§13). Distinct from `ambiguities`: this is a gap in OUR method, not a tension in the chart.
+   */
+  classificationBlocker: string | null;
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   doctrineProvenance: string[];
 };
@@ -149,24 +160,29 @@ export function judgeDayMasterStrength(input: StrengthInput): DayMasterStrengthJ
     structuralModifiers.push('투간으로 지지의 아군이 실효화');
   }
 
-  // ── classification: count satisfied SUPPORT factors vs DRAIN factors (no hidden weights) ─────────
-  const supportFactors = [month.state === 'SUPPORT', rooted, seated, compositionEffect === 'SUPPORT'].filter(Boolean).length;
-  const drainFactors = [month.state === 'DRAIN', !rooted && !seated, compositionEffect === 'DRAIN'].filter(Boolean).length;
-
-  let classification: StrengthClassification;
-  if (supportFactors === 4 && drainFactors === 0) classification = 'EXTREMELY_STRONG';
-  else if (supportFactors >= 3 && drainFactors <= 1) classification = 'STRONG';
-  else if (supportFactors === 3) classification = 'BALANCED_STRONG';
-  else if (supportFactors === 2 && drainFactors <= 1) classification = 'BALANCED_STRONG';
-  else if (supportFactors === 2) classification = 'BALANCED';
-  else if (supportFactors === 1 && drainFactors >= 2) classification = 'BALANCED_WEAK';
-  else if (supportFactors === 1) classification = 'BALANCED';
-  else if (drainFactors >= 3) classification = 'EXTREMELY_WEAK';
-  else classification = 'WEAK';
-
-  // Honest tension reporting — the rejected build hid these behind a lookup result.
-  if (supportFactors >= 2 && drainFactors >= 2) {
-    ambiguities.push('일간을 돕는 구조와 빼앗는 구조가 함께 뚜렷해, 강약을 한쪽으로 확정하기 어렵습니다.');
+  // ── CLASSIFICATION IS WITHHELD (V3 §11–§13) ─────────────────────────────────────────────────────
+  // The previous build turned these four factors into support-votes vs drain-votes and read a 7-level label
+  // off thresholds. The independent audit rejected exactly that as factor voting, and §12 forbids it outright:
+  // 월령 is not one equal vote, 통근 and 득지 are not independent tallies, and root count/quality/position and
+  // hidden-stem role cannot legitimately collapse into booleans.
+  //
+  // A correct 억부 classification needs a canonical authority this repository does not contain: how to weigh
+  // 월령 against 통근, what root quality/position counts for, and where each band boundary sits. The owner's own
+  // `docs/MYUNGRI_100_ADOPTION_ANALYSIS.md` reaches the same place from the other side — M-18 강약 is classified
+  // "CONDITIONAL(입력만·판정 제외)", §8.2: "身强/身弱 판정값을 fact로 출력 금지" — because the source system's
+  // weights were the original author's own, self-described as unfinished.
+  //
+  // §13 therefore applies: implement the structural PREPARATION, name the gap, and report it as a blocker —
+  // do NOT return to voting merely to produce a label. Everything below the classification is real and usable;
+  // the label itself stays UNDETERMINED until a doctrine is adopted.
+  const classification: StrengthClassification = 'UNDETERMINED';
+  const classificationBlocker =
+    '강약 등급(신강/신약)을 확정하려면 월령 대 통근의 우선순위·뿌리의 질과 위치·등급 경계를 규정한 채택 학파가 필요합니다. '
+    + '본 저장소에는 그 근거가 없어, 구조 요소는 모두 산출하되 등급 판정은 보류합니다.';
+  const supportPresent = month.state === 'SUPPORT' || rooted || seated || compositionEffect === 'SUPPORT';
+  const drainPresent = month.state === 'DRAIN' || (!rooted && !seated) || compositionEffect === 'DRAIN';
+  if (supportPresent && drainPresent) {
+    ambiguities.push('일간을 돕는 구조와 빼앗는 구조가 함께 있습니다.');
   }
   if (month.state === 'SUPPORT' && !rooted && !seated) {
     ambiguities.push('계절은 얻었지만 지지에 뿌리가 없어, 겉과 속의 힘이 다릅니다.');
@@ -191,11 +207,14 @@ export function judgeDayMasterStrength(input: StrengthInput): DayMasterStrengthJ
     compositionEffect,
     structuralModifiers,
     ambiguities,
+    classificationBlocker,
+    // Confidence describes the STRUCTURAL read (the part we do assert), not the withheld class.
     confidence: ambiguities.length === 0 && input.hourKnown ? 'HIGH' : ambiguities.length > 1 ? 'LOW' : 'MEDIUM',
     doctrineProvenance: [
       `method=${DIVINATION_STRENGTH_METHOD}`,
-      'class=C (억부 구조 판정 — 널리 쓰이는 표준 원리이나 본 제품에서는 신규 채택, 검토 대기)',
-      '⚠ owner MYUNGRI_100 분석은 M-18 강약을 "판정값 출력 금지"로 분류함 — 반드시 재확인 필요',
+      'class=C (억부 구조 요소 산출 — 널리 쓰이는 표준 원리, 신규 채택·검토 대기)',
+      'BLOCKED: 강약 등급 판정은 채택 학파 부재로 보류 (구조 요소만 산출)',
+      '⚠ owner MYUNGRI_100 분석도 M-18 강약을 "판정값 출력 금지"로 분류함 — 동일 결론',
     ],
   };
 }
@@ -213,90 +232,53 @@ export type YongshinJudgment = {
   doctrineProvenance: string[];
 };
 
-// 오행 상생/상극 — frozen classical cycles, used only to name which element supports/drains the day master.
-const GENERATES: Record<FiveElement, FiveElement> = { WOOD: 'FIRE', FIRE: 'EARTH', EARTH: 'METAL', METAL: 'WATER', WATER: 'WOOD' };
-const GENERATED_BY: Record<FiveElement, FiveElement> = { FIRE: 'WOOD', EARTH: 'FIRE', METAL: 'EARTH', WATER: 'METAL', WOOD: 'WATER' };
-const CONTROLS: Record<FiveElement, FiveElement> = { WOOD: 'EARTH', EARTH: 'WATER', WATER: 'FIRE', FIRE: 'METAL', METAL: 'WOOD' };
-const CONTROLLED_BY: Record<FiveElement, FiveElement> = { EARTH: 'WOOD', WATER: 'EARTH', FIRE: 'WATER', METAL: 'FIRE', WOOD: 'METAL' };
-
 const EL_LABEL: Record<FiveElement, string> = { WOOD: '목', FIRE: '화', EARTH: '토', METAL: '금', WATER: '수' };
 
-const WEAK_SIDE: StrengthClassification[] = ['EXTREMELY_WEAK', 'WEAK', 'BALANCED_WEAK'];
-const STRONG_SIDE: StrengthClassification[] = ['EXTREMELY_STRONG', 'STRONG', 'BALANCED_STRONG'];
-
 /**
- * 억부용신. A 용신 is only named when (a) the strength verdict actually leans, and (b) the needed element is
- * PRESENT in the chart — an element the chart does not contain cannot be its 용신 in this method. Genuine
- * ambiguity is preserved (§13) instead of forcing a pick.
+ * 억부용신 — WITHHELD.
+ *
+ * V3 §15–§17: the 용신 was a lookup off the strength label ("신약 → 인성/비겁, 신강 → 식상/재성/관성, take the
+ * first element the chart happens to contain"). That is not a 용신 judgment; it is a table read, and the audit
+ * rejected it. Its only input — the strength class — is itself withheld (§13), so the lookup is not merely
+ * unsafe, it is unusable. The whole derivation is therefore REMOVED rather than left dormant: leaving it in
+ * place would let a future edit re-enable a rejected method without re-deriving the doctrine.
+ *
+ * What is kept: the structural read that a real 억부 judgment would consume, and a named blocker saying what
+ * is missing. §16 is satisfied by construction — with no 용신, `luckElementEffect` returns NEUTRAL for every
+ * incoming element, so nothing downstream can flip on a fabricated one.
  */
 export function judgeYongshin(input: {
   strength: DayMasterStrengthJudgment;
   dayMasterElement: FiveElement;
   /** Elements actually present in the natal chart (raw counts from the frozen distribution). */
   elementCounts: Record<FiveElement, number>;
-  /** Extreme seasonal context, if the chart has one — surfaced separately, never blended (§12). */
+  /** Extreme seasonal context, if the chart has one — reported separately, never blended (§12). */
   extremeSeason: '한랭' | '염열' | null;
 }): YongshinJudgment {
-  const de = input.dayMasterElement;
-  const present = (e: FiveElement) => (input.elementCounts[e] ?? 0) > 0;
-  const leaning = STRONG_SIDE.includes(input.strength.classification)
-    ? 'STRONG'
-    : WEAK_SIDE.includes(input.strength.classification)
-      ? 'WEAK'
-      : 'BALANCED';
-
-  const provenance = [
-    `method=${DIVINATION_YONGSHIN_METHOD}`,
-    'class=C (억부용신 단일 학파 — 조후와 혼용하지 않음, 신규 채택·검토 대기)',
-    '⚠ owner MYUNGRI_100 분석은 M-20 용신을 REFERENCE_ONLY(위험 매우높음)로 분류함 — 반드시 재확인 필요',
-  ];
-
-  // 중화 / unresolved tension → no 용신 is asserted.
-  if (leaning === 'BALANCED' || input.strength.ambiguities.length >= 2) {
-    return {
-      primaryYongshin: null,
-      basis: '강약이 한쪽으로 기울지 않아, 억부용신을 하나로 확정하지 않습니다.',
-      secondaryFavorableFactors: [],
-      unfavorableFactors: [],
-      structuralReasoningReferences: input.strength.ambiguities,
-      alternativeInterpretation: null,
-      alternativeReason: null,
-      confidence: 'LOW',
-      doctrineProvenance: provenance,
-    };
-  }
-
-  // 신약 → 생조(인성=일간을 생하는 오행 / 비겁=같은 오행). 신강 → 설기(식상)·극제(관성)·소모(재성).
-  const candidates: FiveElement[] = leaning === 'WEAK'
-    ? [GENERATED_BY[de], de]
-    : [GENERATES[de], CONTROLLED_BY[de], CONTROLS[de]];
-  const available = candidates.filter(present);
-  const primary = available[0] ?? null;
-
-  const unfavorable = leaning === 'WEAK'
-    ? [GENERATES[de], CONTROLLED_BY[de]].filter(present).map((e) => `${EL_LABEL[e]} — 약한 일간의 힘을 더 빼갑니다`)
-    : [GENERATED_BY[de], de].filter(present).map((e) => `${EL_LABEL[e]} — 이미 강한 일간을 더 밀어 올립니다`);
-
   return {
-    primaryYongshin: primary,
-    basis: primary
-      ? leaning === 'WEAK'
-        ? `일간이 ${input.strength.label}이라 도와주는 ${EL_LABEL[primary]}을 용신으로 봅니다(억부).`
-        : `일간이 ${input.strength.label}이라 힘을 덜어 주는 ${EL_LABEL[primary]}을 용신으로 봅니다(억부).`
-      : '필요한 오행이 원국에 없어 용신을 세우지 않습니다.',
-    secondaryFavorableFactors: available.slice(1).map((e) => `${EL_LABEL[e]} — 보조로 도움이 됩니다`),
-    unfavorableFactors: unfavorable,
+    primaryYongshin: null,
+    basis: '강약 판정이 보류된 상태라, 억부용신을 세우지 않습니다. (용신을 세우려면 강약 학파 채택이 선행되어야 합니다.)',
+    secondaryFavorableFactors: [],
+    unfavorableFactors: [],
     structuralReasoningReferences: [
-      `강약 ${input.strength.label} (월령 ${input.strength.monthCommandEffect} · 통근 ${input.strength.rootingEffect} · 구성 ${input.strength.compositionEffect})`,
+      `월령 ${input.strength.monthCommandEffect} · 통근 ${input.strength.rootingEffect} · 구성 ${input.strength.compositionEffect}`,
       ...input.strength.structuralModifiers,
     ],
-    // 조후 is NOT mixed into the primary — it is offered as a clearly separate reading (§12).
+    // 조후 context is REPORTED (it is a real seasonal fact) but never promoted into a primary in its place.
     alternativeInterpretation: input.extremeSeason
-      ? input.extremeSeason === '한랭' ? '조후로 보면 화(火)로 덥히는 쪽을 먼저 볼 수도 있습니다.' : '조후로 보면 수(水)로 식히는 쪽을 먼저 볼 수도 있습니다.'
+      ? input.extremeSeason === '한랭'
+        ? '계절이 한랭으로 치우쳐 있습니다. 조후를 우선하는 학파라면 화(火)를 먼저 볼 수 있습니다.'
+        : '계절이 염열로 치우쳐 있습니다. 조후를 우선하는 학파라면 수(水)를 먼저 볼 수 있습니다.'
       : null,
-    alternativeReason: input.extremeSeason ? '계절이 한쪽으로 치우쳐, 조후를 우선하는 학파라면 결론이 달라질 수 있습니다(본 판정은 억부 기준).' : null,
-    confidence: primary === null ? 'LOW' : input.strength.confidence === 'HIGH' ? 'MEDIUM' : 'LOW',
-    doctrineProvenance: provenance,
+    alternativeReason: input.extremeSeason
+      ? '조후는 억부와 다른 학파의 관점이라, 억부 판정을 대신하지 않습니다.'
+      : null,
+    confidence: 'LOW',
+    doctrineProvenance: [
+      `method=${DIVINATION_YONGSHIN_METHOD}`,
+      'BLOCKED: 강약 학파 미채택 → 억부용신 산출 불가 (강약 등급이 유일한 입력)',
+      '⚠ owner MYUNGRI_100 분석도 M-20 용신을 REFERENCE_ONLY(위험 매우높음)로 분류함 — 동일 결론',
+    ],
   };
 }
 

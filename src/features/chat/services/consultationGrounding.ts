@@ -62,6 +62,7 @@ import {
   type CrossDivinationVerdict,
   type JudgmentDomain,
   type NatalStructureInput,
+  type QuestionIntent,
   type TemporalLayerFacts,
 } from '@/features/divination';
 import { buildRelationsToNatal } from '@/features/myungri';
@@ -166,6 +167,25 @@ const DOMAIN_MAP: Record<ConsultationDomain, JudgmentDomain> = {
 // 모이다 conjugates to 모일/모여/모았 — matching only "모이" missed the most common phrasing ("돈이 모일까요?").
 const RETENTION_CUE = /모(?:이|일|여|였|았|을|으)|남[아을는]|쌓|저축|지키|새(?:나가|어)|유지되/;
 const INFLOW_CUE = /벌|들어오|수입|매출|버는/;
+// V3 §8 — WHAT KIND of answer the question wants. A description is not a recommendation and a cause is not a
+// verdict; V2 forced FOR/AGAINST onto both. Routing only — selects the answer SHAPE, computes no astrology.
+const DESCRIPTIVE_CUE = /성격|성향|기질|어떤\s*사람|타고난|본성|어떻습니까|어떤가요|특징/;
+const CAUSE_CUE = /왜\s|왜요|이유|때문|원인|자꾸/;
+const TIMING_CUE = /언제|지금|이번\s*달|타이밍|시기|시점/;
+const PROBABILITY_CUE = /가능성|될까|있을까|하게\s*될/;
+const DECISION_CUE = /해도\s*(될까|괜찮|되나)|말까|할까요|추천|괜찮을까/;
+
+export function resolveQuestionIntent(question: string): QuestionIntent {
+  const q = question ?? '';
+  // Order matters: an explicit decision/cause phrasing outranks an incidental descriptive word.
+  if (CAUSE_CUE.test(q)) return 'CAUSE_WHY';
+  if (DECISION_CUE.test(q)) return 'DECISION';
+  if (DESCRIPTIVE_CUE.test(q) && !TIMING_CUE.test(q)) return 'DESCRIPTIVE';
+  if (TIMING_CUE.test(q)) return 'TIMING';
+  if (PROBABILITY_CUE.test(q)) return 'PROBABILITY';
+  return 'OUTCOME';
+}
+
 /** Money words the topic classifier may not carry (it never learned 저축/모으다) but that are clearly financial. */
 const MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현금/;
 
@@ -503,7 +523,7 @@ export async function buildConsultationGrounding(
       judgeZiwei({ question: q, questionDomain, chart: ziweiParts.chart, availability: ziweiParts.availability }),
       judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
     ];
-    divinationVerdict = judgeCross({ question: q, questionDomain, judgments, asksTiming });
+    divinationVerdict = judgeCross({ question: q, questionDomain, judgments, asksTiming, questionIntent: resolveQuestionIntent(q) });
   } catch {
     divinationVerdict = null; // fail-open — never break a paid answer on a judgment error
   }

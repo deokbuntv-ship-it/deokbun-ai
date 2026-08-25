@@ -10,8 +10,12 @@ export {
   DIVINATION_VERDICT_VERSION,
   AGAINST_STANCES,
   FOR_STANCES,
+  countSyntheticInferences,
+  evidenceAdequacy,
   isDirectional,
   stanceValence,
+  type DivinationProposition,
+  type InferenceDerivation,
   type ContradictionResolution,
   type ContradictionResolutionKind,
   type CrossDivinationVerdict,
@@ -27,6 +31,8 @@ export {
   type JudgmentEvidence,
   type QuestionDirectness,
   type Stance,
+  type QuestionIntent,
+  NON_DECISION_INTENTS,
   type TemporalScope,
 } from './contracts';
 

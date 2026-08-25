@@ -78,8 +78,6 @@ function inapplicable(reason: string, domain: JudgmentDomain): DivinationJudgmen
   };
 }
 
-const SIGN = { AUSPICIOUS: 1, NEUTRAL: 0, INAUSPICIOUS: -1 } as const;
-
 /**
  * Judge "is NOW the moment" from the WHOLE board. Four canonical signals compose the stance, so two boards
  * sharing a 값사문 but differing in 성/신/궁 no longer collapse to the same verdict.
@@ -136,31 +134,77 @@ export function judgeQimen(input: QimenJudgeInput): DivinationJudgment {
     });
   }
 
-  // ── compose the stance from all four signals (door weighted double: it governs the matter) ────────
-  const score = SIGN[dutyDoorClass] * 2 + (starCls ? SIGN[starCls] : 0) + (godCls ? SIGN[godCls] : 0);
-  const sharpened = sameSeat ? (score > 0 ? score + 1 : score < 0 ? score - 1 : 0) : score;
+  // ── STRUCTURAL READING (V3 §22 — replaces `door×2 + star + deity + adjustment`) ───────────────────
+  // The board is read as a NAMED CONFIGURATION, not a sum. 값사문 sets what the matter itself is doing; the
+  // 값부 구성 and the 팔신 at the acting palace say whether the rest of the board is pulling with it or against
+  // it; 값부·값사 동궁 says how concentrated that reading is. Each element can therefore change the verdict —
+  // and the configuration that produced it is reported, so the reasoning is inspectable rather than arithmetic.
+  const boardWith = starCls === 'AUSPICIOUS' || godCls === 'AUSPICIOUS';
+  const boardAgainst = starCls === 'INAUSPICIOUS' || godCls === 'INAUSPICIOUS';
 
   let stance: Stance;
   let dominantConclusion: string;
-  if (sharpened >= 3) {
-    stance = 'FOR';
-    dominantConclusion = '지금 시점으로 보면 판이 분명히 열려 있습니다. 움직여도 됩니다.';
-  } else if (sharpened >= 1) {
-    stance = 'CONDITIONAL_FOR';
-    dominantConclusion = '지금 판은 나쁘지 않습니다. 크게 벌이지 않는 선에서 진행할 만합니다.';
-  } else if (sharpened <= -3) {
-    stance = 'AGAINST_FOR_NOW';
-    dominantConclusion = '지금 이 시점은 판 자체가 막혀 있습니다. 시점을 미루는 쪽으로 봅니다.';
-  } else if (sharpened <= -1) {
-    stance = 'AGAINST_FOR_NOW';
-    dominantConclusion = '지금 밀어붙이면 부딪히는 자리가 있습니다. 서두르지 않는 쪽이 낫습니다.';
+  let configuration: string;
+  let evidenceStrength: EvidenceStrength;
+
+  if (dutyDoorClass === 'INAUSPICIOUS') {
+    if (boardAgainst && !boardWith) {
+      configuration = '흉문에 판 전체가 함께 막힘';
+      stance = 'AGAINST_FOR_NOW';
+      dominantConclusion = '일을 이끄는 문도 막혀 있고 판의 기운도 같은 방향이라, 지금 시점은 아닙니다.';
+      evidenceStrength = 'STRONG';
+    } else if (boardWith) {
+      configuration = '흉문이나 도와주는 기운이 붙음';
+      stance = 'AGAINST_FOR_NOW';
+      dominantConclusion = '이끄는 문이 막혀 있습니다. 돕는 기운이 있어 아주 흉하지는 않으나, 지금 밀어붙일 때는 아닙니다.';
+      evidenceStrength = 'MODERATE';
+    } else {
+      configuration = '흉문 단독';
+      stance = 'AGAINST_FOR_NOW';
+      dominantConclusion = '지금 이 일을 이끄는 자리가 막혀 있어, 시점을 미루는 쪽으로 봅니다.';
+      evidenceStrength = 'MODERATE';
+    }
+  } else if (dutyDoorClass === 'AUSPICIOUS') {
+    if (boardWith && !boardAgainst) {
+      configuration = '길문에 판이 함께 열림';
+      stance = 'FOR';
+      dominantConclusion = '이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.';
+      evidenceStrength = 'STRONG';
+    } else if (boardAgainst) {
+      // A blocked star/deity on an open door is the classic "열렸으나 방해가 붙은" board — conditional, not FOR.
+      configuration = '길문이나 방해하는 기운이 붙음';
+      stance = 'CONDITIONAL_FOR';
+      dominantConclusion = '길은 열려 있지만 붙어 있는 기운이 껄끄럽습니다. 크게 벌이지 않는 선에서 진행하십시오.';
+      evidenceStrength = 'MODERATE';
+    } else {
+      configuration = '길문 단독';
+      stance = 'FOR';
+      dominantConclusion = '지금 시점으로 보면 판이 열려 있습니다.';
+      evidenceStrength = 'MODERATE';
+    }
   } else {
-    stance = 'CONDITIONAL_FOR';
-    dominantConclusion = '지금 판은 크게 열리지도 막히지도 않아, 조용히 진행하는 정도가 알맞습니다.';
+    // 杜門/景門 — the matter itself is neither opened nor blocked, so the rest of the board decides.
+    if (boardAgainst && !boardWith) {
+      configuration = '중평문에 방해 기운';
+      stance = 'AGAINST_FOR_NOW';
+      dominantConclusion = '일 자체는 중립인데 판의 기운이 껄끄러워, 지금 서두를 자리는 아닙니다.';
+      evidenceStrength = 'MODERATE';
+    } else if (boardWith && !boardAgainst) {
+      configuration = '중평문에 돕는 기운';
+      stance = 'CONDITIONAL_FOR';
+      dominantConclusion = '일 자체는 중립이지만 판이 도와주어, 조용히 진행할 만합니다.';
+      evidenceStrength = 'MODERATE';
+    } else {
+      configuration = '중평문·판도 중립';
+      stance = 'CONDITIONAL_FOR';
+      dominantConclusion = '지금 판은 크게 열리지도 막히지도 않아, 조용히 진행하는 정도가 알맞습니다.';
+      evidenceStrength = 'WEAK';
+    }
   }
 
-  const evidenceStrength: EvidenceStrength =
-    Math.abs(sharpened) >= 3 ? 'STRONG' : Math.abs(sharpened) >= 1 ? 'MODERATE' : 'WEAK';
+  // 값부·값사 동궁 concentrates the board, so the SAME reading is held with more certainty (it does not flip it).
+  if (sameSeat && evidenceStrength === 'MODERATE') evidenceStrength = 'STRONG';
+  if (sameSeat) configuration += ' · 값부값사 동궁으로 신호가 뚜렷';
   const mixed = evidence.length > 0 && counterEvidence.length > 0;
 
   return {

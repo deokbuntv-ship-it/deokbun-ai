@@ -52,8 +52,13 @@ const GENERIC_ADVICE = [
 ];
 
 // Direction words the prose uses when it AGREES with a FOR / AGAINST verdict.
-const PROSE_FOR = /(하는\s*쪽|가는\s*쪽|괜찮습니다|좋은\s*(시기|흐름)|열려\s*있|받쳐줍니다|진행하|해도\s*(됩|좋)|맞습니다)/;
-const PROSE_AGAINST = /(하지\s*않는\s*쪽|아닙니다|미루|접|어렵|무리|막히|좋지\s*않|피하|난도가\s*높|쉽지\s*않)/;
+//
+// These must cover the register the ENGINE itself writes in, not only the register an LLM might. The QA pack
+// caught real CONDITIONAL_AGAINST verdicts whose headline read "범위를 좁히는 쪽이 낫습니다" / "지키는 쪽이
+// 약해…" — plainly a direction to any Korean reader, but invisible to the original vocabulary, so the guard
+// reported VERDICT_LOST_IN_PROSE on prose that was not lost. Only unambiguous direction verbs are added.
+const PROSE_FOR = /(하는\s*쪽|가는\s*쪽|괜찮습니다|좋은\s*(시기|흐름)|열려\s*있|열리는|받쳐줍니다|받쳐\s*주|진행하|해도\s*(됩|좋)|맞습니다)/;
+const PROSE_AGAINST = /(하지\s*않는\s*쪽|아닙니다|미루|접|어렵|무리|막히|좋지\s*않|피하|난도가\s*높|쉽지\s*않|좁히|줄이|약해|벌일\s*자리는\s*아)/;
 
 /**
  * Validate a composed paid reading against its own verdict. `prose` is the user-facing text (composed card or

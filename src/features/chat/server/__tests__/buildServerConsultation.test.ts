@@ -117,16 +117,18 @@ describe('buildServerConsultation — question time is SERVER-owned (§10)', () 
 });
 
 describe('buildServerConsultation — §24 server E2E degraded modes', () => {
-  it('C: a timing question at an unsupported 節氣 → Qimen calculation_failed, SAJU+Ziwei survive', async () => {
-    // KST 2026-06-01 10:00 → 小满 (the provider throws → fail-closed calculation_failed).
+  it('C: a timing question inside the old 小满 outage now reaches the server with a real board (V3 §25)', async () => {
+    // KST 2026-06-01 10:00 → 小满. On qimen-dunjia@2.1.0 the provider threw here and the server fell back to
+    // a degraded consultation for ~32 days a year; this case used to assert that degradation. After the 3.1.0
+    // name-normalisation fix the server must serve a full three-engine answer for the same instant.
     const now = Math.floor(Date.UTC(2026, 5, 1, 1, 0, 0) / 1000);
     const { deps } = capturingDeps(GOOD_ANSWER, { nowEpochSeconds: now });
     const r = await buildServerConsultation(baseRequest({ question: '지금 이 계약을 진행해도 될까요?' }), deps);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.groundingMeta.grounded).toBe(true); // still grounded on the natal spine
+    expect(r.groundingMeta.grounded).toBe(true);
     expect(r.groundingMeta.engines.myungri).toBe('available');
-    expect(r.groundingMeta.engines.qimen).not.toBe('available'); // Qimen degraded, consultation survives
+    expect(r.groundingMeta.engines.qimen).toBe('available');
   });
 
   it('E: invalid birth input → INVALID_INPUT (no grounding, no LLM call)', async () => {

@@ -16,6 +16,7 @@ import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 
 import {
   NO_SIGNAL,
+  evidenceAdequacy,
   type DataReliability,
   type DivinationJudgment,
   type DomainSubJudgment,
@@ -142,14 +143,16 @@ function judgeAxis(
   elementEffects: { scope: string; effect: 'FAVORABLE' | 'ADVERSE' | 'NEUTRAL'; why: string }[] = [],
 ): DomainSubJudgment | null {
   const pressures = layers.map((l) => ({ layer: l, p: axisPressure(l, axis) }));
-  const touched = pressures.filter((x) => x.p.friction > 0 || x.p.harmony > 0);
+  const touched = pressures.filter((x) => x.p.touched);
   const natal = baseline ? natalSupportForDomain(baseline, axis) : { support: 'UNKNOWN' as const, note: '' };
 
   // Nothing in the chart or the luck cycles speaks to this axis → emit nothing (never a filler positive).
   if (touched.length === 0 && natal.support === 'UNKNOWN') return null;
 
-  const friction = pressures.reduce((n, x) => n + x.p.friction, 0);
-  const harmony = pressures.reduce((n, x) => n + x.p.harmony, 0);
+  const frictionKinds = [...new Set(pressures.flatMap((x) => x.p.frictionKinds))];
+  const harmonyKinds = [...new Set(pressures.flatMap((x) => x.p.harmonyKinds))];
+  const friction = frictionKinds.length > 0;
+  const harmony = harmonyKinds.length > 0;
   const heavy = pressures.some((x) => x.p.heavyHit);
   const evidence = pressures.flatMap((x) => x.p.evidence);
   const counterEvidence = pressures.flatMap((x) => x.p.counterEvidence);
@@ -161,26 +164,35 @@ function judgeAxis(
 
   let stance: Stance;
   let conclusion: string;
-  if (friction === 0 && harmony === 0) {
+  // V3 §5 — the stance follows a NAMED structural configuration, never "which count is bigger". What decides
+  // is WHICH kind of relation landed on this axis and whether the natal chart is built to absorb it: a 충 on a
+  // chart with no supporting structure is a different event from the same 충 on a chart that has one.
+  const structure = frictionKinds.concat(harmonyKinds).join('·');
+  if (!friction && !harmony) {
     // The natal chart has something to say about this axis, but no luck cycle is activating it.
     stance = natal.support === 'ABSENT' ? 'CONDITIONAL_AGAINST' : NO_SIGNAL;
     conclusion = natal.support === 'ABSENT'
       ? `${natal.note} 지금 이 부분을 크게 벌일 자리는 아닙니다.`
       : '지금 이 부분을 흔드는 흐름은 따로 없습니다.';
-  } else if (friction > harmony) {
-    stance = heavy && natal.support !== 'STRONG' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
-    conclusion = heavy
-      ? '이 부분은 직접 흔들리는 자리가 있어, 그대로 밀고 가기 어렵습니다.'
-      : '이 부분은 부딪히는 지점이 있어 범위를 좁히는 쪽이 낫습니다.';
-  } else if (harmony > friction) {
+  } else if (heavy) {
+    // 충/형 struck this axis directly. The chart's own footing decides whether it breaks or merely bends.
+    stance = natal.support === 'STRONG' ? 'CONDITIONAL_AGAINST' : 'AGAINST';
+    conclusion = natal.support === 'STRONG'
+      ? `${structure}으로 직접 흔들리는 자리가 있지만 바탕이 받쳐 주어, 범위를 좁히면 감당할 수 있습니다.`
+      : `${structure}으로 직접 흔들리는 자리가 있고 받쳐 줄 바탕도 약해, 그대로 밀고 가기 어렵습니다.`;
+  } else if (friction && !harmony) {
+    // Only the lighter frictional kinds (파/해) — a snag, not a break.
+    stance = 'CONDITIONAL_AGAINST';
+    conclusion = `${structure}으로 부딪히는 지점이 있어 범위를 좁히는 쪽이 낫습니다.`;
+  } else if (harmony && !friction) {
     stance = natal.support === 'STRONG' ? 'FOR' : 'CONDITIONAL_FOR';
     conclusion = natal.support === 'STRONG'
-      ? `${natal.note} 흐름도 맞물려 열리는 자리입니다.`
-      : '이 부분은 흐름이 맞물려 열리는 편입니다.';
+      ? `${natal.note} ${structure}으로 흐름도 맞물려 열리는 자리입니다.`
+      : `${structure}으로 흐름이 맞물려 열리는 편입니다.`;
   } else {
-    // equal push and pull on the SAME axis — a real internal tension, not a coin flip
+    // 합 and 충/파/해 on the SAME axis — a real structural tension. It is described, not averaged away.
     stance = 'CONDITIONAL_FOR';
-    conclusion = '이 부분은 열리는 힘과 부딪히는 힘이 함께 있어, 조건을 정리하고 가야 합니다.';
+    conclusion = `${harmonyKinds.join('·')}으로 열리면서 ${frictionKinds.join('·')}으로 부딪히는 자리가 겹쳐, 조건을 정리하고 가야 합니다.`;
   }
 
   // ── §14: 용신 materially shifts the axis, it is not a decorative label ──────────────────────────
@@ -303,7 +315,10 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
   if (layers.some((l) => l.hits.length > 0)) factGroupsUsed.push('원국×운 관계(종류·위치)');
 
   // ── per-axis sub-judgments (the real decomposition source) ───────────────────────────────────────
-  const subs = axesFor(asked)
+  // The ASKED axis is always attempted first — `axesFor` lists the axes worth reading AROUND the question and
+  // omitted the asked one for several domains, so the judge never even tried the axis the user asked about.
+  // Where the chart genuinely offers no route to that axis, `judgeAxis` returns null and nothing is invented.
+  const subs = [...new Set<JudgmentDomain>([asked, ...axesFor(asked)])]
     .map((axis) => judgeAxis(axis, layers, baseline, asked, reliability, layerElementEffects))
     .filter((s): s is DomainSubJudgment => s !== null);
 
@@ -357,12 +372,25 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
 
     retentionSub.evidence = [...retentionSub.evidence, ...holding];
     retentionSub.counterEvidence = [...retentionSub.counterEvidence, ...leakage];
-    // Tilt only — one step, and only when leakage genuinely outweighs holding.
-    if (leakage.length > holding.length) {
-      if (retentionSub.stance === 'FOR' || retentionSub.stance === 'CONDITIONAL_FOR') retentionSub.stance = 'CONDITIONAL_AGAINST';
-      else if (retentionSub.stance === NO_SIGNAL) retentionSub.stance = 'CONDITIONAL_AGAINST';
-      retentionSub.conclusion = '들어오는 것에 비해 지키는 쪽이 약해, 버는 것과 남기는 것을 나눠 보셔야 합니다.';
-    } else if (holding.length > leakage.length && retentionSub.stance === NO_SIGNAL) {
+
+    // V3 §5 — not "more leakage items than holding items". The two kinds of leak are structurally different
+    // and are read as such: an ACTIVE 겁재 cycle over a chart that has wealth is a contest happening now, while
+    // 무통근 is a standing trait. A standing holding trait does not cancel an active contest — it only decides
+    // whether the contest bends the axis or breaks it. That is the same rule the axis judgment uses.
+    const contested = robbingLayer !== undefined && chartHasWealth;
+    const canHold = baseline?.anchored === 'ROOTED' || baseline?.inCommand === true;
+    const leaksByStructure = baseline?.anchored === 'FLOATING';
+    if (contested) {
+      if (retentionSub.stance !== 'AGAINST') retentionSub.stance = 'CONDITIONAL_AGAINST';
+      retentionSub.conclusion = canHold
+        ? '지킬 바탕은 있지만 지금은 몫을 나눠 갖는 흐름이 겹쳐, 버는 것과 남기는 것을 나눠 보셔야 합니다.'
+        : '들어오는 것에 비해 지키는 쪽이 약해, 버는 것과 남기는 것을 나눠 보셔야 합니다.';
+    } else if (leaksByStructure && !canHold) {
+      if (retentionSub.stance === 'FOR' || retentionSub.stance === 'CONDITIONAL_FOR' || retentionSub.stance === NO_SIGNAL) {
+        retentionSub.stance = 'CONDITIONAL_AGAINST';
+      }
+      retentionSub.conclusion = '뿌리가 얕아 들어온 것이 머무는 힘이 약합니다. 남기는 쪽을 따로 정해 두셔야 합니다.';
+    } else if (holding.length > 0 && retentionSub.stance === NO_SIGNAL) {
       retentionSub.stance = 'CONDITIONAL_FOR';
       retentionSub.conclusion = '들어온 것을 지키는 구조는 크게 새지 않습니다.';
     }
@@ -374,14 +402,7 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
   const allCounter = subs.flatMap((s) => s.counterEvidence);
 
   const directionalSubs = subs.filter((s) => s.stance !== NO_SIGNAL);
-  const evidenceStrength: EvidenceStrength =
-    primarySub === null || primarySub.stance === NO_SIGNAL
-      ? 'NONE'
-      : primarySub.evidence.length + primarySub.counterEvidence.length >= 3
-        ? 'STRONG'
-        : primarySub.evidence.length + primarySub.counterEvidence.length >= 1
-          ? 'MODERATE'
-          : 'WEAK';
+  const evidenceStrength: EvidenceStrength = primarySub === null ? 'NONE' : evidenceAdequacy(primarySub);
 
   const internalContradictions: string[] = [];
   const forSubs = directionalSubs.filter((s) => s.stance.includes('FOR'));
