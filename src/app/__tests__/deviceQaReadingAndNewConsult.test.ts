@@ -32,6 +32,24 @@ describe('B — "새 상담 시작하기" balance guard (no dead tap, no over-sp
   });
 });
 
+describe('B2 — the exhausted gate is CONVERSATION-scoped, not purely the user-level session (no-op fix)', () => {
+  const chat = read('app/chat.tsx');
+  it('renders the exhausted card + hides the composer on `showExhausted`, NOT raw `turnsExhausted`', () => {
+    expect(chat).toMatch(/\{showExhausted \? \(/);   // exhausted card gate
+    expect(chat).toMatch(/\{!showExhausted \? \(/);  // composer gate
+  });
+  it('showExhausted requires this conversation to have actually consumed the session', () => {
+    // A fresh/greeting-only consultation must keep its composer even when a PRIOR user-level session is
+    // exhausted — otherwise the exhausted card + 새 상담 button dead-locks (can never send to start a new session).
+    expect(chat).toMatch(/const showExhausted = turnsExhausted && consultationEngagedHere/);
+    expect(chat).toMatch(/const consultationEngagedHere =\s*\(restoredMessages\?\.length \?\? 0\) > 0 \|\| successfulTurnsThisView > 0/);
+  });
+  it('a successful turn marks this view engaged; a conversation reset clears it (failed turns do not)', () => {
+    expect(chat).toMatch(/setSuccessfulTurnsThisView\(\(n\) => n \+ 1\)/); // on success
+    expect(chat).toMatch(/setSuccessfulTurnsThisView\(0\)/);               // on reset
+  });
+});
+
 describe('A — top-of-reading gets the same scannable hierarchy as the pastel sections', () => {
   it('ReadingLead supports an optional semantic label (neutral, no surface)', () => {
     expect(read('components/Reading/Reading.tsx')).toMatch(/label\?: string;/);

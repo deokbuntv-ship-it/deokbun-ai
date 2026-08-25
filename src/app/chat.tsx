@@ -234,6 +234,11 @@ export default function ChatScreen() {
   // successfulTurnCount/turnLimit and NEVER counts sends itself, so a failed turn (which does not
   // consume a successful turn) leaves the number exactly where it was. No optimistic decrement.
   const [session, setSession] = useState<SessionStatus | null>(null);
+  // Whether THIS conversation view has actually consulted (a successful turn happened here). Combined with any
+  // restored history below, it gates the exhausted card so it shows ONLY on a conversation that consumed the
+  // session — never on a fresh/greeting-only consultation (whose composer must stay available; the first send
+  // starts a fresh server session, §5). Reset on every conversation reset. Failed turns do NOT increment it.
+  const [successfulTurnsThisView, setSuccessfulTurnsThisView] = useState(0);
   const [candleEligible, setCandleEligible] = useState(false);
   // Balance pre-flight for the "새 상담 시작하기" CTA. The wallet read is the server-authoritative per-user
   // balance (getWalletState); required is the fixed policy price. When set, the CTA shows the shared
@@ -266,6 +271,14 @@ export default function ChatScreen() {
   // flips them terminal), so without the expiry gate a past-TTL session would pin the paywall forever; when
   // expired the composer shows and the server starts a fresh session on send. (Honors, never changes, the TTL.)
   const turnsExhausted = isSessionExhausted(session, Date.now());
+  // Show the exhausted card ONLY when the session is exhausted AND this conversation actually consumed it
+  // (restored turns, or a successful turn here). A fresh/greeting-only consultation keeps its composer even when
+  // a PRIOR user-level session is exhausted — the first send starts a fresh server session (reserve_session_duk
+  // does not resume an exhausted/expired session), charged once on first success per the frozen contract. This
+  // removes the "greeting only, yet exhausted, 새 상담 no-op" deadlock (the exhausted gate could never clear
+  // because it was derived purely from the persistent user-level session).
+  const consultationEngagedHere = (restoredMessages?.length ?? 0) > 0 || successfulTurnsThisView > 0;
+  const showExhausted = turnsExhausted && consultationEngagedHere;
   // Refresh the balance when the session is exhausted so the "새 상담 시작하기" pre-flight uses a current number.
   useEffect(() => {
     if (turnsExhausted) void refreshWallet().catch(() => {});
@@ -317,6 +330,7 @@ export default function ChatScreen() {
       return;
     }
     setMessages([WELCOME_MESSAGE, ...(restoredMessages ?? [])]);
+    setSuccessfulTurnsThisView(0); // reset per conversation (login / logout / user switch / start-new)
     // Prefill the composer once from the question preserved across the person-sheet /
     // birth-info / login journey (§28) — NEVER auto-sent (§29). The question rides the
     // ephemeral store, not the URL (§20). Only for a FRESH consultation: opening an
@@ -417,6 +431,7 @@ export default function ChatScreen() {
         persistMessage(assistantMessage);
         setSendError(null);
         lastAttemptRef.current = null;
+        setSuccessfulTurnsThisView((n) => n + 1); // this conversation has now consulted (gates the exhausted card)
         // Popular-question funnel: the FIRST successful answer of a popular-origin consultation, once.
         if (popularOriginRef.current && !popularSuccessFiredRef.current) {
           popularSuccessFiredRef.current = true;
@@ -755,7 +770,7 @@ export default function ChatScreen() {
             {/* Turns exhausted — the SERVER confirmed 5 successful turns. The composer is replaced (not
                 merely disabled) so there is no input that silently does nothing, and the next step and
                 its cost are stated in the same block. */}
-            {turnsExhausted ? (
+            {showExhausted ? (
               newConsultInsufficient ? (
                 // Balance < 5 at the "새 상담" tap → the shared insufficient-Duk block (NOT a dead button, NOT a
                 // new session, NOT an LLM call). Reuses the exact economy UX; the numbers are the authoritative
@@ -797,7 +812,7 @@ export default function ChatScreen() {
                 </Card>
               )
             ) : null}
-            {!turnsExhausted ? (
+            {!showExhausted ? (
             <ChatInput
               value={inputText}
               onChangeText={setInputText}
