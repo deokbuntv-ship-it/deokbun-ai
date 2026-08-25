@@ -11,6 +11,7 @@
 // the myungri/ziwei/qimen triplet from `@/features/analysis` — it introduces NO new
 // evidence/assessment model. Codex owns the SEMANTICS that fill `summary`.
 import type { EngineEvidence } from '@/features/analysis';
+import type { CrossDivinationVerdict } from '@/features/divination';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 export type GroundingUnavailableReason =
@@ -48,6 +49,12 @@ export type ConsultationGrounding =
       // resolved target. Categorical only — never a score, never a winner/order across candidates. The
       // Answer Plan selects the ONE that matches the question's resolved target; the prompt never exposes it.
       targetPolarities?: TargetPolarity[];
+      // DIVINATION_ENGINE_V1 — the SERVER's cross-discipline 점사 verdict for THIS question. Produced by the
+      // judgment layer (per-discipline judges → cross judge) from the SAME deterministic facts rendered above;
+      // it adds no astrology of its own. The prompt relays it as a binding directive and the quality guard
+      // re-checks the produced prose against it, so the model can explain the verdict but never reverse it.
+      // Absent when no discipline could speak (the reading then falls back to the pre-existing behavior).
+      divinationVerdict?: CrossDivinationVerdict | null;
     };
 
 // One grounded period's categorical polarity, keyed to its target (Sprint C.1 §3). `targetKey` is the year

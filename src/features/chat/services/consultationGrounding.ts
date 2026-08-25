@@ -49,6 +49,20 @@ import {
   toZiweiEvidence,
 } from '@/features/ziwei';
 import { computeQimenBoard, toQimenEvidence } from '@/features/qimen';
+import type { QimenBoard, QimenResult } from '@/features/qimen/domain/qimenTypes';
+import type { ZiweiChart, ZiweiResult } from '@/features/ziwei/domain/ziweiTypes';
+import {
+  judgeCross,
+  judgeMyungri,
+  judgeQimen,
+  judgeZiwei,
+  type CrossDivinationVerdict,
+  type JudgmentDomain,
+  type TemporalLayerFacts,
+} from '@/features/divination';
+import { buildRelationsToNatal } from '@/features/myungri';
+import { classifyConsultationDomain, type ConsultationDomain } from '@/features/chat/server/consultationDomain';
+import { classifyTimingQuestion } from '@/features/chat/selectors/qimenActivation';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import type { ConsultationGrounding, TargetPolarity } from '@/features/chat/prompts/grounding';
 import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
@@ -70,10 +84,24 @@ const QIMEN_NOT_APPLICABLE: EngineEvidence = { availability: 'not_applicable' };
  * chart, never a thrown error that could crash the whole consultation — §18/§39).
  */
 export function buildZiweiEvidence(birthInfo: BirthInfoDraft): EngineEvidence {
+  return buildZiweiParts(birthInfo).evidence;
+}
+
+/**
+ * DIVINATION_ENGINE_V1 — the Ziwei chart is needed TWICE: flattened into prompt evidence (as before) AND
+ * intact for the independent Ziwei judge. The evidence adapter destroys the palace/四化 structure a judge
+ * needs, so the raw chart is kept here rather than recomputed.
+ */
+export function buildZiweiParts(birthInfo: BirthInfoDraft): {
+  evidence: EngineEvidence;
+  chart: ZiweiChart | null;
+  availability: ZiweiResult['availability'] | 'calculation_failed';
+} {
   try {
-    return toZiweiEvidence(computeZiweiChartMemoized(toZiweiBirthInput(birthInfo)));
+    const result = computeZiweiChartMemoized(toZiweiBirthInput(birthInfo));
+    return { evidence: toZiweiEvidence(result), chart: result.chart, availability: result.availability };
   } catch {
-    return MYUNGRI_UNAVAILABLE; // { availability: 'calculation_failed' }
+    return { evidence: MYUNGRI_UNAVAILABLE, chart: null, availability: 'calculation_failed' };
   }
 }
 
@@ -84,13 +112,43 @@ export function buildZiweiEvidence(birthInfo: BirthInfoDraft): EngineEvidence {
  * (never a fabricated board, never crashes the consultation). No question text → not_applicable.
  */
 export function buildQimenEvidence(question: string | undefined, questionEpochSeconds: number): EngineEvidence {
-  if (!question || question.trim().length === 0) return QIMEN_NOT_APPLICABLE;
+  return buildQimenParts(question, questionEpochSeconds).evidence;
+}
+
+/** Same reason as Ziwei: the judge needs the BOARD (값사/값부/9궁), which the evidence adapter flattens away. */
+function buildQimenParts(question: string | undefined, questionEpochSeconds: number): {
+  evidence: EngineEvidence;
+  board: QimenBoard | null;
+  availability: QimenResult['availability'] | 'calculation_failed';
+} {
+  if (!question || question.trim().length === 0) {
+    return { evidence: QIMEN_NOT_APPLICABLE, board: null, availability: 'not_applicable' };
+  }
   try {
-    return toQimenEvidence(computeQimenBoard(resolveQimenActivation(question, questionEpochSeconds)));
+    const result = computeQimenBoard(resolveQimenActivation(question, questionEpochSeconds));
+    return { evidence: toQimenEvidence(result), board: result.board, availability: result.availability };
   } catch {
-    return MYUNGRI_UNAVAILABLE; // { availability: 'calculation_failed' }
+    return { evidence: MYUNGRI_UNAVAILABLE, board: null, availability: 'calculation_failed' };
   }
 }
+
+// DIVINATION_ENGINE_V1 — the asked topic → the axis the judges read from. Presentation/routing only: it
+// selects WHICH verified facts matter, and computes no astrology of its own (§10 of the consultation sprint).
+const DOMAIN_MAP: Record<ConsultationDomain, JudgmentDomain> = {
+  사업: 'OPPORTUNITY',
+  창업: 'OPPORTUNITY',
+  이직: 'MOVEMENT',
+  직업: 'CAREER',
+  재물: 'MONEY_INFLOW',
+  결혼: 'RELATION_STABILITY',
+  연애: 'RELATION_BOND',
+  관계: 'CONFLICT',
+  건강: 'HEALTH_ENERGY',
+  시험: 'CAREER',
+  이사: 'MOVEMENT',
+  계약: 'DECISION',
+  전반: 'GENERAL',
+};
 
 type MyungriOutcome = {
   evidence: EngineEvidence;
@@ -98,6 +156,14 @@ type MyungriOutcome = {
   targetPolarities: TargetPolarity[];
   referenceYear: number | null; // KST CIVIL year (§8)
   referenceMonth: number | null;
+  /** DIVINATION_ENGINE_V1 — the SAME frozen facts, kept structured for the independent Myungri judge. */
+  judgeFacts: {
+    hourKnown: boolean;
+    monthCommandInCommand: boolean | null;
+    activeDaewoon: TemporalLayerFacts | null;
+    sewoon: TemporalLayerFacts | null;
+    wolwoon: TemporalLayerFacts | null;
+  } | null;
 };
 
 /** Run the FROZEN Saju engine + Myungri facts. Fail-closed → calculation_failed (never throws up). */
@@ -113,11 +179,11 @@ async function buildMyungriEvidence(
   });
 
   // Normalization/fingerprint failure (invalid/unsupported input) — no fabricated evidence.
-  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null };
+  if (!execution.success) return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null, judgeFacts: null };
   const engineResult = execution.engineResult;
   // Engine could not produce a chart (unsupported date / ambiguous boundary / unknown-time-on-
   // boundary all surface here) — fail-closed, never a fabricated pillar (§16).
-  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null };
+  if (engineResult.status === 'UNAVAILABLE') return { evidence: MYUNGRI_UNAVAILABLE, engineVersion: null, targetPolarities: [], referenceYear: null, referenceMonth: null, judgeFacts: null };
 
   // SUCCESS or PARTIAL (시주 미상) → derive the Myungri facts from the frozen chart (no new calc).
   const fourPillars = engineResult.output.fourPillars;
@@ -247,7 +313,51 @@ async function buildMyungriEvidence(
     }
   }
 
-  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceYear: civilYear, referenceMonth: currentCivilMonth };
+  // DIVINATION_ENGINE_V1 — the SAME facts, kept structured so the Myungri judge can read them. Nothing is
+  // recomputed: the active 대운 pillar's relations reuse the frozen buildRelationsToNatal, exactly as the
+  // shared temporal core does for 오늘/월별.
+  const activeCycle =
+    activeCycleOrdinal !== null && daewoon.capability === 'AVAILABLE'
+      ? daewoon.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null
+      : null;
+  const activeCycleTenGods =
+    activeCycleOrdinal !== null && daewoonTenGods?.capability === 'AVAILABLE'
+      ? daewoonTenGods.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null
+      : null;
+  const judgeFacts: MyungriOutcome['judgeFacts'] = {
+    hourKnown: fourPillars.hour.status === 'AVAILABLE',
+    monthCommandInCommand:
+      monthCommand.capability === 'AVAILABLE' ? monthCommand.commandStatus === 'IN_COMMAND' : null,
+    activeDaewoon:
+      activeCycle && activeCycleTenGods
+        ? {
+            stemTenGod: activeCycleTenGods.tenGods.stemTenGod,
+            branchTenGod: activeCycleTenGods.tenGods.branchMainTenGod,
+            relationsToNatal: buildRelationsToNatal(activeCycle.pillar, natal),
+            targetYear: null,
+          }
+        : null,
+    sewoon:
+      sewoon.capability === 'AVAILABLE'
+        ? {
+            stemTenGod: sewoon.tenGods.stemTenGod,
+            branchTenGod: sewoon.tenGods.branchMainTenGod,
+            relationsToNatal: sewoon.relationsToNatal,
+            targetYear: sewoon.targetYear,
+          }
+        : null,
+    wolwoon:
+      wolwoon.capability === 'AVAILABLE'
+        ? {
+            stemTenGod: wolwoon.tenGods.stemTenGod,
+            branchTenGod: wolwoon.tenGods.branchMainTenGod,
+            relationsToNatal: wolwoon.relationsToNatal,
+            targetYear: wolwoon.targetYear,
+          }
+        : null,
+  };
+
+  return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceYear: civilYear, referenceMonth: currentCivilMonth, judgeFacts };
 }
 
 /**
@@ -266,9 +376,11 @@ export async function buildConsultationGrounding(
   const withBirth = draft as ConsultationDraft & { birthInfo: BirthInfoDraft };
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1000);
 
-  // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode).
-  const ziwei = buildZiweiEvidence(withBirth.birthInfo);
-  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceYear, referenceMonth } = await buildMyungriEvidence(
+  // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode). The CHART is kept
+  // (not just the flattened evidence) so the independent Ziwei judge can read palaces + 四化.
+  const ziweiParts = buildZiweiParts(withBirth.birthInfo);
+  const ziwei = ziweiParts.evidence;
+  const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceYear, referenceMonth, judgeFacts } = await buildMyungriEvidence(
     withBirth,
     deps,
     question ?? '',
@@ -276,11 +388,41 @@ export async function buildConsultationGrounding(
   // Qimen is QUESTION-TIME based: it consumes the current question + instant, NOT the birth. It is
   // supplementary (not_applicable for natal questions) and never makes the grounding available on its
   // own — the natal spine (Saju/Ziwei) governs availability (§13/§14).
-  const qimen = buildQimenEvidence(question, now);
+  const qimenParts = buildQimenParts(question, now);
+  const qimen = qimenParts.evidence;
 
   const groundingAvailable = myungri.availability === 'available' || ziwei.availability === 'available';
   if (!groundingAvailable) {
     return { status: 'unavailable', reason: 'calculation_failed' };
+  }
+
+  // ── DIVINATION_ENGINE_V1: independent judges → cross verdict ─────────────────────────────────────
+  // Each judge sees ONLY its own discipline's facts (no contamination), then the cross judge resolves any
+  // disagreement by domain/timescale/directness/reliability. Fail-open: any throw leaves the verdict absent
+  // and the reading behaves exactly as before.
+  let divinationVerdict: CrossDivinationVerdict | null = null;
+  try {
+    const q = question ?? '';
+    const questionDomain = DOMAIN_MAP[classifyConsultationDomain(q)];
+    const asksTiming = classifyTimingQuestion(q);
+    const judgments = [
+      judgeMyungri({
+        question: q,
+        questionDomain,
+        hourKnown: judgeFacts?.hourKnown ?? false,
+        natalRelations: null,
+        monthCommandInCommand: judgeFacts?.monthCommandInCommand ?? null,
+        activeDaewoon: judgeFacts?.activeDaewoon ?? null,
+        sewoon: judgeFacts?.sewoon ?? null,
+        wolwoon: judgeFacts?.wolwoon ?? null,
+        asksTiming,
+      }),
+      judgeZiwei({ question: q, questionDomain, chart: ziweiParts.chart, availability: ziweiParts.availability }),
+      judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
+    ];
+    divinationVerdict = judgeCross({ question: q, questionDomain, judgments, asksTiming });
+  } catch {
+    divinationVerdict = null; // fail-open — never break a paid answer on a judgment error
   }
 
   return {
@@ -292,6 +434,7 @@ export async function buildConsultationGrounding(
     ...(referenceYear !== null ? { referenceYear } : {}),
     ...(referenceMonth !== null ? { referenceMonth } : {}),
     ...(targetPolarities.length > 0 ? { targetPolarities } : {}),
+    ...(divinationVerdict ? { divinationVerdict } : {}),
   };
 }
 

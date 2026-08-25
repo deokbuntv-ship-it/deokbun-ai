@@ -22,6 +22,15 @@ import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
 import { resolveQuestionYears } from '@/features/chat/services/questionYears';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
 import { buildCompatibilityEvidence } from '@/features/compatibility/engine';
+import { buildZiweiParts } from '@/features/chat/services/consultationGrounding';
+import {
+  judgeCross,
+  judgePairMyungri,
+  judgePairZiwei,
+  renderVerdictDirective,
+  type CrossDivinationVerdict,
+  type JudgmentDomain,
+} from '@/features/divination';
 import type { EngineEvidence, EngineEvidenceSection } from '@/features/analysis';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
 import {
@@ -227,9 +236,39 @@ export async function buildCompatibilityConsultation(
       }
 
       const a = pair.assessment;
+      // ── DIVINATION_ENGINE_V1 (§19/§24) — 궁합 now gets a real cross-discipline verdict. 자미 was previously
+      //    hard-coded 'engine_not_connected' here, so the 부처궁(결혼생활 난도) axis never existed and the
+      //    reading could only describe attraction. Both charts are computed; the pair judges then let the
+      //    cross judge resolve 인연(끌림) vs 결혼생활(난도) instead of averaging them away.
+      let ziweiEvidence: EngineEvidence = { availability: 'engine_not_connected' };
+      let divinationVerdict: CrossDivinationVerdict | null = null;
+      try {
+        const selfZiwei = buildZiweiParts(selfBirth);
+        const targetZiwei = buildZiweiParts(targetBirth);
+        ziweiEvidence = selfZiwei.evidence;
+        const questionDomain: JudgmentDomain = /결혼|혼인|살면|가정/.test(question)
+          ? 'RELATION_STABILITY'
+          : /돈|재물|재정|경제/.test(question)
+            ? 'MONEY_RETENTION'
+            : /싸우|갈등|다투/.test(question)
+              ? 'CONFLICT'
+              : 'RELATION_BOND';
+        const judgments = [
+          judgePairMyungri({
+            question, questionDomain, facts: pair.facts, assessment: a,
+            selfLabel, targetLabel,
+          }),
+          judgePairZiwei({ question, questionDomain, selfChart: selfZiwei.chart, targetChart: targetZiwei.chart }),
+        ];
+        divinationVerdict = judgeCross({ question, questionDomain, judgments, asksTiming: wantsTiming(question) });
+      } catch {
+        divinationVerdict = null; // fail-open: the pairwise tier reading still stands
+      }
+
       grounding = {
         status: 'available',
-        evidence: { myungri, ziwei: { availability: 'engine_not_connected' }, qimen },
+        evidence: { myungri, ziwei: ziweiEvidence, qimen },
+        ...(divinationVerdict ? { divinationVerdict } : {}),
         // The SERVER's deterministic tier becomes the anchor the LLM must verbalize (§22).
         assessmentSummary: `${selfLabel}·${targetLabel} 종합 궁합: ${a.overallLabel} (정서 ${a.dimensions[0].signal}/갈등 ${a.dimensions[1].signal}/오행 ${a.dimensions[2].signal})${a.reducedPrecision ? ' · 한 명 이상 시주 미상으로 정밀도 제한' : ''}`,
         engineVersion: 'compatibility-engine@1.0.0',
@@ -259,9 +298,16 @@ export async function buildCompatibilityConsultation(
       target: targetContext,
       relationship: request.partnerLabel ?? null,
       grounding: safeGrounding,
-      answerPlanDirective: extraDirective
-        ? `${renderAnswerPlanDirective(plan)}\n${extraDirective}`
-        : renderAnswerPlanDirective(plan),
+      // §16 — the 궁합 verdict binds the model the same way the solo consultation's does.
+      answerPlanDirective: [
+        renderAnswerPlanDirective(plan),
+        safeGrounding.status === 'available' && safeGrounding.divinationVerdict
+          ? renderVerdictDirective(safeGrounding.divinationVerdict)
+          : null,
+        extraDirective ?? null,
+      ]
+        .filter((x): x is string => x !== null)
+        .join('\n'),
       conversationSummary: request.conversationSummary ?? null,
       recentMessages,
       currentUserMessage: question,

@@ -39,6 +39,7 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
+import { renderVerdictDirective } from '@/features/divination';
 import { groundingFromStoredDecision } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -285,9 +286,15 @@ export async function buildServerConsultation(
   // One message builder reused for the first attempt AND the single constrained regeneration (§9); the
   // follow-up directive (when present) rides the exact same server-authored prompt.
   const buildMessages = (extraDirective?: string) => {
-    const base = followUpDirective
-      ? `${renderAnswerPlanDirective(plan, questionDomain)}\n${followUpDirective}`
+    // DIVINATION_ENGINE_V1 §16 — the cross-discipline 점사 verdict is a BINDING directive: the model may
+    // explain/organize/simplify it, but may not reverse or dilute it. Placed after the answer plan so it is
+    // the most specific instruction; absent when no discipline could speak (behavior then unchanged).
+    const verdict =
+      effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
+    const planDirective = verdict
+      ? `${renderAnswerPlanDirective(plan, questionDomain)}\n${renderVerdictDirective(verdict)}`
       : renderAnswerPlanDirective(plan, questionDomain);
+    const base = followUpDirective ? `${planDirective}\n${followUpDirective}` : planDirective;
     return buildPrompt({
       selectedContext,
       conversationSummary: safeConversationSummary,
