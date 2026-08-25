@@ -54,6 +54,10 @@ export type DailyFortuneResult = {
   actionTip: string;
   /** V1.1 — short-label + rich-question follow-ups. */
   followUps?: DailyFollowUp[];
+  /** V1.2 — deterministic "왜 이렇게 보나요?" evidence lines (server-owned; plain language). Absent on older records. */
+  evidence?: string[];
+  /** V1.2 — plain-language background (larger 대운/세운 flow) note; absent when NEUTRAL/older records. */
+  backgroundSummary?: string | null;
   /** LEGACY V1.0 — plain follow-up strings; retained so old records remain readable. */
   consultationPrompts?: string[];
 };
@@ -75,4 +79,4 @@ export type DailyFortuneRecord = {
 
 export const TODAY_POLICY_VERSION = 'today@1.1.0';
 // Server canonical cache/lease identity. Bump only when a semantic change must produce a new canonical row.
-export const TODAY_CANONICAL_VERSION = 'today-canonical@1.1.0';
+export const TODAY_CANONICAL_VERSION = 'today-canonical@1.2.0';

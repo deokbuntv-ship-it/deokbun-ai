@@ -194,6 +194,9 @@ export function parseMonthlyFortune(raw: string, plan: MonthlyPlan): MonthlyFort
           later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel },
         }
       : null,
+    // Deterministic, server-owned (§21/§9) — the LLM never authors these.
+    evidence: plan.evidence,
+    backgroundSummary: plan.backgroundSummary ?? null,
   };
 }
 

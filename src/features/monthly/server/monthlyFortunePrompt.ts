@@ -8,7 +8,7 @@ import { MONTHLY_DOMAIN_LABEL } from '@/features/monthly/types';
 import { formatMonthLabel } from '@/features/monthly/engine/monthDate';
 import type { MonthlyPlan } from '@/features/monthly/engine/monthlyPlan';
 
-export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.3.0';
+export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.4.0';
 
 export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
@@ -40,13 +40,15 @@ export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
     ...(transitionDirective ? [transitionDirective] : []),
     ...(plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year)
       ? [
-          '이번 달을 둘러싼 큰 흐름(이미 계산됨 · 참고용 — 이번 달을 그 안에 자리매김하는 용도):',
+          'PRIMARY(중심) = 위 "이번 달의 결". SECONDARY(배경) = 아래 큰 흐름. 배경은 이번 달을 연간·대운 안에 "자리매김"하는 역할이며, 이번 달의 결론(전반 기운)을 덮어쓰지 않습니다:',
           plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : '',
           plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : '',
-          '이 배경은 이번 달이 연간·대운 흐름 안에서 어떤 위치인지 자연스럽게 녹이는 데만 쓰고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오.',
+          plan.backgroundSummary ? `- 이번 달과 큰 흐름의 관계: "${plan.backgroundSummary}" — 이 뉘앙스를 verdict/overallSummary에 자연스럽게 한 번 반영하십시오(반복하지 말 것).` : '',
+          '대운·세운을 새로 계산하거나, 확정적 미래(합격/이별/입금 등)로 말하지 마십시오.',
         ].filter(Boolean)
       : []),
     '작성 규칙(반드시 지킬 것):',
+    '- 반복 금지: opportunities·cautions·actions는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 말고, 한 결과가 한 주제(예: 지출·정리)로만 수렴하지 않게 하십시오.',
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',

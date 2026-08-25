@@ -175,6 +175,9 @@ export function parseDailyFortune(raw: string, plan: DailyPlan): DailyFortuneRes
     cautions,
     actionTip,
     followUps,
+    // Deterministic, server-owned (§20/§9) — the LLM never authors these.
+    evidence: plan.evidence,
+    backgroundSummary: plan.backgroundSummary ?? null,
   };
 }
 

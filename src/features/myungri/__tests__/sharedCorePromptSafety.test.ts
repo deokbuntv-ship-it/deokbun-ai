@@ -40,8 +40,8 @@ describe('today: shared-core background reaches the prompt as guarded context', 
   it('prompt includes the guarded 큰 배경 흐름 block and forbids inventing 대운/세운', async () => {
     const e = await buildTodayFortuneEvidence({ birthInfo, nowEpochSeconds: NOW }, { digestProvider });
     const [system] = buildTodayFortunePrompt(deriveDailyPlan(e));
-    expect(system.content).toContain('큰 배경 흐름');
-    expect(system.content).toMatch(/대운·세운을 새로 계산하거나 확정적 미래로 말하지/);
+    expect(system.content).toContain('SECONDARY(배경)'); // PRIMARY=오늘 / SECONDARY=큰 흐름 framing
+    expect(system.content).toMatch(/대운·세운을 새로 계산하거나/);
     // still bans strength self-judgment (never enables 신강/신약)
     expect(system.content).not.toMatch(/신강.*판단|신약.*판단|신강\/신약을 계산/);
     expect(system.content).toContain('간지·천간·지지·일간·십신');
@@ -54,8 +54,8 @@ describe('monthly: shared-core background reaches the prompt as guarded context'
     const plan = deriveMonthlyPlan(e);
     expect(plan.backgroundFlow).toBeTruthy();
     const [system] = buildMonthlyFortunePrompt(plan);
-    expect(system.content).toContain('이번 달을 둘러싼 큰 흐름');
-    expect(system.content).toMatch(/대운·세운을 새로 계산하거나 확정적 미래로 말하지/);
+    expect(system.content).toContain('SECONDARY(배경)'); // PRIMARY=이번 달 / SECONDARY=큰 흐름 framing
+    expect(system.content).toMatch(/대운·세운을 새로 계산하거나/);
   });
 });
 

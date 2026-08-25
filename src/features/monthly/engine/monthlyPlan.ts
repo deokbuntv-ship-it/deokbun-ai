@@ -6,10 +6,11 @@
 // numeric score (§14). All from evidence that already exists; no new engine semantics. Pure + tested. The LLM
 // verbalizes this plan; it NEVER chooses the tier / mode / domain status / transition.
 import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
+import { synthesizeBackground, type BackgroundSynthesisState } from '@/features/fortune-shared/temporalSynthesis';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { MonthlyDomain, MonthlyFortuneEvidence, MonthlySegmentEvidence } from '@/features/monthly/engine/monthlyEvidence';
 
-export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.3.0';
+export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.4.0';
 
 // Neutral BACKGROUND-flow wording for the larger 세운/대운 context (§12). Same shared kernel tier, background
 // wording — this NEVER changes the month tier; it is context the prose may lean on.
@@ -76,6 +77,12 @@ export type MonthlyPlan = {
   /** BACKGROUND (larger flow) — 세운(year) + 대운 neutral flow, from the shared temporal core. SEPARATE from
    *  the month tier (never folded into overallTier); null when the core is unavailable. */
   backgroundFlow?: { year: BackgroundFlowLabel | null; daewoon: BackgroundFlowLabel | null } | null;
+  /** How the larger flow relates to this month's base tier (§9/§11) — categorical, month tier UNCHANGED. */
+  backgroundState?: BackgroundSynthesisState;
+  /** Plain-language background note (empty/absent for NEUTRAL) — the prose leans on this, never recomputes it. */
+  backgroundSummary?: string | null;
+  /** Deterministic "왜 이렇게 보나요?" evidence lines (server-owned; no 간지/십신/강약 terms). */
+  evidence?: string[];
   /** 원국 오행 구성 — RAW counts (evidence/context only; not an eval signal). */
   elementComposition?: Record<string, number> | null;
   evidenceVersion: string;
@@ -166,6 +173,8 @@ const MONTHLY_TIER_BY_POLARITY: Record<PolarityTier, MonthlyOverallTier> = {
 type SegmentSignal = {
   weight: number;
   tier: MonthlyOverallTier;
+  /** Raw kernel tier (for the background synthesis; the labeled `tier` above is unchanged). */
+  polarityTier: PolarityTier;
   primaryMode: MonthlyPrimaryMode;
   primaryModeLabel: string;
   strongestDomain: MonthlyDomain;
@@ -186,6 +195,7 @@ function deriveSegmentSignal(seg: MonthlySegmentEvidence): SegmentSignal {
   return {
     weight: seg.weight,
     tier,
+    polarityTier: polarity.tier,
     primaryMode,
     primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
     strongestDomain,
@@ -260,8 +270,20 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
 
   // BACKGROUND flow (§12): the larger 세운/대운 context, via the SAME kernel — kept SEPARATE from the month tier.
   const t = evidence.temporal;
-  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
-  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
+  const sewoonTier = t?.sewoon ? derivePolarity(t.sewoon.relationsToNatal).tier : null;
+  const daewoonTier = t?.activeDaewoon ? derivePolarity(t.activeDaewoon.relationsToNatal).tier : null;
+  const yearFlow = sewoonTier ? BACKGROUND_FLOW_BY_TIER[sewoonTier] : null;
+  const daewoonFlow = daewoonTier ? BACKGROUND_FLOW_BY_TIER[daewoonTier] : null;
+  // Categorical synthesis (§9/§11): the month (dominant segment) is PRIMARY; the larger flow only FRAMES it.
+  const synthesis = t ? synthesizeBackground(dominant.polarityTier, [daewoonTier, sewoonTier]) : { state: 'NEUTRAL' as const, summary: '' };
+
+  // Deterministic "왜 이렇게 보나요?" evidence — plain language, traceable to the month + background facts (§21).
+  const evidenceLines: string[] = [`이번 달 자체의 흐름은 '${overallTier}' 쪽으로 보입니다.`];
+  if (daewoonFlow || yearFlow) {
+    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : '', yearFlow ? `올해 전반은 ${yearFlow}` : ''].filter(Boolean).join(', ');
+    evidenceLines.push(`지금의 ${bg}입니다.`);
+  }
+  if (synthesis.summary) evidenceLines.push(synthesis.summary);
 
   return {
     ...base,
@@ -281,6 +303,9 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
     hasMeaningfulTransition,
     transition,
     backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    backgroundState: synthesis.state,
+    backgroundSummary: synthesis.summary || null,
+    evidence: evidenceLines,
     elementComposition: t?.elementCounts ?? null,
   };
 }

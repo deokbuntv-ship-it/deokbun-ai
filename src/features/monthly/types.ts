@@ -54,6 +54,10 @@ export type MonthlyFortuneResult = {
   followUps?: MonthlyFollowUp[];
   /** V1.1 — a within-month 節 transition (초반/중반 이후), when the two segments materially differ. */
   transition?: MonthlyResultTransition | null;
+  /** V1.3 — deterministic "왜 이렇게 보나요?" evidence lines (server-owned; plain language). Absent on older records. */
+  evidence?: string[];
+  /** V1.3 — plain-language background (larger 대운/세운 flow) note; absent when NEUTRAL/older records. */
+  backgroundSummary?: string | null;
 };
 
 // The persisted canonical record (one per user per fortune_year+fortune_month). `result` holds only the
@@ -75,4 +79,4 @@ export type MonthlyFortuneRecord = {
 
 export const MONTHLY_POLICY_VERSION = 'monthly@1.2.0';
 // Server canonical cache/lease identity. Separate from display policy provenance for future tier routing.
-export const MONTHLY_CANONICAL_VERSION = 'monthly-canonical@1.2.0';
+export const MONTHLY_CANONICAL_VERSION = 'monthly-canonical@1.3.0';

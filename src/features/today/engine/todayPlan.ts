@@ -5,10 +5,11 @@
 // with the day-stem 십신 (like the compatibility tier) — never a fabricated numeric score (§11/§14). All of
 // this is derived from evidence that ALREADY exists; no new engine semantics are introduced. Pure + tested.
 import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
+import { synthesizeBackground, type BackgroundSynthesisState } from '@/features/fortune-shared/temporalSynthesis';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { TodayDomain, TodayFortuneEvidence } from '@/features/today/engine/todayEvidence';
 
-export const TODAY_PLAN_VERSION = 'today-plan@1.2.0';
+export const TODAY_PLAN_VERSION = 'today-plan@1.3.0';
 
 // Neutral BACKGROUND-flow phrase for the larger 세운/대운 context (§11). Same shared kernel tier as the day,
 // but a background wording — this NEVER changes the day's tier; it is context the prose may lean on.
@@ -65,6 +66,12 @@ export type DailyPlan = {
   /** BACKGROUND (larger flow) context — 세운(year) + 대운 neutral flow, from the shared temporal core.
    *  SEPARATE from the day tier (never folded into overallTone); null when the core is unavailable. */
   backgroundFlow?: { year: BackgroundFlowLabel | null; daewoon: BackgroundFlowLabel | null } | null;
+  /** How the larger flow relates to today's base tier (§9/§10) — categorical, base tier UNCHANGED. */
+  backgroundState?: BackgroundSynthesisState;
+  /** Plain-language background note (empty/absent for NEUTRAL) — the prose leans on this, never recomputes it. */
+  backgroundSummary?: string | null;
+  /** Deterministic "왜 이렇게 보나요?" evidence lines (server-owned; no 간지/십신/강약 terms). */
+  evidence?: string[];
   /** 원국 오행 구성 — RAW counts (evidence/context only; not an eval signal). */
   elementComposition?: Record<string, number> | null;
   evidenceVersion: string;
@@ -171,8 +178,20 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
 
   // BACKGROUND flow (§11): the larger 세운/대운 context, via the SAME kernel — kept SEPARATE from the day tier.
   const t = evidence.temporal;
-  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
-  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
+  const sewoonTier = t?.sewoon ? derivePolarity(t.sewoon.relationsToNatal).tier : null;
+  const daewoonTier = t?.activeDaewoon ? derivePolarity(t.activeDaewoon.relationsToNatal).tier : null;
+  const yearFlow = sewoonTier ? BACKGROUND_FLOW_BY_TIER[sewoonTier] : null;
+  const daewoonFlow = daewoonTier ? BACKGROUND_FLOW_BY_TIER[daewoonTier] : null;
+  // Categorical synthesis (§9/§10): how the larger flow FRAMES today's base tier. Base tier is NEVER changed.
+  const synthesis = t ? synthesizeBackground(polarity.tier, [daewoonTier, sewoonTier]) : { state: 'NEUTRAL' as const, summary: '' };
+
+  // Deterministic "왜 이렇게 보나요?" evidence — plain language, traceable to the day + background facts (§20).
+  const evidenceLines: string[] = [`오늘 하루의 흐름은 '${overallTone}' 쪽으로 보입니다.`];
+  if (daewoonFlow || yearFlow) {
+    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : '', yearFlow ? `올해 전반은 ${yearFlow}` : ''].filter(Boolean).join(', ');
+    evidenceLines.push(`지금의 ${bg}입니다.`);
+  }
+  if (synthesis.summary) evidenceLines.push(synthesis.summary);
 
   return {
     ...base,
@@ -187,6 +206,9 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
     harmonyCount,
     frictionCount,
     backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    backgroundState: synthesis.state,
+    backgroundSummary: synthesis.summary || null,
+    evidence: evidenceLines,
     elementComposition: t?.elementCounts ?? null,
   };
 }
