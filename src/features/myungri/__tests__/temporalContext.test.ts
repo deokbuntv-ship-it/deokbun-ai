@@ -1,6 +1,7 @@
 // Shared temporal context — the single source 오늘·월별·상담 consume for natal composition + active 대운 +
-// current 세운. Runs the REAL frozen engine (node digest); asserts facts present + deterministic. Orchestrator
-// only: no strength verdict, no new calc.
+// current 세운. Runs the REAL frozen engine (node digest); asserts facts present + deterministic, and that the
+// active 대운 is selected by the SYMBOLIC minute boundary (not the display age). Orchestrator only: no strength
+// verdict, no new calc.
 import { createHash } from 'crypto';
 
 import {
@@ -9,12 +10,7 @@ import {
   type DigestProvider,
 } from '@/features/interpretation';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
-import {
-  buildMyungriTemporalContext,
-  fullElapsedYears,
-  natalContextFromFourPillars,
-  selectActiveDaewoonCycleOrdinal,
-} from '@/features/myungri';
+import { buildMyungriTemporalContext, natalContextFromFourPillars } from '@/features/myungri';
 
 const digestProvider: DigestProvider = {
   async sha256Utf8(input: string): Promise<string> {
@@ -22,15 +18,20 @@ const digestProvider: DigestProvider = {
   },
 };
 const NOW = Math.floor(Date.UTC(2026, 5, 1) / 1000);
+type BirthInput = Parameters<typeof toSajuEngineInput>[0];
 const birthInfo = {
   displayName: '테스트', gender: 'male', calendarType: 'solar', lunarMonthType: null,
   birthYear: '1990', birthMonth: '5', birthDay: '15',
   birthTimeAccuracy: 'exact', birthHour: '10', birthMinute: '30',
   approximateTimePeriod: null, birthPlace: '서울',
-} as unknown as Parameters<typeof toSajuEngineInput>[0];
+} as unknown as BirthInput;
 
-async function ctx(now = NOW) {
-  const execution = await executeSajuFromBirthInput(toSajuEngineInput(birthInfo), {
+// KST civil datetime → UTC epoch seconds (post-1988 KST = UTC+9). Independent of the resolver under test.
+const kst = (y: number, mo: number, d: number, h: number, mi: number) =>
+  Math.floor(Date.UTC(y, mo - 1, d, h - 9, mi, 0) / 1000);
+
+async function ctx(bi: BirthInput = birthInfo, now = NOW) {
+  const execution = await executeSajuFromBirthInput(toSajuEngineInput(bi), {
     digestProvider,
     historicalTimezoneResolver: ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
   });
@@ -39,6 +40,7 @@ async function ctx(now = NOW) {
   return buildMyungriTemporalContext({
     engineResult: execution.engineResult, natal,
     normalizedBirth: execution.normalizedBirth, instantEpochSeconds: now,
+    timezoneResolver: ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
   });
 }
 
@@ -71,23 +73,25 @@ describe('shared temporal context (real engine)', () => {
   });
 });
 
-describe('pure selectors', () => {
-  const cycles = [
-    { ordinal: 1, startAgeInclusive: 3, endAgeInclusive: 12 },
-    { ordinal: 2, startAgeInclusive: 13, endAgeInclusive: 22 },
-    { ordinal: 3, startAgeInclusive: 23, endAgeInclusive: 32 },
-  ];
-  it('selectActiveDaewoonCycleOrdinal finds the containing cycle, else null', () => {
-    expect(selectActiveDaewoonCycleOrdinal(cycles, 25)).toBe(3);
-    expect(selectActiveDaewoonCycleOrdinal(cycles, 12)).toBe(1);
-    expect(selectActiveDaewoonCycleOrdinal(cycles, 2)).toBeNull(); // before first cycle
-    expect(selectActiveDaewoonCycleOrdinal(cycles, null)).toBeNull();
+describe('active 대운 uses the SYMBOLIC minute boundary (real engine, golden fixture 1)', () => {
+  // Golden fixture 1 (daewoonGoldenFixtures): birth 2024-04-15 09:44 (KST), MALE → the frozen engine's first
+  // 대운 symbolic start = 2030-12-12 13:44 (KST). At that instant the subject is only ~6 (< the display start
+  // age), so a correct result here proves selection is by the symbolic boundary, not the age label.
+  const fixtureBirth = {
+    displayName: '표준', gender: 'male', calendarType: 'solar', lunarMonthType: null,
+    birthYear: '2024', birthMonth: '4', birthDay: '15',
+    birthTimeAccuracy: 'exact', birthHour: '9', birthMinute: '44',
+    approximateTimePeriod: null, birthPlace: '서울',
+  } as unknown as BirthInput;
+
+  it('one minute BEFORE the symbolic start → no active 대운', async () => {
+    const c = await ctx(fixtureBirth, kst(2030, 12, 12, 13, 43));
+    expect(c.activeDaewoon).toBeNull();
+    expect(c.warnings).toContain('ACTIVE_DAEWOON_UNRESOLVED');
   });
-  it('fullElapsedYears (만나이) subtracts 1 before the birthday — not year-subtraction', () => {
-    // born 1990-10-20
-    expect(fullElapsedYears({ year: 1990, month: 10, day: 20 }, { year: 2026, month: 8, day: 25 })).toBe(35); // birthday NOT passed → 35 (year-subtraction would wrongly give 36)
-    expect(fullElapsedYears({ year: 1990, month: 10, day: 20 }, { year: 2026, month: 10, day: 20 })).toBe(36); // exact birthday → 36
-    expect(fullElapsedYears({ year: 1990, month: 10, day: 20 }, { year: 2026, month: 12, day: 1 })).toBe(36); // after birthday → 36
-    expect(fullElapsedYears({ year: 1990, month: 5, day: 15 }, { year: 2026, month: 8, day: 25 })).toBe(36);
+
+  it('EXACTLY at the symbolic start → first 대운 cycle (ordinal 1) active', async () => {
+    const c = await ctx(fixtureBirth, kst(2030, 12, 12, 13, 44));
+    expect(c.activeDaewoon?.ordinal).toBe(1);
   });
 });

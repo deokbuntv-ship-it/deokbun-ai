@@ -35,7 +35,7 @@ import {
   calculateSewoonForInstant,
   calculateWolwoonForInstant,
   natalContextFromFourPillars,
-  resolveActiveDaewoonOrdinal,
+  resolveActiveDaewoonAtInstant,
   toSajuEvidence,
   type MyungriStemAndBranch,
   type RelationsToNatal,
@@ -168,11 +168,17 @@ async function buildMyungriEvidence(
   // Gregorian birth year (from the SAME lunar→solar authority Ziwei uses) — an allowed timing anchor.
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
 
-  // ACTIVE 대운 via the CANONICAL date-based resolver (shared with Today/Monthly). It uses the engine's own
-  // birth date for true elapsed years (만나이), replacing the prior year-subtraction (which was ±1 near a
-  // decade boundary). One resolver everywhere → the same subject/instant can never get a different current 대운
-  // across surfaces. Marks the already-computed cycle; no cycle is recomputed.
-  const activeCycleOrdinal = resolveActiveDaewoonOrdinal(daewoon, now);
+  // ACTIVE 대운 via the CANONICAL SYMBOLIC-boundary resolver (shared with Today/Monthly). The boundary is the
+  // minute-precise `symbolicLocalDateTime` + 10-civil-year cycles, compared through the historical Asia/Seoul
+  // resolver — NOT the rounded start age (display-only) and NOT a fixed UTC+9. One resolver everywhere → the
+  // same subject/instant can never get a different current 대운 across surfaces. Marks the already-computed
+  // cycle; no cycle is recomputed.
+  const activeDaewoon = await resolveActiveDaewoonAtInstant(
+    daewoon,
+    now,
+    deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
+  );
+  const activeCycleOrdinal = activeDaewoon?.ordinal ?? null;
   let activeDaewoonPillar: MyungriStemAndBranch | null = null;
   if (activeCycleOrdinal !== null && daewoon.capability === 'AVAILABLE') {
     const active = daewoon.cycles.find((c) => c.ordinal === activeCycleOrdinal);

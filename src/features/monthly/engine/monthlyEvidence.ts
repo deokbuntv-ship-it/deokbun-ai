@@ -23,7 +23,7 @@ import type { RelationsToNatal } from '@/features/myungri/domain/contracts';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import { resolveCivilMonthSajuSegments } from '@/features/monthly/engine/civilMonthSegments';
-import { currentTargetMonth, FORTUNE_TIMEZONE, monthMidpointEpochSeconds, type TargetMonth } from '@/features/monthly/engine/monthDate';
+import { currentTargetMonth, FORTUNE_TIMEZONE, type TargetMonth } from '@/features/monthly/engine/monthDate';
 
 export const MONTHLY_EVIDENCE_VERSION = 'monthly-evidence@1.2.0';
 
@@ -83,7 +83,9 @@ export async function buildMonthlyFortuneEvidence(
   input: { birthInfo: BirthInfoDraft },
   deps: MonthlyEvidenceDeps,
 ): Promise<MonthlyFortuneEvidence> {
-  const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
+  const current = currentTargetMonth(deps.nowEpochSeconds);
+  const target = deps.target ?? current;
+  const isCurrentMonth = target.year === current.year && target.month === current.month;
   const unavailable = (reason: string): MonthlyFortuneEvidence => ({
     available: false,
     year: target.year,
@@ -129,15 +131,20 @@ export async function buildMonthlyFortuneEvidence(
     });
   }
 
-  // Shared myungri temporal context (the SAME core 상담/오늘 use): 오행 구성 + active 대운 + current 세운, read
-  // at the civil-month midpoint. Facts only — background context, NOT a driver of the month tier (§8/§12). 세운
-  // is computed once here (§31); active 대운 via the canonical date-based resolver (engine's own birth date).
-  const temporal = buildMyungriTemporalContext({
-    engineResult,
-    natal,
-    normalizedBirth: execution.normalizedBirth,
-    instantEpochSeconds: monthMidpointEpochSeconds(target),
-  });
+  // Shared myungri temporal context (the SAME core 상담/오늘 use): 오행 구성 + active 대운 + current 세운. Its
+  // 대운/세운 are the user's PRESENT larger flow ("현재 대운 / 올해 세운" in the plan), so they are read at the
+  // AUTHORITATIVE server eval instant (deps.nowEpochSeconds) — NOT the target-month midpoint (§6). Facts only,
+  // background context, NOT a driver of the month tier (§8/§12). For a non-current (history) target month the
+  // present-tense framing does not apply → DEFERRED (temporal omitted); the month's own 월운 segments still stand.
+  const temporal = isCurrentMonth
+    ? await buildMyungriTemporalContext({
+        engineResult,
+        natal,
+        normalizedBirth: execution.normalizedBirth,
+        instantEpochSeconds: deps.nowEpochSeconds,
+        timezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
+      })
+    : undefined;
 
   return {
     available: true,
@@ -146,7 +153,7 @@ export async function buildMonthlyFortuneEvidence(
     timezone: FORTUNE_TIMEZONE,
     segments,
     transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
-    sewoonAvailable: temporal.sewoon !== null,
+    sewoonAvailable: temporal ? temporal.sewoon !== null : false,
     temporal,
     supportedDomains: ALL_DOMAINS,
     evidenceVersion: MONTHLY_EVIDENCE_VERSION,

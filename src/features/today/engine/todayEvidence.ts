@@ -88,13 +88,15 @@ export async function buildTodayFortuneEvidence(
 
   // Shared myungri temporal context (the SAME core 상담 uses): 오행 구성 + active 대운 + current 세운.
   // Facts only — background context for the prose, NOT a driver of the day's tier (§8/§11). 세운 is computed
-  // once here (§31 no duplicate calc). Active 대운 is selected by the canonical date-based resolver (using the
-  // engine's own birth date). 월운 availability is still read separately (today's own context).
-  const temporal = buildMyungriTemporalContext({
+  // once here (§31 no duplicate calc). Active 대운 is selected by the canonical SYMBOLIC-boundary resolver
+  // (minute-precise symbolic start + 10-year cycles via the historical Asia/Seoul resolver). 월운 availability
+  // is still read separately (today's own context).
+  const temporal = await buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
     instantEpochSeconds: input.nowEpochSeconds,
+    timezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER,
   });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
 
