@@ -34,9 +34,9 @@ var UNAVAILABLE_REASON_LABEL = {
   calculation_failed: "계산에 실패했습니다",
   not_applicable: "이 질문에는 계산 근거가 적용되지 않습니다"
 };
-function renderEngine(label, ev) {
-  if (ev.availability === "available") {
-    const sections = Array.isArray(ev.sections) ? ev.sections.filter(
+function renderEngine(label, ev2) {
+  if (ev2.availability === "available") {
+    const sections = Array.isArray(ev2.sections) ? ev2.sections.filter(
       (s) => s && typeof s.label === "string" && Array.isArray(s.lines) && s.lines.length > 0
     ) : [];
     if (sections.length > 0) {
@@ -44,11 +44,11 @@ function renderEngine(label, ev) {
       return `- ${label}(제공됨):
 ${body}`;
     }
-    const summary = ev.summary?.trim();
+    const summary = ev2.summary?.trim();
     if (summary) return `- ${label}(제공됨): ${summary}`;
     return `- ${label}: 제공됨(요약 없음 — 근거로 쓸 내용이 없으므로 지어내지 마십시오)`;
   }
-  return `- ${label}: ${AVAILABILITY_LABEL[ev.availability]}`;
+  return `- ${label}: ${AVAILABILITY_LABEL[ev2.availability]}`;
 }
 var AVAILABILITY_VALUES = [
   "available",
@@ -132,8 +132,8 @@ function toSafeGrounding(g) {
     return UNAVAILABLE_REASON_VALUES.includes(g.reason) ? g : GROUNDING_UNAVAILABLE;
   }
   if (g.status !== "available") return GROUNDING_UNAVAILABLE;
-  const ev = g.evidence;
-  if (!ev || typeof ev !== "object" || !isValidEngineEvidence(ev.myungri) || !isValidEngineEvidence(ev.ziwei) || !isValidEngineEvidence(ev.qimen)) {
+  const ev2 = g.evidence;
+  if (!ev2 || typeof ev2 !== "object" || !isValidEngineEvidence(ev2.myungri) || !isValidEngineEvidence(ev2.ziwei) || !isValidEngineEvidence(ev2.qimen)) {
     return GROUNDING_UNAVAILABLE;
   }
   if (g.engineVersion !== void 0 && g.engineVersion !== null && typeof g.engineVersion !== "string") {
@@ -529,8 +529,8 @@ function timingAnchorsOf(grounding) {
   if (grounding.status !== "available") return anchors;
   anchors.referenceYear = grounding.referenceYear ?? null;
   anchors.referenceMonth = grounding.referenceMonth ?? null;
-  for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
-    const ta = ev.timingAnchors;
+  for (const ev2 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const ta = ev2.timingAnchors;
     if (!ta) continue;
     for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
     for (const m of ta.months ?? []) if (Number.isInteger(m)) anchors.months.add(m);
@@ -7542,7 +7542,211 @@ function stanceValence(s) {
   if (AGAINST_STANCES.includes(s)) return "AGAINST";
   return "NONE";
 }
+var NO_SIGNAL = "INSUFFICIENT_EVIDENCE";
 var DIVINATION_VERDICT_VERSION = "divination-verdict@1.0.0";
+
+// src/features/divination/myungriLayer.ts
+var POSITION_LABEL = { YEAR: "년주", MONTH: "월주", DAY: "일주", HOUR: "시주" };
+var POSITION_AXIS = {
+  YEAR: { domain: "GENERAL", label: "뿌리·집안 자리" },
+  MONTH: { domain: "CAREER", label: "사회·직업 자리" },
+  DAY: { domain: "RELATION_STABILITY", label: "배우자·자기 자리" },
+  HOUR: { domain: "OUTCOME", label: "말년·결과 자리" }
+};
+var FRICTION_KINDS = /* @__PURE__ */ new Set(["STEM_CLASH", "BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+var KIND_LABEL = {
+  STEM_COMBINATION: "천간합",
+  STEM_CLASH: "천간충",
+  BRANCH_SIX_COMBINATION: "육합",
+  BRANCH_HALF_THREE_HARMONY: "반합",
+  BRANCH_CLASH: "충",
+  BRANCH_PUNISHMENT: "형",
+  BRANCH_SELF_PUNISHMENT: "자형",
+  BRANCH_DESTRUCTION: "파",
+  BRANCH_HARM: "해"
+};
+var HEAVY_KINDS = /* @__PURE__ */ new Set(["STEM_CLASH", "BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_THREE_PUNISHMENT"]);
+var SCOPE_LABEL = {
+  NATAL: "타고난 바탕",
+  DAEWOON: "지금의 큰 흐름",
+  SEWOON: "올해 흐름",
+  WOLWOON: "이 시기 흐름",
+  PRESENT_MOMENT: "지금 시점",
+  UNSCOPED: "전반 흐름"
+};
+function analyzeLayer(scope, stemTenGod, branchTenGod, relations) {
+  const where = SCOPE_LABEL[scope];
+  const hits = [];
+  const push = (position, kind) => {
+    const friction = FRICTION_KINDS.has(kind);
+    const axis = POSITION_AXIS[position];
+    hits.push({
+      position,
+      kind,
+      friction,
+      heavy: HEAVY_KINDS.has(kind),
+      axis: axis.domain,
+      evidence: {
+        fact: `${where} → 원국 ${POSITION_LABEL[position]} ${KIND_LABEL[kind] ?? kind}`,
+        meaning: friction ? `${axis.label}가 이 흐름에 직접 흔들립니다.` : `${axis.label}가 이 흐름과 맞물려 풀립니다.`,
+        domain: axis.domain,
+        temporalScope: scope,
+        directness: "DIRECT"
+      }
+    });
+  };
+  for (const r of relations.stem) push(r.position, r.relation.kind);
+  for (const r of relations.branch) push(r.position, r.relation.kind);
+  const frictionAxes = [...new Set(hits.filter((h) => h.friction).map((h) => h.axis))];
+  const harmonyAxes = [...new Set(hits.filter((h) => !h.friction).map((h) => h.axis))];
+  return {
+    scope,
+    family: tenGodFamily(stemTenGod),
+    hits,
+    frictionAxes,
+    harmonyAxes,
+    silent: hits.length === 0,
+    // NO relation → no directional signal (was previously read as STEADY=positive)
+    robWealth: stemTenGod === "ROB_WEALTH" || branchTenGod === "ROB_WEALTH"
+  };
+}
+function axisPressure(layer, axis) {
+  const onAxis = layer.hits.filter((h) => h.axis === axis);
+  const friction = onAxis.filter((h) => h.friction).reduce((n, h) => n + (h.heavy ? 2 : 1), 0);
+  const harmony = onAxis.filter((h) => !h.friction).reduce((n, h) => n + 1, 0);
+  return {
+    friction,
+    harmony,
+    heavyHit: onAxis.some((h) => h.friction && h.heavy),
+    evidence: onAxis.filter((h) => !h.friction).map((h) => h.evidence),
+    counterEvidence: onAxis.filter((h) => h.friction).map((h) => h.evidence)
+  };
+}
+
+// src/features/divination/myungriNatal.ts
+var FAMILY_LABEL = {
+  WEALTH: "재물",
+  OFFICER: "자리·책임",
+  OUTPUT: "활동·표현",
+  PEER: "경쟁·동료",
+  RESOURCE: "지원·배움"
+};
+var POSITION_LABEL2 = { YEAR: "년주", MONTH: "월주", DAY: "일주", HOUR: "시주" };
+var FRICTION_KINDS2 = /* @__PURE__ */ new Set(["STEM_CLASH", "BRANCH_CLASH", "BRANCH_PUNISHMENT", "BRANCH_SELF_PUNISHMENT", "BRANCH_DESTRUCTION", "BRANCH_HARM"]);
+function domainFamily(domain) {
+  switch (domain) {
+    case "MONEY_INFLOW":
+    case "MONEY_RETENTION":
+      return "WEALTH";
+    case "CAREER":
+    case "OUTCOME":
+      return "OFFICER";
+    case "OPPORTUNITY":
+    case "MOVEMENT":
+      return "OUTPUT";
+    case "INFLUENCE":
+    case "CONFLICT":
+      return "PEER";
+    default:
+      return null;
+  }
+}
+function readNatalBaseline(input) {
+  const familyPresence = { WEALTH: 0, OFFICER: 0, OUTPUT: 0, PEER: 0, RESOURCE: 0 };
+  const seen = /* @__PURE__ */ new Set();
+  for (const p of input.positionedTenGods) {
+    const fam = tenGodFamily(p.tenGod);
+    const key2 = `${fam}:${p.position}`;
+    if (seen.has(key2)) continue;
+    seen.add(key2);
+    familyPresence[fam] += 1;
+  }
+  const dominantFamilies = Object.keys(familyPresence).filter((f) => familyPresence[f] >= 2);
+  const absentFamilies = Object.keys(familyPresence).filter((f) => familyPresence[f] === 0);
+  const natalFrictionPositions = [];
+  const natalHarmonyPositions = [];
+  let spouseSeatStrained = false;
+  for (const r of input.natalRelations?.stem ?? []) {
+    const label = `${r.positions.map((p) => POSITION_LABEL2[p]).join("↔")} ${r.relation.kind}`;
+    if (FRICTION_KINDS2.has(r.relation.kind)) natalFrictionPositions.push(label);
+    else natalHarmonyPositions.push(label);
+  }
+  for (const r of input.natalRelations?.branch ?? []) {
+    const label = `${r.positions.map((p) => POSITION_LABEL2[p]).join("↔")} ${r.relation.kind}`;
+    if (FRICTION_KINDS2.has(r.relation.kind)) {
+      natalFrictionPositions.push(label);
+      if (r.positions.includes("DAY")) spouseSeatStrained = true;
+    } else natalHarmonyPositions.push(label);
+  }
+  const rooted = input.rootedCount ?? null;
+  const transparent = input.transparentCount ?? null;
+  const anchored = rooted === null ? "UNKNOWN" : rooted >= 3 ? "ROOTED" : rooted >= 1 ? "PARTLY_ROOTED" : "FLOATING";
+  const evidence = [];
+  for (const f of dominantFamilies) {
+    evidence.push({
+      fact: `원국 ${FAMILY_LABEL[f]} ${familyPresence[f]}자리`,
+      meaning: `타고나기를 ${FAMILY_LABEL[f]} 쪽에 무게가 실린 구조입니다.`,
+      domain: "GENERAL",
+      temporalScope: "NATAL",
+      directness: "ADJACENT"
+    });
+  }
+  for (const f of absentFamilies) {
+    evidence.push({
+      fact: `원국 ${FAMILY_LABEL[f]} 없음`,
+      meaning: `${FAMILY_LABEL[f]} 쪽은 타고난 바탕에서 받쳐 주는 자리가 없습니다.`,
+      domain: "GENERAL",
+      temporalScope: "NATAL",
+      directness: "ADJACENT"
+    });
+  }
+  if (spouseSeatStrained) {
+    evidence.push({
+      fact: "원국 일지(배우자 자리) 충·형·파·해",
+      meaning: "타고난 배우자 자리 자체가 흔들리는 구조라, 관계는 유지보다 조율에 힘이 듭니다.",
+      domain: "RELATION_STABILITY",
+      temporalScope: "NATAL",
+      directness: "DIRECT"
+    });
+  }
+  if (input.monthCommandInCommand !== null) {
+    evidence.push({
+      fact: input.monthCommandInCommand ? "원국 득령" : "원국 실령",
+      meaning: input.monthCommandInCommand ? "계절의 기운을 등에 업어, 흐름이 올 때 밀고 나갈 힘이 있습니다." : "계절의 기운을 얻지 못해, 좋은 흐름이 와도 혼자 밀어붙이면 힘에 부칩니다.",
+      domain: "GENERAL",
+      temporalScope: "NATAL",
+      directness: "ADJACENT"
+    });
+  }
+  if (anchored !== "UNKNOWN") {
+    evidence.push({
+      fact: `통근 ${rooted}자리${transparent !== null ? ` · 투간 ${transparent}` : ""}`,
+      meaning: anchored === "ROOTED" ? "뿌리가 단단해 한번 잡은 것은 오래 끌고 갑니다." : anchored === "PARTLY_ROOTED" ? "뿌리가 일부만 있어, 받쳐 주는 자리에서만 오래 갑니다." : "뿌리가 약해 벌인 일이 오래 남기 어렵습니다.",
+      domain: "MONEY_RETENTION",
+      temporalScope: "NATAL",
+      directness: "ADJACENT"
+    });
+  }
+  return {
+    familyPresence,
+    dominantFamilies,
+    absentFamilies,
+    natalFrictionPositions,
+    natalHarmonyPositions,
+    spouseSeatStrained,
+    inCommand: input.monthCommandInCommand,
+    anchored,
+    evidence
+  };
+}
+function natalSupportForDomain(baseline, domain) {
+  const fam = domainFamily(domain);
+  if (fam === null) return { support: "UNKNOWN", note: "" };
+  const count = baseline.familyPresence[fam];
+  if (count >= 2) return { support: "STRONG", note: `원국에 ${FAMILY_LABEL[fam]} 자리가 ${count}곳 있어 바탕이 받쳐 줍니다.` };
+  if (count === 1) return { support: "PRESENT", note: `원국에 ${FAMILY_LABEL[fam]} 자리가 하나 있습니다.` };
+  return { support: "ABSENT", note: `원국에 ${FAMILY_LABEL[fam]} 자리가 없어, 흐름이 와도 붙잡을 바탕이 약합니다.` };
+}
 
 // src/features/divination/myungriJudge.ts
 function tenGodFamily(tg3) {
@@ -7550,51 +7754,33 @@ function tenGodFamily(tg3) {
     case "DIRECT_WEALTH":
     case "INDIRECT_WEALTH":
       return "WEALTH";
-    // 재성
     case "DIRECT_OFFICER":
     case "SEVEN_KILLINGS":
       return "OFFICER";
-    // 관성
     case "EATING_GOD":
     case "HURTING_OFFICER":
       return "OUTPUT";
-    // 식상
     case "PEER":
     case "ROB_WEALTH":
       return "PEER";
-    // 비겁
     default:
       return "RESOURCE";
   }
 }
-function tenGodJudgmentDomain(tg3) {
-  switch (tenGodFamily(tg3)) {
-    case "WEALTH":
-      return "MONEY_INFLOW";
-    case "OFFICER":
-      return "CAREER";
-    case "OUTPUT":
-      return "OPPORTUNITY";
-    // 식상 = 활동·표현·생산 → the chance to make something happen
-    case "PEER":
-      return "INFLUENCE";
-    // 비겁 = 동료·경쟁 → who shares/competes for the same ground
-    case "RESOURCE":
-      return "GENERAL";
-  }
-}
-var FAMILY_LABEL = {
+var FAMILY_LABEL2 = {
   WEALTH: "재물의 기운",
   OFFICER: "자리·책임의 기운",
   OUTPUT: "활동·표현의 기운",
   PEER: "경쟁·동료의 기운",
   RESOURCE: "지원·배움의 기운"
 };
-var TIER_MEANING = {
-  FAVORABLE: "흐름이 받쳐주는",
-  STEADY: "큰 흔들림이 없는",
-  DYNAMIC: "변화가 잦은",
-  CAUTION: "마찰이 걸리는"
+var SCOPE_LABEL2 = {
+  NATAL: "타고난 바탕",
+  DAEWOON: "지금의 큰 흐름",
+  SEWOON: "올해 흐름",
+  WOLWOON: "이 시기 흐름",
+  PRESENT_MOMENT: "지금 시점",
+  UNSCOPED: "전반 흐름"
 };
 function directnessFor(layerDomain, asked) {
   if (layerDomain === asked) return "DIRECT";
@@ -7615,185 +7801,160 @@ function directnessFor(layerDomain, asked) {
   };
   return (adjacency[asked] ?? []).includes(layerDomain) ? "ADJACENT" : "GENERAL";
 }
-var SCOPE_LABEL = {
-  NATAL: "타고난 바탕",
-  DAEWOON: "지금의 큰 흐름",
-  SEWOON: "올해 흐름",
-  WOLWOON: "이 시기 흐름",
-  PRESENT_MOMENT: "지금 시점",
-  UNSCOPED: "전반 흐름"
-};
-function readLayer(facts, scope, asked) {
-  const polarity = derivePolarity(facts.relationsToNatal);
-  const family = tenGodFamily(facts.stemTenGod);
-  const domain = tenGodJudgmentDomain(facts.stemTenGod);
-  const directness = directnessFor(domain, asked);
-  const robWealth = facts.stemTenGod === "ROB_WEALTH" || facts.branchTenGod === "ROB_WEALTH";
-  const where = SCOPE_LABEL[scope];
+function unavailable9(asked, reason, reliability) {
   return {
-    scope,
-    tier: polarity.tier,
-    harmony: polarity.evidence.harmony,
-    friction: polarity.evidence.friction,
-    domain,
-    family,
-    directness,
-    robWealth,
-    evidence: {
-      fact: `${where}: ${FAMILY_LABEL[family]} · 원국과 ${TIER_MEANING[polarity.tier]} 관계`,
-      meaning: `${where}에서는 ${FAMILY_LABEL[family]}이 두드러지고, 원국과는 ${TIER_MEANING[polarity.tier]} 흐름입니다.`,
-      domain,
-      temporalScope: scope,
-      directness
-    }
+    discipline: "MYUNGRI",
+    applicable: false,
+    applicabilityReason: reason,
+    dataReliability: reliability,
+    questionDomain: asked,
+    temporalScope: "UNSCOPED",
+    stance: "INSUFFICIENT_DATA",
+    dominantConclusion: "명리로는 이 질문에 답할 근거가 아직 부족합니다.",
+    dominantFactor: "계산 가능한 시기 흐름 없음",
+    directEvidence: [],
+    counterEvidence: [],
+    internalContradictions: [],
+    timingSignals: [],
+    domainSubJudgments: [],
+    confidence: "LOW",
+    questionDirectness: "GENERAL",
+    evidenceStrength: "NONE",
+    factGroupsUsed: []
   };
 }
-var POSITIVE_TIERS = ["FAVORABLE", "STEADY"];
-function layerWeight(l, asksTiming) {
-  const directnessScore = l.directness === "DIRECT" ? 3 : l.directness === "ADJACENT" ? 2 : 1;
-  const scopeScore = asksTiming ? l.scope === "WOLWOON" ? 3 : l.scope === "SEWOON" ? 3 : l.scope === "DAEWOON" ? 2 : 1 : l.scope === "DAEWOON" ? 3 : l.scope === "SEWOON" ? 2 : 1;
-  return directnessScore * 2 + scopeScore;
+function judgeAxis(axis, layers, baseline, asked, reliability) {
+  const pressures = layers.map((l) => ({ layer: l, p: axisPressure(l, axis) }));
+  const touched = pressures.filter((x) => x.p.friction > 0 || x.p.harmony > 0);
+  const natal = baseline ? natalSupportForDomain(baseline, axis) : { support: "UNKNOWN", note: "" };
+  if (touched.length === 0 && natal.support === "UNKNOWN") return null;
+  const friction = pressures.reduce((n, x) => n + x.p.friction, 0);
+  const harmony = pressures.reduce((n, x) => n + x.p.harmony, 0);
+  const heavy = pressures.some((x) => x.p.heavyHit);
+  const evidence = pressures.flatMap((x) => x.p.evidence);
+  const counterEvidence = pressures.flatMap((x) => x.p.counterEvidence);
+  const nearest = touched.find((x) => x.layer.scope === "WOLWOON") ?? touched.find((x) => x.layer.scope === "SEWOON") ?? touched[0];
+  const natalEvidence = natal.note ? [{ fact: `원국 바탕(${axis})`, meaning: natal.note, domain: axis, temporalScope: "NATAL", directness: "ADJACENT" }] : [];
+  let stance;
+  let conclusion;
+  if (friction === 0 && harmony === 0) {
+    stance = natal.support === "ABSENT" ? "CONDITIONAL_AGAINST" : NO_SIGNAL;
+    conclusion = natal.support === "ABSENT" ? `${natal.note} 지금 이 부분을 크게 벌일 자리는 아닙니다.` : "지금 이 부분을 흔드는 흐름은 따로 없습니다.";
+  } else if (friction > harmony) {
+    stance = heavy && natal.support !== "STRONG" ? "AGAINST" : "CONDITIONAL_AGAINST";
+    conclusion = heavy ? "이 부분은 직접 흔들리는 자리가 있어, 그대로 밀고 가기 어렵습니다." : "이 부분은 부딪히는 지점이 있어 범위를 좁히는 쪽이 낫습니다.";
+  } else if (harmony > friction) {
+    stance = natal.support === "STRONG" ? "FOR" : "CONDITIONAL_FOR";
+    conclusion = natal.support === "STRONG" ? `${natal.note} 흐름도 맞물려 열리는 자리입니다.` : "이 부분은 흐름이 맞물려 열리는 편입니다.";
+  } else {
+    stance = "CONDITIONAL_FOR";
+    conclusion = "이 부분은 열리는 힘과 부딪히는 힘이 함께 있어, 조건을 정리하고 가야 합니다.";
+  }
+  return {
+    domain: axis,
+    stance,
+    conclusion,
+    temporalScope: nearest?.layer.scope ?? "NATAL",
+    directness: directnessFor(axis, asked),
+    reliability,
+    evidence: [...evidence, ...natalEvidence],
+    counterEvidence
+  };
+}
+function axesFor(asked) {
+  switch (asked) {
+    case "MONEY_INFLOW":
+    case "MONEY_RETENTION":
+      return ["MONEY_INFLOW", "MONEY_RETENTION", "OPPORTUNITY", "CAREER"];
+    case "OPPORTUNITY":
+    case "DECISION":
+      return ["OPPORTUNITY", "OUTCOME", "MONEY_INFLOW", "CAREER"];
+    case "CAREER":
+    case "MOVEMENT":
+      return ["CAREER", "OUTCOME", "OPPORTUNITY", "MONEY_INFLOW"];
+    case "RELATION_BOND":
+    case "RELATION_STABILITY":
+    case "CONFLICT":
+      return ["RELATION_STABILITY", "RELATION_BOND", "CONFLICT", "INFLUENCE"];
+    default:
+      return ["GENERAL", "CAREER", "RELATION_STABILITY", "MONEY_INFLOW"];
+  }
 }
 function judgeMyungri(input) {
   const asked = input.questionDomain;
   const layers = [];
-  if (input.activeDaewoon) layers.push(readLayer(input.activeDaewoon, "DAEWOON", asked));
-  if (input.sewoon) layers.push(readLayer(input.sewoon, "SEWOON", asked));
-  if (input.wolwoon) layers.push(readLayer(input.wolwoon, "WOLWOON", asked));
+  if (input.activeDaewoon) layers.push(analyzeLayer("DAEWOON", input.activeDaewoon.stemTenGod, input.activeDaewoon.branchTenGod, input.activeDaewoon.relationsToNatal));
+  if (input.sewoon) layers.push(analyzeLayer("SEWOON", input.sewoon.stemTenGod, input.sewoon.branchTenGod, input.sewoon.relationsToNatal));
+  if (input.wolwoon) layers.push(analyzeLayer("WOLWOON", input.wolwoon.stemTenGod, input.wolwoon.branchTenGod, input.wolwoon.relationsToNatal));
   const reliability = input.hourKnown ? "EXACT" : "REDUCED";
-  if (layers.length === 0) {
-    return {
-      discipline: "MYUNGRI",
-      applicable: false,
-      applicabilityReason: "이 질문에 쓸 수 있는 시기 흐름(대운·세운)이 계산되지 않았습니다.",
-      dataReliability: input.hourKnown ? "MINIMAL" : "UNUSABLE",
-      questionDomain: asked,
-      temporalScope: "UNSCOPED",
-      stance: "INSUFFICIENT_DATA",
-      dominantConclusion: "명리로는 이 질문에 답할 근거가 아직 부족합니다.",
-      dominantFactor: "계산 가능한 시기 흐름 없음",
-      directEvidence: [],
-      counterEvidence: [],
-      internalContradictions: [],
-      timingSignals: [],
-      domainSubJudgments: [],
-      confidence: "LOW",
-      questionDirectness: "GENERAL"
-    };
+  if (layers.length === 0 && !input.natal) {
+    return unavailable9(asked, "이 질문에 쓸 수 있는 시기 흐름(대운·세운)이 계산되지 않았습니다.", input.hourKnown ? "MINIMAL" : "UNUSABLE");
   }
-  const ranked = [...layers].sort((a, b) => layerWeight(b, input.asksTiming) - layerWeight(a, input.asksTiming));
-  const primary = ranked[0];
-  const supporting = layers.filter((l) => POSITIVE_TIERS.includes(l.tier));
-  const opposing = layers.filter((l) => !POSITIVE_TIERS.includes(l.tier));
-  const near = layers.find((l) => l.scope === "WOLWOON") ?? layers.find((l) => l.scope === "SEWOON") ?? null;
-  const large = layers.find((l) => l.scope === "DAEWOON") ?? null;
-  let stance;
-  let dominantConclusion;
-  const internalContradictions = [];
-  const primaryPositive = POSITIVE_TIERS.includes(primary.tier);
-  const largePositive = large ? POSITIVE_TIERS.includes(large.tier) : null;
-  const nearPositive = near ? POSITIVE_TIERS.includes(near.tier) : null;
-  if (large && near && largePositive !== nearPositive) {
-    internalContradictions.push(
-      `${SCOPE_LABEL.DAEWOON}과 ${SCOPE_LABEL[near.scope]}가 서로 다른 방향을 가리킵니다.`
-    );
-    if (largePositive) {
-      stance = "FOR_BUT_LATER";
-      dominantConclusion = "방향 자체는 맞지만, 지금 시점보다 흐름이 풀린 뒤에 움직이는 쪽이 낫습니다.";
-    } else {
-      stance = "AGAINST_FOR_NOW";
-      dominantConclusion = "당장의 흐름은 열려 있지만 큰 흐름이 받쳐주지 않아, 크게 벌이는 선택은 미루는 쪽으로 봅니다.";
+  const baseline = input.natal ? readNatalBaseline(input.natal) : null;
+  const factGroupsUsed = [];
+  if (baseline) factGroupsUsed.push("원국 십신 배치", "원국 합충형파해", "월령", "통근·투간");
+  if (layers.some((l) => l.scope === "DAEWOON")) factGroupsUsed.push("대운");
+  if (layers.some((l) => l.scope === "SEWOON")) factGroupsUsed.push("세운");
+  if (layers.some((l) => l.scope === "WOLWOON")) factGroupsUsed.push("월운");
+  if (layers.some((l) => l.hits.length > 0)) factGroupsUsed.push("원국×운 관계(종류·위치)");
+  const subs = axesFor(asked).map((axis) => judgeAxis(axis, layers, baseline, asked, reliability)).filter((s) => s !== null);
+  const retentionSub = subs.find((s) => s.domain === "MONEY_RETENTION");
+  if (retentionSub) {
+    const robbed = layers.some((l) => l.robWealth);
+    const floating = baseline?.anchored === "FLOATING";
+    if (robbed || floating) {
+      retentionSub.stance = "AGAINST";
+      retentionSub.conclusion = robbed ? "들어온 돈을 나눠 가져가는 자리가 있어, 버는 것과 남기는 것을 반드시 나눠 보셔야 합니다." : "뿌리가 약해 들어온 것이 오래 머물지 않습니다.";
+      retentionSub.counterEvidence = [
+        ...retentionSub.counterEvidence,
+        {
+          fact: robbed ? "운에 겁재" : "원국 통근 약함",
+          meaning: robbed ? "같은 것을 두고 나눠 갖는 기운이 함께 옵니다." : "뿌리가 얕아 쌓이지 않습니다.",
+          domain: "MONEY_RETENTION",
+          temporalScope: robbed ? "SEWOON" : "NATAL",
+          directness: "DIRECT"
+        }
+      ];
     }
-  } else if (primaryPositive) {
-    const strong = primary.directness === "DIRECT" && primary.tier === "FAVORABLE" && opposing.length === 0;
-    stance = strong ? "STRONGLY_FOR" : primary.tier === "FAVORABLE" ? "FOR" : "CONDITIONAL_FOR";
-    dominantConclusion = strong ? `${SCOPE_LABEL[primary.scope]}이 ${FAMILY_LABEL[primary.family]}을 분명하게 받쳐줍니다. 하는 쪽으로 봅니다.` : `${SCOPE_LABEL[primary.scope]}은 ${FAMILY_LABEL[primary.family]} 쪽으로 열려 있습니다. 조건을 갖추면 진행해도 좋은 흐름입니다.`;
-  } else {
-    const strong = primary.directness === "DIRECT" && primary.tier === "CAUTION" && supporting.length === 0;
-    stance = strong ? "STRONGLY_AGAINST" : primary.tier === "CAUTION" ? "AGAINST" : "CONDITIONAL_AGAINST";
-    dominantConclusion = strong ? `${SCOPE_LABEL[primary.scope]}에서 ${FAMILY_LABEL[primary.family]}에 마찰이 분명합니다. 지금은 하지 않는 쪽으로 봅니다.` : `${SCOPE_LABEL[primary.scope]}이 흔들리는 구간이라, 범위를 좁혀 움직이는 쪽으로 봅니다.`;
   }
-  const subs = [];
-  const wealthLayer = layers.find((l) => l.family === "WEALTH");
-  const retentionRisk = layers.some((l) => l.robWealth) || layers.some((l) => l.family === "PEER" && !POSITIVE_TIERS.includes(l.tier));
-  if (wealthLayer) {
-    subs.push({
-      domain: "MONEY_INFLOW",
-      stance: POSITIVE_TIERS.includes(wealthLayer.tier) ? "FOR" : "CONDITIONAL_FOR",
-      conclusion: "재물이 움직이는 자리는 열려 있습니다."
-    });
-    subs.push({
-      domain: "MONEY_RETENTION",
-      stance: retentionRisk ? "AGAINST" : "CONDITIONAL_FOR",
-      conclusion: retentionRisk ? "다만 들어온 돈이 남는 구조는 약합니다. 버는 것과 남기는 것을 따로 보셔야 합니다." : "들어온 것을 지키는 쪽도 크게 새지 않습니다."
-    });
+  const primarySub = subs.find((s) => s.domain === asked) ?? subs.find((s) => s.directness === "DIRECT") ?? subs[0] ?? null;
+  const allEvidence = subs.flatMap((s) => s.evidence);
+  const allCounter = subs.flatMap((s) => s.counterEvidence);
+  const directionalSubs = subs.filter((s) => s.stance !== NO_SIGNAL);
+  const evidenceStrength = primarySub === null || primarySub.stance === NO_SIGNAL ? "NONE" : primarySub.evidence.length + primarySub.counterEvidence.length >= 3 ? "STRONG" : primarySub.evidence.length + primarySub.counterEvidence.length >= 1 ? "MODERATE" : "WEAK";
+  const internalContradictions = [];
+  const forSubs = directionalSubs.filter((s) => s.stance.includes("FOR"));
+  const againstSubs = directionalSubs.filter((s) => s.stance.includes("AGAINST"));
+  if (forSubs.length > 0 && againstSubs.length > 0) {
+    internalContradictions.push(
+      `${forSubs.map((s) => s.domain).join("/")}는 열리고 ${againstSubs.map((s) => s.domain).join("/")}는 걸립니다.`
+    );
   }
-  const outputLayer = layers.find((l) => l.family === "OUTPUT");
-  if (outputLayer) {
-    subs.push({
-      domain: "OPPORTUNITY",
-      stance: POSITIVE_TIERS.includes(outputLayer.tier) ? "FOR" : "CONDITIONAL_FOR",
-      conclusion: "벌이거나 새로 시작할 자리 자체는 생깁니다."
-    });
-    subs.push({
-      domain: "OUTCOME",
-      stance: opposing.length > supporting.length ? "CONDITIONAL_AGAINST" : "CONDITIONAL_FOR",
-      conclusion: opposing.length > supporting.length ? "기회가 생기는 것과 그것을 잡아서 남는 것은 다릅니다. 잡는 선택은 신중히 봅니다." : "잡았을 때 남는 쪽도 무리는 없습니다."
-    });
-  }
-  const officerLayer = layers.find((l) => l.family === "OFFICER");
-  if (officerLayer) {
-    subs.push({
-      domain: "CAREER",
-      stance: POSITIVE_TIERS.includes(officerLayer.tier) ? "FOR" : "CONDITIONAL_AGAINST",
-      conclusion: POSITIVE_TIERS.includes(officerLayer.tier) ? "자리와 책임이 안정적으로 붙는 흐름입니다." : "자리 문제로 부딪히기 쉬운 구간입니다."
-    });
-  }
-  const timingSignals = near ? [near.evidence] : [];
-  const natalEvidence = input.monthCommandInCommand === null ? [] : [{
-    fact: input.monthCommandInCommand ? "원국: 일간이 월령을 얻음(득령)" : "원국: 일간이 월령을 얻지 못함(실령)",
-    meaning: input.monthCommandInCommand ? "타고난 바탕이 계절의 기운을 등에 업고 있습니다." : "타고난 바탕이 계절의 기운을 등에 업지는 못했습니다.",
-    domain: "GENERAL",
-    temporalScope: "NATAL",
-    directness: "GENERAL"
-  }];
+  const stance = primarySub?.stance ?? NO_SIGNAL;
+  const nearest = layers.find((l) => l.scope === "WOLWOON") ?? layers.find((l) => l.scope === "SEWOON") ?? layers[0] ?? null;
   return {
     discipline: "MYUNGRI",
     applicable: true,
     dataReliability: reliability,
     ...input.hourKnown ? {} : { applicabilityReason: "출생시간이 확정되지 않아 시(時)에 기대는 해석은 제한됩니다." },
     questionDomain: asked,
-    temporalScope: primary.scope,
+    temporalScope: primarySub?.temporalScope ?? "NATAL",
     stance,
-    dominantConclusion,
-    dominantFactor: primary.evidence.fact,
-    directEvidence: [...supporting.map((l) => l.evidence), ...natalEvidence],
-    counterEvidence: opposing.map((l) => l.evidence),
+    dominantConclusion: primarySub?.conclusion ?? "명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.",
+    dominantFactor: primarySub?.counterEvidence[0]?.fact ?? primarySub?.evidence[0]?.fact ?? (nearest ? `${SCOPE_LABEL2[nearest.scope]}: ${FAMILY_LABEL2[nearest.family]}` : "원국 구조"),
+    directEvidence: [...allEvidence, ...baseline?.evidence ?? []],
+    counterEvidence: allCounter,
     internalContradictions,
-    timingSignals,
+    timingSignals: nearest && nearest.hits.length > 0 ? [nearest.hits[0].evidence] : [],
     domainSubJudgments: subs,
-    confidence: primary.directness === "DIRECT" && reliability === "EXACT" ? "HIGH" : primary.directness === "GENERAL" || reliability !== "EXACT" ? "LOW" : "MEDIUM",
-    questionDirectness: primary.directness
+    confidence: evidenceStrength === "STRONG" && reliability === "EXACT" && primarySub?.directness === "DIRECT" ? "HIGH" : evidenceStrength === "NONE" || reliability !== "EXACT" ? "LOW" : "MEDIUM",
+    questionDirectness: primarySub?.directness ?? "GENERAL",
+    evidenceStrength,
+    factGroupsUsed
   };
 }
 
 // src/features/divination/ziweiJudge.ts
-var PALACE_DOMAIN = {
-  재백: "MONEY_INFLOW",
-  전택: "MONEY_RETENTION",
-  // 田宅 = 집·부동산·재산이 머무는 자리 → 남기는 힘
-  관록: "CAREER",
-  천이: "MOVEMENT",
-  부처: "RELATION_STABILITY",
-  // 夫妻 = 배우자궁 → 결혼생활의 난도
-  형제: "INFLUENCE",
-  노복: "INFLUENCE",
-  복덕: "HEALTH_ENERGY",
-  질액: "HEALTH_ENERGY",
-  명궁: "GENERAL",
-  부모: "GENERAL",
-  자녀: "GENERAL"
-};
 function palaceForDomain(domain) {
   switch (domain) {
     case "MONEY_INFLOW":
@@ -7853,8 +8014,135 @@ function notApplicable(reason, reliability, domain) {
     timingSignals: [],
     domainSubJudgments: [],
     confidence: "LOW",
-    questionDirectness: "GENERAL"
+    questionDirectness: "GENERAL",
+    evidenceStrength: "NONE",
+    factGroupsUsed: []
   };
+}
+var findPalace = (chart, name) => chart.palaces.find((p) => p.name.includes(name)) ?? null;
+function triadOf(chart, palace) {
+  const at = (offset) => chart.palaces.find((p) => p.index === (palace.index + offset) % 12) ?? null;
+  return { opposite: at(6), triangles: [at(4), at(8)].filter((p) => p !== null) };
+}
+function readPalace(chart, palace, role2) {
+  const landed = chart.transformations.filter(
+    (t) => palace.name.includes(t.palaceName) || t.palaceName.includes(palace.name)
+  );
+  return {
+    palace,
+    role: role2,
+    sihua: landed.map((t) => ({ kind: sihuaKind(t.transformation), star: t.star })).filter((x) => x.kind !== null),
+    majorStars: palace.majorStars.map((s) => s.name).filter(Boolean)
+  };
+}
+function judgePalaceAxis(chart, domain, asked) {
+  const name = palaceForDomain(domain);
+  if (!name) return null;
+  const main = findPalace(chart, name);
+  if (!main) return null;
+  const { opposite, triangles } = triadOf(chart, main);
+  const reads = [readPalace(chart, main, "본궁")];
+  if (opposite) reads.push(readPalace(chart, opposite, "대궁"));
+  for (const t of triangles) reads.push(readPalace(chart, t, "삼합궁"));
+  const evidence = [];
+  const counterEvidence = [];
+  const directness = domain === asked ? "DIRECT" : "ADJACENT";
+  for (const r of reads) {
+    for (const s of r.sihua) {
+      const item = {
+        fact: `${r.palace.name}(${r.role})에 ${s.star} 화${s.kind === "ROK" ? "록" : s.kind === "GWON" ? "권" : s.kind === "GWA" ? "과" : "기"}`,
+        meaning: `${r.role === "본궁" ? "이 자리" : `${r.role}`}에 ${SIHUA_MEANING[s.kind]}이 ${SIHUA_POSITIVE[s.kind] ? "들어옵니다" : "걸립니다"}.`,
+        domain,
+        temporalScope: "NATAL",
+        // 본궁 evidence is direct; 대궁/삼합궁 influence is real but one step removed.
+        directness: r.role === "본궁" ? directness : "ADJACENT"
+      };
+      if (SIHUA_POSITIVE[s.kind]) evidence.push(item);
+      else counterEvidence.push(item);
+    }
+  }
+  const mainRead = reads[0];
+  const borrowed = mainRead.majorStars.length === 0 && opposite;
+  if (borrowed) {
+    evidence.push({
+      fact: `${main.name} 무주성 · 대궁 ${opposite.name}의 ${reads[1]?.majorStars.join("·") || "주성"}을 빌려 봄`,
+      meaning: "이 자리는 스스로 끌고 가기보다 맞은편 자리의 성향을 따라갑니다.",
+      domain,
+      temporalScope: "NATAL",
+      directness: "ADJACENT"
+    });
+  }
+  const hasSignal = evidence.length + counterEvidence.length > 0;
+  if (!hasSignal) {
+    return {
+      reads,
+      sub: {
+        domain,
+        stance: NO_SIGNAL,
+        conclusion: `${main.name}에는 방향을 정할 만한 신호가 들어오지 않습니다.`,
+        temporalScope: "NATAL",
+        directness,
+        reliability: "EXACT",
+        evidence: mainRead.majorStars.length ? [{
+          fact: `${main.name}의 ${mainRead.majorStars.join("·")}`,
+          meaning: "이 자리는 그 성향대로 흘러갈 뿐, 특별히 밀거나 막는 힘은 없습니다.",
+          domain,
+          temporalScope: "NATAL",
+          directness: "GENERAL"
+        }] : [],
+        counterEvidence: []
+      }
+    };
+  }
+  const giOnMain = mainRead.sihua.some((s) => s.kind === "GI");
+  const posOnMain = mainRead.sihua.filter((s) => SIHUA_POSITIVE[s.kind]).length;
+  let stance;
+  let conclusion;
+  if (giOnMain && posOnMain > 0) {
+    stance = "CONDITIONAL_AGAINST";
+    conclusion = `${main.name}은 힘도 실리지만 걸리는 지점이 함께 있어, 조건을 정리하고 가야 하는 자리입니다.`;
+  } else if (giOnMain) {
+    stance = "AGAINST";
+    conclusion = `${main.name}에 막히는 기운이 들어와, 이 부분은 수월하게 풀리지 않습니다.`;
+  } else if (posOnMain >= 2) {
+    stance = "STRONGLY_FOR";
+    conclusion = `${main.name}에 힘이 겹쳐 실려, 분명하게 열려 있는 자리입니다.`;
+  } else if (posOnMain === 1) {
+    stance = "FOR";
+    conclusion = `${main.name}에 힘이 실려 열려 있는 자리입니다.`;
+  } else if (counterEvidence.length > 0) {
+    stance = "CONDITIONAL_AGAINST";
+    conclusion = `${main.name} 자체보다 맞물린 자리에서 걸리는 기운이 들어옵니다.`;
+  } else {
+    stance = "CONDITIONAL_FOR";
+    conclusion = `${main.name}은 맞물린 자리에서 힘을 받는 편입니다.`;
+  }
+  return { reads, sub: { domain, stance, conclusion, temporalScope: "NATAL", directness, reliability: "EXACT", evidence, counterEvidence } };
+}
+function axesFor2(asked) {
+  switch (asked) {
+    case "MONEY_INFLOW":
+    case "MONEY_RETENTION":
+      return ["MONEY_INFLOW", "MONEY_RETENTION", "CAREER"];
+    case "OPPORTUNITY":
+    case "DECISION":
+    case "OUTCOME":
+      return ["CAREER", "MONEY_INFLOW", "GENERAL"];
+    case "CAREER":
+      return ["CAREER", "MONEY_INFLOW", "MOVEMENT"];
+    case "MOVEMENT":
+      return ["MOVEMENT", "CAREER", "GENERAL"];
+    case "RELATION_BOND":
+    case "RELATION_STABILITY":
+      return ["RELATION_STABILITY", "GENERAL", "CONFLICT"];
+    case "CONFLICT":
+    case "INFLUENCE":
+      return ["CONFLICT", "RELATION_STABILITY"];
+    case "HEALTH_ENERGY":
+      return ["HEALTH_ENERGY", "GENERAL"];
+    default:
+      return ["GENERAL", "CAREER", "RELATION_STABILITY"];
+  }
 }
 function judgeZiwei(input) {
   const asked = input.questionDomain;
@@ -7865,95 +8153,57 @@ function judgeZiwei(input) {
     return notApplicable("자미두수 명반이 계산되지 않았습니다.", "UNUSABLE", asked);
   }
   const chart = input.chart;
-  const targetPalaceName = palaceForDomain(asked);
-  const palace = targetPalaceName !== null ? chart.palaces.find((p) => p.name.includes(targetPalaceName)) ?? null : null;
-  const soulPalace = chart.palaces.find((p) => p.name.includes("명궁")) ?? null;
-  const readPalace = palace ?? soulPalace;
-  if (!readPalace) {
+  const results = axesFor2(asked).map((d) => judgePalaceAxis(chart, d, asked)).filter((r) => r !== null);
+  if (results.length === 0) {
     return notApplicable("이 질문에 해당하는 궁을 명반에서 찾지 못했습니다.", "MINIMAL", asked);
   }
-  const landed = chart.transformations.filter((t) => readPalace.name.includes(t.palaceName) || t.palaceName.includes(readPalace.name));
-  const kinds = landed.map((t) => ({ t, kind: sihuaKind(t.transformation) })).filter((x) => x.kind !== null);
-  const positives = kinds.filter((k) => SIHUA_POSITIVE[k.kind]);
-  const negatives = kinds.filter((k) => !SIHUA_POSITIVE[k.kind]);
-  const majorStarNames = readPalace.majorStars.map((s) => s.name).filter(Boolean);
-  const palaceLabel = readPalace.name;
-  const directness = palace ? "DIRECT" : "GENERAL";
-  const evidenceFor = positives.map(({ t, kind }) => ({
-    fact: `${palaceLabel}에 ${t.star} 화${t.transformation}`,
-    meaning: `${palaceLabel}이 다루는 자리에 ${SIHUA_MEANING[kind]}이 들어옵니다.`,
-    domain: PALACE_DOMAIN[targetPalaceName ?? "명궁"] ?? asked,
-    temporalScope: "NATAL",
-    directness
-  }));
-  const evidenceAgainst = negatives.map(({ t, kind }) => ({
-    fact: `${palaceLabel}에 ${t.star} 화${t.transformation}`,
-    meaning: `${palaceLabel}이 다루는 자리에 ${SIHUA_MEANING[kind]}이 걸립니다.`,
-    domain: PALACE_DOMAIN[targetPalaceName ?? "명궁"] ?? asked,
-    temporalScope: "NATAL",
-    directness
-  }));
-  let stance;
-  let dominantConclusion;
-  const internalContradictions = [];
-  if (negatives.length > 0 && positives.length > 0) {
-    internalContradictions.push(`${palaceLabel}에 열어주는 기운과 막는 기운이 함께 들어옵니다.`);
-    stance = "CONDITIONAL_AGAINST";
-    dominantConclusion = `${palaceLabel} 자리는 힘은 실리지만 걸리는 지점이 함께 있어, 그대로 밀고 가기보다 조건을 정리하고 가야 하는 구조입니다.`;
-  } else if (negatives.length > 0) {
-    stance = directness === "DIRECT" ? "AGAINST" : "CONDITIONAL_AGAINST";
-    dominantConclusion = `${palaceLabel}에 막히는 기운이 들어와, 이 부분은 수월하게 풀리는 구조가 아닙니다.`;
-  } else if (positives.length > 0) {
-    const strong = directness === "DIRECT" && positives.length >= 2;
-    stance = strong ? "STRONGLY_FOR" : "FOR";
-    dominantConclusion = `${palaceLabel}에 힘이 실려, 이 부분은 열려 있는 구조입니다.`;
-  } else {
-    stance = "CONDITIONAL_FOR";
-    dominantConclusion = majorStarNames.length ? `${palaceLabel}에 특별히 막히는 기운은 없고, ${majorStarNames.join("·")}의 성향대로 흘러가는 자리입니다.` : `${palaceLabel}에 두드러진 힘이 실리지 않아, 이 부분은 크게 흔들리지도 크게 열리지도 않는 자리입니다.`;
-  }
-  const subs = [];
-  const spouse = chart.palaces.find((p) => p.name.includes("부처"));
-  const property = chart.palaces.find((p) => p.name.includes("전택"));
-  const wealth = chart.palaces.find((p) => p.name.includes("재백"));
-  const sihuaOn = (name) => name ? chart.transformations.filter((t) => name.includes(t.palaceName) || t.palaceName.includes(name)) : [];
-  const hasGi = (name) => sihuaOn(name).some((t) => sihuaKind(t.transformation) === "GI");
-  if (spouse && (asked === "RELATION_BOND" || asked === "RELATION_STABILITY")) {
-    subs.push({
-      domain: "RELATION_STABILITY",
-      stance: hasGi(spouse.name) ? "AGAINST" : "CONDITIONAL_FOR",
-      conclusion: hasGi(spouse.name) ? "배우자 자리에 얽히는 기운이 있어, 같이 사는 과정의 난도는 높게 봅니다." : "배우자 자리 자체는 크게 얽히지 않습니다."
+  const subs = results.map((r) => r.sub);
+  const primary = subs.find((s) => s.domain === asked) ?? subs[0];
+  const contextEvidence = [];
+  const bodyPalace = chart.palaces.find((p) => p.isBodyPalace);
+  if (bodyPalace) {
+    contextEvidence.push({
+      fact: `신궁(身宮)이 ${bodyPalace.name}`,
+      meaning: "살면서 실제로 무게가 실리는 자리입니다.",
+      domain: "GENERAL",
+      temporalScope: "NATAL",
+      directness: "GENERAL"
     });
   }
-  if (wealth && property && (asked === "MONEY_INFLOW" || asked === "MONEY_RETENTION")) {
-    subs.push({
-      domain: "MONEY_INFLOW",
-      stance: hasGi(wealth.name) ? "CONDITIONAL_AGAINST" : "FOR",
-      conclusion: hasGi(wealth.name) ? "들어오는 길목이 매끄럽지는 않습니다." : "돈이 들어오는 자리는 열려 있습니다."
-    });
-    subs.push({
-      domain: "MONEY_RETENTION",
-      stance: hasGi(property.name) ? "AGAINST" : "CONDITIONAL_FOR",
-      conclusion: hasGi(property.name) ? "다만 쌓아 두는 자리가 새는 구조라, 버는 것과 남기는 것을 반드시 나눠 보셔야 합니다." : "쌓아 두는 자리도 크게 새지 않습니다."
+  if (chart.fiveElementsClass) {
+    contextEvidence.push({
+      fact: `${chart.fiveElementsClass} · 명주 ${chart.soul}`,
+      meaning: "명반 전체의 기본 결입니다.",
+      domain: "GENERAL",
+      temporalScope: "NATAL",
+      directness: "GENERAL"
     });
   }
+  const directional = subs.filter((s) => s.stance !== NO_SIGNAL);
+  const evidenceStrength = primary.stance === NO_SIGNAL ? "NONE" : primary.evidence.length + primary.counterEvidence.length >= 3 ? "STRONG" : primary.evidence.length + primary.counterEvidence.length >= 1 ? "MODERATE" : "WEAK";
+  const internalContradictions = primary.evidence.length > 0 && primary.counterEvidence.length > 0 ? [`${palaceForDomain(primary.domain)}에 열어 주는 기운과 막는 기운이 함께 들어옵니다.`] : [];
+  const factGroupsUsed = ["12궁 궁위", "사화(四化)", "삼방사정(대궁·삼합궁)", "주성 배치"];
+  if (bodyPalace) factGroupsUsed.push("신궁");
+  if (chart.fiveElementsClass) factGroupsUsed.push("오행국·명주");
   return {
     discipline: "ZIWEI",
     applicable: true,
     dataReliability: "EXACT",
-    // the engine only returns a chart when the birth time was exact
     questionDomain: asked,
     temporalScope: "NATAL",
-    stance,
-    dominantConclusion,
-    dominantFactor: kinds.length > 0 ? `${palaceLabel}에 ${kinds.map((k) => `${k.t.star} 화${k.t.transformation}`).join(", ")}` : `${palaceLabel}의 ${majorStarNames.join("·") || "주성 없음"}`,
-    directEvidence: evidenceFor,
-    counterEvidence: evidenceAgainst,
+    stance: primary.stance,
+    dominantConclusion: primary.conclusion,
+    dominantFactor: primary.counterEvidence[0]?.fact ?? primary.evidence[0]?.fact ?? `${palaceForDomain(primary.domain)} 신호 없음`,
+    directEvidence: [...subs.flatMap((s) => s.evidence), ...contextEvidence],
+    counterEvidence: subs.flatMap((s) => s.counterEvidence),
     internalContradictions,
     timingSignals: [],
-    // 유년 미계산 — Ziwei never asserts a year here
+    // 유년 미계산 — never a year claim
     domainSubJudgments: subs,
-    confidence: directness === "DIRECT" && kinds.length > 0 ? "HIGH" : kinds.length > 0 ? "MEDIUM" : "LOW",
-    questionDirectness: directness
+    confidence: evidenceStrength === "STRONG" ? "HIGH" : evidenceStrength === "NONE" ? "LOW" : "MEDIUM",
+    questionDirectness: primary.directness,
+    evidenceStrength,
+    factGroupsUsed
   };
 }
 
@@ -7978,15 +8228,34 @@ var DOOR_MEANING = {
   杜門: "닫아 두고 숨기는 문",
   景門: "드러나되 실속은 갈리는 문"
 };
-function doorClass(door) {
-  if (!door) return null;
-  const key2 = Object.keys(DOOR_CLASS).find((d) => door.includes(d));
-  return key2 ? DOOR_CLASS[key2] : null;
-}
-function doorMeaning(door) {
-  const key2 = Object.keys(DOOR_MEANING).find((d) => door.includes(d));
-  return key2 ? DOOR_MEANING[key2] : "기록된 문";
-}
+var STAR_CLASS = {
+  天輔: "AUSPICIOUS",
+  天禽: "AUSPICIOUS",
+  天心: "AUSPICIOUS",
+  天蓬: "INAUSPICIOUS",
+  天芮: "INAUSPICIOUS",
+  天柱: "INAUSPICIOUS",
+  天沖: "NEUTRAL",
+  天任: "NEUTRAL",
+  天英: "NEUTRAL"
+};
+var GOD_CLASS = {
+  值符: "AUSPICIOUS",
+  太陰: "AUSPICIOUS",
+  六合: "AUSPICIOUS",
+  九天: "AUSPICIOUS",
+  螣蛇: "INAUSPICIOUS",
+  白虎: "INAUSPICIOUS",
+  玄武: "INAUSPICIOUS",
+  九地: "NEUTRAL"
+};
+var classify = (table, value) => {
+  if (!value) return null;
+  const key2 = Object.keys(table).find((k) => value.includes(k));
+  return key2 ? table[key2] : null;
+};
+var doorClass = (door) => classify(DOOR_CLASS, door);
+var doorMeaning = (door) => DOOR_MEANING[Object.keys(DOOR_MEANING).find((d) => door.includes(d)) ?? ""] ?? "기록된 문";
 function inapplicable(reason, domain) {
   return {
     discipline: "QIMEN",
@@ -8004,9 +8273,12 @@ function inapplicable(reason, domain) {
     timingSignals: [],
     domainSubJudgments: [],
     confidence: "LOW",
-    questionDirectness: "GENERAL"
+    questionDirectness: "GENERAL",
+    evidenceStrength: "NONE",
+    factGroupsUsed: []
   };
 }
+var SIGN = { AUSPICIOUS: 1, NEUTRAL: 0, INAUSPICIOUS: -1 };
 function judgeQimen(input) {
   const asked = input.questionDomain;
   if (input.availability === "not_applicable") {
@@ -8017,128 +8289,183 @@ function judgeQimen(input) {
   }
   const board = input.board;
   const dutyDoor = board.zhishi;
-  const cls = doorClass(dutyDoor);
+  const dutyDoorClass = doorClass(dutyDoor);
+  if (!dutyDoorClass) return inapplicable("질문 시점의 값사문을 판별할 수 없습니다.", asked);
   const dutyPalace = board.palaces.find((p) => p.palaceLabel.includes(board.zhishiPalace)) ?? null;
-  const god = dutyPalace?.god ?? "";
-  const star = board.zhifu;
-  if (!cls) {
-    return inapplicable("질문 시점의 값사문을 판별할 수 없습니다.", asked);
+  const commanderPalace = board.palaces.find((p) => p.palaceLabel.includes(board.zhifuPalace)) ?? null;
+  const starCls = classify(STAR_CLASS, board.zhifu);
+  const godCls = classify(GOD_CLASS, dutyPalace?.god);
+  const sameSeat = board.zhishiPalace === board.zhifuPalace;
+  const evidence = [];
+  const counterEvidence = [];
+  const push = (cls, fact, meaning, directness) => {
+    if (cls === null) return;
+    const item = { fact, meaning, domain: "TIMING", temporalScope: "PRESENT_MOMENT", directness };
+    if (cls === "INAUSPICIOUS") counterEvidence.push(item);
+    else evidence.push(item);
+  };
+  push(dutyDoorClass, `값사 ${dutyDoor} (${board.zhishiPalace}궁)`, `지금 이 일을 이끄는 자리는 ${doorMeaning(dutyDoor)}입니다.`, "DIRECT");
+  push(
+    starCls,
+    `값부 ${board.zhifu}${commanderPalace ? ` (${board.zhifuPalace}궁)` : ""}`,
+    starCls === "INAUSPICIOUS" ? "판을 이끄는 기운이 껄끄럽습니다." : starCls === "AUSPICIOUS" ? "판을 이끄는 기운이 힘을 보탭니다." : "판을 이끄는 기운은 무난합니다.",
+    "ADJACENT"
+  );
+  if (dutyPalace?.god) {
+    push(
+      godCls,
+      `${board.zhishiPalace}궁 ${dutyPalace.god}`,
+      godCls === "INAUSPICIOUS" ? "이 자리를 지키는 신이 일을 흔듭니다." : godCls === "AUSPICIOUS" ? "이 자리를 지키는 신이 도와줍니다." : "이 자리를 지키는 신은 지키기만 합니다.",
+      "ADJACENT"
+    );
   }
-  const doorEvidence = {
-    fact: `값사 ${dutyDoor} (${board.zhishiPalace}궁)`,
-    meaning: `지금 이 일을 이끄는 자리는 ${doorMeaning(dutyDoor)}입니다.`,
-    domain: "TIMING",
-    temporalScope: "PRESENT_MOMENT",
-    directness: "DIRECT"
-  };
-  const contextEvidence = {
-    fact: `값부 ${star}${god ? ` · ${god}` : ""}`,
-    meaning: "지금 판의 주도적인 기운입니다.",
-    domain: "TIMING",
-    temporalScope: "PRESENT_MOMENT",
-    directness: "ADJACENT"
-  };
+  if (dutyPalace) {
+    evidence.push({
+      fact: `${board.zhishiPalace}궁 천반 ${dutyPalace.heavenPlate} · 지반 ${dutyPalace.earthPlate}`,
+      meaning: "지금 이 일이 놓인 자리의 위아래 기운입니다.",
+      domain: "TIMING",
+      temporalScope: "PRESENT_MOMENT",
+      directness: "ADJACENT"
+    });
+  }
+  if (sameSeat) {
+    evidence.push({
+      fact: `값부·값사가 같은 ${board.zhishiPalace}궁`,
+      meaning: "기운이 한곳에 모여, 지금의 신호가 그만큼 뚜렷합니다.",
+      domain: "TIMING",
+      temporalScope: "PRESENT_MOMENT",
+      directness: "ADJACENT"
+    });
+  }
+  const score = SIGN[dutyDoorClass] * 2 + (starCls ? SIGN[starCls] : 0) + (godCls ? SIGN[godCls] : 0);
+  const sharpened = sameSeat ? score > 0 ? score + 1 : score < 0 ? score - 1 : 0 : score;
   let stance;
   let dominantConclusion;
-  if (cls === "AUSPICIOUS") {
+  if (sharpened >= 3) {
     stance = "FOR";
-    dominantConclusion = "지금 시점으로만 보면 움직여도 되는 판입니다.";
-  } else if (cls === "INAUSPICIOUS") {
+    dominantConclusion = "지금 시점으로 보면 판이 분명히 열려 있습니다. 움직여도 됩니다.";
+  } else if (sharpened >= 1) {
+    stance = "CONDITIONAL_FOR";
+    dominantConclusion = "지금 판은 나쁘지 않습니다. 크게 벌이지 않는 선에서 진행할 만합니다.";
+  } else if (sharpened <= -3) {
     stance = "AGAINST_FOR_NOW";
-    dominantConclusion = "지금 이 시점에 밀어붙이는 것은 좋지 않습니다. 시점을 미루는 쪽으로 봅니다.";
+    dominantConclusion = "지금 이 시점은 판 자체가 막혀 있습니다. 시점을 미루는 쪽으로 봅니다.";
+  } else if (sharpened <= -1) {
+    stance = "AGAINST_FOR_NOW";
+    dominantConclusion = "지금 밀어붙이면 부딪히는 자리가 있습니다. 서두르지 않는 쪽이 낫습니다.";
   } else {
     stance = "CONDITIONAL_FOR";
     dominantConclusion = "지금 판은 크게 열리지도 막히지도 않아, 조용히 진행하는 정도가 알맞습니다.";
   }
+  const evidenceStrength = Math.abs(sharpened) >= 3 ? "STRONG" : Math.abs(sharpened) >= 1 ? "MODERATE" : "WEAK";
+  const mixed = evidence.length > 0 && counterEvidence.length > 0;
   return {
     discipline: "QIMEN",
     applicable: true,
     dataReliability: "EXACT",
-    // the board is built from the SERVER question instant
-    questionDomain: asked,
+    questionDomain: "TIMING",
     temporalScope: "PRESENT_MOMENT",
     stance,
     dominantConclusion,
-    dominantFactor: `값사 ${dutyDoor}`,
-    directEvidence: cls === "AUSPICIOUS" ? [doorEvidence, contextEvidence] : [contextEvidence],
-    counterEvidence: cls === "INAUSPICIOUS" ? [doorEvidence] : [],
-    internalContradictions: [],
-    timingSignals: [doorEvidence],
+    dominantFactor: `값사 ${dutyDoor}${starCls ? ` · 값부 ${board.zhifu}` : ""}${dutyPalace?.god ? ` · ${dutyPalace.god}` : ""}`,
+    directEvidence: evidence,
+    counterEvidence,
+    internalContradictions: mixed ? ["지금 판 안에서도 돕는 기운과 막는 기운이 섞여 있습니다."] : [],
+    timingSignals: [...evidence, ...counterEvidence].filter((e) => e.directness === "DIRECT"),
     domainSubJudgments: [
       {
         domain: "TIMING",
         stance,
-        conclusion: cls === "INAUSPICIOUS" ? "지금 당장의 시점은 아닙니다." : cls === "AUSPICIOUS" ? "지금 움직이는 것 자체는 무리가 없습니다." : "지금은 크게 벌이지 않는 선에서 진행할 만합니다."
+        conclusion: stance === "AGAINST_FOR_NOW" ? "지금 당장의 시점은 아닙니다." : "지금 움직이는 것 자체는 무리가 없습니다.",
+        temporalScope: "PRESENT_MOMENT",
+        directness: "DIRECT",
+        reliability: "EXACT",
+        evidence,
+        counterEvidence
       }
     ],
-    confidence: "MEDIUM",
-    // present-moment only; deliberately never outranks structure by itself
-    questionDirectness: "DIRECT"
+    // PRESENT_MOMENT authority only — deliberately never outranks structure on its own (§7/§12).
+    confidence: evidenceStrength === "STRONG" ? "MEDIUM" : "LOW",
+    questionDirectness: "DIRECT",
+    evidenceStrength,
+    factGroupsUsed: ["값사문", "값부 구성", "팔신", "값사·값부 착궁", "천반·지반"]
   };
 }
 
 // src/features/divination/crossJudge.ts
-var DISCIPLINE_LABEL = {
-  MYUNGRI: "명리",
-  ZIWEI: "자미두수",
-  QIMEN: "기문둔갑"
+var DISCIPLINE_LABEL = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
+var hasFinalConsonant = (w) => {
+  const ch = w.charCodeAt(w.length - 1);
+  return ch >= 44032 && ch <= 55203 ? (ch - 44032) % 28 !== 0 : false;
 };
-var hasFinalConsonant = (word) => {
-  const ch = word.charCodeAt(word.length - 1);
-  if (ch < 44032 || ch > 55203) return false;
-  return (ch - 44032) % 28 !== 0;
-};
-function withParticle(word, pair) {
-  const closed = hasFinalConsonant(word);
-  const table = {
-    은는: ["은", "는"],
-    이가: ["이", "가"],
-    과와: ["과", "와"],
-    을를: ["을", "를"]
-  };
-  const [withBatchim, withoutBatchim] = table[pair];
-  return `${word}${closed ? withBatchim : withoutBatchim}`;
-}
+var withParticle = (w, closed, open) => `${w}${hasFinalConsonant(w) ? closed : open}`;
 var disc = (d) => DISCIPLINE_LABEL[d];
-var discSubject = (d) => withParticle(DISCIPLINE_LABEL[d], "은는");
-var discNominative = (d) => withParticle(DISCIPLINE_LABEL[d], "이가");
-var discAnd = (d) => withParticle(DISCIPLINE_LABEL[d], "과와");
-var DECOMPOSABLE = [
+var discSubject = (d) => withParticle(DISCIPLINE_LABEL[d], "은", "는");
+var discNominative = (d) => withParticle(DISCIPLINE_LABEL[d], "이", "가");
+var discAnd = (d) => withParticle(DISCIPLINE_LABEL[d], "과", "와");
+var AXIS_LABEL = {
+  MONEY_INFLOW: "돈이 들어오는 쪽",
+  MONEY_RETENTION: "돈이 남는 쪽",
+  OPPORTUNITY: "기회가 오는 쪽",
+  OUTCOME: "잡았을 때 남는 쪽",
+  CAREER: "자리·직업",
+  MOVEMENT: "이동",
+  RELATION_BOND: "끌리는 힘",
+  RELATION_STABILITY: "같이 사는 난도",
+  CONFLICT: "부딪힘",
+  INFLUENCE: "서로 미치는 영향",
+  TIMING: "지금 시점",
+  HEALTH_ENERGY: "몸·기운",
+  DECISION: "결정",
+  GENERAL: "전반"
+};
+var axisLabel = (d) => AXIS_LABEL[d] ?? "전반";
+var COMPOUND_FRAME = [
   { a: "MONEY_INFLOW", b: "MONEY_RETENTION", kind: "INFLOW_VS_RETENTION", frame: "돈이 들어오는 것과 남는 것은 다르게 봅니다." },
   { a: "RELATION_BOND", b: "RELATION_STABILITY", kind: "BOND_VS_STABILITY", frame: "끌리는 힘과 같이 사는 난도는 다르게 봅니다." },
   { a: "OPPORTUNITY", b: "OUTCOME", kind: "OPPORTUNITY_VS_OUTCOME", frame: "기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다." },
-  { a: "CAREER", b: "MONEY_RETENTION", kind: "DIFFERENT_DOMAIN", frame: "자리가 열리는 것과 실속이 남는 것은 다르게 봅니다." },
-  { a: "MOVEMENT", b: "OUTCOME", kind: "DIFFERENT_DOMAIN", frame: "움직임이 생기는 것과 그 결과가 좋은 것은 다르게 봅니다." }
+  { a: "CAREER", b: "MONEY_RETENTION", kind: "DIFFERENT_DOMAIN", frame: "자리가 열리는 것과 실속이 남는 것은 다르게 봅니다." }
 ];
 var NEAR_SCOPES = /* @__PURE__ */ new Set(["PRESENT_MOMENT", "WOLWOON", "SEWOON"]);
 var STRUCTURAL_SCOPES = /* @__PURE__ */ new Set(["NATAL", "DAEWOON"]);
+var STRENGTH_RANK = { STRONG: 3, MODERATE: 2, WEAK: 1, NONE: 0 };
 var RELIABILITY_RANK = { EXACT: 3, REDUCED: 2, MINIMAL: 1, UNUSABLE: 0 };
 var DIRECTNESS_RANK = { DIRECT: 3, ADJACENT: 2, GENERAL: 1 };
-var CONFIDENCE_RANK = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-function strongerBy(a, b, axis) {
-  const rank = (j) => axis === "directness" ? DIRECTNESS_RANK[j.questionDirectness] : axis === "reliability" ? RELIABILITY_RANK[j.dataReliability] : CONFIDENCE_RANK[j.confidence];
-  const ra = rank(a);
-  const rb = rank(b);
-  if (ra === rb) return null;
-  return ra > rb ? a : b;
+var MAGNITUDE = {
+  STRONGLY_FOR: 3,
+  FOR: 2,
+  CONDITIONAL_FOR: 1,
+  FOR_BUT_LATER: 1,
+  AGAINST_FOR_NOW: 1,
+  CONDITIONAL_AGAINST: 1,
+  AGAINST: 2,
+  STRONGLY_AGAINST: 3
+};
+function claimStrength(sub2) {
+  if (!isDirectional(sub2.stance)) return "NONE";
+  const n = (sub2.evidence?.length ?? 0) + (sub2.counterEvidence?.length ?? 0);
+  if (n >= 3) return "STRONG";
+  if (n >= 1) return "MODERATE";
+  return "WEAK";
 }
-function timedDirection(structuralFor) {
-  return structuralFor ? "FOR_BUT_LATER" : "AGAINST_FOR_NOW";
+function claimRank(c) {
+  return STRENGTH_RANK[c.strength] * 100 + DIRECTNESS_RANK[c.sub.directness] * 10 + RELIABILITY_RANK[c.sub.reliability] * 3 + (MAGNITUDE[c.sub.stance] ?? 0);
 }
-function insufficient(input, judgments) {
+function insufficient(input, judgments, proven) {
   return {
     question: input.question,
     questionDomain: input.questionDomain,
-    primaryConclusion: "지금 확인할 수 있는 근거로는 이 질문에 방향을 잡아 드리기 어렵습니다.",
-    direction: "INSUFFICIENT_DATA",
-    dominantBasis: "판단에 쓸 수 있는 근거 없음",
+    primaryConclusion: proven ? "지금 확인할 수 있는 근거로는 이 질문에 방향을 잡아 드리기 어렵습니다." : "이 질문에 대해서는 방향을 정할 만한 신호가 명식에서 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.",
+    direction: proven ? "INSUFFICIENT_DATA" : "INSUFFICIENT_EVIDENCE",
+    dominantBasis: proven ? "판단에 쓸 수 있는 근거 없음" : "방향을 정할 만한 신호 없음",
     disciplineJudgments: judgments,
     contributions: judgments.map((j) => ({
       discipline: j.discipline,
       applied: j.applicable,
       stance: j.stance,
-      contribution: j.applicabilityReason ?? "이 질문에 답할 근거가 부족했습니다."
+      contribution: j.applicable ? `${j.dominantConclusion} (방향을 정할 만큼의 근거는 아닙니다.)` : j.applicabilityReason ?? "이 질문에 답할 근거가 부족했습니다."
     })),
+    axisVerdicts: [],
     agreementPoints: [],
     contradictionPoints: [],
     contradictionResolutions: [],
@@ -8147,127 +8474,152 @@ function insufficient(input, judgments) {
     timingConclusion: null,
     favorableFactors: [],
     riskFactors: [],
-    actionableInterpretation: "필요한 정보(예: 정확한 출생시간)가 확인되면 다시 봐 드릴 수 있습니다.",
+    actionableInterpretation: proven ? "필요한 정보(예: 정확한 출생시간)가 확인되면 다시 봐 드릴 수 있습니다." : "지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다.",
     confidence: "LOW",
-    confidenceReason: "적용 가능한 학문이 없었습니다.",
-    evidenceReferences: [],
+    confidenceReason: proven ? "적용 가능한 학문이 없었습니다." : "적용은 됐지만 방향을 정할 신호가 약합니다.",
+    evidenceReferences: judgments.filter((j) => j.applicable).map((j) => ({ discipline: j.discipline, lines: [j.dominantConclusion] })),
     verdictVersion: DIVINATION_VERDICT_VERSION
   };
 }
-function judgeCross(input) {
-  const all = input.judgments;
-  const speaking = all.filter((j) => j.applicable && isDirectional(j.stance));
-  if (speaking.length === 0) return insufficient(input, all);
-  const forSide = speaking.filter((j) => stanceValence(j.stance) === "FOR");
-  const againstSide = speaking.filter((j) => stanceValence(j.stance) === "AGAINST");
-  const agreementPoints = [];
-  const contradictionPoints = [];
-  const resolutions = [];
-  let direction;
-  let dominant;
-  let primaryConclusion;
+function resolveAxis(domain, claims) {
+  const voting = claims.filter((c) => c.strength !== "NONE");
+  if (voting.length === 0) return null;
+  const forSide = voting.filter((c) => stanceValence(c.sub.stance) === "FOR");
+  const againstSide = voting.filter((c) => stanceValence(c.sub.stance) === "AGAINST");
+  const ranked = [...voting].sort((a, b) => claimRank(b) - claimRank(a));
   if (forSide.length === 0 || againstSide.length === 0) {
-    const side = forSide.length > 0 ? forSide : againstSide;
-    dominant = [...side].sort(
-      (a, b) => DIRECTNESS_RANK[b.questionDirectness] - DIRECTNESS_RANK[a.questionDirectness] || RELIABILITY_RANK[b.dataReliability] - RELIABILITY_RANK[a.dataReliability] || CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence]
-    )[0];
-    direction = dominant.stance;
-    if (side.length > 1) {
-      agreementPoints.push(
-        `${side.map((j) => DISCIPLINE_LABEL[j.discipline]).join("·")}${discNominative(side[side.length - 1].discipline).slice(-1)} 같은 방향을 가리킵니다.`
-      );
-    }
-    primaryConclusion = dominant.dominantConclusion;
-  } else {
-    const a = forSide[0];
-    const b = againstSide[0];
-    contradictionPoints.push(
-      `${discSubject(a.discipline)} 되는 쪽, ${discSubject(b.discipline)} 아닌 쪽으로 봅니다.`
-    );
-    const pair = a.questionDomain !== b.questionDomain ? DECOMPOSABLE.find(
-      (d) => a.questionDomain === d.a && b.questionDomain === d.b || a.questionDomain === d.b && b.questionDomain === d.a
-    ) : void 0;
-    const structural = speaking.find((j) => STRUCTURAL_SCOPES.has(j.temporalScope));
-    const near = speaking.find((j) => NEAR_SCOPES.has(j.temporalScope));
-    const temporalSplit = structural && near && stanceValence(structural.stance) !== stanceValence(near.stance);
-    if (pair) {
-      const d = pair;
-      const askedSide = [a, b].find((j) => j.questionDomain === input.questionDomain) ?? a;
-      const otherSide = askedSide === a ? b : a;
-      direction = askedSide.stance;
-      dominant = askedSide;
-      resolutions.push({
-        kind: d.kind,
-        between: [a.discipline, b.discipline],
-        conflict: `${discAnd(a.discipline)} ${discNominative(b.discipline)} 반대로 보이는 지점이 있습니다.`,
-        resolution: `${d.frame} 서로 다른 축을 말하고 있어 둘 다 사실입니다.`,
-        dominant: askedSide.discipline,
-        whyOtherDidNotDominate: `${discNominative(otherSide.discipline)} 짚은 부분은 질문의 축과 다른 축이라, 결론을 뒤집지는 않고 조건으로 붙습니다.`
-      });
-      primaryConclusion = `${askedSide.dominantConclusion} 다만 ${d.frame}`;
-    } else if (temporalSplit && structural && near) {
-      const structuralFor = stanceValence(structural.stance) === "FOR";
-      direction = timedDirection(structuralFor);
-      dominant = structural;
-      resolutions.push({
-        kind: near.temporalScope === "PRESENT_MOMENT" ? "ACTION_VS_TIMING" : "DIFFERENT_TIMESCALE",
+    const winner = ranked[0];
+    return { domain, stance: winner.sub.stance, conclusion: winner.sub.conclusion, winner, contested: false, resolution: null };
+  }
+  const bestFor = [...forSide].sort((a, b) => claimRank(b) - claimRank(a))[0];
+  const bestAgainst = [...againstSide].sort((a, b) => claimRank(b) - claimRank(a))[0];
+  const structural = [bestFor, bestAgainst].find((c) => STRUCTURAL_SCOPES.has(c.sub.temporalScope));
+  const near = [bestFor, bestAgainst].find((c) => NEAR_SCOPES.has(c.sub.temporalScope));
+  const bothSupported = STRENGTH_RANK[bestFor.strength] >= 2 && STRENGTH_RANK[bestAgainst.strength] >= 2;
+  if (structural && near && structural !== near && bothSupported) {
+    const structuralFor = stanceValence(structural.sub.stance) === "FOR";
+    return {
+      domain,
+      stance: structuralFor ? "FOR_BUT_LATER" : "AGAINST_FOR_NOW",
+      conclusion: structuralFor ? "방향은 맞습니다. 다만 지금 시점은 아닙니다." : "지금 움직일 여지는 있지만, 큰 방향이 받쳐주지 않습니다.",
+      winner: structural,
+      contested: true,
+      resolution: {
+        kind: near.sub.temporalScope === "PRESENT_MOMENT" ? "ACTION_VS_TIMING" : "DIFFERENT_TIMESCALE",
         between: [structural.discipline, near.discipline],
         conflict: `${discSubject(structural.discipline)} 방향을, ${discSubject(near.discipline)} 시점을 다르게 봅니다.`,
         resolution: structuralFor ? "가는 방향 자체는 맞지만, 지금 이 시점은 아닙니다." : "지금 당장은 열려 있어도, 큰 방향이 받쳐주지 않습니다.",
         dominant: structural.discipline,
-        whyOtherDidNotDominate: `${discSubject(near.discipline)} 지금 시점의 판이라, 방향 자체를 뒤집는 근거로는 쓰지 않습니다.`
-      });
-      primaryConclusion = structuralFor ? "방향은 맞습니다. 다만 지금 시점은 아닙니다." : "지금 움직일 여지는 있지만, 크게 가는 선택은 아닙니다.";
-    } else {
-      const byDirect = strongerBy(a, b, "directness");
-      const byReliable = byDirect ? null : strongerBy(a, b, "reliability");
-      const byConfidence = byDirect || byReliable ? null : strongerBy(a, b, "confidence");
-      const winner = byDirect ?? byReliable ?? byConfidence ?? a;
-      const loser = winner === a ? b : a;
-      const kind = byDirect ? "DIRECTNESS" : byReliable ? "RELIABILITY" : "DIRECTNESS";
-      direction = winner.stance;
-      dominant = winner;
-      resolutions.push({
-        kind,
-        between: [a.discipline, b.discipline],
-        conflict: `${discAnd(a.discipline)} ${discNominative(b.discipline)} 정면으로 다른 방향을 가리킵니다.`,
-        resolution: byDirect ? `${disc(winner.discipline)}의 근거가 이 질문에 더 직접 닿아 있어 그쪽을 따릅니다.` : byReliable ? `${disc(winner.discipline)} 쪽 자료가 더 확실해 그쪽을 따릅니다.` : `${disc(winner.discipline)} 쪽 근거가 더 분명해 그쪽을 따릅니다.`,
-        dominant: winner.discipline,
-        whyOtherDidNotDominate: `${discNominative(loser.discipline)} 본 ${loser.dominantFactor}도 사실이지만, 이 질문에 대해서는 근거의 결이 한 단계 멀어 결론을 가져가지 못했습니다.`
-      });
-      primaryConclusion = winner.dominantConclusion;
+        whyOtherDidNotDominate: `${discSubject(near.discipline)} 지금 시점의 신호라, 방향 자체를 뒤집는 근거로는 쓰지 않습니다.`
+      }
+    };
+  }
+  const win = claimRank(bestFor) >= claimRank(bestAgainst) ? bestFor : bestAgainst;
+  const lose = win === bestFor ? bestAgainst : bestFor;
+  const kind = STRENGTH_RANK[win.strength] !== STRENGTH_RANK[lose.strength] || win.sub.directness !== lose.sub.directness ? "DIRECTNESS" : "RELIABILITY";
+  return {
+    domain,
+    stance: win.sub.stance,
+    conclusion: win.sub.conclusion,
+    winner: win,
+    contested: true,
+    resolution: {
+      kind,
+      between: [bestFor.discipline, bestAgainst.discipline],
+      conflict: `${discAnd(bestFor.discipline)} ${discNominative(bestAgainst.discipline)} ${axisLabel(domain)}을 반대로 봅니다.`,
+      resolution: `${disc(win.discipline)} 쪽 근거가 이 질문에 더 직접적이고 뒷받침도 분명해 그쪽을 따릅니다.`,
+      dominant: win.discipline,
+      whyOtherDidNotDominate: `${discNominative(lose.discipline)} 본 ${lose.sub.evidence?.[0]?.fact ?? lose.sub.counterEvidence?.[0]?.fact ?? "신호"}도 사실이지만, 근거의 결이 한 단계 멀어 결론을 가져가지 못했습니다.`
+    }
+  };
+}
+function judgeCross(input) {
+  const all = input.judgments;
+  const applicable = all.filter((j) => j.applicable);
+  if (applicable.length === 0) return insufficient(input, all, true);
+  const claims = [];
+  for (const j of applicable) {
+    const subs = j.domainSubJudgments.length ? j.domainSubJudgments : [{
+      domain: j.questionDomain,
+      stance: j.stance,
+      conclusion: j.dominantConclusion,
+      temporalScope: j.temporalScope,
+      directness: j.questionDirectness,
+      reliability: j.dataReliability,
+      evidence: j.directEvidence,
+      counterEvidence: j.counterEvidence
+    }];
+    for (const sub2 of subs) claims.push({ discipline: j.discipline, sub: sub2, parent: j, strength: claimStrength(sub2) });
+  }
+  const axes = [...new Set(claims.map((c) => c.sub.domain))];
+  const resolutions = axes.map((axis) => resolveAxis(axis, claims.filter((c) => c.sub.domain === axis))).filter((r) => r !== null);
+  if (resolutions.length === 0) return insufficient(input, all, false);
+  const primary = resolutions.find((r) => r.domain === input.questionDomain) ?? [...resolutions].sort((a, b) => claimRank(b.winner) - claimRank(a.winner))[0];
+  const contradictionResolutions = resolutions.map((r) => r.resolution).filter((r) => r !== null);
+  const compound = [];
+  for (const frame of COMPOUND_FRAME) {
+    const a = resolutions.find((r) => r.domain === frame.a);
+    const b = resolutions.find((r) => r.domain === frame.b);
+    if (!a || !b) continue;
+    const va = stanceValence(a.stance);
+    const vb = stanceValence(b.stance);
+    if (va !== "NONE" && vb !== "NONE" && va !== vb) {
+      compound.push(frame.frame);
+      if (!contradictionResolutions.some((r) => r.kind === frame.kind)) {
+        contradictionResolutions.push({
+          kind: frame.kind,
+          between: [a.winner.discipline, b.winner.discipline],
+          conflict: `${axisLabel(frame.a)}과 ${axisLabel(frame.b)}이 서로 다르게 나옵니다.`,
+          resolution: `${frame.frame} 서로 다른 축이라 둘 다 사실입니다.`,
+          dominant: (a.domain === input.questionDomain ? a : b).winner.discipline,
+          whyOtherDidNotDominate: "질문의 축과 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다."
+        });
+      }
     }
   }
-  const timingJudgment = speaking.find((j) => j.timingSignals.length > 0 && NEAR_SCOPES.has(j.temporalScope));
-  const timingConclusion = timingJudgment && input.asksTiming ? timingJudgment.domainSubJudgments.find((s) => s.domain === "TIMING")?.conclusion ?? timingJudgment.dominantConclusion : direction === "FOR_BUT_LATER" ? "지금보다 흐름이 풀린 뒤가 낫습니다." : direction === "AGAINST_FOR_NOW" ? "지금 시점은 아닙니다." : null;
+  const primaryConclusion = compound.length ? `${primary.conclusion} 다만 ${compound[0]}` : primary.conclusion;
+  const agreementPoints = [];
+  for (const r of resolutions) {
+    const disciplines = [...new Set(claims.filter((c) => c.sub.domain === r.domain && c.strength !== "NONE").map((c) => c.discipline))];
+    if (!r.contested && disciplines.length > 1) {
+      const last = disc(disciplines[disciplines.length - 1]);
+      agreementPoints.push(`${disciplines.map(disc).join("·")}${hasFinalConsonant(last) ? "이" : "가"} ${axisLabel(r.domain)}에서 같은 방향을 가리킵니다.`);
+    }
+  }
+  const timingAxis = resolutions.find((r) => r.domain === "TIMING");
+  const timingConclusion = timingAxis?.conclusion ?? (primary.stance === "FOR_BUT_LATER" ? "지금보다 흐름이 풀린 뒤가 낫습니다." : primary.stance === "AGAINST_FOR_NOW" ? "지금 시점은 아닙니다." : null);
+  const dominantDiscipline = primary.winner.discipline;
   const contributions = all.map((j) => {
     if (!j.applicable) {
+      return { discipline: j.discipline, applied: false, stance: j.stance, contribution: j.applicabilityReason ?? "이 질문에는 적용하지 않았습니다." };
+    }
+    const votes = claims.filter((c) => c.discipline === j.discipline && c.strength !== "NONE");
+    if (votes.length === 0) {
       return {
         discipline: j.discipline,
-        applied: false,
+        applied: true,
         stance: j.stance,
-        contribution: j.applicabilityReason ?? "이 질문에는 적용하지 않았습니다."
+        contribution: "계산은 됐지만 방향을 정할 만한 신호가 없어 결론에 표를 더하지 않았습니다.",
+        whyItDidNotDominate: "신호가 없는 상태를 찬성으로 세지 않습니다."
       };
     }
-    const isDominant = j.discipline === dominant.discipline;
+    const own = resolutions.filter((r) => r.winner.discipline === j.discipline);
+    const isDominant = j.discipline === dominantDiscipline;
     return {
       discipline: j.discipline,
       applied: true,
       stance: j.stance,
-      contribution: isDominant ? `이번 결론의 중심 근거입니다 — ${j.dominantFactor}.` : `${j.dominantFactor}로 결론을 보강합니다.`,
+      contribution: isDominant ? `이번 결론의 중심 근거입니다 — ${primary.winner.sub.evidence?.[0]?.fact ?? primary.winner.sub.counterEvidence?.[0]?.fact ?? j.dominantFactor}.` : own.length ? `${own.map((r) => axisLabel(r.domain)).join("·")} 축을 맡았습니다.` : `${j.dominantFactor}로 결론을 보강합니다.`,
       ...isDominant ? {} : {
-        whyItDidNotDominate: resolutions.find((r) => r.between.includes(j.discipline))?.whyOtherDidNotDominate ?? "같은 방향이라 결론을 바꾸지는 않고 근거를 더합니다."
+        whyItDidNotDominate: contradictionResolutions.find((r) => r.between.includes(j.discipline))?.whyOtherDidNotDominate ?? "같은 방향이라 결론을 바꾸지는 않고 근거를 더합니다."
       }
     };
   });
-  const favorableFactors = speaking.flatMap(
-    (j) => stanceValence(j.stance) === "FOR" ? j.directEvidence : j.counterEvidence.length ? [] : j.directEvidence
-  );
-  const riskFactors = speaking.flatMap((j) => j.counterEvidence);
-  const confidence = resolutions.length === 0 && speaking.length >= 2 ? "HIGH" : dominant.confidence === "HIGH" && dominant.questionDirectness === "DIRECT" ? "HIGH" : dominant.confidence === "LOW" ? "LOW" : "MEDIUM";
-  const confidenceReason = resolutions.length === 0 ? speaking.length >= 2 ? "적용된 학문이 같은 방향을 가리킵니다." : "한 학문의 근거로 판단했습니다." : `학문 사이의 차이를 ${resolutions[0].kind === "DIRECTNESS" || resolutions[0].kind === "RELIABILITY" ? "근거의 직접성" : "축과 시점"} 기준으로 정리했습니다.`;
+  const favorableFactors = resolutions.filter((r) => stanceValence(r.stance) === "FOR").flatMap((r) => r.winner.sub.evidence ?? []);
+  const riskFactors = resolutions.flatMap((r) => r.winner.sub.counterEvidence ?? []);
+  const confidence = STRENGTH_RANK[primary.winner.strength] >= 3 && primary.winner.sub.directness === "DIRECT" ? "HIGH" : STRENGTH_RANK[primary.winner.strength] <= 1 ? "LOW" : "MEDIUM";
   const evidenceReferences = [
-    ...speaking.map((j) => ({
+    ...applicable.map((j) => ({
       discipline: j.discipline,
       lines: [
         j.dominantConclusion,
@@ -8275,30 +8627,34 @@ function judgeCross(input) {
         ...j.counterEvidence.map((e) => `${e.fact} — ${e.meaning}`)
       ]
     })),
-    ...resolutions.length ? [{
-      discipline: "CROSS",
-      lines: resolutions.map((r) => `${r.conflict} → ${r.resolution} (${r.whyOtherDidNotDominate})`)
-    }] : agreementPoints.length ? [{ discipline: "CROSS", lines: agreementPoints }] : []
+    ...contradictionResolutions.length ? [{ discipline: "CROSS", lines: contradictionResolutions.map((r) => `${r.conflict} → ${r.resolution} (${r.whyOtherDidNotDominate})`) }] : agreementPoints.length ? [{ discipline: "CROSS", lines: agreementPoints }] : []
   ];
   return {
     question: input.question,
     questionDomain: input.questionDomain,
     primaryConclusion,
-    direction,
-    dominantBasis: `${disc(dominant.discipline)} · ${dominant.dominantFactor}`,
+    direction: primary.stance,
+    dominantBasis: `${disc(dominantDiscipline)} · ${primary.winner.sub.evidence?.[0]?.fact ?? primary.winner.sub.counterEvidence?.[0]?.fact ?? primary.winner.parent.dominantFactor}`,
     disciplineJudgments: all,
     contributions,
+    axisVerdicts: resolutions.map((r) => ({
+      domain: r.domain,
+      stance: r.stance,
+      conclusion: r.conclusion,
+      dominantDiscipline: r.winner.discipline,
+      contested: r.contested
+    })),
     agreementPoints,
-    contradictionPoints,
-    contradictionResolutions: resolutions,
+    contradictionPoints: contradictionResolutions.map((r) => r.conflict),
+    contradictionResolutions,
     natalBaseline: input.natalBaseline ?? null,
     currentFlow: input.currentFlow ?? null,
     timingConclusion,
     favorableFactors,
     riskFactors,
-    actionableInterpretation: buildActionable(direction),
+    actionableInterpretation: buildActionable(primary.stance),
     confidence,
-    confidenceReason,
+    confidenceReason: contradictionResolutions.length ? "학문 사이의 차이를 근거의 직접성과 축·시점 기준으로 정리했습니다." : resolutions.length > 1 ? "여러 축의 신호가 같은 방향으로 모입니다." : "한 축의 근거로 판단했습니다.",
     evidenceReferences,
     verdictVersion: DIVINATION_VERDICT_VERSION
   };
@@ -8321,6 +8677,8 @@ function buildActionable(direction) {
       return "이번 건은 접고, 다음 흐름을 기다리는 쪽이 낫습니다.";
     case "STRONGLY_AGAINST":
       return "지금 밀어붙이지 마십시오. 손을 떼는 것이 이득입니다.";
+    case "INSUFFICIENT_EVIDENCE":
+      return "지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다.";
     default:
       return "확인되는 근거가 늘면 다시 봐 드리겠습니다.";
   }
@@ -8339,86 +8697,140 @@ var TEN_GOD_PULL = {
   DIRECT_RESOURCE: "상대에게 기대고 배우는 결",
   INDIRECT_RESOURCE: "상대를 한 발 떨어져 보는 결"
 };
+var ev = (fact, meaning, domain) => ({
+  fact,
+  meaning,
+  domain,
+  temporalScope: "NATAL",
+  directness: "DIRECT"
+});
+var sub = (domain, stance, conclusion, evidence, counterEvidence, reduced) => ({
+  domain,
+  stance,
+  conclusion,
+  temporalScope: "NATAL",
+  directness: "DIRECT",
+  reliability: reduced ? "REDUCED" : "EXACT",
+  evidence,
+  counterEvidence
+});
 function judgePairMyungri(input) {
   const { facts, assessment } = input;
+  const reduced = assessment.reducedPrecision;
   const bond = assessment.dimensions.find((d) => d.key === "BOND");
   const friction = assessment.dimensions.find((d) => d.key === "FRICTION");
   const dayCombo = facts.dayStemRelation?.kind === "STEM_COMBINATION";
   const dayClash = facts.dayStemRelation?.kind === "STEM_CLASH";
-  const daySeatHarmony = facts.dayBranchRelations.some(
-    (r) => r.kind === "BRANCH_SIX_COMBINATION" || r.kind === "BRANCH_HALF_THREE_HARMONY"
-  );
-  const daySeatStrain = facts.dayBranchRelations.some(
-    (r) => r.kind === "BRANCH_CLASH" || r.kind === "BRANCH_PUNISHMENT" || r.kind === "BRANCH_HARM"
-  );
-  const evidenceFor = [];
-  const evidenceAgainst = [];
-  if (dayCombo) evidenceFor.push({ fact: "일간 천간합", meaning: "두 사람이 서로에게 자연히 끌리는 결이 있습니다.", domain: "RELATION_BOND", temporalScope: "NATAL", directness: "DIRECT" });
-  if (daySeatHarmony) evidenceFor.push({ fact: "일지 육합/반합", meaning: "함께 있는 자리가 서로 편안하게 맞물립니다.", domain: "RELATION_STABILITY", temporalScope: "NATAL", directness: "DIRECT" });
-  if (dayClash) evidenceAgainst.push({ fact: "일간 천간충", meaning: "생각을 정하는 방식에서 정면으로 부딪힙니다.", domain: "CONFLICT", temporalScope: "NATAL", directness: "DIRECT" });
-  if (daySeatStrain) evidenceAgainst.push({ fact: "일지 충·형·해(배우자 자리)", meaning: "같이 사는 자리에서 반복해 부딪히기 쉽습니다.", domain: "RELATION_STABILITY", temporalScope: "NATAL", directness: "DIRECT" });
-  const bondPositive = bond.signal === "POSITIVE";
-  const frictionHeavy = friction.signal === "WATCH";
-  let stance;
-  let dominantConclusion;
-  if (bondPositive && !frictionHeavy) {
-    stance = "STRONGLY_FOR";
-    dominantConclusion = "두 분은 서로 당기는 힘이 분명하고 부딪히는 지점도 적은 궁합입니다.";
-  } else if (bondPositive && frictionHeavy) {
-    stance = "CONDITIONAL_FOR";
-    dominantConclusion = "끌리는 힘은 분명하지만 부딪히는 자리도 함께 있는, 인연은 강하고 살림은 쉽지 않은 궁합입니다.";
-  } else if (!bondPositive && frictionHeavy) {
-    stance = "AGAINST";
-    dominantConclusion = "서로 당기는 힘보다 부딪히는 자리가 앞서는 궁합입니다.";
-  } else {
-    stance = "CONDITIONAL_FOR";
-    dominantConclusion = "크게 끌리지도 크게 부딪히지도 않는, 서로 맞춰 가며 사는 궁합입니다.";
+  const daySeatHarmony = facts.dayBranchRelations.some((r) => r.kind === "BRANCH_SIX_COMBINATION" || r.kind === "BRANCH_HALF_THREE_HARMONY");
+  const daySeatStrain = facts.dayBranchRelations.some((r) => r.kind === "BRANCH_CLASH" || r.kind === "BRANCH_PUNISHMENT" || r.kind === "BRANCH_HARM");
+  const bondFor = [];
+  const bondAgainst = [];
+  if (dayCombo) bondFor.push(ev("일간 천간합", "두 사람이 서로에게 자연히 끌리는 결이 있습니다.", "RELATION_BOND"));
+  if (daySeatHarmony) bondFor.push(ev("일지 육합/반합", "함께 있는 자리가 서로 편안하게 맞물립니다.", "RELATION_BOND"));
+  if (dayClash) bondAgainst.push(ev("일간 천간충", "생각을 정하는 방식에서 정면으로 부딪힙니다.", "RELATION_BOND"));
+  const bondStance = bondFor.length > bondAgainst.length ? bondFor.length >= 2 ? "STRONGLY_FOR" : "FOR" : bondAgainst.length > 0 ? "CONDITIONAL_AGAINST" : NO_SIGNAL;
+  const marFor = [];
+  const marAgainst = [];
+  if (daySeatHarmony) marFor.push(ev("일지 육합/반합", "같이 사는 자리가 서로 맞물립니다.", "RELATION_STABILITY"));
+  if (daySeatStrain) marAgainst.push(ev("일지 충·형·해(배우자 자리)", "같이 사는 자리에서 반복해 부딪히기 쉽습니다.", "RELATION_STABILITY"));
+  const marStance = marAgainst.length > 0 ? "AGAINST" : marFor.length > 0 ? "FOR" : NO_SIGNAL;
+  const conflictHeavy = friction.signal === "WATCH";
+  const conflictEvidence = conflictHeavy ? [ev("두 사람 사이 충·형·파·해 다수", friction.verdict, "CONFLICT")] : [ev("두 사람 사이 충돌 적음", friction.verdict, "CONFLICT")];
+  const moneyFor = [];
+  const moneyAgainst = [];
+  const famTargetToSelf = facts.tenGodTargetToSelf ? tenGodFamily(facts.tenGodTargetToSelf) : null;
+  const famSelfToTarget = facts.tenGodSelfToTarget ? tenGodFamily(facts.tenGodSelfToTarget) : null;
+  if (famTargetToSelf === "WEALTH" || famSelfToTarget === "WEALTH") {
+    moneyFor.push(ev(
+      `상호 십신에 재성 (${facts.tenGodTargetToSelf ?? ""}${facts.tenGodSelfToTarget ? `/${facts.tenGodSelfToTarget}` : ""})`,
+      "한쪽이 다른 쪽의 살림을 실제로 굴리는 관계라, 돈이 도는 축은 분명합니다.",
+      "MONEY_RETENTION"
+    ));
   }
+  const rivalry = facts.tenGodTargetToSelf === "ROB_WEALTH" || facts.tenGodSelfToTarget === "ROB_WEALTH";
+  const peerLevel = famTargetToSelf === "PEER" || famSelfToTarget === "PEER";
+  if (rivalry) {
+    moneyAgainst.push(ev("상호 십신에 겁재", "같은 몫을 두고 겨루는 자리라, 돈 문제에서 부딪히기 쉽습니다.", "MONEY_RETENTION"));
+  } else if (peerLevel) {
+    moneyAgainst.push(ev("상호 십신에 비견", "살림의 주도권을 두고 서로 물러서지 않는 편입니다.", "MONEY_RETENTION"));
+  }
+  if (facts.elementComplement.sharedMissing.length >= 2) {
+    moneyAgainst.push(ev(
+      `공통으로 약한 기운 ${facts.elementComplement.sharedMissing.length}가지`,
+      "두 사람 모두 비어 있는 자리가 있어, 그 부분은 서로 메워 주지 못합니다.",
+      "MONEY_RETENTION"
+    ));
+  }
+  if (facts.elementComplement.selfSuppliesTarget.length + facts.elementComplement.targetSuppliesSelf.length >= 2) {
+    moneyFor.push(ev("서로 부족한 기운을 채움", "한쪽이 비는 자리를 다른 쪽이 메워, 살림이 굴러가는 편입니다.", "MONEY_RETENTION"));
+  }
+  const moneyStance = moneyAgainst.length > moneyFor.length ? rivalry ? "AGAINST" : "CONDITIONAL_AGAINST" : moneyFor.length > moneyAgainst.length ? "FOR" : moneyFor.length > 0 ? "CONDITIONAL_FOR" : NO_SIGNAL;
   const influence = [];
   if (facts.tenGodTargetToSelf) {
-    influence.push({
-      fact: `상대→나: ${facts.tenGodTargetToSelf}`,
-      meaning: `상대는 ${input.selfLabel}에게 ${TEN_GOD_PULL[facts.tenGodTargetToSelf] ?? "고유한 결"}로 작용합니다.`,
-      domain: "INFLUENCE",
-      temporalScope: "NATAL",
-      directness: "DIRECT"
-    });
+    influence.push(ev(`상대→${input.selfLabel}: ${facts.tenGodTargetToSelf}`, `상대는 ${TEN_GOD_PULL[facts.tenGodTargetToSelf] ?? "고유한 결"}로 작용합니다.`, "INFLUENCE"));
   }
   if (facts.tenGodSelfToTarget) {
-    influence.push({
-      fact: `나→상대: ${facts.tenGodSelfToTarget}`,
-      meaning: `${input.selfLabel}는 상대에게 ${TEN_GOD_PULL[facts.tenGodSelfToTarget] ?? "고유한 결"}로 작용합니다.`,
-      domain: "INFLUENCE",
-      temporalScope: "NATAL",
-      directness: "DIRECT"
-    });
+    influence.push(ev(`${input.selfLabel}→상대: ${facts.tenGodSelfToTarget}`, `${input.selfLabel}는 ${TEN_GOD_PULL[facts.tenGodSelfToTarget] ?? "고유한 결"}로 작용합니다.`, "INFLUENCE"));
   }
+  const subs = [
+    sub("RELATION_BOND", bondStance, bond.verdict, bondFor, bondAgainst, reduced),
+    sub(
+      "RELATION_STABILITY",
+      marStance,
+      marAgainst.length ? "같이 사는 과정의 난도는 높게 봅니다." : marFor.length ? "같이 사는 자리는 맞물립니다." : "배우자 자리에 두드러진 신호는 없습니다.",
+      marFor,
+      marAgainst,
+      reduced
+    ),
+    sub(
+      "CONFLICT",
+      conflictHeavy ? "AGAINST" : "FOR",
+      friction.verdict,
+      conflictHeavy ? [] : conflictEvidence,
+      conflictHeavy ? conflictEvidence : [],
+      reduced
+    ),
+    sub(
+      "MONEY_RETENTION",
+      moneyStance,
+      moneyAgainst.length ? "돈·살림에서는 부딪히는 자리가 있습니다." : moneyFor.length ? "돈·살림은 서로 굴러가는 편입니다." : "돈 쪽으로는 뚜렷한 신호가 잡히지 않습니다.",
+      moneyFor,
+      moneyAgainst,
+      reduced
+    ),
+    ...influence.length ? [sub("INFLUENCE", "CONDITIONAL_FOR", influence[0].meaning, influence, [], reduced)] : []
+  ];
+  const primary = subs.find((s) => s.domain === input.questionDomain) ?? subs[0];
+  const evidenceStrength = primary.stance === NO_SIGNAL ? "NONE" : primary.evidence.length + primary.counterEvidence.length >= 3 ? "STRONG" : primary.evidence.length + primary.counterEvidence.length >= 1 ? "MODERATE" : "WEAK";
+  const bondPositive = bondStance === "FOR" || bondStance === "STRONGLY_FOR";
+  const dominantConclusion = bondPositive && (marStance === "AGAINST" || conflictHeavy) ? "끌리는 힘은 분명하지만 부딪히는 자리도 함께 있는, 인연은 강하고 살림은 쉽지 않은 궁합입니다." : primary.conclusion;
   return {
     discipline: "MYUNGRI",
     applicable: true,
-    dataReliability: assessment.reducedPrecision ? "REDUCED" : "EXACT",
-    ...assessment.reducedPrecision ? { applicabilityReason: "두 분 중 한 명 이상 출생시간이 확정되지 않아 정밀도가 제한됩니다." } : {},
+    dataReliability: reduced ? "REDUCED" : "EXACT",
+    ...reduced ? { applicabilityReason: "두 분 중 한 명 이상 출생시간이 확정되지 않아 정밀도가 제한됩니다." } : {},
     questionDomain: input.questionDomain,
     temporalScope: "NATAL",
-    stance,
+    stance: primary.stance,
     dominantConclusion,
     dominantFactor: dayCombo ? "일간 천간합" : dayClash ? "일간 천간충" : daySeatStrain ? "일지 충·형·해" : `종합 ${assessment.overallLabel}`,
-    directEvidence: [...evidenceFor, ...influence],
-    counterEvidence: evidenceAgainst,
-    internalContradictions: bondPositive && frictionHeavy ? ["끌리는 힘과 부딪히는 자리가 함께 있습니다."] : [],
+    directEvidence: subs.flatMap((s) => s.evidence),
+    counterEvidence: subs.flatMap((s) => s.counterEvidence),
+    internalContradictions: bondPositive && conflictHeavy ? ["끌리는 힘과 부딪히는 자리가 함께 있습니다."] : [],
     timingSignals: [],
-    domainSubJudgments: [
-      { domain: "RELATION_BOND", stance: bondPositive ? "FOR" : "CONDITIONAL_FOR", conclusion: bond.verdict },
-      { domain: "CONFLICT", stance: frictionHeavy ? "AGAINST" : "FOR", conclusion: friction.verdict },
-      ...influence.length ? [{ domain: "INFLUENCE", stance, conclusion: influence[0].meaning }] : []
-    ],
-    confidence: assessment.reducedPrecision ? "MEDIUM" : "HIGH",
-    questionDirectness: "DIRECT"
+    domainSubJudgments: subs,
+    confidence: reduced ? "MEDIUM" : evidenceStrength === "STRONG" ? "HIGH" : "MEDIUM",
+    questionDirectness: "DIRECT",
+    evidenceStrength,
+    factGroupsUsed: ["일주 궁합(일간·일지)", "교차 합충형파해", "상호 십신", "오행 보완"]
   };
 }
 function judgePairZiwei(input) {
-  const charts = [input.selfChart, input.targetChart].filter((c) => c !== null);
-  if (charts.length === 0) {
+  const people = [
+    { chart: input.selfChart, label: input.selfLabel ?? "본인" },
+    { chart: input.targetChart, label: input.targetLabel ?? "상대" }
+  ].filter((p) => p.chart !== null);
+  if (people.length === 0) {
     return {
       discipline: "ZIWEI",
       applicable: false,
@@ -8435,46 +8847,78 @@ function judgePairZiwei(input) {
       timingSignals: [],
       domainSubJudgments: [],
       confidence: "LOW",
-      questionDirectness: "GENERAL"
+      questionDirectness: "GENERAL",
+      evidenceStrength: "NONE",
+      factGroupsUsed: []
     };
   }
-  const evidenceFor = [];
-  const evidenceAgainst = [];
-  for (const chart of charts) {
-    const spouse = chart.palaces.find((p) => p.name.includes("부처"));
-    if (!spouse) continue;
-    const landed = chart.transformations.filter((t) => spouse.name.includes(t.palaceName) || t.palaceName.includes(spouse.name));
-    for (const t of landed) {
-      const kind = sihuaKind(t.transformation);
-      if (kind === null) continue;
-      const item = {
-        fact: `부처궁에 ${t.star} 화${t.transformation}`,
-        meaning: kind === "GI" ? "배우자 자리가 얽히는 구조라, 같이 사는 과정의 난도가 올라갑니다." : "배우자 자리에 힘이 실려, 관계를 끌고 갈 동력이 있습니다.",
-        domain: "RELATION_STABILITY",
-        temporalScope: "NATAL",
-        directness: "DIRECT"
-      };
-      if (kind === "GI") evidenceAgainst.push(item);
-      else evidenceFor.push(item);
+  const axisFrom = (palaceName, domain, giMeaning, okMeaning) => {
+    const evidence = [];
+    const counter = [];
+    for (const p of people) {
+      const palace = p.chart.palaces.find((x) => x.name.includes(palaceName));
+      if (!palace) continue;
+      const landed = p.chart.transformations.filter((t) => palace.name.includes(t.palaceName) || t.palaceName.includes(palace.name));
+      for (const t of landed) {
+        const kind = sihuaKind(t.transformation);
+        if (kind === null) continue;
+        const item = ev(`${p.label} ${palaceName}궁에 ${t.star} 화${t.transformation}`, kind === "GI" ? giMeaning : okMeaning, domain);
+        if (kind === "GI") counter.push(item);
+        else evidence.push(item);
+      }
     }
-  }
-  const stance = evidenceAgainst.length > 0 ? "AGAINST" : evidenceFor.length > 0 ? "FOR" : "CONDITIONAL_FOR";
+    const stance = counter.length > 0 ? "AGAINST" : evidence.length > 0 ? "FOR" : NO_SIGNAL;
+    return { evidence, counter, stance };
+  };
+  const marriage = axisFrom("부처", "RELATION_STABILITY", "배우자 자리가 얽혀, 같이 사는 과정의 난도가 올라갑니다.", "배우자 자리에 힘이 실려 관계를 끌고 갈 동력이 있습니다.");
+  const earning = axisFrom("재백", "MONEY_INFLOW", "버는 길목이 매끄럽지 않습니다.", "버는 자리는 열려 있습니다.");
+  const keeping = axisFrom("전택", "MONEY_RETENTION", "쌓아 두는 자리가 새는 구조라, 가계에 구멍이 생기기 쉽습니다.", "쌓아 두는 자리는 크게 새지 않습니다.");
+  const subs = [
+    sub(
+      "RELATION_STABILITY",
+      marriage.stance,
+      marriage.counter.length ? "결혼생활의 난도는 높게 봅니다." : marriage.evidence.length ? "관계를 끌고 갈 동력이 있습니다." : "배우자 자리에 두드러진 신호는 없습니다.",
+      marriage.evidence,
+      marriage.counter,
+      false
+    ),
+    sub(
+      "MONEY_INFLOW",
+      earning.stance,
+      earning.counter.length ? "버는 쪽이 매끄럽지 않습니다." : earning.evidence.length ? "버는 자리는 열려 있습니다." : "버는 쪽에 두드러진 신호는 없습니다.",
+      earning.evidence,
+      earning.counter,
+      false
+    ),
+    sub(
+      "MONEY_RETENTION",
+      keeping.stance,
+      keeping.counter.length ? "모아 두는 쪽이 샙니다." : keeping.evidence.length ? "모아 두는 쪽은 무난합니다." : "모아 두는 쪽에 두드러진 신호는 없습니다.",
+      keeping.evidence,
+      keeping.counter,
+      false
+    )
+  ];
+  const primary = subs.find((s) => s.domain === input.questionDomain) ?? subs[0];
+  const evidenceStrength = primary.stance === NO_SIGNAL ? "NONE" : primary.evidence.length + primary.counterEvidence.length >= 3 ? "STRONG" : primary.evidence.length + primary.counterEvidence.length >= 1 ? "MODERATE" : "WEAK";
   return {
     discipline: "ZIWEI",
     applicable: true,
     dataReliability: "EXACT",
-    questionDomain: "RELATION_STABILITY",
+    questionDomain: input.questionDomain,
     temporalScope: "NATAL",
-    stance,
-    dominantConclusion: evidenceAgainst.length > 0 ? "배우자 자리에 얽히는 기운이 있어, 결혼생활의 난도는 높게 봅니다." : evidenceFor.length > 0 ? "배우자 자리에 힘이 실려, 관계를 끌고 갈 동력이 있습니다." : "배우자 자리에 특별히 두드러진 기운은 없습니다.",
-    dominantFactor: (evidenceAgainst[0] ?? evidenceFor[0])?.fact ?? "부처궁 사화 없음",
-    directEvidence: evidenceFor,
-    counterEvidence: evidenceAgainst,
+    stance: primary.stance,
+    dominantConclusion: primary.conclusion,
+    dominantFactor: primary.counterEvidence[0]?.fact ?? primary.evidence[0]?.fact ?? "해당 궁에 사화 없음",
+    directEvidence: subs.flatMap((s) => s.evidence),
+    counterEvidence: subs.flatMap((s) => s.counterEvidence),
     internalContradictions: [],
     timingSignals: [],
-    domainSubJudgments: [{ domain: "RELATION_STABILITY", stance, conclusion: "결혼생활의 난도" }],
-    confidence: evidenceAgainst.length + evidenceFor.length > 0 ? "HIGH" : "LOW",
-    questionDirectness: "DIRECT"
+    domainSubJudgments: subs,
+    confidence: evidenceStrength === "STRONG" ? "HIGH" : evidenceStrength === "NONE" ? "LOW" : "MEDIUM",
+    questionDirectness: "DIRECT",
+    evidenceStrength,
+    factGroupsUsed: ["부처궁", "재백궁", "전택궁", "사화(두 명반)"]
   };
 }
 
@@ -8494,6 +8938,9 @@ var DIRECTION_INSTRUCTION = {
   AGAINST: '결론은 "하지 않는 쪽"입니다. 분명하게 말하십시오.',
   STRONGLY_AGAINST: '결론은 "하지 않는 쪽"입니다. 흐리지 말고 분명하게 말하십시오.',
   INSUFFICIENT_DATA: "지금 근거로는 방향을 정하지 않습니다. 무엇이 있어야 볼 수 있는지 솔직하게 말하십시오.",
+  // §12 — CONTRADICTION ≠ FORCED_DECISION. When the chart genuinely carries no directional signal, saying so
+  // is the professional answer; do NOT manufacture a 좋다/나쁘다 to sound confident.
+  INSUFFICIENT_EVIDENCE: "이 질문에 대해서는 방향을 정할 만한 신호가 없습니다. 억지로 좋다·나쁘다를 만들지 말고, 무엇이 보이고 무엇이 안 보이는지 솔직하게 말하십시오.",
   NOT_APPLICABLE: "이 질문은 점사로 답할 성질이 아닙니다. 솔직하게 말하십시오."
 };
 function renderVerdictDirective(v) {
@@ -8509,6 +8956,12 @@ function renderVerdictDirective(v) {
     }
     lines.push(
       `· ${DISCIPLINE_LABEL2[c.discipline]}: ${c.contribution}${c.whyItDidNotDominate ? ` (다만 ${c.whyItDidNotDominate})` : ""}`
+    );
+  }
+  const otherAxes = v.axisVerdicts.filter((a) => a.domain !== v.questionDomain && a.stance !== "INSUFFICIENT_EVIDENCE");
+  if (otherAxes.length) {
+    lines.push(
+      `· 축별 결론(하나로 뭉뚱그리지 말 것): ${otherAxes.map((a) => `${a.domain}=${a.stance}(${a.conclusion})`).join(" / ")}`
     );
   }
   if (v.agreementPoints.length) {
@@ -8696,6 +9149,19 @@ var DOMAIN_MAP = {
   계약: "DECISION",
   전반: "GENERAL"
 };
+var RETENTION_CUE = /모(?:이|일|여|였|았|을|으)|남[아을는]|쌓|저축|지키|새(?:나가|어)|유지되/;
+var INFLOW_CUE = /벌|들어오|수입|매출|버는/;
+var MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현금/;
+function resolveJudgmentDomain(question) {
+  const q = question ?? "";
+  const topic = classifyConsultationDomain(q);
+  const financial = topic === "재물" || MONEY_SUBJECT.test(q);
+  if (financial) {
+    if (RETENTION_CUE.test(q) && !INFLOW_CUE.test(q)) return "MONEY_RETENTION";
+    if (topic === "재물" || INFLOW_CUE.test(q)) return "MONEY_INFLOW";
+  }
+  return DOMAIN_MAP[topic];
+}
 async function buildMyungriEvidence(draft, deps, question) {
   const execution = await executeSajuFromBirthInput(toSajuEngineInput(draft.birthInfo), {
     digestProvider: deps.digestProvider,
@@ -8787,9 +9253,27 @@ async function buildMyungriEvidence(draft, deps, question) {
   }
   const activeCycle = activeCycleOrdinal !== null && daewoon.capability === "AVAILABLE" ? daewoon.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null : null;
   const activeCycleTenGods = activeCycleOrdinal !== null && daewoonTenGods?.capability === "AVAILABLE" ? daewoonTenGods.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null : null;
+  const positionedTenGods = [];
+  const derivedPillars = engineResult.output.derivedFacts.pillars;
+  for (const pillar of [derivedPillars.year, derivedPillars.month, derivedPillars.day, derivedPillars.hour]) {
+    if (!pillar) continue;
+    positionedTenGods.push({ position: pillar.position, tenGod: pillar.stem.tenGod, source: "STEM" });
+    for (const hidden of pillar.branch.hiddenStems) {
+      positionedTenGods.push({ position: pillar.position, tenGod: hidden.tenGod, source: "HIDDEN" });
+    }
+  }
+  const natalStructure = {
+    positionedTenGods,
+    natalRelations,
+    monthCommandInCommand: monthCommand.capability === "AVAILABLE" ? monthCommand.commandStatus === "IN_COMMAND" : null,
+    seasonalPhase: monthCommand.capability === "AVAILABLE" ? monthCommand.dayMasterSeasonalPhase : null,
+    rootedCount: rooting.capability === "AVAILABLE" ? rooting.rooting.filter((r) => r.isRooted).length : null,
+    transparentCount: rooting.capability === "AVAILABLE" ? rooting.transparency.filter((t) => t.isRevealed).length : null,
+    hourKnown: fourPillars.hour.status === "AVAILABLE"
+  };
   const judgeFacts = {
     hourKnown: fourPillars.hour.status === "AVAILABLE",
-    monthCommandInCommand: monthCommand.capability === "AVAILABLE" ? monthCommand.commandStatus === "IN_COMMAND" : null,
+    natal: natalStructure,
     activeDaewoon: activeCycle && activeCycleTenGods ? {
       stemTenGod: activeCycleTenGods.tenGods.stemTenGod,
       branchTenGod: activeCycleTenGods.tenGods.branchMainTenGod,
@@ -8833,15 +9317,16 @@ async function buildConsultationGrounding(draft, deps, question) {
   let divinationVerdict = null;
   try {
     const q = question ?? "";
-    const questionDomain = DOMAIN_MAP[classifyConsultationDomain(q)];
+    const questionDomain = resolveJudgmentDomain(q);
     const asksTiming = classifyTimingQuestion(q);
     const judgments = [
       judgeMyungri({
         question: q,
         questionDomain,
         hourKnown: judgeFacts?.hourKnown ?? false,
-        natalRelations: null,
-        monthCommandInCommand: judgeFacts?.monthCommandInCommand ?? null,
+        // DEPTH REBUILD: the FULL natal structure now reaches the judge. This field was literally `null`
+        // before — the independent audit's headline Myungri finding.
+        natal: judgeFacts?.natal ?? null,
         activeDaewoon: judgeFacts?.activeDaewoon ?? null,
         sewoon: judgeFacts?.sewoon ?? null,
         wolwoon: judgeFacts?.wolwoon ?? null,
@@ -9023,24 +9508,24 @@ var ACTION_CUE = /할까|말까|해야\s*(?:돼|하나|할까)|어떻게\s*(?:�
 var groundedMonthsOf = (g) => {
   const out = /* @__PURE__ */ new Set();
   if (g.status !== "available") return out;
-  for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
-    for (const m of ev.timingAnchors?.months ?? []) if (Number.isInteger(m)) out.add(m);
+  for (const ev2 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    for (const m of ev2.timingAnchors?.months ?? []) if (Number.isInteger(m)) out.add(m);
   }
   return out;
 };
 var groundedYearsOf = (g) => {
   const out = /* @__PURE__ */ new Set();
   if (g.status !== "available") return out;
-  for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
-    for (const y of ev.timingAnchors?.years ?? []) if (Number.isInteger(y)) out.add(y);
+  for (const ev2 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    for (const y of ev2.timingAnchors?.years ?? []) if (Number.isInteger(y)) out.add(y);
   }
   return out;
 };
 var referenceYearOf = (g) => {
   if (g.status !== "available") return null;
   if (typeof g.referenceYear === "number") return g.referenceYear;
-  for (const ev of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
-    const r = ev.timingAnchors?.referenceYear;
+  for (const ev2 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    const r = ev2.timingAnchors?.referenceYear;
     if (typeof r === "number") return r;
   }
   return null;
@@ -9275,7 +9760,7 @@ async function buildMonthlyFortuneEvidence(input, deps) {
   const current = currentTargetMonth(deps.nowEpochSeconds);
   const target = deps.target ?? current;
   const isCurrentMonth = target.year === current.year && target.month === current.month;
-  const unavailable9 = (reason) => ({
+  const unavailable10 = (reason) => ({
     available: false,
     year: target.year,
     month: target.month,
@@ -9290,20 +9775,20 @@ async function buildMonthlyFortuneEvidence(input, deps) {
       historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
     });
   } catch {
-    return unavailable9("CHART_EXECUTION_THREW");
+    return unavailable10("CHART_EXECUTION_THREW");
   }
-  if (!execution.success) return unavailable9("CHART_INPUT_INVALID");
+  if (!execution.success) return unavailable10("CHART_INPUT_INVALID");
   const engineResult = execution.engineResult;
-  if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
+  if (engineResult.status === "UNAVAILABLE") return unavailable10("CHART_UNAVAILABLE");
   const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
   const rawSegments = resolveCivilMonthSajuSegments(target);
-  if (!rawSegments || rawSegments.length === 0) return unavailable9("CIVIL_MONTH_SEGMENTS_UNAVAILABLE");
+  if (!rawSegments || rawSegments.length === 0) return unavailable10("CIVIL_MONTH_SEGMENTS_UNAVAILABLE");
   const totalSeconds = rawSegments.reduce((sum, s) => sum + s.durationSeconds, 0);
   const segments = [];
   for (const s of rawSegments) {
     const midEpoch = s.startEpoch + Math.floor(s.durationSeconds / 2);
     const w = calculateWolwoonForInstant({ natal, instantEpochSeconds: midEpoch });
-    if (w.capability !== "AVAILABLE") return unavailable9(`WOLWOON_${w.reason}`);
+    if (w.capability !== "AVAILABLE") return unavailable10(`WOLWOON_${w.reason}`);
     segments.push({
       sajuMonthOrdinal: s.sajuMonthOrdinal,
       durationSeconds: s.durationSeconds,
@@ -10065,6 +10550,9 @@ function buildConsultationDecisionMeta(question, plan, grounding, resolvedTempor
     ...plan.polarity ? { polarity: plan.polarity } : {},
     domain,
     comparisonContext: plan.comparisonContext,
+    // §17 — persist the FULL cross verdict so a later "왜요?" explains the SAME judgment (subject, evidence
+    // and contradiction resolution), instead of falling back to a Myungri-only polarity snapshot.
+    ...grounding.status === "available" && grounding.divinationVerdict ? { divinationVerdict: grounding.divinationVerdict } : {},
     ...plan.selectedTargetPolarity && grounding.status === "available" && grounding.engineVersion ? {
       evidenceSnapshot: {
         schemaVersion: "decision-evidence@1.0.0",
@@ -10105,19 +10593,19 @@ var validRelationArray = (v, kinds) => Array.isArray(v) && v.length <= 8 && v.ev
 });
 function parseEvidenceSnapshot(v) {
   if (v === null || typeof v !== "object") return void 0;
-  const ev = v;
-  const target = ev.target;
-  const derivation = ev.derivation;
-  if (ev.schemaVersion !== "decision-evidence@1.0.0" || !target || typeof target !== "object") return void 0;
+  const ev2 = v;
+  const target = ev2.target;
+  const derivation = ev2.derivation;
+  if (ev2.schemaVersion !== "decision-evidence@1.0.0" || !target || typeof target !== "object") return void 0;
   if (target.granularity !== "YEAR" && target.granularity !== "MONTH" || !isFiniteInteger2(target.key)) return void 0;
-  if (typeof ev.polarity !== "string" || !POLARITY_TIERS.includes(ev.polarity)) return void 0;
+  if (typeof ev2.polarity !== "string" || !POLARITY_TIERS.includes(ev2.polarity)) return void 0;
   if (!derivation || typeof derivation !== "object") return void 0;
   if (!isFiniteInteger2(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) return void 0;
   if (!isFiniteInteger2(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) return void 0;
   if (!validRelationArray(derivation.stemRelations, STEM_RELATION_KINDS2) || !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS2)) return void 0;
-  if (typeof ev.supportLevel !== "string" || typeof ev.assertiveness !== "string" || typeof ev.engineVersion !== "string" || ev.engineVersion.length === 0) return void 0;
-  if (!Array.isArray(ev.intents) || ev.intents.length > 8 || !ev.intents.every((x) => typeof x === "string")) return void 0;
-  return ev;
+  if (typeof ev2.supportLevel !== "string" || typeof ev2.assertiveness !== "string" || typeof ev2.engineVersion !== "string" || ev2.engineVersion.length === 0) return void 0;
+  if (!Array.isArray(ev2.intents) || ev2.intents.length > 8 || !ev2.intents.every((x) => typeof x === "string")) return void 0;
+  return ev2;
 }
 function parseDecisionMeta(v) {
   if (v === null || typeof v !== "object") return void 0;
@@ -10179,6 +10667,22 @@ function isDecisionVersionMismatch(persisted, current) {
 
 // src/features/chat/server/storedDecisionGrounding.ts
 var relationLines = (label, relations) => relations.map(({ position, kind }) => `${label} ${position}: ${kind}`);
+function verdictEvidenceFor(meta, discipline) {
+  const verdict = meta.divinationVerdict;
+  const judgment = verdict?.disciplineJudgments.find((j) => j.discipline === discipline);
+  if (!verdict || !judgment || !judgment.applicable) return { availability: "not_applicable" };
+  const lines = [
+    judgment.dominantConclusion,
+    ...judgment.directEvidence.map((e) => `${e.fact} — ${e.meaning}`),
+    ...judgment.counterEvidence.map((e) => `${e.fact} — ${e.meaning}`)
+  ];
+  return {
+    availability: "available",
+    summary: `저장된 ${discipline === "ZIWEI" ? "자미두수" : "기문둔갑"} 판정: ${judgment.dominantConclusion}`,
+    sections: [{ label: "저장된 판정 근거", lines }],
+    hasTimingEvidence: false
+  };
+}
 function groundingFromStoredDecision(meta) {
   const snapshot = meta?.evidenceSnapshot;
   if (!meta || !snapshot) return null;
@@ -10210,9 +10714,14 @@ function groundingFromStoredDecision(meta) {
           ...snapshot.target.granularity === "MONTH" ? { months: [snapshot.target.key] } : {}
         }
       },
-      ziwei: { availability: "not_applicable" },
-      qimen: { availability: "not_applicable" }
+      // DEPTH REBUILD §17 — when the stored turn carried a cross-discipline verdict, its OWN evidence is
+      // restored here so a "왜요?" explains the judgment the user actually received. Without this, Ziwei and
+      // Qimen silently vanished on the follow-up turn and the explanation could describe a different
+      // conclusion than the answer being questioned (audit: HIGH severity continuity blocker).
+      ziwei: verdictEvidenceFor(meta, "ZIWEI"),
+      qimen: verdictEvidenceFor(meta, "QIMEN")
     },
+    ...meta.divinationVerdict ? { divinationVerdict: meta.divinationVerdict } : {},
     engineVersion: snapshot.engineVersion,
     referenceYear: meta.resolvedTemporalContext.referenceYear,
     referenceMonth: meta.resolvedTemporalContext.referenceMonth,
@@ -10233,8 +10742,8 @@ function kstCivil(epochSeconds) {
 function groundingReferenceYear(grounding) {
   if (grounding.status !== "available") return null;
   if (typeof grounding.referenceYear === "number") return grounding.referenceYear;
-  for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
-    const r = ev.timingAnchors?.referenceYear;
+  for (const ev2 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const r = ev2.timingAnchors?.referenceYear;
     if (typeof r === "number") return r;
   }
   return null;
@@ -11145,7 +11654,14 @@ async function buildCompatibilityConsultation(request, deps) {
             selfLabel,
             targetLabel
           }),
-          judgePairZiwei({ question, questionDomain, selfChart: selfZiwei.chart, targetChart: targetZiwei.chart })
+          judgePairZiwei({
+            question,
+            questionDomain,
+            selfChart: selfZiwei.chart,
+            targetChart: targetZiwei.chart,
+            selfLabel,
+            targetLabel
+          })
         ];
         divinationVerdict = judgeCross({ question, questionDomain, judgments, asksTiming: wantsTiming(question) });
       } catch {
@@ -11654,7 +12170,7 @@ var TODAY_EVIDENCE_VERSION = "today-evidence@1.1.0";
 var ALL_DOMAINS2 = ["overall", "work", "wealth", "relationship", "action"];
 async function buildTodayFortuneEvidence(input, deps) {
   const fortuneDate = fortuneDateStringFromEpoch(input.nowEpochSeconds);
-  const unavailable9 = (reason) => ({
+  const unavailable10 = (reason) => ({
     available: false,
     fortuneDate,
     timezone: FORTUNE_TIMEZONE2,
@@ -11668,14 +12184,14 @@ async function buildTodayFortuneEvidence(input, deps) {
       historicalTimezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
     });
   } catch {
-    return unavailable9("CHART_EXECUTION_THREW");
+    return unavailable10("CHART_EXECUTION_THREW");
   }
-  if (!execution.success) return unavailable9("CHART_INPUT_INVALID");
+  if (!execution.success) return unavailable10("CHART_INPUT_INVALID");
   const engineResult = execution.engineResult;
-  if (engineResult.status === "UNAVAILABLE") return unavailable9("CHART_UNAVAILABLE");
+  if (engineResult.status === "UNAVAILABLE") return unavailable10("CHART_UNAVAILABLE");
   const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
   const dayLuck = calculateDayLuck({ natal, civilDate: epochToKstCivilDate(input.nowEpochSeconds) });
-  if (!dayLuck.available) return unavailable9(`DAY_LUCK_${dayLuck.reason}`);
+  if (!dayLuck.available) return unavailable10(`DAY_LUCK_${dayLuck.reason}`);
   const temporal = await buildMyungriTemporalContext({
     engineResult,
     natal,
