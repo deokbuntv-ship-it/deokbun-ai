@@ -8174,8 +8174,33 @@ async function buildMonthlyFortuneEvidence(input, deps) {
   };
 }
 
+// src/features/fortune-shared/temporalSynthesis.ts
+var directionOf = (t) => t === "FAVORABLE" || t === "STEADY" ? "SUPPORTIVE" : "STRAINED";
+function backgroundDirection(tiers) {
+  const dirs = tiers.filter((t) => !!t).map(directionOf);
+  if (dirs.length === 0) return null;
+  const supportive = dirs.filter((d) => d === "SUPPORTIVE").length;
+  const strained = dirs.filter((d) => d === "STRAINED").length;
+  if (supportive > 0 && strained > 0) return null;
+  return supportive > 0 ? "SUPPORTIVE" : "STRAINED";
+}
+function synthesizeBackground(baseTier, backgroundTiers) {
+  const baseDir = directionOf(baseTier);
+  const bgDir = backgroundDirection(backgroundTiers);
+  if (bgDir === null) {
+    return { state: "NEUTRAL", summary: "" };
+  }
+  if (baseDir === bgDir) {
+    return baseDir === "SUPPORTIVE" ? { state: "REINFORCED", summary: "지금의 좋은 흐름이 큰 흐름과도 자연스럽게 맞물리는 시기예요." } : { state: "REINFORCED", summary: "지금은 큰 흐름에서도 한 번 더 확인하고 속도를 조절하는 편이 좋은 시기예요." };
+  }
+  if (baseDir === "STRAINED" && bgDir === "SUPPORTIVE") {
+    return { state: "BUFFERED", summary: "잠깐 조심할 부분은 있지만, 큰 흐름까지 불안한 것은 아니에요." };
+  }
+  return { state: "MIXED", summary: "기회는 살릴 수 있지만, 큰 흐름을 보면 무리하게 밀어붙이지 않는 편이 좋아요." };
+}
+
 // src/features/monthly/engine/monthlyPlan.ts
-var MONTHLY_PLAN_VERSION = "monthly-plan@1.3.0";
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.4.0";
 var BACKGROUND_FLOW_BY_TIER = {
   FAVORABLE: "지원적인 흐름",
   STEADY: "무난한 흐름",
@@ -8262,6 +8287,7 @@ function deriveSegmentSignal(seg) {
   return {
     weight: seg.weight,
     tier,
+    polarityTier: polarity.tier,
     primaryMode,
     primaryModeLabel: MONTHLY_MODE_LABEL[primaryMode],
     strongestDomain,
@@ -8324,8 +8350,17 @@ function deriveMonthlyPlan(evidence) {
     }
   }
   const t = evidence.temporal;
-  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
-  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
+  const sewoonTier = t?.sewoon ? derivePolarity(t.sewoon.relationsToNatal).tier : null;
+  const daewoonTier = t?.activeDaewoon ? derivePolarity(t.activeDaewoon.relationsToNatal).tier : null;
+  const yearFlow = sewoonTier ? BACKGROUND_FLOW_BY_TIER[sewoonTier] : null;
+  const daewoonFlow = daewoonTier ? BACKGROUND_FLOW_BY_TIER[daewoonTier] : null;
+  const synthesis = t ? synthesizeBackground(dominant.polarityTier, [daewoonTier, sewoonTier]) : { state: "NEUTRAL", summary: "" };
+  const evidenceLines = [`이번 달 자체의 흐름은 '${overallTier}' 쪽으로 보입니다.`];
+  if (daewoonFlow || yearFlow) {
+    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : "", yearFlow ? `올해 전반은 ${yearFlow}` : ""].filter(Boolean).join(", ");
+    evidenceLines.push(`지금의 ${bg}입니다.`);
+  }
+  if (synthesis.summary) evidenceLines.push(synthesis.summary);
   return {
     ...base,
     available: true,
@@ -8344,6 +8379,9 @@ function deriveMonthlyPlan(evidence) {
     hasMeaningfulTransition,
     transition,
     backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    backgroundState: synthesis.state,
+    backgroundSummary: synthesis.summary || null,
+    evidence: evidenceLines,
     elementComposition: t?.elementCounts ?? null
   };
 }
@@ -8357,7 +8395,7 @@ var MONTHLY_DOMAIN_LABEL = {
   action: "행동·변화"
 };
 var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
-var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.2.0";
+var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.3.0";
 
 // src/features/monthly/server/monthlyFortunePrompt.ts
 function buildMonthlyFortunePrompt(plan) {
@@ -8377,12 +8415,14 @@ function buildMonthlyFortunePrompt(plan) {
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 이번 달은 크게 부딪히는 기운은 없습니다.",
     ...transitionDirective ? [transitionDirective] : [],
     ...plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year) ? [
-      "이번 달을 둘러싼 큰 흐름(이미 계산됨 · 참고용 — 이번 달을 그 안에 자리매김하는 용도):",
+      'PRIMARY(중심) = 위 "이번 달의 결". SECONDARY(배경) = 아래 큰 흐름. 배경은 이번 달을 연간·대운 안에 "자리매김"하는 역할이며, 이번 달의 결론(전반 기운)을 덮어쓰지 않습니다:',
       plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : "",
       plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : "",
-      "이 배경은 이번 달이 연간·대운 흐름 안에서 어떤 위치인지 자연스럽게 녹이는 데만 쓰고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오."
+      plan.backgroundSummary ? `- 이번 달과 큰 흐름의 관계: "${plan.backgroundSummary}" — 이 뉘앙스를 verdict/overallSummary에 자연스럽게 한 번 반영하십시오(반복하지 말 것).` : "",
+      "대운·세운을 새로 계산하거나, 확정적 미래(합격/이별/입금 등)로 말하지 마십시오."
     ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
+    '- 반복 금지: opportunities·cautions·actions는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 말고, 한 결과가 한 주제(예: 지출·정리)로만 수렴하지 않게 하십시오.',
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
@@ -8545,7 +8585,10 @@ function parseMonthlyFortune(raw, plan) {
       transitionDate: plan.transition.transitionCivilDate,
       early: { tierLabel: plan.transition.early.tier, modeLabel: plan.transition.early.modeLabel },
       later: { tierLabel: plan.transition.later.tier, modeLabel: plan.transition.later.modeLabel }
-    } : null
+    } : null,
+    // Deterministic, server-owned (§21/§9) — the LLM never authors these.
+    evidence: plan.evidence,
+    backgroundSummary: plan.backgroundSummary ?? null
   };
 }
 async function buildMonthlyFortune(request, deps) {
@@ -10349,7 +10392,7 @@ var TODAY_DOMAIN_LABEL = {
   action: "행동·주의점"
 };
 var TODAY_POLICY_VERSION = "today@1.1.0";
-var TODAY_CANONICAL_VERSION = "today-canonical@1.1.0";
+var TODAY_CANONICAL_VERSION = "today-canonical@1.2.0";
 
 // src/features/today/engine/fortuneDate.ts
 var KST_OFFSET_SECONDS3 = 32400;
@@ -10475,7 +10518,7 @@ async function buildTodayFortuneEvidence(input, deps) {
 }
 
 // src/features/today/engine/todayPlan.ts
-var TODAY_PLAN_VERSION = "today-plan@1.2.0";
+var TODAY_PLAN_VERSION = "today-plan@1.3.0";
 var BACKGROUND_FLOW_BY_TIER2 = {
   FAVORABLE: "지원적인 흐름",
   STEADY: "무난한 흐름",
@@ -10568,8 +10611,17 @@ function deriveDailyPlan(evidence) {
   const cautionDomain = frictionCount > 0 ? tenGodDomain2(evidence.dayBranchTenGod) : null;
   const primaryMode = derivePrimaryMode2(overallTone, strongestDomain);
   const t = evidence.temporal;
-  const yearFlow = t?.sewoon ? BACKGROUND_FLOW_BY_TIER2[derivePolarity(t.sewoon.relationsToNatal).tier] : null;
-  const daewoonFlow = t?.activeDaewoon ? BACKGROUND_FLOW_BY_TIER2[derivePolarity(t.activeDaewoon.relationsToNatal).tier] : null;
+  const sewoonTier = t?.sewoon ? derivePolarity(t.sewoon.relationsToNatal).tier : null;
+  const daewoonTier = t?.activeDaewoon ? derivePolarity(t.activeDaewoon.relationsToNatal).tier : null;
+  const yearFlow = sewoonTier ? BACKGROUND_FLOW_BY_TIER2[sewoonTier] : null;
+  const daewoonFlow = daewoonTier ? BACKGROUND_FLOW_BY_TIER2[daewoonTier] : null;
+  const synthesis = t ? synthesizeBackground(polarity.tier, [daewoonTier, sewoonTier]) : { state: "NEUTRAL", summary: "" };
+  const evidenceLines = [`오늘 하루의 흐름은 '${overallTone}' 쪽으로 보입니다.`];
+  if (daewoonFlow || yearFlow) {
+    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : "", yearFlow ? `올해 전반은 ${yearFlow}` : ""].filter(Boolean).join(", ");
+    evidenceLines.push(`지금의 ${bg}입니다.`);
+  }
+  if (synthesis.summary) evidenceLines.push(synthesis.summary);
   return {
     ...base,
     available: true,
@@ -10583,6 +10635,9 @@ function deriveDailyPlan(evidence) {
     harmonyCount,
     frictionCount,
     backgroundFlow: t ? { year: yearFlow, daewoon: daewoonFlow } : null,
+    backgroundState: synthesis.state,
+    backgroundSummary: synthesis.summary || null,
+    evidence: evidenceLines,
     elementComposition: t?.elementCounts ?? null
   };
 }
@@ -10600,12 +10655,14 @@ function buildTodayFortunePrompt(plan) {
     `- 오늘 기운이 실리는 영역: "${emphasized}"`,
     cautionLabel ? `- 속도를 조절할 영역: "${cautionLabel}"` : "- 오늘은 크게 부딪히는 기운은 없습니다.",
     ...plan.backgroundFlow && (plan.backgroundFlow.daewoon || plan.backgroundFlow.year) ? [
-      '큰 배경 흐름(이미 계산됨 · 참고용 — 중심은 어디까지나 "오늘"입니다):',
+      'PRIMARY(중심) = 위 "오늘의 결". SECONDARY(배경) = 아래 큰 흐름. 배경은 오늘 결론을 "설명하고 조절"하는 역할이며, 오늘의 결론(전반 기운)을 덮어쓰지 않습니다:',
       plan.backgroundFlow.daewoon ? `- 지금의 큰 흐름(대운): "${plan.backgroundFlow.daewoon}"` : "",
       plan.backgroundFlow.year ? `- 올해 전반 흐름(세운): "${plan.backgroundFlow.year}"` : "",
-      "이 배경은 오늘 흐름을 뒷받침하는 큰 틀로만 자연스럽게 녹이고, 대운·세운을 새로 계산하거나 확정적 미래로 말하지 마십시오."
+      plan.backgroundSummary ? `- 오늘과 큰 흐름의 관계: "${plan.backgroundSummary}" — 이 뉘앙스를 verdict/overallSummary에 자연스럽게 한 번 반영하십시오(반복하지 말 것).` : "",
+      "대운·세운을 새로 계산하거나, 확정적 미래(합격/이별/입금 등)로 말하지 마십시오."
     ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
+    '- 반복 금지: highlights·cautions·actionTip는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 마십시오. 한 결과가 지출·정리 한 주제로만 수렴하지 않게 하십시오.',
     `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로 덧붙이십시오.',
@@ -10743,7 +10800,10 @@ function parseDailyFortune(raw, plan) {
     highlights,
     cautions,
     actionTip,
-    followUps
+    followUps,
+    // Deterministic, server-owned (§20/§9) — the LLM never authors these.
+    evidence: plan.evidence,
+    backgroundSummary: plan.backgroundSummary ?? null
   };
 }
 async function buildTodayFortune(request, deps) {

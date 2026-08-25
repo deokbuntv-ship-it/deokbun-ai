@@ -154,6 +154,7 @@ export default function MonthlyScreen() {
                     cautions={view.cautions}
                     actionsTitle="이번 달 이렇게 보내보세요"
                     actions={view.actions}
+                    evidence={view.evidence}
                     followUps={view.followUps}
                     onFollowUp={askInConsultation}
                   />

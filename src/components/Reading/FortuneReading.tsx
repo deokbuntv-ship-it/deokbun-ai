@@ -6,7 +6,7 @@ import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing, type SemanticColors } from '@/theme';
 
-import { ReadingBullets, ReadingSection } from './Reading';
+import { ReadingBullets, ReadingEvidence, ReadingSection } from './Reading';
 
 // Shared reading renderer for 오늘의 운세 + 이번 달 운세 (DEOKBUNI_READING_EXPERIENCE). Both screens map their
 // existing detail VM into these props — one reading vocabulary, no duplicated layout. The engine/LLM result and
@@ -33,6 +33,8 @@ export type FortuneReadingProps = {
   cautions: { title: string; body: string }[];
   actionsTitle: string;
   actions: string[]; // today: [actionTip]; monthly: actions[]
+  /** "왜 이렇게 보나요?" deterministic evidence lines (collapsed). Empty → section hidden. */
+  evidence?: string[];
   followUps: { displayLabel: string; question: string }[];
   onFollowUp: (question: string) => void;
 };
@@ -166,6 +168,13 @@ export function FortuneReading(p: FortuneReadingProps) {
             <ReadingBullets items={p.actions} />
           )}
         </ReadingSection>
+      ) : null}
+
+      {/* 왜 이렇게 보나요? — deterministic evidence (collapsed), shared with the consultation reading. */}
+      {p.evidence && p.evidence.length > 0 ? (
+        <ReadingEvidence>
+          <ReadingBullets items={p.evidence} />
+        </ReadingEvidence>
       ) : null}
 
       {/* 이어서 물어보기 — short chip labels; the rich question is sent to 상담. */}

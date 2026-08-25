@@ -97,6 +97,8 @@ export type MonthlyDetailView = MonthlyPreview & {
   cautions: { title: string; body: string }[];
   actions: string[];
   followUps: MonthlyFollowUp[];
+  /** "왜 이렇게 보나요?" deterministic evidence lines ([] on older records → section hidden). */
+  evidence: string[];
 };
 
 export function toMonthlyDetailView(record: MonthlyFortuneRecord): MonthlyDetailView {
@@ -111,6 +113,7 @@ export function toMonthlyDetailView(record: MonthlyFortuneRecord): MonthlyDetail
     cautions: r.cautions ?? [],
     actions: r.actions ?? [],
     followUps: normalizeFollowUps(record),
+    evidence: Array.isArray(r.evidence) ? r.evidence.filter((e) => typeof e === 'string' && e.trim().length > 0) : [],
   };
 }
 

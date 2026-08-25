@@ -145,6 +145,7 @@ export default function TodayScreen() {
                     cautions={view.cautions}
                     actionsTitle="오늘 이렇게 해보세요"
                     actions={view.actionTip ? [view.actionTip] : []}
+                    evidence={view.evidence}
                     followUps={view.followUps}
                     onFollowUp={askInConsultation}
                   />

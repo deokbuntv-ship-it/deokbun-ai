@@ -47,3 +47,19 @@ same active 대운 ordinal + 세운 year (`sharedCoreCrossFeature.test.ts`).
   a solar-term-exact boundary selector remains deferred.
 - `CONSULTATION_UNIFY_FOLLOWUP` — 상담 still assembles its own grounding inline (same underlying services, so
   facts already match); it could adopt `buildMyungriTemporalContext` later to share the assembly code too.
+
+---
+
+## V2 — Evaluation Depth + Evidence (temporal synthesis reflected; "왜 이렇게 보나요?" fixed)
+
+Builds on the shared-core connection. Still: base tier IMMUTABLE, no strength verdict, no new theory/weights, no UI redesign, no migration.
+
+**Temporal synthesis (§9/§10/§11).** `src/features/fortune-shared/temporalSynthesis.ts` — `synthesizeBackground(baseTier, [daewoonTier, sewoonTier])` → categorical `REINFORCED | BUFFERED | MIXED | NEUTRAL` + a plain-language summary. Pure combination of EXISTING `derivePolarity` outputs — no numbers, no scoring, product-level (not a myungri result, kept out of the frozen polarity kernel). today/monthly plans now carry `backgroundState` + `backgroundSummary`; the **base day/month tier is never changed** (test-enforced: stripping `temporal` leaves the tier identical). The prompt frames PRIMARY(오늘/이번 달) vs SECONDARY(대운·세운 background) and reflects the synthesis summary once — the LLM never recomputes 대운/세운.
+
+**Evidence surface fix (§19 — was missing on Today).** Root cause: `FortuneReading` never rendered an evidence section (while `ReadingEvidence` existed, used by consultation). Fix: `FortuneReading` now renders `ReadingEvidence` ("왜 이렇게 보나요?") from an `evidence` prop; deterministic evidence lines are generated server-side in the plan (`plan.evidence` — day/month flow + background + synthesis, plain language, no 간지/십신/강약), stored in the result JSON (`evidence?`, `backgroundSummary?` — optional, no migration), mapped by the VMs, and passed by the today/monthly screens. Older records ([] evidence) simply hide the section (no fake evidence).
+
+**Anti-repetition (§13/§14/§26).** Prompt adds a dedupe directive: highlights/cautions/actions must cover different life areas; no repeating one advice family ("정리/기록/확인/천천히") or collapsing to a single topic (e.g. 지출·정리).
+
+**Cache invalidation for fresh QA (§28/§30).** `getByDate` filters by `semantic_version`, so bumping the canonical versions makes old cached records miss → fresh regeneration (no purge, no migration): `today-canonical@1.2.0`, `monthly-canonical@1.3.0` (+ evidence/plan/prompt version markers bumped).
+
+**APK note.** The evidence surface is a CLIENT render change (`FortuneReading`), so it requires an APK rebuild to appear on device. The synthesis-enriched prose flows through the existing result fields (visible without rebuild); the collapsed "왜 이렇게 보나요?" card needs the new client.

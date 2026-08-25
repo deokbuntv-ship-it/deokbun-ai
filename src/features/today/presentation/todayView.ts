@@ -95,6 +95,8 @@ export type TodayDetailView = TodayPreview & {
   cautions: { title: string; body: string }[];
   actionTip: string;
   followUps: DailyFollowUp[];
+  /** "왜 이렇게 보나요?" deterministic evidence lines ([] on older records → section hidden). */
+  evidence: string[];
 };
 
 export function toTodayDetailView(record: DailyFortuneRecord): TodayDetailView {
@@ -108,6 +110,7 @@ export function toTodayDetailView(record: DailyFortuneRecord): TodayDetailView {
     cautions: r.cautions,
     actionTip: r.actionTip,
     followUps: normalizeFollowUps(record),
+    evidence: Array.isArray(r.evidence) ? r.evidence.filter((e) => typeof e === 'string' && e.trim().length > 0) : [],
   };
 }
 
