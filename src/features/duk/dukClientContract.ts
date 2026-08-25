@@ -24,6 +24,20 @@ export type SessionStatus = {
 
 const NO_SESSION: SessionStatus = { active: false, sessionId: null, productType: null, successfulTurnCount: 0, turnLimit: 0, expiresAt: null };
 
+/**
+ * SESSION exhaustion for the UI, honoring the frozen 24h TTL. True ONLY when a live session has reached its
+ * successful-turn limit AND is still within its TTL. An EXPIRED session is NOT exhausted: getSessionStatus
+ * returns OPEN/ACTIVE rows regardless of expiry and nothing flips an expired session to a terminal status, so
+ * without this expiry gate a past-TTL exhausted session pins the "이번 상담의 남은 질문을 모두 썼어요" paywall
+ * forever. When the session is expired the UI shows the composer and the server's reserve_session_duk starts a
+ * fresh session on the next send (the expired one is never resumed). Does NOT change price/turn-limit/TTL.
+ */
+export function isSessionExhausted(session: SessionStatus | null, nowMs: number): boolean {
+  if (session === null || session.sessionId === null || session.turnLimit <= 0) return false;
+  const expired = session.expiresAt !== null && new Date(session.expiresAt).getTime() <= nowMs;
+  return !expired && session.successfulTurnCount >= session.turnLimit;
+}
+
 /** READ the server-verified active session for a product (READ only; the server owns all session mutation). */
 export async function getSessionStatus(productType: 'general' | 'compatibility'): Promise<SessionStatus> {
   try {

@@ -37,7 +37,7 @@ import {
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { isBalanceShort } from '@/features/duk/consumerDukView';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
-import { getSessionStatus, type SessionStatus } from '@/features/duk/dukClientContract';
+import { getSessionStatus, isSessionExhausted, type SessionStatus } from '@/features/duk/dukClientContract';
 import { refreshWallet, useWallet } from '@/features/duk/useWallet';
 import {
     consumePendingQuestion,
@@ -261,10 +261,11 @@ export default function ChatScreen() {
         .catch(() => {});
     } else setSession(null);
   }, [isAuthenticated, refreshSession]);
-  // Exhausted is a SERVER fact: the session exists and its successful-turn count has reached the limit.
-  // (`active` alone is ambiguous — it is also false for an expired session.)
-  const turnsExhausted =
-    session !== null && session.sessionId !== null && session.turnLimit > 0 && session.successfulTurnCount >= session.turnLimit;
+  // Exhausted is a SERVER fact AND TTL-bounded: a live session at its successful-turn limit, still within its
+  // 24h TTL. An EXPIRED session is NOT exhausted — getSessionStatus returns expired-but-ACTIVE rows (nothing
+  // flips them terminal), so without the expiry gate a past-TTL session would pin the paywall forever; when
+  // expired the composer shows and the server starts a fresh session on send. (Honors, never changes, the TTL.)
+  const turnsExhausted = isSessionExhausted(session, Date.now());
   // Refresh the balance when the session is exhausted so the "새 상담 시작하기" pre-flight uses a current number.
   useEffect(() => {
     if (turnsExhausted) void refreshWallet().catch(() => {});

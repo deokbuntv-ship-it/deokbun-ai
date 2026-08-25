@@ -125,8 +125,11 @@ describe('the remaining-question count is derived from the SERVER, never counted
     expect(chat).not.toMatch(/setSession\((?:\(s\)|prev)\s*=>/); // no local mutation of the count
   });
 
-  it('exhaustion is a server fact (count reached the limit), not a send tally', () => {
-    expect(chat).toMatch(/session\.successfulTurnCount >= session\.turnLimit/);
+  it('exhaustion is a server fact (count reached the limit) AND TTL-bounded, not a send tally', () => {
+    // Derived via the shared TTL-honoring helper (chat no longer tallies locally). The count>=limit rule
+    // lives in isSessionExhausted, which also requires the session to be non-expired (honors the 24h TTL).
+    expect(chat).toMatch(/isSessionExhausted\(session, Date\.now\(\)\)/);
+    expect(read('features/duk/dukClientContract.ts')).toMatch(/successfulTurnCount >= session\.turnLimit/);
   });
 
   it('a failed turn is explicitly reported as not consuming a question', () => {
