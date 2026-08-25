@@ -20,6 +20,8 @@ export {
   type DisciplineContribution,
   type DivinationJudgment,
   type DomainSubJudgment,
+  type EvidenceStrength,
+  NO_SIGNAL,
   type JudgmentConfidence,
   type JudgmentDomain,
   type JudgmentEvidence,
@@ -29,6 +31,8 @@ export {
 } from './contracts';
 
 export { judgeMyungri, tenGodFamily, tenGodJudgmentDomain, type MyungriJudgeInput, type TemporalLayerFacts } from './myungriJudge';
+export { readNatalBaseline, natalSupportForDomain, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
+export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
 export { judgeQimen, doorClass, type QimenJudgeInput } from './qimenJudge';
 export { judgeCross, type CrossJudgeInput } from './crossJudge';

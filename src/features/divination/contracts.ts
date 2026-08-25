@@ -35,7 +35,14 @@ export type Stance =
   | 'CONDITIONAL_AGAINST'
   | 'AGAINST'
   | 'STRONGLY_AGAINST'
+  /** Nothing could be computed (no chart, no layer, unusable input). */
   | 'INSUFFICIENT_DATA'
+  /**
+   * Facts WERE computed but carry no directional signal for this question — the honest middle the previous
+   * build lacked. CONTRADICTION ≠ NEUTRAL, but also CONTRADICTION ≠ FORCED_DECISION (DEPTH REBUILD §12):
+   * a verdict must not be manufactured out of weak/absent evidence.
+   */
+  | 'INSUFFICIENT_EVIDENCE'
   | 'NOT_APPLICABLE';
 
 /** Stances that assert a positive/negative direction (used by guards + the cross judge). */
@@ -112,13 +119,41 @@ export type JudgmentEvidence = {
   directness: QuestionDirectness;
 };
 
-/** A per-domain sub-judgment, so one discipline can say FOR on money-inflow and AGAINST on retention. */
+/**
+ * A per-AXIS sub-judgment. This is the unit the cross judge actually reasons over (DEPTH REBUILD §9).
+ *
+ * WHY IT CARRIES ITS OWN AXIS + SCOPE + STRENGTH. Previously every discipline was handed the SAME
+ * `questionDomain` and returned it unchanged, so cross-discipline "domain decomposition" could only ever fire
+ * in hand-built fixtures — never on the real path (independent audit §5). A judge must therefore surface the
+ * distinct axes it actually found, each with the evidence and reliability that back THAT axis, so the cross
+ * judge can tell "돈은 들어오지만 남지 않는다" (two axes, both true) from "명리와 자미가 같은 것을 반대로 본다".
+ */
 export type DomainSubJudgment = {
   domain: JudgmentDomain;
   stance: Stance;
   /** One decisive sentence in plain Korean. */
   conclusion: string;
+  /** Which time layer THIS axis speaks to (a natal axis and a this-month axis are not in conflict). */
+  temporalScope: TemporalScope;
+  /** How directly this axis answers the asked question. */
+  directness: QuestionDirectness;
+  /** Input quality behind THIS axis (may differ from the discipline's overall reliability). */
+  reliability: DataReliability;
+  /** Named, engine-traceable support for this axis. */
+  evidence: JudgmentEvidence[];
+  /** Named, engine-traceable opposition for this axis. */
+  counterEvidence: JudgmentEvidence[];
 };
+
+/**
+ * How much real support a stance rests on. `NONE` means the discipline found NO directional signal — it must
+ * NOT be laundered into a weak "conditional yes" (independent audit E1: an absent 四化 became a positive vote
+ * and flipped a HIGH-confidence direct negative). Cross ignores NONE-strength support when choosing a winner.
+ */
+export type EvidenceStrength = 'STRONG' | 'MODERATE' | 'WEAK' | 'NONE';
+
+/** A stance that asserts nothing: the discipline looked and found no directional signal. */
+export const NO_SIGNAL: Stance = 'INSUFFICIENT_EVIDENCE';
 
 /**
  * ONE DISCIPLINE'S INDEPENDENT JUDGMENT (§8). Produced WITHOUT seeing the other disciplines' judgments —
@@ -151,6 +186,13 @@ export type DivinationJudgment = {
 
   confidence: JudgmentConfidence;
   questionDirectness: QuestionDirectness;
+  /**
+   * How much real support the PRIMARY stance rests on. Required: the cross judge must be able to tell a
+   * well-evidenced direction from a default one. `NONE` ⇒ this discipline casts no vote.
+   */
+  evidenceStrength: EvidenceStrength;
+  /** Named major fact groups this judge actually CONSUMED for this question (depth-utilization reporting §20). */
+  factGroupsUsed: string[];
 };
 
 /** How a cross-discipline disagreement was resolved (§10). NEVER 'NEUTRALIZED' — that is not an option. */
@@ -206,6 +248,20 @@ export type CrossDivinationVerdict = {
 
   disciplineJudgments: DivinationJudgment[];
   contributions: DisciplineContribution[];
+
+  /**
+   * COMPOUND TRUTH (DEPTH REBUILD §13). A professional reading is often multi-dimensional — "인연은 강하지만
+   * 결혼생활은 어렵다", "돈은 들어오지만 남기 어렵다". Collapsing those into one scalar ± was a depth failure,
+   * so each axis keeps its own resolved verdict alongside the primary direction.
+   */
+  axisVerdicts: {
+    domain: JudgmentDomain;
+    stance: Stance;
+    conclusion: string;
+    dominantDiscipline: Discipline;
+    /** true when disciplines disagreed on THIS axis and the conflict was resolved here. */
+    contested: boolean;
+  }[];
 
   agreementPoints: string[];
   contradictionPoints: string[];

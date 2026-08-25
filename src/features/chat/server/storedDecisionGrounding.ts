@@ -7,6 +7,30 @@ const relationLines = (
 ): string[] => relations.map(({ position, kind }) => `${label} ${position}: ${kind}`);
 
 /**
+ * Restore ONE discipline's stored evidence for a WHY turn. Returns `not_applicable` when that discipline did
+ * not speak in the stored turn — never a fabricated availability.
+ */
+function verdictEvidenceFor(
+  meta: ConsultationDecisionMeta,
+  discipline: 'ZIWEI' | 'QIMEN',
+): { availability: 'available'; summary: string; sections: { label: string; lines: string[] }[]; hasTimingEvidence: boolean } | { availability: 'not_applicable' } {
+  const verdict = meta.divinationVerdict;
+  const judgment = verdict?.disciplineJudgments.find((j) => j.discipline === discipline);
+  if (!verdict || !judgment || !judgment.applicable) return { availability: 'not_applicable' };
+  const lines = [
+    judgment.dominantConclusion,
+    ...judgment.directEvidence.map((e) => `${e.fact} — ${e.meaning}`),
+    ...judgment.counterEvidence.map((e) => `${e.fact} — ${e.meaning}`),
+  ];
+  return {
+    availability: 'available',
+    summary: `저장된 ${discipline === 'ZIWEI' ? '자미두수' : '기문둔갑'} 판정: ${judgment.dominantConclusion}`,
+    sections: [{ label: '저장된 판정 근거', lines }],
+    hasTimingEvidence: false,
+  };
+}
+
+/**
  * Rebuild the minimum trusted grounding for WHY from decision A's persisted machine evidence only.
  * It intentionally accepts no current chart/grounding input, so a newer engine result B cannot leak into
  * the explanation prompt or silently replace the decision being explained.
@@ -45,9 +69,14 @@ export function groundingFromStoredDecision(meta: ConsultationDecisionMeta | nul
           ...(snapshot.target.granularity === 'MONTH' ? { months: [snapshot.target.key] } : {}),
         },
       },
-      ziwei: { availability: 'not_applicable' },
-      qimen: { availability: 'not_applicable' },
+      // DEPTH REBUILD §17 — when the stored turn carried a cross-discipline verdict, its OWN evidence is
+      // restored here so a "왜요?" explains the judgment the user actually received. Without this, Ziwei and
+      // Qimen silently vanished on the follow-up turn and the explanation could describe a different
+      // conclusion than the answer being questioned (audit: HIGH severity continuity blocker).
+      ziwei: verdictEvidenceFor(meta, 'ZIWEI'),
+      qimen: verdictEvidenceFor(meta, 'QIMEN'),
     },
+    ...(meta.divinationVerdict ? { divinationVerdict: meta.divinationVerdict } : {}),
     engineVersion: snapshot.engineVersion,
     referenceYear: meta.resolvedTemporalContext.referenceYear,
     referenceMonth: meta.resolvedTemporalContext.referenceMonth,

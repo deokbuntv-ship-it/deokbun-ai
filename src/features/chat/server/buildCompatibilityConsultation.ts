@@ -258,7 +258,11 @@ export async function buildCompatibilityConsultation(
             question, questionDomain, facts: pair.facts, assessment: a,
             selfLabel, targetLabel,
           }),
-          judgePairZiwei({ question, questionDomain, selfChart: selfZiwei.chart, targetChart: targetZiwei.chart }),
+          judgePairZiwei({
+            question, questionDomain,
+            selfChart: selfZiwei.chart, targetChart: targetZiwei.chart,
+            selfLabel, targetLabel,
+          }),
         ];
         divinationVerdict = judgeCross({ question, questionDomain, judgments, asksTiming: wantsTiming(question) });
       } catch {

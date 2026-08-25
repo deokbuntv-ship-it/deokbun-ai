@@ -1,117 +1,98 @@
-// DIVINATION_ENGINE_V1 — MYUNGRI (명리) INDEPENDENT JUDGE (§5).
+// DIVINATION_ENGINE_V1 — MYUNGRI (명리) INDEPENDENT JUDGE. REBUILT for depth (audit: MYUNGRI_DEPTH = LOW).
 //
-// Reads ONLY facts the frozen engine already computed (four pillars / ten gods / 합충형파해 relations /
-// month command / active 대운 / 세운 / 월운) and produces ONE decisive DivinationJudgment. It runs WITHOUT
-// seeing Ziwei or Qimen — that isolation is what makes later cross-discipline agreement meaningful.
+// WHAT THE AUDIT FOUND, AND WHAT CHANGED:
+//   · natal chart entirely discarded (production even passed `natalRelations: null`) → now the natal baseline
+//     (십신 by position, 원국 관계, 월령, 통근/투간) is the reference plane every luck layer is judged against.
+//   · relations flattened to two counts → now each relation keeps its KIND and the natal POSITION it struck,
+//     and position determines WHICH life axis is disturbed (년=뿌리, 월=사회·직업, 일=배우자·자기, 시=결과).
+//   · one broad domain per discipline → now multiple real sub-axes are emitted, which is what lets the cross
+//     judge decompose on the REAL path instead of only in fixtures.
+//   · a layer with ZERO relations counted as positive (STEADY) → now silence is silence: no directional vote.
 //
-// IT INVENTS NO THEORY. Two canonical, already-shipped rule sets are COMPOSED:
-//   1. 십신 → life-domain, the SAME family mapping the shipped monthly plan uses
-//      (재성=재물, 관성=직업/자리, 식상=활동/표현, 비겁=경쟁/동료, 인성=지원/문서).
-//   2. 합충형파해 → harmony/friction → tier, via the FROZEN polarity kernel (derivePolarity).
-// Nothing here activates deferred theory: no 신강/신약, 용신, 희신, 기신, 격국, 종격, 12운성, 12신살, and no
-// element weighting. Where a ten-god's own canonical identity carries the meaning (겁재 = ROB_WEALTH →
-// retention pressure) that identity is used as-is; it is not a new rule.
-import { derivePolarity, type PolarityTier } from '@/features/polarity/polarityKernel';
+// STILL NO DEFERRED THEORY: no 신강/신약, 용신, 희신, 기신, 격국, 종격, no element weighting. Reading how many
+// positions carry 재성, or which pillar a 충 lands on, is reading the engine's own output — not a strength verdict.
 import type { RelationsToNatal } from '@/features/myungri/domain/contracts';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 
 import {
+  NO_SIGNAL,
   type DataReliability,
   type DivinationJudgment,
   type DomainSubJudgment,
+  type EvidenceStrength,
   type JudgmentDomain,
   type JudgmentEvidence,
   type QuestionDirectness,
   type Stance,
   type TemporalScope,
 } from './contracts';
+import { analyzeLayer, axisPressure, type LayerAnalysis } from './myungriLayer';
+import { natalSupportForDomain, readNatalBaseline, type NatalStructureInput } from './myungriNatal';
 
-// ── 십신 semantics (canonical identities, mirrored from the shipped monthly-plan mapping) ─────────────
+// ── 십신 semantics (canonical identities, mirrored from the shipped monthly/today mapping) ────────────
 export type TenGodFamily = 'WEALTH' | 'OFFICER' | 'OUTPUT' | 'PEER' | 'RESOURCE';
 
 export function tenGodFamily(tg: TenGod): TenGodFamily {
   switch (tg) {
     case 'DIRECT_WEALTH':
     case 'INDIRECT_WEALTH':
-      return 'WEALTH'; // 재성
+      return 'WEALTH';
     case 'DIRECT_OFFICER':
     case 'SEVEN_KILLINGS':
-      return 'OFFICER'; // 관성
+      return 'OFFICER';
     case 'EATING_GOD':
     case 'HURTING_OFFICER':
-      return 'OUTPUT'; // 식상
+      return 'OUTPUT';
     case 'PEER':
     case 'ROB_WEALTH':
-      return 'PEER'; // 비겁
+      return 'PEER';
     default:
-      return 'RESOURCE'; // 인성
+      return 'RESOURCE';
   }
 }
 
-/** The life-domain a ten-god activates — same families the shipped monthly plan routes by. */
 export function tenGodJudgmentDomain(tg: TenGod): JudgmentDomain {
   switch (tenGodFamily(tg)) {
-    case 'WEALTH':
-      return 'MONEY_INFLOW';
-    case 'OFFICER':
-      return 'CAREER';
-    case 'OUTPUT':
-      return 'OPPORTUNITY'; // 식상 = 활동·표현·생산 → the chance to make something happen
-    case 'PEER':
-      return 'INFLUENCE'; // 비겁 = 동료·경쟁 → who shares/competes for the same ground
-    case 'RESOURCE':
-      return 'GENERAL'; // 인성 = 지원·문서·배움 → supportive background rather than one outcome axis
+    case 'WEALTH': return 'MONEY_INFLOW';
+    case 'OFFICER': return 'CAREER';
+    case 'OUTPUT': return 'OPPORTUNITY';
+    case 'PEER': return 'INFLUENCE';
+    case 'RESOURCE': return 'GENERAL';
   }
 }
 
 const FAMILY_LABEL: Record<TenGodFamily, string> = {
-  WEALTH: '재물의 기운',
-  OFFICER: '자리·책임의 기운',
-  OUTPUT: '활동·표현의 기운',
-  PEER: '경쟁·동료의 기운',
-  RESOURCE: '지원·배움의 기운',
+  WEALTH: '재물의 기운', OFFICER: '자리·책임의 기운', OUTPUT: '활동·표현의 기운',
+  PEER: '경쟁·동료의 기운', RESOURCE: '지원·배움의 기운',
+};
+const SCOPE_LABEL: Record<TemporalScope, string> = {
+  NATAL: '타고난 바탕', DAEWOON: '지금의 큰 흐름', SEWOON: '올해 흐름',
+  WOLWOON: '이 시기 흐름', PRESENT_MOMENT: '지금 시점', UNSCOPED: '전반 흐름',
 };
 
-// ── inputs ─────────────────────────────────────────────────────────────────────────────────────────
 export type TemporalLayerFacts = {
-  /** 대운/세운/월운 pillar ten-gods (stem drives the layer's dominant theme). */
   stemTenGod: TenGod;
   branchTenGod: TenGod;
   relationsToNatal: RelationsToNatal;
-  /** Year/month label for evidence text (e.g. 2026). Null for 대운. */
   targetYear?: number | null;
 };
 
 export type MyungriJudgeInput = {
   question: string;
   questionDomain: JudgmentDomain;
-  /** 시주 확정 여부 — an unknown hour reduces what the chart can support. */
   hourKnown: boolean;
-  /** 원국 내부 관계 (natal baseline friction/harmony). */
-  natalRelations: RelationsToNatal | null;
-  /** 득령/실령 — the day master's seasonal footing (canonical month-command fact). */
-  monthCommandInCommand: boolean | null;
+  /** REBUILD: the full natal structure. Previously null in production — the audit's headline finding. */
+  natal: NatalStructureInput | null;
   activeDaewoon: TemporalLayerFacts | null;
   sewoon: TemporalLayerFacts | null;
   wolwoon: TemporalLayerFacts | null;
-  /** Does the question ask about acting NOW / this period (vs a structural "what am I like")? */
   asksTiming: boolean;
 };
 
-// ── helpers ────────────────────────────────────────────────────────────────────────────────────────
-const TIER_MEANING: Record<PolarityTier, string> = {
-  FAVORABLE: '흐름이 받쳐주는',
-  STEADY: '큰 흔들림이 없는',
-  DYNAMIC: '변화가 잦은',
-  CAUTION: '마찰이 걸리는',
-};
-
-/** How directly a layer speaks to the asked domain. */
 function directnessFor(layerDomain: JudgmentDomain, asked: JudgmentDomain): QuestionDirectness {
   if (layerDomain === asked) return 'DIRECT';
   if (asked === 'GENERAL' || layerDomain === 'GENERAL') return 'GENERAL';
-  // money-inflow evidence is adjacent to a retention question, career to movement, etc.
-  const adjacency: Record<string, JudgmentDomain[]> = {
+  const adjacency: Partial<Record<JudgmentDomain, JudgmentDomain[]>> = {
     MONEY_INFLOW: ['MONEY_RETENTION', 'OPPORTUNITY', 'DECISION'],
     MONEY_RETENTION: ['MONEY_INFLOW', 'INFLUENCE'],
     CAREER: ['MOVEMENT', 'OPPORTUNITY', 'DECISION'],
@@ -128,211 +109,177 @@ function directnessFor(layerDomain: JudgmentDomain, asked: JudgmentDomain): Ques
   return (adjacency[asked] ?? []).includes(layerDomain) ? 'ADJACENT' : 'GENERAL';
 }
 
-const SCOPE_LABEL: Record<TemporalScope, string> = {
-  NATAL: '타고난 바탕',
-  DAEWOON: '지금의 큰 흐름',
-  SEWOON: '올해 흐름',
-  WOLWOON: '이 시기 흐름',
-  PRESENT_MOMENT: '지금 시점',
-  UNSCOPED: '전반 흐름',
-};
-
-type LayerReading = {
-  scope: TemporalScope;
-  tier: PolarityTier;
-  harmony: number;
-  friction: number;
-  domain: JudgmentDomain;
-  family: TenGodFamily;
-  directness: QuestionDirectness;
-  evidence: JudgmentEvidence;
-  /** true when 겁재(ROB_WEALTH) sits in this layer — canonical retention pressure. */
-  robWealth: boolean;
-};
-
-function readLayer(
-  facts: TemporalLayerFacts,
-  scope: TemporalScope,
-  asked: JudgmentDomain,
-): LayerReading {
-  const polarity = derivePolarity(facts.relationsToNatal);
-  const family = tenGodFamily(facts.stemTenGod);
-  const domain = tenGodJudgmentDomain(facts.stemTenGod);
-  const directness = directnessFor(domain, asked);
-  const robWealth = facts.stemTenGod === 'ROB_WEALTH' || facts.branchTenGod === 'ROB_WEALTH';
-  const where = SCOPE_LABEL[scope];
+function unavailable(asked: JudgmentDomain, reason: string, reliability: DataReliability): DivinationJudgment {
   return {
-    scope,
-    tier: polarity.tier,
-    harmony: polarity.evidence.harmony,
-    friction: polarity.evidence.friction,
-    domain,
-    family,
-    directness,
-    robWealth,
-    evidence: {
-      fact: `${where}: ${FAMILY_LABEL[family]} · 원국과 ${TIER_MEANING[polarity.tier]} 관계`,
-      meaning: `${where}에서는 ${FAMILY_LABEL[family]}이 두드러지고, 원국과는 ${TIER_MEANING[polarity.tier]} 흐름입니다.`,
-      domain,
-      temporalScope: scope,
-      directness,
-    },
+    discipline: 'MYUNGRI', applicable: false, applicabilityReason: reason, dataReliability: reliability,
+    questionDomain: asked, temporalScope: 'UNSCOPED', stance: 'INSUFFICIENT_DATA',
+    dominantConclusion: '명리로는 이 질문에 답할 근거가 아직 부족합니다.', dominantFactor: '계산 가능한 시기 흐름 없음',
+    directEvidence: [], counterEvidence: [], internalContradictions: [], timingSignals: [],
+    domainSubJudgments: [], confidence: 'LOW', questionDirectness: 'GENERAL',
+    evidenceStrength: 'NONE', factGroupsUsed: [],
   };
 }
 
-const POSITIVE_TIERS: PolarityTier[] = ['FAVORABLE', 'STEADY'];
+/**
+ * Judge ONE axis from the natal baseline + every temporal layer that touches it. This is the unit of depth:
+ * the same 세운 lands differently depending on which natal position it strikes and whether the chart is
+ * natively built for that axis.
+ */
+function judgeAxis(
+  axis: JudgmentDomain,
+  layers: LayerAnalysis[],
+  baseline: ReturnType<typeof readNatalBaseline> | null,
+  asked: JudgmentDomain,
+  reliability: DataReliability,
+): DomainSubJudgment | null {
+  const pressures = layers.map((l) => ({ layer: l, p: axisPressure(l, axis) }));
+  const touched = pressures.filter((x) => x.p.friction > 0 || x.p.harmony > 0);
+  const natal = baseline ? natalSupportForDomain(baseline, axis) : { support: 'UNKNOWN' as const, note: '' };
 
-/** Rank layers so the most question-relevant evidence — not the loudest — drives the stance (§10-B/§12). */
-function layerWeight(l: LayerReading, asksTiming: boolean): number {
-  const directnessScore = l.directness === 'DIRECT' ? 3 : l.directness === 'ADJACENT' ? 2 : 1;
-  // A timing question is answered by the nearer layer; a structural question by the larger one.
-  const scopeScore = asksTiming
-    ? l.scope === 'WOLWOON' ? 3 : l.scope === 'SEWOON' ? 3 : l.scope === 'DAEWOON' ? 2 : 1
-    : l.scope === 'DAEWOON' ? 3 : l.scope === 'SEWOON' ? 2 : 1;
-  return directnessScore * 2 + scopeScore;
+  // Nothing in the chart or the luck cycles speaks to this axis → emit nothing (never a filler positive).
+  if (touched.length === 0 && natal.support === 'UNKNOWN') return null;
+
+  const friction = pressures.reduce((n, x) => n + x.p.friction, 0);
+  const harmony = pressures.reduce((n, x) => n + x.p.harmony, 0);
+  const heavy = pressures.some((x) => x.p.heavyHit);
+  const evidence = pressures.flatMap((x) => x.p.evidence);
+  const counterEvidence = pressures.flatMap((x) => x.p.counterEvidence);
+  const nearest = touched.find((x) => x.layer.scope === 'WOLWOON') ?? touched.find((x) => x.layer.scope === 'SEWOON') ?? touched[0];
+
+  const natalEvidence: JudgmentEvidence[] = natal.note
+    ? [{ fact: `원국 바탕(${axis})`, meaning: natal.note, domain: axis, temporalScope: 'NATAL', directness: 'ADJACENT' }]
+    : [];
+
+  let stance: Stance;
+  let conclusion: string;
+  if (friction === 0 && harmony === 0) {
+    // The natal chart has something to say about this axis, but no luck cycle is activating it.
+    stance = natal.support === 'ABSENT' ? 'CONDITIONAL_AGAINST' : NO_SIGNAL;
+    conclusion = natal.support === 'ABSENT'
+      ? `${natal.note} 지금 이 부분을 크게 벌일 자리는 아닙니다.`
+      : '지금 이 부분을 흔드는 흐름은 따로 없습니다.';
+  } else if (friction > harmony) {
+    stance = heavy && natal.support !== 'STRONG' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
+    conclusion = heavy
+      ? '이 부분은 직접 흔들리는 자리가 있어, 그대로 밀고 가기 어렵습니다.'
+      : '이 부분은 부딪히는 지점이 있어 범위를 좁히는 쪽이 낫습니다.';
+  } else if (harmony > friction) {
+    stance = natal.support === 'STRONG' ? 'FOR' : 'CONDITIONAL_FOR';
+    conclusion = natal.support === 'STRONG'
+      ? `${natal.note} 흐름도 맞물려 열리는 자리입니다.`
+      : '이 부분은 흐름이 맞물려 열리는 편입니다.';
+  } else {
+    // equal push and pull on the SAME axis — a real internal tension, not a coin flip
+    stance = 'CONDITIONAL_FOR';
+    conclusion = '이 부분은 열리는 힘과 부딪히는 힘이 함께 있어, 조건을 정리하고 가야 합니다.';
+  }
+
+  return {
+    domain: axis,
+    stance,
+    conclusion,
+    temporalScope: nearest?.layer.scope ?? 'NATAL',
+    directness: directnessFor(axis, asked),
+    reliability,
+    evidence: [...evidence, ...natalEvidence],
+    counterEvidence,
+  };
 }
 
-/**
- * Judge the question from the Myungri facts alone. DECISIVE by construction: when layers disagree it
- * resolves them by temporal scope + question directness (long-term FOR + near-term CAUTION → FOR_BUT_LATER,
- * never "반반"). INSUFFICIENT_DATA only when no layer could be computed at all.
- */
+/** Which axes are worth judging for this question (the asked one + the ones its answer genuinely depends on). */
+function axesFor(asked: JudgmentDomain): JudgmentDomain[] {
+  switch (asked) {
+    case 'MONEY_INFLOW':
+    case 'MONEY_RETENTION':
+      return ['MONEY_INFLOW', 'MONEY_RETENTION', 'OPPORTUNITY', 'CAREER'];
+    case 'OPPORTUNITY':
+    case 'DECISION':
+      return ['OPPORTUNITY', 'OUTCOME', 'MONEY_INFLOW', 'CAREER'];
+    case 'CAREER':
+    case 'MOVEMENT':
+      return ['CAREER', 'OUTCOME', 'OPPORTUNITY', 'MONEY_INFLOW'];
+    case 'RELATION_BOND':
+    case 'RELATION_STABILITY':
+    case 'CONFLICT':
+      return ['RELATION_STABILITY', 'RELATION_BOND', 'CONFLICT', 'INFLUENCE'];
+    default:
+      return ['GENERAL', 'CAREER', 'RELATION_STABILITY', 'MONEY_INFLOW'];
+  }
+}
+
 export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
   const asked = input.questionDomain;
-  const layers: LayerReading[] = [];
-  if (input.activeDaewoon) layers.push(readLayer(input.activeDaewoon, 'DAEWOON', asked));
-  if (input.sewoon) layers.push(readLayer(input.sewoon, 'SEWOON', asked));
-  if (input.wolwoon) layers.push(readLayer(input.wolwoon, 'WOLWOON', asked));
+  const layers: LayerAnalysis[] = [];
+  if (input.activeDaewoon) layers.push(analyzeLayer('DAEWOON', input.activeDaewoon.stemTenGod, input.activeDaewoon.branchTenGod, input.activeDaewoon.relationsToNatal));
+  if (input.sewoon) layers.push(analyzeLayer('SEWOON', input.sewoon.stemTenGod, input.sewoon.branchTenGod, input.sewoon.relationsToNatal));
+  if (input.wolwoon) layers.push(analyzeLayer('WOLWOON', input.wolwoon.stemTenGod, input.wolwoon.branchTenGod, input.wolwoon.relationsToNatal));
 
   const reliability: DataReliability = input.hourKnown ? 'EXACT' : 'REDUCED';
-
-  if (layers.length === 0) {
-    return {
-      discipline: 'MYUNGRI',
-      applicable: false,
-      applicabilityReason: '이 질문에 쓸 수 있는 시기 흐름(대운·세운)이 계산되지 않았습니다.',
-      dataReliability: input.hourKnown ? 'MINIMAL' : 'UNUSABLE',
-      questionDomain: asked,
-      temporalScope: 'UNSCOPED',
-      stance: 'INSUFFICIENT_DATA',
-      dominantConclusion: '명리로는 이 질문에 답할 근거가 아직 부족합니다.',
-      dominantFactor: '계산 가능한 시기 흐름 없음',
-      directEvidence: [],
-      counterEvidence: [],
-      internalContradictions: [],
-      timingSignals: [],
-      domainSubJudgments: [],
-      confidence: 'LOW',
-      questionDirectness: 'GENERAL',
-    };
+  if (layers.length === 0 && !input.natal) {
+    return unavailable(asked, '이 질문에 쓸 수 있는 시기 흐름(대운·세운)이 계산되지 않았습니다.', input.hourKnown ? 'MINIMAL' : 'UNUSABLE');
   }
 
-  // The layer that best answers THIS question drives the stance.
-  const ranked = [...layers].sort((a, b) => layerWeight(b, input.asksTiming) - layerWeight(a, input.asksTiming));
-  const primary = ranked[0];
-  const supporting = layers.filter((l) => POSITIVE_TIERS.includes(l.tier));
-  const opposing = layers.filter((l) => !POSITIVE_TIERS.includes(l.tier));
+  const baseline = input.natal ? readNatalBaseline(input.natal) : null;
+  const factGroupsUsed: string[] = [];
+  if (baseline) factGroupsUsed.push('원국 십신 배치', '원국 합충형파해', '월령', '통근·투간');
+  if (layers.some((l) => l.scope === 'DAEWOON')) factGroupsUsed.push('대운');
+  if (layers.some((l) => l.scope === 'SEWOON')) factGroupsUsed.push('세운');
+  if (layers.some((l) => l.scope === 'WOLWOON')) factGroupsUsed.push('월운');
+  if (layers.some((l) => l.hits.length > 0)) factGroupsUsed.push('원국×운 관계(종류·위치)');
 
-  const near = layers.find((l) => l.scope === 'WOLWOON') ?? layers.find((l) => l.scope === 'SEWOON') ?? null;
-  const large = layers.find((l) => l.scope === 'DAEWOON') ?? null;
+  // ── per-axis sub-judgments (the real decomposition source) ───────────────────────────────────────
+  const subs = axesFor(asked)
+    .map((axis) => judgeAxis(axis, layers, baseline, asked, reliability))
+    .filter((s): s is DomainSubJudgment => s !== null);
 
-  // ── stance resolution (never "mixed") ────────────────────────────────────────────────────────────
-  let stance: Stance;
-  let dominantConclusion: string;
-  const internalContradictions: string[] = [];
-
-  const primaryPositive = POSITIVE_TIERS.includes(primary.tier);
-  const largePositive = large ? POSITIVE_TIERS.includes(large.tier) : null;
-  const nearPositive = near ? POSITIVE_TIERS.includes(near.tier) : null;
-
-  if (large && near && largePositive !== nearPositive) {
-    // §10-D/§10-H — direction and timing disagree: resolve into a TIMED verdict, not a hedge.
-    internalContradictions.push(
-      `${SCOPE_LABEL.DAEWOON}과 ${SCOPE_LABEL[near.scope]}가 서로 다른 방향을 가리킵니다.`,
-    );
-    if (largePositive) {
-      stance = 'FOR_BUT_LATER';
-      dominantConclusion = '방향 자체는 맞지만, 지금 시점보다 흐름이 풀린 뒤에 움직이는 쪽이 낫습니다.';
-    } else {
-      stance = 'AGAINST_FOR_NOW';
-      dominantConclusion = '당장의 흐름은 열려 있지만 큰 흐름이 받쳐주지 않아, 크게 벌이는 선택은 미루는 쪽으로 봅니다.';
+  // Retention gets one extra canonical signal: 겁재(ROB_WEALTH) + a floating (rootless) chart both mean
+  // "what comes in does not stay". Both are the facts' own identities, not a new rule.
+  const retentionSub = subs.find((s) => s.domain === 'MONEY_RETENTION');
+  if (retentionSub) {
+    const robbed = layers.some((l) => l.robWealth);
+    const floating = baseline?.anchored === 'FLOATING';
+    if (robbed || floating) {
+      retentionSub.stance = 'AGAINST';
+      retentionSub.conclusion = robbed
+        ? '들어온 돈을 나눠 가져가는 자리가 있어, 버는 것과 남기는 것을 반드시 나눠 보셔야 합니다.'
+        : '뿌리가 약해 들어온 것이 오래 머물지 않습니다.';
+      retentionSub.counterEvidence = [
+        ...retentionSub.counterEvidence,
+        {
+          fact: robbed ? '운에 겁재' : '원국 통근 약함',
+          meaning: robbed ? '같은 것을 두고 나눠 갖는 기운이 함께 옵니다.' : '뿌리가 얕아 쌓이지 않습니다.',
+          domain: 'MONEY_RETENTION', temporalScope: robbed ? 'SEWOON' : 'NATAL', directness: 'DIRECT',
+        },
+      ];
     }
-  } else if (primaryPositive) {
-    const strong = primary.directness === 'DIRECT' && primary.tier === 'FAVORABLE' && opposing.length === 0;
-    stance = strong ? 'STRONGLY_FOR' : primary.tier === 'FAVORABLE' ? 'FOR' : 'CONDITIONAL_FOR';
-    dominantConclusion = strong
-      ? `${SCOPE_LABEL[primary.scope]}이 ${FAMILY_LABEL[primary.family]}을 분명하게 받쳐줍니다. 하는 쪽으로 봅니다.`
-      : `${SCOPE_LABEL[primary.scope]}은 ${FAMILY_LABEL[primary.family]} 쪽으로 열려 있습니다. 조건을 갖추면 진행해도 좋은 흐름입니다.`;
-  } else {
-    const strong = primary.directness === 'DIRECT' && primary.tier === 'CAUTION' && supporting.length === 0;
-    stance = strong ? 'STRONGLY_AGAINST' : primary.tier === 'CAUTION' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
-    dominantConclusion = strong
-      ? `${SCOPE_LABEL[primary.scope]}에서 ${FAMILY_LABEL[primary.family]}에 마찰이 분명합니다. 지금은 하지 않는 쪽으로 봅니다.`
-      : `${SCOPE_LABEL[primary.scope]}이 흔들리는 구간이라, 범위를 좁혀 움직이는 쪽으로 봅니다.`;
   }
 
-  // ── domain sub-judgments (opportunity vs outcome, inflow vs retention) ───────────────────────────
-  const subs: DomainSubJudgment[] = [];
-  const wealthLayer = layers.find((l) => l.family === 'WEALTH');
-  const retentionRisk = layers.some((l) => l.robWealth) || layers.some((l) => l.family === 'PEER' && !POSITIVE_TIERS.includes(l.tier));
-  if (wealthLayer) {
-    subs.push({
-      domain: 'MONEY_INFLOW',
-      stance: POSITIVE_TIERS.includes(wealthLayer.tier) ? 'FOR' : 'CONDITIONAL_FOR',
-      conclusion: '재물이 움직이는 자리는 열려 있습니다.',
-    });
-    // §10-G — money entering and money staying are judged separately, never equated.
-    subs.push({
-      domain: 'MONEY_RETENTION',
-      stance: retentionRisk ? 'AGAINST' : 'CONDITIONAL_FOR',
-      conclusion: retentionRisk
-        ? '다만 들어온 돈이 남는 구조는 약합니다. 버는 것과 남기는 것을 따로 보셔야 합니다.'
-        : '들어온 것을 지키는 쪽도 크게 새지 않습니다.',
-    });
-  }
-  const outputLayer = layers.find((l) => l.family === 'OUTPUT');
-  if (outputLayer) {
-    // §10-E — an opportunity appearing is NOT the same as taking it being good.
-    subs.push({
-      domain: 'OPPORTUNITY',
-      stance: POSITIVE_TIERS.includes(outputLayer.tier) ? 'FOR' : 'CONDITIONAL_FOR',
-      conclusion: '벌이거나 새로 시작할 자리 자체는 생깁니다.',
-    });
-    subs.push({
-      domain: 'OUTCOME',
-      stance: opposing.length > supporting.length ? 'CONDITIONAL_AGAINST' : 'CONDITIONAL_FOR',
-      conclusion:
-        opposing.length > supporting.length
-          ? '기회가 생기는 것과 그것을 잡아서 남는 것은 다릅니다. 잡는 선택은 신중히 봅니다.'
-          : '잡았을 때 남는 쪽도 무리는 없습니다.',
-    });
-  }
-  const officerLayer = layers.find((l) => l.family === 'OFFICER');
-  if (officerLayer) {
-    subs.push({
-      domain: 'CAREER',
-      stance: POSITIVE_TIERS.includes(officerLayer.tier) ? 'FOR' : 'CONDITIONAL_AGAINST',
-      conclusion: POSITIVE_TIERS.includes(officerLayer.tier)
-        ? '자리와 책임이 안정적으로 붙는 흐름입니다.'
-        : '자리 문제로 부딪히기 쉬운 구간입니다.',
-    });
+  // ── primary stance = the axis that answers the ASKED question ────────────────────────────────────
+  const primarySub = subs.find((s) => s.domain === asked) ?? subs.find((s) => s.directness === 'DIRECT') ?? subs[0] ?? null;
+  const allEvidence = subs.flatMap((s) => s.evidence);
+  const allCounter = subs.flatMap((s) => s.counterEvidence);
+
+  const directionalSubs = subs.filter((s) => s.stance !== NO_SIGNAL);
+  const evidenceStrength: EvidenceStrength =
+    primarySub === null || primarySub.stance === NO_SIGNAL
+      ? 'NONE'
+      : primarySub.evidence.length + primarySub.counterEvidence.length >= 3
+        ? 'STRONG'
+        : primarySub.evidence.length + primarySub.counterEvidence.length >= 1
+          ? 'MODERATE'
+          : 'WEAK';
+
+  const internalContradictions: string[] = [];
+  const forSubs = directionalSubs.filter((s) => s.stance.includes('FOR'));
+  const againstSubs = directionalSubs.filter((s) => s.stance.includes('AGAINST'));
+  if (forSubs.length > 0 && againstSubs.length > 0) {
+    internalContradictions.push(
+      `${forSubs.map((s) => s.domain).join('/')}는 열리고 ${againstSubs.map((s) => s.domain).join('/')}는 걸립니다.`,
+    );
   }
 
-  const timingSignals = near ? [near.evidence] : [];
-  // 득령/실령 is a canonical single-factor month-command FACT (never a 신강/신약 verdict). It is surfaced as
-  // natal-baseline evidence so the reading can say what the person's footing is, without classifying strength.
-  const natalEvidence: JudgmentEvidence[] =
-    input.monthCommandInCommand === null
-      ? []
-      : [{
-          fact: input.monthCommandInCommand ? '원국: 일간이 월령을 얻음(득령)' : '원국: 일간이 월령을 얻지 못함(실령)',
-          meaning: input.monthCommandInCommand
-            ? '타고난 바탕이 계절의 기운을 등에 업고 있습니다.'
-            : '타고난 바탕이 계절의 기운을 등에 업지는 못했습니다.',
-          domain: 'GENERAL',
-          temporalScope: 'NATAL',
-          directness: 'GENERAL',
-        }];
+  const stance: Stance = primarySub?.stance ?? NO_SIGNAL;
+  const nearest = layers.find((l) => l.scope === 'WOLWOON') ?? layers.find((l) => l.scope === 'SEWOON') ?? layers[0] ?? null;
 
   return {
     discipline: 'MYUNGRI',
@@ -340,21 +287,27 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
     dataReliability: reliability,
     ...(input.hourKnown ? {} : { applicabilityReason: '출생시간이 확정되지 않아 시(時)에 기대는 해석은 제한됩니다.' }),
     questionDomain: asked,
-    temporalScope: primary.scope,
+    temporalScope: primarySub?.temporalScope ?? 'NATAL',
     stance,
-    dominantConclusion,
-    dominantFactor: primary.evidence.fact,
-    directEvidence: [...supporting.map((l) => l.evidence), ...natalEvidence],
-    counterEvidence: opposing.map((l) => l.evidence),
+    dominantConclusion:
+      primarySub?.conclusion ?? '명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.',
+    dominantFactor:
+      primarySub?.counterEvidence[0]?.fact ??
+      primarySub?.evidence[0]?.fact ??
+      (nearest ? `${SCOPE_LABEL[nearest.scope]}: ${FAMILY_LABEL[nearest.family]}` : '원국 구조'),
+    directEvidence: [...allEvidence, ...(baseline?.evidence ?? [])],
+    counterEvidence: allCounter,
     internalContradictions,
-    timingSignals,
+    timingSignals: nearest && nearest.hits.length > 0 ? [nearest.hits[0].evidence] : [],
     domainSubJudgments: subs,
     confidence:
-      primary.directness === 'DIRECT' && reliability === 'EXACT'
+      evidenceStrength === 'STRONG' && reliability === 'EXACT' && primarySub?.directness === 'DIRECT'
         ? 'HIGH'
-        : primary.directness === 'GENERAL' || reliability !== 'EXACT'
+        : evidenceStrength === 'NONE' || reliability !== 'EXACT'
           ? 'LOW'
           : 'MEDIUM',
-    questionDirectness: primary.directness,
+    questionDirectness: primarySub?.directness ?? 'GENERAL',
+    evidenceStrength,
+    factGroupsUsed,
   };
 }

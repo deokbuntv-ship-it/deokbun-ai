@@ -58,6 +58,7 @@ import {
   judgeZiwei,
   type CrossDivinationVerdict,
   type JudgmentDomain,
+  type NatalStructureInput,
   type TemporalLayerFacts,
 } from '@/features/divination';
 import { buildRelationsToNatal } from '@/features/myungri';
@@ -150,6 +151,26 @@ const DOMAIN_MAP: Record<ConsultationDomain, JudgmentDomain> = {
   전반: 'GENERAL',
 };
 
+// DEPTH REBUILD (audit §7) — "돈이 들어오는가" and "돈이 남는가" produced IDENTICAL readings because every 재물
+// question was routed to MONEY_INFLOW, so the retention path (and 전택궁) was unreachable. Retention wording is
+// now detected explicitly before falling back to the topic map. Routing only — no astrology here.
+// 모이다 conjugates to 모일/모여/모았 — matching only "모이" missed the most common phrasing ("돈이 모일까요?").
+const RETENTION_CUE = /모(?:이|일|여|였|았|을|으)|남[아을는]|쌓|저축|지키|새(?:나가|어)|유지되/;
+const INFLOW_CUE = /벌|들어오|수입|매출|버는/;
+/** Money words the topic classifier may not carry (it never learned 저축/모으다) but that are clearly financial. */
+const MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현금/;
+
+export function resolveJudgmentDomain(question: string): JudgmentDomain {
+  const q = question ?? '';
+  const topic = classifyConsultationDomain(q);
+  const financial = topic === '재물' || MONEY_SUBJECT.test(q);
+  if (financial) {
+    if (RETENTION_CUE.test(q) && !INFLOW_CUE.test(q)) return 'MONEY_RETENTION';
+    if (topic === '재물' || INFLOW_CUE.test(q)) return 'MONEY_INFLOW';
+  }
+  return DOMAIN_MAP[topic];
+}
+
 type MyungriOutcome = {
   evidence: EngineEvidence;
   engineVersion: string | null;
@@ -159,7 +180,8 @@ type MyungriOutcome = {
   /** DIVINATION_ENGINE_V1 — the SAME frozen facts, kept structured for the independent Myungri judge. */
   judgeFacts: {
     hourKnown: boolean;
-    monthCommandInCommand: boolean | null;
+    /** DEPTH REBUILD: the natal structure the judge reads as its reference plane (was discarded entirely). */
+    natal: NatalStructureInput | null;
     activeDaewoon: TemporalLayerFacts | null;
     sewoon: TemporalLayerFacts | null;
     wolwoon: TemporalLayerFacts | null;
@@ -324,10 +346,31 @@ async function buildMyungriEvidence(
     activeCycleOrdinal !== null && daewoonTenGods?.capability === 'AVAILABLE'
       ? daewoonTenGods.cycles.find((c) => c.ordinal === activeCycleOrdinal) ?? null
       : null;
-  const judgeFacts: MyungriOutcome['judgeFacts'] = {
-    hourKnown: fourPillars.hour.status === 'AVAILABLE',
+  // DEPTH REBUILD — the natal chart the judge reads as its reference plane: 십신 BY POSITION (stem / branch
+  // hidden stems), the 원국's own 합충형파해, 월령, and 통근/투간 counts. All straight from the frozen engine.
+  const positionedTenGods: NatalStructureInput['positionedTenGods'] = [];
+  const derivedPillars = engineResult.output.derivedFacts.pillars;
+  for (const pillar of [derivedPillars.year, derivedPillars.month, derivedPillars.day, derivedPillars.hour]) {
+    if (!pillar) continue; // 시주 미상 → the hour pillar is simply absent, never invented
+    positionedTenGods.push({ position: pillar.position, tenGod: pillar.stem.tenGod, source: 'STEM' });
+    for (const hidden of pillar.branch.hiddenStems) {
+      positionedTenGods.push({ position: pillar.position, tenGod: hidden.tenGod, source: 'HIDDEN' });
+    }
+  }
+  const natalStructure: NatalStructureInput = {
+    positionedTenGods,
+    natalRelations,
     monthCommandInCommand:
       monthCommand.capability === 'AVAILABLE' ? monthCommand.commandStatus === 'IN_COMMAND' : null,
+    seasonalPhase: monthCommand.capability === 'AVAILABLE' ? monthCommand.dayMasterSeasonalPhase : null,
+    rootedCount: rooting.capability === 'AVAILABLE' ? rooting.rooting.filter((r) => r.isRooted).length : null,
+    transparentCount: rooting.capability === 'AVAILABLE' ? rooting.transparency.filter((t) => t.isRevealed).length : null,
+    hourKnown: fourPillars.hour.status === 'AVAILABLE',
+  };
+
+  const judgeFacts: MyungriOutcome['judgeFacts'] = {
+    hourKnown: fourPillars.hour.status === 'AVAILABLE',
+    natal: natalStructure,
     activeDaewoon:
       activeCycle && activeCycleTenGods
         ? {
@@ -403,15 +446,16 @@ export async function buildConsultationGrounding(
   let divinationVerdict: CrossDivinationVerdict | null = null;
   try {
     const q = question ?? '';
-    const questionDomain = DOMAIN_MAP[classifyConsultationDomain(q)];
+    const questionDomain = resolveJudgmentDomain(q);
     const asksTiming = classifyTimingQuestion(q);
     const judgments = [
       judgeMyungri({
         question: q,
         questionDomain,
         hourKnown: judgeFacts?.hourKnown ?? false,
-        natalRelations: null,
-        monthCommandInCommand: judgeFacts?.monthCommandInCommand ?? null,
+        // DEPTH REBUILD: the FULL natal structure now reaches the judge. This field was literally `null`
+        // before — the independent audit's headline Myungri finding.
+        natal: judgeFacts?.natal ?? null,
         activeDaewoon: judgeFacts?.activeDaewoon ?? null,
         sewoon: judgeFacts?.sewoon ?? null,
         wolwoon: judgeFacts?.wolwoon ?? null,

@@ -9,6 +9,7 @@ import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/interpretation';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
+import type { CrossDivinationVerdict } from '@/features/divination';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 import type { TargetPolarityDerivation } from '@/features/chat/prompts/grounding';
 import type { ConsultationDomain } from './consultationDomain';
@@ -119,6 +120,13 @@ export type ConsultationDecisionMeta = {
   comparisonContext?: { isComparison: boolean; candidates: number[] };
   // Sprint E.1 §5-6 — the MINIMUM deterministic evidence snapshot behind THIS decision, so a later "왜?"
   // explains the stored decision/evidence instead of re-grounding under the follow-up turn's own context.
+  /**
+   * DEPTH REBUILD §17 — the FULL cross-discipline verdict behind THIS turn. Without it, a follow-up ("왜요?")
+   * rebuilt a Myungri-only polarity snapshot and could explain a DIFFERENT conclusion than the one the user
+   * was given (the audit's HIGH-severity continuity blocker). Persisting the verdict keeps the judging
+   * subject, its evidence and its contradiction resolution stable across the whole paid session.
+   */
+  divinationVerdict?: CrossDivinationVerdict | null;
   evidenceSnapshot?: {
     schemaVersion: 'decision-evidence@1.0.0';
     target: { granularity: 'YEAR' | 'MONTH'; key: number };

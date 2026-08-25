@@ -30,6 +30,11 @@ export function buildConsultationDecisionMeta(
     ...(plan.polarity ? { polarity: plan.polarity } : {}),
     domain,
     comparisonContext: plan.comparisonContext,
+    // §17 — persist the FULL cross verdict so a later "왜요?" explains the SAME judgment (subject, evidence
+    // and contradiction resolution), instead of falling back to a Myungri-only polarity snapshot.
+    ...(grounding.status === 'available' && grounding.divinationVerdict
+      ? { divinationVerdict: grounding.divinationVerdict }
+      : {}),
     ...(plan.selectedTargetPolarity && grounding.status === 'available' && grounding.engineVersion
       ? {
           evidenceSnapshot: {
