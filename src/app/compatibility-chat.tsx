@@ -25,6 +25,8 @@ import { createCompatibilityConsultationService } from '@/features/compatibility
 import { InsufficientDuk } from '@/components/InsufficientDuk';
 import { SessionMeter } from '@/components/SessionMeter';
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
+import { getSessionStatus, isSessionExhausted, type SessionStatus } from '@/features/duk/dukClientContract';
+import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { mapConsumerError } from '@/features/errors/consumerErrorCopy';
 import { AiDisclosure } from '@/components/AiDisclosure';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
@@ -66,6 +68,12 @@ export default function CompatibilityChatScreen() {
         if (active) setCandleEligible(a.canLight);
       })
       .catch(() => {});
+    // Read the server's compatibility session so the remaining-question count is REAL from the first render.
+    void getSessionStatus('compatibility')
+      .then((s) => {
+        if (active) setSession(s);
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -90,6 +98,17 @@ export default function CompatibilityChatScreen() {
   const [errorText, setErrorText] = useState<string | null>(null);
   // Authoritative server balance snapshot for the INSUFFICIENT_DUK paywall card (Sprint J1 §10). Never client-computed.
   const [insufficientSnap, setInsufficientSnap] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
+  // §P0 — the SERVER's compatibility session, held raw. 12덕 buys ONE session of 5 successful questions; the
+  // 6th question would open a NEW paid session (reserve_session_duk does not resume an exhausted session). The
+  // UI must therefore show the REAL remaining count and require explicit consent before a new paid session —
+  // it previously promised "이어서 물어봐도 덕은 더 들지 않아요" unconditionally and let the 6th question charge
+  // 12덕 silently. Never counts sends locally; the count is the server's.
+  const [session, setSession] = useState<SessionStatus | null>(null);
+  const refreshCompatSession = async () => setSession(await getSessionStatus('compatibility'));
+  // Exhausted = the SERVER's session hit its successful-turn limit AND is still within its TTL (shared helper —
+  // an expired session is not exhausted; a new one would start anyway). Gates the composer so the NEXT question
+  // cannot silently become a second 12덕 purchase.
+  const compatExhausted = isSessionExhausted(session, Date.now());
   const [reportId, setReportId] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackVerdict>>({});
@@ -218,6 +237,9 @@ export default function CompatibilityChatScreen() {
       setMessages((prev) => [...prev, assistantMsg]);
       // Persist the Q&A pair (best-effort) so a refresh restores it with ZERO new LLM call (§9).
       void persistPair(userMsg, assistantMsg, result.compatibility ?? tier);
+      // A successful turn changed the server's remaining-question count → re-read it (never decrement locally),
+      // so the meter is accurate and the exhausted consent gate appears BEFORE a new paid session can start.
+      void refreshCompatSession().catch(() => {});
     } finally {
       setSending(false);
       sendingRef.current = false;
@@ -438,15 +460,35 @@ export default function CompatibilityChatScreen() {
         </ScrollView>
         <View style={[styles.composer, { paddingHorizontal: hPad }]}>
           <View style={[styles.wrapper, { maxWidth }]}>
-            {tier ? (
-              <SessionMeter session={null} label="이어서 물어봐도 덕은 더 들지 않아요" style={styles.meter} />
-            ) : null}
-            <ChatInput
-              value={input}
-              onChangeText={setInput}
-              onSend={() => void send(input)}
-              disabled={sending || !self || !target}
-            />
+            {/* HONEST remaining-question line (§P0). Was a hardcoded "이어서 물어봐도 덕은 더 들지 않아요" with
+                session={null} — an unconditional promise that became FALSE at the 5-turn limit, where the next
+                question silently opened a NEW 12덕 session. Now the SERVER's real count drives it. */}
+            {tier ? <SessionMeter session={session} style={styles.meter} /> : null}
+            {compatExhausted ? (
+              // Explicit CONSENT before another paid session — the same gate the 상담 flow already has. No new
+              // session and no charge happen on render; only this tap navigates to start a new 궁합 상담, and the
+              // server still charges once on the first successful answer of that new session.
+              <Card use="status" radius="xl" style={styles.meter}>
+                <Stack gap="sm">
+                  <Text variant="bodyLarge">이번 궁합 상담의 질문을 모두 썼어요</Text>
+                  <Text variant="bodySmall" colorToken="textSecondary">
+                    {`이어서 더 물어보려면 새 궁합 상담을 시작해야 해요. 새로 시작하면 ${dukLabel(DUK_PRICES.compatibility)}이 들어요. 지금까지 내용은 기록에 남아 있어요.`}
+                  </Text>
+                  <Button
+                    label={`새 궁합 상담 시작하기  🍀 ${dukLabel(DUK_PRICES.compatibility)}`}
+                    radius="lg"
+                    onPress={() => router.replace('/compatibility')}
+                  />
+                </Stack>
+              </Card>
+            ) : (
+              <ChatInput
+                value={input}
+                onChangeText={setInput}
+                onSend={() => void send(input)}
+                disabled={sending || !self || !target}
+              />
+            )}
           </View>
         </View>
         {/* Consumer bottom nav (§5) — same DetailBottomNav as the primary tab bar; 궁합 active since this
