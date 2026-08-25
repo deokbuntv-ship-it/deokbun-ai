@@ -60,9 +60,12 @@ const sub = (
 
 export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgment {
   const { facts, assessment } = input;
+  // V4A §20 — ONLY `reducedPrecision` is taken from the assessment. The scored dimensions (BOND/FRICTION/
+  // ELEMENT tiers, computed from `bond.points + friction.points + element.points` against hand-chosen
+  // thresholds) are deliberately NOT read here: they are a consumer-facing summary, and letting them decide a
+  // professional stance is exactly the numeric authority this sprint removes. Deleting the bindings — rather
+  // than promising not to use them — is what makes the decoupling structural.
   const reduced = assessment.reducedPrecision;
-  const bond = assessment.dimensions.find((d) => d.key === 'BOND')!;
-  const friction = assessment.dimensions.find((d) => d.key === 'FRICTION')!;
 
   const dayCombo = facts.dayStemRelation?.kind === 'STEM_COMBINATION';
   const dayClash = facts.dayStemRelation?.kind === 'STEM_CLASH';
@@ -91,10 +94,28 @@ export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgme
   const marStance: Stance = marAgainst.length > 0 ? 'AGAINST' : marFor.length > 0 ? 'FOR' : NO_SIGNAL;
 
   // ── CONFLICT ────────────────────────────────────────────────────────────────────────────────────
-  const conflictHeavy = friction.signal === 'WATCH';
-  const conflictEvidence = conflictHeavy
-    ? [ev('두 사람 사이 충·형·파·해 다수', friction.verdict, 'CONFLICT')]
-    : [ev('두 사람 사이 충돌 적음', friction.verdict, 'CONFLICT')];
+  //
+  // V4A §20 — DECOUPLED FROM THE NUMERIC TIER. This axis used to read `friction.signal === 'WATCH'`, which is a
+  // label off `bond.points + friction.points + element.points` with hand-chosen thresholds. Whatever that tier
+  // is worth as a consumer-facing summary, it must not carry VERDICT AUTHORITY in the professional path: the
+  // divination judgment has to stand on named relations, not on a weighted sum computed for another purpose.
+  //
+  // The same facts the tier was built from are available here directly, so they are read directly. The tier's
+  // prose survives only as DISPLAY context on an axis whose stance was decided elsewhere.
+  const CLASH_KINDS = new Set(['BRANCH_CLASH', 'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT', 'BRANCH_HARM', 'BRANCH_DESTRUCTION', 'STEM_CLASH']);
+  const namedClashes = [
+    ...facts.crossBranchRelations.filter((r) => CLASH_KINDS.has(r.relation.kind)),
+    ...facts.crossStemRelations.filter((r) => CLASH_KINDS.has(r.relation.kind)),
+  ];
+  // 일지(couple seat) 충·형 is the one that decides the CONFLICT axis; elsewhere it is friction, not the couple.
+  const conflictHeavy = daySeatStrain || dayClash;
+  const conflictEvidence = namedClashes.length > 0
+    ? namedClashes.slice(0, 3).map((r) => ev(
+      `두 사람 사이 ${r.relation.kind}`,
+      conflictHeavy ? '두 사람이 마주 앉는 자리에서 직접 부딪힙니다.' : '부딪히는 지점이 있으나 두 사람의 자리 자체는 아닙니다.',
+      'CONFLICT',
+    ))
+    : [ev('두 사람 사이 충·형·파·해 없음', '두 사람 사이에 직접 부딪히는 관계가 잡히지 않습니다.', 'CONFLICT')];
 
   // ── MONEY / HOUSEHOLD (REAL AXIS — was label-only) ──────────────────────────────────────────────
   const moneyFor: JudgmentEvidence[] = [];
@@ -159,12 +180,26 @@ export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgme
   }
 
   const subs: DomainSubJudgment[] = [
-    sub('RELATION_BOND', bondStance, bond.verdict, bondFor, bondAgainst, reduced),
+    sub('RELATION_BOND', bondStance,
+      // The tier's own sentence is a summary of a weighted sum; the axis conclusion states the structure.
+      dayClash ? '생각을 정하는 층에서 정면으로 부딪힙니다.'
+        : dayCombo && daySeatHarmony ? '마음이 정해지는 층과 함께 있는 자리가 모두 맞물립니다.'
+          : dayCombo ? '마음이 정해지는 층에서 서로 끌립니다.'
+            : daySeatHarmony ? '함께 있는 자리가 서로 편안하게 맞물립니다.'
+              : '끌리는 힘 쪽으로 두드러진 관계가 잡히지 않습니다.',
+      bondFor, bondAgainst, reduced),
     sub('RELATION_STABILITY', marStance,
       marAgainst.length ? '같이 사는 과정의 난도는 높게 봅니다.' : marFor.length ? '같이 사는 자리는 맞물립니다.' : '배우자 자리에 두드러진 신호는 없습니다.',
       marFor, marAgainst, reduced),
-    sub('CONFLICT', conflictHeavy ? 'AGAINST' : 'FOR', friction.verdict,
-      conflictHeavy ? [] : conflictEvidence, conflictHeavy ? conflictEvidence : [], reduced),
+    sub('CONFLICT',
+      conflictHeavy ? 'AGAINST' : namedClashes.length > 0 ? 'CONDITIONAL_AGAINST' : 'FOR',
+      conflictHeavy
+        ? '두 사람이 마주 앉는 자리에서 직접 부딪히는 구조입니다.'
+        : namedClashes.length > 0
+          ? '부딪히는 지점은 있으나 두 사람의 자리 자체는 아닙니다.'
+          : '두 사람 사이에 직접 부딪히는 관계는 잡히지 않습니다.',
+      conflictHeavy || namedClashes.length > 0 ? [] : conflictEvidence,
+      conflictHeavy || namedClashes.length > 0 ? conflictEvidence : [], reduced),
     sub('MONEY_RETENTION', moneyStance,
       moneyAgainst.length ? '돈·살림에서는 부딪히는 자리가 있습니다.' : moneyFor.length ? '돈·살림은 서로 굴러가는 편입니다.' : '돈 쪽으로는 뚜렷한 신호가 잡히지 않습니다.',
       moneyFor, moneyAgainst, reduced),
@@ -185,7 +220,8 @@ export function judgePairMyungri(input: PairMyungriJudgeInput): DivinationJudgme
     ...(reduced ? { applicabilityReason: '두 분 중 한 명 이상 출생시간이 확정되지 않아 정밀도가 제한됩니다.' } : {}),
     questionDomain: input.questionDomain, temporalScope: 'NATAL',
     stance: primary.stance, dominantConclusion,
-    dominantFactor: dayCombo ? '일간 천간합' : dayClash ? '일간 천간충' : daySeatStrain ? '일지 충·형·해' : `종합 ${assessment.overallLabel}`,
+    dominantFactor: dayCombo ? '일간 천간합' : dayClash ? '일간 천간충' : daySeatStrain ? '일지 충·형·해'
+      : namedClashes.length > 0 ? `두 사람 사이 ${namedClashes[0].relation.kind}` : '두 사람 사이 직접 관계 없음',
     directEvidence: subs.flatMap((s) => s.evidence),
     counterEvidence: subs.flatMap((s) => s.counterEvidence),
     internalContradictions: bondPositive && conflictHeavy ? ['끌리는 힘과 부딪히는 자리가 함께 있습니다.'] : [],

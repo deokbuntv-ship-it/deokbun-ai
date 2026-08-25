@@ -10,12 +10,9 @@ export {
   DIVINATION_VERDICT_VERSION,
   AGAINST_STANCES,
   FOR_STANCES,
-  countSyntheticInferences,
   evidenceAdequacy,
   isDirectional,
   stanceValence,
-  type DivinationProposition,
-  type InferenceDerivation,
   type ContradictionResolution,
   type ContradictionResolutionKind,
   type CrossDivinationVerdict,
@@ -41,7 +38,7 @@ export { readNatalBaseline, natalSupportForDomain, domainFamily, type NatalBasel
 export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
 export { judgeQimen, doorClass, type QimenJudgeInput } from './qimenJudge';
-export { judgeCross, type CrossJudgeInput } from './crossJudge';
+export { judgeCross, judgeCrossReasoned, type CrossJudgeInput } from './crossJudge';
 export { judgePairMyungri, judgePairZiwei, type PairMyungriJudgeInput } from './compatibilityJudge';
 export { renderVerdictDirective, verdictEvidenceLines, verdictIsDirectional } from './verdictDirective';
 export {
@@ -55,3 +52,34 @@ export {
   DIVINATION_STRENGTH_METHOD, DIVINATION_YONGSHIN_METHOD, STRENGTH_LABEL,
   type DayMasterStrengthJudgment, type YongshinJudgment, type StrengthClassification, type StrengthInput,
 } from './myungriStrength';
+
+// ── V4A — PROPOSITION GRAPH REASONING KERNEL ────────────────────────────────────────────────────
+export {
+  classifySynthesis,
+  computeAdequacy,
+  countRealSynthesis,
+  runDerivations,
+  standingPropositions,
+  supersedes,
+  resetIds,
+  PRIMITIVE_RULE,
+  type AdequacyLevel,
+  type ConclusionDirection,
+  type ConclusionType,
+  type DerivationContext,
+  type DerivationRule,
+  type DivinationPremise,
+  type PremiseApplicability,
+  type PremiseRole,
+  type PropositionAdequacy,
+  type ReasonedProposition,
+  type RestrictionKind,
+  type SemanticRelation,
+  type SynthesisClass,
+} from './reasoning/kernel';
+export { buildMyungriPremises, type MyungriPremiseInput } from './reasoning/myungriPremises';
+export { MYUNGRI_RULES, primitivePropositions } from './reasoning/myungriRules';
+export { reasonMyungri, myungriSynthesisCensus, type MyungriReasoning } from './reasoning/myungriReasoner';
+ export { reasonCross, crossSynthesisCensus, type CrossReasoning, type CrossReasonInput } from './reasoning/crossReasoner';
+ export { adaptJudgment } from './reasoning/disciplineAdapter';
+ export { classifyPair, decideDominance as decideCrossDominance, DOMINANCE_TEXT, type CrossRelation, type CrossDerivation } from './reasoning/crossRules';

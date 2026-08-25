@@ -28,6 +28,9 @@ const DIRECTION_INSTRUCTION: Record<Stance, string> = {
   CONDITIONAL_AGAINST: '결론은 "범위를 줄이는 쪽"입니다. 무엇을 줄여야 하는지 말하십시오.',
   AGAINST: '결론은 "하지 않는 쪽"입니다. 분명하게 말하십시오.',
   STRONGLY_AGAINST: '결론은 "하지 않는 쪽"입니다. 흐리지 말고 분명하게 말하십시오.',
+  // V4A §12 — the question was answered, but it was never a decision. Forcing 하는 쪽/않는 쪽 onto
+  // "제 성격이 어떤가요?" or "왜 자꾸 부딪히나요?" is a category error, not a strong answer.
+  STRUCTURAL_ANSWER: '이 질문은 결정을 묻는 질문이 아닙니다. 하라/하지 마라로 답하지 말고, 구조와 원인을 그대로 설명하십시오.',
   INSUFFICIENT_DATA: '지금 근거로는 방향을 정하지 않습니다. 무엇이 있어야 볼 수 있는지 솔직하게 말하십시오.',
   // §12 — CONTRADICTION ≠ FORCED_DECISION. When the chart genuinely carries no directional signal, saying so
   // is the professional answer; do NOT manufacture a 좋다/나쁘다 to sound confident.

@@ -39,7 +39,7 @@ describe('§29 — follow-up carries the whole judgment, not a polarity stub', (
     // what a WHY turn would carry forward:
     const carried = meta.divinationVerdict!;
     const myungri = carried.disciplineJudgments.find((j) => j.discipline === 'MYUNGRI')!;
-    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약(억부)', '용신(억부)']));
+    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약·용신(판정 보류)']));
     expect(myungri.directEvidence.some((e) => e.fact.startsWith('일간 강약:'))).toBe(true);
     expect(carried.disciplineJudgments.length).toBe(3); // Ziwei/Qimen are NOT dropped
     expect(carried.axisVerdicts.length).toBeGreaterThan(0); // cross-inference survives
@@ -73,7 +73,7 @@ describe('§29 — follow-up carries the whole judgment, not a polarity stub', (
     // both turns must be judged with the same depth apparatus
     for (const v of [q1, q2]) {
       const m = v.disciplineJudgments.find((j) => j.discipline === 'MYUNGRI')!;
-      expect(m.factGroupsUsed).toEqual(expect.arrayContaining(['원국 십신 배치', '일간 강약(억부)']));
+      expect(m.factGroupsUsed).toEqual(expect.arrayContaining(['원국 십신 배치', '일간 강약·용신(판정 보류)']));
       expect(v.axisVerdicts.length).toBeGreaterThan(0);
     }
   });

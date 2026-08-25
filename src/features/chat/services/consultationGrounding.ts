@@ -56,7 +56,7 @@ import type { QimenBoard, QimenResult } from '@/features/qimen/domain/qimenTypes
 import type { ZiweiChart, ZiweiResult } from '@/features/ziwei/domain/ziweiTypes';
 import {
   judgeCross,
-  judgeMyungri,
+  reasonMyungri,
   judgeQimen,
   judgeZiwei,
   type CrossDivinationVerdict,
@@ -507,23 +507,32 @@ export async function buildConsultationGrounding(
     const q = question ?? '';
     const questionDomain = resolveJudgmentDomain(q);
     const asksTiming = classifyTimingQuestion(q);
+    const questionIntent = resolveQuestionIntent(q);
+    // V4A §28 — the PAID path runs the premise→proposition→derivation kernel. The judgment below is a
+    // projection of that graph, so production and the QA pack exercise the same reasoning.
+    const myungriReasoning = reasonMyungri({
+      question: q,
+      questionDomain,
+      questionIntent,
+      subject: draft.subject?.displayName ?? '본인',
+      hourKnown: judgeFacts?.hourKnown ?? false,
+      natal: judgeFacts?.natal ?? null,
+      activeDaewoon: judgeFacts?.activeDaewoon ?? null,
+      sewoon: judgeFacts?.sewoon ?? null,
+      wolwoon: judgeFacts?.wolwoon ?? null,
+      asksTiming,
+    });
     const judgments = [
-      judgeMyungri({
-        question: q,
-        questionDomain,
-        hourKnown: judgeFacts?.hourKnown ?? false,
-        // DEPTH REBUILD: the FULL natal structure now reaches the judge. This field was literally `null`
-        // before — the independent audit's headline Myungri finding.
-        natal: judgeFacts?.natal ?? null,
-        activeDaewoon: judgeFacts?.activeDaewoon ?? null,
-        sewoon: judgeFacts?.sewoon ?? null,
-        wolwoon: judgeFacts?.wolwoon ?? null,
-        asksTiming,
-      }),
+      myungriReasoning.judgment,
       judgeZiwei({ question: q, questionDomain, chart: ziweiParts.chart, availability: ziweiParts.availability }),
       judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
     ];
-    divinationVerdict = judgeCross({ question: q, questionDomain, judgments, asksTiming, questionIntent: resolveQuestionIntent(q) });
+    divinationVerdict = judgeCross({
+      question: q, questionDomain, judgments, asksTiming, questionIntent,
+      evaluatedAtEpochSeconds: now,
+      myungriPremises: myungriReasoning.premises,
+      myungriPropositions: myungriReasoning.standing,
+    });
   } catch {
     divinationVerdict = null; // fail-open — never break a paid answer on a judgment error
   }

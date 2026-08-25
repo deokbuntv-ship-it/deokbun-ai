@@ -1,15 +1,21 @@
-// V3 §6/§7 — REAL SYNTHETIC INFERENCE, MEASURED ON THE PRODUCTION PATH.
+// V4A §6/§7/§23 — REAL SYNTHETIC INFERENCE, MEASURED ON THE PRODUCTION PATH.
 //
-// The re-audit's charge was that the engine reworded engine output and called it judgment. That charge cannot
-// be answered with prose, so the verdict now declares HOW each of its claims was derived and this suite counts
-// them on real charts. §7 is explicit: a count of 0 is an automatic FAIL — so is a verdict whose every claim
-// is a SINGLE_FACT_RESTATEMENT, because that is the failure stated in different words.
+// The V3 version of this file counted `derivation !== 'SINGLE_FACT_RESTATEMENT'` on a proposition that was
+// built AFTER the stance was chosen, from an evidence-array length. It reported 108 real inferences; the
+// independent re-audit counted 0, and the re-audit was right.
+//
+// This version counts what `classifySynthesis` certifies: a NAMED derivation rule combined premises the caller
+// can inspect, and the conclusion is not something any one of those premises already said. Materiality itself
+// is proven separately, in `metamorphicReasoning.test.ts` — no static property of an object can show that.
 import { createHash } from 'crypto';
 
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
 import type { DigestProvider } from '@/features/interpretation';
 import { buildConsultationGrounding } from '@/features/chat/services/consultationGrounding';
-import { countSyntheticInferences, isDirectional, validatePaidReading, type CrossDivinationVerdict } from '@/features/divination';
+import {
+  PRIMITIVE_RULE, classifySynthesis, countRealSynthesis, isDirectional, validatePaidReading,
+  type CrossDivinationVerdict,
+} from '@/features/divination';
 
 const digestProvider: DigestProvider = {
   async sha256Utf8(input: string): Promise<string> {
@@ -43,66 +49,87 @@ const CASES: [string, BirthInfoDraft][] = [
   ['왜 자꾸 부딪힐까요?', chart({ birthYear: '2001', birthMonth: '9', birthDay: '18', birthHour: '11' })],
 ];
 
-describe('§7 — every produced verdict carries at least one real synthetic inference', () => {
+const census = (v: CrossDivinationVerdict) => countRealSynthesis(v.propositions, v.premises);
+
+describe('§7 — every produced verdict carries at least one CERTIFIED synthetic inference', () => {
   it.each(CASES)('%s', async (question, birth) => {
     const v = await verdict(question, birth);
-    // A verdict that declined to answer is allowed to carry no propositions — that IS the honest outcome.
-    if (!isDirectional(v.direction) && v.propositions.length === 0) return;
-    expect(v.propositions.length).toBeGreaterThan(0);
-    expect(countSyntheticInferences(v.propositions)).toBeGreaterThan(0);
+    if (v.propositions.length === 0) {
+      // Declining is allowed — but then nothing may be claimed either.
+      expect(isDirectional(v.direction)).toBe(false);
+      return;
+    }
+    expect(census(v).REAL_SYNTHETIC_INFERENCE).toBeGreaterThan(0);
   });
 
-  it('at least one case reaches a CROSS_DISCIPLINE or COMPOUND derivation, not just within-discipline', async () => {
+  it('no case ever produces an UNSUPPORTED inference (a claim standing on nothing)', async () => {
     const all = await Promise.all(CASES.map(([q, b]) => verdict(q, b)));
-    const kinds = new Set(all.flatMap((v) => v.propositions.map((p) => p.derivation)));
-    expect(kinds.has('MULTI_FACT_WITHIN_DISCIPLINE') || kinds.has('CROSS_DISCIPLINE_SYNTHESIS')).toBe(true);
+    for (const v of all) expect(census(v).UNSUPPORTED_INFERENCE).toBe(0);
   });
 });
 
-describe('§6 — every proposition is TRACEABLE, never free prose', () => {
-  it('a non-absence proposition names the engine facts it was built from', async () => {
+describe('§6/§23 — the graph is traceable, and its classification is earned not asserted', () => {
+  it('every proposition names its rule, and every non-PRIMITIVE one cites premises it did not restate', async () => {
     const v = await verdict('올해 돈을 벌 수 있을까요?');
+    const byId = new Map(v.premises.map((p) => [p.id, p]));
     for (const p of v.propositions) {
-      expect(p.claim.length).toBeGreaterThan(0);
-      expect(p.fromDisciplines.length).toBeGreaterThan(0);
-      if (p.derivation !== 'STRUCTURAL_ABSENCE') expect(p.fromFacts.length).toBeGreaterThan(0);
+      expect(p.derivationRule.length).toBeGreaterThan(0);
+      if (p.derivationRule === PRIMITIVE_RULE) continue;
+      const sources = [...p.supportingPremiseIds, ...p.opposingPremiseIds, ...p.derivedFromPropositionIds];
+      expect(sources.length).toBeGreaterThan(0);
+      // whatever it concluded, it did not simply repeat one of its own premises verbatim
+      for (const id of [...p.supportingPremiseIds, ...p.opposingPremiseIds]) {
+        expect(byId.get(id)?.assertion).not.toBe(p.assertion);
+      }
     }
   });
 
-  it('a CROSS_DISCIPLINE_SYNTHESIS names more than one discipline (or is not claimed)', async () => {
-    const all = await Promise.all(CASES.map(([q, b]) => verdict(q, b)));
-    for (const p of all.flatMap((v) => v.propositions)) {
-      if (p.derivation === 'CROSS_DISCIPLINE_SYNTHESIS') expect(p.fromDisciplines.length).toBeGreaterThan(1);
+  it('every premise link RESOLVES — a proposition cannot cite a premise that was not persisted', async () => {
+    const v = await verdict('지금 사업을 확장해도 될까요?', CASES[3][1]);
+    const ids = new Set(v.premises.map((p) => p.id));
+    const propIds = new Set(v.propositions.map((p) => p.id));
+    for (const p of v.propositions) {
+      for (const id of [...p.supportingPremiseIds, ...p.opposingPremiseIds]) expect(ids.has(id)).toBe(true);
+      for (const id of p.derivedFromPropositionIds) expect(propIds.has(id) || ids.has(id)).toBe(true);
     }
   });
 
-  it('a SINGLE_FACT_RESTATEMENT is labelled as such and never counted as inference', async () => {
-    const all = await Promise.all(CASES.map(([q, b]) => verdict(q, b)));
-    for (const v of all) {
-      const restatements = v.propositions.filter((p) => p.derivation === 'SINGLE_FACT_RESTATEMENT');
-      expect(countSyntheticInferences(v.propositions)).toBe(v.propositions.length - restatements.length);
+  it('PRIMITIVE propositions are counted as STATIC_RULE_OUTPUT, never as inference', async () => {
+    const v = await verdict('저축이 남을까요?');
+    const byId = new Map(v.premises.map((p) => [p.id, p]));
+    for (const p of v.propositions.filter((x) => x.derivationRule === PRIMITIVE_RULE)) {
+      expect(classifySynthesis(p, byId)).toBe('STATIC_RULE_OUTPUT');
+    }
+  });
+
+  it('Ziwei/Qimen are honestly under-claimed — they contribute no REAL synthesis while unmigrated (§19)', async () => {
+    const v = await verdict('올해 돈을 벌 수 있을까요?');
+    const byId = new Map(v.premises.map((p) => [p.id, p]));
+    for (const p of v.propositions.filter((x) => x.discipline === 'ZIWEI' || x.discipline === 'QIMEN')) {
+      expect(classifySynthesis(p, byId)).not.toBe('REAL_SYNTHETIC_INFERENCE');
+    }
+  });
+});
+
+describe('§12 — a non-decision question is never answered with a decision', () => {
+  it.each([
+    ['제 타고난 성격이 어떤가요?', chart()],
+    ['왜 자꾸 부딪힐까요?', chart({ birthYear: '2001', birthMonth: '9', birthDay: '18', birthHour: '11' })],
+  ])('%s', async (question, birth) => {
+    const v = await verdict(question, birth);
+    expect(isDirectional(v.direction)).toBe(false);
+    if (v.direction === 'STRUCTURAL_ANSWER') {
+      expect(v.propositions.some((p) => p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL')).toBe(true);
     }
   });
 });
 
 describe('§28 — a directional verdict states its direction in its OWN headline', () => {
-  // The engine used to headline a chart DESCRIPTION ("명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어옵니다")
-  // for a CONDITIONAL_AGAINST verdict. A paying user cannot act on that; it describes the chart and answers
-  // nothing. The guard is run against the verdict's own text so an unusable headline fails here, not in review.
   it.each(CASES)('%s', async (question, birth) => {
     const v = await verdict(question, birth);
     if (!isDirectional(v.direction)) return;
     const findings = validatePaidReading(v, `${v.primaryConclusion} ${v.actionableInterpretation}`)
       .filter((f) => f.code === 'VERDICT_LOST_IN_PROSE' || f.code === 'VERDICT_REVERSED_IN_PROSE');
     expect(findings).toEqual([]);
-  });
-});
-
-describe('§7 — the counter is honest (it would actually fail a reworded-output verdict)', () => {
-  it('counts zero when every claim is a restatement', () => {
-    expect(countSyntheticInferences([
-      { claim: 'a', derivation: 'SINGLE_FACT_RESTATEMENT', fromDisciplines: ['MYUNGRI'], fromFacts: ['f'] },
-      { claim: 'b', derivation: 'SINGLE_FACT_RESTATEMENT', fromDisciplines: ['ZIWEI'], fromFacts: ['g'] },
-    ])).toBe(0);
   });
 });

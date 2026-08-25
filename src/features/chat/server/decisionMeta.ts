@@ -119,6 +119,37 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   }
   if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return undefined;
   if (!Array.isArray(o.evidenceReferences)) return undefined;
+
+  // V4A §21/§22 — THE PROPOSITION GRAPH MUST SURVIVE THE ROUND TRIP.
+  //
+  // This parser is a strict WHITELIST: a field it does not validate is silently dropped on restore. That is
+  // exactly how the V2 verdict vanished between turns while an in-memory test stayed green. A follow-up
+  // ("왜?", "돈은?") has to reason over the SAME graph the first answer was built from, so the propositions
+  // are validated structurally — id, the rule that derived them, and the premise links — and a malformed
+  // graph fails the whole verdict closed rather than restoring a hollow one.
+  if (!Array.isArray(o.propositions)) return undefined;
+  for (const p of o.propositions) {
+    if (p === null || typeof p !== 'object') return undefined;
+    const pr = p as Record<string, unknown>;
+    if (typeof pr.id !== 'string' || typeof pr.assertion !== 'string') return undefined;
+    if (typeof pr.derivationRule !== 'string' || typeof pr.conclusionType !== 'string') return undefined;
+    if (typeof pr.questionAxis !== 'string' || typeof pr.temporalScope !== 'string') return undefined;
+    if (!Array.isArray(pr.supportingPremiseIds) || !Array.isArray(pr.opposingPremiseIds)) return undefined;
+    if (!Array.isArray(pr.derivedFromPropositionIds)) return undefined;
+    if (pr.adequacy === null || typeof pr.adequacy !== 'object') return undefined;
+  }
+  // Premises are optional on the wire (a verdict from a discipline not yet on the graph has none), but when
+  // present they must be intact — a proposition whose premises were dropped cannot be re-examined.
+  if (o.premises !== undefined) {
+    if (!Array.isArray(o.premises)) return undefined;
+    for (const p of o.premises) {
+      if (p === null || typeof p !== 'object') return undefined;
+      const pr = p as Record<string, unknown>;
+      if (typeof pr.id !== 'string' || typeof pr.assertion !== 'string') return undefined;
+      if (typeof pr.semanticRelation !== 'string' || typeof pr.questionAxis !== 'string') return undefined;
+      if (!Array.isArray(pr.sourceFactIds)) return undefined;
+    }
+  }
   return v as CrossDivinationVerdict;
 }
 

@@ -61,6 +61,13 @@ export type Stance =
    * a verdict must not be manufactured out of weak/absent evidence.
    */
   | 'INSUFFICIENT_EVIDENCE'
+  /**
+   * V4A §12 — the question was answered, but it was never a decision. "제 성격이 어떤가요?" and "왜 자꾸
+   * 부딪히나요?" have real, well-grounded answers that are STRUCTURAL or CAUSAL; forcing them through the
+   * FOR/AGAINST pipeline was a category error, and calling them INSUFFICIENT would be a lie — the engine has
+   * plenty to say. Not directional, so direction guards correctly skip it.
+   */
+  | 'STRUCTURAL_ANSWER'
   | 'NOT_APPLICABLE';
 
 /** Stances that assert a positive/negative direction (used by guards + the cross judge). */
@@ -171,13 +178,12 @@ export type DomainSubJudgment = {
 export type EvidenceStrength = 'STRONG' | 'MODERATE' | 'WEAK' | 'NONE';
 
 /**
- * How well-supported ONE axis claim is — derived from the QUALITY of its support, never from how many bullets
- * it collected.
+ * DEPRECATED (V4A §11). Merged support and contradiction into ONE scale, so adding a counter-premise could make
+ * a claim look BETTER supported — a disguised score, which the re-audit flagged. Superseded by
+ * `computeAdequacy` in the reasoning kernel, which reports support and counter adequacy SEPARATELY and can
+ * therefore never let opposition inflate confidence. Kept only until the last legacy caller is migrated.
  *
- * V3 §5/§50: every judge previously did `evidence.length + counterEvidence.length >= 3 ? 'STRONG' : >= 1 ?
- * 'MODERATE' : 'WEAK'`. Those thresholds are ours, no canon sets them, and three adjacent hints could outrank
- * one 충 landing squarely on the asked palace. What actually makes support strong is that a named fact speaks
- * DIRECTLY to this axis and the input it was computed from is exact — so that is what is read.
+ * @deprecated use `computeAdequacy` from `reasoning/kernel`.
  */
 export function evidenceAdequacy(sub: Pick<DomainSubJudgment, 'stance' | 'directness' | 'reliability'> & {
   evidence?: JudgmentEvidence[];
@@ -237,35 +243,15 @@ export type DivinationJudgment = {
 };
 
 /**
- * §6 — HOW a claim was arrived at. Only `SINGLE_FACT_RESTATEMENT` is not an inference; everything else
- * required combining things the engines did not already state together.
+ * V4A — a claim the verdict makes, WITH THE GRAPH IT STANDS ON.
+ *
+ * The V3 shape (`{claim, derivation, fromDisciplines, fromFacts}`) was built AFTER the stance was chosen and
+ * copied the already-selected conclusion, so `derivation: 'MULTI_FACT_WITHIN_DISCIPLINE'` meant only "the
+ * evidence array had two entries". It is replaced by `ReasonedProposition`, which carries the premises it was
+ * derived from and the NAMED rule that derived it — the two things that make synthesis checkable.
  */
-export type InferenceDerivation =
-  /** One engine fact, reworded. The engine already said this — no reasoning was added. */
-  | 'SINGLE_FACT_RESTATEMENT'
-  /** ≥2 facts inside ONE discipline combined into a claim neither fact states alone. */
-  | 'MULTI_FACT_WITHIN_DISCIPLINE'
-  /** ≥2 disciplines disagreed and the conflict was RESOLVED into one claim with a stated reason. */
-  | 'CROSS_DISCIPLINE_SYNTHESIS'
-  /** Two opposite-looking axes are BOTH true and were framed as one compound truth (돈은 들어오나 남지 않는다). */
-  | 'COMPOUND_TRUTH'
-  /** The conclusion rests on what the chart does NOT contain — an absence no single fact states. */
-  | 'STRUCTURAL_ABSENCE';
-
-/** One claim the verdict makes, with its derivation and the facts it was built from (§6). */
-export type DivinationProposition = {
-  claim: string;
-  derivation: InferenceDerivation;
-  /** Disciplines whose facts were actually consumed to reach this claim. */
-  fromDisciplines: Discipline[];
-  /** The named engine facts this claim rests on — traceable, never prose. */
-  fromFacts: string[];
-};
-
-/** §7 — a verdict that produced ZERO synthetic inferences did no reasoning. Callers treat 0 as a failure. */
-export function countSyntheticInferences(propositions: DivinationProposition[]): number {
-  return propositions.filter((p) => p.derivation !== 'SINGLE_FACT_RESTATEMENT').length;
-}
+import type { DivinationPremise, ReasonedProposition } from './reasoning/kernel';
+export type { DivinationPremise, ReasonedProposition };
 
 /** How a cross-discipline disagreement was resolved (§10). NEVER 'NEUTRALIZED' — that is not an option. */
 export type ContradictionResolutionKind =
@@ -309,6 +295,16 @@ export type DisciplineContribution = {
 export type CrossDivinationVerdict = {
   question: string;
   questionDomain: JudgmentDomain;
+  /**
+   * V4A §21 — everything a FOLLOW-UP needs to reason over the SAME graph rather than start again. The V2
+   * verdict kept only a polarity snapshot, so "왜?" recomputed from scratch and could contradict the answer it
+   * was explaining.
+   */
+  questionIntent: QuestionIntent;
+  /** Server evaluation instant, so a follow-up restores the same temporal frame. */
+  evaluatedAtEpochSeconds: number | null;
+  /** The grounded premises the propositions stand on — without these a proposition cannot be re-examined. */
+  premises: DivinationPremise[];
 
   /** The decisive answer, one plain-Korean sentence. */
   primaryConclusion: string;
@@ -340,7 +336,11 @@ export type CrossDivinationVerdict = {
    * checkable instead of asserted: a verdict whose propositions are all SINGLE_FACT_RESTATEMENT performed no
    * inference at all, it just reworded the engines' output, and §7 fails such a verdict outright.
    */
-  propositions: DivinationProposition[];
+  /**
+   * The FULL proposition graph — leaves and the propositions they were derived from. Call
+   * `standingPropositions()` for just the conclusions that survived supersession.
+   */
+  propositions: ReasonedProposition[];
 
   agreementPoints: string[];
   contradictionPoints: string[];

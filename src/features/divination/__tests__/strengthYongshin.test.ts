@@ -184,7 +184,7 @@ describe('REAL RUNTIME — the structure reaches the paid consultation without a
   it('the Myungri judgment consumes the strength structure', async () => {
     const v = await groundingFor('올해 돈을 벌 수 있을까요?');
     const myungri = v.disciplineJudgments.find((j) => j.discipline === 'MYUNGRI')!;
-    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약(억부)']));
+    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약·용신(판정 보류)']));
   });
 
   it('no 신강/신약 verdict word is emitted to the paying user', async () => {

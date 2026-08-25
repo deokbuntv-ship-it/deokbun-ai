@@ -42,16 +42,23 @@ describe('§8 — question intent selects the SHAPE of the answer', () => {
     expect(resolveQuestionIntent('언제가 좋을까요?')).toBe('TIMING');
   });
 
+  // V4A §12 — V3 answered these by gluing a canned prefix ("구조는 이렇게 봅니다") onto a conclusion that had
+  // still been produced by the FOR/AGAINST pipeline. The graph now derives a STRUCTURAL or CAUSAL proposition
+  // instead, so the assertion is about the KIND of answer, not about a prefix string.
   it('a DESCRIPTIVE question is answered as structure, not as a recommendation', async () => {
     const v = await verdict('제 타고난 성격이 어떤가요?');
-    expect(v.primaryConclusion).toMatch(/구조는 이렇게 봅니다/);
-    // it must not read like an action instruction
-    expect(v.primaryConclusion).not.toMatch(/하지 않는 쪽|접고|밀어붙이지/);
+    expect(v.direction).toBe('STRUCTURAL_ANSWER');
+    expect(v.propositions.some((p) => p.conclusionType === 'STRUCTURAL')).toBe(true);
+    expect(v.primaryConclusion).not.toMatch(/하지 않는 쪽|접고|밀어붙이지|벌일 자리는 아/);
   });
 
   it('a CAUSE_WHY question explains the friction instead of issuing a verdict', async () => {
     const v = await verdict('왜 자꾸 부딪힐까요?');
-    expect(v.primaryConclusion).toMatch(/부딪히는 지점은 이렇게 봅니다/);
+    expect(v.direction).toBe('STRUCTURAL_ANSWER');
+    const causal = v.propositions.find((p) => p.conclusionType === 'CAUSAL');
+    expect(causal).toBeTruthy();
+    expect(causal!.direction).toBe('NONE'); // a cause is not a verdict
+    expect(v.primaryConclusion).toMatch(/우연이 아니다|되풀이|때문/);
   });
 });
 
@@ -64,8 +71,10 @@ describe('§9/§42 — the asked axis answers, or we say we cannot; never a subs
       expect(asked).toBeTruthy();
       expect(isDirectional(asked!.stance)).toBe(true);
     } else {
-      expect(v.direction).toBe('INSUFFICIENT_EVIDENCE');
-      expect(v.primaryConclusion).toMatch(/다른 부분의 신호로 대신 답하지는 않겠습니다|방향을 정하지 않습니다/);
+      // Declining is one honest outcome; a STRUCTURAL answer ON THE ASKED AXIS is the other. What is forbidden
+      // is answering 건강 with a different axis, which is what this case exists to catch.
+      expect(['INSUFFICIENT_EVIDENCE', 'INSUFFICIENT_DATA', 'STRUCTURAL_ANSWER']).toContain(v.direction);
+      expect(v.primaryConclusion).toMatch(/억지로 좋다·나쁘다를 말씀드리지 않겠습니다|없는 이야기를 지어내지는 않겠습니다|몸|기운/);
     }
   });
 

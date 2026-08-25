@@ -24,6 +24,7 @@ import {
   type JudgmentDomain,
   type JudgmentEvidence,
   type QuestionDirectness,
+  type QuestionIntent,
   type Stance,
   type TemporalScope,
 } from './contracts';
@@ -95,6 +96,10 @@ export type MyungriJudgeInput = {
   sewoon: TemporalLayerFacts | null;
   wolwoon: TemporalLayerFacts | null;
   asksTiming: boolean;
+  /** V4A §12 — what SHAPE of answer the question wants. Absent → OUTCOME (legacy behaviour). */
+  questionIntent?: QuestionIntent;
+  /** Whose chart this is, for premise attribution. */
+  subject?: string;
 };
 
 function directnessFor(layerDomain: JudgmentDomain, asked: JudgmentDomain): QuestionDirectness {

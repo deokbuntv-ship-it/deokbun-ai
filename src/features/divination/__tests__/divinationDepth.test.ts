@@ -340,10 +340,15 @@ describe('REAL-RUNTIME reachability (§18) — capabilities must work on the pro
 
   it('no verdict is manufactured from absent evidence on the real path', async () => {
     const v = await verdictFor(CHART_A, '제 타고난 성격이 어떤가요?');
-    if (!isDirectional(v.direction)) {
+    // V4A §12 — a descriptive question now has a THIRD honest outcome. It used to be either a (wrong)
+    // FOR/AGAINST or an admission of insufficiency; the graph can answer it structurally, which is neither a
+    // manufactured verdict nor a shrug. Whatever the shape, the answer must rest on named evidence.
+    if (v.direction === 'STRUCTURAL_ANSWER') {
+      expect(v.evidenceReferences.some((r) => r.lines.length > 0)).toBe(true);
+      expect(v.propositions.some((p) => p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL')).toBe(true);
+    } else if (!isDirectional(v.direction)) {
       expect(['INSUFFICIENT_EVIDENCE', 'INSUFFICIENT_DATA']).toContain(v.direction);
     } else {
-      // if it IS directional, it must rest on named evidence
       expect(v.evidenceReferences.some((r) => r.lines.length > 0)).toBe(true);
     }
   });

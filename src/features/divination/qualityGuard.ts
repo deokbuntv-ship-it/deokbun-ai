@@ -57,8 +57,13 @@ const GENERIC_ADVICE = [
 // caught real CONDITIONAL_AGAINST verdicts whose headline read "범위를 좁히는 쪽이 낫습니다" / "지키는 쪽이
 // 약해…" — plainly a direction to any Korean reader, but invisible to the original vocabulary, so the guard
 // reported VERDICT_LOST_IN_PROSE on prose that was not lost. Only unambiguous direction verbs are added.
-const PROSE_FOR = /(하는\s*쪽|가는\s*쪽|괜찮습니다|좋은\s*(시기|흐름)|열려\s*있|열리는|받쳐줍니다|받쳐\s*주|진행하|해도\s*(됩|좋)|맞습니다)/;
-const PROSE_AGAINST = /(하지\s*않는\s*쪽|아닙니다|미루|접|어렵|무리|막히|좋지\s*않|피하|난도가\s*높|쉽지\s*않|좁히|줄이|약해|벌일\s*자리는\s*아)/;
+//
+// NOTE ON KOREAN CONJUGATION: a stem is not a substring of its own conjugation — 막히다 becomes "막힙니다"
+// (막+힙), 열리다 becomes "열립니다" (열+립). Matching on `막히` therefore MISSES the polite form the engine
+// actually writes, which is how a headline that plainly stated a direction was reported as direction-less.
+// Each stem below lists the conjugated syllables it needs, not just the dictionary form.
+const PROSE_FOR = /(하는\s*쪽|가는\s*쪽|괜찮습니다|좋은\s*(시기|흐름)|열려|열리|열립|받쳐줍니다|받쳐\s*주|진행하|해도\s*(됩|좋)|맞습니다)/;
+const PROSE_AGAINST = /(하지\s*않는\s*쪽|아닙니다|미루|접|어렵|무리|막히|막힙|막혀|좋지\s*않|피하|난도가\s*높|쉽지\s*않|좁히|좁힙|줄이|줄입|약해|벌일\s*자리는\s*아)/;
 
 /**
  * Validate a composed paid reading against its own verdict. `prose` is the user-facing text (composed card or
@@ -95,8 +100,12 @@ export function validatePaidReading(
   if (isFor || isAgainst) {
     const saysFor = PROSE_FOR.test(text);
     const saysAgainst = PROSE_AGAINST.test(text);
-    // FOR_BUT_LATER / AGAINST_FOR_NOW legitimately contain BOTH (direction + timing caveat).
-    const timed = verdict.direction === 'FOR_BUT_LATER' || verdict.direction === 'AGAINST_FOR_NOW';
+    // Some verdicts legitimately contain BOTH directions:
+    //   · FOR_BUT_LATER / AGAINST_FOR_NOW — direction plus a timing caveat;
+    //   · a COMPOUND conclusion — "기회는 열리지만 잡았을 때 남는 쪽은 막힙니다" is two axes, both true, and
+    //     flattening it to one direction is the depth failure this engine exists to avoid (V4A §16).
+    const compound = verdict.propositions?.some((p) => p.conclusionType === 'COMPOUND') ?? false;
+    const timed = verdict.direction === 'FOR_BUT_LATER' || verdict.direction === 'AGAINST_FOR_NOW' || compound;
     if (!saysFor && !saysAgainst) {
       findings.push({ code: 'VERDICT_LOST_IN_PROSE', detail: '본문에 결론 방향이 드러나지 않습니다.' });
     } else if (!timed && isFor && saysAgainst && !saysFor) {

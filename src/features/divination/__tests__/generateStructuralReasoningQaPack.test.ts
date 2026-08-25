@@ -14,7 +14,7 @@ import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation'
 import type { DigestProvider } from '@/features/interpretation';
 import { buildConsultationGrounding, resolveQuestionIntent } from '@/features/chat/services/consultationGrounding';
 import {
-  countSyntheticInferences, isDirectional, validatePaidReading, judgeCross, judgePairMyungri, judgePairZiwei,
+  countRealSynthesis, standingPropositions, isDirectional, validatePaidReading, judgeCross, judgePairMyungri, judgePairZiwei,
   type CrossDivinationVerdict, type DivinationJudgment, type JudgmentDomain,
 } from '@/features/divination';
 import { buildCompatibilityEvidence } from '@/features/compatibility/engine';
@@ -115,13 +115,9 @@ async function verdictFor(birth: BirthInfoDraft, question: string, at: number): 
   return g.status === 'available' ? g.divinationVerdict ?? null : null;
 }
 
-const DERIVATION_KO: Record<string, string> = {
-  SINGLE_FACT_RESTATEMENT: '단일사실 재진술(추론 아님)',
-  MULTI_FACT_WITHIN_DISCIPLINE: '학문 내 다중사실 종합',
-  CROSS_DISCIPLINE_SYNTHESIS: '학문 간 충돌 해소',
-  COMPOUND_TRUTH: '복합진실(양축 동시 참)',
-  STRUCTURAL_ABSENCE: '구조적 부재로부터의 판단',
-};
+/** V4A — the census counts what `classifySynthesis` certifies, not a label attached after the fact. */
+const realSynth = (v: CrossDivinationVerdict) =>
+  countRealSynthesis(v.propositions, v.premises).REAL_SYNTHETIC_INFERENCE;
 
 /** Doctrine blockers must be VISIBLE in the pack — a withheld judgment that nobody can see is a hidden gap. */
 function blockersIn(v: CrossDivinationVerdict): string[] {
@@ -153,7 +149,7 @@ function renderJudgment(j: DivinationJudgment | undefined): string[] {
 function renderCase(c: Case, v: CrossDivinationVerdict): string {
   const by = (d: DivinationJudgment['discipline']) => v.disciplineJudgments.find((j) => j.discipline === d);
   const asked = v.axisVerdicts.find((a) => a.domain === v.questionDomain);
-  const synth = countSyntheticInferences(v.propositions);
+  const synth = realSynth(v);
   const blockers = blockersIn(v);
   return [
     `## [${c.group}] ${c.label}`,
@@ -172,8 +168,10 @@ function renderCase(c: Case, v: CrossDivinationVerdict): string {
     `- SYNTHETIC_INFERENCES = ${synth} / ${v.propositions.length}`,
     '- PROPOSITIONS:',
     ...(v.propositions.length
-      ? v.propositions.map((p) =>
-          `    - [${DERIVATION_KO[p.derivation] ?? p.derivation}] (${p.fromDisciplines.join('+')}) ${p.claim}\n        ← ${p.fromFacts.slice(0, 3).join(' / ') || '(명시적 사실 없음 — 부재로부터의 판단)'}`)
+      ? standingPropositions(v.propositions).map((p) =>
+          `    - [${p.derivationRule}] (${p.discipline}) ${p.assertion}\n        ← ${[...p.supportingPremiseIds, ...p.opposingPremiseIds]
+            .map((id) => v.premises.find((x) => x.id === id)?.sourceFactIds[0])
+            .filter(Boolean).slice(0, 3).join(' / ') || '(전제 없음)'}`)
       : ['    - (없음 — 방향을 정하지 않은 판정)']),
     `- CONTRADICTION_RESOLUTIONS = ${v.contradictionResolutions.length ? v.contradictionResolutions.map((r) => `${r.kind}: ${r.resolution}`).join(' / ') : '없음'}`,
     `- WHY_OTHER_DID_NOT_DOMINATE = ${v.contradictionResolutions.map((r) => r.whyOtherDidNotDominate).join(' / ') || '해당 없음'}`,
@@ -216,7 +214,7 @@ describe('Structural reasoning QA pack (§39/§41)', () => {
 
     // §7 — the pack must not contain a single case that performed zero inference while still answering.
     const answeredWithoutInference = produced.filter(
-      (p) => p.v.propositions.length > 0 && countSyntheticInferences(p.v.propositions) === 0,
+      (p) => p.v.propositions.length > 0 && realSynth(p.v) === 0,
     );
     expect(answeredWithoutInference.map((p) => p.c.label)).toEqual([]);
 
@@ -274,7 +272,7 @@ describe('Structural reasoning QA pack (§39/§41)', () => {
     }
     expect(compatBlocks.length).toBeGreaterThanOrEqual(4);
 
-    const totalSynth = produced.reduce((n, p) => n + countSyntheticInferences(p.v.propositions), 0);
+    const totalSynth = produced.reduce((n, p) => n + realSynth(p.v), 0);
 
     // §13 BLOCKING ITEM — which asked axes NO discipline can natively examine. This is a coverage gap in the
     // engines, not an absence of signal in the chart, and it is the single biggest reason cases decline.
