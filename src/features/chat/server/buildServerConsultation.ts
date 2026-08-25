@@ -38,6 +38,7 @@ import {
   type SafetyRoute,
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
+import { classifyConsultationDomain } from './consultationDomain';
 import { groundingFromStoredDecision } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -261,6 +262,10 @@ export async function buildServerConsultation(
     followUpIntent === 'NEXT_YEAR' && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== '전반'
       ? previousDecision.decisionMeta.domain
       : null;
+  // §10/§14 — DOMAIN-first routing (presentation only, no new scoring): answer the question's life-domain
+  // first and never open with unrelated personality analysis. Carries the prior topic on a NEXT_YEAR
+  // follow-up so "그럼 내년은?" stays on the same subject (mirrors decisionMeta's carry).
+  const questionDomain = carriedDomain ?? classifyConsultationDomain(question);
 
   // 3) SERVER-owned prompt. buildPrompt hardcodes the system layers + puts each history turn's role from
   //    the (already sanitized) message, so no client-authored system block can enter.
@@ -281,8 +286,8 @@ export async function buildServerConsultation(
   // follow-up directive (when present) rides the exact same server-authored prompt.
   const buildMessages = (extraDirective?: string) => {
     const base = followUpDirective
-      ? `${renderAnswerPlanDirective(plan)}\n${followUpDirective}`
-      : renderAnswerPlanDirective(plan);
+      ? `${renderAnswerPlanDirective(plan, questionDomain)}\n${followUpDirective}`
+      : renderAnswerPlanDirective(plan, questionDomain);
     return buildPrompt({
       selectedContext,
       conversationSummary: safeConversationSummary,
@@ -323,6 +328,7 @@ export async function buildServerConsultation(
     grounding: effectiveGrounding,
     requireMitigation: followUpIntent === 'WHY' ? false : plan.requireMitigation,
     forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
+    forbidChecklistTone: true, // §13 — behavioral direction, never a productivity/service checklist
     polarity: followUpIntent === 'WHY' ? previousDecision?.polarity : plan.polarity,
     regenerate: async () => {
       try {

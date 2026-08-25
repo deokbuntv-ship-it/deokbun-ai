@@ -11,6 +11,7 @@
 import type { ConsultationGrounding, TargetPolarity } from '@/features/chat/prompts/grounding';
 import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
 import { resolveQuestionYears } from '@/features/chat/services/questionYears';
+import type { ConsultationDomain } from './consultationDomain';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 export type ConsultationMode = 'solo' | 'compatibility'; // extensibility seam (§38) — solo today
@@ -265,9 +266,14 @@ const POLARITY_TONE: Record<PolarityTier, string> = {
 
 // Compact directive appended to the prompt so the LLM verbalizes the SERVER's decision (§13/§17). No
 // internal field names reach the user — this is a system instruction only.
-export function renderAnswerPlanDirective(plan: AnswerPlan): string {
+export function renderAnswerPlanDirective(plan: AnswerPlan, domain?: ConsultationDomain): string {
   const lines: string[] = ['[상담 지침 — 서버 판단(사용자에게 그대로 노출하지 말 것)]'];
   lines.push('· 사용자는 답을 찾으러 왔습니다. 결론을 맨 먼저, 근거 범위 안에서 가능한 한 분명하게 말하십시오.');
+  // §10/§14 — QUESTION-FIRST domain routing (presentation only). Lead with the asked life-domain; do NOT open
+  // with unrelated personality/기질 analysis, and do NOT let every answer collapse into 재물/돈 by default.
+  if (domain && domain !== '전반') {
+    lines.push(`· 이 질문의 핵심 주제는 "${domain}"입니다. 그 주제에 대한 답을 맨 먼저 분명히 주고, 질문과 무관한 성격·타고난 기질 분석으로 답을 시작하지 마십시오. 근거가 닿는 다른 영역은 보조로만 덧붙이십시오.`);
+  }
   lines.push(`· ${ASSERTIVENESS_LINE[plan.assertiveness]}`);
   if (plan.polarity) {
     lines.push(`· ${POLARITY_TONE[plan.polarity]}(서버가 판단한 전반 흐름). 이 방향과 어긋나게 서술하지 말되, 없는 근거로 과장하지도 마십시오.`);

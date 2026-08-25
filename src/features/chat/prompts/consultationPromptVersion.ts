@@ -25,4 +25,10 @@
 // System Constitution ("2월을 먼저 추천 / 5월보다 7월이 더 유리 / 가장 좋다 / 1순위 / A가 B보다 낫다") and the
 // structured-output instruction ("더 나은 쪽 / 이 시기가 더 유리합니다"). Single decisions stay decisive;
 // cross-candidate winner/order is forbidden across the FULL prompt stack.
-export const CONSULTATION_PROMPT_VERSION = 'consultation@1.4.3';
+// 1.5.0 — Consultation V1 Finalization (interpretation depth): (a) QUESTION-FIRST domain routing — the
+// answer-plan directive names the asked life-domain and forbids opening with unrelated 성격/기질 analysis or
+// defaulting every answer to 재물; (b) NATAL+TEMPORAL synthesis — connect 원국 baseline + 대운 + 세운 to the
+// question in plain language, prefer ≥2 grounded facts, no ungrounded generic 처세 advice; (c) ACTION =
+// behavioral direction, not a productivity/service checklist (paired with a new output guard reusing the
+// Today/Monthly checklist-tone detectors + a regen directive clause). Same schema/frozen semantics.
+export const CONSULTATION_PROMPT_VERSION = 'consultation@1.5.0';

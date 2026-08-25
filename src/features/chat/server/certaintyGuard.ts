@@ -11,6 +11,7 @@ import {
   type ConsultationOutcome,
 } from '@/features/chat/prompts/structuredConsultation';
 import { containsEventGuarantee } from '@/features/monthly/server';
+import { containsProductivityChecklistTone, containsServiceChecklistTone } from '@/features/fortune-shared/contentQuality';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 
 // Bounded certainty adverb + an ASSERTIVE positive outcome nearby (반드시 성공합니다 / 무조건 잘 됩니다 /
@@ -145,6 +146,15 @@ export function containsCompatibilityHarm(text: string): boolean {
   return false;
 }
 
+// ── Productivity/service-checklist collapse guard (Consultation V1 Finalization §13) ─────────────
+// A consultation gives BEHAVIORAL DIRECTION, not a productivity to-do list, a finance/admin checklist, or
+// fabricated micro-tasks. REUSES the shipped Today/Monthly content-quality detectors (same fail-closed role
+// as containsRawGanji). High-precision: a real behavioral direction ("직접 결정하고 움직이는 쪽이 유리합니다")
+// never trips these — only 체크리스트/우선순위 N개/목록 정리/영수증·계좌 관리/최근 N일 constructs do.
+export function containsChecklistCoachTone(text: string): boolean {
+  return typeof text === 'string' && (containsProductivityChecklistTone(text) || containsServiceChecklistTone(text));
+}
+
 // Negative-compatibility mitigation (§D6): a poor-tier answer must carry ≥1 constructive relationship-
 // management direction, not fear/fatalism only.
 const CONSTRUCTIVE_DIRECTION = /맞춰|조율|대화|소통|이해|배려|노력하면|관리하면|신경\s*쓰면|방식을\s*맞추|시간을\s*두고|천천히|존중|표현하|먼저\s*다가|거리를\s*조절/;
@@ -154,7 +164,7 @@ export function hasConstructiveDirection(text: string): boolean {
 
 // A short directive appended to the SECOND (only) attempt. Names the fault(s) and re-orients the answer.
 export const CERTAINTY_REGEN_DIRECTIVE =
-  '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 고르거나 미는 표현 — 승자/1순위/가장 좋음뿐 아니라 "A로 진행하세요/A를 추천/권합니다/선택하는 편이 좋다/A가 더 낫다·적합하다/A에 무게를 둔다/B를 피하라/저라면 A" 같은 은근한 추천·선택·방향 제시도 모두 금지, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 어느 한쪽도 고르거나 권하지 말고 각 후보의 장점과 주의점을 균형 있게 설명한 뒤 "지금 기준으로는 한쪽을 더 낫다고 정하지 않습니다"로 맺으며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
+  '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 고르거나 미는 표현 — 승자/1순위/가장 좋음뿐 아니라 "A로 진행하세요/A를 추천/권합니다/선택하는 편이 좋다/A가 더 낫다·적합하다/A에 무게를 둔다/B를 피하라/저라면 A" 같은 은근한 추천·선택·방향 제시도 모두 금지, (3) 서버가 판단한 전반 흐름과 어긋나는 과장, (4) 체크리스트·할 일 목록·우선순위 N개·"최근 N일/N분"·영수증·계좌·서류 정리 같은 업무 생산성 코칭 말투. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 어느 한쪽도 고르거나 권하지 말고 각 후보의 장점과 주의점을 균형 있게 설명한 뒤 "지금 기준으로는 한쪽을 더 낫다고 정하지 않습니다"로 맺으며, 행동 조언은 목록이 아니라 태도·방향(예: "지금은 벌이기보다 다듬는 쪽")으로, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
 
 // Appended to the compatibility regeneration (§D5/§D6).
 export const COMPAT_REGEN_DIRECTIVE =
@@ -190,6 +200,7 @@ type GuardOpts = {
   polarity?: PolarityTier;
   forbidCompatibilityHarm?: boolean; // §D5 — 궁합 relationship-safety
   requireConstructive?: boolean; // §D6 — negative-tier 궁합 must carry a management direction
+  forbidChecklistTone?: boolean; // §13 — no productivity/service-checklist collapse
 };
 function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts, rawJson?: string): boolean {
   // Structural winner field (§C): even neutral prose is rejected if the raw JSON asserts a selection field.
@@ -201,6 +212,7 @@ function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts, rawJson?
   if (opts.forbidCompatibilityHarm && containsCompatibilityHarm(text)) return true;
   if (opts.requireMitigation && lacksMitigation(outcome)) return true;
   if (opts.requireConstructive && !hasConstructiveDirection(text)) return true;
+  if (opts.forbidChecklistTone && containsChecklistCoachTone(text)) return true;
   if (opts.polarity) {
     const hs = highSalienceText(outcome);
     if (hs !== null && contradictsPolarity(hs, opts.polarity)) return true;
@@ -231,6 +243,8 @@ export async function classifyWithGuards(args: {
   // 궁합 relationship-safety (§D5) + negative-tier constructive-direction requirement (§D6).
   forbidCompatibilityHarm?: boolean;
   requireConstructive?: boolean;
+  // §13 — reject a productivity/service-checklist collapse (behavioral direction, not a to-do list).
+  forbidChecklistTone?: boolean;
   regenerate: () => Promise<string | null>;
 }): Promise<GuardedClassification> {
   const opts: GuardOpts = {
@@ -239,6 +253,7 @@ export async function classifyWithGuards(args: {
     polarity: args.polarity,
     forbidCompatibilityHarm: args.forbidCompatibilityHarm ?? false,
     requireConstructive: args.requireConstructive ?? false,
+    forbidChecklistTone: args.forbidChecklistTone ?? false,
   };
   const first = classifyConsultationOutput(args.raw, args.grounding);
   if (!outcomeViolates(first, opts, args.raw)) {
