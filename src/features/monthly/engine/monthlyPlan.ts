@@ -10,7 +10,15 @@ import { synthesizeBackground, type BackgroundSynthesisState } from '@/features/
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { MonthlyDomain, MonthlyFortuneEvidence, MonthlySegmentEvidence } from '@/features/monthly/engine/monthlyEvidence';
 
-export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.4.0';
+export const MONTHLY_PLAN_VERSION = 'monthly-plan@1.5.0';
+
+// Plain-language descriptor of the 월운 polarity for the "왜 이렇게 보나요?" evidence (§20-§22).
+const MONTH_EVIDENCE_BY_TIER: Record<PolarityTier, string> = {
+  FAVORABLE: '기회를 살리기 좋은 기운이 보입니다',
+  STEADY: '안정적으로 운영하기 좋은 흐름입니다',
+  DYNAMIC: '변화가 많아 유연함이 필요한 흐름입니다',
+  CAUTION: '속도를 조절하며 살피는 편이 좋은 흐름입니다',
+};
 
 // Neutral BACKGROUND-flow wording for the larger 세운/대운 context (§12). Same shared kernel tier, background
 // wording — this NEVER changes the month tier; it is context the prose may lean on.
@@ -277,13 +285,13 @@ export function deriveMonthlyPlan(evidence: MonthlyFortuneEvidence): MonthlyPlan
   // Categorical synthesis (§9/§11): the month (dominant segment) is PRIMARY; the larger flow only FRAMES it.
   const synthesis = t ? synthesizeBackground(dominant.polarityTier, [daewoonTier, sewoonTier]) : { state: 'NEUTRAL' as const, summary: '' };
 
-  // Deterministic "왜 이렇게 보나요?" evidence — plain language, traceable to the month + background facts (§21).
-  const evidenceLines: string[] = [`이번 달 자체의 흐름은 '${overallTier}' 쪽으로 보입니다.`];
-  if (daewoonFlow || yearFlow) {
-    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : '', yearFlow ? `올해 전반은 ${yearFlow}` : ''].filter(Boolean).join(', ');
-    evidenceLines.push(`지금의 ${bg}입니다.`);
-  }
-  if (synthesis.summary) evidenceLines.push(synthesis.summary);
+  // Deterministic "왜 이렇게 보나요?" evidence — SOURCE-SEPARATED (이번 달 월운 / 현재 대운 / 올해 세운 / 종합),
+  // each from the actual pillar's polarity; available sources only (§18-22/§40). Plain language, no 간지/십신/
+  // 강약. The 종합 line reuses the synthesis summary → consistent with the body (§27).
+  const evidenceLines: string[] = [`이번 달 월운에서는 ${MONTH_EVIDENCE_BY_TIER[dominant.polarityTier]}.`];
+  if (daewoonFlow) evidenceLines.push(`현재 대운에서는 ${daewoonFlow}입니다.`);
+  if (yearFlow) evidenceLines.push(`올해 세운은 ${yearFlow}에 가깝습니다.`);
+  if (synthesis.summary) evidenceLines.push(`종합하면, ${synthesis.summary}`);
 
   return {
     ...base,

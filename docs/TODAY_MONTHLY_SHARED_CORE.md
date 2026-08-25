@@ -63,3 +63,15 @@ Builds on the shared-core connection. Still: base tier IMMUTABLE, no strength ve
 **Cache invalidation for fresh QA (§28/§30).** `getByDate` filters by `semantic_version`, so bumping the canonical versions makes old cached records miss → fresh regeneration (no purge, no migration): `today-canonical@1.2.0`, `monthly-canonical@1.3.0` (+ evidence/plan/prompt version markers bumped).
 
 **APK note.** The evidence surface is a CLIENT render change (`FortuneReading`), so it requires an APK rebuild to appear on device. The synthesis-enriched prose flows through the existing result fields (visible without rebuild); the collapsed "왜 이렇게 보나요?" card needs the new client.
+
+---
+
+## V3 — Consumer interpretation quality + evidence specificity (server-only, NO APK rebuild)
+
+Device-QA finding: technically correct but the prose read like a finance/admin checklist and the evidence was too abstract. Fixed server-side only (evidence is already a `string[]` rendered by the shipped `ReadingEvidence`, and the result schema is unchanged) → **APK_REBUILD_REQUIRED = NO** (only a staging deploy of the rebuilt bundle).
+
+**Content quality.** `src/features/fortune-shared/contentQuality.ts` — `containsServiceChecklistTone` (conservative, unambiguous finance-admin phrasing: 영수증/계좌·카드 내역/청구서/자동이체/환불 절차/대출·투자 실행 + micro-tasks 최근 N일 / N분 동안) is a fail-closed reject in `parseDailyFortune`/`parseMonthlyFortune` (same pattern as `containsRawGanji`; rare given the prompt ban, client offers retry). Prompts (today@1.4.0 / monthly@1.5.0) add: the service-checklist ban, finance tone examples (흐름·태도 not 대출/계좌 instructions), and section-role separation (highlights=기회 / cautions=지점 / action=방향 하나, no repetition/single-topic collapse).
+
+**Evidence specificity (§18-22).** `plan.evidence` is now SOURCE-SEPARATED — 오늘 일진 / 현재 대운 / 올해 세운 / 종합 (monthly: 이번 달 월운 / 현재 대운 / 올해 세운 / 종합), each line from the actual source's `derivePolarity` tier, available sources only (no fake specificity), plain language (no 간지/십신/강약). The 종합 line reuses the synthesis summary → consistent with the body (§27). Base day/month tier UNCHANGED; no engine/theory change.
+
+**Cache.** Canonical versions bumped (`today-canonical@1.3.0`, `monthly-canonical@1.4.0`) + plan versions (today-plan@1.4.0 / monthly-plan@1.5.0) → stale same-day/month records regenerate for QA (no purge/migration).

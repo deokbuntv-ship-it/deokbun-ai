@@ -9,7 +9,16 @@ import { synthesizeBackground, type BackgroundSynthesisState } from '@/features/
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { TodayDomain, TodayFortuneEvidence } from '@/features/today/engine/todayEvidence';
 
-export const TODAY_PLAN_VERSION = 'today-plan@1.3.0';
+export const TODAY_PLAN_VERSION = 'today-plan@1.4.0';
+
+// Plain-language descriptor of the DAY (일진) polarity for the "왜 이렇게 보나요?" evidence (§20). Source-
+// specific wording; not a tier change.
+const DAY_EVIDENCE_BY_TIER: Record<PolarityTier, string> = {
+  FAVORABLE: '잘 풀리는 기운이 조금 더 보입니다',
+  STEADY: '무난하게 흐르는 기운입니다',
+  DYNAMIC: '변화가 잦아 유연함이 필요한 신호가 보입니다',
+  CAUTION: '한 번 더 신중하게 반응하는 편이 좋은 신호가 보입니다',
+};
 
 // Neutral BACKGROUND-flow phrase for the larger 세운/대운 context (§11). Same shared kernel tier as the day,
 // but a background wording — this NEVER changes the day's tier; it is context the prose may lean on.
@@ -185,13 +194,13 @@ export function deriveDailyPlan(evidence: TodayFortuneEvidence): DailyPlan {
   // Categorical synthesis (§9/§10): how the larger flow FRAMES today's base tier. Base tier is NEVER changed.
   const synthesis = t ? synthesizeBackground(polarity.tier, [daewoonTier, sewoonTier]) : { state: 'NEUTRAL' as const, summary: '' };
 
-  // Deterministic "왜 이렇게 보나요?" evidence — plain language, traceable to the day + background facts (§20).
-  const evidenceLines: string[] = [`오늘 하루의 흐름은 '${overallTone}' 쪽으로 보입니다.`];
-  if (daewoonFlow || yearFlow) {
-    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : '', yearFlow ? `올해 전반은 ${yearFlow}` : ''].filter(Boolean).join(', ');
-    evidenceLines.push(`지금의 ${bg}입니다.`);
-  }
-  if (synthesis.summary) evidenceLines.push(synthesis.summary);
+  // Deterministic "왜 이렇게 보나요?" evidence — SOURCE-SEPARATED (오늘 일진 / 현재 대운 / 올해 세운 / 종합),
+  // each from the actual pillar's polarity; available sources only (no fake specificity, §18-20/§40). Plain
+  // language, no 간지/십신/강약. The 종합 line reuses the synthesis summary → consistent with the body (§27).
+  const evidenceLines: string[] = [`오늘 일진에서는 ${DAY_EVIDENCE_BY_TIER[polarity.tier]}.`];
+  if (daewoonFlow) evidenceLines.push(`현재 대운에서는 ${daewoonFlow}입니다.`);
+  if (yearFlow) evidenceLines.push(`올해 세운은 ${yearFlow}에 가깝습니다.`);
+  if (synthesis.summary) evidenceLines.push(`종합하면, ${synthesis.summary}`);
 
   return {
     ...base,

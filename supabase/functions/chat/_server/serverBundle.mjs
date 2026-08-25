@@ -8045,6 +8045,28 @@ function renderAnswerPlanDirective(plan) {
   return lines.join("\n");
 }
 
+// src/features/fortune-shared/contentQuality.ts
+var SERVICE_CHECKLIST = [
+  /영수증/,
+  /계좌\s*(내역|이체)/,
+  /카드\s*(내역|명세)/,
+  /청구서/,
+  /자동이체/,
+  /환불\s*(절차|처리)/,
+  /대출\s*(신청|실행|상담|한도)/,
+  /투자\s*(실행|축소|종목|비중)/,
+  /(세금계산서|명세서|거래내역)/,
+  /체크리스트/
+];
+var MICRO_TASK = [
+  /최근\s*\d+\s*일/,
+  /\d+\s*분\s*(동안|만에|안에)/,
+  /\d+\s*개(로)?\s*(분류|정리)/
+];
+function containsServiceChecklistTone(text) {
+  return SERVICE_CHECKLIST.some((re) => re.test(text)) || MICRO_TASK.some((re) => re.test(text));
+}
+
 // src/features/monthly/engine/monthDate.ts
 var KST_OFFSET_SECONDS2 = 32400;
 var FORTUNE_TIMEZONE = "Asia/Seoul";
@@ -8200,7 +8222,13 @@ function synthesizeBackground(baseTier, backgroundTiers) {
 }
 
 // src/features/monthly/engine/monthlyPlan.ts
-var MONTHLY_PLAN_VERSION = "monthly-plan@1.4.0";
+var MONTHLY_PLAN_VERSION = "monthly-plan@1.5.0";
+var MONTH_EVIDENCE_BY_TIER = {
+  FAVORABLE: "기회를 살리기 좋은 기운이 보입니다",
+  STEADY: "안정적으로 운영하기 좋은 흐름입니다",
+  DYNAMIC: "변화가 많아 유연함이 필요한 흐름입니다",
+  CAUTION: "속도를 조절하며 살피는 편이 좋은 흐름입니다"
+};
 var BACKGROUND_FLOW_BY_TIER = {
   FAVORABLE: "지원적인 흐름",
   STEADY: "무난한 흐름",
@@ -8355,12 +8383,10 @@ function deriveMonthlyPlan(evidence) {
   const yearFlow = sewoonTier ? BACKGROUND_FLOW_BY_TIER[sewoonTier] : null;
   const daewoonFlow = daewoonTier ? BACKGROUND_FLOW_BY_TIER[daewoonTier] : null;
   const synthesis = t ? synthesizeBackground(dominant.polarityTier, [daewoonTier, sewoonTier]) : { state: "NEUTRAL", summary: "" };
-  const evidenceLines = [`이번 달 자체의 흐름은 '${overallTier}' 쪽으로 보입니다.`];
-  if (daewoonFlow || yearFlow) {
-    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : "", yearFlow ? `올해 전반은 ${yearFlow}` : ""].filter(Boolean).join(", ");
-    evidenceLines.push(`지금의 ${bg}입니다.`);
-  }
-  if (synthesis.summary) evidenceLines.push(synthesis.summary);
+  const evidenceLines = [`이번 달 월운에서는 ${MONTH_EVIDENCE_BY_TIER[dominant.polarityTier]}.`];
+  if (daewoonFlow) evidenceLines.push(`현재 대운에서는 ${daewoonFlow}입니다.`);
+  if (yearFlow) evidenceLines.push(`올해 세운은 ${yearFlow}에 가깝습니다.`);
+  if (synthesis.summary) evidenceLines.push(`종합하면, ${synthesis.summary}`);
   return {
     ...base,
     available: true,
@@ -8395,7 +8421,7 @@ var MONTHLY_DOMAIN_LABEL = {
   action: "행동·변화"
 };
 var MONTHLY_POLICY_VERSION = "monthly@1.2.0";
-var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.3.0";
+var MONTHLY_CANONICAL_VERSION = "monthly-canonical@1.4.0";
 
 // src/features/monthly/server/monthlyFortunePrompt.ts
 function buildMonthlyFortunePrompt(plan) {
@@ -8422,7 +8448,9 @@ function buildMonthlyFortunePrompt(plan) {
       "대운·세운을 새로 계산하거나, 확정적 미래(합격/이별/입금 등)로 말하지 마십시오."
     ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
-    '- 반복 금지: opportunities·cautions·actions는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 말고, 한 결과가 한 주제(예: 지출·정리)로만 수렴하지 않게 하십시오.',
+    '- 운세 문장 품질: 결과는 "삶의 방향"을 주는 글입니다. 재무·행정·업무 체크리스트처럼 쓰지 마십시오. 금지 표현: 영수증/계좌·카드 내역/청구서/자동이체/환불 절차/대출·투자 실행·계약서 문서화 같은 실무 절차, 그리고 "최근 30일"·"10분 동안"·"N개로 분류" 같은 임의 시간·수치 과제.',
+    '- 돈이 조심스러운 달이어도 "대출/투자를 줄이세요"·"계좌를 확인하세요"가 아니라 "큰 금전 결정은 한 번에 크게 움직이기보다 현실적인 조건을 확인하며 진행하는 편이 좋아요"처럼 흐름·태도로 쓰십시오.',
+    '- 섹션 역할 분리: opportunities=살릴 만한 "기회", cautions=속도를 조절할 "지점", actions=이번 달의 "방향"(체크리스트 아님). 한 섹션 내용을 다른 섹션에서 말만 바꿔 반복하지 말고, 한 결과가 한 주제(예: 지출·정리)로만 수렴하지 않게 하십시오.',
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',
@@ -8568,6 +8596,7 @@ function parseMonthlyFortune(raw, plan) {
   if (containsRawGanji(surfaced)) return null;
   if (containsEventGuarantee(surfaced)) return null;
   if (containsUnsupportedDatePrecision(surfaced)) return null;
+  if (containsServiceChecklistTone(surfaced)) return null;
   return {
     headline,
     verdict,
@@ -10392,7 +10421,7 @@ var TODAY_DOMAIN_LABEL = {
   action: "행동·주의점"
 };
 var TODAY_POLICY_VERSION = "today@1.1.0";
-var TODAY_CANONICAL_VERSION = "today-canonical@1.2.0";
+var TODAY_CANONICAL_VERSION = "today-canonical@1.3.0";
 
 // src/features/today/engine/fortuneDate.ts
 var KST_OFFSET_SECONDS3 = 32400;
@@ -10518,7 +10547,13 @@ async function buildTodayFortuneEvidence(input, deps) {
 }
 
 // src/features/today/engine/todayPlan.ts
-var TODAY_PLAN_VERSION = "today-plan@1.3.0";
+var TODAY_PLAN_VERSION = "today-plan@1.4.0";
+var DAY_EVIDENCE_BY_TIER = {
+  FAVORABLE: "잘 풀리는 기운이 조금 더 보입니다",
+  STEADY: "무난하게 흐르는 기운입니다",
+  DYNAMIC: "변화가 잦아 유연함이 필요한 신호가 보입니다",
+  CAUTION: "한 번 더 신중하게 반응하는 편이 좋은 신호가 보입니다"
+};
 var BACKGROUND_FLOW_BY_TIER2 = {
   FAVORABLE: "지원적인 흐름",
   STEADY: "무난한 흐름",
@@ -10616,12 +10651,10 @@ function deriveDailyPlan(evidence) {
   const yearFlow = sewoonTier ? BACKGROUND_FLOW_BY_TIER2[sewoonTier] : null;
   const daewoonFlow = daewoonTier ? BACKGROUND_FLOW_BY_TIER2[daewoonTier] : null;
   const synthesis = t ? synthesizeBackground(polarity.tier, [daewoonTier, sewoonTier]) : { state: "NEUTRAL", summary: "" };
-  const evidenceLines = [`오늘 하루의 흐름은 '${overallTone}' 쪽으로 보입니다.`];
-  if (daewoonFlow || yearFlow) {
-    const bg = [daewoonFlow ? `큰 흐름은 ${daewoonFlow}` : "", yearFlow ? `올해 전반은 ${yearFlow}` : ""].filter(Boolean).join(", ");
-    evidenceLines.push(`지금의 ${bg}입니다.`);
-  }
-  if (synthesis.summary) evidenceLines.push(synthesis.summary);
+  const evidenceLines = [`오늘 일진에서는 ${DAY_EVIDENCE_BY_TIER[polarity.tier]}.`];
+  if (daewoonFlow) evidenceLines.push(`현재 대운에서는 ${daewoonFlow}입니다.`);
+  if (yearFlow) evidenceLines.push(`올해 세운은 ${yearFlow}에 가깝습니다.`);
+  if (synthesis.summary) evidenceLines.push(`종합하면, ${synthesis.summary}`);
   return {
     ...base,
     available: true,
@@ -10662,7 +10695,9 @@ function buildTodayFortunePrompt(plan) {
       "대운·세운을 새로 계산하거나, 확정적 미래(합격/이별/입금 등)로 말하지 마십시오."
     ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
-    '- 반복 금지: highlights·cautions·actionTip는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 마십시오. 한 결과가 지출·정리 한 주제로만 수렴하지 않게 하십시오.',
+    '- 운세 문장 품질: 결과는 "삶의 방향"을 주는 글입니다. 재무·행정·업무 체크리스트처럼 쓰지 마십시오. 금지 표현: 영수증/계좌·카드 내역/청구서/자동이체/환불 절차/대출·투자 실행 같은 실무 절차, 그리고 "최근 30일"·"10분 동안"·"N개로 분류" 같은 임의 시간·수치 과제.',
+    '- 돈이 조심스러운 날이어도 "대출/투자를 줄이세요"·"계좌를 확인하세요"가 아니라 "큰 금전 결정은 서두르기보다 조건을 한 번 더 살펴보는 편이 좋아요"처럼 흐름·태도로 쓰십시오.',
+    '- 섹션 역할 분리: highlights=잘 풀릴 수 있는 "기회", cautions=속도를 조절할 "지점", actionTip=오늘의 "방향" 딱 1가지(체크리스트 아님). 세 섹션이 같은 조언을 말만 바꿔 반복하지 마십시오. 한 결과가 지출·정리 한 주제로만 수렴하지 않게 하십시오.',
     `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
     "- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).",
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로 덧붙이십시오.',
@@ -10789,6 +10824,7 @@ function parseDailyFortune(raw, plan) {
   ].join(" ");
   if (containsRawGanji(surfaced)) return null;
   if (containsEventGuarantee2(surfaced)) return null;
+  if (containsServiceChecklistTone(surfaced)) return null;
   return {
     headline,
     verdict,
