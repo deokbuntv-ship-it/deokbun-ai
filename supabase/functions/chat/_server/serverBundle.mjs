@@ -6799,26 +6799,44 @@ function calculateMonthCommand(natal) {
 }
 
 // src/features/myungri/services/temporalContext.ts
-function selectActiveDaewoonCycleOrdinal(cycles, currentAge) {
-  if (currentAge === null) return null;
-  const active = cycles.find((c) => currentAge >= c.startAgeInclusive && currentAge <= c.endAgeInclusive);
-  return active ? active.ordinal : null;
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
-function fullElapsedYears(birth, evalDate) {
-  let years = evalDate.year - birth.year;
-  if (evalDate.month < birth.month || evalDate.month === birth.month && evalDate.day < birth.day) years -= 1;
-  return years;
+function addCivilYears(local, years) {
+  const year = local.date.year + years;
+  const day = Math.min(local.date.day, daysInMonth(year, local.date.month));
+  return { date: { year, month: local.date.month, day }, time: local.time };
 }
-function kstCivilDate(instantEpochSeconds) {
-  const d = new Date((instantEpochSeconds + 9 * 3600) * 1e3);
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+async function asiaSeoulLocalToEpoch(local, resolver) {
+  const second = local.time.second ?? 0;
+  const res = await resolver.resolve({
+    ianaZone: "Asia/Seoul",
+    civilLocal: { accuracy: "EXACT", date: local.date, time: { hour: local.time.hour, minute: local.time.minute, second } }
+  });
+  if (res.status !== "RESOLVED" || !("resolvedOffsetSeconds" in res)) return null;
+  const utcAsIfLocal = Math.floor(
+    Date.UTC(local.date.year, local.date.month - 1, local.date.day, local.time.hour, local.time.minute, second) / 1e3
+  );
+  return utcAsIfLocal - res.resolvedOffsetSeconds;
 }
-function resolveActiveDaewoonOrdinal(daewoon, instantEpochSeconds) {
+async function resolveActiveDaewoonAtInstant(daewoon, instantEpochSeconds, resolver) {
   if (daewoon.capability !== "AVAILABLE") return null;
-  const age = fullElapsedYears(daewoon.start.timing.birthLocalDateTime.date, kstCivilDate(instantEpochSeconds));
-  return selectActiveDaewoonCycleOrdinal(daewoon.cycles, age);
+  const symbolic = daewoon.start.timing.symbolicLocalDateTime;
+  for (let i = 0; i < daewoon.cycles.length; i += 1) {
+    const startEpoch = await asiaSeoulLocalToEpoch(addCivilYears(symbolic, 10 * i), resolver);
+    const endEpoch = await asiaSeoulLocalToEpoch(addCivilYears(symbolic, 10 * (i + 1)), resolver);
+    if (startEpoch === null || endEpoch === null) return null;
+    if (instantEpochSeconds >= startEpoch && instantEpochSeconds < endEpoch) {
+      return {
+        ordinal: daewoon.cycles[i].ordinal,
+        startBoundaryEpochSeconds: startEpoch,
+        endBoundaryEpochSeconds: endEpoch
+      };
+    }
+  }
+  return null;
 }
-function buildMyungriTemporalContext(input) {
+async function buildMyungriTemporalContext(input) {
   const warnings = [];
   const { engineResult, natal } = input;
   if (engineResult.status !== "SUCCESS" && engineResult.status !== "PARTIAL") {
@@ -6840,14 +6858,15 @@ function buildMyungriTemporalContext(input) {
   if (daewoon.capability !== "AVAILABLE") {
     warnings.push("DAEWOON_UNAVAILABLE");
   } else {
-    const ordinal = resolveActiveDaewoonOrdinal(daewoon, input.instantEpochSeconds);
-    const activeCycle = ordinal !== null ? daewoon.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
+    const active = await resolveActiveDaewoonAtInstant(daewoon, input.instantEpochSeconds, input.timezoneResolver);
+    const activeCycle = active ? daewoon.cycles.find((c) => c.ordinal === active.ordinal) ?? null : null;
     const tg3 = calculateDaewoonTenGods({ dayMaster: natal.dayMaster, cycles: daewoon.cycles });
-    const tgCycle = ordinal !== null && tg3.capability === "AVAILABLE" ? tg3.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
+    const tgCycle = active && tg3.capability === "AVAILABLE" ? tg3.cycles.find((c) => c.ordinal === active.ordinal) ?? null : null;
     if (activeCycle && tgCycle) {
       activeDaewoon = {
         ordinal: activeCycle.ordinal,
         startAgeInclusive: activeCycle.startAgeInclusive,
+        // DISPLAY label (rounded 대운수) — not the active boundary
         endAgeInclusive: activeCycle.endAgeInclusive,
         tenGods: tgCycle.tenGods,
         relationsToNatal: buildRelationsToNatal(activeCycle.pillar, natal)
@@ -7657,7 +7676,12 @@ async function buildMyungriEvidence(draft, deps, question) {
     result: calculateWolwoonForInstant({ natal, instantEpochSeconds: epochForSajuMonth(t.year, t.month) })
   })).filter((x) => x.result.capability === "AVAILABLE");
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
-  const activeCycleOrdinal = resolveActiveDaewoonOrdinal(daewoon, now);
+  const activeDaewoon = await resolveActiveDaewoonAtInstant(
+    daewoon,
+    now,
+    deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
+  );
+  const activeCycleOrdinal = activeDaewoon?.ordinal ?? null;
   let activeDaewoonPillar = null;
   if (activeCycleOrdinal !== null && daewoon.capability === "AVAILABLE") {
     const active = daewoon.cycles.find((c) => c.ordinal === activeCycleOrdinal);
@@ -8091,9 +8115,6 @@ function currentTargetMonth(epochSeconds) {
   const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
   return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
 }
-function monthMidpointEpochSeconds(m) {
-  return Math.floor(Date.UTC(m.year, m.month - 1, 15, 3, 0, 0) / 1e3);
-}
 function civilMonthStartEpoch(m) {
   return Math.floor(Date.UTC(m.year, m.month - 1, 1, 0, 0, 0) / 1e3) - KST_OFFSET_SECONDS2;
 }
@@ -8145,7 +8166,9 @@ function resolveCivilMonthSajuSegments(target) {
 var MONTHLY_EVIDENCE_VERSION = "monthly-evidence@1.2.0";
 var ALL_DOMAINS = ["overall", "work", "wealth", "relationship", "action"];
 async function buildMonthlyFortuneEvidence(input, deps) {
-  const target = deps.target ?? currentTargetMonth(deps.nowEpochSeconds);
+  const current = currentTargetMonth(deps.nowEpochSeconds);
+  const target = deps.target ?? current;
+  const isCurrentMonth = target.year === current.year && target.month === current.month;
   const unavailable9 = (reason) => ({
     available: false,
     year: target.year,
@@ -8185,12 +8208,13 @@ async function buildMonthlyFortuneEvidence(input, deps) {
       relationsToNatal: w.relationsToNatal
     });
   }
-  const temporal = buildMyungriTemporalContext({
+  const temporal = isCurrentMonth ? await buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
-    instantEpochSeconds: monthMidpointEpochSeconds(target)
-  });
+    instantEpochSeconds: deps.nowEpochSeconds,
+    timezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
+  }) : void 0;
   return {
     available: true,
     year: target.year,
@@ -8198,7 +8222,7 @@ async function buildMonthlyFortuneEvidence(input, deps) {
     timezone: FORTUNE_TIMEZONE,
     segments,
     transitionCivilDate: segments.length > 1 ? segments[1].startCivilDate : null,
-    sewoonAvailable: temporal.sewoon !== null,
+    sewoonAvailable: temporal ? temporal.sewoon !== null : false,
     temporal,
     supportedDomains: ALL_DOMAINS,
     evidenceVersion: MONTHLY_EVIDENCE_VERSION
@@ -10526,11 +10550,12 @@ async function buildTodayFortuneEvidence(input, deps) {
   const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
   const dayLuck = calculateDayLuck({ natal, civilDate: epochToKstCivilDate(input.nowEpochSeconds) });
   if (!dayLuck.available) return unavailable9(`DAY_LUCK_${dayLuck.reason}`);
-  const temporal = buildMyungriTemporalContext({
+  const temporal = await buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
-    instantEpochSeconds: input.nowEpochSeconds
+    instantEpochSeconds: input.nowEpochSeconds,
+    timezoneResolver: deps.historicalTimezoneResolver ?? ASIA_SEOUL_HISTORICAL_TIMEZONE_RESOLVER
   });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
   return {
