@@ -266,15 +266,24 @@ export async function buildCompatibilityConsultation(
         ];
         divinationVerdict = judgeCross({ question, questionDomain, judgments, asksTiming: wantsTiming(question) });
       } catch {
-        divinationVerdict = null; // fail-open: the pairwise tier reading still stands
+        // V4B §27 — fail-open, but NOT fail-over. The numeric tier does not step in as the divination
+        // judgment; the answer says the structural judgment is unavailable (see the directive below).
+        divinationVerdict = null;
       }
 
       grounding = {
         status: 'available',
         evidence: { myungri, ziwei: ziweiEvidence, qimen },
         ...(divinationVerdict ? { divinationVerdict } : {}),
-        // The SERVER's deterministic tier becomes the anchor the LLM must verbalize (§22).
-        assessmentSummary: `${selfLabel}·${targetLabel} 종합 궁합: ${a.overallLabel} (정서 ${a.dimensions[0].signal}/갈등 ${a.dimensions[1].signal}/오행 ${a.dimensions[2].signal})${a.reducedPrecision ? ' · 한 명 이상 시주 미상으로 정밀도 제한' : ''}`,
+        // V4B §27 — THE TIER IS DISPLAY CONTEXT, NOT THE JUDGMENT.
+        //
+        // This line used to be described in this very file as "the anchor the LLM must verbalize", which is
+        // exactly the coupling §27 removes: `overallLabel` is a band off `bond.points + friction.points +
+        // element.points` against hand-chosen thresholds, computed for the consumer summary card. Anchoring a
+        // paid divination reading to it makes the numeric tier the professional conclusion by the back door.
+        // It is still passed through — the card shows it — but it is labelled as the summary tier, and the
+        // directive below tells the model which of the two actually decides.
+        assessmentSummary: `(요약 카드 표기용 종합 티어) ${selfLabel}·${targetLabel}: ${a.overallLabel} (정서 ${a.dimensions[0].signal}/갈등 ${a.dimensions[1].signal}/오행 ${a.dimensions[2].signal})${a.reducedPrecision ? ' · 한 명 이상 시주 미상으로 정밀도 제한' : ''}`,
         engineVersion: 'compatibility-engine@1.0.0',
       };
       compatibility = {
@@ -305,9 +314,20 @@ export async function buildCompatibilityConsultation(
       // §16 — the 궁합 verdict binds the model the same way the solo consultation's does.
       answerPlanDirective: [
         renderAnswerPlanDirective(plan),
+        // V4B §27 — the STRUCTURAL verdict is the judgment. When it exists it binds; when it does not, the
+        // answer must say the structural judgment is unavailable rather than promoting the summary tier into
+        // its place or reaching for mitigation language to cover the gap.
         safeGrounding.status === 'available' && safeGrounding.divinationVerdict
-          ? renderVerdictDirective(safeGrounding.divinationVerdict)
-          : null,
+          ? [
+            renderVerdictDirective(safeGrounding.divinationVerdict),
+            '위 판정이 이 답변의 결론입니다. 요약 카드의 종합 티어는 표기용 수치 요약일 뿐이므로, 판정과',
+            '어긋나더라도 판정을 따르고 티어를 결론처럼 말하지 마십시오.',
+          ].join('\n')
+          : [
+            '【구조 판정 없음】 이 질문에 대해서는 구조적 궁합 판정을 세우지 못했습니다.',
+            '요약 카드의 종합 티어를 판정처럼 바꿔 말하지 마십시오. 근거로 세울 구조가 없다는 사실을 그대로',
+            '전하고, 확실하지 않은 결론을 완곡한 표현으로 대신하지 마십시오.',
+          ].join('\n'),
         extraDirective ?? null,
       ]
         .filter((x): x is string => x !== null)

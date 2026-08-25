@@ -74,6 +74,40 @@ export type PremiseConcept =
   | 'DOCTRINE_BLOCK'    // 채택 학파가 없어 판정을 보류한 지점
   | 'ADAPTED';          // 아직 전제 그래프로 이관되지 않은 학문의 출력
 
+/**
+ * WHAT a claim is about, as a STRUCTURED identity — V4B's highest-priority fix.
+ *
+ * V4A carried `target` as a Korean display string and matched claims by AXIS alone, so two propositions about
+ * completely different things could be treated as the same proposition merely because both were filed under
+ * CAREER. That is how a long-term reading of 원국 관성 and a this-month strike on 원국 월지 became "방향은
+ * 맞지만 지금은 아니다" — a temporal decomposition of two claims that were never about the same subject matter.
+ *
+ * **SAME AXIS IS NOT SAME TARGET.** Equality is `key`, never `label`; the label is for humans only.
+ */
+export type TargetKind =
+  | 'NATAL_SEAT'          // 원국 년/월/일/시 자리
+  | 'TEN_GOD_FAMILY'      // 원국 재성·관성·식상·비겁·인성 계열
+  | 'LUCK_LAYER'          // 대운/세운/월운 그 자체
+  | 'DAY_MASTER_FOOTING'  // 일간의 계절 기반 / 뿌리
+  | 'PALACE'              // 자미두수 궁
+  | 'BOARD_SEAT'          // 기문둔갑 값부·값사·문
+  | 'DOCTRINE_GAP'        // 채택 학파가 없어 판정을 보류한 지점
+  | 'COMPOSITE';          // 서로 다른 대상 사이의 관계를 다루는 복합 결론
+
+export type SemanticTarget = {
+  /** Stable identity. Two claims about the same thing share this EXACTLY. Matching uses only this. */
+  key: string;
+  /** Human label. Display only — never matched on. */
+  label: string;
+  kind: TargetKind;
+};
+
+/** Structural target equality. The single place "same thing" is decided. */
+export const sameTarget = (a: SemanticTarget, b: SemanticTarget): boolean => a.key === b.key;
+
+export const target = (kind: TargetKind, id: string, label: string): SemanticTarget =>
+  ({ key: `${kind}:${id}`, label, kind });
+
 export type DivinationPremise = {
   id: string;
   discipline: Discipline;
@@ -81,8 +115,8 @@ export type DivinationPremise = {
   sourceFactIds: string[];
   /** Whose chart. */
   subject: string;
-  /** WHAT the premise is about — a natal position, a 십신 family, a palace, a board seat. */
-  target: string;
+  /** WHAT the premise is about — structured, so rules can compare identity rather than wording. */
+  target: SemanticTarget;
   questionIntent: QuestionIntent;
   questionAxis: JudgmentDomain;
   temporalScope: TemporalScope;
@@ -108,10 +142,20 @@ export type DivinationPremise = {
  */
 export type AdequacyLevel = 'ADEQUATE' | 'THIN' | 'NONE';
 
+/**
+ * SEMANTIC SIDES — the V4B correction.
+ *
+ * `supportAdequacy` describes the premises that BACK THIS PROPOSITION'S ASSERTION, whatever that assertion's
+ * real-world valence is. For the proposition "현재 실행은 불리하다", the 충 that establishes the obstruction is
+ * SUPPORTING evidence — it supports the claim. V4A leaked the opposite intuition into the projection layer:
+ * an UNFAVORABLE proposition read `counterAdequacy` to decide how firmly to say AGAINST, so the strength of a
+ * negative claim was being read off the material that ARGUED WITH it. Sides are now about the claim, never
+ * about whether the news is good.
+ */
 export type PropositionAdequacy = {
-  /** Is there enough to assert it? Counter-premises can never raise this. */
+  /** Enough to assert this proposition? Counter-premises can never raise this. */
   supportAdequacy: AdequacyLevel;
-  /** Is there enough standing against it? Support-premises can never raise this. */
+  /** Enough standing AGAINST this proposition? Support-premises can never raise this. */
   counterAdequacy: AdequacyLevel;
   /** Was the input complete enough (exact birth time, computable layers)? */
   dataCompleteness: 'COMPLETE' | 'PARTIAL' | 'INSUFFICIENT';
@@ -173,7 +217,9 @@ export type ReasonedProposition = {
   id: string;
   discipline: Discipline | 'CROSS';
   subject: string;
-  target: string;
+  /** Structured — see `SemanticTarget`. Contradiction, temporal split, causal chain and reinforcement all
+   *  require target identity, so this can never be a display string. */
+  target: SemanticTarget;
   questionIntent: QuestionIntent;
   questionAxis: JudgmentDomain;
   temporalScope: TemporalScope;
@@ -183,6 +229,19 @@ export type ReasonedProposition = {
   direction: ConclusionDirection;
   /** Set only when `direction === 'RESTRICTED'` — the rule states what kind of restriction it found. */
   restriction?: RestrictionKind;
+  /**
+   * True when this proposition is a DIRECT answer to the question that was asked.
+   *
+   * Two comparisons are deliberately kept apart (V4B §3/§4):
+   *   · **Same structural target** — required for TEMPORAL DECOMPOSITION. Only one thing can have a direction
+   *     that is right while its timing is wrong, so a timing split needs the exact same 자리/궁/좌.
+   *   · **Both answering the asked matter** — enough for CONTRADICTION and REINFORCEMENT. When 명리 reads 월지
+   *     and 자미 reads 관록궁, they are reading different structures but answering the SAME question, and they
+   *     really can disagree about it.
+   * Collapsing these two into "same axis" is what produced C7; collapsing them into "same target" would make
+   * cross-discipline disagreement undetectable while Ziwei/Qimen remain unmigrated.
+   */
+  answersAsked?: boolean;
   /**
    * The claim is HEDGED ("조건이 갖춰지면") rather than definite. An explainable professional distinction:
    * a side that commits asserts more than one that only leaves the door open, and when nothing else separates
@@ -202,6 +261,10 @@ export type ReasonedProposition = {
 
 // ── REAL SYNTHETIC INFERENCE (§23) ───────────────────────────────────────────────────────────────
 
+/**
+ * The VERIFIED vocabulary. Only the metamorphic harness may assign `REAL_SYNTHETIC_INFERENCE`, and only after
+ * observing that removing a required premise actually changes the conclusion. Runtime code cannot produce it.
+ */
 export type SynthesisClass =
   | 'REAL_SYNTHETIC_INFERENCE'
   | 'MULTI_FACT_SUMMARY'
@@ -217,34 +280,56 @@ export type SynthesisClass =
  * metamorphic tests — a conclusion that survives deleting its premises is decorative, and no static property
  * of the object can reveal that.
  */
-export function classifySynthesis(
+/**
+ * RUNTIME MAY ONLY NOMINATE. It may NOT certify.
+ *
+ * V4A's classifier awarded `REAL_SYNTHETIC_INFERENCE` from object shape — "two distinct premise signatures and
+ * the text differs from theirs" — and the QA pack then COUNTED that self-awarded label. The independent audit
+ * showed the effect plainly: 2 genuinely real inferences were reported as 117. A number a component assigns to
+ * its own output and then tallies is not a measurement.
+ *
+ * So the runtime now answers only a screening question — "could this POSSIBLY be a real synthesis?" — and
+ * disqualifies what obviously cannot be. Whether a candidate IS real is decided elsewhere, by removing its
+ * premises and observing whether the conclusion actually moves (`certifySynthesis` in the test harness).
+ */
+export type SynthesisCandidacy =
+  /** Structurally eligible: a named rule combined ≥2 distinct grounded inputs into a new statement. */
+  | 'CANDIDATE_SYNTHESIS'
+  /** A single premise restated. Never an inference, whatever it is labelled. */
+  | 'STATIC_RULE_OUTPUT'
+  /** Multiple facts listed or echoed, with no new claim. */
+  | 'MULTI_FACT_SUMMARY'
+  /** Nothing grounds it at all. */
+  | 'UNSUPPORTED_INFERENCE';
+
+export function screenSynthesis(
   p: ReasonedProposition,
   premisesById: Map<string, DivinationPremise>,
-): SynthesisClass {
+): SynthesisCandidacy {
   const sources = [...new Set([...p.supportingPremiseIds, ...p.opposingPremiseIds])];
   const known = sources.map((id) => premisesById.get(id)).filter((x): x is DivinationPremise => !!x);
 
-  // Nothing grounds it → unsupported, regardless of how it was produced.
   if (known.length === 0 && p.derivedFromPropositionIds.length === 0) return 'UNSUPPORTED_INFERENCE';
-  // A single premise restated is exactly that, whatever label was attached.
   if (p.derivationRule === PRIMITIVE_RULE) return 'STATIC_RULE_OUTPUT';
-  // Two or more DISTINCT premises (or upstream propositions) must actually have been combined.
-  const distinct = new Set(known.map((x) => `${x.semanticRelation}:${x.questionAxis}:${x.temporalScope}:${x.target}`));
+
+  // Distinctness is measured on STRUCTURED identity — including the target key, which V4A omitted, so two
+  // premises about different things but the same axis counted as one.
+  const distinct = new Set(known.map((x) => `${x.semanticRelation}|${x.questionAxis}|${x.temporalScope}|${x.target.key}`));
   if (distinct.size < 2 && p.derivedFromPropositionIds.length < 2) return 'MULTI_FACT_SUMMARY';
-  // The conclusion must not merely echo one of its own premises.
   if (known.some((x) => x.assertion === p.assertion)) return 'MULTI_FACT_SUMMARY';
-  return 'REAL_SYNTHETIC_INFERENCE';
+  return 'CANDIDATE_SYNTHESIS';
 }
 
-export function countRealSynthesis(
+/** Census of CANDIDACY. Deliberately not named "real" — nothing here has been verified yet. */
+export function screenAll(
   props: ReasonedProposition[],
   premises: DivinationPremise[],
-): Record<SynthesisClass, number> {
+): Record<SynthesisCandidacy, number> {
   const byId = new Map(premises.map((p) => [p.id, p]));
-  const out: Record<SynthesisClass, number> = {
-    REAL_SYNTHETIC_INFERENCE: 0, MULTI_FACT_SUMMARY: 0, STATIC_RULE_OUTPUT: 0, UNSUPPORTED_INFERENCE: 0,
+  const out: Record<SynthesisCandidacy, number> = {
+    CANDIDATE_SYNTHESIS: 0, MULTI_FACT_SUMMARY: 0, STATIC_RULE_OUTPUT: 0, UNSUPPORTED_INFERENCE: 0,
   };
-  for (const p of props) out[classifySynthesis(p, byId)] += 1;
+  for (const p of props) out[screenSynthesis(p, byId)] += 1;
   return out;
 }
 

@@ -10,9 +10,9 @@ import {
   type JudgmentDomain, type JudgmentEvidence, type QuestionIntent, type Stance,
 } from '../contracts';
 import { adaptJudgment } from './disciplineAdapter';
-import { deriveCross, DOMINANCE_TEXT, type CrossDerivation } from './crossRules';
+import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
-  countRealSynthesis, standingPropositions,
+  screenAll, standingPropositions,
   type DerivationContext, type DivinationPremise, type ReasonedProposition,
 } from './kernel';
 
@@ -65,12 +65,19 @@ export type CrossReasoning = {
   verdict: CrossDivinationVerdict;
 };
 
-/** PROJECTION — semantic conclusion → legacy stance enum. Declared by the proposition, not looked up. */
+/**
+ * PROJECTION — semantic conclusion → legacy stance enum.
+ *
+ * V4B §11: the firmness of a claim is read from the premises that SUPPORT THAT CLAIM, whatever its real-world
+ * valence. V4A read `counterAdequacy` for an UNFAVORABLE conclusion — i.e. it judged how firmly to say "안
+ * 됩니다" from the material ARGUING AGAINST that very conclusion. The sides are about the proposition, not
+ * about whether the news is good.
+ */
 function stanceOf(p: ReasonedProposition): Stance {
   if (p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL') return 'STRUCTURAL_ANSWER';
   switch (p.direction) {
     case 'FAVORABLE': return p.adequacy.supportAdequacy === 'ADEQUATE' ? 'FOR' : 'CONDITIONAL_FOR';
-    case 'UNFAVORABLE': return p.adequacy.counterAdequacy === 'ADEQUATE' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
+    case 'UNFAVORABLE': return p.adequacy.supportAdequacy === 'ADEQUATE' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
     case 'RESTRICTED': return p.restriction === 'TIMING' ? 'FOR_BUT_LATER' : 'CONDITIONAL_AGAINST';
     default: return NO_SIGNAL;
   }
@@ -108,7 +115,7 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   }
 
   // ── 2. Derive cross conclusions from RELATED PAIRS ──────────────────────────────────────────────
-  const derivations = deriveCross(propositions, premises, ctx);
+  const derivations = deriveCross(propositions, premises, { ...ctx, asksTiming: input.asksTiming });
   const all = [...propositions, ...derivations.map((d) => d.proposition)];
   const standing = standingPropositions(all);
   const byId = new Map(premises.map((p) => [p.id, p]));
@@ -174,10 +181,11 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
       dominant: (d.dominant?.discipline === 'CROSS' ? 'MYUNGRI' : d.dominant?.discipline) as Discipline
         ?? (contributingTo(d)[0] ?? applicable[0]?.discipline ?? 'MYUNGRI'),
       whyOtherDidNotDominate: d.standoff
-        // §17 — the honest reason, stated as such. Not "they cancelled out"; nothing distinguished them.
+        // §14 — the honest reason, stated as such. Not "they cancelled out"; the relationship did not settle it.
         ? '어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.'
-        : d.dominanceReason
-          ? `${DOMINANCE_TEXT[d.dominanceReason]} (밀려난 쪽: ${d.counter ? disc(d.counter.discipline as Discipline) : '반대 근거'})`
+        : d.subordinationReasons?.length
+          // EVERY applicable reason is reported, not just the first one a ladder happened to hit.
+          ? `${d.subordinationReasons.map((r) => SUBORDINATION_TEXT[r]).join('; ')} (밀려난 쪽: ${d.counter ? disc(d.counter.discipline as Discipline) : '반대 근거'})`
           : '서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.',
     }));
 
@@ -226,7 +234,7 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const confidence: JudgmentConfidence = !primary
     ? 'LOW'
     : primary.adequacy.dataCompleteness === 'COMPLETE'
-      && (primary.adequacy.supportAdequacy === 'ADEQUATE' || primary.adequacy.counterAdequacy === 'ADEQUATE')
+      && primary.adequacy.supportAdequacy === 'ADEQUATE'
       && primary.derivationRule !== 'PRIMITIVE'
       ? 'HIGH'
       : primary.derivationRule === 'PRIMITIVE' ? 'LOW' : 'MEDIUM';
@@ -236,6 +244,7 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     questionDomain: asked,
     questionIntent: intent,
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds ?? null,
+    asksTiming: input.asksTiming,
     premises,
     primaryConclusion,
     direction,
@@ -304,7 +313,7 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
 
 /** Synthesis census for the whole cross run — used by the QA pack and the §7 gate. */
 export function crossSynthesisCensus(r: CrossReasoning) {
-  return countRealSynthesis(r.propositions, r.premises);
+  return screenAll(r.propositions, r.premises);
 }
 
 export { isDirectional };

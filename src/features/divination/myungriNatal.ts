@@ -58,8 +58,6 @@ export type NatalStructureInput = {
 export type NatalBaseline = {
   /** How many DISTINCT positions carry each 십신 family (never a strength score). */
   familyPresence: Record<TenGodFamily, number>;
-  /** Families the chart genuinely leans on (present in ≥2 positions). */
-  dominantFamilies: TenGodFamily[];
   /** Families entirely absent — a real structural gap the reading may name. */
   absentFamilies: TenGodFamily[];
   /** 원국 자체의 마찰 (충/형/파/해 among the natal pillars), by position pair. */
@@ -113,7 +111,6 @@ export function readNatalBaseline(input: NatalStructureInput): NatalBaseline {
     familyPresence[fam] += 1;
   }
 
-  const dominantFamilies = (Object.keys(familyPresence) as TenGodFamily[]).filter((f) => familyPresence[f] >= 2);
   const absentFamilies = (Object.keys(familyPresence) as TenGodFamily[]).filter((f) => familyPresence[f] === 0);
 
   const natalFrictionPositions: string[] = [];
@@ -150,7 +147,7 @@ export function readNatalBaseline(input: NatalStructureInput): NatalBaseline {
           : 'PARTLY_ROOTED';
 
   const evidence: JudgmentEvidence[] = [];
-  for (const f of dominantFamilies) {
+  for (const f of (Object.keys(familyPresence) as TenGodFamily[]).filter((x) => familyPresence[x] > 0)) {
     evidence.push({
       fact: `원국 ${FAMILY_LABEL[f]} ${familyPresence[f]}자리`,
       meaning: `타고나기를 ${FAMILY_LABEL[f]} 쪽에 무게가 실린 구조입니다.`,
@@ -194,27 +191,17 @@ export function readNatalBaseline(input: NatalStructureInput): NatalBaseline {
   }
 
   return {
-    familyPresence, dominantFamilies, absentFamilies,
+    familyPresence, absentFamilies,
     natalFrictionPositions, natalHarmonyPositions, spouseSeatStrained,
     inCommand: input.monthCommandInCommand, anchored, evidence,
   };
 }
 
 /**
- * Does the NATAL chart support the asked domain at all? This is the "why does this chart receive this luck
- * differently" test the old judge lacked: the same 세운 lands very differently on a chart with three 재성
- * positions than on one with none.
+ * REMOVED IN V4B — `natalSupportForDomain`.
+ *
+ * Its only caller was the dead legacy judge, and it graded a chart from a count bucket
+ * (`familyPresence[fam] >= 2 → STRONG`). "이 축을 받쳐 줄 자리가 몇 곳인가" is a FACT and stays available
+ * through `familyPresence`; turning that count into a strength band is an astrology claim with no adopted
+ * doctrine behind the boundary, which is why it is deleted rather than re-thresholded.
  */
-export function natalSupportForDomain(baseline: NatalBaseline, domain: JudgmentDomain): {
-  support: 'STRONG' | 'PRESENT' | 'ABSENT' | 'UNKNOWN';
-  note: string;
-} {
-  const fam = domainFamily(domain);
-  if (fam === null) return { support: 'UNKNOWN', note: '' };
-  // A FACT about the chart — how many distinct pillars carry this 십신 family — not a magnitude we invented.
-  // The only boundary drawn is the one the chart itself draws: 한 자리에만 있는가, 여러 자리에 걸쳐 있는가.
-  const count = baseline.familyPresence[fam];
-  if (count >= 2) return { support: 'STRONG', note: `원국에 ${FAMILY_LABEL[fam]} 자리가 ${count}곳 있어 바탕이 받쳐 줍니다.` };
-  if (count === 1) return { support: 'PRESENT', note: `원국에 ${FAMILY_LABEL[fam]} 자리가 하나 있습니다.` };
-  return { support: 'ABSENT', note: `원국에 ${FAMILY_LABEL[fam]} 자리가 없어, 흐름이 와도 붙잡을 바탕이 약합니다.` };
-}

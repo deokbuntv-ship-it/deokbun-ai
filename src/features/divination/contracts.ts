@@ -303,6 +303,12 @@ export type CrossDivinationVerdict = {
   questionIntent: QuestionIntent;
   /** Server evaluation instant, so a follow-up restores the same temporal frame. */
   evaluatedAtEpochSeconds: number | null;
+  /**
+   * Whether the QUESTION was about a moment. Part of the evaluation context, not a derived value: time only
+   * subordinates a rival claim when the user actually asked about timing (§12), so a follow-up or an audit
+   * that re-derives without it reaches a different — and wrong — resolution.
+   */
+  asksTiming: boolean;
   /** The grounded premises the propositions stand on — without these a proposition cannot be re-examined. */
   premises: DivinationPremise[];
 

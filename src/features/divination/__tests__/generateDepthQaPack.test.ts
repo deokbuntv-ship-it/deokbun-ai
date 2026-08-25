@@ -90,7 +90,7 @@ function renderJudgment(j: DivinationJudgment | undefined): string[] {
     `- MAJOR_FACTS_USED: ${j.factGroupsUsed.join(', ') || '(없음)'}`,
     // CONSTITUTION V2 §31 — 강약/용신 must be visible in the pack, since they now move the judgment.
     ...j.directEvidence
-      .filter((e) => e.fact.startsWith('일간 강약:') || e.fact.startsWith('용신:'))
+      .filter((e) => String(e.fact).startsWith('일간 강약') || String(e.fact).startsWith('용신'))
       .map((e) => `- ${e.fact}`),
     '- SUBJUDGMENTS:',
     ...j.domainSubJudgments.map((s) => `    - ${s.domain} = ${s.stance} (${s.temporalScope}/${s.directness}) — ${s.conclusion}`),

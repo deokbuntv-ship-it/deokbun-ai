@@ -1,3 +1,4 @@
+import { explainHeadline, refineOnAxis, renderChain } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta } from './serverConsultationTypes';
 
@@ -51,6 +52,8 @@ export function groundingFromStoredDecision(meta: ConsultationDecisionMeta | nul
     ...relationLines('지지', snapshot.derivation.branchRelations),
   ];
   const summary = `저장된 판단 근거: ${snapshot.target.key} ${snapshot.polarity}, 조화 ${snapshot.derivation.harmony}, 마찰 ${snapshot.derivation.friction}`;
+  const headlineChain = meta.divinationVerdict ? explainHeadline(meta.divinationVerdict) : null;
+  const derivationChain = headlineChain ? renderChain(headlineChain) : [];
   return {
     status: 'available',
     evidence: {
@@ -76,6 +79,10 @@ export function groundingFromStoredDecision(meta: ConsultationDecisionMeta | nul
       ziwei: verdictEvidenceFor(meta, 'ZIWEI'),
       qimen: verdictEvidenceFor(meta, 'QIMEN'),
     },
+    // V4B §24 — a WHY turn must TRAVERSE the stored graph, not re-list its leaves. These lines are the actual
+    // derivation chain behind the headline the user is questioning: conclusion ← the rule that derived it ←
+    // the premises it stands on ← the upstream conclusions it was built from. Every line is a stored node.
+    ...(derivationChain.length > 0 ? { derivationChain } : {}),
     ...(meta.divinationVerdict ? { divinationVerdict: meta.divinationVerdict } : {}),
     engineVersion: snapshot.engineVersion,
     referenceYear: meta.resolvedTemporalContext.referenceYear,
@@ -87,4 +94,39 @@ export function groundingFromStoredDecision(meta: ConsultationDecisionMeta | nul
       derivation: snapshot.derivation,
     }],
   };
+}
+
+/**
+ * V4B §25 — what the PREVIOUS turn's stored graph already established about the axis being asked NOW.
+ *
+ * The audit's confirmed failure: "사업을 확장할까?" followed by "돈은?" started a completely fresh reading, so
+ * the second answer could contradict the first and the user got two unrelated readings instead of one that
+ * developed. The new turn still reasons for itself — the money axis genuinely needs its own evaluation — but it
+ * carries the stored graph's account of that axis, so it can say WHY the original judgment landed where it did.
+ *
+ * Returns [] when there is no prior graph, when the axis has not changed, or when the stored graph genuinely
+ * said nothing about the new axis. In that last case the follow-up is honestly a new question, and pretending
+ * otherwise would be its own fabrication.
+ */
+export function priorAxisContextFor(
+  meta: ConsultationDecisionMeta | null | undefined,
+  current: ConsultationGrounding,
+): string[] {
+  const prior = meta?.divinationVerdict;
+  if (!prior || current.status !== 'available') return [];
+  const nowAxis = current.divinationVerdict?.questionDomain;
+  if (!nowAxis || nowAxis === prior.questionDomain) return [];
+
+  const refinement = refineOnAxis(prior, nowAxis);
+  if (refinement.existing.length === 0 && refinement.premises.length === 0) return [];
+
+  return [
+    `앞선 질문: "${refinement.originalQuestion}" (축 ${refinement.originalAxis}) → 판정 ${prior.direction}`,
+    `앞선 판정 결론: ${prior.primaryConclusion}`,
+    ...refinement.existing.flatMap((c) => renderChain(c)),
+    ...(refinement.existing.length === 0
+      ? refinement.premises.slice(0, 4).map((p) => `근거만 있음: ${p.sourceFactIds[0] ?? p.target.label} — ${p.assertion}`)
+      : []),
+    ...refinement.related.slice(0, 2).flatMap((c) => renderChain(c)),
+  ];
 }

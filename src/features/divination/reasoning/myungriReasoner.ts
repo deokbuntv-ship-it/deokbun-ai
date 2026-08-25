@@ -16,7 +16,7 @@ import type { MyungriJudgeInput } from '../myungriJudge';
 import { buildMyungriPremises } from './myungriPremises';
 import { MYUNGRI_RULES, primitivePropositions } from './myungriRules';
 import {
-  PRIMITIVE_RULE, countRealSynthesis, runDerivations, standingPropositions,
+  PRIMITIVE_RULE, screenAll, runDerivations, standingPropositions,
   type DerivationContext, type DivinationPremise, type ReasonedProposition,
 } from './kernel';
 
@@ -29,15 +29,19 @@ export type MyungriReasoning = {
 };
 
 /**
- * PROJECTION, not reasoning. Maps a finished semantic conclusion onto the legacy stance enum. No lookup ladder
- * is needed because the rule that produced the conclusion already declared what kind of restriction it found.
+ * PROJECTION — semantic conclusion → legacy stance enum.
+ *
+ * V4B §11: the firmness of a claim is read from the premises that SUPPORT THAT CLAIM, whatever its real-world
+ * valence. V4A read `counterAdequacy` for an UNFAVORABLE conclusion — i.e. it judged how firmly to say "안
+ * 됩니다" from the material ARGUING AGAINST that very conclusion. The sides are about the proposition, not
+ * about whether the news is good.
  */
 function stanceOf(p: ReasonedProposition): Stance {
   if (p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL') return 'STRUCTURAL_ANSWER';
   const solid = p.adequacy.supportAdequacy === 'ADEQUATE';
   switch (p.direction) {
     case 'FAVORABLE': return solid ? 'FOR' : 'CONDITIONAL_FOR';
-    case 'UNFAVORABLE': return p.adequacy.counterAdequacy === 'ADEQUATE' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
+    case 'UNFAVORABLE': return p.adequacy.supportAdequacy === 'ADEQUATE' ? 'AGAINST' : 'CONDITIONAL_AGAINST';
     case 'RESTRICTED': return p.restriction === 'TIMING' ? 'FOR_BUT_LATER' : 'CONDITIONAL_AGAINST';
     default: return NO_SIGNAL;
   }
@@ -58,14 +62,15 @@ const evidenceOf = (
     }));
 
 /**
- * Adequacy → the legacy `EvidenceStrength`. NOTE the asymmetry that V3 got wrong: counter-adequacy is NOT
- * added in. A well-opposed claim is not a well-supported one.
+ * Adequacy → the legacy `EvidenceStrength`. Always read from the SUPPORTING side, because that is the side
+ * that backs this proposition's assertion. A well-OPPOSED claim is not a well-supported one, and a negative
+ * claim is not made firmer by the evidence that disputes it.
  */
 function strengthOf(p: ReasonedProposition): EvidenceStrength {
   if (p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL') {
-    return p.adequacy.supportAdequacy === 'ADEQUATE' || p.adequacy.counterAdequacy === 'ADEQUATE' ? 'STRONG' : 'MODERATE';
+    return p.adequacy.supportAdequacy === 'ADEQUATE' ? 'STRONG' : 'MODERATE';
   }
-  const side = p.direction === 'UNFAVORABLE' ? p.adequacy.counterAdequacy : p.adequacy.supportAdequacy;
+  const side = p.adequacy.supportAdequacy;
   if (side === 'ADEQUATE') return p.adequacy.dataCompleteness === 'COMPLETE' ? 'STRONG' : 'MODERATE';
   if (side === 'THIN') return 'WEAK';
   return p.derivationRule === PRIMITIVE_RULE ? 'NONE' : 'WEAK';
@@ -186,5 +191,5 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
 
 /** Convenience for tests and the QA pack: the synthesis census of one reasoning run. */
 export function myungriSynthesisCensus(r: MyungriReasoning) {
-  return countRealSynthesis(r.propositions, r.premises);
+  return screenAll(r.propositions, r.premises);
 }

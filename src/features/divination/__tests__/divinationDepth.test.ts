@@ -11,6 +11,7 @@ import type { DigestProvider } from '@/features/interpretation';
 import { computeZiweiChartMemoized, toZiweiBirthInput } from '@/features/ziwei';
 import { buildConsultationGrounding, resolveJudgmentDomain } from '@/features/chat/services/consultationGrounding';
 import {
+  deriveCross,
   isDirectional,
   judgeCross,
   judgeQimen,
@@ -215,8 +216,35 @@ describe('F — long-term favourable / immediate unfavourable → timed verdict 
     })]);
     const v = cross('DECISION', [structural, near], true);
     expect(v.direction).toBe('FOR_BUT_LATER');
-    expect(v.contradictionResolutions[0].kind).toBe('ACTION_VS_TIMING');
+    // V4B §3/§4 — this is NOT a temporal decomposition. 명리 and 기문 read different structures, so no single
+    // thing has a direction that is right while its timing is wrong; they are RIVAL ANSWERS that disagree, and
+    // the disagreement resolves because the question asked about a moment. A timing split across unmigrated
+    // disciplines would require target identity they cannot currently establish.
+    expect(v.contradictionResolutions[0].kind).toBe('DIRECTNESS');
+    expect(v.contradictionResolutions[0].whyOtherDidNotDominate).toMatch(/시점/);
     expect(v.timingConclusion).toBeTruthy();
+  });
+
+  it('the SAME structural target across time bands DOES produce a real temporal decomposition', () => {
+    // Both halves describe the same 자리, so direction-vs-timing is meaningful. This is the capability the
+    // target gate preserves while closing C7.
+    const seat = { key: 'NATAL_SEAT:MONTH', label: '원국 월지', kind: 'NATAL_SEAT' as const };
+    const mk = (id: string, scope: 'DAEWOON' | 'SEWOON', dir: 'FAVORABLE' | 'UNFAVORABLE', d: 'MYUNGRI' | 'ZIWEI') => ({
+      id, discipline: d, subject: '본인', target: seat,
+      questionIntent: 'DECISION' as const, questionAxis: 'CAREER' as JudgmentDomain, temporalScope: scope,
+      assertion: id, conclusionType: 'DIRECTIONAL' as const, direction: dir,
+      supportingPremiseIds: [`s_${id}`], opposingPremiseIds: [], derivedFromPropositionIds: [],
+      unresolvedPremiseIds: [], doctrineReferences: [], derivationRule: 'PRIMITIVE',
+      answersAsked: true,
+      adequacy: { supportAdequacy: 'ADEQUATE' as const, counterAdequacy: 'NONE' as const, dataCompleteness: 'COMPLETE' as const, doctrineApplicability: 'ADOPTED' as const },
+    });
+    const out = deriveCross(
+      [mk('long', 'DAEWOON', 'FAVORABLE', 'MYUNGRI'), mk('now', 'SEWOON', 'UNFAVORABLE', 'ZIWEI')],
+      [], { subject: '본인', questionIntent: 'DECISION', askedAxis: 'CAREER', dataComplete: true },
+    );
+    const split = out.find((d) => d.proposition.derivationRule === 'CROSS_TIMING_SPLIT');
+    expect(split).toBeTruthy();
+    expect(split!.proposition.target.key).toBe(seat.key);
   });
 
   it('but a WEAK structural side does NOT get to own the direction via the temporal path (C7 root cause)', () => {
@@ -246,8 +274,14 @@ describe('G — genuinely insufficient evidence is ALLOWED (no forced decision, 
       judgment('MYUNGRI', [sub('CAREER', 'CONDITIONAL_FOR')]),
       judgment('ZIWEI', [sub('CAREER', 'AGAINST')]),
     ]);
-    expect(isDirectional(v.direction)).toBe(true);
+    // V4B §13/§14 — V4A resolved this with an ordered ladder ("names an obstruction" outranked "is only
+    // conditionally open"), which is rank arbitration written in words. Neither side is structurally more
+    // authoritative here: same axis, same directness, same input quality, same doctrine standing. §14 is
+    // explicit that a standoff is a valid outcome, and inventing a winner would need exactly the ordering
+    // that was removed.
+    expect(isDirectional(v.direction)).toBe(false);
     expect(v.contradictionResolutions[0].resolution.length).toBeGreaterThan(0);
+    expect(v.contradictionResolutions[0].whyOtherDidNotDominate).toMatch(/억지로 승자를 만들지 않았습니다/);
   });
 
   it('V3 §27/§28: a PERFECTLY symmetric conflict refuses to invent a winner', () => {

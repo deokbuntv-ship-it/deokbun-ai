@@ -19,7 +19,7 @@ import type {
 import { domainFamily, type NatalBaseline } from '../myungriNatal';
 import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
-import { nextId, type DivinationPremise } from './kernel';
+import { nextId, target, type DivinationPremise } from './kernel';
 
 const FAMILY_LABEL: Record<TenGodFamily, string> = {
   WEALTH: '재물', OFFICER: '자리·책임', OUTPUT: '활동·표현', PEER: '경쟁·동료', RESOURCE: '지원·배움',
@@ -71,14 +71,16 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
       if (count > 0) {
         out.push(base({
           sourceFactIds: [`원국 ${FAMILY_LABEL[fam]} ${count}자리`],
-          target: `원국 ${FAMILY_LABEL[fam]}`,
+          target: target('TEN_GOD_FAMILY', fam, `원국 ${FAMILY_LABEL[fam]}`),
           questionAxis: axis,
           temporalScope: 'NATAL',
-          semanticRelation: count >= 2 ? 'ENABLES' : 'SUPPORTS',
+          // V4B §10 — the count NO LONGER changes the semantic relation. `count >= 2 ? 'ENABLES' : 'SUPPORTS'`
+          // silently made "two seats" mean "can carry this axis" and "one seat" mean merely "present", which is
+          // an astrology claim with no adopted doctrine behind the boundary. The count survives as FACTUAL
+          // metadata in the source fact and in the wording; it no longer creates significance by itself.
+          semanticRelation: 'SUPPORTS',
           concept: 'NATAL_FAMILY',
-          assertion: count >= 2
-            ? `${FAMILY_LABEL[fam]} 쪽이 여러 자리에 걸쳐 있어, 이 축을 감당할 바탕이 원국에 있다.`
-            : `${FAMILY_LABEL[fam]} 쪽 자리가 원국에 하나 있다.`,
+          assertion: `${FAMILY_LABEL[fam]} 쪽 자리가 원국에 ${count}곳 있다.`,
           role: 'DESCRIBES',
           doctrineReference: '십신 배치 → 축 (frozen 십신 분포)',
         }));
@@ -86,7 +88,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
         // Absence is a FACT, and it is the premise that lets "기회는 와도 받을 그릇이 없다" be derived later.
         out.push(base({
           sourceFactIds: [`원국 ${FAMILY_LABEL[fam]} 없음`],
-          target: `원국 ${FAMILY_LABEL[fam]}`,
+          target: target('TEN_GOD_FAMILY', fam, `원국 ${FAMILY_LABEL[fam]}`),
           questionAxis: axis,
           temporalScope: 'NATAL',
           semanticRelation: 'ABSENT',
@@ -101,7 +103,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     if (baseline.inCommand !== null) {
       out.push(base({
         sourceFactIds: [baseline.inCommand ? '원국 득령' : '원국 실령'],
-        target: '일간의 계절 기반',
+        target: target('DAY_MASTER_FOOTING', 'SEASON', '일간의 계절 기반'),
         concept: 'SEASONAL_FOOTING',
         questionAxis: 'GENERAL',
         temporalScope: 'NATAL',
@@ -118,7 +120,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     if (baseline.anchored !== 'UNKNOWN') {
       out.push(base({
         sourceFactIds: [`원국 통근 ${baseline.anchored}`],
-        target: '일간의 뿌리',
+        target: target('DAY_MASTER_FOOTING', 'ROOT', '일간의 뿌리'),
         concept: 'ROOTING',
         questionAxis: 'GENERAL',
         temporalScope: 'NATAL',
@@ -137,7 +139,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     if (baseline.spouseSeatStrained) {
       out.push(base({
         sourceFactIds: ['원국 일지 충·형·파·해'],
-        target: '원국 일지(배우자·자기 자리)',
+        target: target('NATAL_SEAT', 'DAY', '원국 일지(배우자·자기 자리)'),
         concept: 'NATAL_SEAT_STRAIN',
         questionAxis: 'RELATION_STABILITY',
         temporalScope: 'NATAL',
@@ -151,7 +153,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     for (const label of baseline.natalFrictionPositions) {
       out.push(base({
         sourceFactIds: [`원국 ${label}`],
-        target: `원국 ${label.split(' ')[0]}`,
+        target: target('NATAL_SEAT', label.split(' ')[0], `원국 ${label.split(' ')[0]}`),
         concept: 'NATAL_SEAT_STRAIN',
         questionAxis: 'GENERAL',
         temporalScope: 'NATAL',
@@ -171,7 +173,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     // The layer's own 십신 says WHICH axis is being activated at this time level.
     out.push(base({
       sourceFactIds: [`${where} ${FAMILY_LABEL[layer.family]}`],
-      target: `${where}의 ${FAMILY_LABEL[layer.family]}`,
+      target: target('TEN_GOD_FAMILY', layer.family, `${where}의 ${FAMILY_LABEL[layer.family]}`),
       concept: 'LAYER_ACTIVATION',
       questionAxis: FAMILY_AXIS[layer.family],
       temporalScope: layer.scope,
@@ -186,7 +188,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     if (layer.robWealth) {
       out.push(base({
         sourceFactIds: [`${where} 겁재`],
-        target: `${where}의 겁재`,
+        target: target('LUCK_LAYER', `${layer.scope}:RIVAL`, `${where}의 겁재`),
         concept: 'RIVAL_CLAIM',
         questionAxis: 'INFLUENCE',
         temporalScope: layer.scope,
@@ -202,7 +204,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
       const seat = hit.evidence.fact.split('→ ')[1] ?? hit.kind;
       out.push(base({
         sourceFactIds: [hit.evidence.fact],
-        target: seat,
+        target: target('NATAL_SEAT', hit.position, seat),
         concept: 'SEAT_CONTACT',
         questionAxis: hit.axis,
         temporalScope: layer.scope,
@@ -221,7 +223,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     if (layer.silent) {
       out.push(base({
         sourceFactIds: [`${where} 원국과 무관계`],
-        target: where,
+        target: target('LUCK_LAYER', layer.scope, where),
         concept: 'LAYER_SILENT',
         questionAxis: 'GENERAL',
         temporalScope: layer.scope,
@@ -240,7 +242,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
   if (input.strengthInputsPresent) {
     out.push(base({
       sourceFactIds: ['일간 강약: 판정 보류(채택 학파 없음)'],
-      target: '일간 강약 · 억부용신',
+      target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '일간 강약 · 억부용신'),
       concept: 'DOCTRINE_BLOCK',
       questionAxis: 'GENERAL',
       temporalScope: 'NATAL',
@@ -258,7 +260,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
   if (domainFamily(askedAxis) === null && !out.some((p) => p.questionAxis === askedAxis)) {
     out.push(base({
       sourceFactIds: [],
-      target: `질문 축 ${askedAxis}`,
+      target: target('DOCTRINE_GAP', `AXIS:${askedAxis}`, `질문 축 ${askedAxis}`),
       concept: 'DOCTRINE_BLOCK',
       questionAxis: askedAxis,
       temporalScope: 'UNSCOPED',

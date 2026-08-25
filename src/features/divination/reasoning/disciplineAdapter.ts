@@ -11,7 +11,7 @@
 import type { DivinationJudgment, JudgmentDomain, QuestionIntent } from '../contracts';
 import { isDirectional } from '../contracts';
 import {
-  computeAdequacy, nextId, PRIMITIVE_RULE,
+  computeAdequacy, nextId, PRIMITIVE_RULE, target,
   type DivinationPremise, type ReasonedProposition, type SemanticRelation,
 } from './kernel';
 
@@ -76,7 +76,11 @@ export function adaptJudgment(
       discipline: j.discipline,
       sourceFactIds: backing.length ? backing.map((e) => e.fact) : facts,
       subject: opts.subject,
-      target: (backing[0] ?? against[0])?.fact ?? sub.domain,
+      // Structured identity: a palace/board seat is the THING this discipline is talking about. Two claims
+      // about different palaces must not be treated as one claim just because both land on CAREER.
+      target: target(j.discipline === 'ZIWEI' ? 'PALACE' : 'BOARD_SEAT',
+        `${j.discipline}:${sub.domain}:${(backing[0] ?? against[0])?.fact ?? ''}`,
+        (backing[0] ?? against[0])?.fact ?? sub.domain),
       questionIntent: opts.questionIntent,
       questionAxis: sub.domain,
       temporalScope: sub.temporalScope,
@@ -104,7 +108,8 @@ export function adaptJudgment(
         ...premise,
         id: nextId(j.discipline === 'ZIWEI' ? 'zc' : 'qc'),
         sourceFactIds: against.map((e) => e.fact),
-        target: against[0].fact,
+        target: target(j.discipline === 'ZIWEI' ? 'PALACE' : 'BOARD_SEAT',
+          `${j.discipline}:${sub.domain}:counter:${against[0].fact}`, against[0].fact),
         semanticRelation: direction === 'UNFAVORABLE' || direction === 'RESTRICTED' ? 'SUPPORTS' : 'OPPOSES',
         assertion: against.map((e) => e.meaning).join(' '),
         role: 'QUALIFIES',
@@ -123,6 +128,12 @@ export function adaptJudgment(
       assertion: sub.conclusion,
       conclusionType: isDirectional(sub.stance) ? 'DIRECTIONAL' : 'STRUCTURAL',
       direction: DIRECTION_OF[relation],
+      // This discipline is answering the ASKED question — enough to disagree with another discipline doing the
+      // same, even though the two are reading different structures. Note it is NOT gated on `directness`:
+      // how squarely a claim hits the question is what RESOLVES a disagreement (see
+      // DIRECT_ASSERTION_VS_BACKGROUND_CONTEXT), so using it as a gate on whether one can exist would silence
+      // exactly the conflicts that are resolvable.
+      answersAsked: sub.domain === opts.askedAxis,
       ...(QUALIFIED_STANCES.has(sub.stance) ? { qualified: true } : {}),
       ...(relation === 'CONSTRAINS' || relation === 'DELAYS'
         ? { restriction: (relation === 'DELAYS' ? 'TIMING' : 'SCOPE') as ReasonedProposition['restriction'] }

@@ -33,8 +33,8 @@ export {
   type TemporalScope,
 } from './contracts';
 
-export { judgeMyungri, tenGodFamily, tenGodJudgmentDomain, type MyungriJudgeInput, type TemporalLayerFacts } from './myungriJudge';
-export { readNatalBaseline, natalSupportForDomain, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
+export { tenGodFamily, tenGodJudgmentDomain, type MyungriJudgeInput, type TemporalLayerFacts } from './myungriJudge';
+export { readNatalBaseline, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
 export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
 export { judgeQimen, doorClass, type QimenJudgeInput } from './qimenJudge';
@@ -55,9 +55,9 @@ export {
 
 // ── V4A — PROPOSITION GRAPH REASONING KERNEL ────────────────────────────────────────────────────
 export {
-  classifySynthesis,
+  screenSynthesis,
   computeAdequacy,
-  countRealSynthesis,
+  screenAll,
   runDerivations,
   standingPropositions,
   supersedes,
@@ -75,11 +75,23 @@ export {
   type ReasonedProposition,
   type RestrictionKind,
   type SemanticRelation,
+  type SynthesisCandidacy,
   type SynthesisClass,
+  type SemanticTarget,
+  type TargetKind,
+  sameTarget,
+  target,
 } from './reasoning/kernel';
 export { buildMyungriPremises, type MyungriPremiseInput } from './reasoning/myungriPremises';
 export { MYUNGRI_RULES, primitivePropositions } from './reasoning/myungriRules';
 export { reasonMyungri, myungriSynthesisCensus, type MyungriReasoning } from './reasoning/myungriReasoner';
  export { reasonCross, crossSynthesisCensus, type CrossReasoning, type CrossReasonInput } from './reasoning/crossReasoner';
  export { adaptJudgment } from './reasoning/disciplineAdapter';
- export { classifyPair, decideDominance as decideCrossDominance, DOMINANCE_TEXT, type CrossRelation, type CrossDerivation } from './reasoning/crossRules';
+export {
+  explainProposition, explainHeadline, refineOnAxis, renderChain,
+  type DerivationChain, type AxisRefinement,
+} from './reasoning/graphQuery';
+ export {
+  classifyPair, deriveCross, subordinate, SUBORDINATION_TEXT,
+  type CrossRelation, type CrossDerivation, type SubordinationReason, type Subordination,
+} from './reasoning/crossRules';

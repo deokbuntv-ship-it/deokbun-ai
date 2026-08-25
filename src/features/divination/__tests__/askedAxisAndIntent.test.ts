@@ -45,20 +45,29 @@ describe('§8 — question intent selects the SHAPE of the answer', () => {
   // V4A §12 — V3 answered these by gluing a canned prefix ("구조는 이렇게 봅니다") onto a conclusion that had
   // still been produced by the FOR/AGAINST pipeline. The graph now derives a STRUCTURAL or CAUSAL proposition
   // instead, so the assertion is about the KIND of answer, not about a prefix string.
-  it('a DESCRIPTIVE question is answered as structure, not as a recommendation', async () => {
+  // V4B §9 — STRUCTURAL_PROFILE was removed because it built a chart description out of count buckets. A
+  // descriptive question is now answered only from individually grounded propositions, and where none exist it
+  // declines. The requirement that survives is the one that matters: it must never be answered with a
+  // recommendation.
+  it('a DESCRIPTIVE question is answered as structure OR declined — never as a recommendation', async () => {
     const v = await verdict('제 타고난 성격이 어떤가요?');
-    expect(v.direction).toBe('STRUCTURAL_ANSWER');
-    expect(v.propositions.some((p) => p.conclusionType === 'STRUCTURAL')).toBe(true);
+    expect(isDirectional(v.direction)).toBe(false);
     expect(v.primaryConclusion).not.toMatch(/하지 않는 쪽|접고|밀어붙이지|벌일 자리는 아/);
+    if (v.direction === 'STRUCTURAL_ANSWER') {
+      expect(v.propositions.some((p) => p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL')).toBe(true);
+    }
   });
 
   it('a CAUSE_WHY question explains the friction instead of issuing a verdict', async () => {
     const v = await verdict('왜 자꾸 부딪힐까요?');
-    expect(v.direction).toBe('STRUCTURAL_ANSWER');
-    const causal = v.propositions.find((p) => p.conclusionType === 'CAUSAL');
-    expect(causal).toBeTruthy();
-    expect(causal!.direction).toBe('NONE'); // a cause is not a verdict
-    expect(v.primaryConclusion).toMatch(/우연이 아니다|되풀이|때문/);
+    expect(isDirectional(v.direction)).toBe(false);
+    const causal = v.propositions.filter((p) => p.conclusionType === 'CAUSAL');
+    // §22 — every causal conclusion is directionless: it explains, it does not recommend.
+    for (const c of causal) expect(c.direction).toBe('NONE');
+    if (v.direction === 'STRUCTURAL_ANSWER') {
+      expect(causal.length).toBeGreaterThan(0);
+      expect(v.primaryConclusion).toMatch(/우연이 아니다|되풀이|겹쳐|때문/);
+    }
   });
 });
 
@@ -82,8 +91,18 @@ describe('§9/§42 — the asked axis answers, or we say we cannot; never a subs
     const v = await verdict('올해 돈을 벌 수 있을까요?');
     expect(v.questionDomain).toBe('MONEY_INFLOW');
     if (isDirectional(v.direction)) {
-      const asked = v.axisVerdicts.find((a) => a.domain === 'MONEY_INFLOW')!;
-      expect(asked.stance).toBe(v.direction); // the headline IS the asked axis
+      // An axis can carry SEVERAL standing conclusions (a directional one and a causal one, say), so the
+      // invariant is that the headline matches ONE of the asked axis's verdicts — not that it matches
+      // whichever happens to be listed first.
+      const asked = v.axisVerdicts.filter((a) => a.domain === 'MONEY_INFLOW');
+      expect(asked.some((a) => a.stance === v.direction)).toBe(true);
+      // and the headline is never a MONEY_RETENTION conclusion
+      const retention = v.axisVerdicts.filter((a) => a.domain === 'MONEY_RETENTION');
+      expect(retention.every((a) => a.conclusion !== v.primaryConclusion)).toBe(true);
+    } else {
+      // Declining, or answering structurally, is allowed — headlining MONEY_RETENTION is not.
+      const retention = v.axisVerdicts.find((a) => a.domain === 'MONEY_RETENTION');
+      if (retention) expect(v.primaryConclusion).not.toBe(retention.conclusion);
     }
   });
 

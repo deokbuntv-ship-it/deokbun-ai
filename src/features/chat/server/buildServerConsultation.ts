@@ -40,7 +40,7 @@ import {
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
 import { renderVerdictDirective } from '@/features/divination';
-import { groundingFromStoredDecision } from './storedDecisionGrounding';
+import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
 import {
@@ -255,6 +255,13 @@ export async function buildServerConsultation(
       );
     } catch {
       grounding = GROUNDING_UNAVAILABLE;
+    }
+    // V4B §25 — an axis drilldown is a CONTINUATION, not a second reading. When the previous turn's graph
+    // already says something about the axis now being asked, that context rides along so the new answer can
+    // connect to the judgment the user already received instead of silently replacing it.
+    const priorAxisContext = priorAxisContextFor(previousMeta, grounding);
+    if (priorAxisContext.length > 0 && grounding.status === 'available') {
+      grounding = { ...grounding, priorAxisContext };
     }
   }
   // §18 — a "그럼 내년은?" follow-up inherits the prior topic: the bare question classifies as 전반 on its own,

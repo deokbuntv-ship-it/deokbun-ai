@@ -55,6 +55,19 @@ export type ConsultationGrounding =
       // re-checks the produced prose against it, so the model can explain the verdict but never reverse it.
       // Absent when no discipline could speak (the reading then falls back to the pre-existing behavior).
       divinationVerdict?: CrossDivinationVerdict | null;
+      /**
+       * V4B §24 — the STORED derivation chain behind the headline, for a follow-up that asks "왜?". Structured
+       * traversal of the persisted graph (conclusion ← rule ← premises ← upstream conclusions), never
+       * chain-of-thought: every line names a node the first turn already recorded.
+       */
+      derivationChain?: string[];
+      /**
+       * V4B §25 — when a follow-up drills into a DIFFERENT axis ("사업을 확장할까?" → "돈은?"), what the
+       * PREVIOUS turn's stored graph already established about that axis. Without this the second turn is a
+       * fresh reading that can contradict the first; with it the answer can say why the original judgment
+       * landed where it did.
+       */
+      priorAxisContext?: string[];
     };
 
 // One grounded period's categorical polarity, keyed to its target (Sprint C.1 §3). `targetKey` is the year
@@ -321,6 +334,24 @@ export function renderGroundingContext(grounding: ConsultationGrounding): string
   ];
   if (grounding.assessmentSummary) {
     lines.push(`【종합 판단(근거 기반)】 ${grounding.assessmentSummary}`);
+  }
+  // V4B §24 — a WHY turn carries the STORED derivation chain of the very judgment being questioned. These are
+  // persisted graph nodes and their stored links, not reasoning produced now, so the explanation cannot drift
+  // to a different conclusion than the answer it is explaining.
+  if (grounding.priorAxisContext && grounding.priorAxisContext.length > 0) {
+    lines.push(
+      '【앞선 판정에서 이 축에 대해 이미 나온 근거】',
+      ...grounding.priorAxisContext,
+      '이 질문은 앞선 상담의 연장입니다. 앞 판정을 없던 일로 하고 새로 답하지 마시고, 위 근거와 이어서',
+      '설명하십시오. 앞 판정과 결론이 달라진다면 무엇 때문에 달라지는지를 밝히십시오.',
+    );
+  }
+  if (grounding.derivationChain && grounding.derivationChain.length > 0) {
+    lines.push(
+      '【이 판단이 나온 경로(저장된 추론 그래프)】',
+      ...grounding.derivationChain,
+      '이 경로에 없는 근거를 새로 만들어 설명하지 마십시오. 설명은 이 경로를 풀어 쓰는 것입니다.',
+    );
   }
   const qimenAvailable = grounding.evidence.qimen.availability === 'available';
 

@@ -120,36 +120,121 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return undefined;
   if (!Array.isArray(o.evidenceReferences)) return undefined;
 
-  // V4A §21/§22 — THE PROPOSITION GRAPH MUST SURVIVE THE ROUND TRIP.
+  // V4B §23 — FULL GRAPH INTEGRITY. FAIL CLOSED.
   //
-  // This parser is a strict WHITELIST: a field it does not validate is silently dropped on restore. That is
-  // exactly how the V2 verdict vanished between turns while an in-memory test stayed green. A follow-up
-  // ("왜?", "돈은?") has to reason over the SAME graph the first answer was built from, so the propositions
-  // are validated structurally — id, the rule that derived them, and the premise links — and a malformed
-  // graph fails the whole verdict closed rather than restoring a hollow one.
-  if (!Array.isArray(o.propositions)) return undefined;
-  for (const p of o.propositions) {
-    if (p === null || typeof p !== 'object') return undefined;
-    const pr = p as Record<string, unknown>;
-    if (typeof pr.id !== 'string' || typeof pr.assertion !== 'string') return undefined;
-    if (typeof pr.derivationRule !== 'string' || typeof pr.conclusionType !== 'string') return undefined;
-    if (typeof pr.questionAxis !== 'string' || typeof pr.temporalScope !== 'string') return undefined;
-    if (!Array.isArray(pr.supportingPremiseIds) || !Array.isArray(pr.opposingPremiseIds)) return undefined;
-    if (!Array.isArray(pr.derivedFromPropositionIds)) return undefined;
-    if (pr.adequacy === null || typeof pr.adequacy !== 'object') return undefined;
-  }
-  // Premises are optional on the wire (a verdict from a discipline not yet on the graph has none), but when
-  // present they must be intact — a proposition whose premises were dropped cannot be re-examined.
+  // This parser is a strict WHITELIST: a field it does not validate is silently dropped on restore, which is
+  // exactly how the V2 verdict vanished between turns while an in-memory test stayed green. V4A validated the
+  // SHAPE of each node but not the graph: duplicate ids, dangling links, self-references and cycles all passed,
+  // and a follow-up would then reason over a graph that could not be traversed. Everything below is validated
+  // as a GRAPH, and any violation rejects the whole verdict — a partially restored graph is worse than none,
+  // because the follow-up would answer from it without knowing what was missing.
+  const CONCLUSION_TYPES = new Set(['STRUCTURAL', 'CAUSAL', 'DIRECTIONAL', 'TEMPORAL', 'COMPOUND']);
+  const DIRECTIONS = new Set(['FAVORABLE', 'UNFAVORABLE', 'RESTRICTED', 'NONE']);
+  const SCOPES = new Set(['NATAL', 'DAEWOON', 'SEWOON', 'WOLWOON', 'PRESENT_MOMENT', 'UNSCOPED']);
+  const RELATIONS = new Set([
+    'SUPPORTS', 'OPPOSES', 'ACTIVATES', 'WEAKENS', 'DELAYS', 'ACCELERATES', 'CONNECTS', 'SEPARATES',
+    'STABILIZES', 'DESTABILIZES', 'CONSTRAINS', 'ENABLES', 'ABSENT',
+  ]);
+  const TARGET_KINDS = new Set([
+    'NATAL_SEAT', 'TEN_GOD_FAMILY', 'LUCK_LAYER', 'DAY_MASTER_FOOTING', 'PALACE', 'BOARD_SEAT',
+    'DOCTRINE_GAP', 'COMPOSITE',
+  ]);
+  const ADEQUACY_LEVELS = new Set(['ADEQUATE', 'THIN', 'NONE']);
+
+  const isTarget = (t: unknown): boolean => {
+    if (t === null || typeof t !== 'object') return false;
+    const o2 = t as Record<string, unknown>;
+    return typeof o2.key === 'string' && o2.key.length > 0
+      && typeof o2.label === 'string'
+      && typeof o2.kind === 'string' && TARGET_KINDS.has(o2.kind);
+  };
+  const isStringArray = (a: unknown): a is string[] =>
+    Array.isArray(a) && a.every((x) => typeof x === 'string');
+
+  // ── PREMISES ───────────────────────────────────────────────────────────────────────────────────
+  const premiseIds = new Set<string>();
   if (o.premises !== undefined) {
     if (!Array.isArray(o.premises)) return undefined;
     for (const p of o.premises) {
       if (p === null || typeof p !== 'object') return undefined;
       const pr = p as Record<string, unknown>;
-      if (typeof pr.id !== 'string' || typeof pr.assertion !== 'string') return undefined;
-      if (typeof pr.semanticRelation !== 'string' || typeof pr.questionAxis !== 'string') return undefined;
-      if (!Array.isArray(pr.sourceFactIds)) return undefined;
+      if (typeof pr.id !== 'string' || pr.id.length === 0) return undefined;
+      if (premiseIds.has(pr.id)) return undefined;              // duplicate premise id
+      premiseIds.add(pr.id);
+      if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) return undefined;
+      if (typeof pr.semanticRelation !== 'string' || !RELATIONS.has(pr.semanticRelation)) return undefined;
+      if (typeof pr.questionAxis !== 'string' || typeof pr.subject !== 'string') return undefined;
+      if (typeof pr.temporalScope !== 'string' || !SCOPES.has(pr.temporalScope)) return undefined;
+      if (!isTarget(pr.target)) return undefined;
+      if (!isStringArray(pr.sourceFactIds)) return undefined;
     }
   }
+
+  // ── PROPOSITIONS ───────────────────────────────────────────────────────────────────────────────
+  if (!Array.isArray(o.propositions)) return undefined;
+  const propositionIds = new Set<string>();
+  const parsed: Record<string, unknown>[] = [];
+  for (const p of o.propositions) {
+    if (p === null || typeof p !== 'object') return undefined;
+    const pr = p as Record<string, unknown>;
+    if (typeof pr.id !== 'string' || pr.id.length === 0) return undefined;
+    if (propositionIds.has(pr.id)) return undefined;            // duplicate proposition id
+    propositionIds.add(pr.id);
+    if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) return undefined;
+    if (typeof pr.derivationRule !== 'string' || pr.derivationRule.length === 0) return undefined;
+    if (typeof pr.conclusionType !== 'string' || !CONCLUSION_TYPES.has(pr.conclusionType)) return undefined;
+    if (typeof pr.direction !== 'string' || !DIRECTIONS.has(pr.direction)) return undefined;
+    if (typeof pr.temporalScope !== 'string' || !SCOPES.has(pr.temporalScope)) return undefined;
+    if (typeof pr.questionAxis !== 'string' || typeof pr.subject !== 'string') return undefined;
+    if (!isTarget(pr.target)) return undefined;
+    if (!isStringArray(pr.supportingPremiseIds) || !isStringArray(pr.opposingPremiseIds)) return undefined;
+    if (!isStringArray(pr.derivedFromPropositionIds)) return undefined;
+    if (pr.adequacy === null || typeof pr.adequacy !== 'object') return undefined;
+    const ad = pr.adequacy as Record<string, unknown>;
+    if (typeof ad.supportAdequacy !== 'string' || !ADEQUACY_LEVELS.has(ad.supportAdequacy)) return undefined;
+    if (typeof ad.counterAdequacy !== 'string' || !ADEQUACY_LEVELS.has(ad.counterAdequacy)) return undefined;
+    // A premise cannot both support and oppose the same claim.
+    const sup = new Set(pr.supportingPremiseIds as string[]);
+    if ((pr.opposingPremiseIds as string[]).some((id) => sup.has(id))) return undefined;
+    parsed.push(pr);
+  }
+
+  // ── REFERENTIAL INTEGRITY + ACYCLICITY ─────────────────────────────────────────────────────────
+  // Premise links are only checked when premises were transmitted at all; a verdict from a discipline that is
+  // not on the graph legitimately carries none.
+  for (const pr of parsed) {
+    if (premiseIds.size > 0) {
+      for (const id of [...(pr.supportingPremiseIds as string[]), ...(pr.opposingPremiseIds as string[])]) {
+        if (!premiseIds.has(id)) return undefined;              // dangling premise link
+      }
+    }
+    for (const id of pr.derivedFromPropositionIds as string[]) {
+      if (id === pr.id) return undefined;                       // self-reference
+      if (!propositionIds.has(id)) return undefined;            // dangling proposition link
+    }
+  }
+  // The derivation graph must be a DAG: a follow-up traverses it, and a cycle would not terminate.
+  const edges = new Map(parsed.map((pr) => [pr.id as string, pr.derivedFromPropositionIds as string[]]));
+  const state = new Map<string, 'VISITING' | 'DONE'>();
+  const hasCycle = (id: string): boolean => {
+    const seen = state.get(id);
+    if (seen === 'DONE') return false;
+    if (seen === 'VISITING') return true;
+    state.set(id, 'VISITING');
+    for (const next of edges.get(id) ?? []) if (hasCycle(next)) return true;
+    state.set(id, 'DONE');
+    return false;
+  };
+  for (const id of edges.keys()) if (hasCycle(id)) return undefined;
+
+  // ── CONTEXT CONSISTENCY ────────────────────────────────────────────────────────────────────────
+  if (typeof o.questionIntent !== 'string') return undefined;
+  if (typeof o.asksTiming !== 'boolean') return undefined;
+  if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger(o.evaluatedAtEpochSeconds)) return undefined;
+  // Every proposition must belong to the same person the verdict is about.
+  const subjects = new Set(parsed.map((pr) => pr.subject as string));
+  if (subjects.size > 1) return undefined;
+
   return v as CrossDivinationVerdict;
 }
 

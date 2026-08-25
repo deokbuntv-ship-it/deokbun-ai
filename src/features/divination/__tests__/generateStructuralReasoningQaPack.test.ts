@@ -14,7 +14,7 @@ import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation'
 import type { DigestProvider } from '@/features/interpretation';
 import { buildConsultationGrounding, resolveQuestionIntent } from '@/features/chat/services/consultationGrounding';
 import {
-  countRealSynthesis, standingPropositions, isDirectional, validatePaidReading, judgeCross, judgePairMyungri, judgePairZiwei,
+  screenAll, standingPropositions, isDirectional, validatePaidReading, judgeCross, judgePairMyungri, judgePairZiwei,
   type CrossDivinationVerdict, type DivinationJudgment, type JudgmentDomain,
 } from '@/features/divination';
 import { buildCompatibilityEvidence } from '@/features/compatibility/engine';
@@ -115,9 +115,13 @@ async function verdictFor(birth: BirthInfoDraft, question: string, at: number): 
   return g.status === 'available' ? g.divinationVerdict ?? null : null;
 }
 
-/** V4A — the census counts what `classifySynthesis` certifies, not a label attached after the fact. */
-const realSynth = (v: CrossDivinationVerdict) =>
-  countRealSynthesis(v.propositions, v.premises).REAL_SYNTHETIC_INFERENCE;
+/**
+ * V4B §17 — this V3-era pack reports CANDIDACY only. The runtime cannot certify its own output, and this
+ * generator does not run the metamorphic harness; `docs/DIVINATION_V4B_KERNEL_TARGETED_FIX_QA_PACK.md` is
+ * where certification actually happens.
+ */
+const candidates = (v: CrossDivinationVerdict) =>
+  screenAll(v.propositions, v.premises).CANDIDATE_SYNTHESIS;
 
 /** Doctrine blockers must be VISIBLE in the pack — a withheld judgment that nobody can see is a hidden gap. */
 function blockersIn(v: CrossDivinationVerdict): string[] {
@@ -149,7 +153,7 @@ function renderJudgment(j: DivinationJudgment | undefined): string[] {
 function renderCase(c: Case, v: CrossDivinationVerdict): string {
   const by = (d: DivinationJudgment['discipline']) => v.disciplineJudgments.find((j) => j.discipline === d);
   const asked = v.axisVerdicts.find((a) => a.domain === v.questionDomain);
-  const synth = realSynth(v);
+  const synth = candidates(v);
   const blockers = blockersIn(v);
   return [
     `## [${c.group}] ${c.label}`,
@@ -214,7 +218,7 @@ describe('Structural reasoning QA pack (§39/§41)', () => {
 
     // §7 — the pack must not contain a single case that performed zero inference while still answering.
     const answeredWithoutInference = produced.filter(
-      (p) => p.v.propositions.length > 0 && realSynth(p.v) === 0,
+      (p) => p.v.propositions.length > 0 && candidates(p.v) === 0,
     );
     expect(answeredWithoutInference.map((p) => p.c.label)).toEqual([]);
 
@@ -272,7 +276,7 @@ describe('Structural reasoning QA pack (§39/§41)', () => {
     }
     expect(compatBlocks.length).toBeGreaterThanOrEqual(4);
 
-    const totalSynth = produced.reduce((n, p) => n + realSynth(p.v), 0);
+    const totalSynth = produced.reduce((n, p) => n + candidates(p.v), 0);
 
     // §13 BLOCKING ITEM — which asked axes NO discipline can natively examine. This is a coverage gap in the
     // engines, not an absence of signal in the chart, and it is the single biggest reason cases decline.
@@ -320,7 +324,8 @@ describe('Structural reasoning QA pack (§39/§41)', () => {
       '| --- | --- |',
       ...coverageRows,
       '',
-      '- **SYNTHETIC_INFERENCES = n / m** — m개 명제 중 n개가 실제 추론입니다. 단일사실 재진술은 추론으로 세지 않습니다.',
+      '- **CANDIDATE_SYNTHESIS = n / m** — 런타임이 "추론일 수 있다"고 지목한 후보 수입니다. 실제 추론인지는',
+      '  전제를 지우거나 뒤집어 결론이 움직이는지 확인해야 하며, 그 검증은 V4B 커널 팩에서 수행합니다.',
       '- **ANSWERED_ON_ASKED_AXIS** — 물어본 축으로 답했는지. 다른 축으로 대신 답하는 것은 금지입니다(§9).',
       '- **DOCTRINE_BLOCKERS** — 근거 학파가 없어 판정을 보류한 항목. 비어 있지 않은 것이 정상이며, 숨기지 않습니다(§13).',
       '- **반사실 대조** — 입력 하나만 바꿨을 때 판단이 실제로 움직이는지. 움직이지 않으면 그 입력은 쓰이지 않은 것입니다.',

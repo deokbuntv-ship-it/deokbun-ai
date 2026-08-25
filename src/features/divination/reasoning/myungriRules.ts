@@ -9,8 +9,9 @@
 // settle the question (강약 등급, 용신), the rule does not fire and the premises stay `unresolved`.
 import type { JudgmentDomain, TemporalScope } from '../contracts';
 import {
-  computeAdequacy, PRIMITIVE_RULE,
+  computeAdequacy, PRIMITIVE_RULE, sameTarget, target,
   type DerivationContext, type DerivationRule, type DivinationPremise, type ReasonedProposition,
+  type SemanticTarget,
 } from './kernel';
 
 const NEAR: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
@@ -44,7 +45,7 @@ function make(
     oppose: DivinationPremise[];
     from?: ReasonedProposition[];
     unresolved?: DivinationPremise[];
-    target: string;
+    target: SemanticTarget;
   },
 ): ReasonedProposition {
   const support = spec.support;
@@ -61,6 +62,7 @@ function make(
     conclusionType: spec.conclusionType,
     direction: spec.direction,
     ...(spec.restriction ? { restriction: spec.restriction } : {}),
+    answersAsked: spec.axis === ctx.askedAxis,
     supportingPremiseIds: support.map((p) => p.id),
     opposingPremiseIds: oppose.map((p) => p.id),
     derivedFromPropositionIds: (spec.from ?? []).map((p) => p.id),
@@ -71,84 +73,70 @@ function make(
   };
 }
 
-/** R1 — 겁재가 들어와도 다툴 몫이 없으면 다툼이 아니다. 두 전제가 만나야 비로소 경합이 성립한다. */
+/**
+ * R1 — CONTESTED_SHARE. 겁재가 들어와도 다툴 몫이 없으면 다툼이 아니다.
+ *
+ * This is a COMPOSITE conclusion about the relationship BETWEEN two different targets (the arriving rival and
+ * the natal wealth seats), which is exactly why it is informative. §3's target-identity requirement governs
+ * contradiction / temporal decomposition / causal chains / reinforcement / dominance — not compositions, where
+ * the whole point is that the targets differ. The composite target records both sides.
+ */
 const CONTESTED_SHARE: DerivationRule = {
   id: 'CONTESTED_SHARE',
   describes: '겁재가 들어온 시기 × 원국에 실제로 존재하는 재물 자리 → 몫을 두고 겨루는 구조',
   apply(premises, _derived, ctx) {
     const rivals = premises.filter((p) => p.concept === 'RIVAL_CLAIM');
     const wealth = premises.filter((p) =>
-      p.concept === 'NATAL_FAMILY' && p.questionAxis === 'MONEY_INFLOW'
-      && (p.semanticRelation === 'ENABLES' || p.semanticRelation === 'SUPPORTS'));
+      p.concept === 'NATAL_FAMILY' && p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'SUPPORTS');
     if (rivals.length === 0 || wealth.length === 0) return [];
     return [make('CONTESTED_SHARE', ctx, {
       axis: 'MONEY_RETENTION',
       temporalScope: rivals[0].temporalScope,
-      target: '벌이는 몫과 남는 몫',
+      target: target('COMPOSITE', RIVAL_VS_WEALTH_KEY(rivals[0], wealth[0]), '벌이는 몫과 남는 몫'),
       assertion: '원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',
       restriction: 'SCOPE',
-      support: wealth,
-      oppose: rivals,
+      // Both sides SUPPORT this compound claim: the wealth seats and the rival together are what make it true.
+      support: [...wealth, ...rivals],
+      oppose: [],
     })];
   },
 };
-
-/** R2 — 운은 축을 열지만 원국에 받을 자리가 없으면, 기회는 지나간다. */
-const UNRECEIVED_OPPORTUNITY: DerivationRule = {
-  id: 'UNRECEIVED_OPPORTUNITY',
-  describes: '운에서 어떤 축이 활성화됨 × 그 축을 받칠 원국 자리 부재 → 기회는 오되 손에 남지 않음',
-  apply(premises, _derived, ctx) {
-    const out: ReasonedProposition[] = [];
-    const activations = premises.filter((p) => p.semanticRelation === 'ACTIVATES');
-    for (const act of activations) {
-      const absent = premises.find((p) =>
-        p.semanticRelation === 'ABSENT' && p.temporalScope === 'NATAL' && p.questionAxis === act.questionAxis);
-      if (!absent) continue;
-      out.push(make('UNRECEIVED_OPPORTUNITY', ctx, {
-        axis: act.questionAxis,
-        temporalScope: act.temporalScope,
-        target: absent.target,
-        assertion: `${act.assertion.replace(/\.$/, '')} 그러나 원국에 그것을 받아 둘 자리가 없어, 움직임은 생겨도 손에 남는 형태가 되기는 어렵다.`,
-        conclusionType: 'COMPOUND',
-        direction: 'RESTRICTED',
-        restriction: 'CAPACITY',
-        support: [act],
-        oppose: [absent],
-      }));
-    }
-    return out;
-  },
-};
+const RIVAL_VS_WEALTH_KEY = (rival: DivinationPremise, wealth: DivinationPremise): string =>
+  'RIVAL_VS_WEALTH:' + rival.target.key + '|' + wealth.target.key;
 
 /**
- * R3 — C7 CLASS FIX. 구조(원국·대운)가 여는 축과 근시일(세운·월운)이 흔드는 축이 같을 때에만 방향/시점을 분리한다.
- * 무관한 구조적 긍정이 FOR_BUT_LATER를 만들어 내던 옛 버그는 축·대상이 일치해야 발화하므로 재현되지 않는다.
+ * R3 — DIRECTION_VS_EXECUTION. **TARGET-GATED (V4B §5).**
+ *
+ * V4A fired this on "same axis + different temporal band", so a structural reading of 원국 관성 and a this-month
+ * strike on 원국 월지 — two claims about different things — became "방향은 맞지만 지금은 아니다". A temporal
+ * decomposition is only meaningful when both halves are about the SAME SUBJECT and the SAME EXACT TARGET;
+ * otherwise there is no single thing whose direction and timing could come apart.
  */
 const DIRECTION_VS_EXECUTION: DerivationRule = {
   id: 'DIRECTION_VS_EXECUTION',
-  describes: '같은 축에서 구조적 개방(원국·대운) × 근시일 타격(세운·월운) → 방향과 실행 시점의 분리',
+  describes: '같은 대상에 대해 구조적 개방(원국·대운) × 근시일 타격(세운·월운) → 방향과 실행 시점의 분리',
   apply(premises, _derived, ctx) {
     const out: ReasonedProposition[] = [];
-    const axes = [...new Set(premises.map((p) => p.questionAxis))];
-    for (const axis of axes) {
-      const opens = premises.filter((p) => p.questionAxis === axis
-        && STRUCTURAL.includes(p.temporalScope)
-        && (p.semanticRelation === 'ENABLES' || p.semanticRelation === 'ACTIVATES' || p.semanticRelation === 'CONNECTS'));
-      const strikes = premises.filter((p) => p.questionAxis === axis
-        && NEAR.includes(p.temporalScope)
+    const opens = premises.filter((p) => STRUCTURAL.includes(p.temporalScope)
+      && (p.semanticRelation === 'ENABLES' || p.semanticRelation === 'ACTIVATES' || p.semanticRelation === 'CONNECTS'));
+    for (const open of opens) {
+      const strikes = premises.filter((p) => NEAR.includes(p.temporalScope)
+        && sameTarget(p.target, open.target)          // ← the fix: same THING, not merely same axis
+        && p.subject === open.subject
+        && p.questionAxis === open.questionAxis
         && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'));
-      if (opens.length === 0 || strikes.length === 0) continue;
+      if (strikes.length === 0) continue;
       out.push(make('DIRECTION_VS_EXECUTION', ctx, {
-        axis,
+        axis: open.questionAxis,
         temporalScope: strikes[0].temporalScope,
-        target: '방향과 실행 시점',
-        assertion: `${AXIS_LABEL[axis] ?? '이 축'}은 가는 방향 자체는 바탕이 받쳐 주지만, 가까운 시기에 같은 자리가 흔들리고 있어 지금 크게 벌이는 실행만 따로 떼어 불리하게 본다.`,
+        target: open.target,
+        assertion: open.target.label + '은(는) 큰 흐름에서 열려 있는 자리인데, 가까운 시기에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.',
         conclusionType: 'COMPOUND',
         direction: 'RESTRICTED',
         restriction: 'TIMING',
-        support: opens,
+        support: [open],
         oppose: strikes,
       }));
     }
@@ -156,42 +144,7 @@ const DIRECTION_VS_EXECUTION: DerivationRule = {
   },
 };
 
-/** R4 — 같은 타격이라도 버틸 바탕이 있느냐에 따라 결론이 갈린다. 뿌리/월령 전제를 뒤집으면 결론이 뒤집힌다. */
-const PRESSURE_AGAINST_CAPACITY: DerivationRule = {
-  id: 'PRESSURE_AGAINST_CAPACITY',
-  describes: '자리를 흔드는 타격 × 그것을 버틸 바탕(통근·득령)의 유무 → 견딤 / 못 견딤',
-  apply(premises, _derived, ctx) {
-    const out: ReasonedProposition[] = [];
-    const holds = premises.filter((p) =>
-      (p.concept === 'ROOTING' && p.semanticRelation === 'STABILIZES')
-      || (p.concept === 'SEASONAL_FOOTING' && p.semanticRelation === 'ENABLES'));
-    const lacks = premises.filter((p) =>
-      (p.concept === 'ROOTING' && p.semanticRelation === 'WEAKENS')
-      || (p.concept === 'SEASONAL_FOOTING' && p.semanticRelation === 'CONSTRAINS'));
-    if (holds.length === 0 && lacks.length === 0) return [];
-    const axes = [...new Set(premises.filter((p) => p.semanticRelation === 'DESTABILIZES').map((p) => p.questionAxis))];
-    for (const axis of axes) {
-      const strikes = premises.filter((p) => p.semanticRelation === 'DESTABILIZES' && p.questionAxis === axis);
-      const canHold = holds.length > 0;
-      out.push(make('PRESSURE_AGAINST_CAPACITY', ctx, {
-        axis,
-        temporalScope: strikes[0].temporalScope,
-        target: strikes[0].target,
-        assertion: canHold
-          ? `${strikes[0].target}가 흔들리지만 되돌아올 바탕이 있어, 범위를 좁히면 감당할 수 있다.`
-          : `${strikes[0].target}가 흔들리는데 받쳐 줄 바탕도 없어, 그대로 밀고 가면 무리가 된다.`,
-        conclusionType: 'DIRECTIONAL',
-        direction: canHold ? 'RESTRICTED' : 'UNFAVORABLE',
-        ...(canHold ? { restriction: 'SCOPE' as const } : {}),
-        support: canHold ? holds : [],
-        oppose: canHold ? strikes : [...strikes, ...lacks],
-      }));
-    }
-    return out;
-  },
-};
-
-/** R5 — 서로 다른 시기의 압력이 같은 자리에 겹치는 것은 한 번의 타격과 다른 사건이다. */
+/** R5 — CONVERGENT_SEAT_PRESSURE. 서로 다른 시기의 압력이 같은 자리에 겹치는 것은 한 번의 타격과 다른 사건이다. */
 const CONVERGENT_SEAT_PRESSURE: DerivationRule = {
   id: 'CONVERGENT_SEAT_PRESSURE',
   describes: '둘 이상의 시기 층이 같은 자리를 동시에 건드림 → 그 자리에 압력이 겹침',
@@ -199,129 +152,112 @@ const CONVERGENT_SEAT_PRESSURE: DerivationRule = {
     const out: ReasonedProposition[] = [];
     const frictions = premises.filter((p) => p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS');
     const bySeat = new Map<string, DivinationPremise[]>();
-    for (const p of frictions) bySeat.set(p.target, [...(bySeat.get(p.target) ?? []), p]);
-    for (const [seat, group] of bySeat) {
+    for (const p of frictions) bySeat.set(p.target.key, [...(bySeat.get(p.target.key) ?? []), p]);
+    for (const [, group] of bySeat) {
       const scopes = new Set(group.map((p) => p.temporalScope));
       if (scopes.size < 2) continue; // one layer hitting once is not convergence
       out.push(make('CONVERGENT_SEAT_PRESSURE', ctx, {
         axis: group[0].questionAxis,
         temporalScope: group.find((p) => NEAR.includes(p.temporalScope))?.temporalScope ?? group[0].temporalScope,
-        target: seat,
-        assertion: `${seat}에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.`,
+        target: group[0].target,
+        assertion: group[0].target.label + '에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.',
         conclusionType: 'CAUSAL',
-        direction: 'UNFAVORABLE',
-        support: [],
-        oppose: group,
+        // §22 — a CAUSE is not a VERDICT. This explains why something keeps happening; it does not recommend
+        // for or against anything. Carrying UNFAVORABLE here let a causal statement become the headline of a
+        // money question, which is a category error of the same family as answering a description with advice.
+        direction: 'NONE',
+        // These premises SUPPORT the claim that the seat is repeatedly struck — the claim is about them.
+        support: group,
+        oppose: [],
       }));
     }
     return out;
   },
 };
 
-/** R6 — 들어오는 축과 남는 축은 다른 축이다. 둘 다 참일 때 복합 진실로 묶는다. */
+/** R6 — INFLOW_VS_RETENTION. 들어오는 축과 남는 축은 다른 축이다. 둘 다 참일 때 복합 진실로 묶는다. */
 const INFLOW_VS_RETENTION: DerivationRule = {
   id: 'INFLOW_VS_RETENTION',
   describes: '재물 유입 활성 × 보유 축의 반대 신호 → 들어오는 것과 남는 것의 분리',
   apply(premises, derived, ctx) {
-    const inflow = premises.filter((p) => p.questionAxis === 'MONEY_INFLOW'
-      && (p.semanticRelation === 'ACTIVATES' || p.semanticRelation === 'ENABLES'));
-    const retentionRisk = [
-      ...premises.filter((p) => p.questionAxis === 'MONEY_RETENTION'
-        && (p.semanticRelation === 'OPPOSES' || p.semanticRelation === 'WEAKENS' || p.semanticRelation === 'DESTABILIZES')),
-    ];
+    const inflow = premises.filter((p) => p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'ACTIVATES');
+    const retentionRisk = premises.filter((p) => p.questionAxis === 'MONEY_RETENTION'
+      && (p.semanticRelation === 'OPPOSES' || p.semanticRelation === 'WEAKENS' || p.semanticRelation === 'DESTABILIZES'));
     const contested = derived.filter((d) => d.derivationRule === 'CONTESTED_SHARE');
     if (inflow.length === 0 || (retentionRisk.length === 0 && contested.length === 0)) return [];
     return [make('INFLOW_VS_RETENTION', ctx, {
       axis: 'MONEY_INFLOW',
       temporalScope: inflow[0].temporalScope,
-      target: '유입과 보유',
+      target: target('COMPOSITE', 'INFLOW_VS_RETENTION', '유입과 보유'),
       assertion: '돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',
       restriction: 'SCOPE',
-      support: inflow,
-      oppose: retentionRisk,
+      support: [...inflow, ...retentionRisk],
+      oppose: [],
       from: contested,
     })];
   },
 };
 
-/** R7 — CAUSE_WHY: 원국이 이미 약한 자리를 운이 다시 건드릴 때, 반복의 원인이 구조적으로 설명된다. */
+/**
+ * R7 — RECURRING_FRICTION_CAUSE. **TARGET-GATED (V4B §6).**
+ *
+ * V4A matched on axis, so two unrelated events that happened to share the RELATIONSHIP axis could be presented
+ * as "계속 같은 문제로 부딪힌다". A recurrence claim requires the SAME EXACT TARGET being struck twice — a
+ * standing natal weakness in that seat, and a luck layer landing on that same seat.
+ */
 const RECURRING_FRICTION_CAUSE: DerivationRule = {
   id: 'RECURRING_FRICTION_CAUSE',
-  describes: '원국 자체의 마찰 × 그 자리를 다시 건드리는 운 → 반복되는 부딪힘의 구조적 원인',
+  describes: '원국 자체가 약한 바로 그 자리를 운이 다시 건드림 → 반복되는 부딪힘의 구조적 원인',
   apply(premises, _derived, ctx) {
-    // A causal account of the SPOUSE seat is not an answer to a money question. This rule explains a
-    // recurrence, so it fires only when a recurrence was asked about, or when the seat it explains is the
-    // asked axis — otherwise it is noise the synthesis would have to filter out later anyway.
-    const relevant = (p: DivinationPremise) =>
-      ctx.questionIntent === 'CAUSE_WHY' || p.questionAxis === ctx.askedAxis;
-    const natalWeak = premises.filter((p) =>
-      p.temporalScope === 'NATAL' && p.semanticRelation === 'DESTABILIZES' && relevant(p));
-    if (natalWeak.length === 0) return [];
-    const axis = natalWeak[0].questionAxis;
-    // The recurrence must be on the SAME axis — a different axis being hit is a different story.
-    const temporalHit = premises.filter((p) => p.temporalScope !== 'NATAL' && p.questionAxis === axis
-      && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'));
-    if (temporalHit.length === 0) return [];
-    return [make('RECURRING_FRICTION_CAUSE', ctx, {
-      axis,
-      temporalScope: temporalHit[0].temporalScope,
-      target: natalWeak[0].target,
-      assertion: `반복해서 부딪히는 자리는 우연이 아니다. ${natalWeak[0].target}가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 같은 성격의 자리를 다시 건드리고 있어 같은 일이 되풀이된다.`,
-      conclusionType: 'CAUSAL',
-      direction: 'NONE',
-      support: natalWeak,
-      oppose: temporalHit,
-    })];
+    const out: ReasonedProposition[] = [];
+    const natalWeak = premises.filter((p) => p.temporalScope === 'NATAL' && p.semanticRelation === 'DESTABILIZES');
+    for (const weak of natalWeak) {
+      const again = premises.filter((p) => p.temporalScope !== 'NATAL'
+        && sameTarget(p.target, weak.target)          // ← the fix: the SAME seat, not merely the same axis
+        && p.subject === weak.subject
+        && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'));
+      if (again.length === 0) continue;
+      out.push(make('RECURRING_FRICTION_CAUSE', ctx, {
+        axis: weak.questionAxis,
+        temporalScope: again[0].temporalScope,
+        target: weak.target,
+        assertion: '반복해서 부딪히는 데는 이유가 있다. ' + weak.target.label
+          + '가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.',
+        conclusionType: 'CAUSAL',
+        direction: 'NONE',
+        support: [weak, ...again],
+        oppose: [],
+      }));
+    }
+    return out;
   },
 };
 
-/**
- * R8 — DESCRIPTIVE. 방향을 묻지 않은 질문에는 방향을 만들지 않는다. 원국의 무게중심은 "어느 축에 자리가
- * 겹치는가 대 어느 축이 얇거나 비는가"의 대비이므로, 모든 축이 있든 없든 항상 말할 수 있는 구조가 있다.
- * (첫 구현은 '겹친 축 AND 빈 축'을 동시에 요구해 대부분의 명식에서 침묵했다 — 서술형 질문이 답을 못 받았다.)
- */
-const STRUCTURAL_PROFILE: DerivationRule = {
-  id: 'STRUCTURAL_PROFILE',
-  describes: '원국에서 자리가 겹친 축 × 얇거나 비어 있는 축 → 방향 없는 구조 서술',
-  apply(premises, _derived, ctx) {
-    const natal = premises.filter((p) => p.concept === 'NATAL_FAMILY'
-      && ['ENABLES', 'SUPPORTS', 'ABSENT'].includes(p.semanticRelation));
-    if (natal.length < 2) return [];
-    const doubled = natal.filter((p) => p.semanticRelation === 'ENABLES');
-    const thin = natal.filter((p) => p.semanticRelation !== 'ENABLES');
-    // ', ' not '·' — several family names already CONTAIN '·' (자리·책임, 활동·표현), so a '·' join runs them together.
-    const name = (ps: typeof natal) => ps.map((p) => p.target.replace('원국 ', '')).join(', ');
-
-    const assertion = doubled.length > 0 && thin.length > 0
-      ? `이 명식은 ${name(doubled)} 쪽에 자리가 겹쳐 무게가 실려 있고, ${name(thin)} 쪽은 얇거나 비어 있다. 잘 쓰는 자리와 빌려 써야 하는 자리가 뚜렷하게 갈리는 구조다.`
-      : doubled.length > 0
-        ? `이 명식은 ${name(doubled)} 쪽 모두에 자리가 겹쳐 있어, 어느 축을 잡아도 받쳐 줄 바탕이 있는 구조다.`
-        : `이 명식은 어느 축에도 자리가 몰려 있지 않고 ${name(thin)} 쪽으로 고르게 퍼져 있다. 특정 분야로 쏠리기보다 상황에 따라 쓰는 자리가 달라지는 구조다.`;
-
-    return [make('STRUCTURAL_PROFILE', ctx, {
-      axis: 'GENERAL',
-      temporalScope: 'NATAL',
-      target: '원국의 무게중심',
-      assertion,
-      conclusionType: 'STRUCTURAL',
-      direction: 'NONE',
-      support: doubled.length > 0 ? doubled : thin,
-      oppose: doubled.length > 0 ? thin : [],
-    })];
-  },
-};
+// ── REMOVED IN V4B — heuristics that needed doctrine this repository does not have ────────────────
+//
+// R2 UNRECEIVED_OPPORTUNITY ("기회는 오되 받을 그릇이 없다") — read a natal family's ABSENCE, and could read a
+//   DOCTRINE_BLOCK premise, as proof of missing capacity. A withheld or unavailable doctrine result means
+//   UNKNOWN / NOT_EVALUATED; it is not evidence of absence, and it is certainly not evidence of incapacity.
+//
+// R4 PRESSURE_AGAINST_CAPACITY ("흔들려도 버틴다 / 못 버틴다") — applied a GLOBAL personal capacity, inferred
+//   from 통근·득령, to whatever target happened to be destabilized. That is a strength judgment in all but
+//   name, and 강약 is deliberately WITHHELD. Nothing may be inferred from broad rooting/season state about an
+//   unrelated seat.
+//
+// R8 STRUCTURAL_PROFILE ("이 명식은 …쪽에 무게가 실려 있다") — built an astrology description out of count
+//   buckets. Replacing one threshold with another would repeat the mistake, so it is removed outright.
+//
+// The cost is real: descriptive questions now answer only from individually grounded propositions, and often
+// decline. §29 accepts that — precision before coverage.
 
 export const MYUNGRI_RULES: DerivationRule[] = [
   CONTESTED_SHARE,
-  UNRECEIVED_OPPORTUNITY,
   DIRECTION_VS_EXECUTION,
-  PRESSURE_AGAINST_CAPACITY,
   CONVERGENT_SEAT_PRESSURE,
   INFLOW_VS_RETENTION,
   RECURRING_FRICTION_CAUSE,
-  STRUCTURAL_PROFILE,
 ];
 
 /**
@@ -344,12 +280,17 @@ export function primitivePropositions(
       questionAxis: p.questionAxis,
       temporalScope: p.temporalScope,
       assertion: p.assertion,
-      conclusionType: (p.semanticRelation === 'ABSENT' ? 'STRUCTURAL' : 'DIRECTIONAL') as ReasonedProposition['conclusionType'],
+      // ACTIVATES and ABSENT describe WHAT IS THE CASE, not whether it is good. "올해 재물 축이 움직인다" says
+      // the axis is in play; reading that as FAVORABLE is an unjustified valence, and it let a bare activation
+      // become the headline answer to "돈을 벌 수 있을까요?" — a statement that answers a different question.
+      conclusionType: (p.semanticRelation === 'ABSENT' || p.semanticRelation === 'ACTIVATES'
+        ? 'STRUCTURAL' : 'DIRECTIONAL') as ReasonedProposition['conclusionType'],
+      answersAsked: p.questionAxis === ctx.askedAxis,
       direction: (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'OPPOSES'
         ? 'UNFAVORABLE'
         : p.semanticRelation === 'CONSTRAINS'
           ? 'RESTRICTED'
-          : p.semanticRelation === 'CONNECTS' || p.semanticRelation === 'ACTIVATES' || p.semanticRelation === 'ENABLES'
+          : p.semanticRelation === 'CONNECTS' || p.semanticRelation === 'ENABLES'
             ? 'FAVORABLE'
             : 'NONE') as ReasonedProposition['direction'],
       supportingPremiseIds: [p.id],
