@@ -2,7 +2,7 @@
 // Regenerate: node supabase/functions/chat/_server/build.mjs
 
 // src/features/chat/prompts/consultationPromptVersion.ts
-var CONSULTATION_PROMPT_VERSION = "consultation@1.4.3";
+var CONSULTATION_PROMPT_VERSION = "consultation@1.5.0";
 
 // src/features/chat/prompts/consultationMode.ts
 var FOLLOW_UP_CUES = /(그중|그 중|그때|그 때|그럼|그러면|그건|그 시기|그 달|아까|방금|위에서|말한 것 중|어느 쪽)/;
@@ -379,6 +379,18 @@ var STRUCTURED_OUTPUT_INSTRUCTION = [
   "· 합·충·형처럼 관계의 세부 근거는 앞부분에 늘어놓지 말고, 그 변화가 생활에서 무엇을 의미하는지 먼저",
   '  설명한 뒤 domainInterpretation(전문 근거)에서 보조적으로 풀어 주십시오. 근거의 "뜻"은 살리되, 앞부분은',
   "  쉬운 말이 먼저입니다. (근거를 삭제하라는 뜻이 아닙니다 — 순서를 지키라는 뜻입니다.)",
+  "",
+  "[명식 바탕과 지금 흐름을 연결 — 나만의 답]",
+  "· 타고난 바탕(원국)과 지금의 큰 흐름(대운)·올해 흐름(세운)이 질문과 어떻게 맞물리는지 한 줄기로 엮어 설명하십시오.",
+  "  누구에게나 맞는 일반론이 아니라, 이 사람의 흐름에서 나오는 답이어야 합니다. 뒷받침하는 서로 다른 사실이",
+  "  둘 이상 있으면 연결해 설명하고(예: 지금의 큰 흐름 + 올해 흐름), 사실이 하나뿐이면 억지로 지어내지 마십시오.",
+  '· "신중하세요 / 천천히 하세요 / 긍정적으로 생각하세요"처럼 누구에게나 되는 막연한 말은, 구체적인 근거와',
+  "  연결될 때만 쓰십시오. 근거 없이 일반적인 처세 조언만 나열하지 마십시오.",
+  "",
+  "[행동 조언 — 태도·방향이지 할 일 목록이 아님]",
+  '· 행동 조언은 체크리스트·"N개로 정리"·"며칠/몇 분 동안"·서류·계좌·영수증 정리 같은 업무 관리 지시가 아니라,',
+  '  삶의 태도와 방향으로 주십시오(예: "지금은 새로 벌이기보다 이미 하고 있는 일을 다듬는 쪽이 유리합니다").',
+  "  할 일 목록이나 생산성 코칭처럼 쓰지 마십시오.",
   "",
   "[자연스러운 한국어 — 기계 같은 문투 금지]",
   '· "종합적으로 볼 때", "이를 바탕으로", "따라서"를 남발하지 말고, 번역·논문·관공서 같은 문투를 피하십시오.',
@@ -8049,9 +8061,12 @@ var POLARITY_TONE = {
   DYNAMIC: "전반적인 흐름은 변화가 많은 편입니다",
   CAUTION: "전반적인 흐름은 조심이 필요한 편입니다"
 };
-function renderAnswerPlanDirective(plan) {
+function renderAnswerPlanDirective(plan, domain) {
   const lines = ["[상담 지침 — 서버 판단(사용자에게 그대로 노출하지 말 것)]"];
   lines.push("· 사용자는 답을 찾으러 왔습니다. 결론을 맨 먼저, 근거 범위 안에서 가능한 한 분명하게 말하십시오.");
+  if (domain && domain !== "전반") {
+    lines.push(`· 이 질문의 핵심 주제는 "${domain}"입니다. 그 주제에 대한 답을 맨 먼저 분명히 주고, 질문과 무관한 성격·타고난 기질 분석으로 답을 시작하지 마십시오. 근거가 닿는 다른 영역은 보조로만 덧붙이십시오.`);
+  }
   lines.push(`· ${ASSERTIVENESS_LINE[plan.assertiveness]}`);
   if (plan.polarity) {
     lines.push(`· ${POLARITY_TONE[plan.polarity]}(서버가 판단한 전반 흐름). 이 방향과 어긋나게 서술하지 말되, 없는 근거로 과장하지도 마십시오.`);
@@ -8826,11 +8841,14 @@ function containsCompatibilityHarm(text) {
   }
   return false;
 }
+function containsChecklistCoachTone(text) {
+  return typeof text === "string" && (containsProductivityChecklistTone(text) || containsServiceChecklistTone(text));
+}
 var CONSTRUCTIVE_DIRECTION = /맞춰|조율|대화|소통|이해|배려|노력하면|관리하면|신경\s*쓰면|방식을\s*맞추|시간을\s*두고|천천히|존중|표현하|먼저\s*다가|거리를\s*조절/;
 function hasConstructiveDirection(text) {
   return typeof text === "string" && CONSTRUCTIVE_DIRECTION.test(text);
 }
-var CERTAINTY_REGEN_DIRECTIVE = '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 고르거나 미는 표현 — 승자/1순위/가장 좋음뿐 아니라 "A로 진행하세요/A를 추천/권합니다/선택하는 편이 좋다/A가 더 낫다·적합하다/A에 무게를 둔다/B를 피하라/저라면 A" 같은 은근한 추천·선택·방향 제시도 모두 금지, (3) 서버가 판단한 전반 흐름과 어긋나는 과장. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 어느 한쪽도 고르거나 권하지 말고 각 후보의 장점과 주의점을 균형 있게 설명한 뒤 "지금 기준으로는 한쪽을 더 낫다고 정하지 않습니다"로 맺으며, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
+var CERTAINTY_REGEN_DIRECTIVE = '[중요 — 재작성] 앞 답변에 다음 중 하나가 있었습니다: (1) "반드시/무조건/100%/절대/틀림없이" 같은 단정·결과 보장, (2) 여러 후보 중 한쪽을 고르거나 미는 표현 — 승자/1순위/가장 좋음뿐 아니라 "A로 진행하세요/A를 추천/권합니다/선택하는 편이 좋다/A가 더 낫다·적합하다/A에 무게를 둔다/B를 피하라/저라면 A" 같은 은근한 추천·선택·방향 제시도 모두 금지, (3) 서버가 판단한 전반 흐름과 어긋나는 과장, (4) 체크리스트·할 일 목록·우선순위 N개·"최근 N일/N분"·영수증·계좌·서류 정리 같은 업무 생산성 코칭 말투. 사건/결과를 확정·보장하지 말고, 후보를 비교하는 질문이면 어느 한쪽도 고르거나 권하지 말고 각 후보의 장점과 주의점을 균형 있게 설명한 뒤 "지금 기준으로는 한쪽을 더 낫다고 정하지 않습니다"로 맺으며, 행동 조언은 목록이 아니라 태도·방향(예: "지금은 벌이기보다 다듬는 쪽")으로, 근거 범위 안 적합도·흐름·조언으로만 다시 답하십시오.';
 var COMPAT_REGEN_DIRECTIVE = '[중요 — 궁합 재작성] 헤어짐/이혼을 지시하거나 확정하지 말고, 상대의 속마음·성격·미래 행동을 사실로 단정하지 말며, "천생연분/절대 안 맞음" 같은 절대적 궁합 운명을 단정하지 마십시오. 두 사람의 결·마찰·리스크를 설명하고, 관계를 어떻게 조율·관리하면 좋은지 실질적 방향을 최소 한 가지 함께 제시하십시오.';
 function renderableText(outcome) {
   if (outcome.kind === "ACCEPTED") return composeConsultationText(outcome.result);
@@ -8855,6 +8873,7 @@ function outcomeViolates(outcome, opts, rawJson) {
   if (opts.forbidCompatibilityHarm && containsCompatibilityHarm(text)) return true;
   if (opts.requireMitigation && lacksMitigation(outcome)) return true;
   if (opts.requireConstructive && !hasConstructiveDirection(text)) return true;
+  if (opts.forbidChecklistTone && containsChecklistCoachTone(text)) return true;
   if (opts.polarity) {
     const hs = highSalienceText(outcome);
     if (hs !== null && contradictsPolarity(hs, opts.polarity)) return true;
@@ -8867,7 +8886,8 @@ async function classifyWithGuards(args) {
     forbidWinner: args.forbidWinner ?? false,
     polarity: args.polarity,
     forbidCompatibilityHarm: args.forbidCompatibilityHarm ?? false,
-    requireConstructive: args.requireConstructive ?? false
+    requireConstructive: args.requireConstructive ?? false,
+    forbidChecklistTone: args.forbidChecklistTone ?? false
   };
   const first = classifyConsultationOutput(args.raw, args.grounding);
   if (!outcomeViolates(first, opts, args.raw)) {
@@ -9383,6 +9403,7 @@ async function buildServerConsultation(request, deps) {
     }
   }
   const carriedDomain = followUpIntent === "NEXT_YEAR" && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== "전반" ? previousDecision.decisionMeta.domain : null;
+  const questionDomain = carriedDomain ?? classifyConsultationDomain(question);
   const hasAuthoritativeFollowUp = followUpDirective !== null && (followUpIntent === "WHY" || followUpIntent === "BETWEEN_CANDIDATES");
   const recentMessages = hasAuthoritativeFollowUp ? [] : sanitizeConversation(request.conversationContext);
   const safeConversationSummary = hasAuthoritativeFollowUp ? null : request.conversationSummary ?? null;
@@ -9390,8 +9411,8 @@ async function buildServerConsultation(request, deps) {
   let effectiveGrounding = grounding;
   let plan = deriveAnswerPlan(question, effectiveGrounding);
   const buildMessages = (extraDirective) => {
-    const base = followUpDirective ? `${renderAnswerPlanDirective(plan)}
-${followUpDirective}` : renderAnswerPlanDirective(plan);
+    const base = followUpDirective ? `${renderAnswerPlanDirective(plan, questionDomain)}
+${followUpDirective}` : renderAnswerPlanDirective(plan, questionDomain);
     return buildPrompt({
       selectedContext,
       conversationSummary: safeConversationSummary,
@@ -9425,6 +9446,8 @@ ${extraDirective}` : base
     grounding: effectiveGrounding,
     requireMitigation: followUpIntent === "WHY" ? false : plan.requireMitigation,
     forbidWinner: plan.intents.includes("COMPARISON") || plan.intents.includes("RANKING"),
+    forbidChecklistTone: true,
+    // §13 — behavioral direction, never a productivity/service checklist
     polarity: followUpIntent === "WHY" ? previousDecision?.polarity : plan.polarity,
     regenerate: async () => {
       try {
