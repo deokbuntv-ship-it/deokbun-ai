@@ -6804,8 +6804,19 @@ function selectActiveDaewoonCycleOrdinal(cycles, currentAge) {
   const active = cycles.find((c) => currentAge >= c.startAgeInclusive && currentAge <= c.endAgeInclusive);
   return active ? active.ordinal : null;
 }
-function currentSajuAge(sewoonTargetYear, solarBirthYear) {
-  return sewoonTargetYear !== null && solarBirthYear !== null && Number.isFinite(solarBirthYear) ? sewoonTargetYear - solarBirthYear : null;
+function fullElapsedYears(birth, evalDate) {
+  let years = evalDate.year - birth.year;
+  if (evalDate.month < birth.month || evalDate.month === birth.month && evalDate.day < birth.day) years -= 1;
+  return years;
+}
+function kstCivilDate(instantEpochSeconds) {
+  const d = new Date((instantEpochSeconds + 9 * 3600) * 1e3);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+function resolveActiveDaewoonOrdinal(daewoon, instantEpochSeconds) {
+  if (daewoon.capability !== "AVAILABLE") return null;
+  const age = fullElapsedYears(daewoon.start.timing.birthLocalDateTime.date, kstCivilDate(instantEpochSeconds));
+  return selectActiveDaewoonCycleOrdinal(daewoon.cycles, age);
 }
 function buildMyungriTemporalContext(input) {
   const warnings = [];
@@ -6829,8 +6840,7 @@ function buildMyungriTemporalContext(input) {
   if (daewoon.capability !== "AVAILABLE") {
     warnings.push("DAEWOON_UNAVAILABLE");
   } else {
-    const age = currentSajuAge(sewoon ? sewoon.targetYear : null, input.solarBirthYear);
-    const ordinal = selectActiveDaewoonCycleOrdinal(daewoon.cycles, age);
+    const ordinal = resolveActiveDaewoonOrdinal(daewoon, input.instantEpochSeconds);
     const activeCycle = ordinal !== null ? daewoon.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
     const tg3 = calculateDaewoonTenGods({ dayMaster: natal.dayMaster, cycles: daewoon.cycles });
     const tgCycle = ordinal !== null && tg3.capability === "AVAILABLE" ? tg3.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
@@ -7647,16 +7657,11 @@ async function buildMyungriEvidence(draft, deps, question) {
     result: calculateWolwoonForInstant({ natal, instantEpochSeconds: epochForSajuMonth(t.year, t.month) })
   })).filter((x) => x.result.capability === "AVAILABLE");
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
-  const currentSajuYear = sewoon.capability === "AVAILABLE" ? sewoon.targetYear : null;
-  const currentAge = Number.isFinite(solarBirthYear) && currentSajuYear !== null ? currentSajuYear - solarBirthYear : null;
-  let activeCycleOrdinal = null;
+  const activeCycleOrdinal = resolveActiveDaewoonOrdinal(daewoon, now);
   let activeDaewoonPillar = null;
-  if (daewoon.capability === "AVAILABLE" && currentAge !== null) {
-    const active = daewoon.cycles.find((c) => currentAge >= c.startAgeInclusive && currentAge <= c.endAgeInclusive);
-    if (active) {
-      activeCycleOrdinal = active.ordinal;
-      activeDaewoonPillar = { stem: active.pillar.stem, branch: active.pillar.branch };
-    }
+  if (activeCycleOrdinal !== null && daewoon.capability === "AVAILABLE") {
+    const active = daewoon.cycles.find((c) => c.ordinal === activeCycleOrdinal);
+    if (active) activeDaewoonPillar = { stem: active.pillar.stem, branch: active.pillar.branch };
   }
   const timeAxis = sewoon.capability === "AVAILABLE" ? calculateMyungriTimeAxis({
     natal,
@@ -8180,18 +8185,11 @@ async function buildMonthlyFortuneEvidence(input, deps) {
       relationsToNatal: w.relationsToNatal
     });
   }
-  let solarBirthYear = null;
-  try {
-    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
-  } catch {
-    solarBirthYear = null;
-  }
   const temporal = buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
-    instantEpochSeconds: monthMidpointEpochSeconds(target),
-    solarBirthYear
+    instantEpochSeconds: monthMidpointEpochSeconds(target)
   });
   return {
     available: true,
@@ -10528,18 +10526,11 @@ async function buildTodayFortuneEvidence(input, deps) {
   const natal = natalContextFromFourPillars(engineResult.output.fourPillars);
   const dayLuck = calculateDayLuck({ natal, civilDate: epochToKstCivilDate(input.nowEpochSeconds) });
   if (!dayLuck.available) return unavailable9(`DAY_LUCK_${dayLuck.reason}`);
-  let solarBirthYear = null;
-  try {
-    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
-  } catch {
-    solarBirthYear = null;
-  }
   const temporal = buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
-    instantEpochSeconds: input.nowEpochSeconds,
-    solarBirthYear
+    instantEpochSeconds: input.nowEpochSeconds
   });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
   return {

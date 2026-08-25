@@ -75,3 +75,19 @@ Device-QA finding: technically correct but the prose read like a finance/admin c
 **Evidence specificity (§18-22).** `plan.evidence` is now SOURCE-SEPARATED — 오늘 일진 / 현재 대운 / 올해 세운 / 종합 (monthly: 이번 달 월운 / 현재 대운 / 올해 세운 / 종합), each line from the actual source's `derivePolarity` tier, available sources only (no fake specificity), plain language (no 간지/십신/강약). The 종합 line reuses the synthesis summary → consistent with the body (§27). Base day/month tier UNCHANGED; no engine/theory change.
 
 **Cache.** Canonical versions bumped (`today-canonical@1.3.0`, `monthly-canonical@1.4.0`) + plan versions (today-plan@1.4.0 / monthly-plan@1.5.0) → stale same-day/month records regenerate for QA (no purge/migration).
+
+---
+
+## V4 — Daewoon precision + one canonical active-대운 resolver (server-only)
+
+Resolves the `DAEWOON_PRECISION_FOLLOWUP`. The active-대운 was selected by `evalYear − birthYear` (year-subtraction), which over-counts by 1 before the birthday → a ±1-year error at decade boundaries, and was duplicated (consultation inline vs temporalContext).
+
+**Canonical resolver.** `resolveActiveDaewoonOrdinal(daewoonResult, instantEpochSeconds)` (temporalContext.ts) is now the SINGLE selector used by Consultation, Today, and Monthly. It computes true elapsed years (만나이) via `fullElapsedYears` from the **engine's own exposed birth date** (`SajuDaewoonResult.start.timing.birthLocalDateTime.date`) to the eval KST civil date, then picks the integer-age cycle. This matches the engine's own duration-based start-age basis (`rawStartAgeYears` = elapsed-from-birth) — convention-free, NOT a 세는나이/school choice, and it re-derives nothing frozen (the 절입-distance→age stays ENGINE-12's). Precision = day-level (matches the engine's date-level source truth). Fail-closed: 대운 unavailable (e.g. 시주 미상, which the frozen engine already returns) → null, never a fabricated cycle.
+
+**Consolidation (§8).** Consultation's inline year-subtraction block was removed; it now calls the same resolver with the same instant → the same subject/instant can never yield a different current 대운 across surfaces (previously they matched only by coincidence of identical duplicated logic). `currentSajuAge` (the year-subtraction helper) was removed.
+
+**Time/timezone.** Eval date is KST (UTC+9 fixed; Korea has no DST). Birth date/time normalization is the frozen natal engine's (Asia/Seoul historical resolver) — no new timezone subsystem, no true-solar-time.
+
+**Precision ceiling (limitation).** The engine's cycle boundary is the rounded integer 대운수 (`Math.floor(rawStartAgeYears + 0.5)`), so selection precision is day-level against integer-age boundaries — NOT sub-year 절입-exact. Going finer would require re-deriving the frozen rounding rule → out of scope (not attempted).
+
+**Artifacts.** SERVER_ONLY — no client/schema/canonical-version change → **no APK rebuild**; the result schema is unchanged and the canonical version is NOT bumped (§15: a narrow-window quality fix doesn't warrant forcing global invalidation + an APK build — the correction applies on natural regeneration). Bundle rebuilt (build only, no deploy).
