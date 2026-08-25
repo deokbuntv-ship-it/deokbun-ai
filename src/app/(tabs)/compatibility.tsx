@@ -15,7 +15,7 @@ import { Text } from '@/components/Text';
 import { isSavedSubjectId, useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
 import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { useAuth } from '@/features/auth';
-import { walletStateOf } from '@/features/duk/consumerDukView';
+import { isBalanceShort, walletStateOf } from '@/features/duk/consumerDukView';
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { useWallet } from '@/features/duk/useWallet';
@@ -77,7 +77,9 @@ export default function CompatibilityScreen() {
   const balanceKnown = displayWalletState === 'loaded' || displayWalletState === 'zero';
   const balance = wallet.state?.totalSpendable ?? 0;
   const required = DUK_PRICES.compatibility;
-  const short = balanceKnown && balance < required;
+  // Only "insufficient" when the balance is genuinely KNOWN and short (shared canonical helper). An
+  // unloaded/unknown wallet must NOT read as insufficient; the server remains the final authority.
+  const short = isBalanceShort(wallet.state, required);
 
   const startCompatibility = () => {
     if (!self || !targetId) return;

@@ -25,7 +25,7 @@ import {
   type ConsultationSubject,
 } from '@/features/consultation';
 import { useAuth } from '@/features/auth';
-import { walletStateOf } from '@/features/duk/consumerDukView';
+import { isBalanceShort, walletStateOf } from '@/features/duk/consumerDukView';
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { useWallet } from '@/features/duk/useWallet';
@@ -128,7 +128,9 @@ export default function ConsultationListScreen() {
   const displayWalletState = wallet.loading && !wallet.state ? 'loading' : walletState;
   const balance = wallet.state?.totalSpendable ?? 0;
   const required = DUK_PRICES.general;
-  const short = (displayWalletState === 'loaded' || displayWalletState === 'zero') && balance < required;
+  // Only "insufficient" when the balance is genuinely KNOWN and short (shared canonical helper). An
+  // unloaded/unknown wallet must NOT read as insufficient; the server remains the final authority.
+  const short = isBalanceShort(wallet.state, required);
 
   const openConversation = (item: ConversationSummaryItem) => {
     const snap = item.subjectSnapshot as StoredSnapshot;

@@ -1,7 +1,23 @@
 // Sprint J1 — consumer Duk view-models (pure; server values are authority, no client financial math).
 import {
-  walletStateOf, walletHeadline, candleInitialState, candleCopy, sessionTurnCopy, insufficientView,
+  walletStateOf, walletHeadline, candleInitialState, candleCopy, sessionTurnCopy, insufficientView, isBalanceShort,
 } from '@/features/duk/consumerDukView';
+
+describe('isBalanceShort — consultation affordability (unknown balance is NOT insufficient)', () => {
+  const PRICE = 5; // DUK_PRICES.general
+  it('a KNOWN balance ≥ price is affordable (the QA-grant bug: 102 REWARD must start a consultation)', () => {
+    expect(isBalanceShort({ totalSpendable: 102 }, PRICE)).toBe(false);
+    expect(isBalanceShort({ totalSpendable: 5 }, PRICE)).toBe(false); // exact price
+  });
+  it('a KNOWN balance < price is short', () => {
+    expect(isBalanceShort({ totalSpendable: 4 }, PRICE)).toBe(true);
+    expect(isBalanceShort({ totalSpendable: 0 }, PRICE)).toBe(true); // genuinely-empty loaded wallet
+  });
+  it('an UNKNOWN/unloaded balance (null/undefined) is NEVER treated as insufficient (server is authority)', () => {
+    expect(isBalanceShort(null, PRICE)).toBe(false);
+    expect(isBalanceShort(undefined, PRICE)).toBe(false);
+  });
+});
 
 describe('walletStateOf / walletHeadline', () => {
   it('classifies signed-out / error / zero / loaded from the server total', () => {

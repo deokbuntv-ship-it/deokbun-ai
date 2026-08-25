@@ -17,6 +17,17 @@ export function walletHeadline(state: WalletLoadState, totalSpendable: number): 
   }
 }
 
+/**
+ * Client-side affordability for a paid action (상담/궁합). Returns true ONLY when the balance is genuinely
+ * KNOWN and short. An unloaded/unknown wallet (state === null → totalSpendable not yet read) is NEVER treated
+ * as insufficient — otherwise a stale/not-yet-refreshed singleton would show a false paywall while Home/MY show
+ * the real balance. A genuinely empty wallet has a LOADED state with totalSpendable === 0 (state !== null). The
+ * server (reserve_session_duk) stays the final authority and rejects a truly-insufficient spend regardless.
+ */
+export function isBalanceShort(walletState: { totalSpendable: number } | null | undefined, required: number): boolean {
+  return walletState != null && walletState.totalSpendable < required;
+}
+
 /** Normalize a raw wallet read into a display state (server total is authority). */
 export function walletStateOf(input: { signedOut?: boolean; error?: boolean; totalSpendable?: number | null }): WalletLoadState {
   if (input.signedOut) return 'signed-out';

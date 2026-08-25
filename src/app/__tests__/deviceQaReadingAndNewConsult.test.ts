@@ -9,10 +9,15 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), 'utf8');
 
 describe('B — "새 상담 시작하기" balance guard (no dead tap, no over-spend)', () => {
   const chat = read('app/chat.tsx');
-  it('pre-checks the authoritative wallet balance against the fixed price', () => {
-    expect(chat).toMatch(/wallet\.state\?\.totalSpendable/);
+  it('pre-checks the authoritative wallet balance against the fixed price (KNOWN-short only)', () => {
     expect(chat).toMatch(/const required = DUK_PRICES\.general/);
-    expect(chat).toMatch(/balance < required/);
+    // Gate via the shared canonical helper: block ONLY on a KNOWN-short balance. An unloaded/unknown wallet
+    // must NOT read as 0 → false paywall (the DUK-sync bug); the server stays the final authority.
+    expect(chat).toMatch(/isBalanceShort\(wallet\.state, required\)/);
+    expect(chat).toMatch(/wallet\.state\?\.totalSpendable/);
+  });
+  it('refreshes the canonical wallet on focus so the consultation screen reflects out-of-band balance changes', () => {
+    expect(chat).toMatch(/useFocusEffect\([\s\S]*refreshWallet\(\)/);
   });
   it('balance < 5 → shows the shared InsufficientDuk in-place, then returns (no navigate/create/LLM)', () => {
     expect(chat).toMatch(/setNewConsultInsufficient\(\{ balance, required, shortfall: required - balance \}\)/);

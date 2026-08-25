@@ -1,4 +1,5 @@
 import {
+    useFocusEffect,
     useLocalSearchParams,
     useRootNavigationState,
     useRouter,
@@ -34,6 +35,7 @@ import {
     type ConsultationErrorView,
 } from '@/features/chat';
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
+import { isBalanceShort } from '@/features/duk/consumerDukView';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { getSessionStatus, type SessionStatus } from '@/features/duk/dukClientContract';
 import { refreshWallet, useWallet } from '@/features/duk/useWallet';
@@ -238,6 +240,15 @@ export default function ChatScreen() {
   // InsufficientDuk block IN-PLACE instead of the button — so a tap at balance<5 never opens an empty chat,
   // never creates a session, and never calls the LLM. The server still enforces on any real send.
   const wallet = useWallet();
+  // Balance-sync (§5): the consultation screen must reflect the CURRENT canonical wallet on entry, not a stale
+  // singleton snapshot from before an out-of-band grant/candle. Home/MY/상담 already refresh on mount/focus;
+  // chat previously refreshed ONLY on exhaustion/after a charge, so it could render the "새 상담" gate against a
+  // stale balance. Reuses the shared wallet refresh — no second balance source.
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) void refreshWallet().catch(() => {});
+    }, [isAuthenticated]),
+  );
   const [newConsultInsufficient, setNewConsultInsufficient] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
   const refreshSession = useCallback(async () => {
     setSession(await getSessionStatus('general'));
@@ -768,9 +779,11 @@ export default function ChatScreen() {
                       radius="lg"
                       onPress={() => {
                         const required = DUK_PRICES.general;
-                        const balance = wallet.state?.totalSpendable ?? 0;
-                        if (balance < required) {
-                          // Show the paywall in-place — never open an empty chat / create a session at balance<5.
+                        // Block ONLY on a KNOWN-short balance (shared canonical helper). An unloaded/unknown
+                        // wallet must NOT read as 0 → false paywall; when unknown, proceed — the server
+                        // (reserve_session_duk) is the final authority and returns INSUFFICIENT_DUK if short.
+                        if (isBalanceShort(wallet.state, required)) {
+                          const balance = wallet.state?.totalSpendable ?? 0;
                           setNewConsultInsufficient({ balance, required, shortfall: required - balance });
                           return;
                         }
