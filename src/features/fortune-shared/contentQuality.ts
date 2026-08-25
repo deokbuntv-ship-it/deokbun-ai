@@ -29,6 +29,24 @@ export function containsServiceChecklistTone(text: string): boolean {
   return SERVICE_CHECKLIST.some((re) => re.test(text)) || MICRO_TASK.some((re) => re.test(text));
 }
 
+// TODAY-only: productivity-coach / task-checklist CONSTRUCTS (Device-QA final tone pass). A 운세 gives a
+// behavioral direction, not a to-do list. CONSERVATIVE — targets list-making / priority-N / count-then-verb /
+// desk-schedule tidying constructs, NOT bare numbers or normal fortune prose. Wired into the Today parser only
+// (Monthly is out of scope this sprint, so the shared reject set is unchanged for it).
+const PRODUCTIVITY_CHECKLIST = [
+  /한\s*장에\s*(적어|적고|써|정리|모아)/,
+  /목록(을|에|으로|만)?\s*(만들|정리|작성|적어|모아|추려)/,
+  /우선순위\s*(를)?\s*(\d+|한|두|세|네|다섯)\s*(개|가지)/,
+  /(한|두|세|네|다섯|\d+)\s*(개|가지)\s*(만|정도)?\s*(남기|남겨|정하|골라|추려|적어)/,
+  /(책상|서랍|일정표|일정|스케줄).{0,8}정리/,
+  /항목.{0,6}(체크|점검|정리)/,
+];
+
+/** True when the prose reads as a productivity-coach task checklist (Today-only reject). */
+export function containsProductivityChecklistTone(text: string): boolean {
+  return PRODUCTIVITY_CHECKLIST.some((re) => re.test(text));
+}
+
 // Advice families used to detect one intent dominating a whole reading (§12/§15). Presentation-only — NOT a
 // myungri rule. Each family is a set of surface markers; a reading whose sections all reduce to ONE family is
 // a quality failure (the sections should play different roles: opportunity / risk / direction).

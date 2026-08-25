@@ -8066,6 +8066,17 @@ var MICRO_TASK = [
 function containsServiceChecklistTone(text) {
   return SERVICE_CHECKLIST.some((re) => re.test(text)) || MICRO_TASK.some((re) => re.test(text));
 }
+var PRODUCTIVITY_CHECKLIST = [
+  /한\s*장에\s*(적어|적고|써|정리|모아)/,
+  /목록(을|에|으로|만)?\s*(만들|정리|작성|적어|모아|추려)/,
+  /우선순위\s*(를)?\s*(\d+|한|두|세|네|다섯)\s*(개|가지)/,
+  /(한|두|세|네|다섯|\d+)\s*(개|가지)\s*(만|정도)?\s*(남기|남겨|정하|골라|추려|적어)/,
+  /(책상|서랍|일정표|일정|스케줄).{0,8}정리/,
+  /항목.{0,6}(체크|점검|정리)/
+];
+function containsProductivityChecklistTone(text) {
+  return PRODUCTIVITY_CHECKLIST.some((re) => re.test(text));
+}
 
 // src/features/monthly/engine/monthDate.ts
 var KST_OFFSET_SECONDS2 = 32400;
@@ -10696,6 +10707,8 @@ function buildTodayFortunePrompt(plan) {
     ].filter(Boolean) : [],
     "작성 규칙(반드시 지킬 것):",
     '- 운세 문장 품질: 결과는 "삶의 방향"을 주는 글입니다. 재무·행정·업무 체크리스트처럼 쓰지 마십시오. 금지 표현: 영수증/계좌·카드 내역/청구서/자동이체/환불 절차/대출·투자 실행 같은 실무 절차, 그리고 "최근 30일"·"10분 동안"·"N개로 분류" 같은 임의 시간·수치 과제.',
+    '- 생산성 코치/할 일 관리 금지: "목록을 만들어라/한 장에 적어라/우선순위 N개를 정해라/N개만 남겨라/책상·일정을 정리해라/항목을 체크해라" 같은 to-do·정리 지시를 쓰지 마십시오. 오늘의 조언은 "어떤 태도로 움직일지"이지 "무슨 작업을 수행할지"가 아닙니다.',
+    '- 운세다운 표현: 사건 지시 대신 흐름·태도로 쓰십시오(예: "흐름을 지켜보다 / 서두르지 않다 / 기회를 살피다 / 관계의 반응을 보다 / 결정 전 조건을 살피다 / 한 템포 늦춰 판단하다"). 한 답변이 "정리·확인·속도" 한 계열로만 돌지 않게 하고, 가능하면 재물 외의 삶의 맥락(관계·판단·컨디션 등)도 자연스럽게 한 번 스치게 하십시오.',
     '- 돈이 조심스러운 날이어도 "대출/투자를 줄이세요"·"계좌를 확인하세요"가 아니라 "큰 금전 결정은 서두르기보다 조건을 한 번 더 살펴보는 편이 좋아요"처럼 흐름·태도로 쓰십시오.',
     '- 섹션 역할 분리: highlights=잘 풀릴 수 있는 "기회", cautions=속도를 조절할 "지점", actionTip=오늘의 "방향" 딱 1가지(체크리스트 아님). 세 섹션이 같은 조언을 말만 바꿔 반복하지 마십시오. 한 결과가 지출·정리 한 주제로만 수렴하지 않게 하십시오.',
     `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
@@ -10825,6 +10838,7 @@ function parseDailyFortune(raw, plan) {
   if (containsRawGanji(surfaced)) return null;
   if (containsEventGuarantee2(surfaced)) return null;
   if (containsServiceChecklistTone(surfaced)) return null;
+  if (containsProductivityChecklistTone(surfaced)) return null;
   return {
     headline,
     verdict,
