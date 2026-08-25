@@ -34,9 +34,9 @@ var UNAVAILABLE_REASON_LABEL = {
   calculation_failed: "계산에 실패했습니다",
   not_applicable: "이 질문에는 계산 근거가 적용되지 않습니다"
 };
-function renderEngine(label, ev2) {
-  if (ev2.availability === "available") {
-    const sections = Array.isArray(ev2.sections) ? ev2.sections.filter(
+function renderEngine(label, ev3) {
+  if (ev3.availability === "available") {
+    const sections = Array.isArray(ev3.sections) ? ev3.sections.filter(
       (s) => s && typeof s.label === "string" && Array.isArray(s.lines) && s.lines.length > 0
     ) : [];
     if (sections.length > 0) {
@@ -44,11 +44,11 @@ function renderEngine(label, ev2) {
       return `- ${label}(제공됨):
 ${body}`;
     }
-    const summary = ev2.summary?.trim();
+    const summary = ev3.summary?.trim();
     if (summary) return `- ${label}(제공됨): ${summary}`;
     return `- ${label}: 제공됨(요약 없음 — 근거로 쓸 내용이 없으므로 지어내지 마십시오)`;
   }
-  return `- ${label}: ${AVAILABILITY_LABEL[ev2.availability]}`;
+  return `- ${label}: ${AVAILABILITY_LABEL[ev3.availability]}`;
 }
 var AVAILABILITY_VALUES = [
   "available",
@@ -132,8 +132,8 @@ function toSafeGrounding(g) {
     return UNAVAILABLE_REASON_VALUES.includes(g.reason) ? g : GROUNDING_UNAVAILABLE;
   }
   if (g.status !== "available") return GROUNDING_UNAVAILABLE;
-  const ev2 = g.evidence;
-  if (!ev2 || typeof ev2 !== "object" || !isValidEngineEvidence(ev2.myungri) || !isValidEngineEvidence(ev2.ziwei) || !isValidEngineEvidence(ev2.qimen)) {
+  const ev3 = g.evidence;
+  if (!ev3 || typeof ev3 !== "object" || !isValidEngineEvidence(ev3.myungri) || !isValidEngineEvidence(ev3.ziwei) || !isValidEngineEvidence(ev3.qimen)) {
     return GROUNDING_UNAVAILABLE;
   }
   if (g.engineVersion !== void 0 && g.engineVersion !== null && typeof g.engineVersion !== "string") {
@@ -529,8 +529,8 @@ function timingAnchorsOf(grounding) {
   if (grounding.status !== "available") return anchors;
   anchors.referenceYear = grounding.referenceYear ?? null;
   anchors.referenceMonth = grounding.referenceMonth ?? null;
-  for (const ev2 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
-    const ta = ev2.timingAnchors;
+  for (const ev3 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const ta = ev3.timingAnchors;
     if (!ta) continue;
     for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
     for (const m of ta.months ?? []) if (Number.isInteger(m)) anchors.months.add(m);
@@ -6810,6 +6810,81 @@ function calculateMonthCommand(natal) {
   };
 }
 
+// src/features/myungri/services/dayMasterStrengthInputs.ts
+var DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1_RULE = {
+  ruleId: "DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1",
+  ruleVersion: "deokbunai.myungri-strength-inputs.v1"
+};
+var TEN_GOD_ROLE = {
+  PEER: { role: "PARALLEL", side: "SUPPORT" },
+  ROB_WEALTH: { role: "PARALLEL", side: "SUPPORT" },
+  DIRECT_RESOURCE: { role: "RESOURCE", side: "SUPPORT" },
+  INDIRECT_RESOURCE: { role: "RESOURCE", side: "SUPPORT" },
+  EATING_GOD: { role: "OUTPUT", side: "DRAIN" },
+  HURTING_OFFICER: { role: "OUTPUT", side: "DRAIN" },
+  DIRECT_WEALTH: { role: "WEALTH", side: "DRAIN" },
+  INDIRECT_WEALTH: { role: "WEALTH", side: "DRAIN" },
+  DIRECT_OFFICER: { role: "OFFICER", side: "DRAIN" },
+  SEVEN_KILLINGS: { role: "OFFICER", side: "DRAIN" }
+};
+var zeroRoles = () => ({
+  PARALLEL: 0,
+  RESOURCE: 0,
+  OUTPUT: 0,
+  WEALTH: 0,
+  OFFICER: 0
+});
+function calculateDayMasterStrengthInputs(natal) {
+  if (!isValidNatalContext(natal)) return { capability: "UNAVAILABLE", reason: "INVALID_NATAL_CONTEXT" };
+  const dmElement = getStemElement(natal.dayMaster);
+  if (!dmElement.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
+  const positions = [
+    { position: "YEAR", pillar: natal.pillars.year },
+    { position: "MONTH", pillar: natal.pillars.month },
+    { position: "DAY", pillar: natal.pillars.day },
+    ...natal.pillars.hour ? [{ position: "HOUR", pillar: natal.pillars.hour }] : []
+  ];
+  const visibleStems = [];
+  const hiddenStems = [];
+  for (const { position, pillar } of positions) {
+    if (position !== "DAY") {
+      const tg3 = calculateTenGod(natal.dayMaster, pillar.stem);
+      if (!tg3.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
+      const m = TEN_GOD_ROLE[tg3.value];
+      visibleStems.push({ position, stem: pillar.stem, tenGod: tg3.value, role: m.role, side: m.side });
+    }
+    const hidden = getHiddenStems(pillar.branch);
+    if (!hidden.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
+    for (const hs of hidden.value) {
+      const tg3 = calculateTenGod(natal.dayMaster, hs.stem);
+      if (!tg3.ok) return { capability: "UNAVAILABLE", reason: "FROZEN_RULE_FAILURE" };
+      const m = TEN_GOD_ROLE[tg3.value];
+      hiddenStems.push({ position, stem: hs.stem, tenGod: tg3.value, hiddenRole: hs.role, role: m.role, side: m.side });
+    }
+  }
+  const visibleRoleCounts = zeroRoles();
+  const visibleSideCounts = { SUPPORT: 0, DRAIN: 0 };
+  for (const e of visibleStems) {
+    visibleRoleCounts[e.role] += 1;
+    visibleSideCounts[e.side] += 1;
+  }
+  const hiddenRoleCounts = zeroRoles();
+  for (const e of hiddenStems) hiddenRoleCounts[e.role] += 1;
+  return {
+    capability: "AVAILABLE",
+    ruleVersion: DEOKBUNAI_MYUNGRI_STRENGTH_INPUTS_V1_RULE.ruleVersion,
+    dayMaster: { stem: natal.dayMaster, element: dmElement.value },
+    visibleStems,
+    hiddenStems,
+    visibleRoleCounts,
+    visibleSideCounts,
+    hiddenRoleCounts,
+    strengthVerdict: "OWNER_REVIEW_REQUIRED",
+    seryeokScore: null,
+    disclaimer: "구성(십신 역할 구성비)만 집계 — 세력(강약) 가중·점수·신강/신약 판정은 미산정(Owner Review). 오행 분포·월령(왕상휴수사/득령)·통근/투간은 별도 fact 모듈에서 제공."
+  };
+}
+
 // src/features/myungri/services/temporalContext.ts
 function daysInMonth(year, month) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -7748,6 +7823,171 @@ function natalSupportForDomain(baseline, domain) {
   return { support: "ABSENT", note: `원국에 ${FAMILY_LABEL[fam]} 자리가 없어, 흐름이 와도 붙잡을 바탕이 약합니다.` };
 }
 
+// src/features/divination/myungriStrength.ts
+var DIVINATION_STRENGTH_METHOD = "deokbunai.divination-strength.eokbu-structural.v2";
+var DIVINATION_YONGSHIN_METHOD = "deokbunai.divination-yongshin.eokbu.v2";
+var STRENGTH_LABEL = {
+  EXTREMELY_WEAK: "극신약",
+  WEAK: "신약",
+  BALANCED_WEAK: "중화신약",
+  BALANCED: "중화",
+  BALANCED_STRONG: "중화신강",
+  STRONG: "신강",
+  EXTREMELY_STRONG: "극신강"
+};
+var ev = (fact, meaning) => ({
+  fact,
+  meaning,
+  domain: "GENERAL",
+  temporalScope: "NATAL",
+  directness: "ADJACENT"
+});
+function monthFactor(phase, inCommand) {
+  if (phase === null && inCommand === null) return { state: "NEUTRAL", note: "월령 정보 없음" };
+  if (phase) {
+    if (phase.includes("왕") || phase.includes("WANG") || phase.includes("PROSPEROUS")) return { state: "SUPPORT", note: "월령에서 왕(旺) — 계절이 일간을 그대로 밀어 줍니다" };
+    if (phase.includes("상") || phase.includes("XIANG") || phase.includes("SUPPORTED")) return { state: "SUPPORT", note: "월령에서 상(相) — 계절이 일간을 도와줍니다" };
+    if (phase.includes("휴") || phase.includes("XIU") || phase.includes("RESTING")) return { state: "NEUTRAL", note: "월령에서 휴(休) — 계절이 밀어주지도 깎지도 않습니다" };
+    if (phase.includes("수") || phase.includes("사") || phase.includes("QIU") || phase.includes("SI") || phase.includes("TRAPPED") || phase.includes("DEAD")) {
+      return { state: "DRAIN", note: "월령에서 수·사(囚死) — 계절이 일간의 힘을 빼앗습니다" };
+    }
+  }
+  return inCommand ? { state: "SUPPORT", note: "득령" } : { state: "DRAIN", note: "실령" };
+}
+function judgeDayMasterStrength(input) {
+  const supportingEvidence = [];
+  const weakeningEvidence = [];
+  const structuralModifiers = [];
+  const ambiguities = [];
+  const month = monthFactor(input.seasonalPhase, input.inCommand);
+  (month.state === "SUPPORT" ? supportingEvidence : month.state === "DRAIN" ? weakeningEvidence : supportingEvidence).push(ev(`월령: ${month.note.split(" — ")[0]}`, month.note));
+  const rooted = input.rootPositions.length > 0;
+  const rootingEffect = rooted ? "SUPPORT" : "DRAIN";
+  if (rooted) {
+    supportingEvidence.push(ev(`통근 ${input.rootPositions.length}자리`, "일간과 같은 기운이 지지에 뿌리로 박혀 있어, 흔들려도 되돌아옵니다."));
+  } else {
+    weakeningEvidence.push(ev("무통근", "일간이 지지에 뿌리를 두지 못해, 겉으로 강해 보여도 오래 버티기 어렵습니다."));
+  }
+  const seated = input.peerHiddenPositions.length > 0;
+  if (seated) {
+    supportingEvidence.push(ev(`득지 ${input.peerHiddenPositions.length}자리`, "지지 속에 같은 편의 기운이 있어 일간을 받쳐 줍니다."));
+  }
+  const sup = input.visibleSupportPositions.length;
+  const drn = input.visibleDrainPositions.length;
+  const compositionEffect = sup > drn ? "SUPPORT" : drn > sup ? "DRAIN" : "NEUTRAL";
+  if (sup > 0) supportingEvidence.push(ev(`천간 아군 ${sup}자리`, "드러난 자리에서 일간을 돕는 기운이 있습니다."));
+  if (drn > 0) weakeningEvidence.push(ev(`천간 타군 ${drn}자리`, "드러난 자리에서 일간의 힘을 쓰거나 누르는 기운이 있습니다."));
+  const transparencyEffect = input.supportRevealed ? "SUPPORT" : "NEUTRAL";
+  if (input.supportRevealed) {
+    supportingEvidence.push(ev("아군 투간", "지지에 숨은 같은 편이 천간으로 드러나 실제로 쓸 수 있는 힘이 됩니다."));
+    structuralModifiers.push("투간으로 지지의 아군이 실효화");
+  }
+  const supportFactors = [month.state === "SUPPORT", rooted, seated, compositionEffect === "SUPPORT"].filter(Boolean).length;
+  const drainFactors = [month.state === "DRAIN", !rooted && !seated, compositionEffect === "DRAIN"].filter(Boolean).length;
+  let classification;
+  if (supportFactors === 4 && drainFactors === 0) classification = "EXTREMELY_STRONG";
+  else if (supportFactors >= 3 && drainFactors <= 1) classification = "STRONG";
+  else if (supportFactors === 3) classification = "BALANCED_STRONG";
+  else if (supportFactors === 2 && drainFactors <= 1) classification = "BALANCED_STRONG";
+  else if (supportFactors === 2) classification = "BALANCED";
+  else if (supportFactors === 1 && drainFactors >= 2) classification = "BALANCED_WEAK";
+  else if (supportFactors === 1) classification = "BALANCED";
+  else if (drainFactors >= 3) classification = "EXTREMELY_WEAK";
+  else classification = "WEAK";
+  if (supportFactors >= 2 && drainFactors >= 2) {
+    ambiguities.push("일간을 돕는 구조와 빼앗는 구조가 함께 뚜렷해, 강약을 한쪽으로 확정하기 어렵습니다.");
+  }
+  if (month.state === "SUPPORT" && !rooted && !seated) {
+    ambiguities.push("계절은 얻었지만 지지에 뿌리가 없어, 겉과 속의 힘이 다릅니다.");
+    structuralModifiers.push("득령·무근 — 표면적 강함");
+  }
+  if (month.state === "DRAIN" && rooted && seated) {
+    ambiguities.push("계절은 잃었지만 지지 뿌리가 단단해, 약해 보여도 버티는 구조입니다.");
+    structuralModifiers.push("실령·유근 — 내실형");
+  }
+  if (!input.hourKnown) {
+    ambiguities.push("시주가 확정되지 않아 한 기둥의 정보가 빠진 상태의 판정입니다.");
+  }
+  return {
+    classification,
+    label: STRENGTH_LABEL[classification],
+    supportingEvidence,
+    weakeningEvidence,
+    monthCommandEffect: month.state,
+    rootingEffect,
+    transparencyEffect,
+    compositionEffect,
+    structuralModifiers,
+    ambiguities,
+    confidence: ambiguities.length === 0 && input.hourKnown ? "HIGH" : ambiguities.length > 1 ? "LOW" : "MEDIUM",
+    doctrineProvenance: [
+      `method=${DIVINATION_STRENGTH_METHOD}`,
+      "class=C (억부 구조 판정 — 널리 쓰이는 표준 원리이나 본 제품에서는 신규 채택, 검토 대기)",
+      '⚠ owner MYUNGRI_100 분석은 M-18 강약을 "판정값 출력 금지"로 분류함 — 반드시 재확인 필요'
+    ]
+  };
+}
+var GENERATES = { WOOD: "FIRE", FIRE: "EARTH", EARTH: "METAL", METAL: "WATER", WATER: "WOOD" };
+var GENERATED_BY = { FIRE: "WOOD", EARTH: "FIRE", METAL: "EARTH", WATER: "METAL", WOOD: "WATER" };
+var CONTROLS = { WOOD: "EARTH", EARTH: "WATER", WATER: "FIRE", FIRE: "METAL", METAL: "WOOD" };
+var CONTROLLED_BY = { EARTH: "WOOD", WATER: "EARTH", FIRE: "WATER", METAL: "FIRE", WOOD: "METAL" };
+var EL_LABEL = { WOOD: "목", FIRE: "화", EARTH: "토", METAL: "금", WATER: "수" };
+var WEAK_SIDE = ["EXTREMELY_WEAK", "WEAK", "BALANCED_WEAK"];
+var STRONG_SIDE = ["EXTREMELY_STRONG", "STRONG", "BALANCED_STRONG"];
+function judgeYongshin(input) {
+  const de = input.dayMasterElement;
+  const present = (e) => (input.elementCounts[e] ?? 0) > 0;
+  const leaning = STRONG_SIDE.includes(input.strength.classification) ? "STRONG" : WEAK_SIDE.includes(input.strength.classification) ? "WEAK" : "BALANCED";
+  const provenance2 = [
+    `method=${DIVINATION_YONGSHIN_METHOD}`,
+    "class=C (억부용신 단일 학파 — 조후와 혼용하지 않음, 신규 채택·검토 대기)",
+    "⚠ owner MYUNGRI_100 분석은 M-20 용신을 REFERENCE_ONLY(위험 매우높음)로 분류함 — 반드시 재확인 필요"
+  ];
+  if (leaning === "BALANCED" || input.strength.ambiguities.length >= 2) {
+    return {
+      primaryYongshin: null,
+      basis: "강약이 한쪽으로 기울지 않아, 억부용신을 하나로 확정하지 않습니다.",
+      secondaryFavorableFactors: [],
+      unfavorableFactors: [],
+      structuralReasoningReferences: input.strength.ambiguities,
+      alternativeInterpretation: null,
+      alternativeReason: null,
+      confidence: "LOW",
+      doctrineProvenance: provenance2
+    };
+  }
+  const candidates = leaning === "WEAK" ? [GENERATED_BY[de], de] : [GENERATES[de], CONTROLLED_BY[de], CONTROLS[de]];
+  const available = candidates.filter(present);
+  const primary = available[0] ?? null;
+  const unfavorable = leaning === "WEAK" ? [GENERATES[de], CONTROLLED_BY[de]].filter(present).map((e) => `${EL_LABEL[e]} — 약한 일간의 힘을 더 빼갑니다`) : [GENERATED_BY[de], de].filter(present).map((e) => `${EL_LABEL[e]} — 이미 강한 일간을 더 밀어 올립니다`);
+  return {
+    primaryYongshin: primary,
+    basis: primary ? leaning === "WEAK" ? `일간이 ${input.strength.label}이라 도와주는 ${EL_LABEL[primary]}을 용신으로 봅니다(억부).` : `일간이 ${input.strength.label}이라 힘을 덜어 주는 ${EL_LABEL[primary]}을 용신으로 봅니다(억부).` : "필요한 오행이 원국에 없어 용신을 세우지 않습니다.",
+    secondaryFavorableFactors: available.slice(1).map((e) => `${EL_LABEL[e]} — 보조로 도움이 됩니다`),
+    unfavorableFactors: unfavorable,
+    structuralReasoningReferences: [
+      `강약 ${input.strength.label} (월령 ${input.strength.monthCommandEffect} · 통근 ${input.strength.rootingEffect} · 구성 ${input.strength.compositionEffect})`,
+      ...input.strength.structuralModifiers
+    ],
+    // 조후 is NOT mixed into the primary — it is offered as a clearly separate reading (§12).
+    alternativeInterpretation: input.extremeSeason ? input.extremeSeason === "한랭" ? "조후로 보면 화(火)로 덥히는 쪽을 먼저 볼 수도 있습니다." : "조후로 보면 수(水)로 식히는 쪽을 먼저 볼 수도 있습니다." : null,
+    alternativeReason: input.extremeSeason ? "계절이 한쪽으로 치우쳐, 조후를 우선하는 학파라면 결론이 달라질 수 있습니다(본 판정은 억부 기준)." : null,
+    confidence: primary === null ? "LOW" : input.strength.confidence === "HIGH" ? "MEDIUM" : "LOW",
+    doctrineProvenance: provenance2
+  };
+}
+function luckElementEffect(yongshin, dayMasterElement, incoming) {
+  if (yongshin.primaryYongshin === null) return { effect: "NEUTRAL", why: "용신이 확정되지 않아 이 흐름을 길흉으로 단정하지 않습니다." };
+  if (incoming === yongshin.primaryYongshin) {
+    return { effect: "FAVORABLE", why: `들어오는 ${EL_LABEL[incoming]} 기운이 용신과 같아, 이 시기의 힘이 실제로 쓰입니다.` };
+  }
+  const adverse = yongshin.unfavorableFactors.some((f) => f.startsWith(EL_LABEL[incoming]));
+  if (adverse) {
+    return { effect: "ADVERSE", why: `들어오는 ${EL_LABEL[incoming]} 기운이 지금 필요한 방향과 반대로 작용합니다.` };
+  }
+  return { effect: "NEUTRAL", why: `들어오는 ${EL_LABEL[incoming]} 기운은 용신과 직접 얽히지 않습니다.` };
+}
+
 // src/features/divination/myungriJudge.ts
 function tenGodFamily(tg3) {
   switch (tg3) {
@@ -7823,7 +8063,7 @@ function unavailable9(asked, reason, reliability) {
     factGroupsUsed: []
   };
 }
-function judgeAxis(axis, layers, baseline, asked, reliability) {
+function judgeAxis(axis, layers, baseline, asked, reliability, elementEffects = []) {
   const pressures = layers.map((l) => ({ layer: l, p: axisPressure(l, axis) }));
   const touched = pressures.filter((x) => x.p.friction > 0 || x.p.harmony > 0);
   const natal = baseline ? natalSupportForDomain(baseline, axis) : { support: "UNKNOWN", note: "" };
@@ -7850,6 +8090,34 @@ function judgeAxis(axis, layers, baseline, asked, reliability) {
     stance = "CONDITIONAL_FOR";
     conclusion = "이 부분은 열리는 힘과 부딪히는 힘이 함께 있어, 조건을 정리하고 가야 합니다.";
   }
+  const favorable = elementEffects.filter((e) => e.effect === "FAVORABLE");
+  const adverse = elementEffects.filter((e) => e.effect === "ADVERSE");
+  const yongshinEvidence = favorable.map((e) => ({
+    fact: `${e.scope} 기운이 용신에 부합`,
+    meaning: e.why,
+    domain: axis,
+    temporalScope: "SEWOON",
+    directness: "ADJACENT"
+  }));
+  const yongshinCounter = adverse.map((e) => ({
+    fact: `${e.scope} 기운이 기신 쪽`,
+    meaning: e.why,
+    domain: axis,
+    temporalScope: "SEWOON",
+    directness: "ADJACENT"
+  }));
+  if (favorable.length > 0 && adverse.length === 0) {
+    if (stance === "CONDITIONAL_FOR") stance = "FOR";
+    else if (stance === "CONDITIONAL_AGAINST") stance = "CONDITIONAL_FOR";
+    else if (stance === NO_SIGNAL && natal.support !== "ABSENT") {
+      stance = "CONDITIONAL_FOR";
+      conclusion = "흐름 자체가 지금 이 사주에 필요한 기운으로 들어오고 있습니다.";
+    }
+  } else if (adverse.length > 0 && favorable.length === 0) {
+    if (stance === "CONDITIONAL_FOR") stance = "CONDITIONAL_AGAINST";
+    else if (stance === "FOR") stance = "CONDITIONAL_FOR";
+    else if (stance === "CONDITIONAL_AGAINST") stance = "AGAINST";
+  }
   return {
     domain: axis,
     stance,
@@ -7857,8 +8125,8 @@ function judgeAxis(axis, layers, baseline, asked, reliability) {
     temporalScope: nearest?.layer.scope ?? "NATAL",
     directness: directnessFor(axis, asked),
     reliability,
-    evidence: [...evidence, ...natalEvidence],
-    counterEvidence
+    evidence: [...evidence, ...natalEvidence, ...yongshinEvidence],
+    counterEvidence: [...counterEvidence, ...yongshinCounter]
   };
 }
 function axesFor(asked) {
@@ -7893,28 +8161,111 @@ function judgeMyungri(input) {
   const baseline = input.natal ? readNatalBaseline(input.natal) : null;
   const factGroupsUsed = [];
   if (baseline) factGroupsUsed.push("원국 십신 배치", "원국 합충형파해", "월령", "통근·투간");
+  const si2 = input.natal?.strengthInputs ?? null;
+  let strength = null;
+  let yongshin = null;
+  if (si2) {
+    strength = judgeDayMasterStrength({
+      dayMaster: si2.dayMaster,
+      dayMasterElement: si2.dayMasterElement,
+      seasonalPhase: input.natal?.seasonalPhase ?? null,
+      inCommand: input.natal?.monthCommandInCommand ?? null,
+      rootPositions: si2.dayMasterRootPositions,
+      peerHiddenPositions: si2.peerHiddenPositions,
+      visibleSupportPositions: si2.visibleSupportPositions,
+      visibleDrainPositions: si2.visibleDrainPositions,
+      supportRevealed: si2.supportRevealed,
+      hourKnown: input.hourKnown
+    });
+    yongshin = judgeYongshin({
+      strength,
+      dayMasterElement: si2.dayMasterElement,
+      elementCounts: si2.elementCounts,
+      extremeSeason: si2.extremeSeason
+    });
+    factGroupsUsed.push("일간 강약(억부)", "용신(억부)");
+  }
+  const elementEffects = () => {
+    if (!yongshin || !si2) return [];
+    const out = [];
+    for (const [facts, scopeLabel] of [
+      [input.activeDaewoon, "지금의 큰 흐름"],
+      [input.sewoon, "올해 흐름"],
+      [input.wolwoon, "이 시기 흐름"]
+    ]) {
+      const el4 = facts?.stemElement ?? null;
+      if (!el4) continue;
+      const r = luckElementEffect(yongshin, si2.dayMasterElement, el4);
+      if (r.effect !== "NEUTRAL") out.push({ scope: scopeLabel, effect: r.effect, why: r.why });
+    }
+    return out;
+  };
+  const layerElementEffects = elementEffects();
   if (layers.some((l) => l.scope === "DAEWOON")) factGroupsUsed.push("대운");
   if (layers.some((l) => l.scope === "SEWOON")) factGroupsUsed.push("세운");
   if (layers.some((l) => l.scope === "WOLWOON")) factGroupsUsed.push("월운");
   if (layers.some((l) => l.hits.length > 0)) factGroupsUsed.push("원국×운 관계(종류·위치)");
-  const subs = axesFor(asked).map((axis) => judgeAxis(axis, layers, baseline, asked, reliability)).filter((s) => s !== null);
+  const subs = axesFor(asked).map((axis) => judgeAxis(axis, layers, baseline, asked, reliability, layerElementEffects)).filter((s) => s !== null);
   const retentionSub = subs.find((s) => s.domain === "MONEY_RETENTION");
   if (retentionSub) {
-    const robbed = layers.some((l) => l.robWealth);
-    const floating = baseline?.anchored === "FLOATING";
-    if (robbed || floating) {
-      retentionSub.stance = "AGAINST";
-      retentionSub.conclusion = robbed ? "들어온 돈을 나눠 가져가는 자리가 있어, 버는 것과 남기는 것을 반드시 나눠 보셔야 합니다." : "뿌리가 약해 들어온 것이 오래 머물지 않습니다.";
-      retentionSub.counterEvidence = [
-        ...retentionSub.counterEvidence,
-        {
-          fact: robbed ? "운에 겁재" : "원국 통근 약함",
-          meaning: robbed ? "같은 것을 두고 나눠 갖는 기운이 함께 옵니다." : "뿌리가 얕아 쌓이지 않습니다.",
-          domain: "MONEY_RETENTION",
-          temporalScope: robbed ? "SEWOON" : "NATAL",
-          directness: "DIRECT"
-        }
-      ];
+    const leakage = [];
+    const holding = [];
+    const chartHasWealth = (baseline?.familyPresence.WEALTH ?? 0) > 0;
+    const robbingLayer = layers.find((l) => l.robWealth);
+    if (robbingLayer && chartHasWealth) {
+      leakage.push({
+        fact: `${robbingLayer.scope === "DAEWOON" ? "지금의 큰 흐름" : robbingLayer.scope === "SEWOON" ? "올해 흐름" : "이 시기 흐름"}에 겁재`,
+        meaning: "가진 몫을 두고 나눠 갖는 기운이 함께 들어옵니다.",
+        domain: "MONEY_RETENTION",
+        temporalScope: robbingLayer.scope,
+        directness: "DIRECT"
+      });
+    }
+    if (baseline?.anchored === "FLOATING") {
+      leakage.push({
+        fact: "원국 무통근",
+        meaning: "뿌리가 얕아 들어온 것이 오래 머물기 어렵습니다.",
+        domain: "MONEY_RETENTION",
+        temporalScope: "NATAL",
+        directness: "ADJACENT"
+      });
+    }
+    if ((baseline?.familyPresence.WEALTH ?? 0) >= 2) {
+      holding.push({
+        fact: `원국 재성 ${baseline?.familyPresence.WEALTH}자리`,
+        meaning: "재물이 앉을 자리가 여러 곳이라, 들어온 것이 놓일 데가 있습니다.",
+        domain: "MONEY_RETENTION",
+        temporalScope: "NATAL",
+        directness: "DIRECT"
+      });
+    }
+    if (baseline?.anchored === "ROOTED") {
+      holding.push({
+        fact: "원국 통근 튼튼",
+        meaning: "뿌리가 단단해 한번 잡은 것을 오래 끌고 갑니다.",
+        domain: "MONEY_RETENTION",
+        temporalScope: "NATAL",
+        directness: "ADJACENT"
+      });
+    }
+    if (baseline?.inCommand === true) {
+      holding.push({
+        fact: "원국 득령",
+        meaning: "계절의 힘을 얻어 벌인 것을 감당할 수 있습니다.",
+        domain: "MONEY_RETENTION",
+        temporalScope: "NATAL",
+        directness: "ADJACENT"
+      });
+    }
+    retentionSub.evidence = [...retentionSub.evidence, ...holding];
+    retentionSub.counterEvidence = [...retentionSub.counterEvidence, ...leakage];
+    if (leakage.length > holding.length) {
+      if (retentionSub.stance === "FOR" || retentionSub.stance === "CONDITIONAL_FOR") retentionSub.stance = "CONDITIONAL_AGAINST";
+      else if (retentionSub.stance === NO_SIGNAL) retentionSub.stance = "CONDITIONAL_AGAINST";
+      retentionSub.conclusion = "들어오는 것에 비해 지키는 쪽이 약해, 버는 것과 남기는 것을 나눠 보셔야 합니다.";
+    } else if (holding.length > leakage.length && retentionSub.stance === NO_SIGNAL) {
+      retentionSub.stance = "CONDITIONAL_FOR";
+      retentionSub.conclusion = "들어온 것을 지키는 구조는 크게 새지 않습니다.";
     }
   }
   const primarySub = subs.find((s) => s.domain === asked) ?? subs.find((s) => s.directness === "DIRECT") ?? subs[0] ?? null;
@@ -7942,7 +8293,25 @@ function judgeMyungri(input) {
     stance,
     dominantConclusion: primarySub?.conclusion ?? "명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.",
     dominantFactor: primarySub?.counterEvidence[0]?.fact ?? primarySub?.evidence[0]?.fact ?? (nearest ? `${SCOPE_LABEL2[nearest.scope]}: ${FAMILY_LABEL2[nearest.family]}` : "원국 구조"),
-    directEvidence: [...allEvidence, ...baseline?.evidence ?? []],
+    directEvidence: [
+      ...allEvidence,
+      ...baseline?.evidence ?? [],
+      // §14 — the strength/용신 reading is EVIDENCE the reading can cite, not a hidden internal flag.
+      ...strength ? [{
+        fact: `일간 강약: ${strength.label}`,
+        meaning: `${strength.supportingEvidence[0]?.meaning ?? ""}${strength.ambiguities.length ? ` 다만 ${strength.ambiguities[0]}` : ""}`.trim(),
+        domain: "GENERAL",
+        temporalScope: "NATAL",
+        directness: "ADJACENT"
+      }] : [],
+      ...yongshin?.primaryYongshin ? [{
+        fact: `용신: ${yongshin.basis}`,
+        meaning: "이 사주가 지금 가장 필요로 하는 기운입니다. 들어오는 흐름이 이 기운이면 실제로 쓸 수 있습니다.",
+        domain: "GENERAL",
+        temporalScope: "NATAL",
+        directness: "ADJACENT"
+      }] : []
+    ],
     counterEvidence: allCounter,
     internalContradictions,
     timingSignals: nearest && nearest.hits.length > 0 ? [nearest.hits[0].evidence] : [],
@@ -8697,7 +9066,7 @@ var TEN_GOD_PULL = {
   DIRECT_RESOURCE: "상대에게 기대고 배우는 결",
   INDIRECT_RESOURCE: "상대를 한 발 떨어져 보는 결"
 };
-var ev = (fact, meaning, domain) => ({
+var ev2 = (fact, meaning, domain) => ({
   fact,
   meaning,
   domain,
@@ -8725,23 +9094,23 @@ function judgePairMyungri(input) {
   const daySeatStrain = facts.dayBranchRelations.some((r) => r.kind === "BRANCH_CLASH" || r.kind === "BRANCH_PUNISHMENT" || r.kind === "BRANCH_HARM");
   const bondFor = [];
   const bondAgainst = [];
-  if (dayCombo) bondFor.push(ev("일간 천간합", "두 사람이 서로에게 자연히 끌리는 결이 있습니다.", "RELATION_BOND"));
-  if (daySeatHarmony) bondFor.push(ev("일지 육합/반합", "함께 있는 자리가 서로 편안하게 맞물립니다.", "RELATION_BOND"));
-  if (dayClash) bondAgainst.push(ev("일간 천간충", "생각을 정하는 방식에서 정면으로 부딪힙니다.", "RELATION_BOND"));
+  if (dayCombo) bondFor.push(ev2("일간 천간합", "두 사람이 서로에게 자연히 끌리는 결이 있습니다.", "RELATION_BOND"));
+  if (daySeatHarmony) bondFor.push(ev2("일지 육합/반합", "함께 있는 자리가 서로 편안하게 맞물립니다.", "RELATION_BOND"));
+  if (dayClash) bondAgainst.push(ev2("일간 천간충", "생각을 정하는 방식에서 정면으로 부딪힙니다.", "RELATION_BOND"));
   const bondStance = bondFor.length > bondAgainst.length ? bondFor.length >= 2 ? "STRONGLY_FOR" : "FOR" : bondAgainst.length > 0 ? "CONDITIONAL_AGAINST" : NO_SIGNAL;
   const marFor = [];
   const marAgainst = [];
-  if (daySeatHarmony) marFor.push(ev("일지 육합/반합", "같이 사는 자리가 서로 맞물립니다.", "RELATION_STABILITY"));
-  if (daySeatStrain) marAgainst.push(ev("일지 충·형·해(배우자 자리)", "같이 사는 자리에서 반복해 부딪히기 쉽습니다.", "RELATION_STABILITY"));
+  if (daySeatHarmony) marFor.push(ev2("일지 육합/반합", "같이 사는 자리가 서로 맞물립니다.", "RELATION_STABILITY"));
+  if (daySeatStrain) marAgainst.push(ev2("일지 충·형·해(배우자 자리)", "같이 사는 자리에서 반복해 부딪히기 쉽습니다.", "RELATION_STABILITY"));
   const marStance = marAgainst.length > 0 ? "AGAINST" : marFor.length > 0 ? "FOR" : NO_SIGNAL;
   const conflictHeavy = friction.signal === "WATCH";
-  const conflictEvidence = conflictHeavy ? [ev("두 사람 사이 충·형·파·해 다수", friction.verdict, "CONFLICT")] : [ev("두 사람 사이 충돌 적음", friction.verdict, "CONFLICT")];
+  const conflictEvidence = conflictHeavy ? [ev2("두 사람 사이 충·형·파·해 다수", friction.verdict, "CONFLICT")] : [ev2("두 사람 사이 충돌 적음", friction.verdict, "CONFLICT")];
   const moneyFor = [];
   const moneyAgainst = [];
   const famTargetToSelf = facts.tenGodTargetToSelf ? tenGodFamily(facts.tenGodTargetToSelf) : null;
   const famSelfToTarget = facts.tenGodSelfToTarget ? tenGodFamily(facts.tenGodSelfToTarget) : null;
   if (famTargetToSelf === "WEALTH" || famSelfToTarget === "WEALTH") {
-    moneyFor.push(ev(
+    moneyFor.push(ev2(
       `상호 십신에 재성 (${facts.tenGodTargetToSelf ?? ""}${facts.tenGodSelfToTarget ? `/${facts.tenGodSelfToTarget}` : ""})`,
       "한쪽이 다른 쪽의 살림을 실제로 굴리는 관계라, 돈이 도는 축은 분명합니다.",
       "MONEY_RETENTION"
@@ -8750,27 +9119,27 @@ function judgePairMyungri(input) {
   const rivalry = facts.tenGodTargetToSelf === "ROB_WEALTH" || facts.tenGodSelfToTarget === "ROB_WEALTH";
   const peerLevel = famTargetToSelf === "PEER" || famSelfToTarget === "PEER";
   if (rivalry) {
-    moneyAgainst.push(ev("상호 십신에 겁재", "같은 몫을 두고 겨루는 자리라, 돈 문제에서 부딪히기 쉽습니다.", "MONEY_RETENTION"));
+    moneyAgainst.push(ev2("상호 십신에 겁재", "같은 몫을 두고 겨루는 자리라, 돈 문제에서 부딪히기 쉽습니다.", "MONEY_RETENTION"));
   } else if (peerLevel) {
-    moneyAgainst.push(ev("상호 십신에 비견", "살림의 주도권을 두고 서로 물러서지 않는 편입니다.", "MONEY_RETENTION"));
+    moneyAgainst.push(ev2("상호 십신에 비견", "살림의 주도권을 두고 서로 물러서지 않는 편입니다.", "MONEY_RETENTION"));
   }
   if (facts.elementComplement.sharedMissing.length >= 2) {
-    moneyAgainst.push(ev(
+    moneyAgainst.push(ev2(
       `공통으로 약한 기운 ${facts.elementComplement.sharedMissing.length}가지`,
       "두 사람 모두 비어 있는 자리가 있어, 그 부분은 서로 메워 주지 못합니다.",
       "MONEY_RETENTION"
     ));
   }
   if (facts.elementComplement.selfSuppliesTarget.length + facts.elementComplement.targetSuppliesSelf.length >= 2) {
-    moneyFor.push(ev("서로 부족한 기운을 채움", "한쪽이 비는 자리를 다른 쪽이 메워, 살림이 굴러가는 편입니다.", "MONEY_RETENTION"));
+    moneyFor.push(ev2("서로 부족한 기운을 채움", "한쪽이 비는 자리를 다른 쪽이 메워, 살림이 굴러가는 편입니다.", "MONEY_RETENTION"));
   }
   const moneyStance = moneyAgainst.length > moneyFor.length ? rivalry ? "AGAINST" : "CONDITIONAL_AGAINST" : moneyFor.length > moneyAgainst.length ? "FOR" : moneyFor.length > 0 ? "CONDITIONAL_FOR" : NO_SIGNAL;
   const influence = [];
   if (facts.tenGodTargetToSelf) {
-    influence.push(ev(`상대→${input.selfLabel}: ${facts.tenGodTargetToSelf}`, `상대는 ${TEN_GOD_PULL[facts.tenGodTargetToSelf] ?? "고유한 결"}로 작용합니다.`, "INFLUENCE"));
+    influence.push(ev2(`상대→${input.selfLabel}: ${facts.tenGodTargetToSelf}`, `상대는 ${TEN_GOD_PULL[facts.tenGodTargetToSelf] ?? "고유한 결"}로 작용합니다.`, "INFLUENCE"));
   }
   if (facts.tenGodSelfToTarget) {
-    influence.push(ev(`${input.selfLabel}→상대: ${facts.tenGodSelfToTarget}`, `${input.selfLabel}는 ${TEN_GOD_PULL[facts.tenGodSelfToTarget] ?? "고유한 결"}로 작용합니다.`, "INFLUENCE"));
+    influence.push(ev2(`${input.selfLabel}→상대: ${facts.tenGodSelfToTarget}`, `${input.selfLabel}는 ${TEN_GOD_PULL[facts.tenGodSelfToTarget] ?? "고유한 결"}로 작용합니다.`, "INFLUENCE"));
   }
   const subs = [
     sub("RELATION_BOND", bondStance, bond.verdict, bondFor, bondAgainst, reduced),
@@ -8862,7 +9231,7 @@ function judgePairZiwei(input) {
       for (const t of landed) {
         const kind = sihuaKind(t.transformation);
         if (kind === null) continue;
-        const item = ev(`${p.label} ${palaceName}궁에 ${t.star} 화${t.transformation}`, kind === "GI" ? giMeaning : okMeaning, domain);
+        const item = ev2(`${p.label} ${palaceName}궁에 ${t.star} 화${t.transformation}`, kind === "GI" ? giMeaning : okMeaning, domain);
         if (kind === "GI") counter.push(item);
         else evidence.push(item);
       }
@@ -9113,6 +9482,10 @@ function toSajuEngineInput(birthInfo) {
 }
 
 // src/features/chat/services/consultationGrounding.ts
+function stemElementOf(stem) {
+  const r = getStemElement(stem);
+  return r.ok ? r.value : null;
+}
 var MYUNGRI_UNAVAILABLE = { availability: "calculation_failed" };
 var QIMEN_NOT_APPLICABLE = { availability: "not_applicable" };
 function buildZiweiParts(birthInfo) {
@@ -9175,6 +9548,7 @@ async function buildMyungriEvidence(draft, deps, question) {
   const natalRelations = calculateNatalRelations(natal);
   const monthCommand = calculateMonthCommand(natal);
   const rooting = calculateRootingTransparency(natal);
+  const strengthInputs = calculateDayMasterStrengthInputs(natal);
   const daewoon = calculateSajuDaewoon(
     { normalizedBirth: execution.normalizedBirth, yearPillar: fourPillars.year, monthPillar: fourPillars.month },
     LUNAR_JS_SOLAR_TERM_ADAPTER
@@ -9269,7 +9643,23 @@ async function buildMyungriEvidence(draft, deps, question) {
     seasonalPhase: monthCommand.capability === "AVAILABLE" ? monthCommand.dayMasterSeasonalPhase : null,
     rootedCount: rooting.capability === "AVAILABLE" ? rooting.rooting.filter((r) => r.isRooted).length : null,
     transparentCount: rooting.capability === "AVAILABLE" ? rooting.transparency.filter((t) => t.isRevealed).length : null,
-    hourKnown: fourPillars.hour.status === "AVAILABLE"
+    hourKnown: fourPillars.hour.status === "AVAILABLE",
+    // CONSTITUTION V2 §8/§12 — structural inputs for 강약/용신. All frozen-service outputs; the judgment
+    // itself lives in the divination layer (declared C-class, review-pending), never in the engines.
+    strengthInputs: strengthInputs.capability === "AVAILABLE" ? {
+      dayMaster: natal.dayMaster,
+      dayMasterElement: engineResult.output.derivedFacts.pillars.day.stem.element,
+      // 통근 = SAME-干 only (the rejected build conflated this with same-element).
+      dayMasterRootPositions: rooting.capability === "AVAILABLE" ? rooting.rooting.filter((r) => r.stemPosition === "DAY" && r.isRooted).flatMap((r) => r.roots.map((m) => m.branchPosition)) : [],
+      // 득지 = same-ELEMENT 비겁 hidden, kept as a DISTINCT factor.
+      peerHiddenPositions: strengthInputs.hiddenStems.filter((h) => h.role === "PARALLEL").map((h) => h.position),
+      visibleSupportPositions: strengthInputs.visibleStems.filter((v) => v.side === "SUPPORT").map((v) => v.position),
+      visibleDrainPositions: strengthInputs.visibleStems.filter((v) => v.side === "DRAIN").map((v) => v.position),
+      supportRevealed: rooting.capability === "AVAILABLE" && rooting.transparency.some((t) => t.isRevealed) && strengthInputs.hiddenStems.some((h) => h.side === "SUPPORT"),
+      elementCounts: engineResult.output.fiveElementDistribution.direct.counts,
+      extremeSeason: null
+      // 조후 is not asserted without a canonical extreme-season rule (§12)
+    } : null
   };
   const judgeFacts = {
     hourKnown: fourPillars.hour.status === "AVAILABLE",
@@ -9278,19 +9668,22 @@ async function buildMyungriEvidence(draft, deps, question) {
       stemTenGod: activeCycleTenGods.tenGods.stemTenGod,
       branchTenGod: activeCycleTenGods.tenGods.branchMainTenGod,
       relationsToNatal: buildRelationsToNatal(activeCycle.pillar, natal),
-      targetYear: null
+      targetYear: null,
+      stemElement: stemElementOf(activeCycle.pillar.stem)
     } : null,
     sewoon: sewoon.capability === "AVAILABLE" ? {
       stemTenGod: sewoon.tenGods.stemTenGod,
       branchTenGod: sewoon.tenGods.branchMainTenGod,
       relationsToNatal: sewoon.relationsToNatal,
-      targetYear: sewoon.targetYear
+      targetYear: sewoon.targetYear,
+      stemElement: stemElementOf(sewoon.pillar.stem)
     } : null,
     wolwoon: wolwoon.capability === "AVAILABLE" ? {
       stemTenGod: wolwoon.tenGods.stemTenGod,
       branchTenGod: wolwoon.tenGods.branchMainTenGod,
       relationsToNatal: wolwoon.relationsToNatal,
-      targetYear: wolwoon.targetYear
+      targetYear: wolwoon.targetYear,
+      stemElement: stemElementOf(wolwoon.pillar.stem)
     } : null
   };
   return { evidence, engineVersion: engineResult.engine.ruleSetVersion, targetPolarities, referenceYear: civilYear, referenceMonth: currentCivilMonth, judgeFacts };
@@ -9508,24 +9901,24 @@ var ACTION_CUE = /할까|말까|해야\s*(?:돼|하나|할까)|어떻게\s*(?:�
 var groundedMonthsOf = (g) => {
   const out = /* @__PURE__ */ new Set();
   if (g.status !== "available") return out;
-  for (const ev2 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
-    for (const m of ev2.timingAnchors?.months ?? []) if (Number.isInteger(m)) out.add(m);
+  for (const ev3 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    for (const m of ev3.timingAnchors?.months ?? []) if (Number.isInteger(m)) out.add(m);
   }
   return out;
 };
 var groundedYearsOf = (g) => {
   const out = /* @__PURE__ */ new Set();
   if (g.status !== "available") return out;
-  for (const ev2 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
-    for (const y of ev2.timingAnchors?.years ?? []) if (Number.isInteger(y)) out.add(y);
+  for (const ev3 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    for (const y of ev3.timingAnchors?.years ?? []) if (Number.isInteger(y)) out.add(y);
   }
   return out;
 };
 var referenceYearOf = (g) => {
   if (g.status !== "available") return null;
   if (typeof g.referenceYear === "number") return g.referenceYear;
-  for (const ev2 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
-    const r = ev2.timingAnchors?.referenceYear;
+  for (const ev3 of [g.evidence.myungri, g.evidence.ziwei, g.evidence.qimen]) {
+    const r = ev3.timingAnchors?.referenceYear;
     if (typeof r === "number") return r;
   }
   return null;
@@ -10593,19 +10986,19 @@ var validRelationArray = (v, kinds) => Array.isArray(v) && v.length <= 8 && v.ev
 });
 function parseEvidenceSnapshot(v) {
   if (v === null || typeof v !== "object") return void 0;
-  const ev2 = v;
-  const target = ev2.target;
-  const derivation = ev2.derivation;
-  if (ev2.schemaVersion !== "decision-evidence@1.0.0" || !target || typeof target !== "object") return void 0;
+  const ev3 = v;
+  const target = ev3.target;
+  const derivation = ev3.derivation;
+  if (ev3.schemaVersion !== "decision-evidence@1.0.0" || !target || typeof target !== "object") return void 0;
   if (target.granularity !== "YEAR" && target.granularity !== "MONTH" || !isFiniteInteger2(target.key)) return void 0;
-  if (typeof ev2.polarity !== "string" || !POLARITY_TIERS.includes(ev2.polarity)) return void 0;
+  if (typeof ev3.polarity !== "string" || !POLARITY_TIERS.includes(ev3.polarity)) return void 0;
   if (!derivation || typeof derivation !== "object") return void 0;
   if (!isFiniteInteger2(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) return void 0;
   if (!isFiniteInteger2(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) return void 0;
   if (!validRelationArray(derivation.stemRelations, STEM_RELATION_KINDS2) || !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS2)) return void 0;
-  if (typeof ev2.supportLevel !== "string" || typeof ev2.assertiveness !== "string" || typeof ev2.engineVersion !== "string" || ev2.engineVersion.length === 0) return void 0;
-  if (!Array.isArray(ev2.intents) || ev2.intents.length > 8 || !ev2.intents.every((x) => typeof x === "string")) return void 0;
-  return ev2;
+  if (typeof ev3.supportLevel !== "string" || typeof ev3.assertiveness !== "string" || typeof ev3.engineVersion !== "string" || ev3.engineVersion.length === 0) return void 0;
+  if (!Array.isArray(ev3.intents) || ev3.intents.length > 8 || !ev3.intents.every((x) => typeof x === "string")) return void 0;
+  return ev3;
 }
 function parseDecisionMeta(v) {
   if (v === null || typeof v !== "object") return void 0;
@@ -10742,8 +11135,8 @@ function kstCivil(epochSeconds) {
 function groundingReferenceYear(grounding) {
   if (grounding.status !== "available") return null;
   if (typeof grounding.referenceYear === "number") return grounding.referenceYear;
-  for (const ev2 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
-    const r = ev2.timingAnchors?.referenceYear;
+  for (const ev3 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const r = ev3.timingAnchors?.referenceYear;
     if (typeof r === "number") return r;
   }
   return null;
