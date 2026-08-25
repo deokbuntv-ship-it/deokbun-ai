@@ -8,6 +8,7 @@ import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/interpretation';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import { containsRawGanji, stripEngineLabels } from '@/features/chat/presentation/commercialText';
+import { containsServiceChecklistTone } from '@/features/fortune-shared/contentQuality';
 import { buildTodayFortuneEvidence } from '@/features/today/engine/todayEvidence';
 import { deriveDailyPlan, type DailyPlan } from '@/features/today/engine/todayPlan';
 import { buildTodayFortunePrompt } from '@/features/today/server/todayFortunePrompt';
@@ -162,6 +163,9 @@ export function parseDailyFortune(raw: string, plan: DailyPlan): DailyFortuneRes
   ].join(' ');
   if (containsRawGanji(surfaced)) return null;
   if (containsEventGuarantee(surfaced)) return null;
+  // Reject finance/admin service-checklist tone + fabricated micro-tasks — a 운세 is life direction, not a
+  // procedural checklist (Device-QA §8/§9). Rare given the prompt ban; the client offers a retry.
+  if (containsServiceChecklistTone(surfaced)) return null;
 
   return {
     headline,

@@ -8,6 +8,7 @@ import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/interpretation';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import { containsRawGanji, stripEngineLabels } from '@/features/chat/presentation/commercialText';
+import { containsServiceChecklistTone } from '@/features/fortune-shared/contentQuality';
 import { buildMonthlyFortuneEvidence } from '@/features/monthly/engine/monthlyEvidence';
 import { deriveMonthlyPlan, type MonthlyPlan } from '@/features/monthly/engine/monthlyPlan';
 import { buildMonthlyFortunePrompt } from '@/features/monthly/server/monthlyFortunePrompt';
@@ -173,6 +174,9 @@ export function parseMonthlyFortune(raw: string, plan: MonthlyPlan): MonthlyFort
   if (containsRawGanji(surfaced)) return null;
   if (containsEventGuarantee(surfaced)) return null;
   if (containsUnsupportedDatePrecision(surfaced)) return null;
+  // Reject finance/admin service-checklist tone + fabricated micro-tasks (Device-QA §8/§9). Rare given the
+  // prompt ban; the client offers a retry.
+  if (containsServiceChecklistTone(surfaced)) return null;
 
   return {
     headline,

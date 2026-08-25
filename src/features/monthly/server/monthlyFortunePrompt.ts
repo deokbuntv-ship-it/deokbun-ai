@@ -8,7 +8,7 @@ import { MONTHLY_DOMAIN_LABEL } from '@/features/monthly/types';
 import { formatMonthLabel } from '@/features/monthly/engine/monthDate';
 import type { MonthlyPlan } from '@/features/monthly/engine/monthlyPlan';
 
-export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.4.0';
+export const MONTHLY_PROMPT_VERSION = 'monthly-prompt@1.5.0';
 
 export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
   const label = formatMonthLabel({ year: plan.year, month: plan.month });
@@ -48,7 +48,9 @@ export function buildMonthlyFortunePrompt(plan: MonthlyPlan): LLMMessage[] {
         ].filter(Boolean)
       : []),
     '작성 규칙(반드시 지킬 것):',
-    '- 반복 금지: opportunities·cautions·actions는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 말고, 한 결과가 한 주제(예: 지출·정리)로만 수렴하지 않게 하십시오.',
+    '- 운세 문장 품질: 결과는 "삶의 방향"을 주는 글입니다. 재무·행정·업무 체크리스트처럼 쓰지 마십시오. 금지 표현: 영수증/계좌·카드 내역/청구서/자동이체/환불 절차/대출·투자 실행·계약서 문서화 같은 실무 절차, 그리고 "최근 30일"·"10분 동안"·"N개로 분류" 같은 임의 시간·수치 과제.',
+    '- 돈이 조심스러운 달이어도 "대출/투자를 줄이세요"·"계좌를 확인하세요"가 아니라 "큰 금전 결정은 한 번에 크게 움직이기보다 현실적인 조건을 확인하며 진행하는 편이 좋아요"처럼 흐름·태도로 쓰십시오.',
+    '- 섹션 역할 분리: opportunities=살릴 만한 "기회", cautions=속도를 조절할 "지점", actions=이번 달의 "방향"(체크리스트 아님). 한 섹션 내용을 다른 섹션에서 말만 바꿔 반복하지 말고, 한 결과가 한 주제(예: 지출·정리)로만 수렴하지 않게 하십시오.',
     '- verdict: 이번 달 전반 판단 + 가장 밀어볼 만한 기회 + 가장 조심할 점을 1~3문장으로 분명히. 뻔한 격려("긍정적인 마음", "좋은 기운")로 채우지 마십시오.',
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로.',

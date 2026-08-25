@@ -6,7 +6,7 @@ import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import { TODAY_DOMAIN_LABEL } from '@/features/today/types';
 import type { DailyPlan } from '@/features/today/engine/todayPlan';
 
-export const TODAY_PROMPT_VERSION = 'today-prompt@1.3.0';
+export const TODAY_PROMPT_VERSION = 'today-prompt@1.4.0';
 
 export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
   const emphasized = TODAY_DOMAIN_LABEL[plan.strongestDomain];
@@ -30,7 +30,9 @@ export function buildTodayFortunePrompt(plan: DailyPlan): LLMMessage[] {
         ].filter(Boolean)
       : []),
     '작성 규칙(반드시 지킬 것):',
-    '- 반복 금지: highlights·cautions·actionTip는 서로 다른 생활 영역/행동을 다루십시오. 같은 조언 계열("정리하세요/기록하세요/확인하세요/천천히")을 여러 항목에서 되풀이하지 마십시오. 한 결과가 지출·정리 한 주제로만 수렴하지 않게 하십시오.',
+    '- 운세 문장 품질: 결과는 "삶의 방향"을 주는 글입니다. 재무·행정·업무 체크리스트처럼 쓰지 마십시오. 금지 표현: 영수증/계좌·카드 내역/청구서/자동이체/환불 절차/대출·투자 실행 같은 실무 절차, 그리고 "최근 30일"·"10분 동안"·"N개로 분류" 같은 임의 시간·수치 과제.',
+    '- 돈이 조심스러운 날이어도 "대출/투자를 줄이세요"·"계좌를 확인하세요"가 아니라 "큰 금전 결정은 서두르기보다 조건을 한 번 더 살펴보는 편이 좋아요"처럼 흐름·태도로 쓰십시오.',
+    '- 섹션 역할 분리: highlights=잘 풀릴 수 있는 "기회", cautions=속도를 조절할 "지점", actionTip=오늘의 "방향" 딱 1가지(체크리스트 아님). 세 섹션이 같은 조언을 말만 바꿔 반복하지 마십시오. 한 결과가 지출·정리 한 주제로만 수렴하지 않게 하십시오.',
     `- verdict: "오늘은 ~하는 편이 좋습니다"처럼 오늘 무엇을 우선/자제하면 좋은지 1~2문장으로 분명히 답하십시오. 위 "행동 방식"과 "기운이 실리는 영역"을 구체적 상황으로 풀어 쓰되, 뻔한 격려("긍정적으로", "좋은 하루")로 채우지 마십시오.`,
     '- headline: verdict를 한 줄로 압축한 구체적 문장(감성적 슬로건 금지).',
     '- overallSummary: 2~3문장. verdict를 반복하지 말고 "왜 그런 흐름인지"를 생활 언어로 덧붙이십시오.',
