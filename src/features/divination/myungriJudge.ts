@@ -28,6 +28,11 @@ import {
 } from './contracts';
 import { analyzeLayer, axisPressure, type LayerAnalysis } from './myungriLayer';
 import { natalSupportForDomain, readNatalBaseline, type NatalStructureInput } from './myungriNatal';
+import {
+  judgeDayMasterStrength, judgeYongshin, luckElementEffect,
+  type DayMasterStrengthJudgment, type YongshinJudgment,
+} from './myungriStrength';
+import type { FiveElement } from '@/features/interpretation';
 
 // ── 십신 semantics (canonical identities, mirrored from the shipped monthly/today mapping) ────────────
 export type TenGodFamily = 'WEALTH' | 'OFFICER' | 'OUTPUT' | 'PEER' | 'RESOURCE';
@@ -75,6 +80,8 @@ export type TemporalLayerFacts = {
   branchTenGod: TenGod;
   relationsToNatal: RelationsToNatal;
   targetYear?: number | null;
+  /** CONSTITUTION V2 §14 — the element this layer brings, so 용신 can materially change its reading. */
+  stemElement?: FiveElement | null;
 };
 
 export type MyungriJudgeInput = {
@@ -131,6 +138,8 @@ function judgeAxis(
   baseline: ReturnType<typeof readNatalBaseline> | null,
   asked: JudgmentDomain,
   reliability: DataReliability,
+  /** §14 — the 용신 reading of each layer's element; it must be able to MOVE the axis stance. */
+  elementEffects: { scope: string; effect: 'FAVORABLE' | 'ADVERSE' | 'NEUTRAL'; why: string }[] = [],
 ): DomainSubJudgment | null {
   const pressures = layers.map((l) => ({ layer: l, p: axisPressure(l, axis) }));
   const touched = pressures.filter((x) => x.p.friction > 0 || x.p.harmony > 0);
@@ -174,6 +183,29 @@ function judgeAxis(
     conclusion = '이 부분은 열리는 힘과 부딪히는 힘이 함께 있어, 조건을 정리하고 가야 합니다.';
   }
 
+  // ── §14: 용신 materially shifts the axis, it is not a decorative label ──────────────────────────
+  const favorable = elementEffects.filter((e) => e.effect === 'FAVORABLE');
+  const adverse = elementEffects.filter((e) => e.effect === 'ADVERSE');
+  const yongshinEvidence: JudgmentEvidence[] = favorable.map((e) => ({
+    fact: `${e.scope} 기운이 용신에 부합`, meaning: e.why, domain: axis, temporalScope: 'SEWOON', directness: 'ADJACENT',
+  }));
+  const yongshinCounter: JudgmentEvidence[] = adverse.map((e) => ({
+    fact: `${e.scope} 기운이 기신 쪽`, meaning: e.why, domain: axis, temporalScope: 'SEWOON', directness: 'ADJACENT',
+  }));
+  if (favorable.length > 0 && adverse.length === 0) {
+    // a 용신 luck cycle upgrades a hedged positive and softens a mild negative
+    if (stance === 'CONDITIONAL_FOR') stance = 'FOR';
+    else if (stance === 'CONDITIONAL_AGAINST') stance = 'CONDITIONAL_FOR';
+    else if (stance === NO_SIGNAL && natal.support !== 'ABSENT') {
+      stance = 'CONDITIONAL_FOR';
+      conclusion = '흐름 자체가 지금 이 사주에 필요한 기운으로 들어오고 있습니다.';
+    }
+  } else if (adverse.length > 0 && favorable.length === 0) {
+    if (stance === 'CONDITIONAL_FOR') stance = 'CONDITIONAL_AGAINST';
+    else if (stance === 'FOR') stance = 'CONDITIONAL_FOR';
+    else if (stance === 'CONDITIONAL_AGAINST') stance = 'AGAINST';
+  }
+
   return {
     domain: axis,
     stance,
@@ -181,8 +213,8 @@ function judgeAxis(
     temporalScope: nearest?.layer.scope ?? 'NATAL',
     directness: directnessFor(axis, asked),
     reliability,
-    evidence: [...evidence, ...natalEvidence],
-    counterEvidence,
+    evidence: [...evidence, ...natalEvidence, ...yongshinEvidence],
+    counterEvidence: [...counterEvidence, ...yongshinCounter],
   };
 }
 
@@ -222,6 +254,49 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
   const baseline = input.natal ? readNatalBaseline(input.natal) : null;
   const factGroupsUsed: string[] = [];
   if (baseline) factGroupsUsed.push('원국 십신 배치', '원국 합충형파해', '월령', '통근·투간');
+
+  // ── CONSTITUTION V2 §8/§12 — 강약 + 용신 (structural, C-class, review-pending) ────────────────────
+  const si = input.natal?.strengthInputs ?? null;
+  let strength: DayMasterStrengthJudgment | null = null;
+  let yongshin: YongshinJudgment | null = null;
+  if (si) {
+    strength = judgeDayMasterStrength({
+      dayMaster: si.dayMaster,
+      dayMasterElement: si.dayMasterElement,
+      seasonalPhase: input.natal?.seasonalPhase ?? null,
+      inCommand: input.natal?.monthCommandInCommand ?? null,
+      rootPositions: si.dayMasterRootPositions,
+      peerHiddenPositions: si.peerHiddenPositions,
+      visibleSupportPositions: si.visibleSupportPositions,
+      visibleDrainPositions: si.visibleDrainPositions,
+      supportRevealed: si.supportRevealed,
+      hourKnown: input.hourKnown,
+    });
+    yongshin = judgeYongshin({
+      strength,
+      dayMasterElement: si.dayMasterElement,
+      elementCounts: si.elementCounts,
+      extremeSeason: si.extremeSeason,
+    });
+    factGroupsUsed.push('일간 강약(억부)', '용신(억부)');
+  }
+  /** Per-layer 용신 reading — the mechanism by which strength changes the verdict rather than decorating it. */
+  const elementEffects = (): { scope: string; effect: 'FAVORABLE' | 'ADVERSE' | 'NEUTRAL'; why: string }[] => {
+    if (!yongshin || !si) return [];
+    const out: { scope: string; effect: 'FAVORABLE' | 'ADVERSE' | 'NEUTRAL'; why: string }[] = [];
+    for (const [facts, scopeLabel] of [
+      [input.activeDaewoon, '지금의 큰 흐름'],
+      [input.sewoon, '올해 흐름'],
+      [input.wolwoon, '이 시기 흐름'],
+    ] as const) {
+      const el = facts?.stemElement ?? null;
+      if (!el) continue;
+      const r = luckElementEffect(yongshin, si.dayMasterElement, el as FiveElement);
+      if (r.effect !== 'NEUTRAL') out.push({ scope: scopeLabel, effect: r.effect, why: r.why });
+    }
+    return out;
+  };
+  const layerElementEffects = elementEffects();
   if (layers.some((l) => l.scope === 'DAEWOON')) factGroupsUsed.push('대운');
   if (layers.some((l) => l.scope === 'SEWOON')) factGroupsUsed.push('세운');
   if (layers.some((l) => l.scope === 'WOLWOON')) factGroupsUsed.push('월운');
@@ -229,28 +304,67 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
 
   // ── per-axis sub-judgments (the real decomposition source) ───────────────────────────────────────
   const subs = axesFor(asked)
-    .map((axis) => judgeAxis(axis, layers, baseline, asked, reliability))
+    .map((axis) => judgeAxis(axis, layers, baseline, asked, reliability, layerElementEffects))
     .filter((s): s is DomainSubJudgment => s !== null);
 
-  // Retention gets one extra canonical signal: 겁재(ROB_WEALTH) + a floating (rootless) chart both mean
-  // "what comes in does not stay". Both are the facts' own identities, not a new rule.
+  // ── RETENTION (CONSTITUTION V2 §16 — reworked; the previous rule was an automatic universal) ─────
+  // The earlier build asserted "겁재 OR 무통근 → 돈이 남지 않는다" as a flat override. That is not defensible:
+  // a single 겁재, or a rootless chart, does not by itself decide retention. Retention is now INFERRED from
+  // the competing structure — leakage signals weighed against holding signals — and it can only tilt the axis
+  // it already computed, never overwrite it with verdict authority of its own.
   const retentionSub = subs.find((s) => s.domain === 'MONEY_RETENTION');
   if (retentionSub) {
-    const robbed = layers.some((l) => l.robWealth);
-    const floating = baseline?.anchored === 'FLOATING';
-    if (robbed || floating) {
-      retentionSub.stance = 'AGAINST';
-      retentionSub.conclusion = robbed
-        ? '들어온 돈을 나눠 가져가는 자리가 있어, 버는 것과 남기는 것을 반드시 나눠 보셔야 합니다.'
-        : '뿌리가 약해 들어온 것이 오래 머물지 않습니다.';
-      retentionSub.counterEvidence = [
-        ...retentionSub.counterEvidence,
-        {
-          fact: robbed ? '운에 겁재' : '원국 통근 약함',
-          meaning: robbed ? '같은 것을 두고 나눠 갖는 기운이 함께 옵니다.' : '뿌리가 얕아 쌓이지 않습니다.',
-          domain: 'MONEY_RETENTION', temporalScope: robbed ? 'SEWOON' : 'NATAL', directness: 'DIRECT',
-        },
-      ];
+    const leakage: JudgmentEvidence[] = [];
+    const holding: JudgmentEvidence[] = [];
+
+    // Leakage: 겁재 arriving in a luck cycle — but only counts when the chart HAS wealth to contest.
+    const chartHasWealth = (baseline?.familyPresence.WEALTH ?? 0) > 0;
+    const robbingLayer = layers.find((l) => l.robWealth);
+    if (robbingLayer && chartHasWealth) {
+      leakage.push({
+        fact: `${robbingLayer.scope === 'DAEWOON' ? '지금의 큰 흐름' : robbingLayer.scope === 'SEWOON' ? '올해 흐름' : '이 시기 흐름'}에 겁재`,
+        meaning: '가진 몫을 두고 나눠 갖는 기운이 함께 들어옵니다.',
+        domain: 'MONEY_RETENTION', temporalScope: robbingLayer.scope, directness: 'DIRECT',
+      });
+    }
+    // Leakage: a rootless chart holds less — a CONTRIBUTING factor, not a verdict.
+    if (baseline?.anchored === 'FLOATING') {
+      leakage.push({
+        fact: '원국 무통근', meaning: '뿌리가 얕아 들어온 것이 오래 머물기 어렵습니다.',
+        domain: 'MONEY_RETENTION', temporalScope: 'NATAL', directness: 'ADJACENT',
+      });
+    }
+    // Holding: 재성 seated in the chart, and a rooted/seasonally-footed day master can actually keep what comes.
+    if ((baseline?.familyPresence.WEALTH ?? 0) >= 2) {
+      holding.push({
+        fact: `원국 재성 ${baseline?.familyPresence.WEALTH}자리`,
+        meaning: '재물이 앉을 자리가 여러 곳이라, 들어온 것이 놓일 데가 있습니다.',
+        domain: 'MONEY_RETENTION', temporalScope: 'NATAL', directness: 'DIRECT',
+      });
+    }
+    if (baseline?.anchored === 'ROOTED') {
+      holding.push({
+        fact: '원국 통근 튼튼', meaning: '뿌리가 단단해 한번 잡은 것을 오래 끌고 갑니다.',
+        domain: 'MONEY_RETENTION', temporalScope: 'NATAL', directness: 'ADJACENT',
+      });
+    }
+    if (baseline?.inCommand === true) {
+      holding.push({
+        fact: '원국 득령', meaning: '계절의 힘을 얻어 벌인 것을 감당할 수 있습니다.',
+        domain: 'MONEY_RETENTION', temporalScope: 'NATAL', directness: 'ADJACENT',
+      });
+    }
+
+    retentionSub.evidence = [...retentionSub.evidence, ...holding];
+    retentionSub.counterEvidence = [...retentionSub.counterEvidence, ...leakage];
+    // Tilt only — one step, and only when leakage genuinely outweighs holding.
+    if (leakage.length > holding.length) {
+      if (retentionSub.stance === 'FOR' || retentionSub.stance === 'CONDITIONAL_FOR') retentionSub.stance = 'CONDITIONAL_AGAINST';
+      else if (retentionSub.stance === NO_SIGNAL) retentionSub.stance = 'CONDITIONAL_AGAINST';
+      retentionSub.conclusion = '들어오는 것에 비해 지키는 쪽이 약해, 버는 것과 남기는 것을 나눠 보셔야 합니다.';
+    } else if (holding.length > leakage.length && retentionSub.stance === NO_SIGNAL) {
+      retentionSub.stance = 'CONDITIONAL_FOR';
+      retentionSub.conclusion = '들어온 것을 지키는 구조는 크게 새지 않습니다.';
     }
   }
 
@@ -295,7 +409,25 @@ export function judgeMyungri(input: MyungriJudgeInput): DivinationJudgment {
       primarySub?.counterEvidence[0]?.fact ??
       primarySub?.evidence[0]?.fact ??
       (nearest ? `${SCOPE_LABEL[nearest.scope]}: ${FAMILY_LABEL[nearest.family]}` : '원국 구조'),
-    directEvidence: [...allEvidence, ...(baseline?.evidence ?? [])],
+    directEvidence: [
+      ...allEvidence,
+      ...(baseline?.evidence ?? []),
+      // §14 — the strength/용신 reading is EVIDENCE the reading can cite, not a hidden internal flag.
+      ...(strength
+        ? [{
+            fact: `일간 강약: ${strength.label}`,
+            meaning: `${strength.supportingEvidence[0]?.meaning ?? ''}${strength.ambiguities.length ? ` 다만 ${strength.ambiguities[0]}` : ''}`.trim(),
+            domain: 'GENERAL' as JudgmentDomain, temporalScope: 'NATAL' as const, directness: 'ADJACENT' as const,
+          }]
+        : []),
+      ...(yongshin?.primaryYongshin
+        ? [{
+            fact: `용신: ${yongshin.basis}`,
+            meaning: '이 사주가 지금 가장 필요로 하는 기운입니다. 들어오는 흐름이 이 기운이면 실제로 쓸 수 있습니다.',
+            domain: 'GENERAL' as JudgmentDomain, temporalScope: 'NATAL' as const, directness: 'ADJACENT' as const,
+          }]
+        : []),
+    ],
     counterEvidence: allCounter,
     internalContradictions,
     timingSignals: nearest && nearest.hits.length > 0 ? [nearest.hits[0].evidence] : [],

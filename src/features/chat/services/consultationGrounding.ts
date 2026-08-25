@@ -23,11 +23,14 @@ import {
   LUNAR_JS_SOLAR_TERM_ADAPTER,
   calculateSajuDaewoon,
   executeSajuFromBirthInput,
+  getStemElement,
   type DigestProvider,
+  type FiveElement,
   type HistoricalTimezoneResolver,
 } from '@/features/interpretation';
 import {
   calculateDaewoonTenGods,
+  calculateDayMasterStrengthInputs,
   calculateMonthCommand,
   calculateMyungriTimeAxis,
   calculateNatalRelations,
@@ -75,6 +78,12 @@ export type SajuGroundingDeps = {
   /** UTC seconds used for the current-year 세운/월운 facts. Injectable for deterministic tests. */
   nowEpochSeconds?: number;
 };
+
+/** CONSTITUTION V2 §14 — a luck layer's element, so 용신 can read whether the cycle is usable. Fail-soft. */
+function stemElementOf(stem: Parameters<typeof getStemElement>[0]): FiveElement | null {
+  const r = getStemElement(stem);
+  return r.ok ? r.value : null;
+}
 
 const MYUNGRI_UNAVAILABLE: EngineEvidence = { availability: 'calculation_failed' };
 const QIMEN_NOT_APPLICABLE: EngineEvidence = { availability: 'not_applicable' };
@@ -213,6 +222,10 @@ async function buildMyungriEvidence(
   const natalRelations = calculateNatalRelations(natal);
   const monthCommand = calculateMonthCommand(natal);
   const rooting = calculateRootingTransparency(natal);
+  // CONSTITUTION V2 §8 — the FACTS-only 강약 inputs (아군/타군 by position, 지장간 roles). The owner's own
+  // MYUNGRI_100 analysis marks these inputs adoptable; only the VERDICT was excluded there, and the verdict
+  // now lives in the divination layer as declared C-class doctrine pending review.
+  const strengthInputs = calculateDayMasterStrengthInputs(natal);
   const daewoon = calculateSajuDaewoon(
     { normalizedBirth: execution.normalizedBirth, yearPillar: fourPillars.year, monthPillar: fourPillars.month },
     LUNAR_JS_SOLAR_TERM_ADAPTER,
@@ -366,6 +379,29 @@ async function buildMyungriEvidence(
     rootedCount: rooting.capability === 'AVAILABLE' ? rooting.rooting.filter((r) => r.isRooted).length : null,
     transparentCount: rooting.capability === 'AVAILABLE' ? rooting.transparency.filter((t) => t.isRevealed).length : null,
     hourKnown: fourPillars.hour.status === 'AVAILABLE',
+    // CONSTITUTION V2 §8/§12 — structural inputs for 강약/용신. All frozen-service outputs; the judgment
+    // itself lives in the divination layer (declared C-class, review-pending), never in the engines.
+    strengthInputs: strengthInputs.capability === 'AVAILABLE'
+      ? {
+          dayMaster: natal.dayMaster,
+          dayMasterElement: engineResult.output.derivedFacts.pillars.day.stem.element,
+          // 통근 = SAME-干 only (the rejected build conflated this with same-element).
+          dayMasterRootPositions:
+            rooting.capability === 'AVAILABLE'
+              ? rooting.rooting.filter((r) => r.stemPosition === 'DAY' && r.isRooted).flatMap((r) => r.roots.map((m) => m.branchPosition))
+              : [],
+          // 득지 = same-ELEMENT 비겁 hidden, kept as a DISTINCT factor.
+          peerHiddenPositions: strengthInputs.hiddenStems.filter((h) => h.role === 'PARALLEL').map((h) => h.position),
+          visibleSupportPositions: strengthInputs.visibleStems.filter((v) => v.side === 'SUPPORT').map((v) => v.position),
+          visibleDrainPositions: strengthInputs.visibleStems.filter((v) => v.side === 'DRAIN').map((v) => v.position),
+          supportRevealed:
+            rooting.capability === 'AVAILABLE' &&
+            rooting.transparency.some((t) => t.isRevealed) &&
+            strengthInputs.hiddenStems.some((h) => h.side === 'SUPPORT'),
+          elementCounts: engineResult.output.fiveElementDistribution.direct.counts,
+          extremeSeason: null, // 조후 is not asserted without a canonical extreme-season rule (§12)
+        }
+      : null,
   };
 
   const judgeFacts: MyungriOutcome['judgeFacts'] = {
@@ -378,6 +414,7 @@ async function buildMyungriEvidence(
             branchTenGod: activeCycleTenGods.tenGods.branchMainTenGod,
             relationsToNatal: buildRelationsToNatal(activeCycle.pillar, natal),
             targetYear: null,
+            stemElement: stemElementOf(activeCycle.pillar.stem),
           }
         : null,
     sewoon:
@@ -387,6 +424,7 @@ async function buildMyungriEvidence(
             branchTenGod: sewoon.tenGods.branchMainTenGod,
             relationsToNatal: sewoon.relationsToNatal,
             targetYear: sewoon.targetYear,
+            stemElement: stemElementOf(sewoon.pillar.stem),
           }
         : null,
     wolwoon:
@@ -396,6 +434,7 @@ async function buildMyungriEvidence(
             branchTenGod: wolwoon.tenGods.branchMainTenGod,
             relationsToNatal: wolwoon.relationsToNatal,
             targetYear: wolwoon.targetYear,
+            stemElement: stemElementOf(wolwoon.pillar.stem),
           }
         : null,
   };

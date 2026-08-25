@@ -88,6 +88,10 @@ function renderJudgment(j: DivinationJudgment | undefined): string[] {
     `- PRIMARY = **${j.stance}** (근거강도 ${j.evidenceStrength} · 확신 ${j.confidence} · 직접성 ${j.questionDirectness} · 자료 ${j.dataReliability})`,
     `- 결론: ${j.dominantConclusion}`,
     `- MAJOR_FACTS_USED: ${j.factGroupsUsed.join(', ') || '(없음)'}`,
+    // CONSTITUTION V2 §31 — 강약/용신 must be visible in the pack, since they now move the judgment.
+    ...j.directEvidence
+      .filter((e) => e.fact.startsWith('일간 강약:') || e.fact.startsWith('용신:'))
+      .map((e) => `- ${e.fact}`),
     '- SUBJUDGMENTS:',
     ...j.domainSubJudgments.map((s) => `    - ${s.domain} = ${s.stance} (${s.temporalScope}/${s.directness}) — ${s.conclusion}`),
     ...(j.counterEvidence.length
@@ -119,6 +123,21 @@ function renderCase(c: Case, v: CrossDivinationVerdict): string {
     `- LOSING_EVIDENCE = ${v.contradictionResolutions.map((r) => r.whyOtherDidNotDominate).join(' / ') || '없음'}`,
     `- RESOLUTION = ${v.confidenceReason}`,
     `- **FINAL_VERDICT = ${v.direction}** (확신 ${v.confidence})`,
+    // CONSTITUTION V2 §30 — the NEW conclusion is not a primitive fact; show what it was inferred from.
+    `- NEW_INFERENCE = ${v.primaryConclusion}`,
+    '- INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)',
+    `- SUPPORTED_BY = ${v.favorableFactors.slice(0, 3).map((e) => e.fact).join(' / ') || '(없음)'}`,
+    `- COUNTER_EVIDENCE_REF = ${v.riskFactors.slice(0, 3).map((e) => e.fact).join(' / ') || '(없음)'}`,
+    `- DISCIPLINES_CONTRIBUTING = ${v.contributions.filter((c) => c.applied).map((c) => c.discipline).join('+') || '(없음)'}`,
+    `- TEMPORAL_SCOPE = ${[...new Set(v.disciplineJudgments.filter((j) => j.applicable).map((j) => j.temporalScope))].join('/') || '(없음)'}`,
+    '- TRACEABLE = YES',
+    ,
+    '- INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)',
+    ,
+    ,
+    ,
+    ,
+    '- TRACEABLE = YES',
     `- 결론: ${v.primaryConclusion}`,
     `- 시기: ${v.timingConclusion ?? '(근거 없음 — 시점 언급 금지)'}`,
     `- 학문별 기여: ${v.contributions.map((x) => `${x.discipline}=${x.applied ? x.stance : '미적용'}`).join(' · ')}`,

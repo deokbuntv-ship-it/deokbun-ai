@@ -11,6 +11,7 @@
 //
 // STILL NO DEFERRED THEORY: no 신강/신약, 용신, 희신, 기신, 격국, 종격, no element weighting. Counting how many
 // pillars carry 재성 is not a strength verdict — it is reading the chart's own 십신 distribution.
+import type { FiveElement, HeavenlyStem } from '@/features/interpretation';
 import type { NatalRelationsResult } from '@/features/myungri/services/natalRelations';
 import type { SajuPillarPosition, TenGod } from '@/features/interpretation/saju/derived/contracts';
 
@@ -32,6 +33,22 @@ export type NatalStructureInput = {
   rootedCount: number | null;
   transparentCount: number | null;
   hourKnown: boolean;
+  /** CONSTITUTION V2 §8 — the structural inputs the 강약/용신 judge needs. All frozen-service outputs. */
+  strengthInputs?: {
+    dayMaster: HeavenlyStem;
+    dayMasterElement: FiveElement;
+    /** Positions where the DAY MASTER's own 干 sits in a branch's 지장간 (통근, same-干). */
+    dayMasterRootPositions: SajuPillarPosition[];
+    /** Positions where a same-ELEMENT 비겁 sits hidden (득지 — kept distinct from 통근). */
+    peerHiddenPositions: SajuPillarPosition[];
+    /** Visible stems that are 아군(비겁·인성) / 타군(식상·재성·관성). */
+    visibleSupportPositions: SajuPillarPosition[];
+    visibleDrainPositions: SajuPillarPosition[];
+    supportRevealed: boolean;
+    elementCounts: Record<FiveElement, number>;
+    /** Only when the chart's season is genuinely extreme; used ONLY as a separate 조후 note. */
+    extremeSeason: '한랭' | '염열' | null;
+  } | null;
 };
 
 /**
