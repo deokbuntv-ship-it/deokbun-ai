@@ -20,7 +20,6 @@ import {
   type MyungriTemporalContext,
 } from '@/features/myungri';
 import type { RelationsToNatal } from '@/features/myungri/domain/contracts';
-import { toZiweiBirthInput } from '@/features/ziwei';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import { resolveCivilMonthSajuSegments } from '@/features/monthly/engine/civilMonthSegments';
@@ -132,19 +131,12 @@ export async function buildMonthlyFortuneEvidence(
 
   // Shared myungri temporal context (the SAME core 상담/오늘 use): 오행 구성 + active 대운 + current 세운, read
   // at the civil-month midpoint. Facts only — background context, NOT a driver of the month tier (§8/§12). 세운
-  // is computed once here (§31 no duplicate calc).
-  let solarBirthYear: number | null = null;
-  try {
-    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
-  } catch {
-    solarBirthYear = null;
-  }
+  // is computed once here (§31); active 대운 via the canonical date-based resolver (engine's own birth date).
   const temporal = buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
     instantEpochSeconds: monthMidpointEpochSeconds(target),
-    solarBirthYear,
   });
 
   return {

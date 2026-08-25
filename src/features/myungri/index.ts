@@ -130,7 +130,8 @@ export {
 } from './services/currentStrength';
 export {
   buildMyungriTemporalContext,
-  currentSajuAge,
+  fullElapsedYears,
+  resolveActiveDaewoonOrdinal,
   selectActiveDaewoonCycleOrdinal,
   type ActiveDaewoonContext,
   type MyungriTemporalContext,

@@ -16,7 +16,6 @@ import {
   natalContextFromFourPillars,
   type MyungriTemporalContext,
 } from '@/features/myungri';
-import { toZiweiBirthInput } from '@/features/ziwei';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import { calculateDayLuck, type DayLuck } from '@/features/today/engine/dayLuck';
@@ -89,19 +88,13 @@ export async function buildTodayFortuneEvidence(
 
   // Shared myungri temporal context (the SAME core 상담 uses): 오행 구성 + active 대운 + current 세운.
   // Facts only — background context for the prose, NOT a driver of the day's tier (§8/§11). 세운 is computed
-  // once here (§31 no duplicate calc). 월운 availability is still read separately (today's own context).
-  let solarBirthYear: number | null = null;
-  try {
-    solarBirthYear = Number(toZiweiBirthInput(input.birthInfo).birthYear);
-  } catch {
-    solarBirthYear = null;
-  }
+  // once here (§31 no duplicate calc). Active 대운 is selected by the canonical date-based resolver (using the
+  // engine's own birth date). 월운 availability is still read separately (today's own context).
   const temporal = buildMyungriTemporalContext({
     engineResult,
     natal,
     normalizedBirth: execution.normalizedBirth,
     instantEpochSeconds: input.nowEpochSeconds,
-    solarBirthYear,
   });
   const wolwoon = calculateWolwoonForInstant({ natal, instantEpochSeconds: input.nowEpochSeconds });
 

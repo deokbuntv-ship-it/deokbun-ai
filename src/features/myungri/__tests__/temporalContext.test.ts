@@ -9,10 +9,9 @@ import {
   type DigestProvider,
 } from '@/features/interpretation';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
-import { toZiweiBirthInput } from '@/features/ziwei';
 import {
   buildMyungriTemporalContext,
-  currentSajuAge,
+  fullElapsedYears,
   natalContextFromFourPillars,
   selectActiveDaewoonCycleOrdinal,
 } from '@/features/myungri';
@@ -37,10 +36,9 @@ async function ctx(now = NOW) {
   });
   if (!execution.success || execution.engineResult.status === 'UNAVAILABLE') throw new Error('engine unavailable');
   const natal = natalContextFromFourPillars(execution.engineResult.output.fourPillars);
-  const solarBirthYear = Number(toZiweiBirthInput(birthInfo).birthYear);
   return buildMyungriTemporalContext({
     engineResult: execution.engineResult, natal,
-    normalizedBirth: execution.normalizedBirth, instantEpochSeconds: now, solarBirthYear,
+    normalizedBirth: execution.normalizedBirth, instantEpochSeconds: now,
   });
 }
 
@@ -85,9 +83,11 @@ describe('pure selectors', () => {
     expect(selectActiveDaewoonCycleOrdinal(cycles, 2)).toBeNull(); // before first cycle
     expect(selectActiveDaewoonCycleOrdinal(cycles, null)).toBeNull();
   });
-  it('currentSajuAge = sewoon year − solar birth year (null if either missing)', () => {
-    expect(currentSajuAge(2026, 1990)).toBe(36);
-    expect(currentSajuAge(null, 1990)).toBeNull();
-    expect(currentSajuAge(2026, null)).toBeNull();
+  it('fullElapsedYears (만나이) subtracts 1 before the birthday — not year-subtraction', () => {
+    // born 1990-10-20
+    expect(fullElapsedYears({ year: 1990, month: 10, day: 20 }, { year: 2026, month: 8, day: 25 })).toBe(35); // birthday NOT passed → 35 (year-subtraction would wrongly give 36)
+    expect(fullElapsedYears({ year: 1990, month: 10, day: 20 }, { year: 2026, month: 10, day: 20 })).toBe(36); // exact birthday → 36
+    expect(fullElapsedYears({ year: 1990, month: 10, day: 20 }, { year: 2026, month: 12, day: 1 })).toBe(36); // after birthday → 36
+    expect(fullElapsedYears({ year: 1990, month: 5, day: 15 }, { year: 2026, month: 8, day: 25 })).toBe(36);
   });
 });

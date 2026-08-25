@@ -16,7 +16,7 @@ import { calculateSewoonForInstant } from './luckForInstant';
 import { buildRelationsToNatal } from './pillarFacts';
 import type { NatalPillarContext, RelationsToNatal, SewoonResult } from '../domain/contracts';
 
-/** Which 대운 cycle contains `currentAge` (deterministic; year-granularity — see DAEWOON_PRECISION followup). */
+/** Which integer-age 대운 cycle contains `currentAge` (the engine's cycles are integer-age spans). */
 export function selectActiveDaewoonCycleOrdinal(
   cycles: readonly { ordinal: number; startAgeInclusive: number; endAgeInclusive: number }[],
   currentAge: number | null,
@@ -26,11 +26,40 @@ export function selectActiveDaewoonCycleOrdinal(
   return active ? active.ordinal : null;
 }
 
-/** Current 사주 age = current 세운 year − solar birth year (the SAME basis 상담 uses, for cross-feature parity). */
-export function currentSajuAge(sewoonTargetYear: number | null, solarBirthYear: number | null): number | null {
-  return sewoonTargetYear !== null && solarBirthYear !== null && Number.isFinite(solarBirthYear)
-    ? sewoonTargetYear - solarBirthYear
-    : null;
+/**
+ * Full elapsed years (만나이) from a birth civil date to an eval civil date. This matches the engine's OWN
+ * duration-based 대운 start-age basis (rawStartAgeYears = elapsed-from-birth), unlike the prior year-subtraction
+ * (evalYear − birthYear) which over-counts by 1 before the birthday → a ±1-year error at decade boundaries.
+ */
+export function fullElapsedYears(
+  birth: { year: number; month: number; day: number },
+  evalDate: { year: number; month: number; day: number },
+): number {
+  let years = evalDate.year - birth.year;
+  if (evalDate.month < birth.month || (evalDate.month === birth.month && evalDate.day < birth.day)) years -= 1;
+  return years;
+}
+
+/** KST (UTC+9) civil date for a UTC instant — the eval-date basis for 대운 selection (Korea has no DST). */
+function kstCivilDate(instantEpochSeconds: number): { year: number; month: number; day: number } {
+  const d = new Date((instantEpochSeconds + 9 * 3600) * 1000);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
+/**
+ * CANONICAL active-대운 resolver — DATE-based, convention-free. Uses the engine's OWN exposed birth civil date
+ * (`start.timing.birthLocalDateTime.date`) to compute true elapsed years (만나이) at the instant, then selects
+ * the integer-age cycle containing it. Precision = day-level (matches the engine's date-level source truth); no
+ * 세는나이/school choice, no re-derivation of the frozen 절입-distance. null when 대운 unavailable (e.g. 시주
+ * 미상) — fail-closed, never a fabricated cycle. Consultation/Today/Monthly all call THIS one resolver.
+ */
+export function resolveActiveDaewoonOrdinal(
+  daewoon: ReturnType<typeof calculateSajuDaewoon>,
+  instantEpochSeconds: number,
+): number | null {
+  if (daewoon.capability !== 'AVAILABLE') return null;
+  const age = fullElapsedYears(daewoon.start.timing.birthLocalDateTime.date, kstCivilDate(instantEpochSeconds));
+  return selectActiveDaewoonCycleOrdinal(daewoon.cycles, age);
 }
 
 export type ActiveDaewoonContext = {
@@ -59,15 +88,14 @@ export type MyungriTemporalContext = {
 /**
  * Compose the shared temporal facts for a chart at an instant. Fail-open on luck (missing daewoon/sewoon is a
  * warning, not a throw) so a feature can still degrade gracefully; the natal composition is always returned when
- * the chart is available. Deterministic; no LLM. `solarBirthYear` must be the SAME basis across features (the
- * lunar→solar-converted birth year) so the active-대운 selection is identical everywhere.
+ * the chart is available. Deterministic; no LLM. The active-대운 is selected by the canonical date-based
+ * resolver (`resolveActiveDaewoonOrdinal`, using the engine's own birth date), identical across all features.
  */
 export function buildMyungriTemporalContext(input: {
   engineResult: SajuEngineResult;
   natal: NatalPillarContext;
   normalizedBirth: Parameters<typeof calculateSajuDaewoon>[0]['normalizedBirth'];
   instantEpochSeconds: number;
-  solarBirthYear: number | null;
 }): MyungriTemporalContext {
   const warnings: string[] = [];
   const { engineResult, natal } = input;
@@ -92,8 +120,7 @@ export function buildMyungriTemporalContext(input: {
   if (daewoon.capability !== 'AVAILABLE') {
     warnings.push('DAEWOON_UNAVAILABLE');
   } else {
-    const age = currentSajuAge(sewoon ? sewoon.targetYear : null, input.solarBirthYear);
-    const ordinal = selectActiveDaewoonCycleOrdinal(daewoon.cycles, age);
+    const ordinal = resolveActiveDaewoonOrdinal(daewoon, input.instantEpochSeconds);
     const activeCycle = ordinal !== null ? daewoon.cycles.find((c) => c.ordinal === ordinal) ?? null : null;
     const tg = calculateDaewoonTenGods({ dayMaster: natal.dayMaster, cycles: daewoon.cycles });
     const tgCycle =

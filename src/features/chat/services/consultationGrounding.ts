@@ -35,6 +35,7 @@ import {
   calculateSewoonForInstant,
   calculateWolwoonForInstant,
   natalContextFromFourPillars,
+  resolveActiveDaewoonOrdinal,
   toSajuEvidence,
   type MyungriStemAndBranch,
   type RelationsToNatal,
@@ -164,22 +165,18 @@ async function buildMyungriEvidence(
     }))
     .filter((x) => x.result.capability === 'AVAILABLE');
 
-  // Current age + ACTIVE 대운 cycle (Codex FIX #3). The Gregorian birth year comes from the SAME
-  // lunar→solar authority Ziwei uses (consistent), and the current 사주 year is the 세운 targetYear.
-  // Age is only used to MARK which already-computed cycle is current — no cycle is recomputed.
+  // Gregorian birth year (from the SAME lunar→solar authority Ziwei uses) — an allowed timing anchor.
   const solarBirthYear = Number(toZiweiBirthInput(draft.birthInfo).birthYear);
-  const currentSajuYear = sewoon.capability === 'AVAILABLE' ? sewoon.targetYear : null;
-  const currentAge =
-    Number.isFinite(solarBirthYear) && currentSajuYear !== null ? currentSajuYear - solarBirthYear : null;
 
-  let activeCycleOrdinal: number | null = null;
+  // ACTIVE 대운 via the CANONICAL date-based resolver (shared with Today/Monthly). It uses the engine's own
+  // birth date for true elapsed years (만나이), replacing the prior year-subtraction (which was ±1 near a
+  // decade boundary). One resolver everywhere → the same subject/instant can never get a different current 대운
+  // across surfaces. Marks the already-computed cycle; no cycle is recomputed.
+  const activeCycleOrdinal = resolveActiveDaewoonOrdinal(daewoon, now);
   let activeDaewoonPillar: MyungriStemAndBranch | null = null;
-  if (daewoon.capability === 'AVAILABLE' && currentAge !== null) {
-    const active = daewoon.cycles.find((c) => currentAge >= c.startAgeInclusive && currentAge <= c.endAgeInclusive);
-    if (active) {
-      activeCycleOrdinal = active.ordinal;
-      activeDaewoonPillar = { stem: active.pillar.stem, branch: active.pillar.branch };
-    }
+  if (activeCycleOrdinal !== null && daewoon.capability === 'AVAILABLE') {
+    const active = daewoon.cycles.find((c) => c.ordinal === activeCycleOrdinal);
+    if (active) activeDaewoonPillar = { stem: active.pillar.stem, branch: active.pillar.branch };
   }
 
   // Connected 원국↔대운↔세운↔월운 axis (Codex FIX #3) — reuses the existing time-axis service
