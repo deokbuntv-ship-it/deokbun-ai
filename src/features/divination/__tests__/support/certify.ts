@@ -28,7 +28,7 @@
 //        premise changed nothing.
 import {
   MYUNGRI_RULES, PRIMITIVE_RULE, candidatePropositions, deriveCross, primitivePropositions, runDerivations,
-  screenSynthesis, standingPropositions,
+  screenSynthesis, standingPropositions, temporalBand,
   type DerivationContext, type DivinationPremise, type ReasonedProposition, type SemanticRelation,
   type SynthesisClass,
 } from '@/features/divination';
@@ -38,14 +38,18 @@ import {
  * it CLAIMS. Stable across re-derivation (derived ids are content-addressed on premise ids, so they change),
  * and complete enough that no other conclusion can be mistaken for this one.
  *
- * Direction, restriction, assertion and temporal scope are deliberately EXCLUDED — those are the components a
- * mutation is supposed to move, and folding them into identity would report every real change as "absent".
+ * Direction, restriction and assertion are deliberately EXCLUDED — those are the components a mutation is
+ * supposed to move, and folding them into identity would report every real change as "absent".
+ *
+ * The TEMPORAL SCOPE is included, because §21 makes it identity: a year-level claim and a month-level claim
+ * about the same seat are two conclusions, not one conclusion with a field. Without it they would share a key
+ * and each would be certified against whichever the re-derivation happened to return first.
  */
 export const conclusionKey = (p: ReasonedProposition): string =>
-  [p.derivationRule, p.subject, p.questionAxis, p.target.key, p.conclusionType].join('|');
+  [p.derivationRule, p.subject, p.questionAxis, p.target.key, p.conclusionType, p.temporalScope].join('|');
 
 /** WHICH component of the conclusion moved. Ordered from strongest evidence of dependence to weakest. */
-export type Delta = 'ABSENT' | 'DIRECTION' | 'RESTRICTION' | 'ASSERTION' | 'SCOPE' | 'NONE';
+export type Delta = 'ABSENT' | 'DIRECTION' | 'RESTRICTION' | 'ASSERTION' | 'NONE';
 
 function observe(before: ReasonedProposition, after: ReasonedProposition[]): Delta {
   const match = after.find((p) => conclusionKey(p) === conclusionKey(before));
@@ -53,7 +57,6 @@ function observe(before: ReasonedProposition, after: ReasonedProposition[]): Del
   if (match.direction !== before.direction) return 'DIRECTION';
   if (match.restriction !== before.restriction) return 'RESTRICTION';
   if (match.assertion !== before.assertion) return 'ASSERTION';
-  if (match.temporalScope !== before.temporalScope) return 'SCOPE';
   return 'NONE';
 }
 
@@ -335,10 +338,14 @@ export function crossMutations(
         ? { ...p, target: { ...p.target, key: `${p.target.key}::MUTATED` } }
         : p)), true));
 
+    // Rescoping to NATAL is only a real attack on a NEAR parent: it is what collapses the two halves into one
+    // band. Moving a parent that is ALREADY structural (DAEWOON→NATAL) leaves the band relationship exactly as
+    // it was, so requiring the conclusion to vanish would fail it for a mutation that changed nothing relevant.
+    const bandChanging = temporalBand(parent.temporalScope) === 'NEAR';
     out.push(record(parent, 'RESCOPE_PARENT', `rescope ${parent.discipline}:${parent.temporalScope}→NATAL`,
-      scopeIsLoadBearing ? 'ABSENT' : 'ANY',
+      scopeIsLoadBearing && bandChanging ? 'ABSENT' : 'ANY',
       props.map((p) => (p.id === parent.id ? { ...p, temporalScope: 'NATAL' as const } : p)),
-      scopeIsLoadBearing && parent.temporalScope !== 'NATAL'));
+      scopeIsLoadBearing && bandChanging));
 
     // §18 — DIRECTION MUTATION. A cross conclusion that survives its parent asserting the OPPOSITE is not
     // reading that parent; it is reading that the parent EXISTS.

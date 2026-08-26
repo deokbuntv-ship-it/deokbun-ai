@@ -9,6 +9,7 @@ import {
   type Discipline, type DisciplineContribution, type DivinationJudgment, type JudgmentConfidence,
   type JudgmentDomain, type JudgmentEvidence, type QuestionIntent, type Stance,
 } from '../contracts';
+import { agreedHeadline, axisLabel as sharedAxisLabel, unresolvedHeadline } from '../axisOntology';
 import { adaptJudgment } from './disciplineAdapter';
 import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
@@ -25,13 +26,12 @@ const hasFinalConsonant = (w: string): boolean => {
 };
 const discSubject = (d: Discipline) => `${DISCIPLINE_LABEL[d]}${hasFinalConsonant(DISCIPLINE_LABEL[d]) ? '은' : '는'}`;
 
-const AXIS_LABEL: Partial<Record<JudgmentDomain, string>> = {
-  MONEY_INFLOW: '돈이 들어오는 쪽', MONEY_RETENTION: '돈이 남는 쪽', OPPORTUNITY: '기회가 오는 쪽',
-  OUTCOME: '잡았을 때 남는 쪽', CAREER: '자리·직업', MOVEMENT: '이동', RELATION_BOND: '끌리는 힘',
-  RELATION_STABILITY: '같이 사는 난도', CONFLICT: '부딪힘', INFLUENCE: '서로 미치는 영향',
-  TIMING: '지금 시점', HEALTH_ENERGY: '몸·기운', DECISION: '결정', GENERAL: '전반',
+const axisLabel = (d: JudgmentDomain) => sharedAxisLabel(d, '전반');
+
+/** How immediate a layer is. A fixed property of the layers — never of the order they were emitted in. */
+const SCOPE_NARROWNESS: Record<string, number> = {
+  PRESENT_MOMENT: 0, WOLWOON: 1, SEWOON: 2, DAEWOON: 3, NATAL: 4, UNSCOPED: 5,
 };
-const axisLabel = (d: JudgmentDomain) => AXIS_LABEL[d] ?? '전반';
 
 const RESOLUTION_KIND: Record<string, ContradictionResolutionKind> = {
   CROSS_CONTRADICTION_RESOLVED: 'DIRECTNESS',
@@ -192,10 +192,12 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   // ── 4. PROJECT to the verdict shape ─────────────────────────────────────────────────────────────
   /** Disciplines that fed one derivation — used to name who disagreed, including in a standoff. */
   const contributingTo = (d: CrossDerivation): Discipline[] => [
+    // §28 — sorted. This list names WHO disagreed, and for a standoff it also supplies the reported
+    // "dominant" discipline; leaving it in graph order made a user-visible attribution depend on iteration.
     ...new Set(d.proposition.derivedFromPropositionIds
       .map((id) => all.find((p) => p.id === id)?.discipline)
       .filter((x): x is Discipline => !!x && x !== 'CROSS')),
-  ];
+  ].sort();
 
   const resolutions: ContradictionResolution[] = derivations
     // The rule that fired declares its OWN decomposition kind (인연 vs 결혼생활, 유입 vs 보유, 행동 vs 시점);
@@ -235,13 +237,21 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     // §7 — several conclusions stand and all point the same way: the direction is answerable, but no single
     // conclusion owns it, so every one is stated instead of the first being promoted.
     : resolution.kind === 'AGREED'
-      ? resolution.members.map((p) => p.assertion).join(' 그리고 ')
+      ? agreedHeadline(asked, resolution.direction, resolution.members.length)
       : resolution.kind === 'UNRESOLVED'
-        ? `${axisLabel(asked)}에 대해서는 서로 다른 결론이 함께 서 있습니다: ${resolution.members.map((p) => p.assertion).join(' / ')} 어느 한쪽으로 정하지 않겠습니다.`
+        // The members are already reported as axis verdicts and as contradiction points; concatenating their
+        // assertions here would make the engine's internal wording the professional answer.
+        ? unresolvedHeadline(asked)
         : nonDecision
           ? '지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.'
           : standoffs.length > 0
-            ? standoffs[0].proposition.assertion
+            // §28 — EVERY unresolved standoff is stated. Taking `standoffs[0]` meant the user was shown one
+            // of them and never told the others existed, chosen by array position.
+            ? standoffs
+              .map((d) => d.proposition)
+              .sort((x, y) => x.target.key.localeCompare(y.target.key))
+              .map((p) => p.assertion)
+              .join(' ')
             : `${axisLabel(asked)}에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.${coverageNote}`;
 
   const contributions: DisciplineContribution[] = input.judgments.map((j) => {
@@ -262,7 +272,8 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     }
     return {
       discipline: j.discipline, applied: true, stance: j.stance,
-      contribution: mine[0].assertion,
+      // §28 — sorted on content, so the same graph always reports the same contribution line.
+      contribution: [...mine].sort((x, y) => x.assertion.localeCompare(y.assertion))[0].assertion,
       ...(feeding ? {} : { whyItDidNotDominate: '물어보신 축을 직접 짚는 근거가 아니어서 결론을 이끌지는 않았습니다.' }),
     };
   });
@@ -273,7 +284,14 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const riskFactors = standing
     .flatMap((p) => evidenceFrom(byId, p.opposingPremiseIds, p.questionAxis));
 
-  const timingProp = standing.find((p) => p.restriction === 'TIMING');
+  // V4C §28 — NOT A FIRST MATCH. `timingConclusion` is user-visible, and §21 now derives one timing claim per
+  // near layer, so `standing.find(...)` would have reported whichever layer the array yielded first and
+  // silently dropped the other. Every timing claim is reported, ordered by the LAYERS themselves (narrowest
+  // first) and tie-broken on content — never by array position.
+  const timingProps = standing
+    .filter((p) => p.restriction === 'TIMING')
+    .sort((a, b) => (SCOPE_NARROWNESS[a.temporalScope] - SCOPE_NARROWNESS[b.temporalScope])
+      || a.assertion.localeCompare(b.assertion));
   const confidence: JudgmentConfidence = !primary
     ? 'LOW'
     : primary.adequacy.dataCompleteness === 'COMPLETE'
@@ -290,6 +308,8 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     asksTiming: input.asksTiming,
     premises,
     primaryConclusion,
+    // The conclusions the headline actually stands on: one when the set settled, all of them when it did not.
+    headlinePropositionIds: primary ? [primary.id] : resolution.members.map((p) => p.id),
     direction,
     dominantBasis: primary
       ? `${primary.derivationRule === 'PRIMITIVE' ? '단일 근거' : primary.derivationRule} · ${primary.target.label}`
@@ -319,8 +339,8 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     contradictionResolutions: resolutions,
     natalBaseline: input.natalBaseline ?? null,
     currentFlow: input.currentFlow ?? null,
-    timingConclusion: timingProp && (input.asksTiming || direction === 'FOR_BUT_LATER')
-      ? timingProp.assertion
+    timingConclusion: timingProps.length > 0 && (input.asksTiming || direction === 'FOR_BUT_LATER')
+      ? timingProps.map((p) => p.assertion).join(' ')
       : null,
     favorableFactors,
     riskFactors,

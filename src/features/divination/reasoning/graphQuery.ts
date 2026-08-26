@@ -53,11 +53,29 @@ export function explainProposition(
   };
 }
 
-/** The chain behind the verdict's own headline — what a "왜?" turn has to explain. */
-export function explainHeadline(v: CrossDivinationVerdict): DerivationChain | null {
-  const headline = standingPropositions(v.propositions).find((p) => p.assertion === v.primaryConclusion)
+/**
+ * The chains behind the verdict's own headline — what a "왜?" turn has to explain.
+ *
+ * V4C §28 — the verdict NAMES them (`headlinePropositionIds`). V4B re-found the headline by matching its text
+ * against proposition assertions, which worked only while the headline was a verbatim copy of one conclusion;
+ * once several conclusions stand and the headline states what they agree on, the match finds nothing and WHY
+ * goes silent. The text fallback is kept for rows persisted before the field existed.
+ */
+export function explainHeadlines(v: CrossDivinationVerdict): DerivationChain[] {
+  const named = (v.headlinePropositionIds ?? [])
+    .map((id) => explainProposition(v, id))
+    .filter((c): c is DerivationChain => c !== null);
+  if (named.length > 0) return named;
+  const legacy = standingPropositions(v.propositions).find((p) => p.assertion === v.primaryConclusion)
     ?? standingPropositions(v.propositions).find((p) => v.primaryConclusion.startsWith(p.assertion));
-  return headline ? explainProposition(v, headline.id) : null;
+  const chain = legacy ? explainProposition(v, legacy.id) : null;
+  return chain ? [chain] : [];
+}
+
+/** The single chain behind the headline — null when the headline stands on several, or on none. */
+export function explainHeadline(v: CrossDivinationVerdict): DerivationChain | null {
+  const chains = explainHeadlines(v);
+  return chains.length === 1 ? chains[0] : null;
 }
 
 /**

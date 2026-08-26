@@ -110,6 +110,12 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   if (v === null || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
   if (typeof o.direction !== 'string' || typeof o.primaryConclusion !== 'string') return undefined;
+  // Optional so rows persisted before V4C still restore; when present it must be a real list of ids, and the
+  // referential check below proves every one of them resolves.
+  if (o.headlinePropositionIds !== undefined
+    && !(Array.isArray(o.headlinePropositionIds) && o.headlinePropositionIds.every((x) => typeof x === 'string'))) {
+    return undefined;
+  }
   if (typeof o.verdictVersion !== 'string') return undefined;
   if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return undefined;
   for (const j of o.disciplineJudgments) {
@@ -137,6 +143,28 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     'STABILIZES', 'DESTABILIZES', 'CONSTRAINS', 'ENABLES', 'ABSENT',
   ]);
   const ADEQUACY_LEVELS = new Set(['ADEQUATE', 'THIN', 'NONE']);
+  // V4C §25 — EVERY enum the restored graph carries is checked. V4B validated four of them and let the rest
+  // through as "typeof === string", so a persisted row could restore a proposition whose intent, axis,
+  // discipline, concept, role or adequacy grade was a value the kernel has no branch for — and the follow-up
+  // would then reason over it.
+  const DISCIPLINES = new Set(['MYUNGRI', 'ZIWEI', 'QIMEN']);
+  const PROPOSITION_DISCIPLINES = new Set([...DISCIPLINES, 'CROSS']);
+  const INTENTS = new Set(['DESCRIPTIVE', 'CAUSE_WHY', 'DECISION', 'TIMING', 'OUTCOME', 'PROBABILITY']);
+  const AXES = new Set([
+    'OPPORTUNITY', 'OUTCOME', 'MONEY_INFLOW', 'MONEY_RETENTION', 'CAREER', 'MOVEMENT', 'RELATION_BOND',
+    'RELATION_STABILITY', 'CONFLICT', 'INFLUENCE', 'HEALTH_ENERGY', 'DECISION', 'TIMING', 'GENERAL',
+  ]);
+  const CONCEPTS = new Set([
+    'NATAL_FAMILY', 'SEASONAL_FOOTING', 'ROOTING', 'NATAL_SEAT_STRAIN', 'LAYER_ACTIVATION', 'RIVAL_CLAIM',
+    'SEAT_CONTACT', 'LAYER_SILENT', 'DOCTRINE_BLOCK', 'ADAPTED',
+  ]);
+  const ROLES = new Set(['ASSERTS', 'QUALIFIES', 'DESCRIBES']);
+  const APPLICABILITIES = new Set(['DIRECT', 'CONTEXTUAL', 'BACKGROUND']);
+  const RELIABILITIES = new Set(['EXACT', 'REDUCED', 'MINIMAL', 'UNUSABLE']);
+  const COMPLETENESS = new Set(['COMPLETE', 'PARTIAL', 'INSUFFICIENT']);
+  const DOCTRINE_APPLICABILITY = new Set(['ADOPTED', 'PARTIAL', 'BLOCKED']);
+  const RESTRICTIONS = new Set(['TIMING', 'SCOPE', 'CAPACITY']);
+  const enumOk = (set: Set<string>, x: unknown): boolean => typeof x === 'string' && set.has(x);
 
   // V4C §3 — target validation is DELEGATED to the canonical registry, which checks that the declared kind
   // matches the key's namespace (rejecting kind=PALACE with key=RELATION_STABILITY:…) and that the id is a
@@ -159,8 +187,15 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       premiseIds.add(pr.id);
       if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) return undefined;
       if (typeof pr.semanticRelation !== 'string' || !RELATIONS.has(pr.semanticRelation)) return undefined;
-      if (typeof pr.questionAxis !== 'string' || typeof pr.subject !== 'string') return undefined;
-      if (typeof pr.temporalScope !== 'string' || !SCOPES.has(pr.temporalScope)) return undefined;
+      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== 'string' || pr.subject.length === 0) return undefined;
+      if (!enumOk(SCOPES, pr.temporalScope)) return undefined;
+      if (!enumOk(DISCIPLINES, pr.discipline)) return undefined;
+      if (!enumOk(INTENTS, pr.questionIntent)) return undefined;
+      if (!enumOk(CONCEPTS, pr.concept)) return undefined;
+      if (!enumOk(ROLES, pr.role)) return undefined;
+      if (!enumOk(APPLICABILITIES, pr.applicability)) return undefined;
+      if (!enumOk(RELIABILITIES, pr.reliability)) return undefined;
+      if (typeof pr.doctrineReference !== 'string') return undefined;
       if (!isTarget(pr.target)) return undefined;
       if (!isStringArray(pr.sourceFactIds)) return undefined;
       premisesOut.push({
@@ -187,15 +222,25 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     if (typeof pr.derivationRule !== 'string' || pr.derivationRule.length === 0) return undefined;
     if (typeof pr.conclusionType !== 'string' || !CONCLUSION_TYPES.has(pr.conclusionType)) return undefined;
     if (typeof pr.direction !== 'string' || !DIRECTIONS.has(pr.direction)) return undefined;
-    if (typeof pr.temporalScope !== 'string' || !SCOPES.has(pr.temporalScope)) return undefined;
-    if (typeof pr.questionAxis !== 'string' || typeof pr.subject !== 'string') return undefined;
+    if (!enumOk(SCOPES, pr.temporalScope)) return undefined;
+    if (!enumOk(AXES, pr.questionAxis)) return undefined;
+    if (typeof pr.subject !== 'string' || pr.subject.length === 0) return undefined;
+    if (!enumOk(PROPOSITION_DISCIPLINES, pr.discipline)) return undefined;
+    if (!enumOk(INTENTS, pr.questionIntent)) return undefined;
+    if (pr.restriction !== undefined && !enumOk(RESTRICTIONS, pr.restriction)) return undefined;
+    if (pr.answersAsked !== undefined && typeof pr.answersAsked !== 'boolean') return undefined;
+    if (pr.qualified !== undefined && typeof pr.qualified !== 'boolean') return undefined;
+    if (!isStringArray(pr.doctrineReferences)) return undefined;
+    if (!isStringArray(pr.unresolvedPremiseIds)) return undefined;
     if (!isTarget(pr.target)) return undefined;
     if (!isStringArray(pr.supportingPremiseIds) || !isStringArray(pr.opposingPremiseIds)) return undefined;
     if (!isStringArray(pr.derivedFromPropositionIds)) return undefined;
     if (pr.adequacy === null || typeof pr.adequacy !== 'object') return undefined;
     const ad = pr.adequacy as Record<string, unknown>;
-    if (typeof ad.supportAdequacy !== 'string' || !ADEQUACY_LEVELS.has(ad.supportAdequacy)) return undefined;
-    if (typeof ad.counterAdequacy !== 'string' || !ADEQUACY_LEVELS.has(ad.counterAdequacy)) return undefined;
+    if (!enumOk(ADEQUACY_LEVELS, ad.supportAdequacy)) return undefined;
+    if (!enumOk(ADEQUACY_LEVELS, ad.counterAdequacy)) return undefined;
+    if (!enumOk(COMPLETENESS, ad.dataCompleteness)) return undefined;
+    if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) return undefined;
     // A premise cannot both support and oppose the same claim.
     const sup = new Set(pr.supportingPremiseIds as string[]);
     if ((pr.opposingPremiseIds as string[]).some((id) => sup.has(id))) return undefined;
@@ -206,10 +251,13 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   // Premise links are only checked when premises were transmitted at all; a verdict from a discipline that is
   // not on the graph legitimately carries none.
   for (const pr of parsed) {
-    if (premiseIds.size > 0) {
-      for (const id of [...(pr.supportingPremiseIds as string[]), ...(pr.opposingPremiseIds as string[])]) {
-        if (!premiseIds.has(id)) return undefined;              // dangling premise link
-      }
+    // V4C §25 — CHECKED EVEN WHEN NO PREMISES WERE TRANSMITTED. V4B skipped this whole block when the premise
+    // list was empty, on the theory that a discipline off the graph legitimately carries none. But a
+    // proposition that CITES a premise id while no premises exist is exactly the dangling reference the check
+    // is for, and the exemption made an empty premise list the way to smuggle one past.
+    for (const id of [...(pr.supportingPremiseIds as string[]), ...(pr.opposingPremiseIds as string[]),
+      ...(pr.unresolvedPremiseIds as string[])]) {
+      if (!premiseIds.has(id)) return undefined;                // dangling premise link
     }
     for (const id of pr.derivedFromPropositionIds as string[]) {
       if (id === pr.id) return undefined;                       // self-reference
@@ -231,12 +279,17 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   for (const id of edges.keys()) if (hasCycle(id)) return undefined;
 
   // ── CONTEXT CONSISTENCY ────────────────────────────────────────────────────────────────────────
-  if (typeof o.questionIntent !== 'string') return undefined;
+  if (!enumOk(INTENTS, o.questionIntent)) return undefined;
+  if (!enumOk(AXES, o.questionDomain)) return undefined;
   if (typeof o.asksTiming !== 'boolean') return undefined;
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger(o.evaluatedAtEpochSeconds)) return undefined;
   // Every proposition must belong to the same person the verdict is about.
   const subjects = new Set(parsed.map((pr) => pr.subject as string));
   if (subjects.size > 1) return undefined;
+  // A headline that names a conclusion the graph does not contain is a dangling reference like any other.
+  for (const id of (Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds as string[] : [])) {
+    if (!propositionIds.has(id)) return undefined;
+  }
 
   // ── V4C §25 — RECONSTRUCTION, NOT PASS-THROUGH ─────────────────────────────────────────────────
   //
@@ -265,6 +318,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     asksTiming: o.asksTiming,
     premises: premisesOut,
     primaryConclusion: str(o.primaryConclusion),
+    headlinePropositionIds: strArr(o.headlinePropositionIds),
     direction: o.direction,
     dominantBasis: str(o.dominantBasis),
     disciplineJudgments: arr(o.disciplineJudgments).map((j) => ({

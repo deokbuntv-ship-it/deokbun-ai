@@ -1,4 +1,4 @@
-import { explainHeadline, refineOnAxis, renderChain } from '@/features/divination';
+import { explainHeadlines, refineOnAxis, renderChain } from '@/features/divination';
 import type { ContinuationIntent } from '@/features/chat/services/followUpContext';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta } from './serverConsultationTypes';
@@ -53,8 +53,10 @@ export function groundingFromStoredDecision(meta: ConsultationDecisionMeta | nul
     ...relationLines('지지', snapshot.derivation.branchRelations),
   ];
   const summary = `저장된 판단 근거: ${snapshot.target.key} ${snapshot.polarity}, 조화 ${snapshot.derivation.harmony}, 마찰 ${snapshot.derivation.friction}`;
-  const headlineChain = meta.divinationVerdict ? explainHeadline(meta.divinationVerdict) : null;
-  const derivationChain = headlineChain ? renderChain(headlineChain) : [];
+  // Every conclusion the headline stands on is walked — not just the first. When the standing set did not
+  // settle on one, WHY has to explain all of them or it explains an answer the user was not given.
+  const derivationChain = (meta.divinationVerdict ? explainHeadlines(meta.divinationVerdict) : [])
+    .flatMap((c) => renderChain(c));
   return {
     status: 'available',
     evidence: {

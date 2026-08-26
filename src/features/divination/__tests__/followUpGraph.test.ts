@@ -15,7 +15,7 @@ import { parseDecisionMeta } from '@/features/chat/server/decisionMeta';
 import { groundingFromStoredDecision } from '@/features/chat/server/storedDecisionGrounding';
 import { renderGroundingContext } from '@/features/chat/prompts/grounding';
 import {
-  explainHeadline, explainProposition, refineOnAxis, renderChain, standingPropositions,
+  explainHeadline, explainHeadlines, explainProposition, refineOnAxis, renderChain, standingPropositions,
   type CrossDivinationVerdict,
 } from '@/features/divination';
 
@@ -136,30 +136,40 @@ describe('§23 — a malformed graph fails CLOSED, never partially restores', ()
 
 // ── §24 WHY TRAVERSES ───────────────────────────────────────────────────────────────────────────
 describe('§24 — WHY walks the graph rather than re-listing leaves', () => {
-  it('the headline chain names its rule, its premises and its upstream conclusions', async () => {
+  // V4C §28 — the verdict NAMES the conclusions its headline stands on, and WHY walks every one of them.
+  // V4B re-found the headline by matching its TEXT against proposition assertions, so the explanation existed
+  // only while the headline happened to be a verbatim copy of a single conclusion.
+  it('the headline chains name their rule, their premises and their upstream conclusions', async () => {
     const v = roundTrip(await turn('사업을 확장할까?'))!;
-    const chain = explainHeadline(v);
-    expect(chain).toBeTruthy();
-    expect(chain!.conclusion.derivationRule.length).toBeGreaterThan(0);
-    // it stands on something, and that something is a stored premise or a stored upstream conclusion
-    expect(chain!.supporting.length + chain!.opposing.length + chain!.from.length).toBeGreaterThan(0);
+    const chains = explainHeadlines(v);
+    expect(chains.length).toBeGreaterThan(0);
+    expect(v.headlinePropositionIds.length).toBe(chains.length);
+    for (const chain of chains) {
+      expect(chain.conclusion.derivationRule.length).toBeGreaterThan(0);
+      // it stands on something, and that something is a stored premise or a stored upstream conclusion
+      expect(chain.supporting.length + chain.opposing.length + chain.from.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('…and `explainHeadline` returns a single chain ONLY when the headline stands on exactly one', async () => {
+    const v = roundTrip(await turn('사업을 확장할까?'))!;
+    const chains = explainHeadlines(v);
+    expect(explainHeadline(v) === null).toBe(chains.length !== 1);
   });
 
   it('every node of the chain resolves to a STORED premise — nothing is invented at explain time', async () => {
     const v = roundTrip(await turn('사업을 확장할까?'))!;
     const ids = new Set(v.premises.map((p) => p.id));
-    const walk = (c: NonNullable<ReturnType<typeof explainHeadline>>): void => {
+    const walk = (c: ReturnType<typeof explainHeadlines>[number]): void => {
       for (const p of [...c.supporting, ...c.opposing]) expect(ids.has(p.id)).toBe(true);
       for (const parent of c.from) walk(parent);
     };
-    const chain = explainHeadline(v);
-    if (chain) walk(chain);
+    for (const chain of explainHeadlines(v)) walk(chain);
   });
 
   it('the rendered chain shows DERIVATION, not just a list of conclusions', async () => {
     const v = roundTrip(await turn('사업을 확장할까?'))!;
-    const chain = explainHeadline(v);
-    const lines = chain ? renderChain(chain) : [];
+    const lines = explainHeadlines(v).flatMap((c) => renderChain(c));
     expect(lines.length).toBeGreaterThan(1);
     expect(lines.join('\n')).toMatch(/←\s*근거:|⟂\s*반대 근거:/); // an arrow FROM the conclusion TO its grounds
   });

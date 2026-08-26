@@ -7,6 +7,7 @@
 // FOR_BUT_LATER. Here `DIFFERENT_TIME` is only reachable after `sameProposition()` has already confirmed the
 // two claims are about the same axis and the same target.
 import type { ContradictionResolutionKind, JudgmentDomain, TemporalScope } from '../contracts';
+import { axesShareOneMatter } from '../axisOntology';
 
 /** Which named decomposition a compound pair represents — carried through so the verdict can report it. */
 type CompoundKind = ContradictionResolutionKind;
@@ -242,6 +243,8 @@ const COMPOUND_FRAMES: { a: JudgmentDomain; b: JudgmentDomain; frame: string; ki
  * Is this opposed pair a COMPOUND TRUTH ("둘 다 사실이라 나누어 말씀드립니다") rather than two unrelated
  * statements? Structural conditions only:
  *   · they are about DIFFERENT structures (guaranteed by the caller's relation),
+ *   · their two AXES are two consequences of ONE matter (`axesShareOneMatter` — the semantic ontology that
+ *     replaced V4B's fixed axis-pair table), or they are the same axis read at two different seats,
  *   · at least one of them answers the axis that was actually asked,
  *   · and EACH half actually STATES something — it stands on named premises, at least one of which is more
  *     than background context. A half resting only on "이 명식은 전반적으로 …" is not half of a truth, it is
@@ -255,6 +258,10 @@ const compoundEligible = (
   premises: Map<string, DivinationPremise>,
 ): boolean => {
   if (a.questionAxis !== askedAxis && b.questionAxis !== askedAxis) return false;
+  // The ontology decides WHETHER a compound exists; the frames table below only NAMES it. Without this,
+  // removing the table made every opposed pair a "compound truth" and a money answer acquired a sentence
+  // about 같이 사는 난도 — two unrelated statements presented as two halves of one.
+  if (a.questionAxis !== b.questionAxis && !axesShareOneMatter(a.questionAxis, b.questionAxis)) return false;
   const stated = (p: ReasonedProposition) => p.supportingPremiseIds.length > 0
     && p.supportingPremiseIds.some((id) => premises.get(id)?.applicability !== 'BACKGROUND');
   return stated(a) && stated(b);
@@ -391,9 +398,12 @@ export function deriveCross(
         // V4C §4 — a RIVAL agreement is two DIFFERENT structures reaching the same answer, so the conclusion
         // is about the PAIR, not about one seat. Keying it to a.target (as V4B did, having called the pair
         // REINFORCING) claimed both disciplines had read the same 자리.
+        // §28 — the two structures are named in the SAME order the identity is keyed in, so the sentence the
+        // user reads does not change when the propositions arrive in a different order.
+        const rivalPair = [a, b].sort((x, y) => x.target.key.localeCompare(y.target.key));
         const agreementTarget = relation === 'RIVAL_AGREEMENT'
-          ? target('COMPOSITE', 'RIVAL:' + [a.target.key, b.target.key].sort().join('|'),
-            a.target.label + '·' + b.target.label)
+          ? target('COMPOSITE', 'RIVAL:' + rivalPair.map((p) => p.target.key).join('|'),
+            rivalPair.map((p) => p.target.label).join('·'))
           : a.target;
         add({
           key: 'CROSS_REINFORCEMENT:' + agreementTarget.key + ':' + a.direction,
@@ -406,7 +416,7 @@ export function deriveCross(
             // must carry the direction it reinforces, or it is a directional verdict whose own headline states
             // no direction.
             assertion: (relation === 'RIVAL_AGREEMENT'
-              ? '서로 다른 자리(' + a.target.label + ' / ' + b.target.label + ')를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: '
+              ? '서로 다른 자리(' + rivalPair.map((p) => p.target.label).join(' / ') + ')를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: '
               : a.target.label + '에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: ')
               + (a.direction === 'FAVORABLE' ? '이 축은 열려 있습니다.'
                 : a.direction === 'UNFAVORABLE' ? '이 축은 막혀 있습니다.'
@@ -424,9 +434,10 @@ export function deriveCross(
         const decided = subordinate(a, b, byId, subCtx);
         if (!decided) {
           // §14 — the relationship does not settle it. Both truths are preserved; no winner is manufactured.
+          const standoffPair = [a, b].sort((x, y) => x.target.key.localeCompare(y.target.key));
           const standoffTarget = relation === 'RIVAL_CONFLICT'
-            ? target('COMPOSITE', 'RIVAL:' + [a.target.key, b.target.key].sort().join('|'),
-              a.target.label + '·' + b.target.label)
+            ? target('COMPOSITE', 'RIVAL:' + standoffPair.map((p) => p.target.key).join('|'),
+              standoffPair.map((p) => p.target.label).join('·'))
             : a.target;
           add({
             key: 'CROSS_STANDOFF:' + standoffTarget.key,

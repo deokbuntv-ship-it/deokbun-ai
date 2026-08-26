@@ -258,6 +258,17 @@ export async function buildServerConsultation(
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
   } else {
+    // V4C §23/§24 — A REFINEMENT INHERITS THE ORIGINAL EVALUATION INSTANT.
+    //
+    // "돈은?" is a continuation of the reading the user already received, so it must be answered from the SAME
+    // moment in time. Re-grounding at the current server instant T2 produced a second, unrelated reading whose
+    // 세운/월운 layers could differ from the ones the first answer stood on — which is how the two turns came
+    // to contradict each other. An explicit "지금 다시 보면?" (REEVALUATE_NOW) is the one case that legitimately
+    // wants a NEW instant, and it is classified apart for exactly that reason.
+    const storedInstant = previousMeta?.divinationVerdict?.evaluatedAtEpochSeconds ?? null;
+    const evaluationInstant = continuation === 'REFINE_EXISTING' && storedInstant !== null
+      ? storedInstant
+      : deps.nowEpochSeconds;
     try {
       grounding = toSafeGrounding(
         await buildConsultationGrounding(
@@ -265,7 +276,7 @@ export async function buildServerConsultation(
           {
             digestProvider: deps.digestProvider,
             historicalTimezoneResolver: deps.historicalTimezoneResolver,
-            nowEpochSeconds: deps.nowEpochSeconds,
+            nowEpochSeconds: evaluationInstant,
           },
           question,
         ),

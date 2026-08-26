@@ -34,6 +34,10 @@ export {
 } from './contracts';
 
 export { tenGodFamily, tenGodJudgmentDomain, type MyungriJudgeInput, type TemporalLayerFacts } from './myungriJudge';
+export {
+  axesShareOneMatter, axisAspect, axisLabel, axisMatter, agreedHeadline, unresolvedHeadline,
+  type AxisAspect, type AxisMatter,
+} from './axisOntology';
 export { readNatalBaseline, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
 export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
@@ -98,7 +102,7 @@ export { reasonMyungri, myungriSynthesisCensus, type MyungriReasoning } from './
  export { reasonCross, crossSynthesisCensus, type CrossReasoning, type CrossReasonInput } from './reasoning/crossReasoner';
  export { adaptJudgment } from './reasoning/disciplineAdapter';
 export {
-  explainProposition, explainHeadline, refineOnAxis, renderChain,
+  explainProposition, explainHeadline, explainHeadlines, refineOnAxis, renderChain,
   type DerivationChain, type AxisRefinement,
 } from './reasoning/graphQuery';
  export {

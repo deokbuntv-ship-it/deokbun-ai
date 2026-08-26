@@ -7660,6 +7660,59 @@ function tenGodFamily(tg3) {
   }
 }
 
+// src/features/divination/axisOntology.ts
+var ONTOLOGY = {
+  MONEY_INFLOW: { matter: "MONEY", aspect: "ARRIVAL" },
+  MONEY_RETENTION: { matter: "MONEY", aspect: "RETENTION" },
+  OPPORTUNITY: { matter: "POSITION", aspect: "ARRIVAL" },
+  OUTCOME: { matter: "POSITION", aspect: "RETENTION" },
+  CAREER: { matter: "POSITION", aspect: "WHOLE" },
+  MOVEMENT: { matter: "POSITION", aspect: "ACTION" },
+  RELATION_BOND: { matter: "RELATIONSHIP", aspect: "BOND" },
+  RELATION_STABILITY: { matter: "RELATIONSHIP", aspect: "STABILITY" },
+  CONFLICT: { matter: "RELATIONSHIP", aspect: "FRICTION" },
+  INFLUENCE: { matter: "RELATIONSHIP", aspect: "WHOLE" },
+  HEALTH_ENERGY: { matter: "BODY", aspect: "WHOLE" },
+  DECISION: { matter: "SELF", aspect: "ACTION" },
+  GENERAL: { matter: "SELF", aspect: "WHOLE" },
+  TIMING: { matter: "MOMENT", aspect: "ACTION" }
+};
+var AXIS_LABEL = {
+  MONEY_INFLOW: "돈이 들어오는 쪽",
+  MONEY_RETENTION: "돈이 남는 쪽",
+  OPPORTUNITY: "기회가 오는 쪽",
+  OUTCOME: "잡았을 때 남는 쪽",
+  CAREER: "자리·직업",
+  MOVEMENT: "이동",
+  RELATION_BOND: "끌리는 힘",
+  RELATION_STABILITY: "같이 사는 난도",
+  CONFLICT: "부딪힘",
+  INFLUENCE: "서로 미치는 영향",
+  TIMING: "지금 시점",
+  HEALTH_ENERGY: "몸·기운",
+  DECISION: "결정",
+  GENERAL: "전반"
+};
+var axisLabel = (d, fallback = "이 축") => AXIS_LABEL[d] ?? fallback;
+var agreedHeadline = (axis, direction, count) => {
+  const lead = `${axisLabel(axis, "전반")}에 대해서는 서로 다른 근거 ${count}가지가 모두 같은 쪽을 가리킵니다. `;
+  switch (direction) {
+    case "FAVORABLE":
+      return lead + "열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.";
+    case "UNFAVORABLE":
+      return lead + "지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.";
+    case "RESTRICTED":
+      return lead + "해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.";
+    default:
+      return lead + "다만 방향까지 정할 만한 신호는 아닙니다.";
+  }
+};
+var unresolvedHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.`;
+function axesShareOneMatter(a, b) {
+  if (a === b) return false;
+  return ONTOLOGY[a].matter === ONTOLOGY[b].matter && ONTOLOGY[a].aspect !== ONTOLOGY[b].aspect;
+}
+
 // src/features/divination/myungriNatal.ts
 var FAMILY_LABEL = {
   WEALTH: "재물",
@@ -7699,18 +7752,18 @@ function readNatalBaseline(input) {
     familyPresence[fam] += 1;
   }
   const absentFamilies = Object.keys(familyPresence).filter((f) => familyPresence[f] === 0);
-  const natalFrictionPositions = [];
+  const natalFrictions = [];
   const natalHarmonyPositions = [];
   let spouseSeatStrained = false;
   for (const r of input.natalRelations?.stem ?? []) {
     const label = `${r.positions.map((p) => POSITION_LABEL[p]).join("↔")} ${r.relation.kind}`;
-    if (FRICTION_KINDS.has(r.relation.kind)) natalFrictionPositions.push(label);
+    if (FRICTION_KINDS.has(r.relation.kind)) natalFrictions.push({ positions: [...r.positions], kind: r.relation.kind, label });
     else natalHarmonyPositions.push(label);
   }
   for (const r of input.natalRelations?.branch ?? []) {
     const label = `${r.positions.map((p) => POSITION_LABEL[p]).join("↔")} ${r.relation.kind}`;
     if (FRICTION_KINDS.has(r.relation.kind)) {
-      natalFrictionPositions.push(label);
+      natalFrictions.push({ positions: [...r.positions], kind: r.relation.kind, label });
       if (r.positions.includes("DAY")) spouseSeatStrained = true;
     } else natalHarmonyPositions.push(label);
   }
@@ -7767,7 +7820,7 @@ function readNatalBaseline(input) {
   return {
     familyPresence,
     absentFamilies,
-    natalFrictionPositions,
+    natalFrictions,
     natalHarmonyPositions,
     spouseSeatStrained,
     inCommand: input.monthCommandInCommand,
@@ -8342,9 +8395,88 @@ function judgeQimen(input) {
   };
 }
 
-// src/features/divination/reasoning/kernel.ts
+// src/features/divination/reasoning/targets.ts
+var NAMESPACE = {
+  NATAL_SEAT: /^(YEAR|MONTH|DAY|HOUR)$/,
+  // Sorted, so 년↔월 and 월↔년 are one identity rather than two.
+  NATAL_SEAT_PAIR: /^(DAY|HOUR|MONTH|YEAR)_(DAY|HOUR|MONTH|YEAR)$/,
+  TEN_GOD_FAMILY: /^(WEALTH|OFFICER|OUTPUT|PEER|RESOURCE)$/,
+  LUCK_LAYER: /^(NATAL|DAEWOON|SEWOON|WOLWOON|PRESENT_MOMENT|UNSCOPED)(:RIVAL)?$/,
+  DAY_MASTER_FOOTING: /^(SEASON|ROOT)$/,
+  PALACE: /^(SELF|WEALTH|PROPERTY|CAREER|TRAVEL|SPOUSE|SIBLING|HEALTH)_PALACE$/,
+  // One board is cast per question instant; an axis reading is a reading OF that board, not a separate object.
+  BOARD_SEAT: /^QIMEN_BOARD(:[A-Z_]+)?$/,
+  DOCTRINE_GAP: /^(STRENGTH_YONGSHIN|AXIS:[A-Z_]+)$/,
+  // V4C §2 — a discipline whose premise graph was NOT supplied (Myungri on the 궁합 pair path) reaches the
+  // adapter with a finished judgment and no seat information. Its identity is "this discipline's reading of
+  // this axis" — a real, canonical, per-discipline identity, and crucially NOT a seat belonging to some other
+  // discipline. V4B keyed it as a 기문 BOARD_SEAT, so a 명리 pair reading carried the 기문둔갑 namespace and
+  // could compare EQUAL to a genuine board target.
+  ADAPTED_READING: /^(MYUNGRI|ZIWEI|QIMEN):[A-Z_]+$/,
+  // ASCII only, and composed from other canonical keys where it relates two targets — never from prose.
+  COMPOSITE: /^[A-Z][A-Z0-9_]*(:[A-Za-z0-9_:|.]+)?$/
+};
 var sameTarget = (a, b) => a.key === b.key;
-var target = (kind, id, label) => ({ key: `${kind}:${id}`, label, kind });
+var TargetNamespaceError = class extends Error {
+};
+function target(kind, id, label) {
+  if (!NAMESPACE[kind].test(id)) {
+    throw new TargetNamespaceError(`target id "${id}" is not valid for kind ${kind}`);
+  }
+  return { key: `${kind}:${id}`, label, kind };
+}
+function isCanonicalTarget(t) {
+  if (t === null || typeof t !== "object") return false;
+  const o = t;
+  if (typeof o.key !== "string" || typeof o.label !== "string" || typeof o.kind !== "string") return false;
+  if (!(o.kind in NAMESPACE)) return false;
+  const kind = o.kind;
+  const prefix = `${kind}:`;
+  if (!o.key.startsWith(prefix)) return false;
+  return NAMESPACE[kind].test(o.key.slice(prefix.length));
+}
+var PALACE_ID = {
+  MONEY_INFLOW: "WEALTH_PALACE",
+  MONEY_RETENTION: "PROPERTY_PALACE",
+  CAREER: "CAREER_PALACE",
+  OUTCOME: "CAREER_PALACE",
+  MOVEMENT: "TRAVEL_PALACE",
+  RELATION_STABILITY: "SPOUSE_PALACE",
+  RELATION_BOND: "SPOUSE_PALACE",
+  CONFLICT: "SIBLING_PALACE",
+  INFLUENCE: "SIBLING_PALACE",
+  HEALTH_ENERGY: "HEALTH_PALACE",
+  OPPORTUNITY: "SELF_PALACE",
+  DECISION: "SELF_PALACE",
+  GENERAL: "SELF_PALACE"
+};
+var PALACE_LABEL = {
+  WEALTH_PALACE: "재백궁",
+  PROPERTY_PALACE: "전택궁",
+  CAREER_PALACE: "관록궁",
+  TRAVEL_PALACE: "천이궁",
+  SPOUSE_PALACE: "부처궁",
+  SIBLING_PALACE: "형제궁",
+  HEALTH_PALACE: "질액궁",
+  SELF_PALACE: "명궁"
+};
+function ziweiPalaceTarget(axis) {
+  const id = PALACE_ID[axis];
+  return id ? target("PALACE", id, PALACE_LABEL[id]) : null;
+}
+function adaptedReadingTarget(discipline, axis, label) {
+  return target("ADAPTED_READING", `${discipline}:${axis}`, label);
+}
+function qimenBoardTarget() {
+  return target("BOARD_SEAT", "QIMEN_BOARD", "기문 국");
+}
+var SEAT_LABEL = { YEAR: "년주", MONTH: "월주", DAY: "일주", HOUR: "시주" };
+function natalSeatPairTarget(a, b) {
+  const [x, y] = [a, b].sort();
+  return target("NATAL_SEAT_PAIR", `${x}_${y}`, `원국 ${SEAT_LABEL[x] ?? x}↔${SEAT_LABEL[y] ?? y}`);
+}
+
+// src/features/divination/reasoning/kernel.ts
 function sideAdequacy(premises) {
   if (premises.length === 0) return "NONE";
   const direct = premises.some((p) => p.applicability === "DIRECT");
@@ -8378,17 +8510,41 @@ function runDerivations(rules, premises, seed, ctx) {
   }
   return out;
 }
+var NEAR_SCOPES = ["SEWOON", "WOLWOON", "PRESENT_MOMENT"];
+var temporalBand = (s) => NEAR_SCOPES.includes(s) ? "NEAR" : "STRUCTURAL";
+var decisional = (p) => p.conclusionType !== "STRUCTURAL" && p.conclusionType !== "CAUSAL";
 function supersedes(b, a) {
   if (b.id === a.id) return false;
+  if (b.subject !== a.subject) return false;
   if (b.questionAxis !== a.questionAxis) return false;
+  if (!sameTarget(b.target, a.target)) return false;
+  if (temporalBand(b.temporalScope) !== temporalBand(a.temporalScope)) return false;
+  if (decisional(b) !== decisional(a)) return false;
   const bp = /* @__PURE__ */ new Set([...b.supportingPremiseIds, ...b.opposingPremiseIds]);
   const ap = [...a.supportingPremiseIds, ...a.opposingPremiseIds];
   if (ap.length === 0) return false;
   if (!ap.every((id) => bp.has(id))) return false;
-  return bp.size > ap.length || b.derivedFromPropositionIds.includes(a.id);
+  return b.derivedFromPropositionIds.includes(a.id) || [...bp].some((id) => !ap.includes(id));
 }
 function standingPropositions(all) {
   return all.filter((p) => !all.some((other) => supersedes(other, p)));
+}
+function resolveAnswer(candidates) {
+  if (candidates.length === 0) return { kind: "NONE", members: [] };
+  if (candidates.length === 1) return { kind: "SINGLE", primary: candidates[0], members: candidates };
+  const byId = new Map(candidates.map((p) => [p.id, p]));
+  const accounts = (from, targetId, seen = /* @__PURE__ */ new Set()) => {
+    if (seen.has(from.id)) return false;
+    seen.add(from.id);
+    return from.derivedFromPropositionIds.some((id) => id === targetId || byId.has(id) && accounts(byId.get(id), targetId, seen));
+  };
+  const tops = candidates.filter((p) => candidates.every((q) => q.id === p.id || accounts(p, q.id)));
+  if (tops.length === 1) return { kind: "SINGLE", primary: tops[0], members: candidates };
+  const directions = new Set(candidates.filter((p) => p.direction !== "NONE").map((p) => p.direction));
+  if (directions.size === 1) {
+    return { kind: "AGREED", direction: [...directions][0], members: candidates };
+  }
+  return { kind: "UNRESOLVED", members: candidates };
 }
 var counter = 0;
 function nextId(prefix) {
@@ -8421,6 +8577,20 @@ var DIRECTION_OF = {
   ABSENT: "NONE"
 };
 var QUALIFIED_STANCES = /* @__PURE__ */ new Set(["CONDITIONAL_FOR", "CONDITIONAL_AGAINST", "FOR_BUT_LATER", "AGAINST_FOR_NOW"]);
+function disciplineTarget(discipline, axis) {
+  if (discipline === "QIMEN") return qimenBoardTarget();
+  if (discipline === "ZIWEI") {
+    return ziweiPalaceTarget(axis) ?? target("DOCTRINE_GAP", `AXIS:${axis}`, `${axis} 대응 자리 없음`);
+  }
+  return adaptedReadingTarget("MYUNGRI", axis, `명리 ${axis} 판단`);
+}
+var ADAPTER_ID_PREFIX = { ZIWEI: "zp", QIMEN: "qp", MYUNGRI: "mp" };
+var ADAPTER_COUNTER_PREFIX = { ZIWEI: "zc", QIMEN: "qc", MYUNGRI: "mc" };
+var ADAPTER_DOCTRINE = {
+  ZIWEI: "자미두수 궁위·사화·삼방사정 (V3 채택 doctrine, 미이관)",
+  QIMEN: "기문둔갑 값부·값사·문/성/신 (V3 채택 doctrine, 미이관)",
+  MYUNGRI: "명리 궁합 판정 (전제 그래프 미공급 경로)"
+};
 function adaptJudgment(j, opts) {
   if (!j.applicable) return { premises: [], propositions: [] };
   const premises = [];
@@ -8433,17 +8603,14 @@ function adaptJudgment(j, opts) {
     const facts = [...backing, ...against].map((e) => e.fact);
     if (facts.length === 0) continue;
     const premise = {
-      id: nextId(j.discipline === "ZIWEI" ? "zp" : "qp"),
+      id: nextId(ADAPTER_ID_PREFIX[j.discipline]),
       discipline: j.discipline,
       sourceFactIds: backing.length ? backing.map((e) => e.fact) : facts,
       subject: opts.subject,
-      // Structured identity: a palace/board seat is the THING this discipline is talking about. Two claims
-      // about different palaces must not be treated as one claim just because both land on CAREER.
-      target: target(
-        j.discipline === "ZIWEI" ? "PALACE" : "BOARD_SEAT",
-        `${j.discipline}:${sub2.domain}:${(backing[0] ?? against[0])?.fact ?? ""}`,
-        (backing[0] ?? against[0])?.fact ?? sub2.domain
-      ),
+      // V4C §2 — identity comes from the ASKED AXIS, not from an evidence string. Keying a palace by its
+      // first evidence sentence meant the same 궁 got a different identity whenever the evidence was reworded
+      // or a different fact sorted first, so "the same target" silently stopped being the same target.
+      target: disciplineTarget(j.discipline, sub2.domain),
       questionIntent: opts.questionIntent,
       questionAxis: sub2.domain,
       temporalScope: sub2.temporalScope,
@@ -8456,18 +8623,16 @@ function adaptJudgment(j, opts) {
       // signal that lets cross explain why one side prevailed. Deriving applicability from axis equality alone
       // threw it away and turned every same-axis disagreement into an unresolvable standoff.
       applicability: sub2.domain === opts.askedAxis && sub2.directness === "DIRECT" ? "DIRECT" : sub2.directness === "GENERAL" ? "BACKGROUND" : "CONTEXTUAL",
-      doctrineReference: j.discipline === "ZIWEI" ? "자미두수 궁위·사화·삼방사정 (V3 채택 doctrine, 미이관)" : "기문둔갑 값부·값사·문/성/신 (V3 채택 doctrine, 미이관)"
+      doctrineReference: ADAPTER_DOCTRINE[j.discipline]
     };
     premises.push(premise);
     const counterPremise = against.length ? {
       ...premise,
-      id: nextId(j.discipline === "ZIWEI" ? "zc" : "qc"),
+      id: nextId(ADAPTER_COUNTER_PREFIX[j.discipline]),
       sourceFactIds: against.map((e) => e.fact),
-      target: target(
-        j.discipline === "ZIWEI" ? "PALACE" : "BOARD_SEAT",
-        `${j.discipline}:${sub2.domain}:counter:${against[0].fact}`,
-        against[0].fact
-      ),
+      // The counter-premise is about the SAME structure — it is the contrary material found at that
+      // palace/board, not a different object — so it shares the structure's identity.
+      target: disciplineTarget(j.discipline, sub2.domain),
       semanticRelation: direction === "UNFAVORABLE" || direction === "RESTRICTED" ? "SUPPORTS" : "OPPOSES",
       assertion: against.map((e) => e.meaning).join(" "),
       role: "QUALIFIES"
@@ -8510,14 +8675,13 @@ function adaptJudgment(j, opts) {
 }
 
 // src/features/divination/reasoning/crossRules.ts
-var NEAR = ["SEWOON", "WOLWOON", "PRESENT_MOMENT"];
-var band = (s) => NEAR.includes(s) ? "NEAR" : "STRUCTURAL";
+var band = temporalBand;
 var opposed = (a, b) => a.direction === "FAVORABLE" && (b.direction === "UNFAVORABLE" || b.direction === "RESTRICTED") || b.direction === "FAVORABLE" && (a.direction === "UNFAVORABLE" || a.direction === "RESTRICTED");
 function classifyPair(a, b) {
   if (a.subject !== b.subject) return "ORTHOGONAL";
   if (a.direction === "NONE" || b.direction === "NONE") return "ORTHOGONAL";
-  const decisional = (p) => p.conclusionType !== "STRUCTURAL" && p.conclusionType !== "CAUSAL";
-  if (decisional(a) !== decisional(b)) return "ORTHOGONAL";
+  const decisional2 = (p) => p.conclusionType !== "STRUCTURAL" && p.conclusionType !== "CAUSAL";
+  if (decisional2(a) !== decisional2(b)) return "ORTHOGONAL";
   if (sameTarget(a.target, b.target)) {
     if (a.questionAxis !== b.questionAxis) return "DIFFERENT_AXIS";
     if (band(a.temporalScope) !== band(b.temporalScope)) return "DIFFERENT_TIME";
@@ -8525,10 +8689,10 @@ function classifyPair(a, b) {
     if (a.direction === b.direction) return "REINFORCING";
     return "SAME_PROPOSITION";
   }
-  if (a.answersAsked && b.answersAsked && a.questionAxis === b.questionAxis) {
-    if (opposed(a, b)) return "CONTRADICTORY";
-    if (a.direction === b.direction) return "REINFORCING";
-    return "SAME_PROPOSITION";
+  if (a.answersAsked && b.answersAsked && a.questionAxis === b.questionAxis && a.discipline !== b.discipline) {
+    if (opposed(a, b)) return "RIVAL_CONFLICT";
+    if (a.direction === b.direction) return "RIVAL_AGREEMENT";
+    return "DIFFERENT_TARGET";
   }
   return a.questionAxis === b.questionAxis ? "DIFFERENT_TARGET" : "DIFFERENT_AXIS";
 }
@@ -8540,11 +8704,30 @@ var SUBORDINATION_TEXT = {
   DOCTRINE_APPLICABLE_VS_DOCTRINE_BLOCKED: "한쪽은 채택된 학설로 판단할 수 있고, 다른 쪽은 판단 근거가 보류된 상태입니다"
 };
 var applies = (aWins, a, b) => aWins === null ? null : aWins ? b : a;
+var CONCRETE_TARGET_KINDS = /* @__PURE__ */ new Set([
+  "NATAL_SEAT",
+  "NATAL_SEAT_PAIR",
+  "TEN_GOD_FAMILY",
+  "DAY_MASTER_FOOTING",
+  "PALACE",
+  "BOARD_SEAT"
+]);
+var CONTEXT_TARGET_KINDS = /* @__PURE__ */ new Set(["COMPOSITE", "DOCTRINE_GAP", "LUCK_LAYER"]);
+var halfIsAsserted = (p) => p.adequacy.supportAdequacy === "ADEQUATE" && p.supportingPremiseIds.length > 0;
 var TESTS = {
-  // Applies only when the two claims are about different KINDS of thing: one the asked matter, one context.
+  // V4C §8 — A TARGET TEST, not an axis test wearing a target's name. V4B fired whenever ONE side happened to
+  // sit on the asked axis, so any adjacent-axis proposition lost to a reason whose own text promises to
+  // compare targets ("물어보신 그 대상을 직접 다루고"). It now applies only when both claims are on the asked
+  // axis, about DIFFERENT structures, and exactly one of those structures is a concrete seat the discipline
+  // actually read — the other being a composite, a doctrine gap or an unscoped layer, i.e. real context.
   EXACT_TARGET_VS_CONTEXT: (a, b, _p, ctx) => {
-    const onAsked = (p) => p.questionAxis === ctx.askedAxis && p.target.kind !== "COMPOSITE";
-    return onAsked(a) === onAsked(b) ? null : applies(onAsked(a), a, b);
+    if (sameTarget(a.target, b.target)) return null;
+    if (a.questionAxis !== ctx.askedAxis || b.questionAxis !== ctx.askedAxis) return null;
+    const concrete = (p) => CONCRETE_TARGET_KINDS.has(p.target.kind);
+    const context = (p) => CONTEXT_TARGET_KINDS.has(p.target.kind);
+    if (concrete(a) && context(b)) return b;
+    if (concrete(b) && context(a)) return a;
+    return null;
   },
   // Applies only when the QUESTION is about a moment. Otherwise "sooner" is not a reason to believe something.
   EXACT_TIME_VS_BROAD_TIME: (a, b, _p, ctx) => {
@@ -8584,13 +8767,19 @@ function subordinate(a, b, premises, ctx) {
     reasons: verdicts.map((v) => v.reason)
   };
 }
-var COMPOUND_PAIRS = [
+var COMPOUND_FRAMES = [
   { a: "MONEY_INFLOW", b: "MONEY_RETENTION", frame: "돈이 들어오는 것과 남는 것", kind: "INFLOW_VS_RETENTION" },
   { a: "RELATION_BOND", b: "RELATION_STABILITY", frame: "끌리는 힘과 같이 사는 난도", kind: "BOND_VS_STABILITY" },
   { a: "OPPORTUNITY", b: "OUTCOME", frame: "기회가 오는 것과 그것을 잡아서 남는 것", kind: "OPPORTUNITY_VS_OUTCOME" },
   { a: "CAREER", b: "MONEY_RETENTION", frame: "자리가 열리는 것과 실속이 남는 것", kind: "DIFFERENT_DOMAIN" }
 ];
-var AXIS_LABEL = {
+var compoundEligible = (a, b, askedAxis, premises) => {
+  if (a.questionAxis !== askedAxis && b.questionAxis !== askedAxis) return false;
+  if (a.questionAxis !== b.questionAxis && !axesShareOneMatter(a.questionAxis, b.questionAxis)) return false;
+  const stated = (p) => p.supportingPremiseIds.length > 0 && p.supportingPremiseIds.some((id) => premises.get(id)?.applicability !== "BACKGROUND");
+  return stated(a) && stated(b);
+};
+var AXIS_LABEL2 = {
   MONEY_INFLOW: "돈이 들어오는 쪽",
   MONEY_RETENTION: "돈이 남는 쪽",
   OPPORTUNITY: "기회가 오는 쪽",
@@ -8606,7 +8795,7 @@ var AXIS_LABEL = {
   DECISION: "결정",
   GENERAL: "전반"
 };
-var axisLabel = (d) => AXIS_LABEL[d] ?? "이 축";
+var axisLabel2 = (d) => AXIS_LABEL2[d] ?? "이 축";
 var topic = (w) => {
   const ch = w.charCodeAt(w.length - 1);
   const closed = ch >= 44032 && ch <= 55203 ? (ch - 44032) % 28 !== 0 : false;
@@ -8614,11 +8803,19 @@ var topic = (w) => {
 };
 var crossId = (rule, parts) => `x:${rule}:${parts.map((p) => p.id).sort().join("+")}`;
 function crossProp(rule, ctx, spec, premises) {
-  const supportIds = [...new Set(spec.from.flatMap((p) => p.supportingPremiseIds))];
-  const opposeIds = [...new Set(spec.from.flatMap((p) => p.opposingPremiseIds))];
+  const against = spec.against ?? [];
+  const parents = [...spec.from, ...against];
+  const supportIds = [.../* @__PURE__ */ new Set([
+    ...spec.from.flatMap((p) => p.supportingPremiseIds),
+    ...against.flatMap((p) => p.opposingPremiseIds)
+  ])];
+  const opposeIds = [.../* @__PURE__ */ new Set([
+    ...spec.from.flatMap((p) => p.opposingPremiseIds),
+    ...against.flatMap((p) => p.supportingPremiseIds)
+  ])].filter((id) => !supportIds.includes(id));
   const pick = (ids) => ids.map((id) => premises.get(id)).filter((p) => !!p);
   return {
-    id: crossId(rule, spec.from),
+    id: crossId(rule, parents),
     discipline: "CROSS",
     subject: ctx.subject,
     target: spec.target,
@@ -8631,9 +8828,9 @@ function crossProp(rule, ctx, spec, premises) {
     ...spec.restriction ? { restriction: spec.restriction } : {},
     supportingPremiseIds: supportIds,
     opposingPremiseIds: opposeIds,
-    derivedFromPropositionIds: spec.from.map((p) => p.id),
+    derivedFromPropositionIds: parents.map((p) => p.id),
     unresolvedPremiseIds: [],
-    doctrineReferences: [...new Set(spec.from.flatMap((p) => p.doctrineReferences))],
+    doctrineReferences: [...new Set(parents.flatMap((p) => p.doctrineReferences))],
     derivationRule: rule,
     adequacy: computeAdequacy(pick(supportIds), pick(opposeIds), { dataComplete: ctx.dataComplete, doctrine: "ADOPTED" })
   };
@@ -8649,27 +8846,37 @@ function deriveCross(props, premises, ctx) {
       return;
     }
     for (const p of c.from) if (!existing.from.some((x) => x.id === p.id)) existing.from.push(p);
+    for (const p of c.against ?? []) {
+      existing.against = existing.against ?? [];
+      if (!existing.against.some((x) => x.id === p.id)) existing.against.push(p);
+    }
   };
   for (let i = 0; i < props.length; i += 1) {
     for (let k = i + 1; k < props.length; k += 1) {
       const a = props[i];
       const b = props[k];
       const relation = classifyPair(a, b);
-      if (relation === "REINFORCING") {
+      if (relation === "REINFORCING" || relation === "RIVAL_AGREEMENT") {
         if (a.discipline === b.discipline) continue;
+        const rivalPair = [a, b].sort((x, y) => x.target.key.localeCompare(y.target.key));
+        const agreementTarget = relation === "RIVAL_AGREEMENT" ? target(
+          "COMPOSITE",
+          "RIVAL:" + rivalPair.map((p) => p.target.key).join("|"),
+          rivalPair.map((p) => p.target.label).join("·")
+        ) : a.target;
         add({
-          key: "CROSS_REINFORCEMENT:" + a.target.key + ":" + a.direction,
+          key: "CROSS_REINFORCEMENT:" + agreementTarget.key + ":" + a.direction,
           rule: "CROSS_REINFORCEMENT",
           relation,
           from: [a, b],
           spec: {
             axis: a.questionAxis,
             temporalScope: a.temporalScope,
-            target: a.target,
+            target: agreementTarget,
             // "두 학문이 일치합니다" tells the reader that we agree — not what we agree ABOUT. A reinforcement
             // must carry the direction it reinforces, or it is a directional verdict whose own headline states
             // no direction.
-            assertion: a.target.label + "에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: " + (a.direction === "FAVORABLE" ? "이 자리는 열려 있습니다." : a.direction === "UNFAVORABLE" ? "이 자리는 막혀 있습니다." : "범위를 좁혀야 하는 자리입니다.") + " 한쪽만 보고 내린 결론이 아니라는 뜻입니다.",
+            assertion: (relation === "RIVAL_AGREEMENT" ? "서로 다른 자리(" + rivalPair.map((p) => p.target.label).join(" / ") + ")를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: " : a.target.label + "에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: ") + (a.direction === "FAVORABLE" ? "이 축은 열려 있습니다." : a.direction === "UNFAVORABLE" ? "이 축은 막혀 있습니다." : "범위를 좁혀야 하는 자리입니다.") + " 한쪽만 보고 내린 결론이 아니라는 뜻입니다.",
             conclusionType: a.conclusionType === "COMPOUND" || b.conclusionType === "COMPOUND" ? "COMPOUND" : "DIRECTIONAL",
             direction: a.direction,
             ...a.restriction ? { restriction: a.restriction } : {}
@@ -8677,11 +8884,17 @@ function deriveCross(props, premises, ctx) {
         });
         continue;
       }
-      if (relation === "CONTRADICTORY") {
+      if (relation === "CONTRADICTORY" || relation === "RIVAL_CONFLICT") {
         const decided = subordinate(a, b, byId, subCtx);
         if (!decided) {
+          const standoffPair = [a, b].sort((x, y) => x.target.key.localeCompare(y.target.key));
+          const standoffTarget = relation === "RIVAL_CONFLICT" ? target(
+            "COMPOSITE",
+            "RIVAL:" + standoffPair.map((p) => p.target.key).join("|"),
+            standoffPair.map((p) => p.target.label).join("·")
+          ) : a.target;
           add({
-            key: "CROSS_STANDOFF:" + a.target.key,
+            key: "CROSS_STANDOFF:" + standoffTarget.key,
             rule: "CROSS_STANDOFF",
             relation,
             standoff: true,
@@ -8689,8 +8902,8 @@ function deriveCross(props, premises, ctx) {
             spec: {
               axis: a.questionAxis,
               temporalScope: a.temporalScope,
-              target: a.target,
-              assertion: a.target.label + "에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.",
+              target: standoffTarget,
+              assertion: standoffTarget.label + "에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.",
               conclusionType: "STRUCTURAL",
               direction: "NONE"
             }
@@ -8701,7 +8914,10 @@ function deriveCross(props, premises, ctx) {
           key: "CROSS_CONTRADICTION_RESOLVED:" + decided.dominant.target.key,
           rule: "CROSS_CONTRADICTION_RESOLVED",
           relation,
-          from: [decided.dominant, decided.subordinate],
+          // §12 — the demoted parent is the side that ARGUES WITH this conclusion, and is declared as such
+          // so its evidence is re-sided rather than counted as backing the very claim it opposed.
+          from: [decided.dominant],
+          against: [decided.subordinate],
           dominant: decided.dominant,
           counter: decided.subordinate,
           subordinationReasons: decided.reasons,
@@ -8718,8 +8934,7 @@ function deriveCross(props, premises, ctx) {
         continue;
       }
       if (relation === "DIFFERENT_TIME" && opposed(a, b)) {
-        const grounded = (p) => p.supportingPremiseIds.length + p.opposingPremiseIds.length > 0;
-        if (!grounded(a) || !grounded(b)) continue;
+        if (!halfIsAsserted(a) || !halfIsAsserted(b)) continue;
         const structural = band(a.temporalScope) === "STRUCTURAL" ? a : b;
         const near = structural === a ? b : a;
         const structuralOpens = structural.direction === "FAVORABLE";
@@ -8742,13 +8957,17 @@ function deriveCross(props, premises, ctx) {
         continue;
       }
       if ((relation === "DIFFERENT_AXIS" || relation === "DIFFERENT_TARGET") && opposed(a, b)) {
-        const frame = COMPOUND_PAIRS.find((p) => p.a === a.questionAxis && p.b === b.questionAxis || p.a === b.questionAxis && p.b === a.questionAxis);
-        if (!frame) continue;
+        if (!compoundEligible(a, b, ctx.askedAxis, byId)) continue;
+        const named = COMPOUND_FRAMES.find((p) => p.a === a.questionAxis && p.b === b.questionAxis || p.a === b.questionAxis && p.b === a.questionAxis);
+        const frame = named ?? {
+          frame: axisLabel2(a.questionAxis) + "과 " + axisLabel2(b.questionAxis),
+          kind: "DIFFERENT_DOMAIN"
+        };
         const asked = a.questionAxis === ctx.askedAxis ? a : b;
         const other = asked === a ? b : a;
         const way = (p) => p.direction === "FAVORABLE" ? "열립니다" : p.direction === "UNFAVORABLE" ? "막힙니다" : "범위를 좁혀야 합니다";
         add({
-          key: "CROSS_AXIS_COMPOUND:" + frame.frame,
+          key: "CROSS_AXIS_COMPOUND:" + frame.kind + ":" + [a.target.key, b.target.key].sort().join("|"),
           rule: "CROSS_AXIS_COMPOUND",
           relation,
           from: [a, b],
@@ -8756,8 +8975,14 @@ function deriveCross(props, premises, ctx) {
           spec: {
             axis: asked.questionAxis,
             temporalScope: asked.temporalScope,
-            target: target("COMPOSITE", frame.frame, frame.frame),
-            assertion: topic(frame.frame) + " 다르게 봅니다. " + axisLabel(asked.questionAxis) + "은 " + way(asked) + ", " + axisLabel(other.questionAxis) + "은 " + way(other) + ". 둘 다 사실이라 나누어 말씀드립니다.",
+            // V4C §2 — keyed by the compound's CANONICAL kind AND the two structures it spans, never by its
+            // Korean sentence. Two different compounds of the same kind are different claims.
+            target: target(
+              "COMPOSITE",
+              frame.kind + ":" + [a.target.key, b.target.key].sort().join("|"),
+              frame.frame
+            ),
+            assertion: topic(frame.frame) + " 다르게 봅니다. " + axisLabel2(asked.questionAxis) + "은 " + way(asked) + ", " + axisLabel2(other.questionAxis) + "은 " + way(other) + ". 둘 다 사실이라 나누어 말씀드립니다.",
             conclusionType: "COMPOUND",
             direction: asked.direction,
             ...asked.restriction ? { restriction: asked.restriction } : {}
@@ -8767,7 +8992,7 @@ function deriveCross(props, premises, ctx) {
     }
   }
   return [...candidates.values()].map((c) => ({
-    proposition: crossProp(c.rule, ctx, { ...c.spec, from: c.from }, byId),
+    proposition: crossProp(c.rule, ctx, { ...c.spec, from: c.from, ...c.against ? { against: c.against } : {} }, byId),
     relation: c.relation,
     ...c.dominant ? { dominant: c.dominant } : {},
     ...c.counter ? { counter: c.counter } : {},
@@ -8785,23 +9010,15 @@ var hasFinalConsonant = (w) => {
   return ch >= 44032 && ch <= 55203 ? (ch - 44032) % 28 !== 0 : false;
 };
 var discSubject = (d) => `${DISCIPLINE_LABEL[d]}${hasFinalConsonant(DISCIPLINE_LABEL[d]) ? "은" : "는"}`;
-var AXIS_LABEL2 = {
-  MONEY_INFLOW: "돈이 들어오는 쪽",
-  MONEY_RETENTION: "돈이 남는 쪽",
-  OPPORTUNITY: "기회가 오는 쪽",
-  OUTCOME: "잡았을 때 남는 쪽",
-  CAREER: "자리·직업",
-  MOVEMENT: "이동",
-  RELATION_BOND: "끌리는 힘",
-  RELATION_STABILITY: "같이 사는 난도",
-  CONFLICT: "부딪힘",
-  INFLUENCE: "서로 미치는 영향",
-  TIMING: "지금 시점",
-  HEALTH_ENERGY: "몸·기운",
-  DECISION: "결정",
-  GENERAL: "전반"
+var axisLabel3 = (d) => axisLabel(d, "전반");
+var SCOPE_NARROWNESS = {
+  PRESENT_MOMENT: 0,
+  WOLWOON: 1,
+  SEWOON: 2,
+  DAEWOON: 3,
+  NATAL: 4,
+  UNSCOPED: 5
 };
-var axisLabel2 = (d) => AXIS_LABEL2[d] ?? "전반";
 var RESOLUTION_KIND = {
   CROSS_CONTRADICTION_RESOLVED: "DIRECTNESS",
   CROSS_TIMING_SPLIT: "DIFFERENT_TIMESCALE",
@@ -8823,8 +9040,13 @@ function stanceOf(p) {
       return NO_SIGNAL;
   }
 }
+var agreedStance = (members, shared) => {
+  const stances = new Set(members.map(stanceOf));
+  if (stances.size === 1) return [...stances][0];
+  return shared === "FAVORABLE" ? "CONDITIONAL_FOR" : shared === "UNFAVORABLE" || shared === "RESTRICTED" ? "CONDITIONAL_AGAINST" : NO_SIGNAL;
+};
 var evidenceFrom = (premises, ids, axis) => ids.map((id) => premises.get(id)).filter((p) => !!p).map((p) => ({
-  fact: p.sourceFactIds[0] ?? p.target,
+  fact: p.sourceFactIds[0] ?? p.target.label,
   meaning: p.assertion,
   domain: axis,
   temporalScope: p.temporalScope,
@@ -8850,35 +9072,37 @@ function reasonCross(input) {
     propositions.push(...adapted.propositions);
   }
   const derivations = deriveCross(propositions, premises, { ...ctx, asksTiming: input.asksTiming });
-  const all = [...propositions, ...derivations.map((d) => d.proposition)];
-  const standing = standingPropositions(all);
+  const reasoned = [...propositions, ...derivations.map((d) => d.proposition)];
+  const standing = standingPropositions(reasoned);
+  const ancestry = (input.propositionGraph ?? []).filter((p) => !reasoned.some((r) => r.id === p.id));
+  const all = [...reasoned, ...ancestry];
   const byId = new Map(premises.map((p) => [p.id, p]));
   const onAsked = standing.filter((p) => p.questionAxis === asked);
   const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
   const describesChart = (p) => p.conclusionType === "STRUCTURAL" && p.derivationRule !== "PRIMITIVE" && p.derivationRule !== "CROSS_STANDOFF";
   const onAskedAxis = (p) => asked === "GENERAL" || p.questionAxis === asked;
-  const structural = nonDecision ? standing.find((p) => intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" && onAskedAxis(p)) ?? standing.find((p) => describesChart(p) && onAskedAxis(p)) : void 0;
-  const crossOnAsked = onAsked.find((p) => p.discipline === "CROSS" && p.direction !== "NONE");
-  const agreedDirections = new Set(onAsked.filter((p) => p.direction !== "NONE").map((p) => p.direction));
-  const agreed = agreedDirections.size === 1 ? onAsked.find((p) => p.direction !== "NONE") : void 0;
-  const primary = nonDecision ? structural ?? null : crossOnAsked ?? agreed ?? null;
+  const candidates = nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : onAsked.filter((p) => p.direction !== "NONE");
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
   const standoffs = derivations.filter((d) => d.standoff && d.proposition.questionAxis === asked);
   const examined = new Set(propositions.filter((p) => p.questionAxis === asked).map((p) => p.discipline));
   const blind = applicable.map((j) => j.discipline).filter((d) => !examined.has(d));
   const contributingTo = (d) => [
+    // §28 — sorted. This list names WHO disagreed, and for a standoff it also supplies the reported
+    // "dominant" discipline; leaving it in graph order made a user-visible attribution depend on iteration.
     ...new Set(d.proposition.derivedFromPropositionIds.map((id) => all.find((p) => p.id === id)?.discipline).filter((x) => !!x && x !== "CROSS"))
-  ];
+  ].sort();
   const resolutions = derivations.filter((d) => d.compoundKind || RESOLUTION_KIND[d.proposition.derivationRule]).map((d) => ({
     kind: d.compoundKind ?? RESOLUTION_KIND[d.proposition.derivationRule],
     between: d.dominant && d.counter ? [...new Set([d.dominant.discipline, d.counter.discipline].filter((x) => x !== "CROSS"))] : contributingTo(d),
-    conflict: d.dominant && d.counter ? `${discSubject(d.dominant.discipline)} "${d.dominant.assertion}", ${disc(d.counter.discipline)}는 "${d.counter.assertion}"` : `${axisLabel2(d.proposition.questionAxis)}에서 서로 다른 신호가 함께 잡힙니다.`,
+    conflict: d.dominant && d.counter ? `${discSubject(d.dominant.discipline)} "${d.dominant.assertion}", ${disc(d.counter.discipline)}는 "${d.counter.assertion}"` : `${axisLabel3(d.proposition.questionAxis)}에서 서로 다른 신호가 함께 잡힙니다.`,
     resolution: d.proposition.assertion,
     dominant: (d.dominant?.discipline === "CROSS" ? "MYUNGRI" : d.dominant?.discipline) ?? (contributingTo(d)[0] ?? applicable[0]?.discipline ?? "MYUNGRI"),
     whyOtherDidNotDominate: d.standoff ? "어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다." : d.subordinationReasons?.length ? `${d.subordinationReasons.map((r) => SUBORDINATION_TEXT[r]).join("; ")} (밀려난 쪽: ${d.counter ? disc(d.counter.discipline) : "반대 근거"})` : "서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다."
   }));
-  const direction = primary ? stanceOf(primary) : NO_SIGNAL;
+  const direction = primary ? stanceOf(primary) : resolution.kind === "AGREED" ? agreedStance(resolution.members, resolution.direction) : NO_SIGNAL;
   const coverageNote = !primary && blind.length > 0 ? ` (${blind.map(disc).join("·")}에는 이 축을 직접 보는 자리가 없습니다.)` : "";
-  const primaryConclusion = primary ? primary.assertion : nonDecision ? "지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다." : standoffs.length > 0 ? standoffs[0].proposition.assertion : `${axisLabel2(asked)}에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.${coverageNote}`;
+  const primaryConclusion = primary ? primary.assertion : resolution.kind === "AGREED" ? agreedHeadline(asked, resolution.direction, resolution.members.length) : resolution.kind === "UNRESOLVED" ? unresolvedHeadline(asked) : nonDecision ? "지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다." : standoffs.length > 0 ? standoffs.map((d) => d.proposition).sort((x, y) => x.target.key.localeCompare(y.target.key)).map((p) => p.assertion).join(" ") : `${axisLabel3(asked)}에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.${coverageNote}`;
   const contributions = input.judgments.map((j) => {
     if (!j.applicable) {
       return { discipline: j.discipline, applied: false, stance: j.stance, contribution: j.applicabilityReason ?? "이 질문에는 적용하지 않았습니다." };
@@ -8898,13 +9122,14 @@ function reasonCross(input) {
       discipline: j.discipline,
       applied: true,
       stance: j.stance,
-      contribution: mine[0].assertion,
+      // §28 — sorted on content, so the same graph always reports the same contribution line.
+      contribution: [...mine].sort((x, y) => x.assertion.localeCompare(y.assertion))[0].assertion,
       ...feeding ? {} : { whyItDidNotDominate: "물어보신 축을 직접 짚는 근거가 아니어서 결론을 이끌지는 않았습니다." }
     };
   });
   const favorableFactors = standing.filter((p) => p.direction === "FAVORABLE").flatMap((p) => evidenceFrom(byId, p.supportingPremiseIds, p.questionAxis));
   const riskFactors = standing.flatMap((p) => evidenceFrom(byId, p.opposingPremiseIds, p.questionAxis));
-  const timingProp = standing.find((p) => p.restriction === "TIMING");
+  const timingProps = standing.filter((p) => p.restriction === "TIMING").sort((a, b) => SCOPE_NARROWNESS[a.temporalScope] - SCOPE_NARROWNESS[b.temporalScope] || a.assertion.localeCompare(b.assertion));
   const confidence = !primary ? "LOW" : primary.adequacy.dataCompleteness === "COMPLETE" && primary.adequacy.supportAdequacy === "ADEQUATE" && primary.derivationRule !== "PRIMITIVE" ? "HIGH" : primary.derivationRule === "PRIMITIVE" ? "LOW" : "MEDIUM";
   const verdict = {
     question: input.question,
@@ -8914,8 +9139,10 @@ function reasonCross(input) {
     asksTiming: input.asksTiming,
     premises,
     primaryConclusion,
+    // The conclusions the headline actually stands on: one when the set settled, all of them when it did not.
+    headlinePropositionIds: primary ? [primary.id] : resolution.members.map((p) => p.id),
     direction,
-    dominantBasis: primary ? `${primary.derivationRule === "PRIMITIVE" ? "단일 근거" : primary.derivationRule} · ${primary.target}` : standoffs.length > 0 ? "반대 근거가 대등하게 맞섬" : "해당 축 근거 없음",
+    dominantBasis: primary ? `${primary.derivationRule === "PRIMITIVE" ? "단일 근거" : primary.derivationRule} · ${primary.target.label}` : resolution.kind === "AGREED" ? `같은 방향으로 함께 서는 결론 ${resolution.members.length}건` : resolution.kind === "UNRESOLVED" ? `서로 다른 방향으로 함께 서는 결론 ${resolution.members.length}건 (미확정)` : standoffs.length > 0 ? "반대 근거가 대등하게 맞섬" : "해당 축 근거 없음",
     disciplineJudgments: input.judgments,
     contributions,
     axisVerdicts: standing.filter((p) => p.direction !== "NONE" || p.conclusionType === "STRUCTURAL" || p.conclusionType === "CAUSAL").map((p) => ({
@@ -8935,7 +9162,7 @@ function reasonCross(input) {
     contradictionResolutions: resolutions,
     natalBaseline: input.natalBaseline ?? null,
     currentFlow: input.currentFlow ?? null,
-    timingConclusion: timingProp && (input.asksTiming || direction === "FOR_BUT_LATER") ? timingProp.assertion : null,
+    timingConclusion: timingProps.length > 0 && (input.asksTiming || direction === "FOR_BUT_LATER") ? timingProps.map((p) => p.assertion).join(" ") : null,
     favorableFactors,
     riskFactors,
     actionableInterpretation: !primary ? "지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다." : primary.conclusionType === "STRUCTURAL" || primary.conclusionType === "CAUSAL" ? "이 구조를 알고 계시는 것 자체가 다음 판단의 기준이 됩니다." : primary.direction === "FAVORABLE" ? "지금 흐름을 그대로 밀고 가셔도 됩니다." : primary.restriction === "TIMING" ? "방향은 유지하시되, 큰 실행은 흐름이 풀린 뒤로 미루십시오." : "규모를 줄이고, 되돌릴 수 있는 형태로만 움직이십시오.",
@@ -8964,6 +9191,7 @@ function judgeCrossReasoned(input) {
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds,
     premises: input.myungriPremises,
     propositions: input.myungriPropositions,
+    propositionGraph: input.myungriPropositionGraph,
     natalBaseline: input.natalBaseline,
     currentFlow: input.currentFlow
   });
@@ -9410,15 +9638,16 @@ function buildMyungriPremises(input) {
         doctrineReference: "궁위: 일지=배우자·자기 자리"
       }));
     }
-    for (const label of baseline.natalFrictionPositions) {
+    for (const friction of baseline.natalFrictions) {
+      const seatPair = natalSeatPairTarget(friction.positions[0], friction.positions[1] ?? friction.positions[0]);
       out.push(base({
-        sourceFactIds: [`원국 ${label}`],
-        target: target("NATAL_SEAT", label.split(" ")[0], `원국 ${label.split(" ")[0]}`),
-        concept: "NATAL_SEAT_STRAIN",
+        sourceFactIds: [`원국 ${friction.label}`],
+        target: seatPair,
         questionAxis: "GENERAL",
         temporalScope: "NATAL",
         semanticRelation: "DESTABILIZES",
-        assertion: `원국 안에서 ${label.split(" ")[0]} 사이가 이미 부딪히는 구조다.`,
+        concept: "NATAL_SEAT_STRAIN",
+        assertion: `${seatPair.label} 사이가 원국에서 이미 부딪히는 구조다.`,
         role: "QUALIFIES",
         applicability: "BACKGROUND",
         doctrineReference: "원국 합충형파해 (frozen natal relations)"
@@ -9512,8 +9741,25 @@ function buildMyungriPremises(input) {
 }
 
 // src/features/divination/reasoning/myungriRules.ts
-var NEAR2 = ["SEWOON", "WOLWOON", "PRESENT_MOMENT"];
+var NEAR = ["SEWOON", "WOLWOON", "PRESENT_MOMENT"];
+var LAYER_LABEL = {
+  NATAL: "원국",
+  DAEWOON: "지금의 큰 흐름",
+  SEWOON: "올해",
+  WOLWOON: "이 달",
+  PRESENT_MOMENT: "지금 이 시점",
+  UNSCOPED: "시기와 무관하게"
+};
 var STRUCTURAL = ["NATAL", "DAEWOON"];
+var SCOPE_WIDTH = {
+  PRESENT_MOMENT: 0,
+  WOLWOON: 1,
+  SEWOON: 2,
+  DAEWOON: 3,
+  NATAL: 4,
+  UNSCOPED: 5
+};
+var narrowestScope = (ps) => ps.map((p) => p.temporalScope).sort((a, b) => SCOPE_WIDTH[a] - SCOPE_WIDTH[b])[0];
 var derivedId = (rule, axis, premiseIds) => `d:${rule}:${axis}:${[...premiseIds].sort().join("+")}`;
 function make(rule, ctx, spec) {
   const support = spec.support;
@@ -9533,7 +9779,17 @@ function make(rule, ctx, spec) {
     answersAsked: spec.axis === ctx.askedAxis,
     supportingPremiseIds: support.map((p) => p.id),
     opposingPremiseIds: oppose.map((p) => p.id),
-    derivedFromPropositionIds: (spec.from ?? []).map((p) => p.id),
+    // V4C §6/§7 — A DERIVED CONCLUSION DECLARES ITS PARENTS.
+    //
+    // These rules match on PREMISES, so V4B left `derivedFromPropositionIds` empty and the graph had no edge
+    // between a derived conclusion and the single-premise readings it was built from. Supersession then had to
+    // infer the relationship by counting premises, and answer selection could not tell that one conclusion
+    // already accounted for the others. The edge is stated instead: every premise that produced a primitive
+    // proposition (`role === 'ASSERTS'`, id `p:<premiseId>`) is a parent of the conclusion built on it.
+    derivedFromPropositionIds: [.../* @__PURE__ */ new Set([
+      ...(spec.from ?? []).map((p) => p.id),
+      ...[...support, ...oppose].filter((p) => p.role === "ASSERTS").map((p) => `p:${p.id}`)
+    ])],
     unresolvedPremiseIds: (spec.unresolved ?? []).map((p) => p.id),
     doctrineReferences: [...new Set([...support, ...oppose].map((p) => p.doctrineReference))],
     derivationRule: rule,
@@ -9549,8 +9805,8 @@ var CONTESTED_SHARE = {
     if (rivals.length === 0 || wealth.length === 0) return [];
     return [make("CONTESTED_SHARE", ctx, {
       axis: "MONEY_RETENTION",
-      temporalScope: rivals[0].temporalScope,
-      target: target("COMPOSITE", RIVAL_VS_WEALTH_KEY(rivals[0], wealth[0]), "벌이는 몫과 남는 몫"),
+      temporalScope: narrowestScope(rivals),
+      target: target("COMPOSITE", RIVAL_VS_WEALTH_KEY(rivals, wealth), "벌이는 몫과 남는 몫"),
       assertion: "원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.",
       conclusionType: "COMPOUND",
       direction: "RESTRICTED",
@@ -9561,7 +9817,8 @@ var CONTESTED_SHARE = {
     })];
   }
 };
-var RIVAL_VS_WEALTH_KEY = (rival, wealth) => "RIVAL_VS_WEALTH:" + rival.target.key + "|" + wealth.target.key;
+var memberKeys = (ps) => [...new Set(ps.map((p) => p.target.key))].sort().join("|");
+var RIVAL_VS_WEALTH_KEY = (rivals, wealth) => "RIVAL_VS_WEALTH:" + memberKeys(rivals) + "." + memberKeys(wealth);
 var DIRECTION_VS_EXECUTION = {
   id: "DIRECTION_VS_EXECUTION",
   describes: "같은 대상에 대해 구조적 개방(원국·대운) × 근시일 타격(세운·월운) → 방향과 실행 시점의 분리",
@@ -9569,19 +9826,25 @@ var DIRECTION_VS_EXECUTION = {
     const out = [];
     const opens = premises.filter((p) => STRUCTURAL.includes(p.temporalScope) && (p.semanticRelation === "ENABLES" || p.semanticRelation === "ACTIVATES" || p.semanticRelation === "CONNECTS"));
     for (const open of opens) {
-      const strikes = premises.filter((p) => NEAR2.includes(p.temporalScope) && sameTarget(p.target, open.target) && p.subject === open.subject && p.questionAxis === open.questionAxis && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"));
+      const strikes = premises.filter((p) => NEAR.includes(p.temporalScope) && sameTarget(p.target, open.target) && p.subject === open.subject && p.questionAxis === open.questionAxis && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"));
       if (strikes.length === 0) continue;
-      out.push(make("DIRECTION_VS_EXECUTION", ctx, {
-        axis: open.questionAxis,
-        temporalScope: strikes[0].temporalScope,
-        target: open.target,
-        assertion: open.target.label + "은(는) 큰 흐름에서 열려 있는 자리인데, 가까운 시기에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.",
-        conclusionType: "COMPOUND",
-        direction: "RESTRICTED",
-        restriction: "TIMING",
-        support: [open],
-        oppose: strikes
-      }));
+      if (sideAdequacy([open]) !== "ADEQUATE") continue;
+      const byScope = /* @__PURE__ */ new Map();
+      for (const p of strikes) byScope.set(p.temporalScope, [...byScope.get(p.temporalScope) ?? [], p]);
+      for (const [scope, layerStrikes] of byScope) {
+        if (sideAdequacy(layerStrikes) !== "ADEQUATE") continue;
+        out.push(make("DIRECTION_VS_EXECUTION", ctx, {
+          axis: open.questionAxis,
+          temporalScope: scope,
+          target: open.target,
+          assertion: open.target.label + "은(는) 큰 흐름에서 열려 있는 자리인데, " + LAYER_LABEL[scope] + "에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.",
+          conclusionType: "COMPOUND",
+          direction: "RESTRICTED",
+          restriction: "TIMING",
+          support: [open],
+          oppose: layerStrikes
+        }));
+      }
     }
     return out;
   }
@@ -9594,12 +9857,13 @@ var CONVERGENT_SEAT_PRESSURE = {
     const frictions = premises.filter((p) => p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS");
     const bySeat = /* @__PURE__ */ new Map();
     for (const p of frictions) bySeat.set(p.target.key, [...bySeat.get(p.target.key) ?? [], p]);
-    for (const [, group] of bySeat) {
+    for (const [, unordered] of bySeat) {
+      const group = [...unordered].sort((a, b) => a.questionAxis.localeCompare(b.questionAxis) || SCOPE_WIDTH[a.temporalScope] - SCOPE_WIDTH[b.temporalScope]);
       const scopes = new Set(group.map((p) => p.temporalScope));
       if (scopes.size < 2) continue;
       out.push(make("CONVERGENT_SEAT_PRESSURE", ctx, {
         axis: group[0].questionAxis,
-        temporalScope: group.find((p) => NEAR2.includes(p.temporalScope))?.temporalScope ?? group[0].temporalScope,
+        temporalScope: narrowestScope(group),
         target: group[0].target,
         assertion: group[0].target.label + "에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.",
         conclusionType: "CAUSAL",
@@ -9625,8 +9889,13 @@ var INFLOW_VS_RETENTION = {
     if (inflow.length === 0 || retentionRisk.length === 0 && contested.length === 0) return [];
     return [make("INFLOW_VS_RETENTION", ctx, {
       axis: "MONEY_INFLOW",
-      temporalScope: inflow[0].temporalScope,
-      target: target("COMPOSITE", "INFLOW_VS_RETENTION", "유입과 보유"),
+      temporalScope: narrowestScope(inflow),
+      // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
+      target: target(
+        "COMPOSITE",
+        "INFLOW_VS_RETENTION:" + memberKeys(inflow) + "." + memberKeys(retentionRisk),
+        "유입과 보유"
+      ),
       assertion: "돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.",
       conclusionType: "COMPOUND",
       direction: "RESTRICTED",
@@ -9648,7 +9917,7 @@ var RECURRING_FRICTION_CAUSE = {
       if (again.length === 0) continue;
       out.push(make("RECURRING_FRICTION_CAUSE", ctx, {
         axis: weak.questionAxis,
-        temporalScope: again[0].temporalScope,
+        temporalScope: narrowestScope(again),
         target: weak.target,
         assertion: "반복해서 부딪히는 데는 이유가 있다. " + weak.target.label + "가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.",
         conclusionType: "CAUSAL",
@@ -9709,7 +9978,7 @@ function stanceOf2(p) {
   }
 }
 var evidenceOf = (premises, ids, axis, asked) => ids.map((id) => premises.find((p) => p.id === id)).filter((p) => !!p).map((p) => ({
-  fact: p.sourceFactIds[0] ?? p.target,
+  fact: p.sourceFactIds[0] ?? p.target.label,
   meaning: p.assertion,
   domain: axis,
   temporalScope: p.temporalScope,
@@ -9724,6 +9993,32 @@ function strengthOf(p) {
   if (side === "THIN") return "WEAK";
   return p.derivationRule === PRIMITIVE_RULE ? "NONE" : "WEAK";
 }
+var answering = (r) => r.kind === "SINGLE" ? [r.primary] : r.members;
+var agreedMembers = (r) => r.kind === "AGREED" ? r.members : [];
+var SCOPE_WIDTH2 = {
+  PRESENT_MOMENT: 0,
+  WOLWOON: 1,
+  SEWOON: 2,
+  DAEWOON: 3,
+  NATAL: 4,
+  UNSCOPED: 5
+};
+var narrowestScopeOf = (ps) => [...ps].sort((a, b) => SCOPE_WIDTH2[a.temporalScope] - SCOPE_WIDTH2[b.temporalScope])[0]?.temporalScope;
+var agreedStance2 = (r) => {
+  if (r.kind !== "AGREED") return NO_SIGNAL;
+  const stances = new Set(r.members.map(stanceOf2));
+  if (stances.size === 1) return [...stances][0];
+  switch (r.direction) {
+    case "FAVORABLE":
+      return "CONDITIONAL_FOR";
+    case "UNFAVORABLE":
+      return "CONDITIONAL_AGAINST";
+    case "RESTRICTED":
+      return "CONDITIONAL_AGAINST";
+    default:
+      return NO_SIGNAL;
+  }
+};
 function reasonMyungri(input) {
   const asked = input.questionDomain;
   const subject = input.subject ?? "본인";
@@ -9757,16 +10052,14 @@ function reasonMyungri(input) {
     counterEvidence: evidenceOf(premises, p.opposingPremiseIds, p.questionAxis, asked)
   }));
   const onAsked = standing.filter((p) => p.questionAxis === asked);
-  const compound = onAsked.find((p) => p.conclusionType === "COMPOUND");
   const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
-  const descriptive = nonDecision ? standing.find((p) => p.conclusionType === "CAUSAL" && intent === "CAUSE_WHY" || p.conclusionType === "STRUCTURAL") : void 0;
-  const directions = new Set(onAsked.filter((p) => p.direction !== "NONE").map((p) => p.direction));
-  const agreed = directions.size === 1 ? onAsked.find((p) => p.direction !== "NONE") : void 0;
-  const primary = descriptive ?? compound ?? agreed ?? null;
+  const candidates = nonDecision ? standing.filter((p) => intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || p.conclusionType === "STRUCTURAL") : onAsked.filter((p) => p.conclusionType === "COMPOUND" || p.direction !== "NONE");
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
   const internalContradictions = [];
-  if (!primary && onAsked.length > 1) {
+  if (resolution.kind === "UNRESOLVED") {
     internalContradictions.push(
-      `같은 축에서 서로 다른 결론이 함께 성립합니다: ${onAsked.map((p) => p.assertion).join(" / ")}`
+      `같은 축에서 서로 다른 결론이 함께 성립합니다: ${resolution.members.map((p) => p.assertion).join(" / ")}`
     );
   }
   const blocked = premises.filter((p) => p.doctrineReference.startsWith("BLOCKED"));
@@ -9789,22 +10082,26 @@ function reasonMyungri(input) {
     ...input.hourKnown ? {} : { applicabilityReason: "출생시간이 확정되지 않아 시(時)에 기대는 해석은 제한됩니다." },
     dataReliability: reliability,
     questionDomain: asked,
-    temporalScope: primary?.temporalScope ?? "NATAL",
-    stance: primary ? stanceOf2(primary) : NO_SIGNAL,
-    dominantConclusion: primary?.assertion ?? (blocked.length > 0 ? "명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다." : "명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다."),
-    dominantFactor: primary ? `${primary.derivationRule === PRIMITIVE_RULE ? "단일 근거" : primary.derivationRule} · ${primary.target}` : "해당 축 근거 없음",
+    // §28 — the NARROWEST layer the agreeing set covers, decided by the layers themselves rather than by
+    // which member happened to be first.
+    temporalScope: primary?.temporalScope ?? narrowestScopeOf(agreedMembers(resolution)) ?? "NATAL",
+    stance: primary ? stanceOf2(primary) : agreedStance2(resolution),
+    dominantConclusion: primary?.assertion ?? (resolution.kind === "AGREED" ? agreedHeadline(asked, resolution.direction, resolution.members.length) : resolution.kind === "UNRESOLVED" ? unresolvedHeadline(asked) : blocked.length > 0 ? "명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다." : "명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다."),
+    dominantFactor: primary ? `${primary.derivationRule === PRIMITIVE_RULE ? "단일 근거" : primary.derivationRule} · ${primary.target.label}` : resolution.kind === "AGREED" ? `같은 방향으로 함께 서는 근거 ${resolution.members.length}건` : resolution.kind === "UNRESOLVED" ? `서로 다른 방향으로 함께 서는 결론 ${resolution.members.length}건 (미확정)` : "해당 축 근거 없음",
     // The doctrine blockers ride along in directEvidence so the withholding stays VISIBLE in the persisted
     // verdict and in the "왜 이렇게 보나요?" layer. A capability that is declined silently reads as a capability
     // that was never considered.
     directEvidence: [
-      ...primary ? evidenceOf(premises, primary.supportingPremiseIds, asked, asked) : [],
+      ...evidenceOf(premises, answering(resolution).flatMap((p) => p.supportingPremiseIds), asked, asked),
       ...evidenceOf(premises, blocked.map((b) => b.id), "GENERAL", asked)
     ],
-    counterEvidence: primary ? evidenceOf(premises, primary.opposingPremiseIds, asked, asked) : [],
+    counterEvidence: evidenceOf(premises, answering(resolution).flatMap((p) => p.opposingPremiseIds), asked, asked),
     internalContradictions,
     timingSignals: standing.filter((p) => p.temporalScope === "WOLWOON" || p.temporalScope === "SEWOON").slice(0, 1).flatMap((p) => evidenceOf(premises, [...p.supportingPremiseIds, ...p.opposingPremiseIds], p.questionAxis, asked).slice(0, 1)),
     domainSubJudgments: subs,
-    confidence: primary === null ? "LOW" : strengthOf(primary) === "STRONG" && reliability === "EXACT" ? "HIGH" : strengthOf(primary) === "NONE" ? "LOW" : "MEDIUM",
+    // An AGREED resolution is never HIGH confidence: several conclusions point the same way but none accounts
+    // for the others, so the engine cannot say which reading is doing the work.
+    confidence: primary === null ? resolution.kind === "AGREED" ? "MEDIUM" : "LOW" : strengthOf(primary) === "STRONG" && reliability === "EXACT" ? "HIGH" : strengthOf(primary) === "NONE" ? "LOW" : "MEDIUM",
     questionDirectness: primary ? primary.questionAxis === asked ? "DIRECT" : "ADJACENT" : "GENERAL",
     evidenceStrength: primary ? strengthOf(primary) : "NONE",
     factGroupsUsed
@@ -9830,9 +10127,12 @@ function explainProposition(v, propositionId, seen = /* @__PURE__ */ new Set()) 
     from: p.derivedFromPropositionIds.map((id) => explainProposition(v, id, seen)).filter((c) => c !== null)
   };
 }
-function explainHeadline(v) {
-  const headline = standingPropositions(v.propositions).find((p) => p.assertion === v.primaryConclusion) ?? standingPropositions(v.propositions).find((p) => v.primaryConclusion.startsWith(p.assertion));
-  return headline ? explainProposition(v, headline.id) : null;
+function explainHeadlines(v) {
+  const named = (v.headlinePropositionIds ?? []).map((id) => explainProposition(v, id)).filter((c) => c !== null);
+  if (named.length > 0) return named;
+  const legacy = standingPropositions(v.propositions).find((p) => p.assertion === v.primaryConclusion) ?? standingPropositions(v.propositions).find((p) => v.primaryConclusion.startsWith(p.assertion));
+  const chain = legacy ? explainProposition(v, legacy.id) : null;
+  return chain ? [chain] : [];
 }
 function refineOnAxis(v, axis) {
   const standing = standingPropositions(v.propositions);
@@ -10258,7 +10558,8 @@ async function buildConsultationGrounding(draft, deps, question) {
       questionIntent,
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
-      myungriPropositions: myungriReasoning.standing
+      myungriPropositions: myungriReasoning.standing,
+      myungriPropositionGraph: myungriReasoning.propositions
     });
   } catch {
     divinationVerdict = null;
@@ -11535,6 +11836,9 @@ function parseDivinationVerdict(v) {
   if (v === null || typeof v !== "object") return void 0;
   const o = v;
   if (typeof o.direction !== "string" || typeof o.primaryConclusion !== "string") return void 0;
+  if (o.headlinePropositionIds !== void 0 && !(Array.isArray(o.headlinePropositionIds) && o.headlinePropositionIds.every((x) => typeof x === "string"))) {
+    return void 0;
+  }
   if (typeof o.verdictVersion !== "string") return void 0;
   if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return void 0;
   for (const j of o.disciplineJudgments) {
@@ -11563,24 +11867,49 @@ function parseDivinationVerdict(v) {
     "ENABLES",
     "ABSENT"
   ]);
-  const TARGET_KINDS = /* @__PURE__ */ new Set([
-    "NATAL_SEAT",
-    "TEN_GOD_FAMILY",
-    "LUCK_LAYER",
-    "DAY_MASTER_FOOTING",
-    "PALACE",
-    "BOARD_SEAT",
-    "DOCTRINE_GAP",
-    "COMPOSITE"
-  ]);
   const ADEQUACY_LEVELS = /* @__PURE__ */ new Set(["ADEQUATE", "THIN", "NONE"]);
-  const isTarget = (t) => {
-    if (t === null || typeof t !== "object") return false;
-    const o2 = t;
-    return typeof o2.key === "string" && o2.key.length > 0 && typeof o2.label === "string" && typeof o2.kind === "string" && TARGET_KINDS.has(o2.kind);
-  };
+  const DISCIPLINES = /* @__PURE__ */ new Set(["MYUNGRI", "ZIWEI", "QIMEN"]);
+  const PROPOSITION_DISCIPLINES = /* @__PURE__ */ new Set([...DISCIPLINES, "CROSS"]);
+  const INTENTS = /* @__PURE__ */ new Set(["DESCRIPTIVE", "CAUSE_WHY", "DECISION", "TIMING", "OUTCOME", "PROBABILITY"]);
+  const AXES = /* @__PURE__ */ new Set([
+    "OPPORTUNITY",
+    "OUTCOME",
+    "MONEY_INFLOW",
+    "MONEY_RETENTION",
+    "CAREER",
+    "MOVEMENT",
+    "RELATION_BOND",
+    "RELATION_STABILITY",
+    "CONFLICT",
+    "INFLUENCE",
+    "HEALTH_ENERGY",
+    "DECISION",
+    "TIMING",
+    "GENERAL"
+  ]);
+  const CONCEPTS = /* @__PURE__ */ new Set([
+    "NATAL_FAMILY",
+    "SEASONAL_FOOTING",
+    "ROOTING",
+    "NATAL_SEAT_STRAIN",
+    "LAYER_ACTIVATION",
+    "RIVAL_CLAIM",
+    "SEAT_CONTACT",
+    "LAYER_SILENT",
+    "DOCTRINE_BLOCK",
+    "ADAPTED"
+  ]);
+  const ROLES = /* @__PURE__ */ new Set(["ASSERTS", "QUALIFIES", "DESCRIBES"]);
+  const APPLICABILITIES = /* @__PURE__ */ new Set(["DIRECT", "CONTEXTUAL", "BACKGROUND"]);
+  const RELIABILITIES = /* @__PURE__ */ new Set(["EXACT", "REDUCED", "MINIMAL", "UNUSABLE"]);
+  const COMPLETENESS = /* @__PURE__ */ new Set(["COMPLETE", "PARTIAL", "INSUFFICIENT"]);
+  const DOCTRINE_APPLICABILITY = /* @__PURE__ */ new Set(["ADOPTED", "PARTIAL", "BLOCKED"]);
+  const RESTRICTIONS = /* @__PURE__ */ new Set(["TIMING", "SCOPE", "CAPACITY"]);
+  const enumOk = (set, x) => typeof x === "string" && set.has(x);
+  const isTarget = isCanonicalTarget;
   const isStringArray2 = (a) => Array.isArray(a) && a.every((x) => typeof x === "string");
   const premiseIds = /* @__PURE__ */ new Set();
+  const premisesOut = [];
   if (o.premises !== void 0) {
     if (!Array.isArray(o.premises)) return void 0;
     for (const p of o.premises) {
@@ -11591,10 +11920,34 @@ function parseDivinationVerdict(v) {
       premiseIds.add(pr.id);
       if (typeof pr.assertion !== "string" || pr.assertion.length === 0) return void 0;
       if (typeof pr.semanticRelation !== "string" || !RELATIONS.has(pr.semanticRelation)) return void 0;
-      if (typeof pr.questionAxis !== "string" || typeof pr.subject !== "string") return void 0;
-      if (typeof pr.temporalScope !== "string" || !SCOPES.has(pr.temporalScope)) return void 0;
+      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== "string" || pr.subject.length === 0) return void 0;
+      if (!enumOk(SCOPES, pr.temporalScope)) return void 0;
+      if (!enumOk(DISCIPLINES, pr.discipline)) return void 0;
+      if (!enumOk(INTENTS, pr.questionIntent)) return void 0;
+      if (!enumOk(CONCEPTS, pr.concept)) return void 0;
+      if (!enumOk(ROLES, pr.role)) return void 0;
+      if (!enumOk(APPLICABILITIES, pr.applicability)) return void 0;
+      if (!enumOk(RELIABILITIES, pr.reliability)) return void 0;
+      if (typeof pr.doctrineReference !== "string") return void 0;
       if (!isTarget(pr.target)) return void 0;
       if (!isStringArray2(pr.sourceFactIds)) return void 0;
+      premisesOut.push({
+        id: pr.id,
+        discipline: pr.discipline,
+        sourceFactIds: [...pr.sourceFactIds],
+        subject: pr.subject,
+        target: { key: pr.target.key, label: pr.target.label, kind: pr.target.kind },
+        questionIntent: pr.questionIntent,
+        questionAxis: pr.questionAxis,
+        temporalScope: pr.temporalScope,
+        semanticRelation: pr.semanticRelation,
+        concept: pr.concept,
+        assertion: pr.assertion,
+        role: pr.role,
+        reliability: pr.reliability,
+        applicability: pr.applicability,
+        doctrineReference: pr.doctrineReference
+      });
     }
   }
   if (!Array.isArray(o.propositions)) return void 0;
@@ -11610,24 +11963,36 @@ function parseDivinationVerdict(v) {
     if (typeof pr.derivationRule !== "string" || pr.derivationRule.length === 0) return void 0;
     if (typeof pr.conclusionType !== "string" || !CONCLUSION_TYPES.has(pr.conclusionType)) return void 0;
     if (typeof pr.direction !== "string" || !DIRECTIONS.has(pr.direction)) return void 0;
-    if (typeof pr.temporalScope !== "string" || !SCOPES.has(pr.temporalScope)) return void 0;
-    if (typeof pr.questionAxis !== "string" || typeof pr.subject !== "string") return void 0;
+    if (!enumOk(SCOPES, pr.temporalScope)) return void 0;
+    if (!enumOk(AXES, pr.questionAxis)) return void 0;
+    if (typeof pr.subject !== "string" || pr.subject.length === 0) return void 0;
+    if (!enumOk(PROPOSITION_DISCIPLINES, pr.discipline)) return void 0;
+    if (!enumOk(INTENTS, pr.questionIntent)) return void 0;
+    if (pr.restriction !== void 0 && !enumOk(RESTRICTIONS, pr.restriction)) return void 0;
+    if (pr.answersAsked !== void 0 && typeof pr.answersAsked !== "boolean") return void 0;
+    if (pr.qualified !== void 0 && typeof pr.qualified !== "boolean") return void 0;
+    if (!isStringArray2(pr.doctrineReferences)) return void 0;
+    if (!isStringArray2(pr.unresolvedPremiseIds)) return void 0;
     if (!isTarget(pr.target)) return void 0;
     if (!isStringArray2(pr.supportingPremiseIds) || !isStringArray2(pr.opposingPremiseIds)) return void 0;
     if (!isStringArray2(pr.derivedFromPropositionIds)) return void 0;
     if (pr.adequacy === null || typeof pr.adequacy !== "object") return void 0;
     const ad = pr.adequacy;
-    if (typeof ad.supportAdequacy !== "string" || !ADEQUACY_LEVELS.has(ad.supportAdequacy)) return void 0;
-    if (typeof ad.counterAdequacy !== "string" || !ADEQUACY_LEVELS.has(ad.counterAdequacy)) return void 0;
+    if (!enumOk(ADEQUACY_LEVELS, ad.supportAdequacy)) return void 0;
+    if (!enumOk(ADEQUACY_LEVELS, ad.counterAdequacy)) return void 0;
+    if (!enumOk(COMPLETENESS, ad.dataCompleteness)) return void 0;
+    if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) return void 0;
     const sup = new Set(pr.supportingPremiseIds);
     if (pr.opposingPremiseIds.some((id) => sup.has(id))) return void 0;
     parsed.push(pr);
   }
   for (const pr of parsed) {
-    if (premiseIds.size > 0) {
-      for (const id of [...pr.supportingPremiseIds, ...pr.opposingPremiseIds]) {
-        if (!premiseIds.has(id)) return void 0;
-      }
+    for (const id of [
+      ...pr.supportingPremiseIds,
+      ...pr.opposingPremiseIds,
+      ...pr.unresolvedPremiseIds
+    ]) {
+      if (!premiseIds.has(id)) return void 0;
     }
     for (const id of pr.derivedFromPropositionIds) {
       if (id === pr.id) return void 0;
@@ -11646,12 +12011,137 @@ function parseDivinationVerdict(v) {
     return false;
   };
   for (const id of edges.keys()) if (hasCycle(id)) return void 0;
-  if (typeof o.questionIntent !== "string") return void 0;
+  if (!enumOk(INTENTS, o.questionIntent)) return void 0;
+  if (!enumOk(AXES, o.questionDomain)) return void 0;
   if (typeof o.asksTiming !== "boolean") return void 0;
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger2(o.evaluatedAtEpochSeconds)) return void 0;
   const subjects = new Set(parsed.map((pr) => pr.subject));
   if (subjects.size > 1) return void 0;
-  return v;
+  for (const id of Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds : []) {
+    if (!propositionIds.has(id)) return void 0;
+  }
+  const str2 = (x, fallback = "") => typeof x === "string" ? x : fallback;
+  const strArr = (x) => isStringArray2(x) ? [...x] : [];
+  const arr = (x) => Array.isArray(x) ? x.filter((e) => e !== null && typeof e === "object") : [];
+  const evidence = (x) => arr(x).map((e) => ({
+    fact: str2(e.fact),
+    meaning: str2(e.meaning),
+    domain: e.domain,
+    temporalScope: e.temporalScope,
+    directness: e.directness
+  }));
+  const optional = (k, x) => typeof x === "string" ? { [k]: x } : {};
+  const restored = {
+    question: str2(o.question),
+    questionDomain: o.questionDomain,
+    questionIntent: o.questionIntent,
+    evaluatedAtEpochSeconds: typeof o.evaluatedAtEpochSeconds === "number" ? o.evaluatedAtEpochSeconds : null,
+    asksTiming: o.asksTiming,
+    premises: premisesOut,
+    primaryConclusion: str2(o.primaryConclusion),
+    headlinePropositionIds: strArr(o.headlinePropositionIds),
+    direction: o.direction,
+    dominantBasis: str2(o.dominantBasis),
+    disciplineJudgments: arr(o.disciplineJudgments).map((j) => ({
+      discipline: j.discipline,
+      applicable: j.applicable === true,
+      ...optional("applicabilityReason", j.applicabilityReason),
+      dataReliability: j.dataReliability,
+      questionDomain: j.questionDomain,
+      temporalScope: j.temporalScope,
+      stance: j.stance,
+      dominantConclusion: str2(j.dominantConclusion),
+      dominantFactor: str2(j.dominantFactor),
+      directEvidence: evidence(j.directEvidence),
+      counterEvidence: evidence(j.counterEvidence),
+      internalContradictions: strArr(j.internalContradictions),
+      timingSignals: evidence(j.timingSignals),
+      domainSubJudgments: arr(j.domainSubJudgments).map((sj) => ({
+        domain: sj.domain,
+        stance: sj.stance,
+        conclusion: str2(sj.conclusion),
+        temporalScope: sj.temporalScope,
+        directness: sj.directness,
+        reliability: sj.reliability,
+        evidence: evidence(sj.evidence),
+        counterEvidence: evidence(sj.counterEvidence)
+      })),
+      confidence: j.confidence,
+      questionDirectness: j.questionDirectness,
+      evidenceStrength: j.evidenceStrength,
+      factGroupsUsed: strArr(j.factGroupsUsed)
+    })),
+    contributions: arr(o.contributions).map((c) => ({
+      discipline: c.discipline,
+      applied: c.applied === true,
+      stance: c.stance,
+      contribution: str2(c.contribution),
+      ...optional("whyItDidNotDominate", c.whyItDidNotDominate)
+    })),
+    axisVerdicts: arr(o.axisVerdicts).map((a) => ({
+      domain: a.domain,
+      stance: a.stance,
+      conclusion: str2(a.conclusion),
+      dominantDiscipline: a.dominantDiscipline,
+      contested: a.contested === true
+    })),
+    // The proposition nodes are rebuilt from the fields the graph integrity pass actually validated.
+    propositions: parsed.map((pr) => ({
+      id: pr.id,
+      discipline: pr.discipline,
+      subject: pr.subject,
+      target: {
+        key: pr.target.key,
+        label: pr.target.label,
+        kind: pr.target.kind
+      },
+      questionIntent: pr.questionIntent,
+      questionAxis: pr.questionAxis,
+      temporalScope: pr.temporalScope,
+      assertion: pr.assertion,
+      conclusionType: pr.conclusionType,
+      direction: pr.direction,
+      ...typeof pr.restriction === "string" ? { restriction: pr.restriction } : {},
+      ...pr.answersAsked === true ? { answersAsked: true } : {},
+      ...pr.qualified === true ? { qualified: true } : {},
+      supportingPremiseIds: strArr(pr.supportingPremiseIds),
+      opposingPremiseIds: strArr(pr.opposingPremiseIds),
+      derivedFromPropositionIds: strArr(pr.derivedFromPropositionIds),
+      unresolvedPremiseIds: strArr(pr.unresolvedPremiseIds),
+      doctrineReferences: strArr(pr.doctrineReferences),
+      derivationRule: pr.derivationRule,
+      adequacy: {
+        supportAdequacy: pr.adequacy.supportAdequacy,
+        counterAdequacy: pr.adequacy.counterAdequacy,
+        dataCompleteness: pr.adequacy.dataCompleteness,
+        doctrineApplicability: pr.adequacy.doctrineApplicability
+      }
+    })),
+    agreementPoints: strArr(o.agreementPoints),
+    contradictionPoints: strArr(o.contradictionPoints),
+    contradictionResolutions: arr(o.contradictionResolutions).map((r) => ({
+      kind: r.kind,
+      between: strArr(r.between),
+      conflict: str2(r.conflict),
+      resolution: str2(r.resolution),
+      dominant: r.dominant,
+      whyOtherDidNotDominate: str2(r.whyOtherDidNotDominate)
+    })),
+    natalBaseline: typeof o.natalBaseline === "string" ? o.natalBaseline : null,
+    currentFlow: typeof o.currentFlow === "string" ? o.currentFlow : null,
+    timingConclusion: typeof o.timingConclusion === "string" ? o.timingConclusion : null,
+    favorableFactors: evidence(o.favorableFactors),
+    riskFactors: evidence(o.riskFactors),
+    actionableInterpretation: str2(o.actionableInterpretation),
+    confidence: o.confidence,
+    confidenceReason: str2(o.confidenceReason),
+    evidenceReferences: arr(o.evidenceReferences).map((e) => ({
+      discipline: e.discipline,
+      lines: strArr(e.lines)
+    })),
+    verdictVersion: str2(o.verdictVersion)
+  };
+  return restored;
 }
 function parseDecisionMeta(v) {
   if (v === null || typeof v !== "object") return void 0;
@@ -11745,8 +12235,7 @@ function groundingFromStoredDecision(meta) {
     ...relationLines("지지", snapshot.derivation.branchRelations)
   ];
   const summary = `저장된 판단 근거: ${snapshot.target.key} ${snapshot.polarity}, 조화 ${snapshot.derivation.harmony}, 마찰 ${snapshot.derivation.friction}`;
-  const headlineChain = meta.divinationVerdict ? explainHeadline(meta.divinationVerdict) : null;
-  const derivationChain = headlineChain ? renderChain(headlineChain) : [];
+  const derivationChain = (meta.divinationVerdict ? explainHeadlines(meta.divinationVerdict) : []).flatMap((c) => renderChain(c));
   return {
     status: "available",
     evidence: {
@@ -11788,13 +12277,15 @@ function groundingFromStoredDecision(meta) {
     }]
   };
 }
-function priorAxisContextFor(meta, current) {
+function priorAxisContextFor(meta, current, continuation) {
   const prior = meta?.divinationVerdict;
   if (!prior || current.status !== "available") return [];
+  if (continuation !== "REFINE_EXISTING") return [];
   const nowAxis = current.divinationVerdict?.questionDomain;
-  if (!nowAxis || nowAxis === prior.questionDomain) return [];
+  if (!nowAxis) return [];
+  const sameAxis = nowAxis === prior.questionDomain;
   const refinement = refineOnAxis(prior, nowAxis);
-  if (refinement.existing.length === 0 && refinement.premises.length === 0) return [];
+  if (!sameAxis && refinement.existing.length === 0 && refinement.premises.length === 0) return [];
   return [
     `앞선 질문: "${refinement.originalQuestion}" (축 ${refinement.originalAxis}) → 판정 ${prior.direction}`,
     `앞선 판정 결론: ${prior.primaryConclusion}`,
@@ -11931,6 +12422,31 @@ function renderFollowUpDirective(action, previous) {
       return null;
   }
 }
+var REEVALUATE_MARKERS = [
+  /지금\s*다시/,
+  /다시\s*보면/,
+  /현재\s*기준/,
+  /지금\s*(현재|시점)\s*(기준|으로|에서)/,
+  /^오늘은\s*[??]?$/,
+  /오늘\s*기준/,
+  /지금은\s*(어때|어떤|어떻)/
+];
+var POLITE_TAIL = String.raw`(요|이에요|예요|인가요|일까요|은가요|가요|어때요|어떤가요|어떻습니까)?\s*[??]?$`;
+var DEPENDENT_MARKERS = [
+  /^(그럼|그러면|그건|그거|그때|그 때)(\s|$)/,
+  new RegExp(String.raw`^[^\s?]{1,12}(은|는|이|가)\s*` + POLITE_TAIL),
+  /^왜/,
+  new RegExp(String.raw`(하면|한다면|이면)\s*` + POLITE_TAIL)
+];
+function classifyContinuationIntent(question, hasPriorDecision) {
+  const q = (question ?? "").trim();
+  if (q.length === 0) return "NEW_QUESTION";
+  if (REEVALUATE_MARKERS.some((re) => re.test(q))) return "REEVALUATE_NOW";
+  if (!hasPriorDecision) return "NEW_QUESTION";
+  if (classifyFollowUpIntent(q) !== "NONE") return "REFINE_EXISTING";
+  if (DEPENDENT_MARKERS.some((re) => re.test(q))) return "REFINE_EXISTING";
+  return "NEW_QUESTION";
+}
 
 // src/features/chat/server/buildServerConsultation.ts
 var MAX_CONTEXT_TURNS = 12;
@@ -12016,28 +12532,34 @@ async function buildServerConsultation(request, deps) {
   const selectedContext = selectConsultationContext(draft);
   if (selectedContext === null) return { ok: false, reason: "INVALID_INPUT" };
   const followUpIntent = classifyFollowUpIntent(question);
+  const mayContinue = classifyContinuationIntent(question, true) !== "NEW_QUESTION";
   let followUpDirective = null;
   let followUpVersionMismatch = false;
   let previousDecision = null;
   let previousMeta = null;
-  if (followUpIntent !== "NONE" && deps.loadPreviousDecision) {
+  if ((followUpIntent !== "NONE" || mayContinue) && deps.loadPreviousDecision) {
     try {
       previousMeta = await deps.loadPreviousDecision();
     } catch {
       previousMeta = null;
     }
     previousDecision = previousDecisionFromMeta(previousMeta);
-    const action = resolveFollowUpAction(followUpIntent, previousDecision, {
-      engineVersion: DEOKBUNAI_SAJU_RULE_SET_VERSION
-    });
-    if (action.kind === "EXPLAIN_PREVIOUS") followUpVersionMismatch = action.versionMismatch;
-    followUpDirective = renderFollowUpDirective(action, previousDecision);
+    if (followUpIntent !== "NONE") {
+      const action = resolveFollowUpAction(followUpIntent, previousDecision, {
+        engineVersion: DEOKBUNAI_SAJU_RULE_SET_VERSION
+      });
+      if (action.kind === "EXPLAIN_PREVIOUS") followUpVersionMismatch = action.versionMismatch;
+      followUpDirective = renderFollowUpDirective(action, previousDecision);
+    }
   }
+  const continuation = classifyContinuationIntent(question, previousMeta?.divinationVerdict != null);
   let grounding = GROUNDING_UNAVAILABLE;
   if (followUpIntent === "WHY") {
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
   } else {
+    const storedInstant = previousMeta?.divinationVerdict?.evaluatedAtEpochSeconds ?? null;
+    const evaluationInstant = continuation === "REFINE_EXISTING" && storedInstant !== null ? storedInstant : deps.nowEpochSeconds;
     try {
       grounding = toSafeGrounding(
         await buildConsultationGrounding(
@@ -12045,7 +12567,7 @@ async function buildServerConsultation(request, deps) {
           {
             digestProvider: deps.digestProvider,
             historicalTimezoneResolver: deps.historicalTimezoneResolver,
-            nowEpochSeconds: deps.nowEpochSeconds
+            nowEpochSeconds: evaluationInstant
           },
           question
         )
@@ -12053,7 +12575,7 @@ async function buildServerConsultation(request, deps) {
     } catch {
       grounding = GROUNDING_UNAVAILABLE;
     }
-    const priorAxisContext = priorAxisContextFor(previousMeta, grounding);
+    const priorAxisContext = priorAxisContextFor(previousMeta, grounding, continuation);
     if (priorAxisContext.length > 0 && grounding.status === "available") {
       grounding = { ...grounding, priorAxisContext };
     }
@@ -12745,15 +13267,16 @@ async function buildCompatibilityConsultation(request, deps) {
         status: "available",
         evidence: { myungri, ziwei: ziweiEvidence, qimen },
         ...divinationVerdict ? { divinationVerdict } : {},
-        // V4B §27 — THE TIER IS DISPLAY CONTEXT, NOT THE JUDGMENT.
+        // V4C §26 — THE TIER DOES NOT REACH THE PROMPT AT ALL.
         //
-        // This line used to be described in this very file as "the anchor the LLM must verbalize", which is
-        // exactly the coupling §27 removes: `overallLabel` is a band off `bond.points + friction.points +
-        // element.points` against hand-chosen thresholds, computed for the consumer summary card. Anchoring a
-        // paid divination reading to it makes the numeric tier the professional conclusion by the back door.
-        // It is still passed through — the card shows it — but it is labelled as the summary tier, and the
-        // directive below tells the model which of the two actually decides.
-        assessmentSummary: `(요약 카드 표기용 종합 티어) ${selfLabel}·${targetLabel}: ${a.overallLabel} (정서 ${a.dimensions[0].signal}/갈등 ${a.dimensions[1].signal}/오행 ${a.dimensions[2].signal})${a.reducedPrecision ? " · 한 명 이상 시주 미상으로 정밀도 제한" : ""}`,
+        // V4B relabelled this string and left it in `grounding`. That was not enough: `renderGroundingContext`
+        // renders whatever sits in `assessmentSummary` as 【종합 판단(근거 기반)】 — a header that says
+        // "overall judgment, evidence-based" — so a band computed from `bond.points + friction.points +
+        // element.points` was still being presented to the model as the evidence-based overall judgment.
+        // Relabelling the payload could not fix a coupling that lives in the renderer.
+        //
+        // The tier is not passed. The summary card still receives it through the separate `compatibility`
+        // payload below, which never touches the prompt.
         engineVersion: "compatibility-engine@1.0.0"
       };
       compatibility = {
@@ -12804,7 +13327,8 @@ async function buildCompatibilityConsultation(request, deps) {
     return { ok: false, reason: "LLM_FAILED" };
   }
   if (typeof raw !== "string" || raw.trim().length === 0) return { ok: false, reason: "LLM_FAILED" };
-  const negativePairTier = compatibility?.overall === "NEEDS_CARE" || compatibility?.overall === "CHALLENGING";
+  const structuralVerdict = safeGrounding.status === "available" ? safeGrounding.divinationVerdict ?? null : null;
+  const structurallyHard = structuralVerdict !== null && AGAINST_STANCES.includes(structuralVerdict.direction);
   const guard = await classifyWithGuards({
     raw,
     grounding: safeGrounding,
@@ -12812,7 +13336,7 @@ async function buildCompatibilityConsultation(request, deps) {
     forbidWinner: plan.intents.includes("COMPARISON") || plan.intents.includes("RANKING"),
     polarity: plan.polarity,
     forbidCompatibilityHarm: true,
-    requireConstructive: negativePairTier,
+    requireConstructive: structurallyHard,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(`${CERTAINTY_REGEN_DIRECTIVE}

@@ -10,6 +10,7 @@ import {
   type DataReliability, type DivinationJudgment, type DomainSubJudgment, type EvidenceStrength,
   type JudgmentDomain, type JudgmentEvidence, type QuestionDirectness, type Stance,
 } from '../contracts';
+import { agreedHeadline, unresolvedHeadline } from '../axisOntology';
 import { analyzeLayer, type LayerAnalysis } from '../myungriLayer';
 import { readNatalBaseline } from '../myungriNatal';
 import type { MyungriJudgeInput } from '../myungriJudge';
@@ -85,6 +86,11 @@ function strengthOf(p: ReasonedProposition): EvidenceStrength {
 const answering = (r: Resolution): ReasonedProposition[] =>
   (r.kind === 'SINGLE' ? [r.primary] : r.members);
 const agreedMembers = (r: Resolution): ReasonedProposition[] => (r.kind === 'AGREED' ? r.members : []);
+const SCOPE_WIDTH: Record<string, number> = {
+  PRESENT_MOMENT: 0, WOLWOON: 1, SEWOON: 2, DAEWOON: 3, NATAL: 4, UNSCOPED: 5,
+};
+const narrowestScopeOf = (ps: ReasonedProposition[]) =>
+  [...ps].sort((a, b) => SCOPE_WIDTH[a.temporalScope] - SCOPE_WIDTH[b.temporalScope])[0]?.temporalScope;
 /**
  * The stance an AGREED set actually supports.
  *
@@ -186,18 +192,22 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     ...(input.hourKnown ? {} : { applicabilityReason: '출생시간이 확정되지 않아 시(時)에 기대는 해석은 제한됩니다.' }),
     dataReliability: reliability,
     questionDomain: asked,
-    temporalScope: primary?.temporalScope ?? agreedMembers(resolution)[0]?.temporalScope ?? 'NATAL',
+    // §28 — the NARROWEST layer the agreeing set covers, decided by the layers themselves rather than by
+    // which member happened to be first.
+    temporalScope: primary?.temporalScope ?? narrowestScopeOf(agreedMembers(resolution)) ?? 'NATAL',
     stance: primary ? stanceOf(primary) : agreedStance(resolution),
     dominantConclusion: primary?.assertion
       // §7 — several conclusions stand and every one points the same way. The direction is answerable, but no
       // single conclusion owns it, so ALL of them are stated rather than the first one being promoted.
       ?? (resolution.kind === 'AGREED'
-        ? resolution.members.map((p) => p.assertion).join(' 그리고 ')
+        ? agreedHeadline(asked, resolution.direction, resolution.members.length)
         // §7/§31 — an unsettled set is stated as one, with every conclusion named. V4B promoted whichever
         // conclusion happened to sort first and never mentioned the others; saying "근거가 없습니다" here
         // would be worse still, because the findings exist and simply do not agree.
         : resolution.kind === 'UNRESOLVED'
-          ? `이 축에는 서로 다른 결론이 함께 성립합니다: ${resolution.members.map((p) => p.assertion).join(' / ')} 한쪽으로 정하지 않겠습니다.`
+          // The members themselves are reported as `internalContradictions` and as evidence — not concatenated
+          // into the headline, where the engine's own vocabulary would become the professional answer.
+          ? unresolvedHeadline(asked)
           : blocked.length > 0
             ? '명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.'
             : '명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.'),

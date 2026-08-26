@@ -314,6 +314,15 @@ export type CrossDivinationVerdict = {
 
   /** The decisive answer, one plain-Korean sentence. */
   primaryConclusion: string;
+  /**
+   * V4C §28 — WHICH conclusions the headline stands on, by ID.
+   *
+   * A "왜?" turn used to re-find the headline by matching `primaryConclusion` against every proposition's
+   * assertion. That is display text acting as identity: the moment the headline is composed rather than copied
+   * — which it must be whenever several conclusions stand and none owns the answer — the match fails and the
+   * explanation silently has nothing to walk. Empty means the verdict declined; it never means "look it up".
+   */
+  headlinePropositionIds: string[];
   /** The direction of that conclusion. Terminal MIXED is impossible by construction. */
   direction: Stance;
 

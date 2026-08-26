@@ -16,6 +16,11 @@ import {
 
 const NEAR: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
 /** Axis names for user-facing assertions — two conclusions about different axes must not read identically. */
+/** Which layer a near-term claim is about, named so two layers never read as the same sentence. */
+const LAYER_LABEL: Record<TemporalScope, string> = {
+  NATAL: '원국', DAEWOON: '지금의 큰 흐름', SEWOON: '올해', WOLWOON: '이 달',
+  PRESENT_MOMENT: '지금 이 시점', UNSCOPED: '시기와 무관하게',
+};
 const AXIS_LABEL: Partial<Record<JudgmentDomain, string>> = {
   MONEY_INFLOW: '돈이 들어오는 쪽', MONEY_RETENTION: '돈이 남는 쪽', OPPORTUNITY: '기회가 오는 쪽',
   OUTCOME: '잡았을 때 남는 쪽', CAREER: '자리·직업', MOVEMENT: '이동', RELATION_BOND: '끌리는 힘',
@@ -23,6 +28,19 @@ const AXIS_LABEL: Partial<Record<JudgmentDomain, string>> = {
   TIMING: '지금 시점', HEALTH_ENERGY: '몸·기운', DECISION: '결정', GENERAL: '전반',
 };
 const STRUCTURAL: TemporalScope[] = ['NATAL', 'DAEWOON'];
+/**
+ * V4C §21 — NARROWEST-FIRST, DETERMINISTICALLY.
+ *
+ * A conclusion that genuinely spans several layers still has to declare ONE scope, and V4B took it from
+ * whichever premise the array happened to yield first. That is array order deciding a user-visible temporal
+ * claim. The layer a claim is most immediately about is the narrowest one it stands on, and "narrowest" is a
+ * fixed property of the layers, not of the iteration.
+ */
+const SCOPE_WIDTH: Record<TemporalScope, number> = {
+  PRESENT_MOMENT: 0, WOLWOON: 1, SEWOON: 2, DAEWOON: 3, NATAL: 4, UNSCOPED: 5,
+};
+const narrowestScope = (ps: { temporalScope: TemporalScope }[]): TemporalScope =>
+  ps.map((p) => p.temporalScope).sort((a, b) => SCOPE_WIDTH[a] - SCOPE_WIDTH[b])[0];
 
 /**
  * Content-addressed id: the SAME pattern over the SAME premises is the SAME conclusion, so the fixed-point
@@ -101,7 +119,7 @@ const CONTESTED_SHARE: DerivationRule = {
     if (rivals.length === 0 || wealth.length === 0) return [];
     return [make('CONTESTED_SHARE', ctx, {
       axis: 'MONEY_RETENTION',
-      temporalScope: rivals[0].temporalScope,
+      temporalScope: narrowestScope(rivals),
       target: target('COMPOSITE', RIVAL_VS_WEALTH_KEY(rivals, wealth), '벌이는 몫과 남는 몫'),
       assertion: '원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.',
       conclusionType: 'COMPOUND',
@@ -155,18 +173,32 @@ const DIRECTION_VS_EXECUTION: DerivationRule = {
       // ownership of the DIRECTION while a squarely-evidenced near-term obstruction was demoted to a matter of
       // timing — the audit's "weak grounded positive manufactures FOR_BUT_LATER". A half that cannot stand on
       // its own does not get to own half of a compound; the two premises simply remain separate findings.
-      if (sideAdequacy([open]) !== 'ADEQUATE' || sideAdequacy(strikes) !== 'ADEQUATE') continue;
-      out.push(make('DIRECTION_VS_EXECUTION', ctx, {
-        axis: open.questionAxis,
-        temporalScope: strikes[0].temporalScope,
-        target: open.target,
-        assertion: open.target.label + '은(는) 큰 흐름에서 열려 있는 자리인데, 가까운 시기에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.',
-        conclusionType: 'COMPOUND',
-        direction: 'RESTRICTED',
-        restriction: 'TIMING',
-        support: [open],
-        oppose: strikes,
-      }));
+      if (sideAdequacy([open]) !== 'ADEQUATE') continue;
+      // V4C §21/§22 — ONE CONCLUSION PER NEAR LAYER.
+      //
+      // V4B merged every near-term strike into a single conclusion whose `temporalScope` was
+      // `strikes[0].temporalScope`. A year-level pressure and a month-level window then became one claim owned
+      // by whichever premise sorted first: deleting the 월운 premise left the conclusion standing (now silently
+      // "about" 세운), so the two layers could never be shown to have independent effects — and the user was
+      // told about one timing when two were in play. Each near layer now derives its own compound, and they
+      // stand or fall separately.
+      const byScope = new Map<TemporalScope, DivinationPremise[]>();
+      for (const p of strikes) byScope.set(p.temporalScope, [...(byScope.get(p.temporalScope) ?? []), p]);
+      for (const [scope, layerStrikes] of byScope) {
+        if (sideAdequacy(layerStrikes) !== 'ADEQUATE') continue;
+        out.push(make('DIRECTION_VS_EXECUTION', ctx, {
+          axis: open.questionAxis,
+          temporalScope: scope,
+          target: open.target,
+          assertion: open.target.label + '은(는) 큰 흐름에서 열려 있는 자리인데, ' + LAYER_LABEL[scope]
+            + '에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.',
+          conclusionType: 'COMPOUND',
+          direction: 'RESTRICTED',
+          restriction: 'TIMING',
+          support: [open],
+          oppose: layerStrikes,
+        }));
+      }
     }
     return out;
   },
@@ -181,12 +213,16 @@ const CONVERGENT_SEAT_PRESSURE: DerivationRule = {
     const frictions = premises.filter((p) => p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS');
     const bySeat = new Map<string, DivinationPremise[]>();
     for (const p of frictions) bySeat.set(p.target.key, [...(bySeat.get(p.target.key) ?? []), p]);
-    for (const [, group] of bySeat) {
+    for (const [, unordered] of bySeat) {
+      // §28 — every member shares the seat (that is the grouping key), but not necessarily the axis. Ordering
+      // the group by its own content keeps the reported axis independent of premise emission order.
+      const group = [...unordered].sort((a, b) => a.questionAxis.localeCompare(b.questionAxis)
+        || SCOPE_WIDTH[a.temporalScope] - SCOPE_WIDTH[b.temporalScope]);
       const scopes = new Set(group.map((p) => p.temporalScope));
       if (scopes.size < 2) continue; // one layer hitting once is not convergence
       out.push(make('CONVERGENT_SEAT_PRESSURE', ctx, {
         axis: group[0].questionAxis,
-        temporalScope: group.find((p) => NEAR.includes(p.temporalScope))?.temporalScope ?? group[0].temporalScope,
+        temporalScope: narrowestScope(group),
         target: group[0].target,
         assertion: group[0].target.label + '에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.',
         conclusionType: 'CAUSAL',
@@ -215,7 +251,7 @@ const INFLOW_VS_RETENTION: DerivationRule = {
     if (inflow.length === 0 || (retentionRisk.length === 0 && contested.length === 0)) return [];
     return [make('INFLOW_VS_RETENTION', ctx, {
       axis: 'MONEY_INFLOW',
-      temporalScope: inflow[0].temporalScope,
+      temporalScope: narrowestScope(inflow),
       // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
       target: target('COMPOSITE',
         'INFLOW_VS_RETENTION:' + memberKeys(inflow) + '.' + memberKeys(retentionRisk), '유입과 보유'),
@@ -251,7 +287,7 @@ const RECURRING_FRICTION_CAUSE: DerivationRule = {
       if (again.length === 0) continue;
       out.push(make('RECURRING_FRICTION_CAUSE', ctx, {
         axis: weak.questionAxis,
-        temporalScope: again[0].temporalScope,
+        temporalScope: narrowestScope(again),
         target: weak.target,
         assertion: '반복해서 부딪히는 데는 이유가 있다. ' + weak.target.label
           + '가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.',

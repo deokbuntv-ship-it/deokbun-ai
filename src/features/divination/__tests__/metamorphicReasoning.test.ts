@@ -378,12 +378,27 @@ describe('§16/§17 — the runtime cannot award itself REAL', () => {
   it('conclusion identity is semantic, so a re-derived conclusion is still recognisable', () => {
     const open = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'DAEWOON', concept: 'SEAT_CONTACT', semanticRelation: 'CONNECTS', assertion: 'o' });
     const hit = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'SEWOON', concept: 'SEAT_CONTACT', semanticRelation: 'DESTABILIZES', assertion: 'h' });
-    // A SECOND strike on the SAME seat is cited by the same conclusion, so the content-addressed id moves.
-    const hit2 = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'WOLWOON', concept: 'SEAT_CONTACT', semanticRelation: 'CONSTRAINS', assertion: 'h2' });
+    // A SECOND strike IN THE SAME LAYER is cited by the same conclusion, so the content-addressed id moves.
+    const hit2 = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'SEWOON', concept: 'SEAT_CONTACT', semanticRelation: 'CONSTRAINS', assertion: 'h2' });
     const p1 = derive([open, hit]).find((x) => x.derivationRule === 'DIRECTION_VS_EXECUTION')!;
     const p2 = derive([open, hit, hit2]).find((x) => x.derivationRule === 'DIRECTION_VS_EXECUTION')!;
     expect(p1.id).not.toBe(p2.id); // content-addressed ids differ…
     expect(conclusionKey(p1)).toBe(conclusionKey(p2)); // …but the conclusion is the same conclusion
+  });
+
+  // V4C §21 — a strike in a DIFFERENT layer is a DIFFERENT conclusion, not more evidence for this one.
+  it('a strike in another layer derives its OWN conclusion instead of joining this one', () => {
+    const open = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'DAEWOON', concept: 'SEAT_CONTACT', semanticRelation: 'CONNECTS', assertion: 'o' });
+    const year = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'SEWOON', concept: 'SEAT_CONTACT', semanticRelation: 'DESTABILIZES', assertion: 'y' });
+    const month = premise({ target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'WOLWOON', concept: 'SEAT_CONTACT', semanticRelation: 'CONSTRAINS', assertion: 'm' });
+    const both = derive([open, year, month]).filter((x) => x.derivationRule === 'DIRECTION_VS_EXECUTION');
+    expect(both).toHaveLength(2);
+    expect(new Set(both.map((p) => p.temporalScope))).toEqual(new Set(['SEWOON', 'WOLWOON']));
+    // Two conclusions about the same seat in different layers are two IDENTITIES, or one would shadow the other.
+    expect(new Set(both.map(conclusionKey)).size).toBe(2);
+    // The year conclusion is byte-identical to the one derived without the month layer at all.
+    const yearOnly = derive([open, year]).find((x) => x.derivationRule === 'DIRECTION_VS_EXECUTION')!;
+    expect(both.find((p) => p.temporalScope === 'SEWOON')!.id).toBe(yearOnly.id);
   });
 });
 
@@ -409,7 +424,10 @@ describe('§21 — exact temporal scopes are preserved, not flattened to STRUCTU
 
     const before = derive(all).filter((p) => p.derivationRule === 'CONVERGENT_SEAT_PRESSURE');
     expect(before).toHaveLength(1);
-    expect(before[0].temporalScope).toBe('SEWOON'); // nearest NEAR scope owns the conclusion
+    // V4C §21 — the NARROWEST layer owns a multi-layer conclusion, decided by the layers themselves.
+    // V4B took `group.find(NEAR)`, i.e. whichever near premise the array yielded first, so the same situation
+    // could be reported as a 세운 claim or a 월운 claim depending on premise emission order.
+    expect(before[0].temporalScope).toBe('WOLWOON');
 
     const withoutMonth = derive(all.filter((p) => p.id !== wolwoon.id));
     // the year-level pressure is gone as CONVERGENCE (one layer is not convergence) …
