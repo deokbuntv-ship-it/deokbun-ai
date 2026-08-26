@@ -1,4 +1,4 @@
-// V4C §32 — KERNEL ONTOLOGY + EVALUATOR QA PACK GENERATOR.
+// V4D §37 — KERNEL INTEGRITY QA PACK GENERATOR (grown from the V4C §32 pack it supersedes).
 //
 // The V4B pack certified whatever list IT built (`standing.filter(rule !== PRIMITIVE)`) and compared TOTALS
 // with the runtime's census. Equal totals cannot detect a conclusion present in one list and absent from the
@@ -17,7 +17,7 @@ import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation'
 import type { DigestProvider } from '@/features/interpretation';
 import { buildConsultationGrounding } from '@/features/chat/services/consultationGrounding';
 import {
-  candidatePropositions, screenAll,
+  candidatePropositions, claimKind, screenAll,
   type CrossDivinationVerdict, type DerivationContext, type ReasonedProposition,
 } from '@/features/divination';
 import {
@@ -99,6 +99,16 @@ function certifyAll(v: CrossDivinationVerdict): { p: ReasonedProposition; c: Cer
   }));
 }
 
+/** §37 — the declared load-bearing structure of a conclusion's inputs, or "—" when the rule declared none. */
+const groupIds = (p: ReasonedProposition, role: 'REQUIRED' | 'ALTERNATIVE'): string => {
+  const groups = (p.supportGroups ?? []).filter((g) => g.role === role);
+  if (groups.length === 0) return '—';
+  const code = (x: string) => '`' + x + '`';
+  return groups
+    .map((g) => `${g.label}: ${g.ids.map(code).join(', ')}`)
+    .join(' · ');
+};
+
 const mutationRow = (m: MutationResult): string =>
   `| \`${m.kind}\` | ${m.label} | ${m.required ? '**필수**' : '참고'} | ${m.expect} | ${m.observed} | ${m.changed ? '✅' : '—'} |`;
 
@@ -128,6 +138,12 @@ function renderCandidate(p: ReasonedProposition, c: Certification): string {
     `| CONCLUSION_TYPE | ${p.conclusionType}${p.restriction ? ` · ${p.restriction}` : ''} |`,
     `| TEMPORAL_SCOPE | ${p.temporalScope} |`,
     `| DERIVATION_RULE | \`${p.derivationRule}\` |`,
+    `| DISCIPLINE | ${p.discipline} |`,
+    `| DIRECTION | ${p.direction} |`,
+    `| RESTRICTIONS | ${p.restriction ?? '—'} |`,
+    `| CLAIM_KIND | ${claimKind(p)} |`,
+    `| REQUIRED_PARENT_IDS | ${groupIds(p, 'REQUIRED')} |`,
+    `| ALTERNATIVE_SUPPORT_GROUPS | ${groupIds(p, 'ALTERNATIVE')} |`,
     `| SUPPORTING_PARENTS | ${p.supportingPremiseIds.length === 0 ? '—' : p.supportingPremiseIds.map((x) => `\`${x}\``).join(', ')} |`,
     `| OPPOSING_PARENTS | ${p.opposingPremiseIds.length === 0 ? '—' : p.opposingPremiseIds.map((x) => `\`${x}\``).join(', ')} |`,
     `| DERIVED_FROM | ${p.derivedFromPropositionIds.length === 0 ? '—' : p.derivedFromPropositionIds.map((x) => `\`${x}\``).join(', ')} |`,
@@ -144,7 +160,7 @@ function renderCandidate(p: ReasonedProposition, c: Certification): string {
   ].join('\n');
 }
 
-describe('V4C kernel ontology + evaluator QA pack (§32)', () => {
+describe('V4D kernel integrity QA pack (§37)', () => {
   it('generates the pack, and the certified population IS the runtime population', async () => {
     const produced: { s: Scenario; v: CrossDivinationVerdict }[] = [];
     for (const s of SCENARIOS) {
@@ -192,9 +208,9 @@ describe('V4C kernel ontology + evaluator QA pack (§32)', () => {
 
     const groups = [...new Set(SCENARIOS.map((s) => s.group))];
     const doc = [
-      '# DIVINATION V4C — KERNEL ONTOLOGY + EVALUATOR QA PACK',
+      '# DIVINATION V4D — KERNEL INTEGRITY QA PACK',
       '',
-      '> 자동 생성 문서입니다. `npx jest generateV4cKernelQaPack` 으로 재생성됩니다.',
+      '> 자동 생성 문서입니다. `npx jest generateV4dKernelQaPack` 으로 재생성됩니다.',
       '> 여기의 분류는 **엔진이 스스로 붙인 라벨이 아닙니다.** 후보마다 그 후보의 입력을 지우고·뒤집고·',
       '> 대상을 바꾸고·시기를 옮긴 뒤 다시 유도해서, **그 결론이 실제로 움직였는지**를 관찰한 결과입니다.',
       '',
@@ -264,7 +280,7 @@ describe('V4C kernel ontology + evaluator QA pack (§32)', () => {
     ].join('\n');
 
     fs.writeFileSync(
-      path.join(process.cwd(), 'docs/DIVINATION_V4C_KERNEL_ONTOLOGY_EVALUATOR_QA_PACK.md'),
+      path.join(process.cwd(), 'docs/DIVINATION_V4D_KERNEL_INTEGRITY_QA_PACK.md'),
       doc,
       'utf8',
     );

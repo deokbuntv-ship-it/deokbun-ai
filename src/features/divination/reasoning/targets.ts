@@ -28,6 +28,7 @@ export type TargetKind =
   | 'BOARD_SEAT'          // 기문둔갑 판
   | 'DOCTRINE_GAP'        // 채택 학파가 없어 판정을 보류한 지점
   | 'ADAPTED_READING'     // 전제 그래프가 없는 학문이 내놓은 "이 축에 대한 판단" 자체
+  | 'ASKED_MATTER'        // 질문이 지목한 사안 그 자체 (자리·궁·판이 아니라 "무엇을 물었는가")
   | 'COMPOSITE';          // 서로 다른 대상 사이의 관계를 다루는 복합 결론
 
 // ── canonical ids for the two disciplines that are NOT on the premise graph ──────────────────────
@@ -82,6 +83,19 @@ const SEAT = new Set(['DAY', 'HOUR', 'MONTH', 'YEAR']);
 const FAMILY = new Set(['WEALTH', 'OFFICER', 'OUTPUT', 'PEER', 'RESOURCE']);
 const SCOPE = new Set(['NATAL', 'DAEWOON', 'SEWOON', 'WOLWOON', 'PRESENT_MOMENT', 'UNSCOPED']);
 const FOOTING = new Set(['SEASON', 'ROOT']);
+/**
+ * V4D §10 — THE MATTER THE QUESTION NAMED.
+ *
+ * NOT new doctrine and NOT a new Korean keyword table: these ids are a 1:1 ASCII renaming of the topics the
+ * server ALREADY classifies every question into. They exist because the axis map collapses several of them
+ * onto one axis (사업/창업 → OPPORTUNITY, 이직/이사 → MOVEMENT), so the axis alone cannot say WHICH matter was
+ * asked — and a question that names none has NO asked target, which §11 requires be left UNKNOWN rather than
+ * inferred from the axis.
+ */
+const ASKED_MATTER = new Set([
+  'BUSINESS', 'STARTUP', 'JOB_CHANGE', 'OCCUPATION', 'MONEY', 'MARRIAGE', 'ROMANCE',
+  'RELATIONSHIP', 'HEALTH', 'EXAM', 'RELOCATION', 'CONTRACT',
+]);
 const PALACE_KEYS = new Set(Object.keys(PALACE_LABEL));
 
 /** §25 — the class of an adapted reading that names no structure at all. */
@@ -201,6 +215,7 @@ const VALIDATE: Record<TargetKind, IdValidator> = {
     const rest = id.slice(at + 1);
     return DISCIPLINE.has(id.slice(0, at)) && (AXIS.has(rest) || rest === ADAPTED_CONTEXT);
   },
+  ASKED_MATTER: oneOf(ASKED_MATTER),
   COMPOSITE: validComposite,
 };
 
@@ -297,6 +312,25 @@ export function adaptedContextTarget(discipline: Discipline, label: string): Sem
 
 export function qimenBoardTarget(): SemanticTarget {
   return target('BOARD_SEAT', 'QIMEN_BOARD', '기문 국');
+}
+
+const ASKED_MATTER_LABEL: Record<string, string> = {
+  BUSINESS: '사업', STARTUP: '창업', JOB_CHANGE: '이직', OCCUPATION: '직업', MONEY: '재물',
+  MARRIAGE: '결혼', ROMANCE: '연애', RELATIONSHIP: '인간관계', HEALTH: '건강', EXAM: '시험',
+  RELOCATION: '이사', CONTRACT: '계약',
+};
+
+/**
+ * The matter the question named, or null for UNKNOWN.
+ *
+ * Returns null rather than throwing, unlike every other constructor here, because its input comes from a
+ * CLASSIFIER rather than a call-site literal: an unmapped topic is an honest UNKNOWN, not a bug worth
+ * crashing the paid path over.
+ */
+export function askedMatterTarget(id: string | null | undefined): SemanticTarget | null {
+  if (!id) return null;
+  const label = ASKED_MATTER_LABEL[id];
+  return label ? target('ASKED_MATTER', id, label) : null;
 }
 
 const SEAT_LABEL: Record<string, string> = { YEAR: '년주', MONTH: '월주', DAY: '일주', HOUR: '시주' };

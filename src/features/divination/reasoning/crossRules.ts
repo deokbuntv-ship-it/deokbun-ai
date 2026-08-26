@@ -133,6 +133,8 @@ export const SUBORDINATION_TEXT: Record<SubordinationReason, string> = {
 
 export type SubordinationContext = {
   askedAxis: JudgmentDomain;
+  /** V4D §11 — the matter the question named, or null for UNKNOWN. Required, so a caller must decide. */
+  askedTarget: SemanticTarget | null;
   /** True when the QUESTION is about a moment ("지금 계약해도 될까요?"), which is what makes time decisive. */
   asksTiming: boolean;
 };
@@ -176,6 +178,10 @@ const TESTS: Record<SubordinationReason, Test> = {
   // axis, about DIFFERENT structures, and exactly one of those structures is a concrete seat the discipline
   // actually read — the other being a composite, a doctrine gap or an unscoped layer, i.e. real context.
   EXACT_TARGET_VS_CONTEXT: (a, b, _p, ctx) => {
+    // V4D §11 — this reason's own sentence promises "물어보신 그 대상을 직접 다루고". When the question named
+    // no matter there IS no such 대상, so the reason is false as written and abstains rather than demoting a
+    // claim on a comparison it cannot make. UNKNOWN stays UNKNOWN; it is never back-filled from the axis.
+    if (!ctx.askedTarget) return null;
     if (sameTarget(a.target, b.target)) return null;
     if (a.questionAxis !== ctx.askedAxis || b.questionAxis !== ctx.askedAxis) return null;
     const concrete = (p: ReasonedProposition) => CONCRETE_TARGET_KINDS.has(p.target.kind);
@@ -401,7 +407,9 @@ export function deriveCross(
   ctx: DerivationContext & { asksTiming?: boolean },
 ): CrossDerivation[] {
   const byId = new Map(premises.map((p) => [p.id, p]));
-  const subCtx: SubordinationContext = { askedAxis: ctx.askedAxis, asksTiming: ctx.asksTiming ?? false };
+  const subCtx: SubordinationContext = {
+    askedAxis: ctx.askedAxis, askedTarget: ctx.askedTarget ?? null, asksTiming: ctx.asksTiming ?? false,
+  };
 
   /**
    * V4D §6/§7 — THE FULL SEMANTIC IDENTITY OF A CROSS CANDIDATE.

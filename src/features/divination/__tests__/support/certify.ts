@@ -36,17 +36,33 @@ import {
 /**
  * §16 — SEMANTIC IDENTITY of a conclusion: everything that says WHAT IT IS ABOUT, and nothing that says what
  * it CLAIMS. Stable across re-derivation (derived ids are content-addressed on premise ids, so they change),
- * and complete enough that no other conclusion can be mistaken for this one.
+ * renderer-independent, and complete enough that no other conclusion can be mistaken for this one.
  *
- * Direction, restriction and assertion are deliberately EXCLUDED — those are the components a mutation is
- * supposed to move, and folding them into identity would report every real change as "absent".
+ * V4D §16 — WHAT IS IN, AND THE TWO THINGS DELIBERATELY LEFT OUT.
  *
- * The TEMPORAL SCOPE is included, because §21 makes it identity: a year-level claim and a month-level claim
- * about the same seat are two conclusions, not one conclusion with a field. Without it they would share a key
- * and each would be certified against whichever the re-derivation happened to return first.
+ * ADDED: `discipline` (a 명리 and a CROSS conclusion about one seat are two conclusions) and
+ * `questionIntent` (the same rule answering a DECISION and a CAUSE_WHY question states different things).
+ *
+ * NOT ADDED — `direction` and `restriction`. §16 lists them, and including them would be a MEASURABLE
+ * WEAKENING, not a tightening. The harness re-finds a conclusion by this key and then reports which component
+ * moved; a mutation that changed only the direction would fail the key lookup and be reported ABSENT, i.e.
+ * "the conclusion is gone". That reading is wrong on its face, and it is actively harmful for the mutations
+ * whose REQUIRED expectation is ABSENT (re-targeting a parent must DELETE the conclusion): a conclusion that
+ * merely flipped direction would satisfy that expectation without having gone anywhere. Direction and
+ * restriction are therefore OBSERVED components, and §17's per-component expectations are what make them
+ * load-bearing — see `Expectation`.
+ *
+ * NOT ADDED — the ASKED TARGET. It is a property of the RUN, constant across every conclusion in the
+ * population being certified, so it cannot discriminate between any two of them. Adding it would lengthen
+ * every key and separate nothing.
+ *
+ * The TEMPORAL SCOPE is in, because §21 makes it identity: a year-level claim and a month-level claim about
+ * the same seat are two conclusions, not one conclusion with a field.
  */
-export const conclusionKey = (p: ReasonedProposition): string =>
-  [p.derivationRule, p.subject, p.questionAxis, p.target.key, p.conclusionType, p.temporalScope].join('|');
+export const conclusionKey = (p: ReasonedProposition): string => [
+  p.derivationRule, p.discipline, p.subject, p.questionIntent, p.questionAxis,
+  p.target.key, p.conclusionType, p.temporalScope,
+].join('|');
 
 /** WHICH component of the conclusion moved. Ordered from strongest evidence of dependence to weakest. */
 export type Delta = 'ABSENT' | 'DIRECTION' | 'RESTRICTION' | 'ASSERTION' | 'NONE';
@@ -60,10 +76,23 @@ function observe(before: ReasonedProposition, after: ReasonedProposition[]): Del
   return 'NONE';
 }
 
-/** What a mutation is REQUIRED to produce for the conclusion to count as depending on that input. */
-export type Expectation = 'ABSENT' | 'SEMANTIC' | 'ANY';
+/**
+ * What a mutation is REQUIRED to produce — V4D §17, which asks that an expectation name the COMPONENT rather
+ * than settle for "something moved".
+ *
+ *   ABSENT     the conclusion must be GONE. Nothing weaker counts.
+ *   DIRECTION  the conclusion's DIRECTION (or its restriction, which is a direction's shape) must move. A
+ *              re-worded assertion does NOT satisfy this: a cross conclusion that survives its parent pointing
+ *              the other way with only a sentence change is reading that the parent EXISTS, not what it says.
+ *   SEMANTIC   the CLAIM changed — absent, re-directed, re-restricted or re-stated.
+ *   ANY        informational; any observable movement counts.
+ */
+export type Expectation = 'ABSENT' | 'DIRECTION' | 'SEMANTIC' | 'ANY';
 const satisfies = (expect: Expectation, observed: Delta): boolean => {
   if (expect === 'ABSENT') return observed === 'ABSENT';
+  if (expect === 'DIRECTION') {
+    return observed === 'ABSENT' || observed === 'DIRECTION' || observed === 'RESTRICTION';
+  }
   // SEMANTIC = the CLAIM changed, not merely its wording drifted with a re-rendered label.
   if (expect === 'SEMANTIC') return observed === 'ABSENT' || observed === 'DIRECTION' || observed === 'RESTRICTION' || observed === 'ASSERTION';
   return observed !== 'NONE';
@@ -457,8 +486,10 @@ export function crossMutations(
     // §18 — DIRECTION MUTATION. A cross conclusion that survives its parent asserting the OPPOSITE is not
     // reading that parent; it is reading that the parent EXISTS.
     const flipped = OPPOSITE_DIRECTION[parent.direction];
+    // §17 — the EXPECTED COMPONENT is the DIRECTION. V4C accepted SEMANTIC here, which a re-worded assertion
+    // satisfies: a conclusion could "pass" the direction attack while its own direction never moved.
     out.push(record(parent, 'REDIRECT_PARENT', `redirect ${parent.discipline}:${parent.direction}→${flipped}`,
-      'SEMANTIC',
+      'DIRECTION',
       flipped === parent.direction
         ? props
         : props.map((p) => (p.id === parent.id ? { ...p, direction: flipped } : p)),

@@ -10,7 +10,7 @@
 // persisted decision metadata do not have to change shape in the same sprint.
 import type { CrossDivinationVerdict, DivinationJudgment, JudgmentDomain, QuestionIntent } from './contracts';
 import { reasonCross, type CrossReasoning } from './reasoning/crossReasoner';
-import type { DivinationPremise, ReasonedProposition } from './reasoning/kernel';
+import type { DivinationPremise, ReasonedProposition, SemanticTarget } from './reasoning/kernel';
 
 export type CrossJudgeInput = {
   question: string;
@@ -30,6 +30,8 @@ export type CrossJudgeInput = {
   myungriPropositions?: ReasonedProposition[];
   /** That discipline's full graph including superseded ancestry — persisted so derivation links resolve. */
   myungriPropositionGraph?: ReasonedProposition[];
+  /** V4D §10 — the matter the question named, or null/absent for UNKNOWN. */
+  askedTarget?: SemanticTarget | null;
   natalBaseline?: string | null;
   currentFlow?: string | null;
 };
@@ -40,6 +42,7 @@ export function judgeCrossReasoned(input: CrossJudgeInput): CrossReasoning {
     question: input.question,
     questionDomain: input.questionDomain,
     questionIntent: input.questionIntent,
+    askedTarget: input.askedTarget,
     judgments: input.judgments,
     asksTiming: input.asksTiming,
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds,

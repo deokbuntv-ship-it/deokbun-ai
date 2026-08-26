@@ -15,7 +15,7 @@ import { adaptJudgment } from './disciplineAdapter';
 import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
   resolveAnswer, screenAll, standingPropositions,
-  type DerivationContext, type DivinationPremise, type ReasonedProposition,
+  type DerivationContext, type DivinationPremise, type ReasonedProposition, type SemanticTarget,
 } from './kernel';
 
 const DISCIPLINE_LABEL: Record<Discipline, string> = { MYUNGRI: '명리', ZIWEI: '자미두수', QIMEN: '기문둔갑' };
@@ -47,6 +47,8 @@ export type CrossReasonInput = {
   question: string;
   questionDomain: JudgmentDomain;
   questionIntent?: QuestionIntent;
+  /** V4D §10 — the matter the question named. Absent → UNKNOWN, which is fail-closed (see DerivationContext). */
+  askedTarget?: SemanticTarget | null;
   judgments: DivinationJudgment[];
   asksTiming: boolean;
   /** Server evaluation instant, preserved so a follow-up restores the same temporal frame (§21). */
@@ -129,7 +131,7 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const subject = input.propositions?.[0]?.subject ?? '본인';
   const applicable = input.judgments.filter((j) => j.applicable);
   const ctx: DerivationContext = {
-    subject, questionIntent: intent, askedAxis: asked,
+    subject, questionIntent: intent, askedAxis: asked, askedTarget: input.askedTarget ?? null,
     dataComplete: applicable.every((j) => j.dataReliability === 'EXACT'),
   };
 

@@ -88,7 +88,7 @@ export type PremiseConcept =
 // against its kind's namespace. It used to be minted at call sites from whatever text was to hand, so a
 // reworded sentence could stop a target matching itself.
 export {
-  sameTarget, target, isCanonicalTarget, ziweiPalaceTarget, qimenBoardTarget, natalSeatPairTarget, natalSeatTarget,
+  sameTarget, target, isCanonicalTarget, ziweiPalaceTarget, qimenBoardTarget, natalSeatPairTarget, natalSeatTarget, askedMatterTarget,
   adaptedReadingTarget,
   adaptedContextTarget,
   compositeTarget,
@@ -366,6 +366,19 @@ export type DerivationContext = {
   subject: string;
   questionIntent: QuestionIntent;
   askedAxis: JudgmentDomain;
+  /**
+   * V4D §10/§11 — the MATTER the question named, or null/absent for UNKNOWN.
+   *
+   * Optional and fail-closed on purpose: a caller that does not supply it gets UNKNOWN, which DISABLES the one
+   * reason that depends on it rather than enabling a claim it cannot back. It is NEVER inferred from
+   * `askedAxis` — the axis map collapses several matters onto one axis, so back-filling would invent a
+   * specificity the question did not have.
+   *
+   * It is CONSTANT for a whole run, so it can gate whether a reason APPLIES and can never discriminate between
+   * two propositions of that run. Comparing it against a proposition's own target is a category error: the two
+   * live in different identity spaces.
+   */
+  askedTarget?: SemanticTarget | null;
   dataComplete: boolean;
 };
 

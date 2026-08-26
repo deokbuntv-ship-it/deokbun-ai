@@ -55,6 +55,7 @@ import { computeQimenBoard, toQimenEvidence } from '@/features/qimen';
 import type { QimenBoard, QimenResult } from '@/features/qimen/domain/qimenTypes';
 import type { ZiweiChart, ZiweiResult } from '@/features/ziwei/domain/ziweiTypes';
 import {
+  askedMatterTarget,
   judgeCross,
   reasonMyungri,
   judgeQimen,
@@ -63,6 +64,7 @@ import {
   type JudgmentDomain,
   type NatalStructureInput,
   type QuestionIntent,
+  type SemanticTarget,
   type TemporalLayerFacts,
 } from '@/features/divination';
 import { buildRelationsToNatal } from '@/features/myungri';
@@ -188,6 +190,32 @@ export function resolveQuestionIntent(question: string): QuestionIntent {
 
 /** Money words the topic classifier may not carry (it never learned 저축/모으다) but that are clearly financial. */
 const MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현금/;
+
+/**
+ * V4D §10/§11 — WHICH MATTER THE QUESTION NAMED, as a canonical identity.
+ *
+ * Resolved by the SAME classifier that already resolves the axis, so this adds no new Korean keyword and no
+ * doctrine — it keeps the topic the server already computes instead of collapsing it. The axis map sends
+ * 사업 and 창업 to one axis, and 이직 and 이사 to another, so the axis alone cannot say WHICH matter was asked.
+ *
+ * Returns null when the question named no matter. §11 is explicit that UNKNOWN must stay UNKNOWN: back-filling
+ * it from the axis would invent a specificity the user never supplied, and the one reason that reads it
+ * abstains instead.
+ */
+const ASKED_MATTER_ID: Record<ConsultationDomain, string | null> = {
+  사업: 'BUSINESS', 창업: 'STARTUP', 이직: 'JOB_CHANGE', 직업: 'OCCUPATION', 재물: 'MONEY',
+  결혼: 'MARRIAGE', 연애: 'ROMANCE', 관계: 'RELATIONSHIP', 건강: 'HEALTH', 시험: 'EXAM',
+  이사: 'RELOCATION', 계약: 'CONTRACT', 전반: null,
+};
+
+export function resolveAskedTarget(question: string): SemanticTarget | null {
+  const q = question ?? '';
+  const topic = classifyConsultationDomain(q);
+  // The same financial widening `resolveJudgmentDomain` applies below: "저축이 남을까요?" classifies as 전반
+  // but is plainly about money, and the axis already honours that. Mirrored, not re-invented.
+  if (topic === '전반') return MONEY_SUBJECT.test(q) ? askedMatterTarget('MONEY') : null;
+  return askedMatterTarget(ASKED_MATTER_ID[topic]);
+}
 
 export function resolveJudgmentDomain(question: string): JudgmentDomain {
   const q = question ?? '';
@@ -528,7 +556,8 @@ export async function buildConsultationGrounding(
       judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
     ];
     divinationVerdict = judgeCross({
-      question: q, questionDomain, judgments, asksTiming, questionIntent,
+      question: q, questionDomain,
+      askedTarget: resolveAskedTarget(q), judgments, asksTiming, questionIntent,
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
       myungriPropositions: myungriReasoning.standing,

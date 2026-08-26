@@ -103,6 +103,7 @@ export {
   isCanonicalTarget,
   natalSeatPairTarget,
   natalSeatTarget,
+  askedMatterTarget,
   ziweiPalaceTarget,
   qimenBoardTarget,
   adaptedReadingTarget,
