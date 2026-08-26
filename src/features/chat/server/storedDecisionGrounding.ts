@@ -131,6 +131,22 @@ export function priorAxisContextFor(
   const refinement = refineOnAxis(prior, nowAxis);
   if (!sameAxis && refinement.existing.length === 0 && refinement.premises.length === 0) return [];
 
+  // V4D §20 — WHEN THE GRAPH WAS EXTENDED, DO NOT SAY IT TWICE.
+  //
+  // A refinement now re-derives the STANDING graph rather than building a second one, so the current verdict
+  // and the prior one share nodes and the verdict directive already carries these chains. Repeating them here
+  // would hand the model the same derivation twice and invite it to read one finding as two. The continuity
+  // header still goes out — the model must still be told this turn continues the last one.
+  const extended = current.divinationVerdict?.propositions
+    .some((p) => prior.propositions.some((q) => q.id === p.id)) ?? false;
+  if (extended) {
+    return [
+      `앞선 질문: "${refinement.originalQuestion}" (축 ${refinement.originalAxis}) → 판정 ${prior.direction}`,
+      `앞선 판정 결론: ${prior.primaryConclusion}`,
+      '이 판정은 앞선 판정의 그래프를 그대로 이어서 확장한 것입니다. 근거는 아래 판정 경로에 그대로 있습니다.',
+    ];
+  }
+
   return [
     `앞선 질문: "${refinement.originalQuestion}" (축 ${refinement.originalAxis}) → 판정 ${prior.direction}`,
     `앞선 판정 결론: ${prior.primaryConclusion}`,

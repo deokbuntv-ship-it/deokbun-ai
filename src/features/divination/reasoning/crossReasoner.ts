@@ -85,7 +85,7 @@ export type CrossReasoning = {
  * 됩니다" from the material ARGUING AGAINST that very conclusion. The sides are about the proposition, not
  * about whether the news is good.
  */
-function stanceOf(p: ReasonedProposition): Stance {
+export function stanceOf(p: ReasonedProposition): Stance {
   if (p.conclusionType === 'STRUCTURAL' || p.conclusionType === 'CAUSAL') return 'STRUCTURAL_ANSWER';
   switch (p.direction) {
     case 'FAVORABLE': return p.adequacy.supportAdequacy === 'ADEQUATE' ? 'FOR' : 'CONDITIONAL_FOR';
@@ -103,7 +103,7 @@ function stanceOf(p: ReasonedProposition): Stance {
  * verdict asserts only the weaker claim, because that is the most all of them back. Neither branch picks a
  * member: the first reads a unanimous value, the second falls back to what the shared direction alone licenses.
  */
-const agreedStance = (
+export const agreedStance = (
   members: ReasonedProposition[], shared: ReasonedProposition['direction'],
 ): Stance => {
   const stances = new Set(members.map(stanceOf));

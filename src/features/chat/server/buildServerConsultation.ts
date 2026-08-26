@@ -22,7 +22,10 @@ import {
   SEMANTIC_REJECTION_MESSAGE,
 } from '@/features/chat/prompts/structuredConsultation';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
-import { buildConsultationGrounding } from '@/features/chat/services/consultationGrounding';
+import {
+  buildConsultationGrounding, resolveJudgmentDomain, resolveQuestionIntent,
+} from '@/features/chat/services/consultationGrounding';
+import { classifyTimingQuestion } from '@/features/chat/selectors/qimenActivation';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
 import {
   ANSWER_PLAN_VERSION,
@@ -39,7 +42,7 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
-import { renderVerdictDirective } from '@/features/divination';
+import { extendGraph, renderVerdictDirective } from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -215,6 +218,8 @@ export async function buildServerConsultation(
   //     STORED conclusion (no new decision, even under a version mismatch); "그럼 내년은?" carries the prior
   //     domain onto the NEW next-year target (polarity re-derived by the normal target-scoped path);
   //     "둘 중에는?" describes the prior candidates with NO winner (Option B). "그럼 언제?" stays deferred.
+  /** §23 — set when the standing graph was actually extended this turn (recorded, never acted on). */
+  let graphExtended = false;
   const followUpIntent = classifyFollowUpIntent(question);
   // V4C §23 — A REFINEMENT MUST NOT RESTART THE READING.
   //
@@ -253,22 +258,32 @@ export async function buildServerConsultation(
 
   // 2b) SERVER-owned grounding. WHY is a strict special case: reconstruct from stored A or remain
   //     unavailable. Every other turn uses the current server receipt time and deterministic engines.
+  // V4D §22 — THE EVALUATION INSTANT IS DECIDED ONCE, HERE.
+  //
+  // V4C computed it inside the else-branch below, so it was out of scope by the time
+  // `buildResolvedTemporalContext` ran and that call received the CURRENT clock unconditionally. A refinement
+  // therefore persisted a T2 temporal context — anchor instant, reference year/month, resolved targets — beside
+  // a verdict evaluated at T1. One row cannot answer to two clocks.
+  //
+  // The safety stop above deliberately keeps using the real current time: a hard stop is a real-time event,
+  // not a refinement.
+  const storedInstant = previousMeta?.divinationVerdict?.evaluatedAtEpochSeconds ?? null;
+  const evaluationInstant = continuation === 'REFINE_EXISTING' && storedInstant !== null
+    ? storedInstant
+    : deps.nowEpochSeconds;
+
   let grounding: ConsultationGrounding = GROUNDING_UNAVAILABLE;
   if (followUpIntent === 'WHY') {
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
   } else {
-    // V4C §23/§24 — A REFINEMENT INHERITS THE ORIGINAL EVALUATION INSTANT.
+    // V4C §23/§24 — A REFINEMENT INHERITS THE ORIGINAL EVALUATION INSTANT (decided above, §22).
     //
     // "돈은?" is a continuation of the reading the user already received, so it must be answered from the SAME
     // moment in time. Re-grounding at the current server instant T2 produced a second, unrelated reading whose
     // 세운/월운 layers could differ from the ones the first answer stood on — which is how the two turns came
     // to contradict each other. An explicit "지금 다시 보면?" (REEVALUATE_NOW) is the one case that legitimately
     // wants a NEW instant, and it is classified apart for exactly that reason.
-    const storedInstant = previousMeta?.divinationVerdict?.evaluatedAtEpochSeconds ?? null;
-    const evaluationInstant = continuation === 'REFINE_EXISTING' && storedInstant !== null
-      ? storedInstant
-      : deps.nowEpochSeconds;
     try {
       grounding = toSafeGrounding(
         await buildConsultationGrounding(
@@ -287,6 +302,32 @@ export async function buildServerConsultation(
     // V4B §25 — an axis drilldown is a CONTINUATION, not a second reading. When the previous turn's graph
     // already says something about the axis now being asked, that context rides along so the new answer can
     // connect to the judgment the user already received instead of silently replacing it.
+    // V4D §19/§20 — A REFINEMENT EXTENDS G1; IT DOES NOT REPLACE IT WITH G2.
+    //
+    // The engines above have just rebuilt the same evidence at the same instant T1, which is what makes this
+    // safe: the freshly-built verdict is DISCARDED and the restored graph is re-derived across the newly asked
+    // axis instead, so every conclusion this turn adds cites nodes the previous answer already stood on. The
+    // engine evidence stays (identical by construction — same birth, same instant, same frozen engines).
+    //
+    // Fail-open: if extension throws for any reason, the freshly-built verdict remains and behaviour is
+    // exactly V4C's. A refinement that cannot extend is a worse answer, not a broken one.
+    const restored = continuation === 'REFINE_EXISTING' ? previousMeta?.divinationVerdict ?? null : null;
+    if (restored && grounding.status === 'available') {
+      try {
+        grounding = {
+          ...grounding,
+          divinationVerdict: extendGraph(
+            restored,
+            resolveJudgmentDomain(question),
+            resolveQuestionIntent(question),
+            classifyTimingQuestion(question),
+          ),
+        };
+        graphExtended = true;
+      } catch {
+        graphExtended = false;
+      }
+    }
     const priorAxisContext = priorAxisContextFor(previousMeta, grounding, continuation);
     if (priorAxisContext.length > 0 && grounding.status === 'available') {
       grounding = { ...grounding, priorAxisContext };
@@ -383,11 +424,37 @@ export async function buildServerConsultation(
   const outcome = guard.outcome;
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
-  const resolvedTemporalContext = buildResolvedTemporalContext(question, deps.nowEpochSeconds, effectiveGrounding);
+  // §22 — the SAME instant the verdict was evaluated at. See `evaluationInstant` above.
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
+  // §23 — GRAPH REVISION. Recorded so a later turn (and an audit) can see that this graph is the previous one
+  // extended, or a deliberate restart, rather than an unrelated reading that happened to land in the same
+  // conversation. Purely provenance: nothing downstream branches on it.
+  const graphRevision: ConsultationDecisionMeta['graphRevision'] = storedInstant === null
+    ? undefined
+    : continuation === 'REFINE_EXISTING' && graphExtended
+      ? {
+        schemaVersion: 'graph-revision@1.0.0' as const,
+        kind: 'EXTENDED' as const,
+        previousEvaluatedAtEpochSeconds: storedInstant,
+        evaluationInstantEpochSeconds: evaluationInstant,
+        axis: resolveJudgmentDomain(question),
+      }
+      : continuation === 'REEVALUATE_NOW'
+        ? {
+          schemaVersion: 'graph-revision@1.0.0' as const,
+          kind: 'REEVALUATED' as const,
+          previousEvaluatedAtEpochSeconds: storedInstant,
+          evaluationInstantEpochSeconds: deps.nowEpochSeconds,
+          axis: resolveJudgmentDomain(question),
+        }
+        : undefined;
   const isAuthoritativeWhy = followUpIntent === 'WHY' && followUpDirective !== null && previousMeta !== null;
   const decisionMeta: ConsultationDecisionMeta = isAuthoritativeWhy
     ? previousMeta!
-    : buildConsultationDecisionMeta(question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain);
+    : buildConsultationDecisionMeta(
+      question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain,
+      graphRevision,
+    );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
   const structuredResult =
     outcome.kind === 'ACCEPTED'

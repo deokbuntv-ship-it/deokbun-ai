@@ -50,6 +50,7 @@ export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } fr
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
 export { judgeQimen, doorClass, type QimenJudgeInput } from './qimenJudge';
 export { judgeCross, judgeCrossReasoned, type CrossJudgeInput } from './crossJudge';
+export { extendGraph } from './reasoning/graphExtension';
 export { judgePairMyungri, judgePairZiwei, type PairMyungriJudgeInput } from './compatibilityJudge';
 export { renderVerdictDirective, verdictEvidenceLines, verdictIsDirectional } from './verdictDirective';
 export {

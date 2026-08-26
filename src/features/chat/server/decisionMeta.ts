@@ -22,6 +22,8 @@ export function buildConsultationDecisionMeta(
   // decision persists the CARRIED domain (the bare follow-up question classifies as 전반 on its own). When
   // absent/전반, the domain is classified fresh from the question.
   carriedDomain?: ConsultationDomain | null,
+  // V4D §23 — where this graph came from in this conversation. Provenance only; nothing branches on it.
+  graphRevision?: ConsultationDecisionMeta['graphRevision'],
 ): ConsultationDecisionMeta {
   const domain = carriedDomain && carriedDomain !== '전반' ? carriedDomain : classifyConsultationDomain(question);
   return {
@@ -37,6 +39,7 @@ export function buildConsultationDecisionMeta(
     comparisonContext: plan.comparisonContext,
     // §17 — persist the FULL cross verdict so a later "왜요?" explains the SAME judgment (subject, evidence
     // and contradiction resolution), instead of falling back to a Myungri-only polarity snapshot.
+    ...(graphRevision ? { graphRevision } : {}),
     ...(grounding.status === 'available' && grounding.divinationVerdict
       ? { divinationVerdict: grounding.divinationVerdict }
       : {}),
@@ -553,6 +556,35 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
       ? undefined
       : parseDivinationVerdict(o.divinationVerdict);
   if (o.divinationVerdict !== undefined && o.divinationVerdict !== null && !divinationVerdict) return undefined;
+
+  // V4D §23 — GRAPH PROVENANCE, PARSED ALL-OR-NOTHING. A row that CLAIMS a revision and gets it wrong is
+  // rejected outright: a half-restored provenance record would assert continuity the graph may not have.
+  let graphRevision: ConsultationDecisionMeta['graphRevision'];
+  if (o.graphRevision !== undefined && o.graphRevision !== null) {
+    if (typeof o.graphRevision !== 'object') return undefined;
+    const gr = o.graphRevision as Record<string, unknown>;
+    if (gr.schemaVersion !== 'graph-revision@1.0.0') return undefined;
+    if (gr.kind !== 'EXTENDED' && gr.kind !== 'REEVALUATED') return undefined;
+    if (!isFiniteInteger(gr.previousEvaluatedAtEpochSeconds)) return undefined;
+    if (!isFiniteInteger(gr.evaluationInstantEpochSeconds)) return undefined;
+    if (typeof gr.axis !== 'string') return undefined;
+    // An EXTENDED graph did NOT move in time — that is what distinguishes it from a re-evaluation — and when
+    // the verdict is present it must be the very graph that was extended.
+    if (gr.kind === 'EXTENDED') {
+      if (gr.previousEvaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) return undefined;
+      if (divinationVerdict && divinationVerdict.evaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) {
+        return undefined;
+      }
+    }
+    graphRevision = {
+      schemaVersion: 'graph-revision@1.0.0',
+      kind: gr.kind,
+      previousEvaluatedAtEpochSeconds: gr.previousEvaluatedAtEpochSeconds,
+      evaluationInstantEpochSeconds: gr.evaluationInstantEpochSeconds,
+      axis: gr.axis as ConsultationDecisionMeta['graphRevision'] extends undefined ? never
+        : NonNullable<ConsultationDecisionMeta['graphRevision']>['axis'],
+    };
+  }
   if (evidenceSnapshot && (
     p !== evidenceSnapshot.polarity ||
     o.engineVersion !== evidenceSnapshot.engineVersion ||
@@ -575,6 +607,7 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
     ...(comparisonContext ? { comparisonContext } : {}),
     ...(evidenceSnapshot ? { evidenceSnapshot } : {}),
     ...(divinationVerdict ? { divinationVerdict } : {}),
+    ...(graphRevision ? { graphRevision } : {}),
     resolvedTemporalContext: {
       anchorEpochSeconds: rtc.anchorEpochSeconds,
       timezone: 'Asia/Seoul',

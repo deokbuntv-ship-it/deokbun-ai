@@ -9,7 +9,7 @@ import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider, HistoricalTimezoneResolver } from '@/features/interpretation';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
-import type { CrossDivinationVerdict } from '@/features/divination';
+import type { CrossDivinationVerdict, JudgmentDomain } from '@/features/divination';
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 import type { TargetPolarityDerivation } from '@/features/chat/prompts/grounding';
 import type { ConsultationDomain } from './consultationDomain';
@@ -127,6 +127,28 @@ export type ConsultationDecisionMeta = {
    * subject, its evidence and its contradiction resolution stable across the whole paid session.
    */
   divinationVerdict?: CrossDivinationVerdict | null;
+  /**
+   * V4D §23 — GRAPH PROVENANCE IN THIS CONVERSATION.
+   *
+   * The verdict IS the graph; this says where that graph came from. A refinement EXTENDS the previous graph
+   * (same evaluation instant, new conclusions appended), while an explicit "지금 다시 보면?" deliberately
+   * starts a new evaluation — and V4C could not tell those apart after the fact, because both simply
+   * overwrote the stored verdict.
+   *
+   * Recorded, never acted on: nothing branches on it. It rides inside the existing decision_meta JSONB, so
+   * there is no migration.
+   */
+  graphRevision?: {
+    schemaVersion: 'graph-revision@1.0.0';
+    /** EXTENDED: this graph is the previous one plus new-axis derivations. REEVALUATED: a deliberate restart. */
+    kind: 'EXTENDED' | 'REEVALUATED';
+    /** The instant the PREVIOUS graph was evaluated at. */
+    previousEvaluatedAtEpochSeconds: number;
+    /** The instant THIS graph is evaluated at. Equal to the previous one for EXTENDED. */
+    evaluationInstantEpochSeconds: number;
+    /** The axis this revision was asked about. */
+    axis: JudgmentDomain;
+  };
   evidenceSnapshot?: {
     schemaVersion: 'decision-evidence@1.0.0';
     target: { granularity: 'YEAR' | 'MONTH'; key: number };
