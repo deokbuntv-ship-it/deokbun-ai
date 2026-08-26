@@ -9,7 +9,7 @@
 // settle the question (강약 등급, 용신), the rule does not fire and the premises stay `unresolved`.
 import type { JudgmentDomain, TemporalScope } from '../contracts';
 import {
-  computeAdequacy, PRIMITIVE_RULE, sameTarget, target,
+  computeAdequacy, PRIMITIVE_RULE, sameTarget, sideAdequacy, target,
   type DerivationContext, type DerivationRule, type DivinationPremise, type ReasonedProposition,
   type SemanticTarget,
 } from './kernel';
@@ -65,7 +65,17 @@ function make(
     answersAsked: spec.axis === ctx.askedAxis,
     supportingPremiseIds: support.map((p) => p.id),
     opposingPremiseIds: oppose.map((p) => p.id),
-    derivedFromPropositionIds: (spec.from ?? []).map((p) => p.id),
+    // V4C §6/§7 — A DERIVED CONCLUSION DECLARES ITS PARENTS.
+    //
+    // These rules match on PREMISES, so V4B left `derivedFromPropositionIds` empty and the graph had no edge
+    // between a derived conclusion and the single-premise readings it was built from. Supersession then had to
+    // infer the relationship by counting premises, and answer selection could not tell that one conclusion
+    // already accounted for the others. The edge is stated instead: every premise that produced a primitive
+    // proposition (`role === 'ASSERTS'`, id `p:<premiseId>`) is a parent of the conclusion built on it.
+    derivedFromPropositionIds: [...new Set([
+      ...(spec.from ?? []).map((p) => p.id),
+      ...[...support, ...oppose].filter((p) => p.role === 'ASSERTS').map((p) => `p:${p.id}`),
+    ])],
     unresolvedPremiseIds: (spec.unresolved ?? []).map((p) => p.id),
     doctrineReferences: [...new Set([...support, ...oppose].map((p) => p.doctrineReference))],
     derivationRule: rule,
@@ -92,7 +102,7 @@ const CONTESTED_SHARE: DerivationRule = {
     return [make('CONTESTED_SHARE', ctx, {
       axis: 'MONEY_RETENTION',
       temporalScope: rivals[0].temporalScope,
-      target: target('COMPOSITE', RIVAL_VS_WEALTH_KEY(rivals[0], wealth[0]), '벌이는 몫과 남는 몫'),
+      target: target('COMPOSITE', RIVAL_VS_WEALTH_KEY(rivals, wealth), '벌이는 몫과 남는 몫'),
       assertion: '원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',
@@ -103,8 +113,18 @@ const CONTESTED_SHARE: DerivationRule = {
     })];
   },
 };
-const RIVAL_VS_WEALTH_KEY = (rival: DivinationPremise, wealth: DivinationPremise): string =>
-  'RIVAL_VS_WEALTH:' + rival.target.key + '|' + wealth.target.key;
+/**
+ * V4C §2 — a composite identity names EVERY member, SORTED.
+ *
+ * V4B keyed this from `rivals[0]` and `wealth[0]`, i.e. from premise EMISSION ORDER: with a rival in both 대운
+ * and 세운, the same structural situation produced two different identities depending on which layer was
+ * analysed first, and the "same" composite stopped matching itself across runs.
+ */
+const memberKeys = (ps: DivinationPremise[]): string =>
+  [...new Set(ps.map((p) => p.target.key))].sort().join('|');
+// '.' separates the two member GROUPS; member keys themselves contain ':' and are joined with '|'.
+const RIVAL_VS_WEALTH_KEY = (rivals: DivinationPremise[], wealth: DivinationPremise[]): string =>
+  'RIVAL_VS_WEALTH:' + memberKeys(rivals) + '.' + memberKeys(wealth);
 
 /**
  * R3 — DIRECTION_VS_EXECUTION. **TARGET-GATED (V4B §5).**
@@ -128,6 +148,14 @@ const DIRECTION_VS_EXECUTION: DerivationRule = {
         && p.questionAxis === open.questionAxis
         && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'));
       if (strikes.length === 0) continue;
+      // V4C §9/§13 — BOTH HALVES MUST BE INDEPENDENTLY ASSERTED.
+      //
+      // "방향은 맞지만 지금은 아니다" asserts two things at once, and each half owns one of them. V4B required
+      // only that each side exist, so a single BACKGROUND premise from an approximate birth time could claim
+      // ownership of the DIRECTION while a squarely-evidenced near-term obstruction was demoted to a matter of
+      // timing — the audit's "weak grounded positive manufactures FOR_BUT_LATER". A half that cannot stand on
+      // its own does not get to own half of a compound; the two premises simply remain separate findings.
+      if (sideAdequacy([open]) !== 'ADEQUATE' || sideAdequacy(strikes) !== 'ADEQUATE') continue;
       out.push(make('DIRECTION_VS_EXECUTION', ctx, {
         axis: open.questionAxis,
         temporalScope: strikes[0].temporalScope,
@@ -188,7 +216,9 @@ const INFLOW_VS_RETENTION: DerivationRule = {
     return [make('INFLOW_VS_RETENTION', ctx, {
       axis: 'MONEY_INFLOW',
       temporalScope: inflow[0].temporalScope,
-      target: target('COMPOSITE', 'INFLOW_VS_RETENTION', '유입과 보유'),
+      // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
+      target: target('COMPOSITE',
+        'INFLOW_VS_RETENTION:' + memberKeys(inflow) + '.' + memberKeys(retentionRisk), '유입과 보유'),
       assertion: '돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',

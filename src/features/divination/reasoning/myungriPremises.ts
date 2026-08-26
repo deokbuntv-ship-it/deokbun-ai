@@ -19,7 +19,7 @@ import type {
 import { domainFamily, type NatalBaseline } from '../myungriNatal';
 import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
-import { nextId, target, type DivinationPremise } from './kernel';
+import { natalSeatPairTarget, nextId, target, type DivinationPremise } from './kernel';
 
 const FAMILY_LABEL: Record<TenGodFamily, string> = {
   WEALTH: '재물', OFFICER: '자리·책임', OUTPUT: '활동·표현', PEER: '경쟁·동료', RESOURCE: '지원·배움',
@@ -150,15 +150,16 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
       }));
     }
 
-    for (const label of baseline.natalFrictionPositions) {
+    for (const friction of baseline.natalFrictions) {
+      const seatPair = natalSeatPairTarget(friction.positions[0], friction.positions[1] ?? friction.positions[0]);
       out.push(base({
-        sourceFactIds: [`원국 ${label}`],
-        target: target('NATAL_SEAT', label.split(' ')[0], `원국 ${label.split(' ')[0]}`),
-        concept: 'NATAL_SEAT_STRAIN',
+        sourceFactIds: [`원국 ${friction.label}`],
+        target: seatPair,
         questionAxis: 'GENERAL',
         temporalScope: 'NATAL',
         semanticRelation: 'DESTABILIZES',
-        assertion: `원국 안에서 ${label.split(' ')[0]} 사이가 이미 부딪히는 구조다.`,
+        concept: 'NATAL_SEAT_STRAIN',
+        assertion: `${seatPair.label} 사이가 원국에서 이미 부딪히는 구조다.`,
         role: 'QUALIFIES',
         applicability: 'BACKGROUND',
         doctrineReference: '원국 합충형파해 (frozen natal relations)',

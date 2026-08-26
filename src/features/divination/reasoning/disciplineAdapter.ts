@@ -11,7 +11,7 @@
 import type { DivinationJudgment, JudgmentDomain, QuestionIntent } from '../contracts';
 import { isDirectional } from '../contracts';
 import {
-  computeAdequacy, nextId, PRIMITIVE_RULE, target,
+  adaptedReadingTarget, computeAdequacy, nextId, PRIMITIVE_RULE, qimenBoardTarget, target, ziweiPalaceTarget,
   type DivinationPremise, type ReasonedProposition, type SemanticRelation,
 } from './kernel';
 
@@ -35,6 +35,31 @@ const DIRECTION_OF: Record<SemanticRelation, ReasonedProposition['direction']> =
 
 /** Stances that leave the door open rather than commit. */
 const QUALIFIED_STANCES = new Set<string>(['CONDITIONAL_FOR', 'CONDITIONAL_AGAINST', 'FOR_BUT_LATER', 'AGAINST_FOR_NOW']);
+
+/**
+ * The structure this discipline reads for an axis. Falls back to a DOCTRINE_GAP identity when the discipline
+ * has no mapped structure for the axis — an honest "we have no place to look" rather than a fabricated one.
+ */
+function disciplineTarget(discipline: 'ZIWEI' | 'QIMEN' | 'MYUNGRI', axis: JudgmentDomain) {
+  if (discipline === 'QIMEN') return qimenBoardTarget();
+  if (discipline === 'ZIWEI') {
+    return ziweiPalaceTarget(axis) ?? target('DOCTRINE_GAP', `AXIS:${axis}`, `${axis} 대응 자리 없음`);
+  }
+  // MYUNGRI arriving HERE means its premise graph was not supplied — the paid 궁합 pair path, where
+  // `judgePairMyungri` produces a finished judgment with no seat information. V4B handed it
+  // `ziweiPalaceTarget(axis)`, giving a 명리 reading a 자미 palace identity that would compare EQUAL to the
+  // real Ziwei reading of the same axis, so two independent disciplines looked like one structure.
+  return adaptedReadingTarget('MYUNGRI', axis, `명리 ${axis} 판단`);
+}
+
+/** Traceability must name the discipline that actually spoke — V4B stamped every adapter output as 기문. */
+const ADAPTER_ID_PREFIX = { ZIWEI: 'zp', QIMEN: 'qp', MYUNGRI: 'mp' } as const;
+const ADAPTER_COUNTER_PREFIX = { ZIWEI: 'zc', QIMEN: 'qc', MYUNGRI: 'mc' } as const;
+const ADAPTER_DOCTRINE = {
+  ZIWEI: '자미두수 궁위·사화·삼방사정 (V3 채택 doctrine, 미이관)',
+  QIMEN: '기문둔갑 값부·값사·문/성/신 (V3 채택 doctrine, 미이관)',
+  MYUNGRI: '명리 궁합 판정 (전제 그래프 미공급 경로)',
+} as const;
 
 export type AdapterOutput = { premises: DivinationPremise[]; propositions: ReasonedProposition[] };
 
@@ -72,15 +97,14 @@ export function adaptJudgment(
     // and convert it into "방향은 맞지만 지금은 아니다" — the C7 failure, reached through a different door.
     if (facts.length === 0) continue;
     const premise: DivinationPremise = {
-      id: nextId(j.discipline === 'ZIWEI' ? 'zp' : 'qp'),
+      id: nextId(ADAPTER_ID_PREFIX[j.discipline]),
       discipline: j.discipline,
       sourceFactIds: backing.length ? backing.map((e) => e.fact) : facts,
       subject: opts.subject,
-      // Structured identity: a palace/board seat is the THING this discipline is talking about. Two claims
-      // about different palaces must not be treated as one claim just because both land on CAREER.
-      target: target(j.discipline === 'ZIWEI' ? 'PALACE' : 'BOARD_SEAT',
-        `${j.discipline}:${sub.domain}:${(backing[0] ?? against[0])?.fact ?? ''}`,
-        (backing[0] ?? against[0])?.fact ?? sub.domain),
+      // V4C §2 — identity comes from the ASKED AXIS, not from an evidence string. Keying a palace by its
+      // first evidence sentence meant the same 궁 got a different identity whenever the evidence was reworded
+      // or a different fact sorted first, so "the same target" silently stopped being the same target.
+      target: disciplineTarget(j.discipline, sub.domain),
       questionIntent: opts.questionIntent,
       questionAxis: sub.domain,
       temporalScope: sub.temporalScope,
@@ -95,9 +119,7 @@ export function adaptJudgment(
       applicability: sub.domain === opts.askedAxis && sub.directness === 'DIRECT'
         ? 'DIRECT'
         : sub.directness === 'GENERAL' ? 'BACKGROUND' : 'CONTEXTUAL',
-      doctrineReference: j.discipline === 'ZIWEI'
-        ? '자미두수 궁위·사화·삼방사정 (V3 채택 doctrine, 미이관)'
-        : '기문둔갑 값부·값사·문/성/신 (V3 채택 doctrine, 미이관)',
+      doctrineReference: ADAPTER_DOCTRINE[j.discipline],
     };
     premises.push(premise);
 
@@ -106,10 +128,11 @@ export function adaptJudgment(
     const counterPremise: DivinationPremise | null = against.length
       ? {
         ...premise,
-        id: nextId(j.discipline === 'ZIWEI' ? 'zc' : 'qc'),
+        id: nextId(ADAPTER_COUNTER_PREFIX[j.discipline]),
         sourceFactIds: against.map((e) => e.fact),
-        target: target(j.discipline === 'ZIWEI' ? 'PALACE' : 'BOARD_SEAT',
-          `${j.discipline}:${sub.domain}:counter:${against[0].fact}`, against[0].fact),
+        // The counter-premise is about the SAME structure — it is the contrary material found at that
+        // palace/board, not a different object — so it shares the structure's identity.
+        target: disciplineTarget(j.discipline, sub.domain),
         semanticRelation: direction === 'UNFAVORABLE' || direction === 'RESTRICTED' ? 'SUPPORTS' : 'OPPOSES',
         assertion: against.map((e) => e.meaning).join(' '),
         role: 'QUALIFIES',

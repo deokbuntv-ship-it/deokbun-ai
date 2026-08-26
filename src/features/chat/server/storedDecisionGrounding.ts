@@ -1,4 +1,5 @@
 import { explainHeadline, refineOnAxis, renderChain } from '@/features/divination';
+import type { ContinuationIntent } from '@/features/chat/services/followUpContext';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta } from './serverConsultationTypes';
 
@@ -111,14 +112,22 @@ export function groundingFromStoredDecision(meta: ConsultationDecisionMeta | nul
 export function priorAxisContextFor(
   meta: ConsultationDecisionMeta | null | undefined,
   current: ConsultationGrounding,
+  continuation: ContinuationIntent,
 ): string[] {
   const prior = meta?.divinationVerdict;
   if (!prior || current.status !== 'available') return [];
+  // V4C §23 — only a REFINEMENT is bound to the standing judgment. A genuinely new question starts clean, and
+  // an explicit "지금 다시 보면?" was a request for a fresh reading, not for the old one to be defended.
+  if (continuation !== 'REFINE_EXISTING') return [];
   const nowAxis = current.divinationVerdict?.questionDomain;
-  if (!nowAxis || nowAxis === prior.questionDomain) return [];
+  if (!nowAxis) return [];
+  // The SAME axis is carried too. V4B returned [] whenever the axis had not moved, so a refinement that
+  // stayed on the topic ("그럼 얼마나 걸릴까요?") got no continuity at all and re-answered from scratch —
+  // the very restart §23 is about, reached by the branch that was supposed to prevent it.
+  const sameAxis = nowAxis === prior.questionDomain;
 
   const refinement = refineOnAxis(prior, nowAxis);
-  if (refinement.existing.length === 0 && refinement.premises.length === 0) return [];
+  if (!sameAxis && refinement.existing.length === 0 && refinement.premises.length === 0) return [];
 
   return [
     `앞선 질문: "${refinement.originalQuestion}" (축 ${refinement.originalAxis}) → 판정 ${prior.direction}`,

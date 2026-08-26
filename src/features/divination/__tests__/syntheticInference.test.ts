@@ -15,7 +15,7 @@ import {
   PRIMITIVE_RULE, isDirectional, screenAll, screenSynthesis, standingPropositions, validatePaidReading,
   type CrossDivinationVerdict, type DerivationContext,
 } from '@/features/divination';
-import { certify, crossMutations, crossRederive, myungriRederive } from './support/certify';
+import { candidatesOf, certify, crossMutations, crossRederive, myungriRederive } from './support/certify';
 
 const digestProvider: DigestProvider = {
   async sha256Utf8(input: string): Promise<string> {
@@ -58,8 +58,11 @@ const certifyAll = (v: CrossDivinationVerdict) => {
     subject: v.premises[0]?.subject ?? '본인', questionIntent: v.questionIntent,
     askedAxis: v.questionDomain, dataComplete: true, asksTiming: v.asksTiming,
   };
-  return standingPropositions(v.propositions)
-    .filter((p) => p.derivationRule !== PRIMITIVE_RULE)
+  // V4C §15 — THE population, taken from the runtime's own enumerator. Building it here as
+  // `standing.filter(rule !== PRIMITIVE)` made the certified set a SECOND, independently-derived list: it
+  // silently excluded every non-standing candidate and included leaves the runtime never nominated, so a
+  // total that matched `screenAll` proved nothing about the two sets being the same set.
+  return candidatesOf(v.propositions, v.premises)
     .map((p) => (p.discipline === 'CROSS'
       // A cross conclusion is re-derived from the PROPOSITIONS it reconciles, and additionally attacked by
       // re-targeting and re-scoping those parents (§19).

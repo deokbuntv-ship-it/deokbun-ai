@@ -17,7 +17,7 @@ import {
   type CrossDivinationVerdict, type DerivationContext, type ReasonedProposition,
 } from '@/features/divination';
 import {
-  certify, classifyPremiseMateriality, crossMutations, crossRederive, myungriRederive,
+  candidatesOf, certify, classifyPremiseMateriality, crossMutations, crossRederive, myungriRederive,
   type Certification,
 } from './support/certify';
 
@@ -78,8 +78,11 @@ const ctxOf = (v: CrossDivinationVerdict): DerivationContext & { asksTiming?: bo
 /** Certify every candidate the runtime nominated, using the mutation set appropriate to where it came from. */
 function certifyAll(v: CrossDivinationVerdict): { p: ReasonedProposition; c: Certification }[] {
   const ctx = ctxOf(v);
-  return standingPropositions(v.propositions)
-    .filter((p) => p.derivationRule !== PRIMITIVE_RULE)
+  // V4C §15 — THE population, taken from the runtime's own enumerator. Building it here as
+  // `standing.filter(rule !== PRIMITIVE)` made the certified set a SECOND, independently-derived list: it
+  // silently excluded every non-standing candidate and included leaves the runtime never nominated, so a
+  // total that matched `screenAll` proved nothing about the two sets being the same set.
+  return candidatesOf(v.propositions, v.premises)
     .map((p) => ({
       p,
       c: p.discipline === 'CROSS'

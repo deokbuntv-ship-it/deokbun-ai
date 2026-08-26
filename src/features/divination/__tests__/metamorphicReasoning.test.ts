@@ -159,8 +159,9 @@ describe('§7–§10 — heuristics that needed absent doctrine are GONE, not re
     const { buildMyungriPremises } = await import('@/features/divination');
     const baseline = {
       familyPresence: { WEALTH: 3, OFFICER: 1, OUTPUT: 0, PEER: 0, RESOURCE: 0 },
-      dominantFamilies: [], absentFamilies: [], natalFrictionPositions: [], natalHarmonyPositions: [],
+      absentFamilies: [], natalHarmonyPositions: [],
       spouseSeatStrained: false, inCommand: null, anchored: 'UNKNOWN' as const, evidence: [],
+      natalFrictions: [],
     };
     const ps = buildMyungriPremises({
       subject: '본인', questionIntent: 'DECISION', askedAxis: 'MONEY_INFLOW',

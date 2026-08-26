@@ -84,29 +84,18 @@ export type PremiseConcept =
  *
  * **SAME AXIS IS NOT SAME TARGET.** Equality is `key`, never `label`; the label is for humans only.
  */
-export type TargetKind =
-  | 'NATAL_SEAT'          // 원국 년/월/일/시 자리
-  | 'TEN_GOD_FAMILY'      // 원국 재성·관성·식상·비겁·인성 계열
-  | 'LUCK_LAYER'          // 대운/세운/월운 그 자체
-  | 'DAY_MASTER_FOOTING'  // 일간의 계절 기반 / 뿌리
-  | 'PALACE'              // 자미두수 궁
-  | 'BOARD_SEAT'          // 기문둔갑 값부·값사·문
-  | 'DOCTRINE_GAP'        // 채택 학파가 없어 판정을 보류한 지점
-  | 'COMPOSITE';          // 서로 다른 대상 사이의 관계를 다루는 복합 결론
+// V4C §2 — target identity moved to `targets.ts`, where every key is registered in ASCII and validated
+// against its kind's namespace. It used to be minted at call sites from whatever text was to hand, so a
+// reworded sentence could stop a target matching itself.
+export {
+  sameTarget, target, isCanonicalTarget, ziweiPalaceTarget, qimenBoardTarget, natalSeatPairTarget,
+  adaptedReadingTarget,
+  TargetNamespaceError,
+  type SemanticTarget, type TargetKind,
+} from './targets';
+import { sameTarget } from './targets';
+import type { SemanticTarget } from './targets';
 
-export type SemanticTarget = {
-  /** Stable identity. Two claims about the same thing share this EXACTLY. Matching uses only this. */
-  key: string;
-  /** Human label. Display only — never matched on. */
-  label: string;
-  kind: TargetKind;
-};
-
-/** Structural target equality. The single place "same thing" is decided. */
-export const sameTarget = (a: SemanticTarget, b: SemanticTarget): boolean => a.key === b.key;
-
-export const target = (kind: TargetKind, id: string, label: string): SemanticTarget =>
-  ({ key: `${kind}:${id}`, label, kind });
 
 export type DivinationPremise = {
   id: string;
@@ -164,7 +153,7 @@ export type PropositionAdequacy = {
 };
 
 /** Adequacy of ONE side, from that side's premises only. A side with a DIRECT premise on exact data is adequate. */
-function sideAdequacy(premises: DivinationPremise[]): AdequacyLevel {
+export function sideAdequacy(premises: DivinationPremise[]): AdequacyLevel {
   if (premises.length === 0) return 'NONE';
   const direct = premises.some((p) => p.applicability === 'DIRECT');
   const exact = premises.some((p) => p.reliability === 'EXACT');
@@ -386,24 +375,109 @@ export function runDerivations(
   return out;
 }
 
+const NEAR_SCOPES: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
+/** NEAR vs STRUCTURAL. Two claims in different bands are not competing statements about the same moment. */
+export const temporalBand = (s: TemporalScope): 'NEAR' | 'STRUCTURAL' =>
+  (NEAR_SCOPES.includes(s) ? 'NEAR' : 'STRUCTURAL');
+
+/** A claim that recommends, versus one that describes. A description must never swallow a decision. */
+const decisional = (p: ReasonedProposition): boolean =>
+  p.conclusionType !== 'STRUCTURAL' && p.conclusionType !== 'CAUSAL';
+
 /**
- * SUPERSESSION — the ONLY way one proposition outranks another here, and it is structural, not numeric:
- * B supersedes A when B accounts for every premise A accounts for AND at least one more. A conclusion that
- * explains strictly more of the evidence is the better conclusion; there is no score to compare.
+ * SUPERSESSION — V4C §6. THE ONLY way one proposition replaces another, and it is an IDENTITY relation,
+ * not a quantity.
+ *
+ * V4B compared premise COUNTS: `bp.size > ap.length` meant a conclusion citing more premises replaced one
+ * citing fewer, and it checked only the axis — so a NEAR-band recommendation about 원국 월지 could delete a
+ * STRUCTURAL description of 관성 simply for standing on one more premise. That is evidence-cardinality
+ * arbitration, which this architecture forbids, and it silently removed conclusions the user was owed.
+ *
+ * B supersedes A only when B is a LATER ACCOUNT OF THE SAME CLAIM: same person, same structural target, same
+ * axis, same temporal band, same kind of claim — AND B already stands on everything A stands on. Under those
+ * conditions "B cites more" is not a score, it is containment: A has nothing to add that B has not accounted
+ * for. Anything else leaves BOTH standing, and the disagreement becomes visible instead of disappearing.
  */
 export function supersedes(b: ReasonedProposition, a: ReasonedProposition): boolean {
   if (b.id === a.id) return false;
+  if (b.subject !== a.subject) return false;
   if (b.questionAxis !== a.questionAxis) return false;
+  if (!sameTarget(b.target, a.target)) return false;
+  if (temporalBand(b.temporalScope) !== temporalBand(a.temporalScope)) return false;
+  if (decisional(b) !== decisional(a)) return false;
   const bp = new Set([...b.supportingPremiseIds, ...b.opposingPremiseIds]);
   const ap = [...a.supportingPremiseIds, ...a.opposingPremiseIds];
   if (ap.length === 0) return false;
   if (!ap.every((id) => bp.has(id))) return false;
-  return bp.size > ap.length || b.derivedFromPropositionIds.includes(a.id);
+  // Either B was explicitly built FROM A, or B rests on strictly more of the same material. Equal premise
+  // sets never supersede — two readings of exactly the same evidence are rivals, not a replacement.
+  return b.derivedFromPropositionIds.includes(a.id) || [...bp].some((id) => !ap.includes(id));
 }
 
 /** The propositions nothing else supersedes — the graph's leaves, which are what synthesis reads. */
 export function standingPropositions(all: ReasonedProposition[]): ReasonedProposition[] {
   return all.filter((p) => !all.some((other) => supersedes(other, p)));
+}
+
+/**
+ * §7 — ANSWER RESOLUTION. Replaces `candidates.find(...)` in both reasoners.
+ *
+ * V4B picked the primary conclusion with the FIRST array element that matched a predicate, which is arbitration
+ * by iteration order: reorder the premises and the headline changes with no reason a reader could inspect. The
+ * resolution is a SET operation instead, and it may return no winner — which is a real outcome, not a failure.
+ *
+ *   SINGLE      exactly one conclusion stands → that is the answer
+ *   AGREED      several stand and every one points the same way → the direction is answerable, but no single
+ *               conclusion owns it, so all of them are named
+ *   UNRESOLVED  several stand and they disagree → nothing is chosen (§14)
+ *   NONE        nothing stands
+ */
+export type Resolution =
+  | { kind: 'SINGLE'; primary: ReasonedProposition; members: ReasonedProposition[] }
+  | { kind: 'AGREED'; direction: ConclusionDirection; members: ReasonedProposition[] }
+  | { kind: 'UNRESOLVED'; members: ReasonedProposition[] }
+  | { kind: 'NONE'; members: [] };
+
+/**
+ * Reduce a candidate set to one answer THROUGH THE DERIVATION GRAPH.
+ *
+ * A conclusion "accounts for" another when it was derived from it (transitively). When exactly one candidate
+ * accounts for every other, that one is the answer — it is downstream of all of them, so choosing it discards
+ * nothing. No ordering, no count, no discipline priority is consulted.
+ */
+export function resolveAnswer(candidates: ReasonedProposition[]): Resolution {
+  if (candidates.length === 0) return { kind: 'NONE', members: [] };
+  if (candidates.length === 1) return { kind: 'SINGLE', primary: candidates[0], members: candidates };
+
+  const byId = new Map(candidates.map((p) => [p.id, p]));
+  const accounts = (from: ReasonedProposition, targetId: string, seen = new Set<string>()): boolean => {
+    if (seen.has(from.id)) return false;
+    seen.add(from.id);
+    return from.derivedFromPropositionIds.some((id) => id === targetId
+      || (byId.has(id) && accounts(byId.get(id)!, targetId, seen)));
+  };
+  const tops = candidates.filter((p) => candidates.every((q) => q.id === p.id || accounts(p, q.id)));
+  if (tops.length === 1) return { kind: 'SINGLE', primary: tops[0], members: candidates };
+
+  const directions = new Set(candidates.filter((p) => p.direction !== 'NONE').map((p) => p.direction));
+  if (directions.size === 1) {
+    return { kind: 'AGREED', direction: [...directions][0], members: candidates };
+  }
+  return { kind: 'UNRESOLVED', members: candidates };
+}
+
+/**
+ * §15 — THE canonical candidate population. Every consumer (QA pack, certification harness, census) must
+ * enumerate candidates through THIS function, so the set a test certifies is provably the set the runtime
+ * nominated. V4B built the two populations independently and compared totals, which cannot detect a
+ * conclusion present in one list and absent from the other.
+ */
+export function candidatePropositions(
+  props: ReasonedProposition[],
+  premises: DivinationPremise[],
+): ReasonedProposition[] {
+  const byId = new Map(premises.map((p) => [p.id, p]));
+  return props.filter((p) => screenSynthesis(p, byId) === 'CANDIDATE_SYNTHESIS');
 }
 
 let counter = 0;

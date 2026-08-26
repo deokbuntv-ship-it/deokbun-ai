@@ -532,6 +532,7 @@ export async function buildConsultationGrounding(
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
       myungriPropositions: myungriReasoning.standing,
+      myungriPropositionGraph: myungriReasoning.propositions,
     });
   } catch {
     divinationVerdict = null; // fail-open — never break a paid answer on a judgment error

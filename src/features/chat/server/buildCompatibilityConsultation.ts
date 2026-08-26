@@ -24,6 +24,7 @@ import { buildStructuredConsultationResult } from '@/features/chat/services/stru
 import { buildCompatibilityEvidence } from '@/features/compatibility/engine';
 import { buildZiweiParts } from '@/features/chat/services/consultationGrounding';
 import {
+  AGAINST_STANCES,
   judgeCross,
   judgePairMyungri,
   judgePairZiwei,
@@ -275,15 +276,16 @@ export async function buildCompatibilityConsultation(
         status: 'available',
         evidence: { myungri, ziwei: ziweiEvidence, qimen },
         ...(divinationVerdict ? { divinationVerdict } : {}),
-        // V4B §27 — THE TIER IS DISPLAY CONTEXT, NOT THE JUDGMENT.
+        // V4C §26 — THE TIER DOES NOT REACH THE PROMPT AT ALL.
         //
-        // This line used to be described in this very file as "the anchor the LLM must verbalize", which is
-        // exactly the coupling §27 removes: `overallLabel` is a band off `bond.points + friction.points +
-        // element.points` against hand-chosen thresholds, computed for the consumer summary card. Anchoring a
-        // paid divination reading to it makes the numeric tier the professional conclusion by the back door.
-        // It is still passed through — the card shows it — but it is labelled as the summary tier, and the
-        // directive below tells the model which of the two actually decides.
-        assessmentSummary: `(요약 카드 표기용 종합 티어) ${selfLabel}·${targetLabel}: ${a.overallLabel} (정서 ${a.dimensions[0].signal}/갈등 ${a.dimensions[1].signal}/오행 ${a.dimensions[2].signal})${a.reducedPrecision ? ' · 한 명 이상 시주 미상으로 정밀도 제한' : ''}`,
+        // V4B relabelled this string and left it in `grounding`. That was not enough: `renderGroundingContext`
+        // renders whatever sits in `assessmentSummary` as 【종합 판단(근거 기반)】 — a header that says
+        // "overall judgment, evidence-based" — so a band computed from `bond.points + friction.points +
+        // element.points` was still being presented to the model as the evidence-based overall judgment.
+        // Relabelling the payload could not fix a coupling that lives in the renderer.
+        //
+        // The tier is not passed. The summary card still receives it through the separate `compatibility`
+        // payload below, which never touches the prompt.
         engineVersion: 'compatibility-engine@1.0.0',
       };
       compatibility = {
@@ -350,7 +352,14 @@ export async function buildCompatibilityConsultation(
   //    guard (one constrained regeneration → safe fallback, Sprint A §8-§10).
   // 궁합 relationship-safety (§D5) is ALWAYS enforced; a poor pair tier additionally requires a constructive
   // management direction (§D6). The deterministic tier drives requireConstructive — no tier recalculation.
-  const negativePairTier = compatibility?.overall === 'NEEDS_CARE' || compatibility?.overall === 'CHALLENGING';
+  // V4C §26 — a constructive management direction is required when the STRUCTURAL judgment says the pair has
+  // something hard to manage, not when a weighted-points band lands in a low bucket. Driving tone from the tier
+  // is the tier shaping the paid answer, which is exactly what §26 removes. When no structural verdict exists
+  // the requirement is NOT synthesised from the tier: the answer says the structural judgment is unavailable
+  // (see the directive above) rather than being pushed into mitigation language to cover the gap.
+  const structuralVerdict = safeGrounding.status === 'available' ? safeGrounding.divinationVerdict ?? null : null;
+  const structurallyHard = structuralVerdict !== null
+    && AGAINST_STANCES.includes(structuralVerdict.direction);
   const guard = await classifyWithGuards({
     raw,
     grounding: safeGrounding,
@@ -358,7 +367,7 @@ export async function buildCompatibilityConsultation(
     forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
     polarity: plan.polarity,
     forbidCompatibilityHarm: true,
-    requireConstructive: negativePairTier,
+    requireConstructive: structurallyHard,
     regenerate: async () => {
       try {
         return await deps.callLLM(buildMessages(`${CERTAINTY_REGEN_DIRECTIVE}\n${COMPAT_REGEN_DIRECTIVE}`));

@@ -56,6 +56,10 @@ export {
 // ── V4A — PROPOSITION GRAPH REASONING KERNEL ────────────────────────────────────────────────────
 export {
   screenSynthesis,
+  candidatePropositions,
+  resolveAnswer,
+  temporalBand,
+  sideAdequacy,
   computeAdequacy,
   screenAll,
   runDerivations,
@@ -76,11 +80,17 @@ export {
   type RestrictionKind,
   type SemanticRelation,
   type SynthesisCandidacy,
+  type Resolution,
   type SynthesisClass,
   type SemanticTarget,
   type TargetKind,
   sameTarget,
   target,
+  isCanonicalTarget,
+  natalSeatPairTarget,
+  ziweiPalaceTarget,
+  qimenBoardTarget,
+  adaptedReadingTarget,
 } from './reasoning/kernel';
 export { buildMyungriPremises, type MyungriPremiseInput } from './reasoning/myungriPremises';
 export { MYUNGRI_RULES, primitivePropositions } from './reasoning/myungriRules';

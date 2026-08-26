@@ -44,6 +44,7 @@ import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisi
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
 import {
+  classifyContinuationIntent,
   classifyFollowUpIntent,
   previousDecisionFromMeta,
   renderFollowUpDirective,
@@ -215,24 +216,40 @@ export async function buildServerConsultation(
   //     domain onto the NEW next-year target (polarity re-derived by the normal target-scoped path);
   //     "둘 중에는?" describes the prior candidates with NO winner (Option B). "그럼 언제?" stays deferred.
   const followUpIntent = classifyFollowUpIntent(question);
+  // V4C §23 — A REFINEMENT MUST NOT RESTART THE READING.
+  //
+  // The audit's confirmed failure: "사업을 확장할까?" followed by "돈은?" produced two unrelated readings that
+  // could contradict each other. The machinery to carry the prior graph forward existed, but the prior
+  // decision was only ever LOADED when `classifyFollowUpIntent` recognised the question ("왜?", "그럼 내년은?",
+  // "둘 중에는?") — and "돈은?" is none of those, so `previousMeta` stayed null and every continuity path
+  // downstream was dead. The load condition now also covers a question that is syntactically DEPENDENT on the
+  // previous turn. `true` is passed here deliberately: this is the "could this be a continuation at all?"
+  // probe, asked before we know whether a prior decision exists; the real classification happens after.
+  const mayContinue = classifyContinuationIntent(question, true) !== 'NEW_QUESTION';
   let followUpDirective: string | null = null;
   let followUpVersionMismatch = false;
   let previousDecision: PreviousDecision | null = null;
   let previousMeta: ConsultationDecisionMeta | null = null;
-  if (followUpIntent !== 'NONE' && deps.loadPreviousDecision) {
+  if ((followUpIntent !== 'NONE' || mayContinue) && deps.loadPreviousDecision) {
     try {
       previousMeta = await deps.loadPreviousDecision();
     } catch {
       previousMeta = null;
     }
     previousDecision = previousDecisionFromMeta(previousMeta);
-    // Compare to the current frozen ruleset constant without calculating current decision B.
-    const action = resolveFollowUpAction(followUpIntent, previousDecision, {
-      engineVersion: DEOKBUNAI_SAJU_RULE_SET_VERSION,
-    });
-    if (action.kind === 'EXPLAIN_PREVIOUS') followUpVersionMismatch = action.versionMismatch;
-    followUpDirective = renderFollowUpDirective(action, previousDecision);
+    if (followUpIntent !== 'NONE') {
+      // Compare to the current frozen ruleset constant without calculating current decision B.
+      const action = resolveFollowUpAction(followUpIntent, previousDecision, {
+        engineVersion: DEOKBUNAI_SAJU_RULE_SET_VERSION,
+      });
+      if (action.kind === 'EXPLAIN_PREVIOUS') followUpVersionMismatch = action.versionMismatch;
+      followUpDirective = renderFollowUpDirective(action, previousDecision);
+    }
   }
+  // The real classification, now that we know whether a prior judgment actually exists. REEVALUATE_NOW is
+  // deliberately NOT a refinement: "지금 다시 보면?" asks for a fresh reading, and binding it to the stored
+  // judgment would answer a question the user did not ask.
+  const continuation = classifyContinuationIntent(question, previousMeta?.divinationVerdict != null);
 
   // 2b) SERVER-owned grounding. WHY is a strict special case: reconstruct from stored A or remain
   //     unavailable. Every other turn uses the current server receipt time and deterministic engines.
@@ -259,7 +276,7 @@ export async function buildServerConsultation(
     // V4B §25 — an axis drilldown is a CONTINUATION, not a second reading. When the previous turn's graph
     // already says something about the axis now being asked, that context rides along so the new answer can
     // connect to the judgment the user already received instead of silently replacing it.
-    const priorAxisContext = priorAxisContextFor(previousMeta, grounding);
+    const priorAxisContext = priorAxisContextFor(previousMeta, grounding, continuation);
     if (priorAxisContext.length > 0 && grounding.status === 'available') {
       grounding = { ...grounding, priorAxisContext };
     }

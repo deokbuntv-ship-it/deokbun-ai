@@ -28,6 +28,8 @@ export type CrossJudgeInput = {
    */
   myungriPremises?: DivinationPremise[];
   myungriPropositions?: ReasonedProposition[];
+  /** That discipline's full graph including superseded ancestry — persisted so derivation links resolve. */
+  myungriPropositionGraph?: ReasonedProposition[];
   natalBaseline?: string | null;
   currentFlow?: string | null;
 };
@@ -43,6 +45,7 @@ export function judgeCrossReasoned(input: CrossJudgeInput): CrossReasoning {
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds,
     premises: input.myungriPremises,
     propositions: input.myungriPropositions,
+    propositionGraph: input.myungriPropositionGraph,
     natalBaseline: input.natalBaseline,
     currentFlow: input.currentFlow,
   });

@@ -16,8 +16,8 @@ import type { MyungriJudgeInput } from '../myungriJudge';
 import { buildMyungriPremises } from './myungriPremises';
 import { MYUNGRI_RULES, primitivePropositions } from './myungriRules';
 import {
-  PRIMITIVE_RULE, screenAll, runDerivations, standingPropositions,
-  type DerivationContext, type DivinationPremise, type ReasonedProposition,
+  PRIMITIVE_RULE, resolveAnswer, screenAll, runDerivations, standingPropositions,
+  type DerivationContext, type DivinationPremise, type ReasonedProposition, type Resolution,
 } from './kernel';
 
 export type MyungriReasoning = {
@@ -54,7 +54,7 @@ const evidenceOf = (
     .map((id) => premises.find((p) => p.id === id))
     .filter((p): p is DivinationPremise => !!p)
     .map((p) => ({
-      fact: p.sourceFactIds[0] ?? p.target,
+      fact: p.sourceFactIds[0] ?? p.target.label,
       meaning: p.assertion,
       domain: axis,
       temporalScope: p.temporalScope,
@@ -75,6 +75,35 @@ function strengthOf(p: ReasonedProposition): EvidenceStrength {
   if (side === 'THIN') return 'WEAK';
   return p.derivationRule === PRIMITIVE_RULE ? 'NONE' : 'WEAK';
 }
+
+/**
+ * The conclusions the judgment is speaking about. One when the set settles; ALL of them when it does not.
+ *
+ * An unsettled set is not an absence of findings — the findings are real and the user is owed them under
+ * "왜 이렇게 보나요?". What is withheld is the WINNER, not the evidence.
+ */
+const answering = (r: Resolution): ReasonedProposition[] =>
+  (r.kind === 'SINGLE' ? [r.primary] : r.members);
+const agreedMembers = (r: Resolution): ReasonedProposition[] => (r.kind === 'AGREED' ? r.members : []);
+/**
+ * The stance an AGREED set actually supports.
+ *
+ * When every member projects to the SAME stance, that stance IS the answer — softening it would understate a
+ * unanimous reading. When they share a direction but differ in firmness (FOR beside CONDITIONAL_FOR), the
+ * verdict asserts only the weaker claim, because that is the most all of them back. Neither branch picks a
+ * member: the first reads a unanimous value, the second falls back to what the shared direction alone licenses.
+ */
+const agreedStance = (r: Resolution): Stance => {
+  if (r.kind !== 'AGREED') return NO_SIGNAL;
+  const stances = new Set(r.members.map(stanceOf));
+  if (stances.size === 1) return [...stances][0];
+  switch (r.direction) {
+    case 'FAVORABLE': return 'CONDITIONAL_FOR';
+    case 'UNFAVORABLE': return 'CONDITIONAL_AGAINST';
+    case 'RESTRICTED': return 'CONDITIONAL_AGAINST';
+    default: return NO_SIGNAL;
+  }
+};
 
 export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
   const asked = input.questionDomain;
@@ -112,22 +141,25 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
   }));
 
   const onAsked = standing.filter((p) => p.questionAxis === asked);
-  // A COMPOUND conclusion was DERIVED FROM both sides, so it already accounts for the disagreement; that is
-  // why it answers rather than the fragments it reconciles. Structural, not a priority table.
-  const compound = onAsked.find((p) => p.conclusionType === 'COMPOUND');
   const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
-  const descriptive = nonDecision
-    ? standing.find((p) => (p.conclusionType === 'CAUSAL' && intent === 'CAUSE_WHY') || p.conclusionType === 'STRUCTURAL')
-    : undefined;
-
-  const directions = new Set(onAsked.filter((p) => p.direction !== 'NONE').map((p) => p.direction));
-  const agreed = directions.size === 1 ? onAsked.find((p) => p.direction !== 'NONE') : undefined;
-  const primary = descriptive ?? compound ?? agreed ?? null;
+  // V4C §7 — NO FIRST-MATCH SELECTION.
+  //
+  // V4B built the answer from three chained `.find()` calls (`descriptive ?? compound ?? agreed`), which is
+  // arbitration by array order dressed as precedence: reorder the premises and the headline changes for a
+  // reason no reader could inspect, and the two conclusions that lost were never mentioned. The candidate set
+  // is now named explicitly and resolved AS A SET by `resolveAnswer`, which returns no winner when the set
+  // does not settle — a real outcome under §31, not a failure to be papered over.
+  const candidates = nonDecision
+    ? standing.filter((p) => (intent === 'CAUSE_WHY' && p.conclusionType === 'CAUSAL')
+      || p.conclusionType === 'STRUCTURAL')
+    : onAsked.filter((p) => p.conclusionType === 'COMPOUND' || p.direction !== 'NONE');
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === 'SINGLE' ? resolution.primary : null;
 
   const internalContradictions: string[] = [];
-  if (!primary && onAsked.length > 1) {
+  if (resolution.kind === 'UNRESOLVED') {
     internalContradictions.push(
-      `같은 축에서 서로 다른 결론이 함께 성립합니다: ${onAsked.map((p) => p.assertion).join(' / ')}`,
+      `같은 축에서 서로 다른 결론이 함께 성립합니다: ${resolution.members.map((p) => p.assertion).join(' / ')}`,
     );
   }
   const blocked = premises.filter((p) => p.doctrineReference.startsWith('BLOCKED'));
@@ -154,31 +186,46 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     ...(input.hourKnown ? {} : { applicabilityReason: '출생시간이 확정되지 않아 시(時)에 기대는 해석은 제한됩니다.' }),
     dataReliability: reliability,
     questionDomain: asked,
-    temporalScope: primary?.temporalScope ?? 'NATAL',
-    stance: primary ? stanceOf(primary) : NO_SIGNAL,
+    temporalScope: primary?.temporalScope ?? agreedMembers(resolution)[0]?.temporalScope ?? 'NATAL',
+    stance: primary ? stanceOf(primary) : agreedStance(resolution),
     dominantConclusion: primary?.assertion
-      ?? (blocked.length > 0
-        ? '명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.'
-        : '명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.'),
+      // §7 — several conclusions stand and every one points the same way. The direction is answerable, but no
+      // single conclusion owns it, so ALL of them are stated rather than the first one being promoted.
+      ?? (resolution.kind === 'AGREED'
+        ? resolution.members.map((p) => p.assertion).join(' 그리고 ')
+        // §7/§31 — an unsettled set is stated as one, with every conclusion named. V4B promoted whichever
+        // conclusion happened to sort first and never mentioned the others; saying "근거가 없습니다" here
+        // would be worse still, because the findings exist and simply do not agree.
+        : resolution.kind === 'UNRESOLVED'
+          ? `이 축에는 서로 다른 결론이 함께 성립합니다: ${resolution.members.map((p) => p.assertion).join(' / ')} 한쪽으로 정하지 않겠습니다.`
+          : blocked.length > 0
+            ? '명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.'
+            : '명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.'),
     dominantFactor: primary
-      ? `${primary.derivationRule === PRIMITIVE_RULE ? '단일 근거' : primary.derivationRule} · ${primary.target}`
-      : '해당 축 근거 없음',
+      ? `${primary.derivationRule === PRIMITIVE_RULE ? '단일 근거' : primary.derivationRule} · ${primary.target.label}`
+      : resolution.kind === 'AGREED'
+        ? `같은 방향으로 함께 서는 근거 ${resolution.members.length}건`
+        : resolution.kind === 'UNRESOLVED'
+          ? `서로 다른 방향으로 함께 서는 결론 ${resolution.members.length}건 (미확정)`
+          : '해당 축 근거 없음',
     // The doctrine blockers ride along in directEvidence so the withholding stays VISIBLE in the persisted
     // verdict and in the "왜 이렇게 보나요?" layer. A capability that is declined silently reads as a capability
     // that was never considered.
     directEvidence: [
-      ...(primary ? evidenceOf(premises, primary.supportingPremiseIds, asked, asked) : []),
+      ...evidenceOf(premises, answering(resolution).flatMap((p) => p.supportingPremiseIds), asked, asked),
       ...evidenceOf(premises, blocked.map((b) => b.id), 'GENERAL', asked),
     ],
-    counterEvidence: primary ? evidenceOf(premises, primary.opposingPremiseIds, asked, asked) : [],
+    counterEvidence: evidenceOf(premises, answering(resolution).flatMap((p) => p.opposingPremiseIds), asked, asked),
     internalContradictions,
     timingSignals: standing
       .filter((p) => p.temporalScope === 'WOLWOON' || p.temporalScope === 'SEWOON')
       .slice(0, 1)
       .flatMap((p) => evidenceOf(premises, [...p.supportingPremiseIds, ...p.opposingPremiseIds], p.questionAxis, asked).slice(0, 1)),
     domainSubJudgments: subs,
+    // An AGREED resolution is never HIGH confidence: several conclusions point the same way but none accounts
+    // for the others, so the engine cannot say which reading is doing the work.
     confidence: primary === null
-      ? 'LOW'
+      ? (resolution.kind === 'AGREED' ? 'MEDIUM' : 'LOW')
       : strengthOf(primary) === 'STRONG' && reliability === 'EXACT' ? 'HIGH'
         : strengthOf(primary) === 'NONE' ? 'LOW' : 'MEDIUM',
     questionDirectness: primary ? (primary.questionAxis === asked ? 'DIRECT' : 'ADJACENT') : 'GENERAL',

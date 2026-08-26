@@ -4,6 +4,7 @@
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { ANSWER_PLAN_VERSION, DECISION_POLICY_VERSION, type AnswerPlan } from './answerPlan';
 import { classifyConsultationDomain, type ConsultationDomain } from './consultationDomain';
+import { isCanonicalTarget } from '@/features/divination';
 import type { CrossDivinationVerdict } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
@@ -135,24 +136,19 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     'SUPPORTS', 'OPPOSES', 'ACTIVATES', 'WEAKENS', 'DELAYS', 'ACCELERATES', 'CONNECTS', 'SEPARATES',
     'STABILIZES', 'DESTABILIZES', 'CONSTRAINS', 'ENABLES', 'ABSENT',
   ]);
-  const TARGET_KINDS = new Set([
-    'NATAL_SEAT', 'TEN_GOD_FAMILY', 'LUCK_LAYER', 'DAY_MASTER_FOOTING', 'PALACE', 'BOARD_SEAT',
-    'DOCTRINE_GAP', 'COMPOSITE',
-  ]);
   const ADEQUACY_LEVELS = new Set(['ADEQUATE', 'THIN', 'NONE']);
 
-  const isTarget = (t: unknown): boolean => {
-    if (t === null || typeof t !== 'object') return false;
-    const o2 = t as Record<string, unknown>;
-    return typeof o2.key === 'string' && o2.key.length > 0
-      && typeof o2.label === 'string'
-      && typeof o2.kind === 'string' && TARGET_KINDS.has(o2.kind);
-  };
+  // V4C §3 — target validation is DELEGATED to the canonical registry, which checks that the declared kind
+  // matches the key's namespace (rejecting kind=PALACE with key=RELATION_STABILITY:…) and that the id is a
+  // registered one. A second hand-maintained list here would drift from the registry the moment a target is
+  // added, and the drift would show up as a legitimate graph failing to restore.
+  const isTarget = isCanonicalTarget;
   const isStringArray = (a: unknown): a is string[] =>
     Array.isArray(a) && a.every((x) => typeof x === 'string');
 
   // ── PREMISES ───────────────────────────────────────────────────────────────────────────────────
   const premiseIds = new Set<string>();
+  const premisesOut: Record<string, unknown>[] = [];
   if (o.premises !== undefined) {
     if (!Array.isArray(o.premises)) return undefined;
     for (const p of o.premises) {
@@ -167,6 +163,13 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       if (typeof pr.temporalScope !== 'string' || !SCOPES.has(pr.temporalScope)) return undefined;
       if (!isTarget(pr.target)) return undefined;
       if (!isStringArray(pr.sourceFactIds)) return undefined;
+      premisesOut.push({
+        id: pr.id, discipline: pr.discipline, sourceFactIds: [...(pr.sourceFactIds as string[])],
+        subject: pr.subject, target: { key: pr.target.key, label: pr.target.label, kind: pr.target.kind },
+        questionIntent: pr.questionIntent, questionAxis: pr.questionAxis, temporalScope: pr.temporalScope,
+        semanticRelation: pr.semanticRelation, concept: pr.concept, assertion: pr.assertion, role: pr.role,
+        reliability: pr.reliability, applicability: pr.applicability, doctrineReference: pr.doctrineReference,
+      });
     }
   }
 
@@ -235,7 +238,114 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const subjects = new Set(parsed.map((pr) => pr.subject as string));
   if (subjects.size > 1) return undefined;
 
-  return v as CrossDivinationVerdict;
+  // ── V4C §25 — RECONSTRUCTION, NOT PASS-THROUGH ─────────────────────────────────────────────────
+  //
+  // V4B validated the payload field by field and then returned the ORIGINAL object. Everything the checks
+  // did not name — an extra key, a prototype-polluting property, a nested field of a shape only checked
+  // shallowly — survived into the restored verdict and into the follow-up prompt built from it. A whitelist
+  // that returns the untrusted object is not a whitelist; it is a validated pass-through.
+  //
+  // A NEW object is assembled below from validated values only. Anything not named here does not exist
+  // downstream, so adding a field to the verdict means adding it here deliberately.
+  const str = (x: unknown, fallback = ''): string => (typeof x === 'string' ? x : fallback);
+  const strArr = (x: unknown): string[] => (isStringArray(x) ? [...x] : []);
+  const arr = (x: unknown): Record<string, unknown>[] =>
+    (Array.isArray(x) ? x.filter((e): e is Record<string, unknown> => e !== null && typeof e === 'object') : []);
+  const evidence = (x: unknown) => arr(x).map((e) => ({
+    fact: str(e.fact), meaning: str(e.meaning), domain: e.domain, temporalScope: e.temporalScope,
+    directness: e.directness,
+  }));
+  const optional = (k: string, x: unknown) => (typeof x === 'string' ? { [k]: x } : {});
+
+  const restored = {
+    question: str(o.question),
+    questionDomain: o.questionDomain,
+    questionIntent: o.questionIntent,
+    evaluatedAtEpochSeconds: typeof o.evaluatedAtEpochSeconds === 'number' ? o.evaluatedAtEpochSeconds : null,
+    asksTiming: o.asksTiming,
+    premises: premisesOut,
+    primaryConclusion: str(o.primaryConclusion),
+    direction: o.direction,
+    dominantBasis: str(o.dominantBasis),
+    disciplineJudgments: arr(o.disciplineJudgments).map((j) => ({
+      discipline: j.discipline,
+      applicable: j.applicable === true,
+      ...optional('applicabilityReason', j.applicabilityReason),
+      dataReliability: j.dataReliability,
+      questionDomain: j.questionDomain,
+      temporalScope: j.temporalScope,
+      stance: j.stance,
+      dominantConclusion: str(j.dominantConclusion),
+      dominantFactor: str(j.dominantFactor),
+      directEvidence: evidence(j.directEvidence),
+      counterEvidence: evidence(j.counterEvidence),
+      internalContradictions: strArr(j.internalContradictions),
+      timingSignals: evidence(j.timingSignals),
+      domainSubJudgments: arr(j.domainSubJudgments).map((sj) => ({
+        domain: sj.domain, stance: sj.stance, conclusion: str(sj.conclusion),
+        temporalScope: sj.temporalScope, directness: sj.directness, reliability: sj.reliability,
+        evidence: evidence(sj.evidence), counterEvidence: evidence(sj.counterEvidence),
+      })),
+      confidence: j.confidence,
+      questionDirectness: j.questionDirectness,
+      evidenceStrength: j.evidenceStrength,
+      factGroupsUsed: strArr(j.factGroupsUsed),
+    })),
+    contributions: arr(o.contributions).map((c) => ({
+      discipline: c.discipline, applied: c.applied === true, stance: c.stance,
+      contribution: str(c.contribution),
+      ...optional('whyItDidNotDominate', c.whyItDidNotDominate),
+    })),
+    axisVerdicts: arr(o.axisVerdicts).map((a) => ({
+      domain: a.domain, stance: a.stance, conclusion: str(a.conclusion),
+      dominantDiscipline: a.dominantDiscipline, contested: a.contested === true,
+    })),
+    // The proposition nodes are rebuilt from the fields the graph integrity pass actually validated.
+    propositions: parsed.map((pr) => ({
+      id: pr.id, discipline: pr.discipline, subject: pr.subject,
+      target: {
+        key: (pr.target as Record<string, unknown>).key,
+        label: (pr.target as Record<string, unknown>).label,
+        kind: (pr.target as Record<string, unknown>).kind,
+      },
+      questionIntent: pr.questionIntent, questionAxis: pr.questionAxis, temporalScope: pr.temporalScope,
+      assertion: pr.assertion, conclusionType: pr.conclusionType, direction: pr.direction,
+      ...(typeof pr.restriction === 'string' ? { restriction: pr.restriction } : {}),
+      ...(pr.answersAsked === true ? { answersAsked: true } : {}),
+      ...(pr.qualified === true ? { qualified: true } : {}),
+      supportingPremiseIds: strArr(pr.supportingPremiseIds),
+      opposingPremiseIds: strArr(pr.opposingPremiseIds),
+      derivedFromPropositionIds: strArr(pr.derivedFromPropositionIds),
+      unresolvedPremiseIds: strArr(pr.unresolvedPremiseIds),
+      doctrineReferences: strArr(pr.doctrineReferences),
+      derivationRule: pr.derivationRule,
+      adequacy: {
+        supportAdequacy: (pr.adequacy as Record<string, unknown>).supportAdequacy,
+        counterAdequacy: (pr.adequacy as Record<string, unknown>).counterAdequacy,
+        dataCompleteness: (pr.adequacy as Record<string, unknown>).dataCompleteness,
+        doctrineApplicability: (pr.adequacy as Record<string, unknown>).doctrineApplicability,
+      },
+    })),
+    agreementPoints: strArr(o.agreementPoints),
+    contradictionPoints: strArr(o.contradictionPoints),
+    contradictionResolutions: arr(o.contradictionResolutions).map((r) => ({
+      kind: r.kind, between: strArr(r.between), conflict: str(r.conflict), resolution: str(r.resolution),
+      dominant: r.dominant, whyOtherDidNotDominate: str(r.whyOtherDidNotDominate),
+    })),
+    natalBaseline: typeof o.natalBaseline === 'string' ? o.natalBaseline : null,
+    currentFlow: typeof o.currentFlow === 'string' ? o.currentFlow : null,
+    timingConclusion: typeof o.timingConclusion === 'string' ? o.timingConclusion : null,
+    favorableFactors: evidence(o.favorableFactors),
+    riskFactors: evidence(o.riskFactors),
+    actionableInterpretation: str(o.actionableInterpretation),
+    confidence: o.confidence,
+    confidenceReason: str(o.confidenceReason),
+    evidenceReferences: arr(o.evidenceReferences).map((e) => ({
+      discipline: e.discipline, lines: strArr(e.lines),
+    })),
+    verdictVersion: str(o.verdictVersion),
+  };
+  return restored as unknown as CrossDivinationVerdict;
 }
 
 export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefined {

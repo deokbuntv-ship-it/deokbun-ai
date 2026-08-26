@@ -12,7 +12,7 @@ import {
 import { adaptJudgment } from './disciplineAdapter';
 import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
-  screenAll, standingPropositions,
+  resolveAnswer, screenAll, standingPropositions,
   type DerivationContext, type DivinationPremise, type ReasonedProposition,
 } from './kernel';
 
@@ -53,6 +53,17 @@ export type CrossReasonInput = {
   /** Premises/propositions from a discipline that IS on the graph (Myungri). */
   premises?: DivinationPremise[];
   propositions?: ReasonedProposition[];
+  /**
+   * V4C §6 — the migrated discipline's FULL proposition graph, ancestry included.
+   *
+   * `propositions` carries only that discipline's STANDING leaves, which is what cross should pair over: a
+   * superseded reading is not an independent claim for another discipline to agree or disagree with. But a
+   * derived conclusion now declares the primitive readings it was built from, and the persisted graph must be
+   * CLOSED under that relation or a restored verdict has dangling derivation links and fails integrity. The
+   * ancestry therefore rides along for storage and for WHY traversal — never into the pairing loop, and never
+   * into the standing set the answer is read from.
+   */
+  propositionGraph?: ReasonedProposition[];
   natalBaseline?: string | null;
   currentFlow?: string | null;
 };
@@ -83,11 +94,28 @@ function stanceOf(p: ReasonedProposition): Stance {
   }
 }
 
+/**
+ * The stance an AGREED set actually supports.
+ *
+ * When every member projects to the SAME stance, that stance IS the answer — softening it would understate a
+ * unanimous reading. When they share a direction but differ in firmness (FOR beside CONDITIONAL_FOR), the
+ * verdict asserts only the weaker claim, because that is the most all of them back. Neither branch picks a
+ * member: the first reads a unanimous value, the second falls back to what the shared direction alone licenses.
+ */
+const agreedStance = (
+  members: ReasonedProposition[], shared: ReasonedProposition['direction'],
+): Stance => {
+  const stances = new Set(members.map(stanceOf));
+  if (stances.size === 1) return [...stances][0];
+  return shared === 'FAVORABLE' ? 'CONDITIONAL_FOR'
+    : shared === 'UNFAVORABLE' || shared === 'RESTRICTED' ? 'CONDITIONAL_AGAINST' : NO_SIGNAL;
+};
+
 const evidenceFrom = (
   premises: Map<string, DivinationPremise>, ids: string[], axis: JudgmentDomain,
 ): JudgmentEvidence[] =>
   ids.map((id) => premises.get(id)).filter((p): p is DivinationPremise => !!p).map((p) => ({
-    fact: p.sourceFactIds[0] ?? p.target,
+    fact: p.sourceFactIds[0] ?? p.target.label,
     meaning: p.assertion,
     domain: axis,
     temporalScope: p.temporalScope,
@@ -116,8 +144,11 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
 
   // ── 2. Derive cross conclusions from RELATED PAIRS ──────────────────────────────────────────────
   const derivations = deriveCross(propositions, premises, { ...ctx, asksTiming: input.asksTiming });
-  const all = [...propositions, ...derivations.map((d) => d.proposition)];
-  const standing = standingPropositions(all);
+  const reasoned = [...propositions, ...derivations.map((d) => d.proposition)];
+  const standing = standingPropositions(reasoned);
+  // Ancestry is persisted but never reasoned over again — see `propositionGraph`.
+  const ancestry = (input.propositionGraph ?? []).filter((p) => !reasoned.some((r) => r.id === p.id));
+  const all = [...reasoned, ...ancestry];
   const byId = new Map(premises.map((p) => [p.id, p]));
 
   // ── 3. Pick the answer FROM the graph, on the ASKED axis only (§13 — no unrelated-axis fallback) ─
@@ -136,21 +167,23 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   // so a causal answer about whichever seat is actually recurring is the honest answer to it. A question that
   // DOES name an axis (건강, 이동, 재물) constrains normally.
   const onAskedAxis = (p: ReasonedProposition) => asked === 'GENERAL' || p.questionAxis === asked;
-  const structural = nonDecision
-    ? standing.find((p) => intent === 'CAUSE_WHY' && p.conclusionType === 'CAUSAL' && onAskedAxis(p))
-      ?? standing.find((p) => describesChart(p) && onAskedAxis(p))
-    : undefined;
-  // A CROSS conclusion was derived FROM the pieces it reconciles, so it accounts for more than any of them.
-  const crossOnAsked = onAsked.find((p) => p.discipline === 'CROSS' && p.direction !== 'NONE');
-  const agreedDirections = new Set(onAsked.filter((p) => p.direction !== 'NONE').map((p) => p.direction));
-  const agreed = agreedDirections.size === 1
-    ? onAsked.find((p) => p.direction !== 'NONE')
-    : undefined;
-  // §12 HARD GATE. A descriptive or causal question may be answered by a STRUCTURAL/CAUSAL proposition or by
-  // an honest "we cannot describe this" — never by falling through to FOR/AGAINST. Answering "제 성격이
-  // 어떤가요?" with "크게 벌일 자리는 아닙니다" is the exact category error V2 shipped, and a fallthrough is
-  // how it comes back.
-  const primary = nonDecision ? (structural ?? null) : (crossOnAsked ?? agreed ?? null);
+  // V4C §7 — NO FIRST-MATCH SELECTION.
+  //
+  // V4B chained `.find()` calls — a causal hit, else a chart description, else any CROSS conclusion, else any
+  // agreeing one — and took whichever matched first. That is arbitration by array order: two equally standing
+  // cross conclusions produced a headline decided by iteration, and the loser was never mentioned. The
+  // candidate set is stated explicitly and resolved AS A SET; `resolveAnswer` awards the answer only to a
+  // conclusion that ACCOUNTS FOR the others through the derivation graph — which a CROSS conclusion does, by
+  // construction, for the pieces it reconciles.
+  //
+  // §12 HARD GATE is preserved: a descriptive or causal question draws only from STRUCTURAL/CAUSAL candidates
+  // and otherwise answers honestly — never falling through to FOR/AGAINST.
+  const candidates = nonDecision
+    ? standing.filter((p) => onAskedAxis(p)
+      && ((intent === 'CAUSE_WHY' && p.conclusionType === 'CAUSAL') || describesChart(p)))
+    : onAsked.filter((p) => p.direction !== 'NONE');
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === 'SINGLE' ? resolution.primary : null;
 
   const standoffs = derivations.filter((d) => d.standoff && d.proposition.questionAxis === asked);
   const examined = new Set(propositions.filter((p) => p.questionAxis === asked).map((p) => p.discipline));
@@ -189,17 +222,27 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
           : '서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.',
     }));
 
-  const direction: Stance = primary ? stanceOf(primary) : NO_SIGNAL;
+  // An AGREED set shares a direction without any one conclusion owning it, so the verdict states the direction
+  // CONDITIONALLY — it is a real answer, but not one a single reading is accountable for.
+  const direction: Stance = primary
+    ? stanceOf(primary)
+    : resolution.kind === 'AGREED' ? agreedStance(resolution.members, resolution.direction) : NO_SIGNAL;
   const coverageNote = !primary && blind.length > 0
     ? ` (${blind.map(disc).join('·')}에는 이 축을 직접 보는 자리가 없습니다.)`
     : '';
   const primaryConclusion = primary
     ? primary.assertion
-    : nonDecision
-      ? '지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.'
-    : standoffs.length > 0
-      ? standoffs[0].proposition.assertion
-      : `${axisLabel(asked)}에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.${coverageNote}`;
+    // §7 — several conclusions stand and all point the same way: the direction is answerable, but no single
+    // conclusion owns it, so every one is stated instead of the first being promoted.
+    : resolution.kind === 'AGREED'
+      ? resolution.members.map((p) => p.assertion).join(' 그리고 ')
+      : resolution.kind === 'UNRESOLVED'
+        ? `${axisLabel(asked)}에 대해서는 서로 다른 결론이 함께 서 있습니다: ${resolution.members.map((p) => p.assertion).join(' / ')} 어느 한쪽으로 정하지 않겠습니다.`
+        : nonDecision
+          ? '지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.'
+          : standoffs.length > 0
+            ? standoffs[0].proposition.assertion
+            : `${axisLabel(asked)}에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.${coverageNote}`;
 
   const contributions: DisciplineContribution[] = input.judgments.map((j) => {
     if (!j.applicable) {
@@ -249,8 +292,10 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     primaryConclusion,
     direction,
     dominantBasis: primary
-      ? `${primary.derivationRule === 'PRIMITIVE' ? '단일 근거' : primary.derivationRule} · ${primary.target}`
-      : standoffs.length > 0 ? '반대 근거가 대등하게 맞섬' : '해당 축 근거 없음',
+      ? `${primary.derivationRule === 'PRIMITIVE' ? '단일 근거' : primary.derivationRule} · ${primary.target.label}`
+      : resolution.kind === 'AGREED' ? `같은 방향으로 함께 서는 결론 ${resolution.members.length}건`
+        : resolution.kind === 'UNRESOLVED' ? `서로 다른 방향으로 함께 서는 결론 ${resolution.members.length}건 (미확정)`
+          : standoffs.length > 0 ? '반대 근거가 대등하게 맞섬' : '해당 축 근거 없음',
     disciplineJudgments: input.judgments,
     contributions,
     axisVerdicts: standing

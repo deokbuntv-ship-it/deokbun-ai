@@ -183,3 +183,61 @@ export function renderFollowUpDirective(action: FollowUpAction, previous: Previo
       return null;
   }
 }
+
+/**
+ * V4C §24 — DOES THIS TURN REFINE THE PREVIOUS READING, OR ASK FOR A NEW ONE?
+ *
+ * Orthogonal to `FollowUpIntent`, which classifies the SHAPE of the follow-up. This classifies its TEMPORAL
+ * relationship to the previous turn, and it exists because the audit found "돈은?" starting a completely fresh
+ * consultation at the current server instant — so the second answer was computed against a different moment
+ * than the judgment it appeared to be developing, and could contradict it for reasons the user never saw.
+ *
+ * `REFINE_EXISTING`  — the ordinary case. "돈은?", "왜?", "결혼하면?" develop the previous reading, so they
+ *                      inherit its evaluation instant and its graph.
+ * `REEVALUATE_NOW`   — the user EXPLICITLY asked for the present moment ("지금 다시 보면?", "오늘은?"). A new
+ *                      instant is then correct, and is what they asked for.
+ * `NEW_QUESTION`     — no prior decision to refine, or a self-contained question.
+ *
+ * The `REEVALUATE_NOW` markers are deliberately narrow: they require re-evaluation framing, not merely the
+ * word 지금. "지금 계약해도 될까요?" is a fresh timing question about a moment, not a request to recompute a
+ * previous judgment, and treating it as one would silently discard the reading the user is sitting in.
+ */
+export type ContinuationIntent = 'REFINE_EXISTING' | 'REEVALUATE_NOW' | 'NEW_QUESTION';
+
+const REEVALUATE_MARKERS = [
+  /지금\s*다시/,
+  /다시\s*보면/,
+  /현재\s*기준/,
+  /지금\s*(현재|시점)\s*(기준|으로|에서)/,
+  /^오늘은\s*[??]?$/,
+  /오늘\s*기준/,
+  /지금은\s*(어때|어떤|어떻)/,
+];
+
+/**
+ * A short, DEPENDENT question — it cannot stand alone, so it is developing the previous turn.
+ *
+ * Two things the first cut got wrong, both worth stating because they are easy to reintroduce:
+ *   · a Korean question carries an optional politeness tail (요/인가요/일까요) AFTER the particle, so "돈은?"
+ *     and "돈은요?" are the same dependent question and both must match;
+ *   · \b is defined on ASCII word characters, so it never fires after Hangul — matching "그건 " needs an
+ *     explicit space-or-end, not a word boundary.
+ */
+const POLITE_TAIL = String.raw`(요|이에요|예요|인가요|일까요|은가요|가요|어때요|어떤가요|어떻습니까)?\s*[??]?$`;
+const DEPENDENT_MARKERS = [
+  /^(그럼|그러면|그건|그거|그때|그 때)(\s|$)/,
+  new RegExp(String.raw`^[^\s?]{1,12}(은|는|이|가)\s*` + POLITE_TAIL),
+  /^왜/,
+  new RegExp(String.raw`(하면|한다면|이면)\s*` + POLITE_TAIL),
+];
+
+export function classifyContinuationIntent(question: string, hasPriorDecision: boolean): ContinuationIntent {
+  const q = (question ?? '').trim();
+  if (q.length === 0) return 'NEW_QUESTION';
+  // An explicit request for the present moment wins even mid-conversation — the user asked for a new reading.
+  if (REEVALUATE_MARKERS.some((re) => re.test(q))) return 'REEVALUATE_NOW';
+  if (!hasPriorDecision) return 'NEW_QUESTION';
+  if (classifyFollowUpIntent(q) !== 'NONE') return 'REFINE_EXISTING';
+  if (DEPENDENT_MARKERS.some((re) => re.test(q))) return 'REFINE_EXISTING';
+  return 'NEW_QUESTION';
+}

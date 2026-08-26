@@ -11,8 +11,9 @@ import type { ContradictionResolutionKind, JudgmentDomain, TemporalScope } from 
 /** Which named decomposition a compound pair represents — carried through so the verdict can report it. */
 type CompoundKind = ContradictionResolutionKind;
 import {
-  computeAdequacy, sameTarget, target,
+  computeAdequacy, sameTarget, target, temporalBand,
   type DerivationContext, type DivinationPremise, type ReasonedProposition, type SemanticTarget,
+  type TargetKind,
 } from './kernel';
 
 /** How two propositions relate. Decided structurally, before any dominance question is asked. */
@@ -21,12 +22,17 @@ export type CrossRelation =
   | 'DIFFERENT_AXIS'     // both true, about different things
   | 'DIFFERENT_TIME'     // same claim, different time band
   | 'DIFFERENT_TARGET'   // same axis, but about different seats/palaces
-  | 'REINFORCING'        // same proposition, same direction
-  | 'CONTRADICTORY'      // same proposition, opposed directions
+  | 'REINFORCING'        // SAME target, same direction
+  | 'CONTRADICTORY'      // SAME target, opposed directions
+  // V4C §4/§5 — two DIFFERENT structures, each a rival ANSWER to the asked question. They may agree or
+  // disagree, but they are never one claim about one thing, and the vocabulary now says so: V4B returned
+  // REINFORCING / CONTRADICTORY / SAME_PROPOSITION here, so `answersAsked` was silently doing the work of
+  // target identity and every downstream branch believed the two halves shared a seat.
+  | 'RIVAL_AGREEMENT'
+  | 'RIVAL_CONFLICT'
   | 'ORTHOGONAL';        // no meaningful relation
 
-const NEAR: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
-const band = (s: TemporalScope): 'NEAR' | 'STRUCTURAL' => (NEAR.includes(s) ? 'NEAR' : 'STRUCTURAL');
+const band = temporalBand;
 const opposed = (a: ReasonedProposition, b: ReasonedProposition): boolean =>
   (a.direction === 'FAVORABLE' && (b.direction === 'UNFAVORABLE' || b.direction === 'RESTRICTED'))
   || (b.direction === 'FAVORABLE' && (a.direction === 'UNFAVORABLE' || a.direction === 'RESTRICTED'));
@@ -63,13 +69,18 @@ export function classifyPair(a: ReasonedProposition, b: ReasonedProposition): Cr
   //    to agree or disagree, and NOT enough to decompose into direction-vs-timing: no single thing is being
   //    described, so there is nothing whose direction could be right while its timing is wrong.
   //    DIFFERENT_TIME is unreachable from here — which is precisely the C7 fix.
-  if (a.answersAsked && b.answersAsked && a.questionAxis === b.questionAxis) {
+  //    V4C §4 — `answersAsked` means QUESTION-RELEVANCE and nothing else. V4B let it return
+  //    SAME_PROPOSITION / REINFORCING / CONTRADICTORY from here, which told every downstream branch that two
+  //    different seats were one claim; the RIVAL_* relations keep the disagreement without the false identity.
+  //    Rivalry is also CROSS-DISCIPLINE by definition: two seats read by the SAME discipline are two findings
+  //    of one reading, not two independent answers that could corroborate each other.
+  if (a.answersAsked && b.answersAsked && a.questionAxis === b.questionAxis && a.discipline !== b.discipline) {
     // The temporal band is deliberately NOT consulted here. These two are rival answers, so they can conflict
     // or agree — but with different structural targets there is no single thing whose direction and timing
     // could come apart, so DIFFERENT_TIME must stay unreachable no matter which bands they sit in.
-    if (opposed(a, b)) return 'CONTRADICTORY';
-    if (a.direction === b.direction) return 'REINFORCING';
-    return 'SAME_PROPOSITION';
+    if (opposed(a, b)) return 'RIVAL_CONFLICT';
+    if (a.direction === b.direction) return 'RIVAL_AGREEMENT';
+    return 'DIFFERENT_TARGET';
   }
 
   return a.questionAxis === b.questionAxis ? 'DIFFERENT_TARGET' : 'DIFFERENT_AXIS';
@@ -117,11 +128,43 @@ type Test = (
 const applies = (aWins: boolean | null, a: ReasonedProposition, b: ReasonedProposition) =>
   (aWins === null ? null : aWins ? b : a);
 
+/** Structures a discipline actually READ — the thing itself. */
+const CONCRETE_TARGET_KINDS = new Set<TargetKind>([
+  'NATAL_SEAT', 'NATAL_SEAT_PAIR', 'TEN_GOD_FAMILY', 'DAY_MASTER_FOOTING', 'PALACE', 'BOARD_SEAT',
+]);
+/**
+ * Identities that describe the SURROUNDINGS of the asked matter rather than the matter: a spanning composite,
+ * a place doctrine declines to look, a bare luck layer. Deliberately NOT "everything that is not concrete" —
+ * an ADAPTED_READING is a discipline's real finding with the seat information merely unavailable, so this
+ * reason has nothing to say about it and abstains rather than demoting it.
+ */
+const CONTEXT_TARGET_KINDS = new Set<TargetKind>(['COMPOSITE', 'DOCTRINE_GAP', 'LUCK_LAYER']);
+
+/**
+ * §9/§13 — is THIS side of a compound independently strong enough to assert its own half?
+ *
+ * A compound ("방향은 맞지만 지금은 아니다", "버는 쪽과 남는 쪽이 다르다") asserts TWO things at once. V4B asked
+ * only whether each half cited ANY premise id, so a half resting on one BACKGROUND premise from an approximate
+ * birth time could still claim ownership of the direction while a well-evidenced negative was demoted to
+ * "timing". Both halves must now be adequately supported in their own right, or no compound is stated at all.
+ */
+const halfIsAsserted = (p: ReasonedProposition): boolean =>
+  p.adequacy.supportAdequacy === 'ADEQUATE' && p.supportingPremiseIds.length > 0;
+
 const TESTS: Record<SubordinationReason, Test> = {
-  // Applies only when the two claims are about different KINDS of thing: one the asked matter, one context.
+  // V4C §8 — A TARGET TEST, not an axis test wearing a target's name. V4B fired whenever ONE side happened to
+  // sit on the asked axis, so any adjacent-axis proposition lost to a reason whose own text promises to
+  // compare targets ("물어보신 그 대상을 직접 다루고"). It now applies only when both claims are on the asked
+  // axis, about DIFFERENT structures, and exactly one of those structures is a concrete seat the discipline
+  // actually read — the other being a composite, a doctrine gap or an unscoped layer, i.e. real context.
   EXACT_TARGET_VS_CONTEXT: (a, b, _p, ctx) => {
-    const onAsked = (p: ReasonedProposition) => p.questionAxis === ctx.askedAxis && p.target.kind !== 'COMPOSITE';
-    return onAsked(a) === onAsked(b) ? null : applies(onAsked(a), a, b);
+    if (sameTarget(a.target, b.target)) return null;
+    if (a.questionAxis !== ctx.askedAxis || b.questionAxis !== ctx.askedAxis) return null;
+    const concrete = (p: ReasonedProposition) => CONCRETE_TARGET_KINDS.has(p.target.kind);
+    const context = (p: ReasonedProposition) => CONTEXT_TARGET_KINDS.has(p.target.kind);
+    if (concrete(a) && context(b)) return b;
+    if (concrete(b) && context(a)) return a;
+    return null;
   },
   // Applies only when the QUESTION is about a moment. Otherwise "sooner" is not a reason to believe something.
   EXACT_TIME_VS_BROAD_TIME: (a, b, _p, ctx) => {
@@ -178,13 +221,44 @@ export function subordinate(
   };
 }
 
-/** Axis pairs whose opposite-looking verdicts are BOTH true — a compound truth, not a contradiction. */
-const COMPOUND_PAIRS: { a: JudgmentDomain; b: JudgmentDomain; frame: string; kind: CompoundKind }[] = [
+/**
+ * V4C §14 — THIS TABLE NAMES A COMPOUND. IT NO LONGER DECIDES THAT ONE EXISTS.
+ *
+ * V4B required a hit here before any compound could be derived, so a hand-written whitelist of four axis pairs
+ * was the authority on whether two true statements could be reported as a compound truth — a lookup deciding
+ * a conclusion, which is the pattern this kernel exists to remove. Whether a compound exists is now decided
+ * STRUCTURALLY by compoundEligible() below (different structures, opposed, each independently asserted, one of
+ * them on the asked axis). A pair the table does not list still forms a compound; it is simply named from its
+ * two axis labels and filed under the generic DIFFERENT_DOMAIN decomposition.
+ */
+const COMPOUND_FRAMES: { a: JudgmentDomain; b: JudgmentDomain; frame: string; kind: CompoundKind }[] = [
   { a: 'MONEY_INFLOW', b: 'MONEY_RETENTION', frame: '돈이 들어오는 것과 남는 것', kind: 'INFLOW_VS_RETENTION' },
   { a: 'RELATION_BOND', b: 'RELATION_STABILITY', frame: '끌리는 힘과 같이 사는 난도', kind: 'BOND_VS_STABILITY' },
   { a: 'OPPORTUNITY', b: 'OUTCOME', frame: '기회가 오는 것과 그것을 잡아서 남는 것', kind: 'OPPORTUNITY_VS_OUTCOME' },
   { a: 'CAREER', b: 'MONEY_RETENTION', frame: '자리가 열리는 것과 실속이 남는 것', kind: 'DIFFERENT_DOMAIN' },
 ];
+
+/**
+ * Is this opposed pair a COMPOUND TRUTH ("둘 다 사실이라 나누어 말씀드립니다") rather than two unrelated
+ * statements? Structural conditions only:
+ *   · they are about DIFFERENT structures (guaranteed by the caller's relation),
+ *   · at least one of them answers the axis that was actually asked,
+ *   · and EACH half actually STATES something — it stands on named premises, at least one of which is more
+ *     than background context. A half resting only on "이 명식은 전반적으로 …" is not half of a truth, it is
+ *     filler, and pairing it with a real finding manufactures a compound out of one finding.
+ *
+ * Note the deliberate difference from halfIsAsserted(): a compound does not hand either half OWNERSHIP OF THE
+ * DIRECTION (it reports both), so it does not need each half to be independently decisive — only real.
+ */
+const compoundEligible = (
+  a: ReasonedProposition, b: ReasonedProposition, askedAxis: JudgmentDomain,
+  premises: Map<string, DivinationPremise>,
+): boolean => {
+  if (a.questionAxis !== askedAxis && b.questionAxis !== askedAxis) return false;
+  const stated = (p: ReasonedProposition) => p.supportingPremiseIds.length > 0
+    && p.supportingPremiseIds.some((id) => premises.get(id)?.applicability !== 'BACKGROUND');
+  return stated(a) && stated(b);
+};
 
 const AXIS_LABEL: Partial<Record<JudgmentDomain, string>> = {
   MONEY_INFLOW: '돈이 들어오는 쪽', MONEY_RETENTION: '돈이 남는 쪽', OPPORTUNITY: '기회가 오는 쪽',
@@ -209,15 +283,34 @@ function crossProp(
     axis: JudgmentDomain; temporalScope: TemporalScope; target: SemanticTarget; assertion: string;
     conclusionType: ReasonedProposition['conclusionType']; direction: ReasonedProposition['direction'];
     restriction?: ReasonedProposition['restriction'];
+    /** Parents whose material BACKS the new assertion. */
     from: ReasonedProposition[];
+    /** Parents whose material ARGUES WITH the new assertion (the demoted side of a resolved contradiction). */
+    against?: ReasonedProposition[];
   },
   premises: Map<string, DivinationPremise>,
 ): ReasonedProposition {
-  const supportIds = [...new Set(spec.from.flatMap((p) => p.supportingPremiseIds))];
-  const opposeIds = [...new Set(spec.from.flatMap((p) => p.opposingPremiseIds))];
+  // V4C §12 — SIDES ARE RELATIVE TO THE NEW ASSERTION, NOT INHERITED FROM THE PARENTS.
+  //
+  // V4B blind-unioned every parent's supporting ids into the child's supporting ids and every parent's
+  // opposing ids into its opposing ids. For a RESOLVED CONTRADICTION that is exactly backwards on one half:
+  // the demoted parent's supporting premises are the evidence AGAINST the conclusion being drawn, yet they
+  // were counted as backing it — so supportAdequacy ROSE because a rival disagreed, which is the disguised
+  // score PropositionAdequacy was split apart to eliminate. A parent listed in "against" is therefore
+  // re-sided: what supported IT opposes the new claim, and what opposed it supports the new claim.
+  const against = spec.against ?? [];
+  const parents = [...spec.from, ...against];
+  const supportIds = [...new Set([
+    ...spec.from.flatMap((p) => p.supportingPremiseIds),
+    ...against.flatMap((p) => p.opposingPremiseIds),
+  ])];
+  const opposeIds = [...new Set([
+    ...spec.from.flatMap((p) => p.opposingPremiseIds),
+    ...against.flatMap((p) => p.supportingPremiseIds),
+  ])].filter((id) => !supportIds.includes(id));
   const pick = (ids: string[]) => ids.map((id) => premises.get(id)).filter((p): p is DivinationPremise => !!p);
   return {
-    id: crossId(rule, spec.from),
+    id: crossId(rule, parents),
     discipline: 'CROSS',
     subject: ctx.subject,
     target: spec.target,
@@ -230,9 +323,9 @@ function crossProp(
     ...(spec.restriction ? { restriction: spec.restriction } : {}),
     supportingPremiseIds: supportIds,
     opposingPremiseIds: opposeIds,
-    derivedFromPropositionIds: spec.from.map((p) => p.id),
+    derivedFromPropositionIds: parents.map((p) => p.id),
     unresolvedPremiseIds: [],
-    doctrineReferences: [...new Set(spec.from.flatMap((p) => p.doctrineReferences))],
+    doctrineReferences: [...new Set(parents.flatMap((p) => p.doctrineReferences))],
     derivationRule: rule,
     adequacy: computeAdequacy(pick(supportIds), pick(opposeIds), { dataComplete: ctx.dataComplete, doctrine: 'ADOPTED' }),
   };
@@ -268,8 +361,9 @@ export function deriveCross(
 
   type Candidate = {
     key: string; rule: string; relation: CrossRelation;
-    spec: Omit<Parameters<typeof crossProp>[2], 'from'>;
+    spec: Omit<Parameters<typeof crossProp>[2], 'from' | 'against'>;
     from: ReasonedProposition[];
+    against?: ReasonedProposition[];
     dominant?: ReasonedProposition; counter?: ReasonedProposition;
     subordinationReasons?: SubordinationReason[]; compoundKind?: ContradictionResolutionKind; standoff?: boolean;
   };
@@ -278,6 +372,10 @@ export function deriveCross(
     const existing = candidates.get(c.key);
     if (!existing) { candidates.set(c.key, c); return; }
     for (const p of c.from) if (!existing.from.some((x) => x.id === p.id)) existing.from.push(p);
+    for (const p of c.against ?? []) {
+      existing.against = existing.against ?? [];
+      if (!existing.against.some((x) => x.id === p.id)) existing.against.push(p);
+    }
   };
 
   for (let i = 0; i < props.length; i += 1) {
@@ -286,23 +384,32 @@ export function deriveCross(
       const b = props[k];
       const relation = classifyPair(a, b);
 
-      if (relation === 'REINFORCING') {
+      if (relation === 'REINFORCING' || relation === 'RIVAL_AGREEMENT') {
         // Reinforcement is meaningful ONLY across disciplines — two propositions from the same engine agreeing
         // is one reading, not two independent ones.
         if (a.discipline === b.discipline) continue;
+        // V4C §4 — a RIVAL agreement is two DIFFERENT structures reaching the same answer, so the conclusion
+        // is about the PAIR, not about one seat. Keying it to a.target (as V4B did, having called the pair
+        // REINFORCING) claimed both disciplines had read the same 자리.
+        const agreementTarget = relation === 'RIVAL_AGREEMENT'
+          ? target('COMPOSITE', 'RIVAL:' + [a.target.key, b.target.key].sort().join('|'),
+            a.target.label + '·' + b.target.label)
+          : a.target;
         add({
-          key: 'CROSS_REINFORCEMENT:' + a.target.key + ':' + a.direction,
+          key: 'CROSS_REINFORCEMENT:' + agreementTarget.key + ':' + a.direction,
           rule: 'CROSS_REINFORCEMENT', relation, from: [a, b],
           spec: {
             axis: a.questionAxis,
             temporalScope: a.temporalScope,
-            target: a.target,
+            target: agreementTarget,
             // "두 학문이 일치합니다" tells the reader that we agree — not what we agree ABOUT. A reinforcement
             // must carry the direction it reinforces, or it is a directional verdict whose own headline states
             // no direction.
-            assertion: a.target.label + '에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: '
-              + (a.direction === 'FAVORABLE' ? '이 자리는 열려 있습니다.'
-                : a.direction === 'UNFAVORABLE' ? '이 자리는 막혀 있습니다.'
+            assertion: (relation === 'RIVAL_AGREEMENT'
+              ? '서로 다른 자리(' + a.target.label + ' / ' + b.target.label + ')를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: '
+              : a.target.label + '에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: ')
+              + (a.direction === 'FAVORABLE' ? '이 축은 열려 있습니다.'
+                : a.direction === 'UNFAVORABLE' ? '이 축은 막혀 있습니다.'
                   : '범위를 좁혀야 하는 자리입니다.')
               + ' 한쪽만 보고 내린 결론이 아니라는 뜻입니다.',
             conclusionType: a.conclusionType === 'COMPOUND' || b.conclusionType === 'COMPOUND' ? 'COMPOUND' : 'DIRECTIONAL',
@@ -313,18 +420,22 @@ export function deriveCross(
         continue;
       }
 
-      if (relation === 'CONTRADICTORY') {
+      if (relation === 'CONTRADICTORY' || relation === 'RIVAL_CONFLICT') {
         const decided = subordinate(a, b, byId, subCtx);
         if (!decided) {
           // §14 — the relationship does not settle it. Both truths are preserved; no winner is manufactured.
+          const standoffTarget = relation === 'RIVAL_CONFLICT'
+            ? target('COMPOSITE', 'RIVAL:' + [a.target.key, b.target.key].sort().join('|'),
+              a.target.label + '·' + b.target.label)
+            : a.target;
           add({
-            key: 'CROSS_STANDOFF:' + a.target.key,
+            key: 'CROSS_STANDOFF:' + standoffTarget.key,
             rule: 'CROSS_STANDOFF', relation, standoff: true, from: [a, b],
             spec: {
               axis: a.questionAxis,
               temporalScope: a.temporalScope,
-              target: a.target,
-              assertion: a.target.label + '에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.',
+              target: standoffTarget,
+              assertion: standoffTarget.label + '에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.',
               conclusionType: 'STRUCTURAL',
               direction: 'NONE',
             },
@@ -333,7 +444,10 @@ export function deriveCross(
         }
         add({
           key: 'CROSS_CONTRADICTION_RESOLVED:' + decided.dominant.target.key,
-          rule: 'CROSS_CONTRADICTION_RESOLVED', relation, from: [decided.dominant, decided.subordinate],
+          rule: 'CROSS_CONTRADICTION_RESOLVED', relation,
+          // §12 — the demoted parent is the side that ARGUES WITH this conclusion, and is declared as such
+          // so its evidence is re-sided rather than counted as backing the very claim it opposed.
+          from: [decided.dominant], against: [decided.subordinate],
           dominant: decided.dominant, counter: decided.subordinate, subordinationReasons: decided.reasons,
           spec: {
             axis: a.questionAxis,
@@ -353,8 +467,10 @@ export function deriveCross(
         // Reachable ONLY after subject, target, axis and claim-kind have all matched. Both halves must also be
         // independently grounded — "방향은 맞지만 지금은 아니다" asserts two things, so a side resting on
         // nothing must not get to own the direction through the timing door.
-        const grounded = (p: ReasonedProposition) => p.supportingPremiseIds.length + p.opposingPremiseIds.length > 0;
-        if (!grounded(a) || !grounded(b)) continue;
+        // V4C §9 — "grounded" used to mean "cites at least one premise id", which a single BACKGROUND premise
+        // from an approximate birth time satisfies. Owning the DIRECTION of a compound requires that the half
+        // stand on its own, so both sides must be adequately supported or no split is stated.
+        if (!halfIsAsserted(a) || !halfIsAsserted(b)) continue;
         const structural = band(a.temporalScope) === 'STRUCTURAL' ? a : b;
         const near = structural === a ? b : a;
         const structuralOpens = structural.direction === 'FAVORABLE';
@@ -380,10 +496,18 @@ export function deriveCross(
       // A COMPOUND TRUTH is by definition about two DIFFERENT things, so it is reached from DIFFERENT_TARGET or
       // DIFFERENT_AXIS — but only when the product recognises the two axes as a named pair. Two unrelated
       // targets disagreeing is not a compound truth; it is simply two unrelated statements.
+      // RIVAL_CONFLICT is deliberately NOT reachable here: it was already handled above as a conflict between
+      // two rival ANSWERS to the asked question, which is settled or declared a standoff — never re-framed as
+      // "both are true about different matters", since both are about the matter that was asked.
       if ((relation === 'DIFFERENT_AXIS' || relation === 'DIFFERENT_TARGET') && opposed(a, b)) {
-        const frame = COMPOUND_PAIRS.find((p) =>
+        if (!compoundEligible(a, b, ctx.askedAxis, byId)) continue;
+        const named = COMPOUND_FRAMES.find((p) =>
           (p.a === a.questionAxis && p.b === b.questionAxis) || (p.a === b.questionAxis && p.b === a.questionAxis));
-        if (!frame) continue;
+        // Unnamed pairs are still compounds — they are simply described by their two axis labels.
+        const frame = named ?? {
+          frame: axisLabel(a.questionAxis) + '과 ' + axisLabel(b.questionAxis),
+          kind: 'DIFFERENT_DOMAIN' as CompoundKind,
+        };
         const asked = a.questionAxis === ctx.askedAxis ? a : b;
         const other = asked === a ? b : a;
         const way = (p: ReasonedProposition) =>
@@ -391,12 +515,15 @@ export function deriveCross(
             : p.direction === 'UNFAVORABLE' ? '막힙니다'
               : '범위를 좁혀야 합니다';
         add({
-          key: 'CROSS_AXIS_COMPOUND:' + frame.frame,
+          key: 'CROSS_AXIS_COMPOUND:' + frame.kind + ':' + [a.target.key, b.target.key].sort().join('|'),
           rule: 'CROSS_AXIS_COMPOUND', relation, from: [a, b], compoundKind: frame.kind,
           spec: {
             axis: asked.questionAxis,
             temporalScope: asked.temporalScope,
-            target: target('COMPOSITE', frame.frame, frame.frame),
+            // V4C §2 — keyed by the compound's CANONICAL kind AND the two structures it spans, never by its
+            // Korean sentence. Two different compounds of the same kind are different claims.
+            target: target('COMPOSITE',
+              frame.kind + ':' + [a.target.key, b.target.key].sort().join('|'), frame.frame),
             assertion: topic(frame.frame) + ' 다르게 봅니다. ' + axisLabel(asked.questionAxis) + '은 ' + way(asked)
               + ', ' + axisLabel(other.questionAxis) + '은 ' + way(other) + '. 둘 다 사실이라 나누어 말씀드립니다.',
             conclusionType: 'COMPOUND',
@@ -409,7 +536,7 @@ export function deriveCross(
   }
 
   return [...candidates.values()].map((c) => ({
-    proposition: crossProp(c.rule, ctx, { ...c.spec, from: c.from }, byId),
+    proposition: crossProp(c.rule, ctx, { ...c.spec, from: c.from, ...(c.against ? { against: c.against } : {}) }, byId),
     relation: c.relation,
     ...(c.dominant ? { dominant: c.dominant } : {}),
     ...(c.counter ? { counter: c.counter } : {}),

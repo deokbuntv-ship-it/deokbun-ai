@@ -290,7 +290,11 @@ describe('§25 — the axis-drilldown continuation reaches the PROMPT, not just 
     const q1 = await turn('사업을 확장할까?');
     const draft: ConsultationDraft = { subject: { id: 'self', displayName: 'A', relationship: null }, birthInfo: BIRTH };
     const q3 = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '돈은요?');
-    const context = priorAxisContextFor(storedMeta(q1) as never, q3);
+    // V4C §23 — the continuation intent is what licenses carrying the prior judgment, and it is passed
+    // explicitly: a default would let any caller slip into "refinement" without having classified anything.
+    const { classifyContinuationIntent } = await import('@/features/chat/services/followUpContext');
+    expect(classifyContinuationIntent('돈은요?', true)).toBe('REFINE_EXISTING');
+    const context = priorAxisContextFor(storedMeta(q1) as never, q3, 'REFINE_EXISTING');
 
     expect(context.length).toBeGreaterThan(0);
     expect(context[0]).toContain('사업을 확장할까?');       // the ORIGINAL question is named
@@ -302,18 +306,45 @@ describe('§25 — the axis-drilldown continuation reaches the PROMPT, not just 
     const q1 = await turn('사업을 확장할까?');
     const draft: ConsultationDraft = { subject: { id: 'self', displayName: 'A', relationship: null }, birthInfo: BIRTH };
     const q3 = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '돈은요?');
-    const context = priorAxisContextFor(storedMeta(q1) as never, q3);
+    // V4C §23 — the continuation intent is what licenses carrying the prior judgment, and it is passed
+    // explicitly: a default would let any caller slip into "refinement" without having classified anything.
+    const { classifyContinuationIntent } = await import('@/features/chat/services/followUpContext');
+    expect(classifyContinuationIntent('돈은요?', true)).toBe('REFINE_EXISTING');
+    const context = priorAxisContextFor(storedMeta(q1) as never, q3, 'REFINE_EXISTING');
     const prompt = renderGroundingContext({ ...q3, priorAxisContext: context } as never);
     expect(prompt).toMatch(/앞선 판정에서 이 축에 대해 이미 나온 근거/);
     expect(prompt).toMatch(/앞 판정을 없던 일로 하고 새로 답하지 마시고/);
   });
 
-  it('the SAME axis asked again carries no continuation block (nothing to reconcile)', async () => {
+  // V4C §23 — WHAT DECIDES CONTINUITY IS THE CONTINUATION INTENT, NOT WHETHER THE AXIS MOVED.
+  //
+  // V4B keyed this on the axis: same axis → no continuation. That looked right for a repeated question and was
+  // wrong for the case the audit actually reported, because a refinement that stays on the topic ("그럼 얼마나
+  // 걸릴까요?") also has an unchanged axis and was therefore re-answered from scratch. Re-asking a question
+  // VERBATIM is not a dependent follow-up — the classifier says so — and that is what keeps it clean.
+  it('re-asking the SAME question verbatim is a NEW question, so nothing is carried', async () => {
     const { priorAxisContextFor } = await import('@/features/chat/server/storedDecisionGrounding');
+    const { classifyContinuationIntent } = await import('@/features/chat/services/followUpContext');
     const q1 = await turn('사업을 확장할까?');
     const draft: ConsultationDraft = { subject: { id: 'self', displayName: 'A', relationship: null }, birthInfo: BIRTH };
     const same = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '사업을 확장할까?');
-    expect(priorAxisContextFor(storedMeta(q1) as never, same)).toEqual([]);
+    const intent = classifyContinuationIntent('사업을 확장할까?', true);
+    expect(intent).toBe('NEW_QUESTION');
+    expect(priorAxisContextFor(storedMeta(q1) as never, same, intent)).toEqual([]);
+  });
+
+  it('a DEPENDENT follow-up on the same axis DOES carry the standing judgment forward (§23)', async () => {
+    const { priorAxisContextFor } = await import('@/features/chat/server/storedDecisionGrounding');
+    const { classifyContinuationIntent } = await import('@/features/chat/services/followUpContext');
+    const q1 = await turn('사업을 확장할까?');
+    const draft: ConsultationDraft = { subject: { id: 'self', displayName: 'A', relationship: null }, birthInfo: BIRTH };
+    const again = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '그럼 지금 바로 벌여도 될까요?');
+    const intent = classifyContinuationIntent('그럼 지금 바로 벌여도 될까요?', true);
+    expect(intent).toBe('REFINE_EXISTING');
+    const carried = priorAxisContextFor(storedMeta(q1) as never, again, intent);
+    expect(carried.length).toBeGreaterThan(0);
+    // and it carries the ORIGINAL judgment, so the new answer has something to reconcile with
+    expect(carried.join(' ')).toContain('사업을 확장할까?');
   });
 
   it('an axis the prior graph never touched yields NO fabricated continuation', async () => {

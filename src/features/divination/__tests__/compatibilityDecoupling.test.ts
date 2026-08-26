@@ -124,8 +124,12 @@ describe('§27 — the tier does not anchor the prompt, nor stand in when struct
   const source = () => read('src/features/chat/server/buildCompatibilityConsultation.ts');
 
   it('the tier is no longer described or used as the interpretation ANCHOR', () => {
-    expect(code('src/features/chat/server/buildCompatibilityConsultation.ts')).not.toMatch(/anchor the LLM must verbalize/);
-    expect(source()).toMatch(/요약 카드 표기용 종합 티어/);
+    const c = code('src/features/chat/server/buildCompatibilityConsultation.ts');
+    expect(c).not.toMatch(/anchor the LLM must verbalize/);
+    // V4C §26 — V4B RELABELLED the string and left it in `grounding`; the audit showed that was not enough,
+    // because `renderGroundingContext` renders whatever sits in `assessmentSummary` under the header
+    // 【종합 판단(근거 기반)】. The coupling lived in the renderer, so the field is no longer passed at all.
+    expect(c).not.toMatch(/assessmentSummarys*:/);
   });
 
   it('when the structural verdict is absent, the prompt says so instead of promoting the tier', () => {

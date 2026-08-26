@@ -60,8 +60,14 @@ export type NatalBaseline = {
   familyPresence: Record<TenGodFamily, number>;
   /** Families entirely absent — a real structural gap the reading may name. */
   absentFamilies: TenGodFamily[];
-  /** 원국 자체의 마찰 (충/형/파/해 among the natal pillars), by position pair. */
-  natalFrictionPositions: string[];
+  /**
+   * 원국 자체의 마찰 (충/형/파/해 among the natal pillars).
+   *
+   * V4C §2 — this used to be a formatted Korean string ("년주↔월주 BRANCH_CLASH") that the premise builder
+   * parsed back apart to build a target identity. A target derived from a rendered label is not an identity;
+   * the positions are carried structurally so the consumer never has to reverse-engineer them.
+   */
+  natalFrictions: { positions: string[]; kind: string; label: string }[];
   /** 원국 자체의 결속 (합/삼합/방합). */
   natalHarmonyPositions: string[];
   /** True when the chart's own 배우자 자리(일지) is already strained — decisive for marriage questions. */
@@ -113,20 +119,20 @@ export function readNatalBaseline(input: NatalStructureInput): NatalBaseline {
 
   const absentFamilies = (Object.keys(familyPresence) as TenGodFamily[]).filter((f) => familyPresence[f] === 0);
 
-  const natalFrictionPositions: string[] = [];
+  const natalFrictions: { positions: string[]; kind: string; label: string }[] = [];
   const natalHarmonyPositions: string[] = [];
   let spouseSeatStrained = false;
   // Natal relations are between TWO natal pillars (positions is a pair) — that pairing is exactly the detail
   // the old count-based judge threw away.
   for (const r of input.natalRelations?.stem ?? []) {
     const label = `${r.positions.map((p) => POSITION_LABEL[p]).join('↔')} ${r.relation.kind}`;
-    if (FRICTION_KINDS.has(r.relation.kind)) natalFrictionPositions.push(label);
+    if (FRICTION_KINDS.has(r.relation.kind)) natalFrictions.push({ positions: [...r.positions], kind: r.relation.kind, label });
     else natalHarmonyPositions.push(label);
   }
   for (const r of input.natalRelations?.branch ?? []) {
     const label = `${r.positions.map((p) => POSITION_LABEL[p]).join('↔')} ${r.relation.kind}`;
     if (FRICTION_KINDS.has(r.relation.kind)) {
-      natalFrictionPositions.push(label);
+      natalFrictions.push({ positions: [...r.positions], kind: r.relation.kind, label });
       if (r.positions.includes('DAY')) spouseSeatStrained = true; // 일지 = 배우자 자리
     } else natalHarmonyPositions.push(label);
   }
@@ -192,7 +198,7 @@ export function readNatalBaseline(input: NatalStructureInput): NatalBaseline {
 
   return {
     familyPresence, absentFamilies,
-    natalFrictionPositions, natalHarmonyPositions, spouseSeatStrained,
+    natalFrictions, natalHarmonyPositions, spouseSeatStrained,
     inCommand: input.monthCommandInCommand, anchored, evidence,
   };
 }
