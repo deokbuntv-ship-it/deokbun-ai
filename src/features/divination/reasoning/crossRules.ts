@@ -8,6 +8,7 @@
 // two claims are about the same axis and the same target.
 import type { ContradictionResolutionKind, JudgmentDomain, TemporalScope } from '../contracts';
 import { axesShareOneMatter } from '../axisOntology';
+import { claimKind } from '../claimOntology';
 
 /** Which named decomposition a compound pair represents — carried through so the verdict can report it. */
 type CompoundKind = ContradictionResolutionKind;
@@ -78,6 +79,15 @@ export function classifyPair(a: ReasonedProposition, b: ReasonedProposition): Cr
       return band(a.temporalScope) !== band(b.temporalScope) ? 'DIFFERENT_TIME_BAND' : 'DIFFERENT_TIME_SCALE';
     }
     if (opposed(a, b)) return 'CONTRADICTORY';
+    // V4E §1 — REINFORCEMENT REQUIRES THE SAME KIND OF CLAIM, not merely the same direction enum.
+    //
+    // Two RESTRICTED conclusions can assert entirely different things: a TIMING_WINDOW ("방향은 맞지만 지금은
+    // 아니다") and a SCOPE_LIMIT ("해도 되지만 범위를 좁혀야 한다") share `direction: 'RESTRICTED'` and nothing
+    // else. V4D classified them REINFORCING and the reinforcement then copied its restriction from operand
+    // `a` — so reversing the input array flipped a paid verdict between FOR_BUT_LATER and CONDITIONAL_AGAINST
+    // and toggled whether the user was given a timing statement at all (measured). Two different restrictions
+    // on one seat are two true statements; both stand, and neither is manufactured into corroboration.
+    if (claimKind(a) !== claimKind(b)) return 'SAME_PROPOSITION';
     if (a.direction === b.direction) return 'REINFORCING';
     return 'SAME_PROPOSITION';
   }
@@ -97,7 +107,12 @@ export function classifyPair(a: ReasonedProposition, b: ReasonedProposition): Cr
     // or agree — but with different structural targets there is no single thing whose direction and timing
     // could come apart, so DIFFERENT_TIME must stay unreachable no matter which bands they sit in.
     if (opposed(a, b)) return 'RIVAL_CONFLICT';
-    if (a.direction === b.direction) return 'RIVAL_AGREEMENT';
+    // V4E §1 — a rival AGREEMENT is two disciplines reaching the SAME conclusion: same kind of claim, about
+    // the same moment. A 세운 opening and a 대운 opening are two findings, not one corroborated one, and a
+    // TIMING_WINDOW beside a SCOPE_LIMIT agrees about nothing. Without these gates the agreement's scope and
+    // restriction were copied from whichever operand the pair loop reached first.
+    if (a.direction === b.direction && claimKind(a) === claimKind(b)
+      && a.temporalScope === b.temporalScope) return 'RIVAL_AGREEMENT';
     return 'DIFFERENT_TARGET';
   }
 
@@ -177,19 +192,24 @@ const TESTS: Record<SubordinationReason, Test> = {
   // compare targets ("물어보신 그 대상을 직접 다루고"). It now applies only when both claims are on the asked
   // axis, about DIFFERENT structures, and exactly one of those structures is a concrete seat the discipline
   // actually read — the other being a composite, a doctrine gap or an unscoped layer, i.e. real context.
-  EXACT_TARGET_VS_CONTEXT: (a, b, _p, ctx) => {
-    // V4D §11 — this reason's own sentence promises "물어보신 그 대상을 직접 다루고". When the question named
-    // no matter there IS no such 대상, so the reason is false as written and abstains rather than demoting a
-    // claim on a comparison it cannot make. UNKNOWN stays UNKNOWN; it is never back-filled from the axis.
-    if (!ctx.askedTarget) return null;
-    if (sameTarget(a.target, b.target)) return null;
-    if (a.questionAxis !== ctx.askedAxis || b.questionAxis !== ctx.askedAxis) return null;
-    const concrete = (p: ReasonedProposition) => CONCRETE_TARGET_KINDS.has(p.target.kind);
-    const context = (p: ReasonedProposition) => CONTEXT_TARGET_KINDS.has(p.target.kind);
-    if (concrete(a) && context(b)) return b;
-    if (concrete(b) && context(a)) return a;
-    return null;
-  },
+  /**
+   * V4E §2 — THIS REASON ABSTAINS, UNCONDITIONALLY, UNTIL A REAL RELATION EXISTS.
+   *
+   * Its sentence promises "물어보신 그 대상을 직접 다루고" — one side handles THE ASKED MATTER itself. Proving
+   * that requires a software-semantic relation between a proposition's structural target (a seat, a palace, a
+   * board) and the asked matter (결혼, 사업), and NO such relation exists in this kernel: mapping 결혼 onto
+   * 일지 or 부처궁 is doctrine, and doctrine tables are exactly what this layer may not invent.
+   *
+   * V4D used the asked matter as a TRUTHY SWITCH: naming any matter at all licensed a concrete-kind target to
+   * demote a context-kind one, even though neither target had any provable relation to the matter named — the
+   * asked matter manufactured exactness it could not back. Under §2 the honest behaviour is to abstain: an
+   * UNKNOWN or coarse asked matter reduces COVERAGE (more standoffs), never creates dominance.
+   *
+   * The entry stays so the type, the persisted reason strings in old rows, and SUBORDINATION_TEXT all remain
+   * valid; if a real target↔matter relation is ever adopted (as declared software semantics, with the argument
+   * made), this is where it plugs in.
+   */
+  EXACT_TARGET_VS_CONTEXT: () => null,
   // Applies only when the QUESTION is about a moment. Otherwise "sooner" is not a reason to believe something.
   EXACT_TIME_VS_BROAD_TIME: (a, b, _p, ctx) => {
     if (!ctx.asksTiming) return null;
@@ -504,6 +524,14 @@ export function deriveCross(
     for (let k = i + 1; k < props.length; k += 1) {
       const a = props[i];
       const b = props[k];
+      // V4E §6 — A PRIOR CROSS SYNTHESIS IS NOT DISCIPLINE EVIDENCE.
+      //
+      // On a first run the inputs are discipline propositions only, but a graph EXTENSION re-derives over the
+      // restored standing set, which contains the previous turn's CROSS conclusions. Pairing one of those with
+      // a discipline reading would let a synthesis corroborate with its own inputs' siblings — recursive
+      // amplification, one synthesis feeding the next as though it were independent evidence. A CROSS node may
+      // appear in the candidate set as prior synthesis context; it never re-enters the pair loop.
+      if (a.discipline === 'CROSS' || b.discipline === 'CROSS') continue;
       const relation = classifyPair(a, b);
 
       if (relation === 'REINFORCING' || relation === 'RIVAL_AGREEMENT') {

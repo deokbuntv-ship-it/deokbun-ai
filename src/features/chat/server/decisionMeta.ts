@@ -6,8 +6,9 @@ import { ANSWER_PLAN_VERSION, DECISION_POLICY_VERSION, type AnswerPlan } from '.
 import { classifyConsultationDomain, type ConsultationDomain } from './consultationDomain';
 import {
   ALL_CONFIDENCES, ALL_CONTRADICTION_KINDS, ALL_DERIVATION_RULES, ALL_DIRECTNESS, ALL_EVIDENCE_STRENGTHS,
-  ALL_STANCES, isCanonicalTarget,
+  ALL_STANCES, MYUNGRI_RULES, PRIMITIVE_RULE, isCanonicalTarget,
 } from '@/features/divination';
+import { CROSS_RULE_IDS } from '@/features/divination/reasoning/crossRules';
 import type { CrossDivinationVerdict } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
@@ -169,6 +170,8 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const EVIDENCE_STRENGTHS = new Set<string>(ALL_EVIDENCE_STRENGTHS);
   const CONTRADICTION_KINDS = new Set<string>(ALL_CONTRADICTION_KINDS);
   const DERIVATION_RULES = new Set<string>(ALL_DERIVATION_RULES);
+  const CROSS_RULES = new Set<string>(CROSS_RULE_IDS);
+  const MYUNGRI_RULE_IDS = new Set<string>(MYUNGRI_RULES.map((r) => r.id));
 
   /** One piece of named evidence, fully checked. Reused by judgments, sub-judgments and the verdict lists. */
   const evidenceOk = (x: unknown): boolean => {
@@ -344,6 +347,32 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     // A premise cannot both support and oppose the same claim.
     const sup = new Set(pr.supportingPremiseIds as string[]);
     if ((pr.opposingPremiseIds as string[]).some((id) => sup.has(id))) return undefined;
+
+    // ── V4E §7 — SEMANTIC INVARIANTS, FAIL CLOSED. Syntax and enums are necessary but not sufficient: a
+    // graph can be enum-valid and still assert something the kernel could never have produced, and a restored
+    // impossibility would flow straight into standing and arbitration. Nothing here is "repaired" — a
+    // malformed graph is rejected whole.
+    //
+    // A restriction is the SHAPE of a RESTRICTED direction; on any other direction it is a contradiction in
+    // terms (and stanceOf would read it anyway).
+    if (pr.restriction !== undefined && pr.direction !== 'RESTRICTED') return undefined;
+    // A derivation rule belongs to the layer that owns it: a CROSS rule on a discipline proposition (or the
+    // reverse) is a conclusion no reasoner could have minted.
+    if (CROSS_RULES.has(pr.derivationRule as string) !== (pr.discipline === 'CROSS')) return undefined;
+    if (MYUNGRI_RULE_IDS.has(pr.derivationRule as string) && pr.discipline !== 'MYUNGRI') return undefined;
+    // Ancestry is a property of the rule: a PRIMITIVE restates one premise and has no parents; every derived
+    // rule in this kernel declares at least one (make() emits the primitive parents of its ASSERTS premises,
+    // crossProp always cites the pair it reconciled). A derived conclusion with no ancestry cannot be
+    // re-derived, explained, or attacked.
+    const ancestry = (pr.derivedFromPropositionIds as string[]).length;
+    if (pr.derivationRule === PRIMITIVE_RULE ? ancestry !== 0 : ancestry === 0) return undefined;
+    // Adequacy must be consistent with the cited inputs where that is recomputable without context: a side
+    // with no cited premises has NO adequacy, and a side with cited premises has some. (The exact THIN /
+    // ADEQUATE grade depends on sideAdequacy's current definition and is deliberately not re-derived here —
+    // rejecting every row persisted under an older grading would invalidate history for a cosmetic reason.)
+    const ad2 = pr.adequacy as Record<string, unknown>;
+    if (((pr.supportingPremiseIds as string[]).length === 0) !== (ad2.supportAdequacy === 'NONE')) return undefined;
+    if (((pr.opposingPremiseIds as string[]).length === 0) !== (ad2.counterAdequacy === 'NONE')) return undefined;
     parsed.push(pr);
   }
 
@@ -396,6 +425,15 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   // Every proposition must belong to the same person the verdict is about.
   const subjects = new Set(parsed.map((pr) => pr.subject as string));
   if (subjects.size > 1) return undefined;
+  // V4E §7 — and so must every premise a proposition stands on. A premise about another person supporting
+  // this person's conclusion is a relation the kernel never mints (classifyPair refuses cross-subject pairs;
+  // a premise graph is built per chart), so restoring one would smuggle in evidence no reasoner produced.
+  if (subjects.size === 1 && Array.isArray(o.premises)) {
+    const [subject] = subjects;
+    for (const p of o.premises as Record<string, unknown>[]) {
+      if (p.subject !== subject) return undefined;
+    }
+  }
   // A headline that names a conclusion the graph does not contain is a dangling reference like any other.
   for (const id of (Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds as string[] : [])) {
     if (!propositionIds.has(id)) return undefined;

@@ -67,13 +67,27 @@ export const conclusionKey = (p: ReasonedProposition): string => [
 /** WHICH component of the conclusion moved. Ordered from strongest evidence of dependence to weakest. */
 export type Delta = 'ABSENT' | 'DIRECTION' | 'RESTRICTION' | 'ASSERTION' | 'NONE';
 
+/**
+ * V4E §9 — OBSERVED AGAINST EVERY KEY-MATCH, REPORTING THE WEAKEST CHANGE.
+ *
+ * The key is a semantic identity, not a uniqueness guarantee: RECURRING_FRICTION_CAUSE emits one conclusion
+ * per natal weakness, and two weaknesses on the same seat share a key. V4D observed against `.find()` — the
+ * FIRST match in re-derivation order — so a mutation could be credited with changing a conclusion when it had
+ * changed that conclusion's sibling. The conservative reading of several matches is the WEAKEST one: if any
+ * survivor under this key is byte-identical, nothing was proven (NONE); otherwise the least-changed survivor
+ * bounds what the mutation demonstrably moved.
+ */
 function observe(before: ReasonedProposition, after: ReasonedProposition[]): Delta {
-  const match = after.find((p) => conclusionKey(p) === conclusionKey(before));
-  if (!match) return 'ABSENT';
-  if (match.direction !== before.direction) return 'DIRECTION';
-  if (match.restriction !== before.restriction) return 'RESTRICTION';
-  if (match.assertion !== before.assertion) return 'ASSERTION';
-  return 'NONE';
+  const matches = after.filter((p) => conclusionKey(p) === conclusionKey(before));
+  if (matches.length === 0) return 'ABSENT';
+  const deltaOf = (m: ReasonedProposition): Delta => {
+    if (m.direction !== before.direction) return 'DIRECTION';
+    if (m.restriction !== before.restriction) return 'RESTRICTION';
+    if (m.assertion !== before.assertion) return 'ASSERTION';
+    return 'NONE';
+  };
+  const STRENGTH: Record<Delta, number> = { NONE: 0, ASSERTION: 1, RESTRICTION: 2, DIRECTION: 3, ABSENT: 4 };
+  return matches.map(deltaOf).reduce((weakest, d) => (STRENGTH[d] < STRENGTH[weakest] ? d : weakest));
 }
 
 /**
@@ -93,8 +107,11 @@ const satisfies = (expect: Expectation, observed: Delta): boolean => {
   if (expect === 'DIRECTION') {
     return observed === 'ABSENT' || observed === 'DIRECTION' || observed === 'RESTRICTION';
   }
-  // SEMANTIC = the CLAIM changed, not merely its wording drifted with a re-rendered label.
-  if (expect === 'SEMANTIC') return observed === 'ABSENT' || observed === 'DIRECTION' || observed === 'RESTRICTION' || observed === 'ASSERTION';
+  // SEMANTIC = the CLAIM itself changed. V4E §9 — an ASSERTION-only delta no longer counts: assertion text
+  // is a rendering of the claim, and a re-worded sentence (a member list re-rendered, a label re-joined) is
+  // not proof that the conclusion depended on the mutated input. What must move is the claim's substance —
+  // gone, re-directed, or re-restricted.
+  if (expect === 'SEMANTIC') return observed === 'ABSENT' || observed === 'DIRECTION' || observed === 'RESTRICTION';
   return observed !== 'NONE';
 };
 

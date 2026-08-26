@@ -49,6 +49,28 @@ import {
 const MAX_PROPOSITIONS = 400;
 
 /**
+ * V4E §5 — THE CONTROLLED REFINEMENT FAILURE.
+ *
+ * What a REFINE_EXISTING turn becomes when `extendGraph` itself throws: the ORIGINAL graph, at the ORIGINAL
+ * instant, with an honest decline on the asked axis — and nothing else. Every node, premise, judgment and the
+ * evaluation instant come through untouched; only the headline states that this refinement could not be made.
+ *
+ * It exists because the alternative — falling back to the freshly built primary graph — silently RECASTS the
+ * consultation: the user asked a follow-up about the reading they already received and would get an unrelated
+ * second reading presented as its continuation. A worse answer from the same graph is acceptable; a different
+ * reading wearing the first one's clothes is not.
+ */
+export function refinementFailure(v: CrossDivinationVerdict, axis: JudgmentDomain): CrossDivinationVerdict {
+  return {
+    ...v,
+    questionDomain: axis,
+    primaryConclusion: `${axisLabel(axis, '전반')}에 대해서는 앞선 판정을 이어서 더 좁혀 드리기 어렵습니다. 앞서 드린 판정이 그대로 유효하며, 새로 보시려면 "지금 다시 보면?"이라고 물어봐 주세요.`,
+    headlinePropositionIds: [],
+    direction: NO_SIGNAL,
+  };
+}
+
+/**
  * Re-derive the standing graph across a NEW asked axis and append what that produces.
  *
  * Returns the verdict UNCHANGED when there is nothing to add — never a fabricated one. The fields an extension

@@ -8623,9 +8623,7 @@ function natalSeatPairTarget(a, b) {
 // src/features/divination/reasoning/kernel.ts
 function sideAdequacy(premises) {
   if (premises.length === 0) return "NONE";
-  const direct = premises.some((p) => p.applicability === "DIRECT");
-  const exact = premises.some((p) => p.reliability === "EXACT");
-  return direct && exact ? "ADEQUATE" : "THIN";
+  return premises.some((p) => p.applicability === "DIRECT" && p.reliability === "EXACT") ? "ADEQUATE" : "THIN";
 }
 function computeAdequacy(supporting, opposing, opts) {
   return {
@@ -8828,12 +8826,13 @@ function classifyPair(a, b) {
       return band(a.temporalScope) !== band(b.temporalScope) ? "DIFFERENT_TIME_BAND" : "DIFFERENT_TIME_SCALE";
     }
     if (opposed(a, b)) return "CONTRADICTORY";
+    if (claimKind(a) !== claimKind(b)) return "SAME_PROPOSITION";
     if (a.direction === b.direction) return "REINFORCING";
     return "SAME_PROPOSITION";
   }
   if (a.answersAsked && b.answersAsked && a.questionAxis === b.questionAxis && a.discipline !== b.discipline) {
     if (opposed(a, b)) return "RIVAL_CONFLICT";
-    if (a.direction === b.direction) return "RIVAL_AGREEMENT";
+    if (a.direction === b.direction && claimKind(a) === claimKind(b) && a.temporalScope === b.temporalScope) return "RIVAL_AGREEMENT";
     return "DIFFERENT_TARGET";
   }
   return a.questionAxis === b.questionAxis ? "DIFFERENT_TARGET" : "DIFFERENT_AXIS";
@@ -8846,15 +8845,6 @@ var SUBORDINATION_TEXT = {
   DOCTRINE_APPLICABLE_VS_DOCTRINE_BLOCKED: "한쪽은 채택된 학설로 판단할 수 있고, 다른 쪽은 판단 근거가 보류된 상태입니다"
 };
 var applies = (aWins, a, b) => aWins === null ? null : aWins ? b : a;
-var CONCRETE_TARGET_KINDS = /* @__PURE__ */ new Set([
-  "NATAL_SEAT",
-  "NATAL_SEAT_PAIR",
-  "TEN_GOD_FAMILY",
-  "DAY_MASTER_FOOTING",
-  "PALACE",
-  "BOARD_SEAT"
-]);
-var CONTEXT_TARGET_KINDS = /* @__PURE__ */ new Set(["COMPOSITE", "DOCTRINE_GAP", "LUCK_LAYER"]);
 var halfIsAsserted = (p) => p.adequacy.supportAdequacy === "ADEQUATE" && p.supportingPremiseIds.length > 0;
 var TESTS = {
   // V4C §8 — A TARGET TEST, not an axis test wearing a target's name. V4B fired whenever ONE side happened to
@@ -8862,16 +8852,24 @@ var TESTS = {
   // compare targets ("물어보신 그 대상을 직접 다루고"). It now applies only when both claims are on the asked
   // axis, about DIFFERENT structures, and exactly one of those structures is a concrete seat the discipline
   // actually read — the other being a composite, a doctrine gap or an unscoped layer, i.e. real context.
-  EXACT_TARGET_VS_CONTEXT: (a, b, _p, ctx) => {
-    if (!ctx.askedTarget) return null;
-    if (sameTarget(a.target, b.target)) return null;
-    if (a.questionAxis !== ctx.askedAxis || b.questionAxis !== ctx.askedAxis) return null;
-    const concrete = (p) => CONCRETE_TARGET_KINDS.has(p.target.kind);
-    const context = (p) => CONTEXT_TARGET_KINDS.has(p.target.kind);
-    if (concrete(a) && context(b)) return b;
-    if (concrete(b) && context(a)) return a;
-    return null;
-  },
+  /**
+   * V4E §2 — THIS REASON ABSTAINS, UNCONDITIONALLY, UNTIL A REAL RELATION EXISTS.
+   *
+   * Its sentence promises "물어보신 그 대상을 직접 다루고" — one side handles THE ASKED MATTER itself. Proving
+   * that requires a software-semantic relation between a proposition's structural target (a seat, a palace, a
+   * board) and the asked matter (결혼, 사업), and NO such relation exists in this kernel: mapping 결혼 onto
+   * 일지 or 부처궁 is doctrine, and doctrine tables are exactly what this layer may not invent.
+   *
+   * V4D used the asked matter as a TRUTHY SWITCH: naming any matter at all licensed a concrete-kind target to
+   * demote a context-kind one, even though neither target had any provable relation to the matter named — the
+   * asked matter manufactured exactness it could not back. Under §2 the honest behaviour is to abstain: an
+   * UNKNOWN or coarse asked matter reduces COVERAGE (more standoffs), never creates dominance.
+   *
+   * The entry stays so the type, the persisted reason strings in old rows, and SUBORDINATION_TEXT all remain
+   * valid; if a real target↔matter relation is ever adopted (as declared software semantics, with the argument
+   * made), this is where it plugs in.
+   */
+  EXACT_TARGET_VS_CONTEXT: () => null,
   // Applies only when the QUESTION is about a moment. Otherwise "sooner" is not a reason to believe something.
   EXACT_TIME_VS_BROAD_TIME: (a, b, _p, ctx) => {
     if (!ctx.asksTiming) return null;
@@ -9030,6 +9028,7 @@ function deriveCross(props, premises, ctx) {
     for (let k = i + 1; k < props.length; k += 1) {
       const a = props[i];
       const b = props[k];
+      if (a.discipline === "CROSS" || b.discipline === "CROSS") continue;
       const relation = classifyPair(a, b);
       if (relation === "REINFORCING" || relation === "RIVAL_AGREEMENT") {
         if (a.discipline === b.discipline) continue;
@@ -9384,6 +9383,15 @@ function judgeCross(input) {
 
 // src/features/divination/reasoning/graphExtension.ts
 var MAX_PROPOSITIONS = 400;
+function refinementFailure(v, axis) {
+  return {
+    ...v,
+    questionDomain: axis,
+    primaryConclusion: `${axisLabel(axis, "전반")}에 대해서는 앞선 판정을 이어서 더 좁혀 드리기 어렵습니다. 앞서 드린 판정이 그대로 유효하며, 새로 보시려면 "지금 다시 보면?"이라고 물어봐 주세요.`,
+    headlinePropositionIds: [],
+    direction: NO_SIGNAL
+  };
+}
 function extendGraph(v, axis, intent, asksTiming) {
   const subject = v.propositions[0]?.subject;
   if (!subject) return v;
@@ -10044,7 +10052,11 @@ var CONTESTED_SHARE = {
       restriction: "SCOPE",
       // Both sides SUPPORT this compound claim: the wealth seats and the rival together are what make it true.
       support: [...wealth, ...rivals],
-      oppose: []
+      oppose: [],
+      supportGroups: [
+        { role: "ALTERNATIVE", label: "몫을 나누는 기운", ids: rivals.map((p) => p.id) },
+        { role: "ALTERNATIVE", label: "원국의 재물 자리", ids: wealth.map((p) => p.id) }
+      ]
     })];
   }
 };
@@ -10070,8 +10082,19 @@ var DIRECTION_VS_EXECUTION = {
           conclusionType: "COMPOUND",
           direction: "RESTRICTED",
           restriction: "TIMING",
-          support: [open],
-          oppose: layerStrikes
+          // V4E §3 — SIDES ARE RELATIVE TO THIS ASSERTION. The compound claims "방향은 열려 있고 지금 실행은
+          // 막혀 있다", and the strikes are what ESTABLISH the second half — they support this claim. V4D filed
+          // them under `oppose` because their real-world valence is negative, which is precisely the blind
+          // polarity mapping the adequacy split was built to remove: the conclusion's own evidence was being
+          // reported as the material arguing against it.
+          support: [open, ...layerStrikes],
+          oppose: [],
+          // §15 — the opening is REQUIRED (without it there is no direction to split from the moment); the
+          // strikes of this layer substitute for each other.
+          supportGroups: [
+            { role: "REQUIRED", label: "큰 흐름의 개방", ids: [open.id] },
+            { role: "ALTERNATIVE", label: LAYER_LABEL[scope] + "의 타격", ids: layerStrikes.map((p) => p.id) }
+          ]
         }));
       }
     }
@@ -12179,6 +12202,8 @@ function parseDivinationVerdict(v) {
   const EVIDENCE_STRENGTHS = new Set(ALL_EVIDENCE_STRENGTHS);
   const CONTRADICTION_KINDS = new Set(ALL_CONTRADICTION_KINDS);
   const DERIVATION_RULES = new Set(ALL_DERIVATION_RULES);
+  const CROSS_RULES = new Set(CROSS_RULE_IDS);
+  const MYUNGRI_RULE_IDS = new Set(MYUNGRI_RULES.map((r) => r.id));
   const evidenceOk = (x) => {
     if (!Array.isArray(x)) return false;
     return x.every((e) => {
@@ -12340,6 +12365,14 @@ function parseDivinationVerdict(v) {
     if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) return void 0;
     const sup = new Set(pr.supportingPremiseIds);
     if (pr.opposingPremiseIds.some((id) => sup.has(id))) return void 0;
+    if (pr.restriction !== void 0 && pr.direction !== "RESTRICTED") return void 0;
+    if (CROSS_RULES.has(pr.derivationRule) !== (pr.discipline === "CROSS")) return void 0;
+    if (MYUNGRI_RULE_IDS.has(pr.derivationRule) && pr.discipline !== "MYUNGRI") return void 0;
+    const ancestry = pr.derivedFromPropositionIds.length;
+    if (pr.derivationRule === PRIMITIVE_RULE ? ancestry !== 0 : ancestry === 0) return void 0;
+    const ad2 = pr.adequacy;
+    if (pr.supportingPremiseIds.length === 0 !== (ad2.supportAdequacy === "NONE")) return void 0;
+    if (pr.opposingPremiseIds.length === 0 !== (ad2.counterAdequacy === "NONE")) return void 0;
     parsed.push(pr);
   }
   for (const pr of parsed) {
@@ -12381,6 +12414,12 @@ function parseDivinationVerdict(v) {
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger2(o.evaluatedAtEpochSeconds)) return void 0;
   const subjects = new Set(parsed.map((pr) => pr.subject));
   if (subjects.size > 1) return void 0;
+  if (subjects.size === 1 && Array.isArray(o.premises)) {
+    const [subject] = subjects;
+    for (const p of o.premises) {
+      if (p.subject !== subject) return void 0;
+    }
+  }
   for (const id of Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds : []) {
     if (!propositionIds.has(id)) return void 0;
   }
@@ -12994,6 +13033,10 @@ async function buildServerConsultation(request, deps) {
         };
         graphExtended = true;
       } catch {
+        grounding = {
+          ...grounding,
+          divinationVerdict: refinementFailure(restored, resolveJudgmentDomain(question))
+        };
         graphExtended = false;
       }
     }

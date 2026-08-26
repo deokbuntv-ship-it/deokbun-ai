@@ -61,7 +61,7 @@ describe('§38-11 / §38-12 — the matter the question named is first-class, an
     expect(resolveAskedTarget('')).toBeNull();
   });
 
-  it('12 — and under UNKNOWN the exact-target reason ABSTAINS rather than demoting a claim', () => {
+  it('12 / V4E §2 — the exact-target reason ABSTAINS whether or not a matter was named', () => {
     const concrete = prop({
       discipline: 'MYUNGRI', target: SEAT_MONTH, direction: 'FAVORABLE', supportingPremiseIds: ['x'],
     });
@@ -72,13 +72,15 @@ describe('§38-11 / §38-12 — the matter the question named is first-class, an
     const premises = new Map<string, DivinationPremise>();
     const known = { askedAxis: 'CAREER' as const, asksTiming: false };
 
+    // V4D let a NAMED matter act as a truthy switch: 직업 licensed a concrete seat to demote a context claim
+    // even though NEITHER target has any provable relation to 직업 — the asked matter manufactured an
+    // exactness it could not back. No software-semantic relation between a structural target and an asked
+    // matter exists in this kernel (mapping 결혼 onto 일지 would be doctrine), so the reason abstains in BOTH
+    // cases. Coverage falls; dominance is never invented.
     const withMatter = subordinate(concrete, context, premises,
       { ...known, askedTarget: target('ASKED_MATTER', 'OCCUPATION', '직업') });
     const withoutMatter = subordinate(concrete, context, premises, { ...known, askedTarget: null });
-
-    // With a named matter the reason applies. With none it is FALSE AS WRITTEN — its own sentence promises
-    // "물어보신 그 대상" — so it must say nothing rather than back-fill the matter from the axis.
-    expect(withMatter?.reasons).toContain('EXACT_TARGET_VS_CONTEXT');
+    expect(withMatter?.reasons ?? []).not.toContain('EXACT_TARGET_VS_CONTEXT');
     expect(withoutMatter?.reasons ?? []).not.toContain('EXACT_TARGET_VS_CONTEXT');
   });
 });

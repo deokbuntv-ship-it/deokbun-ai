@@ -156,12 +156,20 @@ export type PropositionAdequacy = {
   doctrineApplicability: 'ADOPTED' | 'PARTIAL' | 'BLOCKED';
 };
 
-/** Adequacy of ONE side, from that side's premises only. A side with a DIRECT premise on exact data is adequate. */
+/**
+ * Adequacy of ONE side, from that side's premises only.
+ *
+ * V4E §4 — THE QUALIFYING PREMISE MUST BE ONE PREMISE. V4D asked "does SOME premise sit directly on the
+ * question?" and, separately, "does SOME premise come from exact input?" — so a DIRECT premise built on an
+ * approximate birth time plus an unrelated BACKGROUND premise from exact input composed into ADEQUATE, a
+ * quality no single piece of support actually had. Evidence quality is a property of a premise, not a feature
+ * set to be unioned across the side: the side is adequate when at least one premise is both direct AND exact.
+ */
 export function sideAdequacy(premises: DivinationPremise[]): AdequacyLevel {
   if (premises.length === 0) return 'NONE';
-  const direct = premises.some((p) => p.applicability === 'DIRECT');
-  const exact = premises.some((p) => p.reliability === 'EXACT');
-  return direct && exact ? 'ADEQUATE' : 'THIN';
+  return premises.some((p) => p.applicability === 'DIRECT' && p.reliability === 'EXACT')
+    ? 'ADEQUATE'
+    : 'THIN';
 }
 
 export function computeAdequacy(

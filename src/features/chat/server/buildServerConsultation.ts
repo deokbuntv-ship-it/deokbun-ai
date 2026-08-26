@@ -42,7 +42,7 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
-import { extendGraph, renderVerdictDirective } from '@/features/divination';
+import { extendGraph, refinementFailure, renderVerdictDirective } from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -309,8 +309,12 @@ export async function buildServerConsultation(
     // axis instead, so every conclusion this turn adds cites nodes the previous answer already stood on. The
     // engine evidence stays (identical by construction — same birth, same instant, same frozen engines).
     //
-    // Fail-open: if extension throws for any reason, the freshly-built verdict remains and behaviour is
-    // exactly V4C's. A refinement that cannot extend is a worse answer, not a broken one.
+    // V4E §5 — FAIL CLOSED. If extension throws, the RESTORED graph stays authoritative with a controlled
+    // refinement-failure headline; the freshly built primary verdict is discarded on this path either way.
+    // V4D caught the exception and kept the fresh graph — "fail-open" — which silently recast an ordinary
+    // continuation ("돈은?", "왜?", "결혼하면?") as a brand-new reading: the exact production failure §19
+    // existed to remove, reintroduced through the error path. The original graph and its instant T1 are
+    // preserved in BOTH outcomes; only REEVALUATE_NOW ever moves the clock.
     const restored = continuation === 'REFINE_EXISTING' ? previousMeta?.divinationVerdict ?? null : null;
     if (restored && grounding.status === 'available') {
       try {
@@ -325,6 +329,10 @@ export async function buildServerConsultation(
         };
         graphExtended = true;
       } catch {
+        grounding = {
+          ...grounding,
+          divinationVerdict: refinementFailure(restored, resolveJudgmentDomain(question)),
+        };
         graphExtended = false;
       }
     }

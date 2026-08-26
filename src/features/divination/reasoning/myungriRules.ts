@@ -142,6 +142,10 @@ const CONTESTED_SHARE: DerivationRule = {
       // Both sides SUPPORT this compound claim: the wealth seats and the rival together are what make it true.
       support: [...wealth, ...rivals],
       oppose: [],
+      supportGroups: [
+        { role: 'ALTERNATIVE', label: '몫을 나누는 기운', ids: rivals.map((p) => p.id) },
+        { role: 'ALTERNATIVE', label: '원국의 재물 자리', ids: wealth.map((p) => p.id) },
+      ],
     })];
   },
 };
@@ -196,8 +200,19 @@ const DIRECTION_VS_EXECUTION: DerivationRule = {
           conclusionType: 'COMPOUND',
           direction: 'RESTRICTED',
           restriction: 'TIMING',
-          support: [open],
-          oppose: layerStrikes,
+          // V4E §3 — SIDES ARE RELATIVE TO THIS ASSERTION. The compound claims "방향은 열려 있고 지금 실행은
+          // 막혀 있다", and the strikes are what ESTABLISH the second half — they support this claim. V4D filed
+          // them under `oppose` because their real-world valence is negative, which is precisely the blind
+          // polarity mapping the adequacy split was built to remove: the conclusion's own evidence was being
+          // reported as the material arguing against it.
+          support: [open, ...layerStrikes],
+          oppose: [],
+          // §15 — the opening is REQUIRED (without it there is no direction to split from the moment); the
+          // strikes of this layer substitute for each other.
+          supportGroups: [
+            { role: 'REQUIRED', label: '큰 흐름의 개방', ids: [open.id] },
+            { role: 'ALTERNATIVE', label: LAYER_LABEL[scope] + '의 타격', ids: layerStrikes.map((p) => p.id) },
+          ],
         }));
       }
     }

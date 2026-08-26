@@ -176,3 +176,38 @@ describe('§23 — a malformed revision claim fails CLOSED', () => {
     expect(withRevision(q2, { schemaVersion: 'graph-revision@9.9.9' })).toBeUndefined();
   });
 });
+
+describe('V4E §5 — extension failure through the REAL server path fails CLOSED', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const divination = require('@/features/divination') as typeof import('@/features/divination');
+
+  it('when extendGraph THROWS, the restored graph stays authoritative — never the fresh primary one', async () => {
+    const q1 = await turn('사업을 확장할까?', T1);
+    const spy = jest.spyOn(divination, 'extendGraph').mockImplementation(() => {
+      throw new Error('forced extension failure');
+    });
+    try {
+      const q2 = await turn('돈은?', T1, q1);
+      const v = q2.divinationVerdict!;
+      // The freshly built primary graph must NOT become authoritative: every proposition the answer stands on
+      // is a node of G1, the original question and instant survive, and the headline is a controlled decline.
+      const g1Ids = new Set(q1.divinationVerdict!.propositions.map((p) => p.id));
+      for (const p of v.propositions) expect(g1Ids.has(p.id)).toBe(true);
+      expect(v.question).toBe(q1.divinationVerdict!.question);
+      expect(v.evaluatedAtEpochSeconds).toBe(T1);
+      expect(v.direction).toBe('INSUFFICIENT_EVIDENCE');
+      expect(v.headlinePropositionIds).toEqual([]);
+      expect(v.primaryConclusion).toContain('앞선 판정');
+      // and the failed refinement records NO extension — provenance stays honest
+      expect(q2.graphRevision).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('…and with the spy gone, the same follow-up extends again (the failure was the forced one)', async () => {
+    const q1 = await turn('사업을 확장할까?', T1);
+    const q2 = await turn('돈은?', T1, q1);
+    expect(q2.graphRevision?.kind).toBe('EXTENDED');
+  });
+});
