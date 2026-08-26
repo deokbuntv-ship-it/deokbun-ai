@@ -9,6 +9,11 @@
 export {
   DIVINATION_VERDICT_VERSION,
   AGAINST_STANCES,
+  ALL_STANCES,
+  ALL_DIRECTNESS,
+  ALL_CONFIDENCES,
+  ALL_EVIDENCE_STRENGTHS,
+  ALL_CONTRADICTION_KINDS,
   FOR_STANCES,
   evidenceAdequacy,
   isDirectional,
@@ -35,9 +40,10 @@ export {
 
 export { tenGodFamily, tenGodJudgmentDomain, type MyungriJudgeInput, type TemporalLayerFacts } from './myungriJudge';
 export {
-  axesShareOneMatter, axisAspect, axisLabel, axisMatter, agreedHeadline, unresolvedHeadline,
+  ALL_AXES, axesShareOneMatter, axisAspect, axisLabel, axisMatter,
   type AxisAspect, type AxisMatter,
 } from './axisOntology';
+export { agreedHeadline, unresolvedHeadline } from './reasoning/headlineProse';
 export { claimKind, sameClaimKind, type ClaimKind } from './claimOntology';
 export { readNatalBaseline, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
 export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
@@ -95,12 +101,17 @@ export {
   target,
   isCanonicalTarget,
   natalSeatPairTarget,
+  natalSeatTarget,
   ziweiPalaceTarget,
   qimenBoardTarget,
   adaptedReadingTarget,
+  adaptedContextTarget,
+  compositeTarget,
+  type CompositionRelation,
 } from './reasoning/kernel';
 export { buildMyungriPremises, type MyungriPremiseInput } from './reasoning/myungriPremises';
 export { MYUNGRI_RULES, primitivePropositions } from './reasoning/myungriRules';
+export { ALL_DERIVATION_RULES } from './reasoning/derivationRules';
 export { reasonMyungri, myungriSynthesisCensus, type MyungriReasoning } from './reasoning/myungriReasoner';
  export { reasonCross, crossSynthesisCensus, type CrossReasoning, type CrossReasonInput } from './reasoning/crossReasoner';
  export { adaptJudgment } from './reasoning/disciplineAdapter';

@@ -28,7 +28,7 @@
 //        premise changed nothing.
 import {
   MYUNGRI_RULES, PRIMITIVE_RULE, candidatePropositions, deriveCross, primitivePropositions, runDerivations,
-  screenSynthesis, standingPropositions, temporalBand,
+  natalSeatPairTarget, screenSynthesis, standingPropositions, temporalBand,
   type DerivationContext, type DivinationPremise, type ReasonedProposition, type SemanticRelation,
   type SynthesisClass,
 } from '@/features/divination';
@@ -389,6 +389,12 @@ export function groupMutations(
  * halves about different things, or (for a timing split) putting them in the same temporal band, must remove
  * the conclusion entirely; and a parent pointing the other way must change the claim (§18).
  */
+/**
+ * A canonical target that is not any structure the rules read, used to make a parent be "about something
+ * else" without leaving the closed-world registry.
+ */
+const MUTATED_TARGET = natalSeatPairTarget('YEAR', 'YEAR');
+
 export function crossMutations(
   conclusion: ReasonedProposition,
   props: ReasonedProposition[],
@@ -432,10 +438,12 @@ export function crossMutations(
 
     // TARGET MUTATION — a conclusion about the same thing must NOT survive the two halves becoming different
     // things. This is the attack V4A's classifier could not have failed, because it never ran it.
+    //
+    // V4D — the replacement must be a CANONICAL target, not a corrupted key. V4C appended '::MUTATED', which
+    // the closed-world registry now rejects; a rule that then tries to mint a composite over it THROWS, so
+    // the attack crashed the derivation instead of observing it produce nothing.
     out.push(record(parent, 'RETARGET_PARENT', `retarget ${parent.discipline}:${parent.target.label}`,
-      'ABSENT', props.map((p) => (p.id === parent.id
-        ? { ...p, target: { ...p.target, key: `${p.target.key}::MUTATED` } }
-        : p)), true));
+      'ABSENT', props.map((p) => (p.id === parent.id ? { ...p, target: MUTATED_TARGET } : p)), true));
 
     // Rescoping to NATAL is only a real attack on a NEAR parent: it is what collapses the two halves into one
     // band. Moving a parent that is ALREADY structural (DAEWOON→NATAL) leaves the band relationship exactly as

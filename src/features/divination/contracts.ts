@@ -73,6 +73,18 @@ export type Stance =
 /** Stances that assert a positive/negative direction (used by guards + the cross judge). */
 export const FOR_STANCES: readonly Stance[] = ['STRONGLY_FOR', 'FOR', 'CONDITIONAL_FOR', 'FOR_BUT_LATER'] as const;
 export const AGAINST_STANCES: readonly Stance[] = ['AGAINST_FOR_NOW', 'CONDITIONAL_AGAINST', 'AGAINST', 'STRONGLY_AGAINST'] as const;
+/**
+ * V4D §27 — THE UNIONS, AS RUNTIME VALUES.
+ *
+ * The graph parser validates a restored payload against these. A TS union is erased at build time, so a
+ * parser has no way to see it; V4C therefore hand-wrote some sets, checked others with `typeof === 'string'`,
+ * and left several unchecked entirely. Declaring them beside their types is what keeps the two in step.
+ */
+export const ALL_STANCES: readonly Stance[] = [
+  ...FOR_STANCES, ...AGAINST_STANCES,
+  'INSUFFICIENT_DATA', 'INSUFFICIENT_EVIDENCE', 'STRUCTURAL_ANSWER', 'NOT_APPLICABLE',
+] as const;
+
 /** A stance that actually answers the question (neither abstention nor non-applicability). */
 export function isDirectional(s: Stance): boolean {
   return FOR_STANCES.includes(s) || AGAINST_STANCES.includes(s);
@@ -126,9 +138,11 @@ export type DataReliability = 'EXACT' | 'REDUCED' | 'MINIMAL' | 'UNUSABLE';
  * (§12 — no mechanical majority voting).
  */
 export type QuestionDirectness = 'DIRECT' | 'ADJACENT' | 'GENERAL';
+export const ALL_DIRECTNESS: readonly QuestionDirectness[] = ['DIRECT', 'ADJACENT', 'GENERAL'] as const;
 
 /** Confidence in the JUDGMENT (distinct from DataReliability, which is about the input). */
 export type JudgmentConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+export const ALL_CONFIDENCES: readonly JudgmentConfidence[] = ['HIGH', 'MEDIUM', 'LOW'] as const;
 
 /**
  * One piece of named evidence. `fact` MUST be traceable to something the frozen engine actually computed —
@@ -176,6 +190,7 @@ export type DomainSubJudgment = {
  * and flipped a HIGH-confidence direct negative). Cross ignores NONE-strength support when choosing a winner.
  */
 export type EvidenceStrength = 'STRONG' | 'MODERATE' | 'WEAK' | 'NONE';
+export const ALL_EVIDENCE_STRENGTHS: readonly EvidenceStrength[] = ['STRONG', 'MODERATE', 'WEAK', 'NONE'] as const;
 
 /**
  * DEPRECATED (V4A §11). Merged support and contradiction into ONE scale, so adding a counter-premise could make
@@ -263,6 +278,11 @@ export type ContradictionResolutionKind =
   | 'ACTION_VS_TIMING'      // §10-H
   | 'DIRECTNESS'            // §10-B — the more question-specific evidence wins
   | 'RELIABILITY';          // §10-A — the better-grounded input wins
+
+export const ALL_CONTRADICTION_KINDS: readonly ContradictionResolutionKind[] = [
+  'DIFFERENT_DOMAIN', 'DIFFERENT_TIMESCALE', 'OPPORTUNITY_VS_OUTCOME', 'BOND_VS_STABILITY',
+  'INFLOW_VS_RETENTION', 'ACTION_VS_TIMING', 'DIRECTNESS', 'RELIABILITY',
+] as const;
 
 export type ContradictionResolution = {
   kind: ContradictionResolutionKind;

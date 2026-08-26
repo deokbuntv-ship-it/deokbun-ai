@@ -9,7 +9,8 @@ import {
   type Discipline, type DisciplineContribution, type DivinationJudgment, type JudgmentConfidence,
   type JudgmentDomain, type JudgmentEvidence, type QuestionIntent, type Stance,
 } from '../contracts';
-import { agreedHeadline, axisLabel as sharedAxisLabel, unresolvedHeadline } from '../axisOntology';
+import { axisLabel as sharedAxisLabel } from '../axisOntology';
+import { agreedHeadline, unresolvedHeadline } from './headlineProse';
 import { adaptJudgment } from './disciplineAdapter';
 import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
@@ -213,8 +214,10 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
         ? `${discSubject(d.dominant.discipline as Discipline)} "${d.dominant.assertion}", ${disc(d.counter.discipline as Discipline)}는 "${d.counter.assertion}"`
         : `${axisLabel(d.proposition.questionAxis)}에서 서로 다른 신호가 함께 잡힙니다.`,
       resolution: d.proposition.assertion,
+      // §33 — when no side dominates, the reported discipline comes from the SORTED contributor list, and the
+      // last-resort fallback is sorted too: `applicable[0]` followed the caller's judgment array order.
       dominant: (d.dominant?.discipline === 'CROSS' ? 'MYUNGRI' : d.dominant?.discipline) as Discipline
-        ?? (contributingTo(d)[0] ?? applicable[0]?.discipline ?? 'MYUNGRI'),
+        ?? (contributingTo(d)[0] ?? [...applicable].map((j) => j.discipline).sort()[0] ?? 'MYUNGRI'),
       whyOtherDidNotDominate: d.standoff
         // §14 — the honest reason, stated as such. Not "they cancelled out"; the relationship did not settle it.
         ? '어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.'

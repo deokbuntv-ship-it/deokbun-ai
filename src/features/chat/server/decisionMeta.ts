@@ -4,7 +4,10 @@
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { ANSWER_PLAN_VERSION, DECISION_POLICY_VERSION, type AnswerPlan } from './answerPlan';
 import { classifyConsultationDomain, type ConsultationDomain } from './consultationDomain';
-import { isCanonicalTarget } from '@/features/divination';
+import {
+  ALL_CONFIDENCES, ALL_CONTRADICTION_KINDS, ALL_DERIVATION_RULES, ALL_DIRECTNESS, ALL_EVIDENCE_STRENGTHS,
+  ALL_STANCES, isCanonicalTarget,
+} from '@/features/divination';
 import type { CrossDivinationVerdict } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
@@ -117,15 +120,6 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     return undefined;
   }
   if (typeof o.verdictVersion !== 'string') return undefined;
-  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return undefined;
-  for (const j of o.disciplineJudgments) {
-    if (j === null || typeof j !== 'object') return undefined;
-    const dj = j as Record<string, unknown>;
-    if (typeof dj.discipline !== 'string' || typeof dj.stance !== 'string' || typeof dj.applicable !== 'boolean') return undefined;
-    if (!Array.isArray(dj.domainSubJudgments)) return undefined;
-  }
-  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return undefined;
-  if (!Array.isArray(o.evidenceReferences)) return undefined;
 
   // V4B §23 — FULL GRAPH INTEGRITY. FAIL CLOSED.
   //
@@ -165,15 +159,100 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const DOCTRINE_APPLICABILITY = new Set(['ADOPTED', 'PARTIAL', 'BLOCKED']);
   const RESTRICTIONS = new Set(['TIMING', 'SCOPE', 'CAPACITY']);
   const SUPPORT_GROUP_ROLES = new Set(['REQUIRED', 'ALTERNATIVE']);
+  // V4D §27/§28 — the remaining unions, taken from the kernel's own registries rather than re-typed here.
+  const STANCES = new Set<string>(ALL_STANCES);
+  const CONFIDENCES = new Set<string>(ALL_CONFIDENCES);
+  const DIRECTNESS = new Set<string>(ALL_DIRECTNESS);
+  const EVIDENCE_STRENGTHS = new Set<string>(ALL_EVIDENCE_STRENGTHS);
+  const CONTRADICTION_KINDS = new Set<string>(ALL_CONTRADICTION_KINDS);
+  const DERIVATION_RULES = new Set<string>(ALL_DERIVATION_RULES);
+
+  /** One piece of named evidence, fully checked. Reused by judgments, sub-judgments and the verdict lists. */
+  const evidenceOk = (x: unknown): boolean => {
+    if (!Array.isArray(x)) return false;
+    return x.every((e) => {
+      if (e === null || typeof e !== 'object') return false;
+      const ev = e as Record<string, unknown>;
+      return typeof ev.fact === 'string' && typeof ev.meaning === 'string'
+        && enumOk(AXES, ev.domain) && enumOk(SCOPES, ev.temporalScope) && enumOk(DIRECTNESS, ev.directness);
+    });
+  };
   const enumOk = (set: Set<string>, x: unknown): boolean => typeof x === 'string' && set.has(x);
+  const isStringArray = (a: unknown): a is string[] =>
+    Array.isArray(a) && a.every((x) => typeof x === 'string');
+  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return undefined;
+  for (const j of o.disciplineJudgments) {
+    if (j === null || typeof j !== 'object') return undefined;
+    const dj = j as Record<string, unknown>;
+    // V4D §27 — V4C accepted any string for `discipline` and `stance` here, and never looked inside the
+    // sub-judgments at all. A restored judgment could therefore carry a stance the projection layer has no
+    // branch for, and a sub-judgment of an entirely foreign shape.
+    if (typeof dj.applicable !== 'boolean') return undefined;
+    if (!enumOk(DISCIPLINES, dj.discipline)) return undefined;
+    if (!enumOk(STANCES, dj.stance)) return undefined;
+    if (!enumOk(RELIABILITIES, dj.dataReliability)) return undefined;
+    if (!enumOk(AXES, dj.questionDomain)) return undefined;
+    if (!enumOk(SCOPES, dj.temporalScope)) return undefined;
+    if (!enumOk(CONFIDENCES, dj.confidence)) return undefined;
+    if (!enumOk(DIRECTNESS, dj.questionDirectness)) return undefined;
+    if (!enumOk(EVIDENCE_STRENGTHS, dj.evidenceStrength)) return undefined;
+    if (typeof dj.dominantConclusion !== 'string' || typeof dj.dominantFactor !== 'string') return undefined;
+    if (!evidenceOk(dj.directEvidence) || !evidenceOk(dj.counterEvidence) || !evidenceOk(dj.timingSignals)) {
+      return undefined;
+    }
+    if (!isStringArray(dj.internalContradictions) || !isStringArray(dj.factGroupsUsed)) return undefined;
+    if (!Array.isArray(dj.domainSubJudgments)) return undefined;
+    for (const sj of dj.domainSubJudgments) {
+      if (sj === null || typeof sj !== 'object') return undefined;
+      const sub = sj as Record<string, unknown>;
+      if (!enumOk(AXES, sub.domain) || !enumOk(STANCES, sub.stance)) return undefined;
+      if (!enumOk(SCOPES, sub.temporalScope) || !enumOk(DIRECTNESS, sub.directness)) return undefined;
+      if (!enumOk(RELIABILITIES, sub.reliability)) return undefined;
+      if (typeof sub.conclusion !== 'string') return undefined;
+      if (!evidenceOk(sub.evidence) || !evidenceOk(sub.counterEvidence)) return undefined;
+    }
+  }
+  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return undefined;
+  if (!Array.isArray(o.evidenceReferences)) return undefined;
+  if (!enumOk(STANCES, o.direction)) return undefined;
+  if (!enumOk(CONFIDENCES, o.confidence)) return undefined;
+  if (!evidenceOk(o.favorableFactors) || !evidenceOk(o.riskFactors)) return undefined;
+  for (const a of o.axisVerdicts) {
+    if (a === null || typeof a !== 'object') return undefined;
+    const av = a as Record<string, unknown>;
+    if (!enumOk(AXES, av.domain) || !enumOk(STANCES, av.stance)) return undefined;
+    if (!enumOk(DISCIPLINES, av.dominantDiscipline)) return undefined;
+    if (typeof av.conclusion !== 'string' || typeof av.contested !== 'boolean') return undefined;
+  }
+  for (const c of o.contributions) {
+    if (c === null || typeof c !== 'object') return undefined;
+    const co = c as Record<string, unknown>;
+    if (!enumOk(DISCIPLINES, co.discipline) || !enumOk(STANCES, co.stance)) return undefined;
+    if (typeof co.applied !== 'boolean' || typeof co.contribution !== 'string') return undefined;
+  }
+  for (const r of (Array.isArray(o.contradictionResolutions) ? o.contradictionResolutions : [])) {
+    if (r === null || typeof r !== 'object') return undefined;
+    const re = r as Record<string, unknown>;
+    if (!enumOk(CONTRADICTION_KINDS, re.kind)) return undefined;
+    if (!enumOk(DISCIPLINES, re.dominant)) return undefined;
+    if (!isStringArray(re.between) || !re.between.every((d) => DISCIPLINES.has(d))) return undefined;
+    if (typeof re.conflict !== 'string' || typeof re.resolution !== 'string') return undefined;
+    if (typeof re.whyOtherDidNotDominate !== 'string') return undefined;
+  }
+  for (const e of o.evidenceReferences) {
+    if (e === null || typeof e !== 'object') return undefined;
+    const ev = e as Record<string, unknown>;
+    if (typeof ev.discipline !== 'string') return undefined;
+    if (!DISCIPLINES.has(ev.discipline) && ev.discipline !== 'CROSS') return undefined;
+    if (!isStringArray(ev.lines)) return undefined;
+  }
+
 
   // V4C §3 — target validation is DELEGATED to the canonical registry, which checks that the declared kind
   // matches the key's namespace (rejecting kind=PALACE with key=RELATION_STABILITY:…) and that the id is a
   // registered one. A second hand-maintained list here would drift from the registry the moment a target is
   // added, and the drift would show up as a legitimate graph failing to restore.
   const isTarget = isCanonicalTarget;
-  const isStringArray = (a: unknown): a is string[] =>
-    Array.isArray(a) && a.every((x) => typeof x === 'string');
 
   // ── PREMISES ───────────────────────────────────────────────────────────────────────────────────
   const premiseIds = new Set<string>();
@@ -199,6 +278,10 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       if (typeof pr.doctrineReference !== 'string') return undefined;
       if (!isTarget(pr.target)) return undefined;
       if (!isStringArray(pr.sourceFactIds)) return undefined;
+      // §28 — the contract says an empty fact list is legal ONLY for an ABSENT relation ("부재도 사실이다").
+      // A premise asserting a relation while naming no engine fact is exactly the ungrounded interpretation
+      // the premise layer exists to make impossible.
+      if (pr.sourceFactIds.length === 0 && pr.semanticRelation !== 'ABSENT') return undefined;
       premisesOut.push({
         id: pr.id, discipline: pr.discipline, sourceFactIds: [...(pr.sourceFactIds as string[])],
         subject: pr.subject, target: { key: pr.target.key, label: pr.target.label, kind: pr.target.kind },
@@ -220,7 +303,8 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     if (propositionIds.has(pr.id)) return undefined;            // duplicate proposition id
     propositionIds.add(pr.id);
     if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) return undefined;
-    if (typeof pr.derivationRule !== 'string' || pr.derivationRule.length === 0) return undefined;
+    // §28 — a rule this kernel does not have cannot be re-derived, explained or attacked.
+    if (!enumOk(DERIVATION_RULES, pr.derivationRule)) return undefined;
     if (typeof pr.conclusionType !== 'string' || !CONCLUSION_TYPES.has(pr.conclusionType)) return undefined;
     if (typeof pr.direction !== 'string' || !DIRECTIONS.has(pr.direction)) return undefined;
     if (!enumOk(SCOPES, pr.temporalScope)) return undefined;

@@ -135,9 +135,24 @@ export function priorAxisContextFor(
     `앞선 질문: "${refinement.originalQuestion}" (축 ${refinement.originalAxis}) → 판정 ${prior.direction}`,
     `앞선 판정 결론: ${prior.primaryConclusion}`,
     ...refinement.existing.flatMap((c) => renderChain(c)),
+    // V4D §33 — WHICH four premises and which two chains reach the follow-up prompt used to be decided by
+    // array position. They are ordered by their own content first, and the cap is REPORTED rather than
+    // silently applied, so a reader can see that the list was trimmed.
     ...(refinement.existing.length === 0
-      ? refinement.premises.slice(0, 4).map((p) => `근거만 있음: ${p.sourceFactIds[0] ?? p.target.label} — ${p.assertion}`)
+      ? [...refinement.premises]
+        .sort((x, y) => x.target.key.localeCompare(y.target.key) || x.assertion.localeCompare(y.assertion))
+        .slice(0, 4)
+        .map((p) => `근거만 있음: ${p.sourceFactIds[0] ?? p.target.label} — ${p.assertion}`)
       : []),
-    ...refinement.related.slice(0, 2).flatMap((c) => renderChain(c)),
+    ...(refinement.existing.length === 0 && refinement.premises.length > 4
+      ? [`(앞선 판정의 이 축 관련 근거 ${refinement.premises.length}건 중 4건만 옮겼습니다.)`]
+      : []),
+    ...[...refinement.related]
+      .sort((x, y) => x.conclusion.id.localeCompare(y.conclusion.id))
+      .slice(0, 2)
+      .flatMap((c) => renderChain(c)),
+    ...(refinement.related.length > 2
+      ? [`(앞선 판정에서 이 축과 맞물린 결론 ${refinement.related.length}건 중 2건만 옮겼습니다.)`]
+      : []),
   ];
 }

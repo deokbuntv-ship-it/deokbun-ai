@@ -12,7 +12,7 @@ import { axesShareOneMatter } from '../axisOntology';
 /** Which named decomposition a compound pair represents — carried through so the verdict can report it. */
 type CompoundKind = ContradictionResolutionKind;
 import {
-  computeAdequacy, sameTarget, target, temporalBand,
+  compositeTarget, computeAdequacy, sameTarget, target, temporalBand,
   type DerivationContext, type DivinationPremise, type ReasonedProposition, type SemanticTarget,
   type TargetKind,
 } from './kernel';
@@ -278,7 +278,16 @@ const compoundEligible = (
   // The ontology decides WHETHER a compound exists; the frames table below only NAMES it. Without this,
   // removing the table made every opposed pair a "compound truth" and a money answer acquired a sentence
   // about 같이 사는 난도 — two unrelated statements presented as two halves of one.
-  if (a.questionAxis !== b.questionAxis && !axesShareOneMatter(a.questionAxis, b.questionAxis)) return false;
+  //
+  // V4D §33 — THE ONTOLOGY IS ASKED UNCONDITIONALLY. V4C guarded this with `a.questionAxis !== b.questionAxis`,
+  // so a SAME-AXIS pair skipped the only check there was — and `axesShareOneMatter` opens with
+  // `if (a === b) return false`, i.e. the ontology already had the right answer and was never consulted for it.
+  // The consequence was a verdict decided by array position: with both halves on the asked axis,
+  // `asked = a.questionAxis === ctx.askedAxis ? a : b` is unconditionally `props[i]`, and reversing the input
+  // flipped a paid verdict between FOR and AGAINST while rendering the self-refuting sentence
+  // "돈이 들어오는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다". Two seats disagreeing on ONE axis is a
+  // disagreement, not a compound truth, and it is already reported as one.
+  if (!axesShareOneMatter(a.questionAxis, b.questionAxis)) return false;
   const stated = (p: ReasonedProposition) => p.supportingPremiseIds.length > 0
     && p.supportingPremiseIds.some((id) => premises.get(id)?.applicability !== 'BACKGROUND');
   return stated(a) && stated(b);
@@ -359,6 +368,12 @@ function crossProp(
     adequacy: computeAdequacy(pick(supportIds), pick(opposeIds), { dataComplete: ctx.dataComplete, doctrine: 'ADOPTED' }),
   };
 }
+
+/** V4D §28 — the cross rules that may appear in a persisted graph. See MYUNGRI_RULE_IDS. */
+export const CROSS_RULE_IDS = [
+  'CROSS_REINFORCEMENT', 'CROSS_STANDOFF', 'CROSS_CONTRADICTION_RESOLVED',
+  'CROSS_TIMING_SPLIT', 'CROSS_AXIS_COMPOUND',
+] as const;
 
 export type CrossDerivation = {
   proposition: ReasonedProposition;
@@ -492,10 +507,12 @@ export function deriveCross(
         // REINFORCING) claimed both disciplines had read the same 자리.
         // §28 — the two structures are named in the SAME order the identity is keyed in, so the sentence the
         // user reads does not change when the propositions arrive in a different order.
-        const rivalPair = [a, b].sort((x, y) => x.target.key.localeCompare(y.target.key));
+        // V4D §26 — the ONE composite mint sorts and dedupes the children itself, so the two comparators
+        // these call sites had drifted into (localeCompare here, code-unit order in myungriRules) collapse
+        // into one. `rivalPair` remains only to order the two LABELS in the sentence the user reads.
+        const rivalPair = [a, b].sort((x, y) => (x.target.key < y.target.key ? -1 : 1));
         const agreementTarget = relation === 'RIVAL_AGREEMENT'
-          ? target('COMPOSITE', 'RIVAL:' + rivalPair.map((p) => p.target.key).join('|'),
-            rivalPair.map((p) => p.target.label).join('·'))
+          ? compositeTarget('RIVAL', [[a.target, b.target]], rivalPair.map((p) => p.target.label).join('·'))
           : a.target;
         emit('CROSS_REINFORCEMENT', relation, {
             axis: a.questionAxis,
@@ -527,10 +544,9 @@ export function deriveCross(
         const decided = subordinate(a, b, byId, subCtx);
         if (!decided) {
           // §14 — the relationship does not settle it. Both truths are preserved; no winner is manufactured.
-          const standoffPair = [a, b].sort((x, y) => x.target.key.localeCompare(y.target.key));
+          const standoffPair = [a, b].sort((x, y) => (x.target.key < y.target.key ? -1 : 1));
           const standoffTarget = relation === 'RIVAL_CONFLICT'
-            ? target('COMPOSITE', 'RIVAL:' + standoffPair.map((p) => p.target.key).join('|'),
-              standoffPair.map((p) => p.target.label).join('·'))
+            ? compositeTarget('RIVAL', [[a.target, b.target]], standoffPair.map((p) => p.target.label).join('·'))
             : a.target;
           emit('CROSS_STANDOFF', relation, {
             axis: a.questionAxis,
@@ -629,10 +645,9 @@ export function deriveCross(
         emit('CROSS_AXIS_COMPOUND', relation, {
             axis: asked.questionAxis,
             temporalScope: asked.temporalScope,
-            // V4C §2 — keyed by the compound's CANONICAL kind AND the two structures it spans, never by its
+            // V4C §2 — keyed by the compound's CANONICAL kind AND the structures it spans, never by its
             // Korean sentence. Two different compounds of the same kind are different claims.
-            target: target('COMPOSITE',
-              frame.kind + ':' + [a.target.key, b.target.key].sort().join('|'), frame.frame),
+            target: compositeTarget(frame.kind, [[a.target, b.target]], frame.frame),
             assertion: topic(frame.frame) + ' 다르게 봅니다. ' + axisLabel(asked.questionAxis) + '은 ' + way(asked)
               + ', ' + axisLabel(other.questionAxis) + '은 ' + way(other) + '. 둘 다 사실이라 나누어 말씀드립니다.',
             conclusionType: 'COMPOUND',

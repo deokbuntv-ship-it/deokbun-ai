@@ -88,8 +88,11 @@ export type PremiseConcept =
 // against its kind's namespace. It used to be minted at call sites from whatever text was to hand, so a
 // reworded sentence could stop a target matching itself.
 export {
-  sameTarget, target, isCanonicalTarget, ziweiPalaceTarget, qimenBoardTarget, natalSeatPairTarget,
+  sameTarget, target, isCanonicalTarget, ziweiPalaceTarget, qimenBoardTarget, natalSeatPairTarget, natalSeatTarget,
   adaptedReadingTarget,
+  adaptedContextTarget,
+  compositeTarget,
+  type CompositionRelation,
   TargetNamespaceError,
   type SemanticTarget, type TargetKind,
 } from './targets';

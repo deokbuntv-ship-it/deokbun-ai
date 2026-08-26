@@ -390,7 +390,16 @@ describe('§33-17 / §25 — the graph parser reconstructs, and fails closed', (
       reliability: 'EXACT', applicability: 'DIRECT', doctrineReference: 'd',
     }],
     primaryConclusion: 'c', direction: 'FOR', dominantBasis: 'b', verdictVersion: 'v',
-    disciplineJudgments: [{ discipline: 'MYUNGRI', stance: 'FOR', applicable: true, domainSubJudgments: [] }],
+    // V4D §27 — the parser now checks every nested enum, so a judgment must be a REAL judgment. A fixture
+    // thin enough to pass the old checks was exactly the payload shape the audit said could restore.
+    disciplineJudgments: [{
+      discipline: 'MYUNGRI', stance: 'FOR', applicable: true, dataReliability: 'EXACT',
+      questionDomain: 'CAREER', temporalScope: 'DAEWOON',
+      dominantConclusion: 'c', dominantFactor: 'f',
+      directEvidence: [], counterEvidence: [], internalContradictions: [], timingSignals: [],
+      domainSubJudgments: [], confidence: 'HIGH', questionDirectness: 'DIRECT',
+      evidenceStrength: 'MODERATE', factGroupsUsed: [],
+    }],
     contributions: [], axisVerdicts: [], evidenceReferences: [],
     propositions: [{
       id: 'x1', discipline: 'MYUNGRI', subject: '본인',

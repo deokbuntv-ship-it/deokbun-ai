@@ -10,7 +10,7 @@ import {
   type DataReliability, type DivinationJudgment, type DomainSubJudgment, type EvidenceStrength,
   type JudgmentDomain, type JudgmentEvidence, type QuestionDirectness, type Stance,
 } from '../contracts';
-import { agreedHeadline, unresolvedHeadline } from '../axisOntology';
+import { agreedHeadline, unresolvedHeadline } from './headlineProse';
 import { analyzeLayer, type LayerAnalysis } from '../myungriLayer';
 import { readNatalBaseline } from '../myungriNatal';
 import type { MyungriJudgeInput } from '../myungriJudge';
@@ -227,8 +227,12 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     ],
     counterEvidence: evidenceOf(premises, answering(resolution).flatMap((p) => p.opposingPremiseIds), asked, asked),
     internalContradictions,
-    timingSignals: standing
+    // §33 — a top-1 over an unordered set was array-position arbitration. The NARROWEST layer is chosen by
+    // the layers themselves, and content breaks a tie, so the same graph always reports the same signal.
+    timingSignals: [...standing]
       .filter((p) => p.temporalScope === 'WOLWOON' || p.temporalScope === 'SEWOON')
+      .sort((x, y) => (SCOPE_WIDTH[x.temporalScope] - SCOPE_WIDTH[y.temporalScope])
+        || x.assertion.localeCompare(y.assertion))
       .slice(0, 1)
       .flatMap((p) => evidenceOf(premises, [...p.supportingPremiseIds, ...p.opposingPremiseIds], p.questionAxis, asked).slice(0, 1)),
     domainSubJudgments: subs,

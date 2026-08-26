@@ -19,7 +19,9 @@ import type {
 import { domainFamily, type NatalBaseline } from '../myungriNatal';
 import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
-import { natalSeatPairTarget, nextId, target, type DivinationPremise } from './kernel';
+import {
+  natalSeatPairTarget, natalSeatTarget, nextId, target, type DivinationPremise,
+} from './kernel';
 
 const FAMILY_LABEL: Record<TenGodFamily, string> = {
   WEALTH: '재물', OFFICER: '자리·책임', OUTPUT: '활동·표현', PEER: '경쟁·동료', RESOURCE: '지원·배움',
@@ -202,19 +204,23 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
 
     // Each relation the layer forms with the natal chart, keeping KIND and the exact seat it struck.
     for (const hit of layer.hits) {
-      const seat = hit.evidence.fact.split('→ ')[1] ?? hit.kind;
+      // V4D §33 — the seat's TARGET LABEL comes from the seat; the RELATION KIND stays in the assertion,
+      // where it belongs. V4C keyed `NATAL_SEAT:DAY` with a label split off `hit.evidence.fact`, so two hits
+      // on 일주 produced one key with two labels ("원국 일주 천간충" / "원국 일주 지지형") — and the label is
+      // interpolated into assertion text, which `screenSynthesis` and the certification harness COMPARE.
+      const struck = hit.evidence.fact.split('→ ')[1] ?? hit.kind;
       out.push(base({
         sourceFactIds: [hit.evidence.fact],
-        target: target('NATAL_SEAT', hit.position, seat),
+        target: natalSeatTarget(hit.position),
         concept: 'SEAT_CONTACT',
         questionAxis: hit.axis,
         temporalScope: layer.scope,
         semanticRelation: hit.friction ? (hit.heavy ? 'DESTABILIZES' : 'CONSTRAINS') : 'CONNECTS',
         assertion: hit.friction
           ? hit.heavy
-            ? `${where}이 ${seat}를 정면으로 흔든다.`
-            : `${where}이 ${seat}에 마찰을 일으킨다.`
-          : `${where}이 ${seat}와 맞물려 풀린다.`,
+            ? `${where}이 ${struck}를 정면으로 흔든다.`
+            : `${where}이 ${struck}에 마찰을 일으킨다.`
+          : `${where}이 ${struck}와 맞물려 풀린다.`,
         role: 'ASSERTS',
         doctrineReference: '궁위 + 합충형파해 (frozen relations to natal)',
       }));

@@ -28,29 +28,49 @@ const premiseIndex = (v: CrossDivinationVerdict) => new Map(v.premises.map((p) =
 const propositionIndex = (v: CrossDivinationVerdict) => new Map(v.propositions.map((p) => [p.id, p]));
 
 /**
- * Walk the graph from ONE conclusion down to the premises it stands on. `seen` breaks any cycle defensively —
- * the parser rejects cyclic graphs, but a traversal that could hang on malformed input is not worth shipping.
+ * Walk the graph from ONE conclusion down to the premises it stands on.
+ *
+ * V4D §30 — THE GUARD IS THE ANCESTOR PATH, NOT A GLOBAL VISITED SET.
+ *
+ * The graph is a DAG, and shared parents are routine: DIRECTION_VS_EXECUTION emits one conclusion per near
+ * layer from the SAME structural premise, and a cross conclusion then takes both of those plus their shared
+ * primitives. V4C threaded ONE mutable `seen` set through every sibling branch, so whichever branch ran first
+ * consumed the shared parent and the other branch was rendered as standing on NOTHING.
+ *
+ * Measured on a real 결혼 verdict (28 propositions, 9 headlines): three headlines lost derivation edges, and
+ * on the timing-split headline BOTH DIRECTION_VS_EXECUTION nodes lost EVERY parent — WHY presented a derived
+ * conclusion with nothing under it while the stored graph said it rested on three upstream conclusions.
+ *
+ * The path holds only THIS node's ancestors, which is all a cycle needs, and each branch is free to show the
+ * parent it genuinely rests on. Rendering a shared parent under both children is not duplication: "this
+ * conclusion stands on that one" is true under both, and a memo would print it under one arbitrary child —
+ * decided by iteration order, which is the arbitration this kernel exists to remove.
  */
 export function explainProposition(
   v: CrossDivinationVerdict,
   propositionId: string,
-  seen: Set<string> = new Set(),
 ): DerivationChain | null {
-  if (seen.has(propositionId)) return null;
-  seen.add(propositionId);
   const props = propositionIndex(v);
   const premises = premiseIndex(v);
-  const p = props.get(propositionId);
-  if (!p) return null;
   const pick = (ids: string[]) => ids.map((id) => premises.get(id)).filter((x): x is DivinationPremise => !!x);
-  return {
-    conclusion: p,
-    supporting: pick(p.supportingPremiseIds),
-    opposing: pick(p.opposingPremiseIds),
-    from: p.derivedFromPropositionIds
-      .map((id) => explainProposition(v, id, seen))
-      .filter((c): c is DerivationChain => c !== null),
+  const walk = (id: string, ancestors: ReadonlySet<string>): DerivationChain | null => {
+    if (ancestors.has(id)) return null; // defensive only — the parser already rejects cyclic graphs
+    const p = props.get(id);
+    if (!p) return null;
+    // Built ONCE per node and handed to every child, so sibling subtrees cannot pollute each other.
+    const path = new Set(ancestors).add(id);
+    return {
+      conclusion: p,
+      supporting: pick(p.supportingPremiseIds),
+      opposing: pick(p.opposingPremiseIds),
+      // Deduped: a parent listed twice is ONE link, and rendering it twice under the same child would claim
+      // two grounds where the graph states one.
+      from: [...new Set(p.derivedFromPropositionIds)]
+        .map((parentId) => walk(parentId, path))
+        .filter((c): c is DerivationChain => c !== null),
+    };
   };
+  return walk(propositionId, new Set());
 }
 
 /**
@@ -62,14 +82,18 @@ export function explainProposition(
  * goes silent. The text fallback is kept for rows persisted before the field existed.
  */
 export function explainHeadlines(v: CrossDivinationVerdict): DerivationChain[] {
-  const named = (v.headlinePropositionIds ?? [])
+  // V4D §30/§33 — NO TEXT FALLBACK. The verdict NAMES the conclusions its headline stands on. Re-finding one
+  // by matching Korean prose was first-match arbitration over the standing set, and its `startsWith` branch
+  // matched the WRONG node BY CONSTRUCTION: CROSS_CONTRADICTION_RESOLVED builds its assertion as
+  // `dominant.assertion + ' 반대 근거도 있으나, …'`, so the prefix test always hit the DOMINANT PARENT and
+  // presented that parent's chain as the headline's own.
+  //
+  // A row persisted before the field existed therefore gets NO derivation block rather than a wrong one —
+  // `renderGroundingContext` already guards on a non-empty chain, so the turn simply omits it. Precision
+  // before coverage (§18).
+  return (v.headlinePropositionIds ?? [])
     .map((id) => explainProposition(v, id))
     .filter((c): c is DerivationChain => c !== null);
-  if (named.length > 0) return named;
-  const legacy = standingPropositions(v.propositions).find((p) => p.assertion === v.primaryConclusion)
-    ?? standingPropositions(v.propositions).find((p) => v.primaryConclusion.startsWith(p.assertion));
-  const chain = legacy ? explainProposition(v, legacy.id) : null;
-  return chain ? [chain] : [];
 }
 
 /** The single chain behind the headline — null when the headline stands on several, or on none. */

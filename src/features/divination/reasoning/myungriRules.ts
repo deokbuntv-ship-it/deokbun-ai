@@ -9,7 +9,7 @@
 // settle the question (강약 등급, 용신), the rule does not fire and the premises stay `unresolved`.
 import type { JudgmentDomain, TemporalScope } from '../contracts';
 import {
-  computeAdequacy, PRIMITIVE_RULE, sameTarget, sideAdequacy, target,
+  compositeTarget, computeAdequacy, PRIMITIVE_RULE, sameTarget, sideAdequacy, target,
   type DerivationContext, type DerivationRule, type DivinationPremise, type ReasonedProposition,
   type SemanticTarget, type SupportGroup,
 } from './kernel';
@@ -133,7 +133,8 @@ const CONTESTED_SHARE: DerivationRule = {
     return [make('CONTESTED_SHARE', ctx, {
       axis: 'MONEY_RETENTION',
       temporalScope: narrowestScope(rivals),
-      target: target('COMPOSITE', RIVAL_VS_WEALTH_KEY(rivals, wealth), '벌이는 몫과 남는 몫'),
+      target: compositeTarget(
+        'RIVAL_VS_WEALTH', [rivals.map((p) => p.target), wealth.map((p) => p.target)], '벌이는 몫과 남는 몫'),
       assertion: '원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',
@@ -144,19 +145,6 @@ const CONTESTED_SHARE: DerivationRule = {
     })];
   },
 };
-/**
- * V4C §2 — a composite identity names EVERY member, SORTED.
- *
- * V4B keyed this from `rivals[0]` and `wealth[0]`, i.e. from premise EMISSION ORDER: with a rival in both 대운
- * and 세운, the same structural situation produced two different identities depending on which layer was
- * analysed first, and the "same" composite stopped matching itself across runs.
- */
-const sortedKeys = (keys: string[]): string => [...new Set(keys)].sort().join('|');
-const memberKeys = (ps: DivinationPremise[]): string => sortedKeys(ps.map((p) => p.target.key));
-// '.' separates the two member GROUPS; member keys themselves contain ':' and are joined with '|'.
-const RIVAL_VS_WEALTH_KEY = (rivals: DivinationPremise[], wealth: DivinationPremise[]): string =>
-  'RIVAL_VS_WEALTH:' + memberKeys(rivals) + '.' + memberKeys(wealth);
-
 /**
  * R3 — DIRECTION_VS_EXECUTION. **TARGET-GATED (V4B §5).**
  *
@@ -278,16 +266,16 @@ const INFLOW_VS_RETENTION: DerivationRule = {
     // already reach the user through the contest's own standing conclusion, and copying them here would
     // double-report them and let a premise-level citation stand in for a proposition-level one.
     const retentionMembers = [
-      ...retentionRisk.map((p) => p.target.key),
-      ...contested.map((c) => c.target.key),
+      ...retentionRisk.map((p) => p.target),
+      ...contested.map((c) => c.target),
     ];
     if (inflow.length === 0 || retentionMembers.length === 0) return [];
     return [make('INFLOW_VS_RETENTION', ctx, {
       axis: 'MONEY_INFLOW',
       temporalScope: narrowestScope(inflow),
       // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
-      target: target('COMPOSITE',
-        'INFLOW_VS_RETENTION:' + memberKeys(inflow) + '.' + sortedKeys(retentionMembers), '유입과 보유'),
+      target: compositeTarget('INFLOW_VS_RETENTION',
+        [inflow.map((p) => p.target), retentionMembers], '유입과 보유'),
       assertion: '돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',
@@ -357,6 +345,13 @@ const RECURRING_FRICTION_CAUSE: DerivationRule = {
 // The cost is real: descriptive questions now answer only from individually grounded propositions, and often
 // decline. §29 accepts that — precision before coverage.
 
+/**
+ * V4D §28 — EVERY RULE THAT CAN LEGALLY APPEAR IN A PERSISTED GRAPH.
+ *
+ * A restored proposition naming a rule this kernel does not have is not a conclusion — nothing can re-derive
+ * it, explain it, or attack it, and `certify` would report UNSUPPORTED for something the graph presented as
+ * an answer. Built from the rule objects themselves so it cannot drift.
+ */
 export const MYUNGRI_RULES: DerivationRule[] = [
   CONTESTED_SHARE,
   DIRECTION_VS_EXECUTION,

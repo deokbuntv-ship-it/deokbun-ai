@@ -52,31 +52,18 @@ const AXIS_LABEL: Partial<Record<JudgmentDomain, string>> = {
 };
 export const axisLabel = (d: JudgmentDomain, fallback = '이 축'): string => AXIS_LABEL[d] ?? fallback;
 
-/**
- * The headline a set of AGREED conclusions licenses.
- *
- * They all point the same way but none accounts for the others, so there is no single conclusion to promote.
- * V4C's first cut concatenated the members' assertions, which produced a run-on paragraph of raw premise
- * restatements ("올해 흐름이 원국 일주 천간충를 정면으로 흔든다 그리고 …") — the engine's internal vocabulary
- * leaking out as the professional answer, which the paid-reading quality guard rightly refuses. The members
- * still reach the reader in full, as the EVIDENCE for the answer; what the headline states is what they agree
- * on, which is the direction and the fact that several independent readings reached it.
- */
-export const agreedHeadline = (
-  axis: JudgmentDomain, direction: 'FAVORABLE' | 'UNFAVORABLE' | 'RESTRICTED' | 'NONE', count: number,
-): string => {
-  const lead = `${axisLabel(axis, '전반')}에 대해서는 서로 다른 근거 ${count}가지가 모두 같은 쪽을 가리킵니다. `;
-  switch (direction) {
-    case 'FAVORABLE': return lead + '열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.';
-    case 'UNFAVORABLE': return lead + '지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.';
-    case 'RESTRICTED': return lead + '해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.';
-    default: return lead + '다만 방향까지 정할 만한 신호는 아닙니다.';
-  }
-};
+// V4D §31/§32 — the two Korean headline builders that used to live here have MOVED to
+// `reasoning/headlineProse.ts`. They stated an OUTCOME ("열려 있는 자리로 보셔도 됩니다"), and this module
+// declares RELATIONSHIPS between axes. Keeping a conclusion rule beside the relationship ontology is exactly
+// the conflation §31 asks to separate: a derivation rule consults `axesShareOneMatter` to decide whether a
+// compound is possible at all, and nothing it reads there may be a verdict.
 
-/** The headline an UNRESOLVED set licenses: the fact that it does not settle, stated plainly. */
-export const unresolvedHeadline = (axis: JudgmentDomain): string =>
-  `${axisLabel(axis, '전반')}에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.`;
+/**
+ * Every question axis there is. Taken from the exhaustive `Record<JudgmentDomain, …>` above, so the compiler
+ * keeps it complete — a second hand-maintained list would drift the moment an axis is added, and the target
+ * registry that validates against it would start rejecting legitimate ids.
+ */
+export const ALL_AXES = Object.keys(ONTOLOGY) as JudgmentDomain[];
 
 export const axisMatter = (d: JudgmentDomain): AxisMatter => ONTOLOGY[d].matter;
 export const axisAspect = (d: JudgmentDomain): AxisAspect => ONTOLOGY[d].aspect;
@@ -90,5 +77,10 @@ export const axisAspect = (d: JudgmentDomain): AxisAspect => ONTOLOGY[d].aspect;
  */
 export function axesShareOneMatter(a: JudgmentDomain, b: JudgmentDomain): boolean {
   if (a === b) return false;
+  // V4D §31 — GENERAL names no matter. It is the ABSENCE of an axis constraint ("왜 자꾸 부딪히나" names no
+  // domain), so it has no other consequence-of-the-same-matter to be one half of. Pairing it built a compound
+  // sentence out of a specific finding and a whole-chart remark — two unrelated statements presented as two
+  // halves of one thing, which is the failure this module was written to stop.
+  if (a === 'GENERAL' || b === 'GENERAL') return false;
   return ONTOLOGY[a].matter === ONTOLOGY[b].matter && ONTOLOGY[a].aspect !== ONTOLOGY[b].aspect;
 }

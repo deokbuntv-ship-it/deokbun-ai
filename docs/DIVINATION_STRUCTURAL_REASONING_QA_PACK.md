@@ -71,8 +71,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -126,9 +126,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -175,8 +175,8 @@
     - MONEY_INFLOW = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 이 시기 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - MONEY_INFLOW = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -229,9 +229,9 @@
         ← 이 시기 흐름 → 원국 일주 천간합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [INFLOW_VS_RETENTION] (MYUNGRI) 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
         ← 이 시기 흐름 재물
@@ -241,11 +241,11 @@
         ← 형제(삼합궁)에 거문 화기 / 자녀(대궁)에 태음 화록
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 관록의 염정
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -278,7 +278,7 @@
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -326,7 +326,7 @@
         ← 이 시기 흐름 → 원국 시주 반합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 재백의 파군
@@ -334,9 +334,9 @@
         ← 전택(본궁)에 태양 화권 / 형제(삼합궁)에 문창 화기
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 관록의 칠살
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -368,7 +368,7 @@
     - OUTCOME = CONDITIONAL_FOR (SEWOON/ADJACENT) — 올해 흐름이 원국 시주 반합와 맞물려 풀린다.
     - OPPORTUNITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -414,7 +414,7 @@
         ← 이 시기 흐름 활동·표현
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 년주 천간충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 올해 흐름 → 원국 년주 해
     - [PRIMITIVE] (ZIWEI) 재백은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
         ← 복덕(대궁)에 천기 화록
@@ -422,9 +422,9 @@
         ← 전택(본궁)에 자미 화과
     - [PRIMITIVE] (ZIWEI) 관록 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
         ← 부처(대궁)에 태음 화기 / 관록 무주성 · 대궁 부처의 천동·태음을 빌려 봄
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MONEY_INFLOW:FOR · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -459,8 +459,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -514,9 +514,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -563,8 +563,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -618,9 +618,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -667,8 +667,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -728,9 +728,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -779,10 +779,10 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = FOR_BUT_LATER (SEWOON/DIRECT) — 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.
-    - RELATION_STABILITY = FOR_BUT_LATER (WOLWOON/DIRECT) — 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = FOR_BUT_LATER (SEWOON/DIRECT) — 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.
+    - RELATION_STABILITY = FOR_BUT_LATER (WOLWOON/DIRECT) — 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE:
     - 올해 흐름 → 원국 일주 천간충 — 올해 흐름이 원국 일주 천간충를 정면으로 흔든다.
@@ -838,9 +838,9 @@
         ← 이 시기 흐름 → 원국 년주 파
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -856,15 +856,15 @@
         ← 원국 일지 충·형·파·해 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 원국 일지 충·형·파·해 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
-    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 이 시기 흐름 → 원국 일주 형
-    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+    - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 이 시기 흐름 → 원국 일주 형
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 일주 천간합 / 부처궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 일주 / 부처궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 부처(본궁)에 태양 화록
     - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
         ← 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충 / 부처(본궁)에 태양 화록
@@ -874,19 +874,19 @@
         ← 이 시기 흐름 → 원국 일주 형 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 이 시기 흐름 → 원국 일주 형 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
-    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄 / 올해 흐름 → 원국 일주 천간충
-    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 이 시기 흐름 → 원국 일주 형 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄 / 이 시기 흐름 → 원국 일주 형
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일지(배우자·자기 자리)·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_TIMESCALE: 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIRECTNESS: 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일지(배우자·자기 자리)·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIRECTNESS: 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · GENERAL:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
-- 시기: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+- 시기: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=FOR
 
 ---
@@ -917,8 +917,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -970,9 +970,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1015,8 +1015,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1070,9 +1070,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1082,9 +1082,9 @@
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
     - [PRIMITIVE] (ZIWEI) 부처에 화록이 들어와 있어 들어오는 몫은 있으나, 끌고 가는 힘까지는 아니라 크게 벌이기는 쉽지 않습니다.
         ← 부처(본궁)에 태양 화록
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 자형 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 올해 흐름 → 원국 년주 자형 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 파 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 이 시기 흐름 → 원국 년주 파 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
 - CONTRADICTION_RESOLUTIONS = 없음
 - WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
@@ -1121,8 +1121,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1176,9 +1176,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1188,9 +1188,9 @@
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
     - [PRIMITIVE] (ZIWEI) 부처에 화록이 들어와 있어 들어오는 몫은 있으나, 끌고 가는 힘까지는 아니라 크게 벌이기는 쉽지 않습니다.
         ← 부처(본궁)에 태양 화록
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 자형 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 올해 흐름 → 원국 년주 자형 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 파 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 이 시기 흐름 → 원국 년주 파 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
 - CONTRADICTION_RESOLUTIONS = 없음
 - WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
@@ -1227,8 +1227,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1291,9 +1291,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1350,8 +1350,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1411,9 +1411,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1425,9 +1425,9 @@
         ← 부처(본궁)에 태양 화록
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 자형 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 올해 흐름 → 원국 년주 자형 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
-    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 파 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 년주 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 이 시기 흐름 → 원국 년주 파 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
 - CONTRADICTION_RESOLUTIONS = 없음
 - WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
@@ -1462,7 +1462,7 @@
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -1482,7 +1482,7 @@
 ### REASONING
 - **FINAL_VERDICT = STRUCTURAL_ANSWER** (확신 MEDIUM)
 - ANSWERED_ON_ASKED_AXIS = YES (GENERAL = FOR)
-- 결론: 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+- 결론: 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - SYNTHETIC_INFERENCES = 3 / 17
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1509,7 +1509,7 @@
         ← 이 시기 흐름 → 원국 시주 반합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 탐랑
@@ -1517,9 +1517,9 @@
         ← 관록의 칠살
     - [PRIMITIVE] (ZIWEI) 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 부처의 염정·천부
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -1554,8 +1554,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1612,9 +1612,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1668,8 +1668,8 @@
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1720,9 +1720,9 @@
         ← 이 시기 흐름 → 원국 년주 파
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 일주 형
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1734,9 +1734,9 @@
         ← 복덕(대궁)에 무곡 화권
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 탐랑
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 해
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -1765,8 +1765,8 @@
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1798,9 +1798,9 @@
         ← 이 시기 흐름 → 원국 년주 파
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 일주 형
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1839,8 +1839,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -1903,9 +1903,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -1953,7 +1953,7 @@
     - MONEY_INFLOW = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 천간충를 정면으로 흔든다.
     - RELATION_STABILITY = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -2016,7 +2016,7 @@
         ← 이 시기 흐름 → 원국 일주 천간충
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 일주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 일주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -2030,9 +2030,9 @@
         ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [PRIMITIVE] (QIMEN) 지금 당장의 시점은 아닙니다.
         ← 값사 驚門 (乾궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 일주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 일주 천간충 / 이 시기 흐름 → 원국 일주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · DECISION:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · TIMING:FOR_BUT_LATER · RELATION_STABILITY:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2068,8 +2068,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 자형에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 충를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 육합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -2134,9 +2134,9 @@
         ← 이 시기 흐름 → 원국 일주 충
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 육합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 육합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 충 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 이 시기 흐름 → 원국 년주 자형 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -2185,8 +2185,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -2238,9 +2238,9 @@
         ← 이 시기 흐름 → 원국 일주 형
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
         ← 이 시기 흐름 → 원국 시주 반합
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -2283,8 +2283,8 @@
     - MONEY_INFLOW = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - MONEY_INFLOW = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -2336,9 +2336,9 @@
         ← 이 시기 흐름 → 원국 일주 천간합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [INFLOW_VS_RETENTION] (MYUNGRI) 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
         ← 이 시기 흐름 재물
@@ -2346,11 +2346,11 @@
         ← 질액(본궁)에 천동 화권 / 형제(삼합궁)에 거문 화기
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 자미·천상
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · HEALTH_ENERGY:FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2383,7 +2383,7 @@
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2436,7 +2436,7 @@
         ← 이 시기 흐름 → 원국 시주 반합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 천이에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 천이의 자미
@@ -2446,9 +2446,9 @@
         ← 명궁의 탐랑
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MOVEMENT:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2480,7 +2480,7 @@
     - OUTCOME = CONDITIONAL_FOR (SEWOON/ADJACENT) — 올해 흐름이 원국 시주 반합와 맞물려 풀린다.
     - OPPORTUNITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2533,7 +2533,7 @@
         ← 이 시기 흐름 활동·표현
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 년주 천간충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 올해 흐름 → 원국 년주 해
     - [PRIMITIVE] (ZIWEI) 천이 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
         ← 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
@@ -2543,7 +2543,7 @@
         ← 명궁의 태양·거문
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
     - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 월주 반합 / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
@@ -2551,7 +2551,7 @@
         ← 올해 흐름 → 원국 월주 천간합 / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 올해 흐름 → 원국 시주 반합 / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MOVEMENT:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2589,8 +2589,8 @@
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 형를 정면으로 흔든다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2656,9 +2656,9 @@
         ← 이 시기 흐름 → 원국 년주 파
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 자미·천상
@@ -2670,15 +2670,15 @@
         ← 명궁의 자미·천상
     - [PRIMITIVE] (QIMEN) 지금 당장의 시점은 아닙니다.
         ← 값사 驚門 (乾궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
-    - [CROSS_STANDOFF] (CROSS) 원국 년주 육합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 년주 육합 / 이 시기 흐름 → 원국 년주 형
-    - [CROSS_STANDOFF] (CROSS) 원국 년주 육합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 년주 육합 / 이 시기 흐름 → 원국 년주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주 육합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주 육합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · OUTCOME:CONDITIONAL_FOR · GENERAL:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:FOR_BUT_LATER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합) · GENERAL:STRUCTURAL_ANSWER(경합) · GENERAL:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2711,7 +2711,7 @@
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2765,7 +2765,7 @@
         ← 이 시기 흐름 → 원국 시주 반합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 재백의 파군
@@ -2775,9 +2775,9 @@
         ← 관록의 칠살
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2814,7 +2814,7 @@
     - CAREER = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 월주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 충를 정면으로 흔든다.
     - OUTCOME = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 형를 정면으로 흔든다.
-    - CAREER = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 월주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2879,7 +2879,7 @@
         ← 이 시기 흐름 → 원국 시주 충
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 시주 형를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 시주 형
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 월주 형 / 이 시기 흐름 → 원국 월주 파 / 지금의 큰 흐름 → 원국 월주 천간충
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 태양·거문
@@ -2891,13 +2891,13 @@
         ← 명궁의 태양·거문
     - [PRIMITIVE] (QIMEN) 지금 당장의 시점은 아닙니다.
         ← 값사 驚門 (乾궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 월주 천간합 / 이 시기 흐름 → 원국 월주 육합 / 이 시기 흐름 → 원국 월주 형
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 월주 천간합 / 이 시기 흐름 → 원국 월주 육합 / 이 시기 흐름 → 원국 월주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · DECISION:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · MONEY_INFLOW:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · TIMING:FOR_BUT_LATER · CAREER:STRUCTURAL_ANSWER(경합) · CAREER:STRUCTURAL_ANSWER(경합) · CAREER:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -2926,8 +2926,8 @@
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -2965,9 +2965,9 @@
         ← 이 시기 흐름 → 원국 년주 파
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 일주 형
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -3002,8 +3002,8 @@
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -3041,9 +3041,9 @@
         ← 이 시기 흐름 → 원국 년주 파
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 일주 형
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 형 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
@@ -3084,8 +3084,8 @@
     - MONEY_INFLOW = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - MONEY_INFLOW = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -3144,9 +3144,9 @@
         ← 이 시기 흐름 → 원국 일주 천간합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [INFLOW_VS_RETENTION] (MYUNGRI) 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
         ← 이 시기 흐름 재물
@@ -3160,11 +3160,11 @@
         ← 명궁의 자미·천상
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -3197,7 +3197,7 @@
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3251,7 +3251,7 @@
         ← 이 시기 흐름 → 원국 시주 반합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 탐랑
@@ -3263,9 +3263,9 @@
         ← 명궁의 탐랑
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -3297,7 +3297,7 @@
     - OUTCOME = CONDITIONAL_FOR (SEWOON/ADJACENT) — 올해 흐름이 원국 시주 반합와 맞물려 풀린다.
     - OPPORTUNITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3343,7 +3343,7 @@
         ← 이 시기 흐름 활동·표현
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 년주 천간충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 올해 흐름 → 원국 년주 해
     - [PRIMITIVE] (ZIWEI) 전택에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 전택(본궁)에 자미 화과
@@ -3351,9 +3351,9 @@
         ← 복덕(대궁)에 천기 화록
     - [PRIMITIVE] (ZIWEI) 관록 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
         ← 부처(대궁)에 태음 화기 / 관록 무주성 · 대궁 부처의 천동·태음을 빌려 봄
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MONEY_RETENTION:FOR · MONEY_INFLOW:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -3388,8 +3388,8 @@
     - MONEY_INFLOW = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/DIRECT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - MONEY_INFLOW = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -3442,9 +3442,9 @@
         ← 이 시기 흐름 → 원국 일주 천간합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [INFLOW_VS_RETENTION] (MYUNGRI) 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
         ← 이 시기 흐름 재물
@@ -3454,13 +3454,13 @@
         ← 재백의 무곡·천부
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 관록의 염정
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
     - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(벌이는 몫과 남는 몫 / 전택궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합) · MONEY_RETENTION:CONDITIONAL_AGAINST(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -3495,8 +3495,8 @@
     - MONEY_INFLOW = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - MONEY_INFLOW = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -3548,9 +3548,9 @@
         ← 이 시기 흐름 → 원국 일주 천간합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 지금의 큰 흐름 겁재 / 올해 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [INFLOW_VS_RETENTION] (MYUNGRI) 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
         ← 이 시기 흐름 재물
@@ -3560,11 +3560,11 @@
         ← 관록의 염정
     - [PRIMITIVE] (ZIWEI) 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 부처의 탐랑
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주 천간합에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -3597,7 +3597,7 @@
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 파에 마찰을 일으킨다.
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3646,7 +3646,7 @@
         ← 이 시기 흐름 → 원국 시주 반합
     - [CONTESTED_SHARE] (MYUNGRI) 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 부처의 염정·천부
@@ -3656,9 +3656,9 @@
         ← 명궁의 탐랑
     - [PRIMITIVE] (ZIWEI) 형제에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
         ← 형제(본궁)에 문창 화기 / 전택(삼합궁)에 태양 화권
-    - [CROSS_STANDOFF] (CROSS) 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_BOND:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_AGAINST · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
@@ -3690,7 +3690,7 @@
     - OUTCOME = CONDITIONAL_FOR (SEWOON/ADJACENT) — 올해 흐름이 원국 시주 반합와 맞물려 풀린다.
     - OPPORTUNITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3742,7 +3742,7 @@
         ← 이 시기 흐름 활동·표현
     - [PRIMITIVE] (MYUNGRI) 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
         ← 이 시기 흐름 → 원국 년주 천간충
-    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 올해 흐름 → 원국 년주 해
     - [PRIMITIVE] (ZIWEI) 부처에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
         ← 부처(본궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
@@ -3756,11 +3756,11 @@
         ← 원국 일지 충·형·파·해 / 부처(본궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 원국 일지 충·형·파·해 / 전택(삼합궁)에 자미 화과
-    - [CROSS_STANDOFF] (CROSS) 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+    - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 부처(본궁)에 태음 화기 / 전택(삼합궁)에 자미 화과 / 복덕(삼합궁)에 천기 화록
-- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 월주 천간충에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
 - AXIS_VERDICTS = RELATION_STABILITY:AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:AGAINST · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · CAREER:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:AGAINST(경합)
 - DOCTRINE_BLOCKERS = MYUNGRI: 일간 강약: 판정 보류(채택 학파 없음)
