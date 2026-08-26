@@ -94,6 +94,7 @@ export {
   type SemanticTarget, type TargetKind,
 } from './targets';
 import { sameTarget } from './targets';
+import { claimKind } from '../claimOntology';
 import type { SemanticTarget } from './targets';
 
 
@@ -202,6 +203,35 @@ export type RestrictionKind = 'TIMING' | 'SCOPE' | 'CAPACITY';
 /** `PRIMITIVE` = a single premise restated. Anything else is the id of the rule that had to find a pattern. */
 export const PRIMITIVE_RULE = 'PRIMITIVE' as const;
 
+/**
+ * V4D §15 — HOW A CONCLUSION'S CITED INPUTS ARE LOAD-BEARING.
+ *
+ * A real conclusion may be OVERDETERMINED: several interchangeable findings each establish the same half of
+ * it, so removing any one alone changes nothing while removing all of them destroys it. V4C's certification
+ * asked only whether SOME removal moved the conclusion, which cannot tell that apart from a conclusion where
+ * one premise does all the work and three ride along as decoration — RECURRING_FRICTION_CAUSE passes today
+ * with two of its four premise removals observing no change at all.
+ *
+ * The rule that matched the premises is the only place that knows which is which (the role is per-INSTANCE,
+ * not per-rule: the same premise is required in one match and substitutable in another), so it declares it
+ * here. PURELY DECLARATIVE: no runtime decision reads this — it exists so the metamorphic harness can attack
+ * the right thing — and a source guard keeps it that way, because a field describing "how much each input
+ * matters" is one careless read away from being a score.
+ */
+export type SupportGroupRole =
+  /** Each member is tested INDIVIDUALLY: removing it alone must move the conclusion. */
+  | 'REQUIRED'
+  /** Members substitute for each other: tested COLLECTIVELY, the whole group removed at once. */
+  | 'ALTERNATIVE';
+
+export type SupportGroup = {
+  role: SupportGroupRole;
+  /** Human label for the QA pack. Display only — never compared. */
+  label: string;
+  /** Ids the proposition ALREADY cites (support / oppose / derived-from). No new reference class. */
+  ids: string[];
+};
+
 export type ReasonedProposition = {
   id: string;
   discipline: Discipline | 'CROSS';
@@ -243,6 +273,11 @@ export type ReasonedProposition = {
   /** Premises that bear on this claim but that adopted doctrine cannot currently resolve (§13 honesty). */
   unresolvedPremiseIds: string[];
   doctrineReferences: string[];
+  /**
+   * V4D §15 — declared by the derivation rule; read only by the certification harness. Absent means
+   * "not declared", and certification then falls back to its V4C behaviour for this conclusion.
+   */
+  supportGroups?: SupportGroup[];
   /** `PRIMITIVE`, or the NAMED derivation rule that produced this conclusion. */
   derivationRule: string;
   adequacy: PropositionAdequacy;
@@ -380,38 +415,55 @@ const NEAR_SCOPES: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
 export const temporalBand = (s: TemporalScope): 'NEAR' | 'STRUCTURAL' =>
   (NEAR_SCOPES.includes(s) ? 'NEAR' : 'STRUCTURAL');
 
-/** A claim that recommends, versus one that describes. A description must never swallow a decision. */
-const decisional = (p: ReasonedProposition): boolean =>
-  p.conclusionType !== 'STRUCTURAL' && p.conclusionType !== 'CAUSAL';
-
 /**
- * SUPERSESSION — V4C §6. THE ONLY way one proposition replaces another, and it is an IDENTITY relation,
- * not a quantity.
+ * SUPERSESSION — V4D §2/§3/§4. THE ONLY way one proposition replaces another.
  *
- * V4B compared premise COUNTS: `bp.size > ap.length` meant a conclusion citing more premises replaced one
- * citing fewer, and it checked only the axis — so a NEAR-band recommendation about 원국 월지 could delete a
- * STRUCTURAL description of 관성 simply for standing on one more premise. That is evidence-cardinality
- * arbitration, which this architecture forbids, and it silently removed conclusions the user was owed.
+ * It is a SEMANTIC REFINEMENT relation, declared by the derivation graph. It is not a quantity, and it is not
+ * an approximate match on coarse buckets.
  *
- * B supersedes A only when B is a LATER ACCOUNT OF THE SAME CLAIM: same person, same structural target, same
- * axis, same temporal band, same kind of claim — AND B already stands on everything A stands on. Under those
- * conditions "B cites more" is not a score, it is containment: A has nothing to add that B has not accounted
- * for. Anything else leaves BOTH standing, and the disagreement becomes visible instead of disappearing.
+ * WHAT WAS WRONG WITH V4C, in the order the independent audit found it:
+ *
+ *   §2 — CARDINALITY SURVIVED. The final line read
+ *          `return b.derivedFromPropositionIds.includes(a.id) || [...bp].some((id) => !ap.includes(id));`
+ *        The second disjunct grants authority to a STRICT SUPERSET of premises: cite one more piece of the
+ *        same material and you replace the conclusion that cited less. Framing it as "containment" does not
+ *        change what it is — the deciding fact is that one evidence collection is bigger. It is gone. The
+ *        ONLY route to supersession now is an explicit `derivedFromPropositionIds` link, i.e. the deriving
+ *        rule itself saying "this conclusion is built on that one". Evidence size is metadata; it decides
+ *        nothing.
+ *
+ *   §4 — TEMPORAL BANDS ARE NOT SCOPES. `temporalBand()` maps NATAL+DAEWOON to STRUCTURAL and
+ *        SEWOON+WOLWOON+PRESENT_MOMENT to NEAR, so a conclusion about THIS YEAR could supersede one about
+ *        THIS MONTH for being "both near". A year-level pressure and a month-level window are independent
+ *        time-scoped truths; the user is owed both. Only EXACT scope equality permits supersession.
+ *
+ *   §3/§12 — CLAIM KIND WAS A BOOLEAN. `decisional()` sorted every conclusion into "recommends" or
+ *        "describes", so an obstruction, an opening, a timing window and a two-axis compound were all one
+ *        kind. A DIRECTION_VS_EXECUTION compound therefore counted as the same kind of claim as the plain
+ *        obstruction it was derived from, and deleted it. `claimKind()` distinguishes what a conclusion
+ *        actually asserts.
+ *
+ * B supersedes A only when the graph says B was BUILT FROM A, and B is a refinement of THE SAME CLAIM: same
+ * person, same structural target, same axis, the same exact moment in time, and the same kind of claim.
+ * Anything else leaves BOTH standing — which is the honest outcome, and what makes a disagreement or a
+ * two-timescale reading visible instead of quietly disappearing.
+ *
+ * NOTE ON §5-F. Two conclusions of DIFFERENT claim kinds never supersede here, and there is deliberately no
+ * escape hatch: no rule in this kernel declares a cross-kind replacement, so a field for one would be an
+ * unused mechanism that future code could reach for without the argument being made. If a rule ever genuinely
+ * needs to replace a claim of another kind, it must add that relation explicitly and defend it.
  */
 export function supersedes(b: ReasonedProposition, a: ReasonedProposition): boolean {
   if (b.id === a.id) return false;
+  // §2 — the derivation graph is the ONLY source of authority. No set size, no superset, no count.
+  if (!b.derivedFromPropositionIds.includes(a.id)) return false;
+  // §3 — and it must be a refinement of the SAME claim, not a new claim that merely consumed the old one.
   if (b.subject !== a.subject) return false;
   if (b.questionAxis !== a.questionAxis) return false;
   if (!sameTarget(b.target, a.target)) return false;
-  if (temporalBand(b.temporalScope) !== temporalBand(a.temporalScope)) return false;
-  if (decisional(b) !== decisional(a)) return false;
-  const bp = new Set([...b.supportingPremiseIds, ...b.opposingPremiseIds]);
-  const ap = [...a.supportingPremiseIds, ...a.opposingPremiseIds];
-  if (ap.length === 0) return false;
-  if (!ap.every((id) => bp.has(id))) return false;
-  // Either B was explicitly built FROM A, or B rests on strictly more of the same material. Equal premise
-  // sets never supersede — two readings of exactly the same evidence are rivals, not a replacement.
-  return b.derivedFromPropositionIds.includes(a.id) || [...bp].some((id) => !ap.includes(id));
+  if (b.temporalScope !== a.temporalScope) return false;   // §4 — EXACT scope, never a band
+  if (claimKind(b) !== claimKind(a)) return false;          // §12 — what it ASSERTS, not merely how it formed
+  return true;
 }
 
 /** The propositions nothing else supersedes — the graph's leaves, which are what synthesis reads. */

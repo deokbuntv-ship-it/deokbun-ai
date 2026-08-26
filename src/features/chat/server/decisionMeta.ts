@@ -164,6 +164,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const COMPLETENESS = new Set(['COMPLETE', 'PARTIAL', 'INSUFFICIENT']);
   const DOCTRINE_APPLICABILITY = new Set(['ADOPTED', 'PARTIAL', 'BLOCKED']);
   const RESTRICTIONS = new Set(['TIMING', 'SCOPE', 'CAPACITY']);
+  const SUPPORT_GROUP_ROLES = new Set(['REQUIRED', 'ALTERNATIVE']);
   const enumOk = (set: Set<string>, x: unknown): boolean => typeof x === 'string' && set.has(x);
 
   // V4C §3 — target validation is DELEGATED to the canonical registry, which checks that the declared kind
@@ -232,6 +233,18 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     if (pr.qualified !== undefined && typeof pr.qualified !== 'boolean') return undefined;
     if (!isStringArray(pr.doctrineReferences)) return undefined;
     if (!isStringArray(pr.unresolvedPremiseIds)) return undefined;
+    // V4D §15 — support groups round-trip, or the certification harness silently loses the declaration the
+    // deriving rule made and falls back to the weaker "some removal moved something" test on restored graphs.
+    if (pr.supportGroups !== undefined) {
+      if (!Array.isArray(pr.supportGroups)) return undefined;
+      for (const g of pr.supportGroups) {
+        if (g === null || typeof g !== 'object') return undefined;
+        const grp = g as Record<string, unknown>;
+        if (!enumOk(SUPPORT_GROUP_ROLES, grp.role)) return undefined;
+        if (typeof grp.label !== 'string') return undefined;
+        if (!isStringArray(grp.ids) || grp.ids.length === 0) return undefined;
+      }
+    }
     if (!isTarget(pr.target)) return undefined;
     if (!isStringArray(pr.supportingPremiseIds) || !isStringArray(pr.opposingPremiseIds)) return undefined;
     if (!isStringArray(pr.derivedFromPropositionIds)) return undefined;
@@ -262,6 +275,16 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     for (const id of pr.derivedFromPropositionIds as string[]) {
       if (id === pr.id) return undefined;                       // self-reference
       if (!propositionIds.has(id)) return undefined;            // dangling proposition link
+    }
+    // §15 — a group may only name inputs this proposition ALREADY cites, so declaring groups can never
+    // introduce a new class of reference for the integrity pass to miss.
+    const cited = new Set([
+      ...(pr.supportingPremiseIds as string[]),
+      ...(pr.opposingPremiseIds as string[]),
+      ...(pr.derivedFromPropositionIds as string[]),
+    ]);
+    for (const g of (Array.isArray(pr.supportGroups) ? pr.supportGroups as Record<string, unknown>[] : [])) {
+      for (const id of g.ids as string[]) if (!cited.has(id)) return undefined;
     }
   }
   // The derivation graph must be a DAG: a follow-up traverses it, and a cycle would not terminate.
@@ -370,6 +393,12 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       supportingPremiseIds: strArr(pr.supportingPremiseIds),
       opposingPremiseIds: strArr(pr.opposingPremiseIds),
       derivedFromPropositionIds: strArr(pr.derivedFromPropositionIds),
+      ...(Array.isArray(pr.supportGroups)
+        ? {
+          supportGroups: (pr.supportGroups as Record<string, unknown>[])
+            .map((g) => ({ role: g.role, label: str(g.label), ids: strArr(g.ids) })),
+        }
+        : {}),
       unresolvedPremiseIds: strArr(pr.unresolvedPremiseIds),
       doctrineReferences: strArr(pr.doctrineReferences),
       derivationRule: pr.derivationRule,

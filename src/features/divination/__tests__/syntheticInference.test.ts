@@ -15,7 +15,9 @@ import {
   PRIMITIVE_RULE, isDirectional, screenAll, screenSynthesis, standingPropositions, validatePaidReading,
   type CrossDivinationVerdict, type DerivationContext,
 } from '@/features/divination';
-import { candidatesOf, certify, crossMutations, crossRederive, myungriRederive } from './support/certify';
+import {
+  candidatesOf, certify, crossMutations, crossRederive, groupMutations, myungriRederive, parentMutations,
+} from './support/certify';
 
 const digestProvider: DigestProvider = {
   async sha256Utf8(input: string): Promise<string> {
@@ -67,7 +69,12 @@ const certifyAll = (v: CrossDivinationVerdict) => {
       // A cross conclusion is re-derived from the PROPOSITIONS it reconciles, and additionally attacked by
       // re-targeting and re-scoping those parents (§19).
       ? certify(p, v.premises, crossRederive(v.propositions, ctx), crossMutations(p, v.propositions, v.premises, ctx))
-      : certify(p, v.premises, myungriRederive(ctx))));
+      // V4D §13/§15 — a Myungri conclusion is attacked through its own premises AND through the derived
+      // parents it stands on, with declared support groups attacked as groups.
+      : certify(p, v.premises, myungriRederive(ctx), [
+        ...parentMutations(p, v.propositions, v.premises, myungriRederive(ctx)),
+        ...groupMutations(p, v.premises, myungriRederive(ctx)),
+      ])));
 };
 const screened = (v: CrossDivinationVerdict) => screenAll(v.propositions, v.premises);
 

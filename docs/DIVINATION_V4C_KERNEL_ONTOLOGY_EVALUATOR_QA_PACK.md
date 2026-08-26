@@ -19,10 +19,10 @@
 | 항목 | 값 |
 |---|---|
 | 시나리오 | 14 / 14 |
-| RUNTIME_CANDIDATES (런타임이 지명) | 68 |
-| CERTIFIED_RUNTIME_CANDIDATES (인증됨) | 62 |
-| REAL_SYNTHETIC_INFERENCE | 62 |
-| MULTI_FACT_SUMMARY | 6 |
+| RUNTIME_CANDIDATES (런타임이 지명) | 75 |
+| CERTIFIED_RUNTIME_CANDIDATES (인증됨) | 58 |
+| REAL_SYNTHETIC_INFERENCE | 58 |
+| MULTI_FACT_SUMMARY | 17 |
 | UNSUPPORTED_INFERENCE | 0 |
 | UNCLASSIFIED_RUNTIME_CANDIDATES | 0 (집합 동일성으로 보장) |
 
@@ -30,7 +30,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_SYNTHESIS | 68 |
+| CANDIDATE_SYNTHESIS | 75 |
 | MULTI_FACT_SUMMARY | 0 |
 | STATIC_RULE_OUTPUT | 225 |
 | UNSUPPORTED_INFERENCE | 0 |
@@ -39,12 +39,12 @@
 
 | 공격 | 실행 | 결론을 바꿈 |
 |---|---|---|
-| `REMOVE_PREMISE` | 190 | 77 |
-| `REVERSE_PREMISE` | 190 | 65 |
-| `REMOVE_PARENT` | 64 | 54 |
-| `RETARGET_PARENT` | 64 | 53 |
-| `RESCOPE_PARENT` | 64 | 16 |
-| `REDIRECT_PARENT` | 64 | 54 |
+| `REMOVE_PREMISE` | 245 | 130 |
+| `REVERSE_PREMISE` | 205 | 79 |
+| `REMOVE_PARENT` | 75 | 62 |
+| `RETARGET_PARENT` | 73 | 49 |
+| `RESCOPE_PARENT` | 73 | 30 |
+| `REDIRECT_PARENT` | 73 | 65 |
 
 ## 시나리오별 후보
 
@@ -70,7 +70,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_23`, `p:mp_17`, `p:mp_19`, `p:mp_8` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -78,6 +78,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -111,7 +112,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_22`, `p:mp_18` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -119,6 +120,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -148,7 +150,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_8`, `p:mp_17`, `p:mp_19`, `p:mp_23` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -156,6 +158,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -172,59 +176,6 @@
 
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
-
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_13+p:mp_8` |
-| SUBJECT | A |
-| INTENT | PROBABILITY |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_8`, `mp_13` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_8`, `p:mp_13` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
 
 #### `CROSS_AXIS_COMPOUND|A|MONEY_INFLOW|COMPOSITE:INFLOW_VS_RETENTION:PALACE:PROPERTY_PALACE|PALACE:WEALTH_PALACE|COMPOUND|NATAL`
 
@@ -301,7 +252,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_53`, `p:mp_47`, `p:mp_49`, `p:mp_38` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -309,6 +260,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -342,7 +294,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_52`, `p:mp_48` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -350,6 +302,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -379,7 +332,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_38`, `p:mp_47`, `p:mp_49`, `p:mp_53` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -387,6 +340,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -403,59 +358,6 @@
 
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
-
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_38+p:mp_43` |
-| SUBJECT | A |
-| INTENT | OUTCOME |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_38`, `mp_43` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_38`, `p:mp_43` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
 
 #### `CROSS_AXIS_COMPOUND|A|MONEY_RETENTION|COMPOSITE:INFLOW_VS_RETENTION:PALACE:PROPERTY_PALACE|PALACE:WEALTH_PALACE|COMPOUND|NATAL`
 
@@ -571,7 +473,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_80`, `p:mp_75` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -579,6 +481,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 월주 해 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 월주 해 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -608,7 +511,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_81`, `p:mp_76` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -616,6 +519,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 시주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 시주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -629,15 +533,15 @@
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
 
-#### `INFLOW_VS_RETENTION|B|MONEY_INFLOW|COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.|COMPOUND|WOLWOON`
+#### `INFLOW_VS_RETENTION|B|MONEY_INFLOW|COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH|COMPOUND|WOLWOON`
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_82` |
+| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_82^d:CONTESTED_SHARE:MONEY_RETENTION:mp_61+mp_73+mp_78` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_INFLOW |
-| TARGET | `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.` (COMPOSITE) — 유입과 보유 |
+| TARGET | `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH` (COMPOSITE) — 유입과 보유 |
 | CONCLUSION_TYPE | COMPOUND · SCOPE |
 | TEMPORAL_SCOPE | WOLWOON |
 | DERIVATION_RULE | `INFLOW_VS_RETENTION` |
@@ -645,7 +549,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_61+mp_73+mp_78`, `p:mp_82` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 
@@ -654,6 +558,7 @@
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `REMOVE_PREMISE` | remove ACTIVATES·이 시기 흐름의 재물 | 참고 | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PARENT` | remove parent CONTESTED_SHARE·벌이는 몫과 남는 몫 (전제 3건) | **필수** | SEMANTIC | ABSENT | ✅ |
 
 - DIRECTION_MUTATIONS:
 
@@ -714,7 +619,7 @@
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
 
 
 #### `CROSS_STANDOFF|B|OUTCOME|NATAL_SEAT:HOUR|STRUCTURAL|SEWOON`
@@ -790,7 +695,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_113`, `p:mp_110` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -798,6 +703,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 년주 천간충 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 해 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -861,14 +767,14 @@
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
 
 
 ### 사업·기회
 
 **A · 확장** — "사업을 더 키워도 될까요?" → `CONDITIONAL_AGAINST`
 
-> 기회가 오는 쪽에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+> 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
 
 #### `CONVERGENT_SEAT_PRESSURE|A|RELATION_STABILITY|NATAL_SEAT:DAY|CAUSAL|WOLWOON`
 
@@ -886,7 +792,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_141`, `p:mp_135`, `p:mp_137`, `p:mp_126` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -894,6 +800,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -927,7 +834,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_140`, `p:mp_136` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -935,6 +842,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -964,7 +872,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_126`, `p:mp_135`, `p:mp_137`, `p:mp_141` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -972,6 +880,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -989,64 +899,11 @@
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
 
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_126+p:mp_131` |
-| SUBJECT | A |
-| INTENT | PROBABILITY |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_126`, `mp_131` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_126`, `p:mp_131` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
-
 #### `CROSS_AXIS_COMPOUND|A|OPPORTUNITY|COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE|COMPOUND|NATAL`
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_133+p:mp_138+p:mp_142+p:zp_144` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_133+p:zp_144` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | OPPORTUNITY |
@@ -1054,11 +911,11 @@
 | CONCLUSION_TYPE | COMPOUND · SCOPE |
 | TEMPORAL_SCOPE | NATAL |
 | DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
-| SUPPORTING_PARENTS | `mp_133`, `zp_144`, `mp_138`, `mp_142` |
+| SUPPORTING_PARENTS | `mp_133`, `zp_144` |
 | OPPOSING_PARENTS | `zc_145` |
-| DERIVED_FROM | `p:mp_133`, `p:zp_144`, `p:mp_138`, `p:mp_142` |
+| DERIVED_FROM | `p:mp_133`, `p:zp_144` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
-| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 시주 육합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 육합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
 
 > 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 
@@ -1068,13 +925,9 @@
   |---|---|---|---|---|---|
   | `REMOVE_PREMISE` | remove CONNECTS·원국 시주 반합 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove CONSTRAINS·명궁 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 시주 육합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 시주 반합 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove SUPPORTS·명궁 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove MYUNGRI:원국 시주 반합 | **필수** | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove ZIWEI:명궁 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 시주 육합 | **필수** | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 시주 반합 | **필수** | SEMANTIC | NONE | — |
 
 - DIRECTION_MUTATIONS:
 
@@ -1082,13 +935,9 @@
   |---|---|---|---|---|---|
   | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 시주 반합 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·명궁 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 시주 육합 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 시주 반합 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·명궁 | 참고 | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
 
 - TARGET_MUTATIONS:
 
@@ -1096,8 +945,6 @@
   |---|---|---|---|---|---|
   | `RETARGET_PARENT` | retarget MYUNGRI:원국 시주 반합 | **필수** | ABSENT | NONE | — |
   | `RETARGET_PARENT` | retarget ZIWEI:명궁 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 시주 육합 | **필수** | ABSENT | NONE | — |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 시주 반합 | **필수** | ABSENT | NONE | — |
 
 - TIME_MUTATIONS:
 
@@ -1105,8 +952,116 @@
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
   | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_AXIS_COMPOUND|A|OPPORTUNITY|COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE|COMPOUND|NATAL`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_138+p:zp_144` |
+| SUBJECT | A |
+| INTENT | PROBABILITY |
+| AXIS | OPPORTUNITY |
+| TARGET | `COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE` (COMPOSITE) — 기회가 오는 것과 그것을 잡아서 남는 것 |
+| CONCLUSION_TYPE | COMPOUND · SCOPE |
+| TEMPORAL_SCOPE | NATAL |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_138`, `zp_144` |
+| OPPOSING_PARENTS | `zc_145` |
+| DERIVED_FROM | `p:mp_138`, `p:zp_144` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 육합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 육합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
+
+> 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 시주 육합 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove CONSTRAINS·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 시주 육합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove ZIWEI:명궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 시주 육합 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 시주 육합 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:명궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_AXIS_COMPOUND|A|OPPORTUNITY|COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE|COMPOUND|NATAL`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_142+p:zp_144` |
+| SUBJECT | A |
+| INTENT | PROBABILITY |
+| AXIS | OPPORTUNITY |
+| TARGET | `COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE` (COMPOSITE) — 기회가 오는 것과 그것을 잡아서 남는 것 |
+| CONCLUSION_TYPE | COMPOUND · SCOPE |
+| TEMPORAL_SCOPE | NATAL |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_142`, `zp_144` |
+| OPPOSING_PARENTS | `zc_145` |
+| DERIVED_FROM | `p:mp_142`, `p:zp_144` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
+
+> 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 시주 반합 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove CONSTRAINS·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 시주 반합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove ZIWEI:명궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 시주 반합 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 시주 반합 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:명궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
 
 
 #### `CROSS_AXIS_COMPOUND|A|OPPORTUNITY|COMPOSITE:DIFFERENT_DOMAIN:PALACE:CAREER_PALACE|PALACE:SELF_PALACE|COMPOUND|NATAL`
@@ -1223,7 +1178,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_173`, `p:mp_168` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -1231,6 +1186,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 일주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 일주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -1319,7 +1275,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_203`, `p:mp_197`, `p:mp_199`, `p:mp_188` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -1327,6 +1283,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -1360,7 +1317,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_202`, `p:mp_198` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -1368,6 +1325,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -1397,7 +1355,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_188`, `p:mp_197`, `p:mp_199`, `p:mp_203` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -1405,6 +1363,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -1421,59 +1381,6 @@
 
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
-
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_188+p:mp_193` |
-| SUBJECT | A |
-| INTENT | DECISION |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_188`, `mp_193` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_188`, `p:mp_193` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
 
 #### `CROSS_AXIS_COMPOUND|A|MOVEMENT|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE|COMPOUND|NATAL`
 
@@ -1530,7 +1437,7 @@
 
 **D · 이사** — "이사해도 될까요?" → `CONDITIONAL_AGAINST`
 
-> 이동에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+> 이동에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
 
 #### `CONVERGENT_SEAT_PRESSURE|D|GENERAL|NATAL_SEAT:YEAR|CAUSAL|WOLWOON`
 
@@ -1548,7 +1455,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_236`, `p:mp_233` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 천간충에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -1556,6 +1463,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 년주 천간충 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 해 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -1619,14 +1527,14 @@
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
 
 
 #### `CROSS_AXIS_COMPOUND|D|MOVEMENT|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE|COMPOUND|NATAL`
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_230+p:mp_232+p:zp_238` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_230+p:zp_238` |
 | SUBJECT | D |
 | INTENT | DECISION |
 | AXIS | MOVEMENT |
@@ -1634,11 +1542,11 @@
 | CONCLUSION_TYPE | COMPOUND · SCOPE |
 | TEMPORAL_SCOPE | NATAL |
 | DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
-| SUPPORTING_PARENTS | `mp_230`, `zp_238`, `mp_232` |
+| SUPPORTING_PARENTS | `mp_230`, `zp_238` |
 | OPPOSING_PARENTS | `zc_239` |
-| DERIVED_FROM | `p:mp_230`, `p:zp_238`, `p:mp_232` |
+| DERIVED_FROM | `p:mp_230`, `p:zp_238` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
-| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 월주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
 
 > 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 
@@ -1648,11 +1556,9 @@
   |---|---|---|---|---|---|
   | `REMOVE_PREMISE` | remove CONNECTS·원국 월주 반합 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove CONSTRAINS·천이궁 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 월주 천간합 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove SUPPORTS·천이궁 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove MYUNGRI:원국 월주 반합 | **필수** | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove ZIWEI:천이궁 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 월주 천간합 | **필수** | SEMANTIC | NONE | — |
 
 - DIRECTION_MUTATIONS:
 
@@ -1660,11 +1566,9 @@
   |---|---|---|---|---|---|
   | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 월주 반합 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·천이궁 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 월주 천간합 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·천이궁 | 참고 | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
 
 - TARGET_MUTATIONS:
 
@@ -1672,7 +1576,6 @@
   |---|---|---|---|---|---|
   | `RETARGET_PARENT` | retarget MYUNGRI:원국 월주 반합 | **필수** | ABSENT | NONE | — |
   | `RETARGET_PARENT` | retarget ZIWEI:천이궁 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 월주 천간합 | **필수** | ABSENT | NONE | — |
 
 - TIME_MUTATIONS:
 
@@ -1680,7 +1583,61 @@
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
   | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_AXIS_COMPOUND|D|MOVEMENT|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE|COMPOUND|NATAL`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_232+p:zp_238` |
+| SUBJECT | D |
+| INTENT | DECISION |
+| AXIS | MOVEMENT |
+| TARGET | `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE` (COMPOSITE) — 자리·직업과 이동 |
+| CONCLUSION_TYPE | COMPOUND · SCOPE |
+| TEMPORAL_SCOPE | NATAL |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_232`, `zp_238` |
+| OPPOSING_PARENTS | `zc_239` |
+| DERIVED_FROM | `p:mp_232`, `p:zp_238` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE) |
+
+> 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 월주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove CONSTRAINS·천이궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·천이궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 월주 천간합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove ZIWEI:천이궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 월주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·천이궁 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·천이궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 월주 천간합 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:천이궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
 
 
 #### `CROSS_AXIS_COMPOUND|D|MOVEMENT|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:HOUR|PALACE:TRAVEL_PALACE|COMPOUND|NATAL`
@@ -1836,7 +1793,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_266`, `p:mp_260`, `p:mp_262`, `p:mp_251` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -1844,6 +1801,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -1877,7 +1835,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_265`, `p:mp_261` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -1885,6 +1843,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -1914,7 +1873,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_251`, `p:mp_260`, `p:mp_262`, `p:mp_266` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -1922,6 +1881,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -1938,59 +1899,6 @@
 
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
-
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_251+p:mp_256` |
-| SUBJECT | A |
-| INTENT | DECISION |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_251`, `mp_256` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_251`, `p:mp_256` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
 
 #### `CROSS_STANDOFF|A|RELATION_STABILITY|COMPOSITE:RIVAL:NATAL_SEAT:DAY|PALACE:SPOUSE_PALACE|STRUCTURAL|NATAL`
 
@@ -2049,7 +1957,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:mp_251+p:zp_272` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_251+p:zp_272` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2057,11 +1965,11 @@
 | CONCLUSION_TYPE | COMPOUND |
 | TEMPORAL_SCOPE | NATAL |
 | DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
-| SUPPORTING_PARENTS | `mp_251`, `zp_272`, `mp_256` |
-| OPPOSING_PARENTS | `mp_260`, `mp_262`, `mp_266` |
-| DERIVED_FROM | `p:mp_251`, `p:zp_272`, `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266` |
-| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
-| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE) |
+| SUPPORTING_PARENTS | `mp_251`, `zp_272` |
+| OPPOSING_PARENTS | — |
+| DERIVED_FROM | `p:mp_251`, `p:zp_272` |
+| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
 > 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 
@@ -2071,14 +1979,8 @@
   |---|---|---|---|---|---|
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove SUPPORTS·형제궁 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PARENT` | remove ZIWEI:형제궁 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | NONE | — |
 
 - DIRECTION_MUTATIONS:
 
@@ -2086,14 +1988,8 @@
   |---|---|---|---|---|---|
   | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·형제궁 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | NONE | — |
 
 - TARGET_MUTATIONS:
 
@@ -2101,8 +1997,6 @@
   |---|---|---|---|---|---|
   | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
   | `RETARGET_PARENT` | retarget ZIWEI:형제궁 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | NONE | — |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | NONE | — |
 
 - TIME_MUTATIONS:
 
@@ -2110,15 +2004,13 @@
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
   | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | NONE | — |
 
 
 #### `CROSS_TIMING_SPLIT|A|RELATION_STABILITY|NATAL_SEAT:DAY|COMPOUND|SEWOON`
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:mp_256` |
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:p:mp_256+p:mp_260+p:mp_262` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2126,11 +2018,11 @@
 | CONCLUSION_TYPE | COMPOUND · TIMING |
 | TEMPORAL_SCOPE | SEWOON |
 | DERIVATION_RULE | `CROSS_TIMING_SPLIT` |
-| SUPPORTING_PARENTS | `mp_256` |
-| OPPOSING_PARENTS | `mp_260`, `mp_262`, `mp_266` |
-| DERIVED_FROM | `p:mp_256`, `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266` |
+| SUPPORTING_PARENTS | `mp_256`, `mp_260`, `mp_262` |
+| OPPOSING_PARENTS | — |
+| DERIVED_FROM | `p:mp_256`, `p:mp_260`, `p:mp_262` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
-| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE) |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간충(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE); remove MYUNGRI:원국 일주 충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 충(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE) |
 
 > 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
 
@@ -2141,10 +2033,9 @@
   | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간충 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 충 | **필수** | SEMANTIC | NONE | — |
 
 - DIRECTION_MUTATIONS:
 
@@ -2153,26 +2044,186 @@
   | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | RESTRICTION | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | RESTRICTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | RESTRICTION | ✅ |
 
 - TARGET_MUTATIONS:
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간충 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 충 | **필수** | ABSENT | NONE | — |
 
 - TIME_MUTATIONS:
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | **필수** | ABSENT | ABSENT | ✅ |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | **필수** | ABSENT | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | **필수** | ABSENT | NONE | — |
+
+
+#### `CROSS_TIMING_SPLIT|A|RELATION_STABILITY|NATAL_SEAT:DAY|COMPOUND|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:p:mp_256+p:mp_266` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일주 천간합 |
+| CONCLUSION_TYPE | COMPOUND · TIMING |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_TIMING_SPLIT` |
+| SUPPORTING_PARENTS | `mp_256`, `mp_266` |
+| OPPOSING_PARENTS | — |
+| DERIVED_FROM | `p:mp_256`, `p:mp_266` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 형(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 형(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE) |
+
+> 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 형 | **필수** | SEMANTIC | NONE | — |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | RESTRICTION | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 형 | **필수** | ABSENT | NONE | — |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
   | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | **필수** | ABSENT | NONE | — |
+
+
+#### `CROSS_TIMING_SPLIT|A|RELATION_STABILITY|NATAL_SEAT:DAY|COMPOUND|SEWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+p:mp_256` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일주 천간합 |
+| CONCLUSION_TYPE | COMPOUND · TIMING |
+| TEMPORAL_SCOPE | SEWOON |
+| DERIVATION_RULE | `CROSS_TIMING_SPLIT` |
+| SUPPORTING_PARENTS | `mp_256` |
+| OPPOSING_PARENTS | `mp_260`, `mp_262` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `p:mp_256` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE) |
+
+> 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | RESTRICTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | **필수** | ABSENT | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_TIMING_SPLIT|A|RELATION_STABILITY|NATAL_SEAT:DAY|COMPOUND|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:mp_256` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일주 천간합 |
+| CONCLUSION_TYPE | COMPOUND · TIMING |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_TIMING_SPLIT` |
+| SUPPORTING_PARENTS | `mp_256` |
+| OPPOSING_PARENTS | `mp_266` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:mp_256` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE) |
+
+> 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | RESTRICTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | **필수** | ABSENT | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
 
 
 #### `CROSS_REINFORCEMENT|A|RELATION_STABILITY|COMPOSITE:RIVAL:NATAL_SEAT:DAY|PALACE:SPOUSE_PALACE|DIRECTIONAL|DAEWOON`
@@ -2232,7 +2283,231 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:zp_269` |
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:p:mp_260+p:mp_262+p:zp_269` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일주 천간충 |
+| CONCLUSION_TYPE | DIRECTIONAL |
+| TEMPORAL_SCOPE | SEWOON |
+| DERIVATION_RULE | `CROSS_CONTRADICTION_RESOLVED` |
+| SUPPORTING_PARENTS | `mp_260`, `mp_262` |
+| OPPOSING_PARENTS | `zp_269` |
+| DERIVED_FROM | `p:mp_260`, `p:mp_262`, `p:zp_269` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간충(기대 ABSENT, 실제 ASSERTION); remove MYUNGRI:원국 일주 충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 충(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 SEMANTIC, 실제 NONE); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
+
+> 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | ASSERTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·부처궁 | 참고 | SEMANTIC | ASSERTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간충 | **필수** | SEMANTIC | ASSERTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 충 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove ZIWEI:부처궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·부처궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ASSERTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간충 | **필수** | ABSENT | ASSERTION | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 충 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:부처궁 | **필수** | ABSENT | NONE | — |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | ASSERTION | ✅ |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_AXIS_COMPOUND|A|RELATION_STABILITY|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE|COMPOUND|SEWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_260+p:mp_262+p:zp_272` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE` (COMPOSITE) — 같이 사는 난도과 부딪힘 |
+| CONCLUSION_TYPE | COMPOUND |
+| TEMPORAL_SCOPE | SEWOON |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_260`, `mp_262`, `zp_272` |
+| OPPOSING_PARENTS | — |
+| DERIVED_FROM | `p:mp_260`, `p:mp_262`, `p:zp_272` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간충(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 일주 충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 충(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 SEMANTIC, 실제 NONE) |
+
+> 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·형제궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간충 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 충 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove ZIWEI:형제궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·형제궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간충 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 충 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:형제궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_CONTRADICTION_RESOLVED|A|RELATION_STABILITY|NATAL_SEAT:DAY|DIRECTIONAL|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:p:mp_266+p:zp_269` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일주 형 |
+| CONCLUSION_TYPE | DIRECTIONAL |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_CONTRADICTION_RESOLVED` |
+| SUPPORTING_PARENTS | `mp_266` |
+| OPPOSING_PARENTS | `zp_269` |
+| DERIVED_FROM | `p:mp_266`, `p:zp_269` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 형(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
+
+> 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove SUPPORTS·부처궁 | 참고 | SEMANTIC | ASSERTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 형 | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove ZIWEI:부처궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·부처궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 형 | **필수** | ABSENT | DIRECTION | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:부처궁 | **필수** | ABSENT | NONE | — |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | DIRECTION | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_AXIS_COMPOUND|A|RELATION_STABILITY|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE|COMPOUND|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_266+p:zp_272` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE` (COMPOSITE) — 같이 사는 난도과 부딪힘 |
+| CONCLUSION_TYPE | COMPOUND |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_266`, `zp_272` |
+| OPPOSING_PARENTS | — |
+| DERIVED_FROM | `p:mp_266`, `p:zp_272` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 형(기대 ABSENT, 실제 DIRECTION) |
+
+> 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·형제궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 형 | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove ZIWEI:형제궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·형제궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 형 | **필수** | ABSENT | DIRECTION | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:형제궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | DIRECTION | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_CONTRADICTION_RESOLVED|A|RELATION_STABILITY|NATAL_SEAT:DAY|DIRECTIONAL|SEWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+p:zp_269` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2241,10 +2516,10 @@
 | TEMPORAL_SCOPE | SEWOON |
 | DERIVATION_RULE | `CROSS_CONTRADICTION_RESOLVED` |
 | SUPPORTING_PARENTS | `mp_256` |
-| OPPOSING_PARENTS | `mp_260`, `mp_262`, `mp_266`, `zp_269` |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:zp_269` |
+| OPPOSING_PARENTS | `mp_260`, `mp_262`, `zp_269` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `p:zp_269` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
-| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 DIRECTION) |
 
 > 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
 
@@ -2252,43 +2527,204 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove SUPPORTS·부처궁 | 참고 | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove SUPPORTS·부처궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | DIRECTION | ✅ |
   | `REMOVE_PARENT` | remove ZIWEI:부처궁 | **필수** | SEMANTIC | ABSENT | ✅ |
 
 - DIRECTION_MUTATIONS:
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·부처궁 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·부처궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
   | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
 
 - TARGET_MUTATIONS:
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | NONE | — |
-  | `RETARGET_PARENT` | retarget ZIWEI:부처궁 | **필수** | ABSENT | NONE | — |
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | DIRECTION | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:부처궁 | **필수** | ABSENT | DIRECTION | — |
 
 - TIME_MUTATIONS:
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | DIRECTION | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | DIRECTION | ✅ |
+
+
+#### `CROSS_AXIS_COMPOUND|A|RELATION_STABILITY|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE|COMPOUND|SEWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+p:zp_272` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE` (COMPOSITE) — 같이 사는 난도과 부딪힘 |
+| CONCLUSION_TYPE | COMPOUND · TIMING |
+| TEMPORAL_SCOPE | SEWOON |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_256`, `zp_272` |
+| OPPOSING_PARENTS | `mp_260`, `mp_262` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `p:zp_272` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION) |
+
+> 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove SUPPORTS·형제궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove ZIWEI:형제궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·형제궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 천간충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 충 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | DIRECTION | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:형제궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | DIRECTION | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | DIRECTION | ✅ |
+
+
+#### `CROSS_CONTRADICTION_RESOLVED|A|RELATION_STABILITY|NATAL_SEAT:DAY|DIRECTIONAL|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:zp_269` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일주 천간합 |
+| CONCLUSION_TYPE | DIRECTIONAL · TIMING |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_CONTRADICTION_RESOLVED` |
+| SUPPORTING_PARENTS | `mp_256` |
+| OPPOSING_PARENTS | `mp_266`, `zp_269` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:zp_269` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 DIRECTION) |
+
+> 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·부처궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove ZIWEI:부처궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·부처궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | DIRECTION | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:부처궁 | **필수** | ABSENT | DIRECTION | — |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | DIRECTION | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | DIRECTION | ✅ |
+
+
+#### `CROSS_AXIS_COMPOUND|A|RELATION_STABILITY|COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE|COMPOUND|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:zp_272` |
+| SUBJECT | A |
+| INTENT | DECISION |
+| AXIS | RELATION_STABILITY |
+| TARGET | `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE` (COMPOSITE) — 같이 사는 난도과 부딪힘 |
+| CONCLUSION_TYPE | COMPOUND · TIMING |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_AXIS_COMPOUND` |
+| SUPPORTING_PARENTS | `mp_256`, `zp_272` |
+| OPPOSING_PARENTS | `mp_266` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:zp_272` |
+| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
+| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION) |
+
+> 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove SUPPORTS·형제궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REMOVE_PARENT` | remove ZIWEI:형제궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·형제궁 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일주 형 | 참고 | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | DIRECTION | ✅ |
+  | `REDIRECT_PARENT` | redirect ZIWEI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | DIRECTION | — |
+  | `RETARGET_PARENT` | retarget ZIWEI:형제궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | DIRECTION | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | DIRECTION | ✅ |
 
 
 **B · 재회** — "재회 가능성이 있을까요?" → `INSUFFICIENT_EVIDENCE`
@@ -2350,7 +2786,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_293`, `p:mp_288` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 월주 해에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -2358,6 +2794,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 월주 해 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 월주 해 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -2387,7 +2824,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_294`, `p:mp_289` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 시주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -2395,6 +2832,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 시주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 시주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -2408,15 +2846,15 @@
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
 
-#### `INFLOW_VS_RETENTION|B|MONEY_INFLOW|COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.|COMPOUND|WOLWOON`
+#### `INFLOW_VS_RETENTION|B|MONEY_INFLOW|COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH|COMPOUND|WOLWOON`
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_295` |
+| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_295^d:CONTESTED_SHARE:MONEY_RETENTION:mp_274+mp_286+mp_291` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_INFLOW |
-| TARGET | `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.` (COMPOSITE) — 유입과 보유 |
+| TARGET | `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH` (COMPOSITE) — 유입과 보유 |
 | CONCLUSION_TYPE | COMPOUND · SCOPE |
 | TEMPORAL_SCOPE | WOLWOON |
 | DERIVATION_RULE | `INFLOW_VS_RETENTION` |
@@ -2424,7 +2862,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_274+mp_286+mp_291`, `p:mp_295` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 
@@ -2433,6 +2871,7 @@
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `REMOVE_PREMISE` | remove ACTIVATES·이 시기 흐름의 재물 | 참고 | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PARENT` | remove parent CONTESTED_SHARE·벌이는 몫과 남는 몫 (전제 3건) | **필수** | SEMANTIC | ABSENT | ✅ |
 
 - DIRECTION_MUTATIONS:
 
@@ -2493,7 +2932,7 @@
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
+  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
 
 
 #### `CROSS_STANDOFF|B|OUTCOME|NATAL_SEAT:HOUR|STRUCTURAL|SEWOON`
@@ -2571,7 +3010,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_323`, `p:mp_317`, `p:mp_319`, `p:mp_308` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -2579,6 +3018,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -2612,7 +3052,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_322`, `p:mp_318` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -2620,6 +3060,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -2649,7 +3090,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_308`, `p:mp_317`, `p:mp_319`, `p:mp_323` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -2657,6 +3098,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -2673,59 +3116,6 @@
 
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
-
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_308+p:mp_313` |
-| SUBJECT | A |
-| INTENT | DECISION |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_308`, `mp_313` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_308`, `p:mp_313` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
 
 ### 서술형(§12)
 
@@ -2749,7 +3139,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_358`, `p:mp_352`, `p:mp_354`, `p:mp_343` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -2757,6 +3147,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -2790,7 +3181,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_357`, `p:mp_353` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -2798,6 +3189,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -2827,7 +3219,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_343`, `p:mp_352`, `p:mp_354`, `p:mp_358` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -2835,6 +3227,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -2852,64 +3246,11 @@
 - TARGET_MUTATIONS: 해당 없음
 - TIME_MUTATIONS: 해당 없음
 
-#### `CROSS_STANDOFF|A|RELATION_STABILITY|NATAL_SEAT:DAY|STRUCTURAL|NATAL`
-
-| 항목 | 값 |
-|---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_343+p:mp_348` |
-| SUBJECT | A |
-| INTENT | DESCRIPTIVE |
-| AXIS | RELATION_STABILITY |
-| TARGET | `NATAL_SEAT:DAY` (NATAL_SEAT) — 원국 일지(배우자·자기 자리) |
-| CONCLUSION_TYPE | STRUCTURAL |
-| TEMPORAL_SCOPE | NATAL |
-| DERIVATION_RULE | `CROSS_STANDOFF` |
-| SUPPORTING_PARENTS | `mp_343`, `mp_348` |
-| OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_343`, `p:mp_348` |
-| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
-
-> 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-
-- REMOVAL_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONNECTS·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 일주 천간합 | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- DIRECTION_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `REVERSE_PREMISE` | reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONNECTS→SEPARATES·원국 일주 천간합 | 참고 | SEMANTIC | NONE | — |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:UNFAVORABLE→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:FAVORABLE→UNFAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-
-- TARGET_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일지(배우자·자기 자리) | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 일주 천간합 | **필수** | ABSENT | ABSENT | ✅ |
-
-- TIME_MUTATIONS:
-
-  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
-  |---|---|---|---|---|---|
-  | `RESCOPE_PARENT` | rescope MYUNGRI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:DAEWOON→NATAL | 참고 | ANY | NONE | — |
-
-
 #### `CROSS_REINFORCEMENT|A|GENERAL|COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE|DIRECTIONAL|SEWOON`
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_REINFORCEMENT:p:mp_353+p:mp_357+p:zp_361` |
+| CANDIDATE_ID | `x:CROSS_REINFORCEMENT:p:mp_353+p:zp_361` |
 | SUBJECT | A |
 | INTENT | DESCRIPTIVE |
 | AXIS | GENERAL |
@@ -2917,11 +3258,11 @@
 | CONCLUSION_TYPE | DIRECTIONAL |
 | TEMPORAL_SCOPE | SEWOON |
 | DERIVATION_RULE | `CROSS_REINFORCEMENT` |
-| SUPPORTING_PARENTS | `mp_353`, `zp_361`, `mp_357` |
+| SUPPORTING_PARENTS | `mp_353`, `zp_361` |
 | OPPOSING_PARENTS | `zc_362` |
-| DERIVED_FROM | `p:mp_353`, `p:zp_361`, `p:mp_357` |
-| **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
-| 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 년주 파(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 년주 파(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE) |
+| DERIVED_FROM | `p:mp_353`, `p:zp_361` |
+| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
 > 서로 다른 자리(원국 년주 자형 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
 
@@ -2931,11 +3272,9 @@
   |---|---|---|---|---|---|
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove CONSTRAINS·명궁 | 참고 | SEMANTIC | NONE | — |
-  | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove SUPPORTS·명궁 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PARENT` | remove MYUNGRI:원국 년주 자형 | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PARENT` | remove ZIWEI:명궁 | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REMOVE_PARENT` | remove MYUNGRI:원국 년주 파 | **필수** | SEMANTIC | NONE | — |
 
 - DIRECTION_MUTATIONS:
 
@@ -2943,11 +3282,9 @@
   |---|---|---|---|---|---|
   | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·원국 년주 자형 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·명궁 | 참고 | SEMANTIC | NONE | — |
-  | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·원국 년주 파 | 참고 | SEMANTIC | NONE | — |
   | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·명궁 | 참고 | SEMANTIC | NONE | — |
   | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
-  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | NONE | — |
 
 - TARGET_MUTATIONS:
 
@@ -2955,7 +3292,6 @@
   |---|---|---|---|---|---|
   | `RETARGET_PARENT` | retarget MYUNGRI:원국 년주 자형 | **필수** | ABSENT | ABSENT | ✅ |
   | `RETARGET_PARENT` | retarget ZIWEI:명궁 | **필수** | ABSENT | ABSENT | ✅ |
-  | `RETARGET_PARENT` | retarget MYUNGRI:원국 년주 파 | **필수** | ABSENT | NONE | — |
 
 - TIME_MUTATIONS:
 
@@ -2963,7 +3299,61 @@
   |---|---|---|---|---|---|
   | `RESCOPE_PARENT` | rescope MYUNGRI:SEWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
   | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
-  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | NONE | — |
+
+
+#### `CROSS_REINFORCEMENT|A|GENERAL|COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE|DIRECTIONAL|WOLWOON`
+
+| 항목 | 값 |
+|---|---|
+| CANDIDATE_ID | `x:CROSS_REINFORCEMENT:p:mp_357+p:zp_361` |
+| SUBJECT | A |
+| INTENT | DESCRIPTIVE |
+| AXIS | GENERAL |
+| TARGET | `COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE` (COMPOSITE) — 원국 년주 파·명궁 |
+| CONCLUSION_TYPE | DIRECTIONAL |
+| TEMPORAL_SCOPE | WOLWOON |
+| DERIVATION_RULE | `CROSS_REINFORCEMENT` |
+| SUPPORTING_PARENTS | `mp_357`, `zp_361` |
+| OPPOSING_PARENTS | `zc_362` |
+| DERIVED_FROM | `p:mp_357`, `p:zp_361` |
+| **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
+
+> 서로 다른 자리(원국 년주 파 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+
+- REMOVAL_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove CONSTRAINS·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PREMISE` | remove SUPPORTS·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REMOVE_PARENT` | remove MYUNGRI:원국 년주 파 | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PARENT` | remove ZIWEI:명궁 | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- DIRECTION_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·원국 년주 파 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse CONSTRAINS→ENABLES·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REVERSE_PREMISE` | reverse SUPPORTS→OPPOSES·명궁 | 참고 | SEMANTIC | NONE | — |
+  | `REDIRECT_PARENT` | redirect MYUNGRI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REDIRECT_PARENT` | redirect ZIWEI:RESTRICTED→FAVORABLE | **필수** | SEMANTIC | ABSENT | ✅ |
+
+- TARGET_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RETARGET_PARENT` | retarget MYUNGRI:원국 년주 파 | **필수** | ABSENT | ABSENT | ✅ |
+  | `RETARGET_PARENT` | retarget ZIWEI:명궁 | **필수** | ABSENT | ABSENT | ✅ |
+
+- TIME_MUTATIONS:
+
+  | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
+  |---|---|---|---|---|---|
+  | `RESCOPE_PARENT` | rescope MYUNGRI:WOLWOON→NATAL | 참고 | ANY | ABSENT | ✅ |
+  | `RESCOPE_PARENT` | rescope ZIWEI:NATAL→NATAL | 참고 | ANY | NONE | — |
 
 
 ### 원인형(§22)
@@ -3025,7 +3415,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_386`, `p:mp_381` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -3033,6 +3423,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 일주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 일주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -3121,7 +3512,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_408`, `p:mp_403`, `p:mp_405`, `p:mp_399` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 일주 형에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -3129,6 +3520,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (4건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 형 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |
@@ -3162,7 +3554,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_407`, `p:mp_404` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
 > 원국 년주 파에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
 
@@ -3170,6 +3562,7 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove ALL of 같은 자리에 겹친 압력 (2건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 파 | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove CONSTRAINS·원국 년주 자형 | 참고 | SEMANTIC | ABSENT | ✅ |
 
@@ -3199,7 +3592,7 @@
 | OPPOSING_PARENTS | — |
 | DERIVED_FROM | `p:mp_399`, `p:mp_403`, `p:mp_405`, `p:mp_408` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
-| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함 |
+| 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
 > 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 
@@ -3207,6 +3600,8 @@
 
   | 변형 | 대상 | 필수 | 기대 변화 | 실제 변화 | 판정 |
   |---|---|---|---|---|---|
+  | `REMOVE_PREMISE` | remove required 원국의 약한 자리 (1건) | **필수** | SEMANTIC | ABSENT | ✅ |
+  | `REMOVE_PREMISE` | remove ALL of 그 자리를 다시 건드리는 운 (3건) | **필수** | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일지(배우자·자기 자리) | 참고 | SEMANTIC | ABSENT | ✅ |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 천간충 | 참고 | SEMANTIC | NONE | — |
   | `REMOVE_PREMISE` | remove DESTABILIZES·원국 일주 충 | 참고 | SEMANTIC | NONE | — |

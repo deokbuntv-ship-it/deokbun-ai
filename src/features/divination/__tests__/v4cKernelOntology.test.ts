@@ -109,14 +109,24 @@ describe('§33-1 / §4 — same asked question, same axis, DIFFERENT target', ()
 describe('§33-2 / §33-3 — a temporal split needs one thing whose direction and timing can come apart', () => {
   const structural = prop({ discipline: 'MYUNGRI', target: SEAT_MONTH, direction: 'FAVORABLE', temporalScope: 'DAEWOON' });
 
-  it('SAME target, different time → DIFFERENT_TIME', () => {
+  it('SAME target, different time BAND → DIFFERENT_TIME_BAND', () => {
     const near = prop({ discipline: 'MYUNGRI', target: SEAT_MONTH, direction: 'UNFAVORABLE', temporalScope: 'SEWOON' });
-    expect(classifyPair(structural, near)).toBe('DIFFERENT_TIME');
+    expect(classifyPair(structural, near)).toBe('DIFFERENT_TIME_BAND');
+  });
+
+  // V4D §4 — two claims at the SAME distance are two independent time-scoped truths, not one thing whose
+  // direction and timing came apart. V4C compared bands, so 올해 and 이 달 landed in the timing rule together.
+  it('SAME target, same BAND, different exact scope → DIFFERENT_TIME_SCALE, and nothing is derived', () => {
+    const year = prop({ discipline: 'MYUNGRI', target: SEAT_MONTH, direction: 'UNFAVORABLE', temporalScope: 'SEWOON' });
+    const month = prop({ discipline: 'ZIWEI', target: SEAT_MONTH, direction: 'FAVORABLE', temporalScope: 'WOLWOON' });
+    expect(classifyPair(year, month)).toBe('DIFFERENT_TIME_SCALE');
+    expect(deriveCross([year, month], [], crossCtx)).toEqual([]);
   });
 
   it('DIFFERENT target, different time → never DIFFERENT_TIME (this is C7 as a class)', () => {
     const elsewhere = prop({ discipline: 'ZIWEI', target: PALACE_CAREER, direction: 'UNFAVORABLE', temporalScope: 'SEWOON' });
-    expect(classifyPair(structural, elsewhere)).not.toBe('DIFFERENT_TIME');
+    expect(classifyPair(structural, elsewhere)).not.toBe('DIFFERENT_TIME_BAND');
+    expect(classifyPair(structural, elsewhere)).not.toBe('DIFFERENT_TIME_SCALE');
     expect(deriveCross([structural, elsewhere], [], crossCtx)
       .some((d) => d.proposition.derivationRule === 'CROSS_TIMING_SPLIT')).toBe(false);
   });
@@ -188,8 +198,10 @@ describe('§10 / §33-4..7 — C7 attack matrix A–E', () => {
     // timing rule to catch the case after the fact.
     const classifyBody = src.slice(src.indexOf('export function classifyPair'), src.indexOf('WHY one proposition'));
     const sameTargetBranch = classifyBody.slice(classifyBody.indexOf('if (sameTarget('));
-    expect(sameTargetBranch).toContain("return 'DIFFERENT_TIME'");
-    expect(classifyBody.split("return 'DIFFERENT_TIME'").length - 1).toBe(1);
+    expect(sameTargetBranch).toContain("'DIFFERENT_TIME_BAND'");
+    // Both temporal relations are minted in ONE place, inside the same-target branch, and nowhere else.
+    expect(classifyBody.split("'DIFFERENT_TIME_BAND'").length - 1).toBe(1);
+    expect(classifyBody.split("'DIFFERENT_TIME_SCALE'").length - 1).toBe(1);
   });
 });
 

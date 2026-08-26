@@ -16,11 +16,11 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 | 항목 | 값 |
 | --- | --- |
 | 시나리오 | 13 |
-| 런타임이 지목한 후보(CANDIDATE) | 65 |
-| 하네스가 인증한 REAL_SYNTHETIC_INFERENCE | 59 |
+| 런타임이 지목한 후보(CANDIDATE) | 72 |
+| 하네스가 인증한 REAL_SYNTHETIC_INFERENCE | 55 |
 | ├ 명리 | 37 (규칙 5종) |
-| └ 교차 | 22 |
-| MULTI_FACT_SUMMARY (과다결정·비인과) | 6 |
+| └ 교차 | 18 |
+| MULTI_FACT_SUMMARY (과다결정·비인과) | 17 |
 | STATIC_RULE_OUTPUT | 0 |
 | ⚠ UNSUPPORTED_INFERENCE | 0 (0이어야 함) |
 
@@ -38,7 +38,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 올해 돈을 벌 수 있을까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = MONEY_INFLOW · **VERDICT** = AGAINST
 **결론** = 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-**전제 수** = 30 · **명제 수** = 22 · **후보(runtime)** = 5
+**전제 수** = 30 · **명제 수** = 21 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -49,8 +49,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -67,8 +68,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -83,27 +85,14 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
-- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
-
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
-
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
-- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 #### CROSS_AXIS_COMPOUND — `COMPOSITE:INFLOW_VS_RETENTION:PALACE:PROPERTY_PALACE|PALACE:WEALTH_PALACE`
@@ -127,7 +116,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 저축이 남을까요?
 **INTENT** = OUTCOME · **ASKED_AXIS** = MONEY_RETENTION · **VERDICT** = FOR
 **결론** = 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
-**전제 수** = 30 · **명제 수** = 22 · **후보(runtime)** = 5
+**전제 수** = 30 · **명제 수** = 21 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -138,8 +127,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -156,8 +146,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -172,27 +163,14 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
-- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
-
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
-
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
-- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 #### CROSS_AXIS_COMPOUND — `COMPOSITE:INFLOW_VS_RETENTION:PALACE:PROPERTY_PALACE|PALACE:WEALTH_PALACE`
@@ -244,8 +222,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 월주 해→결론 변함 / remove CONSTRAINS·원국 월주 해→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 월주 해→결론 변함 / reverse CONSTRAINS→ENABLES·원국 월주 해→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 월주 해` → **MATERIAL**
     - `CONSTRAINS·원국 월주 해` → **MATERIAL**
@@ -260,24 +239,26 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 시주 파→결론 변함 / remove CONSTRAINS·원국 시주 파→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 시주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 시주 파→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 시주 파` → **MATERIAL**
     - `CONSTRAINS·원국 시주 파` → **MATERIAL**
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
-#### INFLOW_VS_RETENTION — `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.`
+#### INFLOW_VS_RETENTION — `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`
 
-- **AXIS** = MONEY_INFLOW · **SUBJECT** = B · **TARGET** = 유입과 보유 (`COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.`)
+- **AXIS** = MONEY_INFLOW · **SUBJECT** = B · **TARGET** = 유입과 보유 (`COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`)
 - **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
 - **DERIVED_PROPOSITION** = 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - **INPUT_PREMISES** = ACTIVATES·이 시기 흐름의 재물
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove ACTIVATES·이 시기 흐름의 재물→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse ACTIVATES→ABSENT·이 시기 흐름의 재물→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove parent CONTESTED_SHARE·벌이는 몫과 남는 몫 (전제 3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `ACTIVATES·이 시기 흐름의 재물` → **MATERIAL**
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
@@ -291,7 +272,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 월주 천간합→변화 없음 / remove CONSTRAINS·원국 월주 해→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 월주 천간합→변화 없음 / reverse CONSTRAINS→ENABLES·원국 월주 해→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간합→변함 / retarget MYUNGRI:원국 월주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 월주 해→변함 / retarget MYUNGRI:원국 월주 해→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간합→변함 / retarget MYUNGRI:원국 월주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 월주 해→변함 / retarget MYUNGRI:원국 월주 해→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
 - **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
@@ -328,8 +309,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 년주 천간충→결론 변함 / remove CONSTRAINS·원국 년주 해→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 년주 천간충→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 해→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 년주 천간충` → **MATERIAL**
     - `CONSTRAINS·원국 년주 해` → **MATERIAL**
@@ -344,7 +326,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 월주 천간충→변화 없음 / remove CONNECTS·원국 월주 반합→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 월주 천간충→변화 없음 / reverse CONNECTS→SEPARATES·원국 월주 반합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간충→변함 / retarget MYUNGRI:원국 월주 천간충→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 월주 반합→변함 / retarget MYUNGRI:원국 월주 반합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간충→변함 / retarget MYUNGRI:원국 월주 천간충→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 월주 반합→변함 / retarget MYUNGRI:원국 월주 반합→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
 - **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
@@ -355,8 +337,8 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 
 **QUESTION** = 사업을 더 키워도 될까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = OPPORTUNITY · **VERDICT** = CONDITIONAL_AGAINST
-**결론** = 기회가 오는 쪽에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-**전제 수** = 34 · **명제 수** = 25 · **후보(runtime)** = 6
+**결론** = 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+**전제 수** = 34 · **명제 수** = 26 · **후보(runtime)** = 7
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -367,8 +349,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -385,8 +368,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -401,8 +385,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -410,32 +395,46 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE`
 
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
+- **AXIS** = OPPORTUNITY · **SUBJECT** = A · **TARGET** = 기회가 오는 것과 그것을 잡아서 남는 것 (`COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE`)
+- **TEMPORAL_SCOPE** = NATAL · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
+- **DERIVED_PROPOSITION** = 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = CONNECTS·원국 시주 반합, CONSTRAINS·명궁
+- **COUNTER_PREMISES** = SUPPORTS·명궁
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 시주 반합→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove SUPPORTS·명궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 시주 반합→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 시주 반합→없음 / retarget MYUNGRI:원국 시주 반합→없음 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
-- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
 
 #### CROSS_AXIS_COMPOUND — `COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE`
 
 - **AXIS** = OPPORTUNITY · **SUBJECT** = A · **TARGET** = 기회가 오는 것과 그것을 잡아서 남는 것 (`COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE`)
 - **TEMPORAL_SCOPE** = NATAL · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
 - **DERIVED_PROPOSITION** = 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- **INPUT_PREMISES** = CONNECTS·원국 시주 반합, CONSTRAINS·명궁, CONNECTS·원국 시주 육합, CONNECTS·원국 시주 반합
+- **INPUT_PREMISES** = CONNECTS·원국 시주 육합, CONSTRAINS·명궁
 - **COUNTER_PREMISES** = SUPPORTS·명궁
-- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 시주 반합→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove CONNECTS·원국 시주 육합→변화 없음 / remove CONNECTS·원국 시주 반합→변화 없음 / remove SUPPORTS·명궁→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 시주 반합→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse CONNECTS→SEPARATES·원국 시주 육합→변화 없음 / reverse CONNECTS→SEPARATES·원국 시주 반합→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 시주 반합→없음 / retarget MYUNGRI:원국 시주 반합→없음 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 시주 육합→없음 / retarget MYUNGRI:원국 시주 육합→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove MYUNGRI:원국 시주 반합→없음 / retarget MYUNGRI:원국 시주 반합→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 시주 육합→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove SUPPORTS·명궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 시주 육합→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 시주 육합→없음 / retarget MYUNGRI:원국 시주 육합→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 시주 육합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 육합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 육합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 육합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE`
+
+- **AXIS** = OPPORTUNITY · **SUBJECT** = A · **TARGET** = 기회가 오는 것과 그것을 잡아서 남는 것 (`COMPOSITE:OPPORTUNITY_VS_OUTCOME:NATAL_SEAT:HOUR|PALACE:SELF_PALACE`)
+- **TEMPORAL_SCOPE** = NATAL · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
+- **DERIVED_PROPOSITION** = 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = CONNECTS·원국 시주 반합, CONSTRAINS·명궁
+- **COUNTER_PREMISES** = SUPPORTS·명궁
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 시주 반합→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove SUPPORTS·명궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 시주 반합→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 시주 반합→없음 / retarget MYUNGRI:원국 시주 반합→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
 - **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
 
 #### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:PALACE:CAREER_PALACE|PALACE:SELF_PALACE`
@@ -486,8 +485,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 일주 파→결론 변함 / remove CONSTRAINS·원국 일주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 일주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 일주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 일주 파` → **MATERIAL**
     - `CONSTRAINS·원국 일주 자형` → **MATERIAL**
@@ -514,7 +514,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 이직해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = MOVEMENT · **VERDICT** = FOR
 **결론** = 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
-**전제 수** = 31 · **명제 수** = 23 · **후보(runtime)** = 5
+**전제 수** = 31 · **명제 수** = 22 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -525,8 +525,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -543,8 +544,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -559,27 +561,14 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
-- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
-
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
-
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
-- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 #### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE`
@@ -602,8 +591,8 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 
 **QUESTION** = 이사해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = MOVEMENT · **VERDICT** = CONDITIONAL_AGAINST
-**결론** = 이동에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-**전제 수** = 32 · **명제 수** = 19 · **후보(runtime)** = 4
+**결론** = 이동에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+**전제 수** = 32 · **명제 수** = 20 · **후보(runtime)** = 5
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:YEAR`
 
@@ -614,8 +603,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 년주 천간충→결론 변함 / remove CONSTRAINS·원국 년주 해→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 년주 천간충→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 해→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 년주 천간충` → **MATERIAL**
     - `CONSTRAINS·원국 년주 해` → **MATERIAL**
@@ -630,7 +620,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 월주 천간충→변화 없음 / remove CONNECTS·원국 월주 반합→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 월주 천간충→변화 없음 / reverse CONNECTS→SEPARATES·원국 월주 반합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간충→변함 / retarget MYUNGRI:원국 월주 천간충→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 월주 반합→변함 / retarget MYUNGRI:원국 월주 반합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간충→변함 / retarget MYUNGRI:원국 월주 천간충→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 월주 반합→변함 / retarget MYUNGRI:원국 월주 반합→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
 - **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
@@ -640,13 +630,27 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **AXIS** = MOVEMENT · **SUBJECT** = D · **TARGET** = 자리·직업과 이동 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE`)
 - **TEMPORAL_SCOPE** = NATAL · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
 - **DERIVED_PROPOSITION** = 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- **INPUT_PREMISES** = CONNECTS·원국 월주 반합, CONSTRAINS·천이궁, CONNECTS·원국 월주 천간합
+- **INPUT_PREMISES** = CONNECTS·원국 월주 반합, CONSTRAINS·천이궁
 - **COUNTER_PREMISES** = SUPPORTS·천이궁
-- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 월주 반합→변화 없음 / remove CONSTRAINS·천이궁→변화 없음 / remove CONNECTS·원국 월주 천간합→변화 없음 / remove SUPPORTS·천이궁→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 월주 반합→변화 없음 / reverse CONSTRAINS→ENABLES·천이궁→변화 없음 / reverse CONNECTS→SEPARATES·원국 월주 천간합→변화 없음 / reverse SUPPORTS→OPPOSES·천이궁→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 반합→없음 / retarget MYUNGRI:원국 월주 반합→없음 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:천이궁→변함 / retarget ZIWEI:천이궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 월주 천간합→없음 / retarget MYUNGRI:원국 월주 천간합→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 월주 반합→변화 없음 / remove CONSTRAINS·천이궁→변화 없음 / remove SUPPORTS·천이궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 월주 반합→변화 없음 / reverse CONSTRAINS→ENABLES·천이궁→변화 없음 / reverse SUPPORTS→OPPOSES·천이궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 반합→없음 / retarget MYUNGRI:원국 월주 반합→없음 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:천이궁→변함 / retarget ZIWEI:천이궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 월주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주 반합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 반합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE`
+
+- **AXIS** = MOVEMENT · **SUBJECT** = D · **TARGET** = 자리·직업과 이동 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:MONTH|PALACE:TRAVEL_PALACE`)
+- **TEMPORAL_SCOPE** = NATAL · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
+- **DERIVED_PROPOSITION** = 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = CONNECTS·원국 월주 천간합, CONSTRAINS·천이궁
+- **COUNTER_PREMISES** = SUPPORTS·천이궁
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 월주 천간합→변화 없음 / remove CONSTRAINS·천이궁→변화 없음 / remove SUPPORTS·천이궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 월주 천간합→변화 없음 / reverse CONSTRAINS→ENABLES·천이궁→변화 없음 / reverse SUPPORTS→OPPOSES·천이궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간합→없음 / retarget MYUNGRI:원국 월주 천간합→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→없음 / remove ZIWEI:천이궁→변함 / retarget ZIWEI:천이궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 SEMANTIC, 실제 NONE)
 - **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
 
 #### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:HOUR|PALACE:TRAVEL_PALACE`
@@ -670,7 +674,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 결혼해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = RELATION_STABILITY · **VERDICT** = INSUFFICIENT_EVIDENCE
 **결론** = 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-**전제 수** = 30 · **명제 수** = 29 · **후보(runtime)** = 11
+**전제 수** = 30 · **명제 수** = 38 · **후보(runtime)** = 20
 
 #### DIRECTION_VS_EXECUTION — `NATAL_SEAT:DAY`
 
@@ -714,8 +718,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -732,8 +737,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -748,27 +754,14 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
-- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
-
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
-
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove CONNECTS·원국 일주 천간합→결론 변함
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
-- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 #### CROSS_STANDOFF — `COMPOSITE:RIVAL:NATAL_SEAT:DAY|PALACE:SPOUSE_PALACE`
@@ -790,13 +783,41 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 같이 사는 난도과 부딪힘 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`)
 - **TEMPORAL_SCOPE** = NATAL · **TYPE** = COMPOUND/UNFAVORABLE
 - **DERIVED_PROPOSITION** = 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), SUPPORTS·형제궁, CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충, DESTABILIZES·원국 일주 형
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove SUPPORTS·형제궁→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse SUPPORTS→OPPOSES·형제궁→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove ZIWEI:형제궁→변함 / retarget ZIWEI:형제궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→없음 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→없음 / remove MYUNGRI:원국 일주 천간합→없음 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→없음
+- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), SUPPORTS·형제궁
+- **COUNTER_PREMISES** = (없음)
+- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove SUPPORTS·형제궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse SUPPORTS→OPPOSES·형제궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove ZIWEI:형제궁→변함 / retarget ZIWEI:형제궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
+- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
+
+#### CROSS_TIMING_SPLIT — `NATAL_SEAT:DAY`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 천간합 (`NATAL_SEAT:DAY`)
+- **TEMPORAL_SCOPE** = SEWOON · **TYPE** = COMPOUND/RESTRICTED(TIMING)
+- **DERIVED_PROPOSITION** = 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+- **INPUT_PREMISES** = CONNECTS·원국 일주 천간합, DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충
+- **COUNTER_PREMISES** = (없음)
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→변화 없음 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 일주 천간충→없음 / retarget MYUNGRI:원국 일주 천간충→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 충→없음 / retarget MYUNGRI:원국 일주 충→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간충(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE); remove MYUNGRI:원국 일주 충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 충(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_TIMING_SPLIT — `NATAL_SEAT:DAY`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 천간합 (`NATAL_SEAT:DAY`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = COMPOUND/RESTRICTED(TIMING)
+- **DERIVED_PROPOSITION** = 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+- **INPUT_PREMISES** = CONNECTS·원국 일주 천간합, DESTABILIZES·원국 일주 형
+- **COUNTER_PREMISES** = (없음)
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→변화 없음 / remove DESTABILIZES·원국 일주 형→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 일주 형→없음 / retarget MYUNGRI:원국 일주 형→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 형(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 형(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE)
 - **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
 
 #### CROSS_TIMING_SPLIT — `NATAL_SEAT:DAY`
@@ -805,12 +826,26 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **TEMPORAL_SCOPE** = SEWOON · **TYPE** = COMPOUND/RESTRICTED(TIMING)
 - **DERIVED_PROPOSITION** = 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
 - **INPUT_PREMISES** = CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충, DESTABILIZES·원국 일주 형
-- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→변화 없음 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→없음 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→없음
+- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→변화 없음 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→없음 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_TIMING_SPLIT — `NATAL_SEAT:DAY`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 천간합 (`NATAL_SEAT:DAY`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = COMPOUND/RESTRICTED(TIMING)
+- **DERIVED_PROPOSITION** = 원국 일주 천간합은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+- **INPUT_PREMISES** = CONNECTS·원국 일주 천간합
+- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 형
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→변화 없음 / remove DESTABILIZES·원국 일주 형→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→없음 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE)
 - **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
 
 #### CROSS_REINFORCEMENT — `COMPOSITE:RIVAL:NATAL_SEAT:DAY|PALACE:SPOUSE_PALACE`
@@ -829,16 +864,114 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 
 #### CROSS_CONTRADICTION_RESOLVED — `NATAL_SEAT:DAY`
 
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 천간충 (`NATAL_SEAT:DAY`)
+- **TEMPORAL_SCOPE** = SEWOON · **TYPE** = DIRECTIONAL/UNFAVORABLE
+- **DERIVED_PROPOSITION** = 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+- **INPUT_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충
+- **COUNTER_PREMISES** = SUPPORTS·부처궁
+- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 천간충→결론 변함 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove SUPPORTS·부처궁→결론 변함
+- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse SUPPORTS→OPPOSES·부처궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간충→변함 / retarget MYUNGRI:원국 일주 천간충→없음 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 충→없음 / retarget MYUNGRI:원국 일주 충→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→없음 / remove ZIWEI:부처궁→변함 / retarget ZIWEI:부처궁→없음 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간충(기대 ABSENT, 실제 ASSERTION); remove MYUNGRI:원국 일주 충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 충(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 SEMANTIC, 실제 NONE); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 같이 사는 난도과 부딪힘 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`)
+- **TEMPORAL_SCOPE** = SEWOON · **TYPE** = COMPOUND/UNFAVORABLE
+- **DERIVED_PROPOSITION** = 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충, SUPPORTS·형제궁
+- **COUNTER_PREMISES** = (없음)
+- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove SUPPORTS·형제궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse SUPPORTS→OPPOSES·형제궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간충→없음 / retarget MYUNGRI:원국 일주 천간충→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→없음 / remove MYUNGRI:원국 일주 충→없음 / retarget MYUNGRI:원국 일주 충→없음 / rescope MYUNGRI:SEWOON→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→없음 / remove ZIWEI:형제궁→변함 / retarget ZIWEI:형제궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간충(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 SEMANTIC, 실제 NONE); remove MYUNGRI:원국 일주 충(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 충(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 SEMANTIC, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_CONTRADICTION_RESOLVED — `NATAL_SEAT:DAY`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 형 (`NATAL_SEAT:DAY`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = DIRECTIONAL/UNFAVORABLE
+- **DERIVED_PROPOSITION** = 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+- **INPUT_PREMISES** = DESTABILIZES·원국 일주 형
+- **COUNTER_PREMISES** = SUPPORTS·부처궁
+- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove SUPPORTS·부처궁→결론 변함
+- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음 / reverse SUPPORTS→OPPOSES·부처궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 형→변함 / retarget MYUNGRI:원국 일주 형→없음 / rescope MYUNGRI:WOLWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove ZIWEI:부처궁→변함 / retarget ZIWEI:부처궁→없음 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 형(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 같이 사는 난도과 부딪힘 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = COMPOUND/UNFAVORABLE
+- **DERIVED_PROPOSITION** = 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = DESTABILIZES·원국 일주 형, SUPPORTS·형제궁
+- **COUNTER_PREMISES** = (없음)
+- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→변화 없음 / remove SUPPORTS·형제궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음 / reverse SUPPORTS→OPPOSES·형제궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 형→변함 / retarget MYUNGRI:원국 일주 형→없음 / rescope MYUNGRI:WOLWOON→NATAL→변함 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove ZIWEI:형제궁→변함 / retarget ZIWEI:형제궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 형(기대 ABSENT, 실제 DIRECTION)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_CONTRADICTION_RESOLVED — `NATAL_SEAT:DAY`
+
 - **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 천간합 (`NATAL_SEAT:DAY`)
 - **TEMPORAL_SCOPE** = SEWOON · **TYPE** = DIRECTIONAL/RESTRICTED(TIMING)
 - **DERIVED_PROPOSITION** = 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
 - **INPUT_PREMISES** = CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충, DESTABILIZES·원국 일주 형, SUPPORTS·부처궁
-- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→변화 없음 / remove SUPPORTS·부처궁→결론 변함
-- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→변화 없음 / reverse SUPPORTS→OPPOSES·부처궁→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→없음 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→없음 / remove ZIWEI:부처궁→변함 / retarget ZIWEI:부처궁→없음 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충, SUPPORTS·부처궁
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→결론 변함 / remove DESTABILIZES·원국 일주 천간충→결론 변함 / remove DESTABILIZES·원국 일주 충→결론 변함 / remove SUPPORTS·부처궁→결론 변함
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 충→결론 변함 / reverse SUPPORTS→OPPOSES·부처궁→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:부처궁→변함 / retarget ZIWEI:부처궁→없음 / rescope ZIWEI:NATAL→NATAL→변함 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주 천간합(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE)
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 DIRECTION)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 같이 사는 난도과 부딪힘 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`)
+- **TEMPORAL_SCOPE** = SEWOON · **TYPE** = COMPOUND/RESTRICTED(TIMING)
+- **DERIVED_PROPOSITION** = 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = CONNECTS·원국 일주 천간합, SUPPORTS·형제궁
+- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 천간충, DESTABILIZES·원국 일주 충
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→결론 변함 / remove SUPPORTS·형제궁→결론 변함 / remove DESTABILIZES·원국 일주 천간충→결론 변함 / remove DESTABILIZES·원국 일주 충→결론 변함
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→결론 변함 / reverse SUPPORTS→OPPOSES·형제궁→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 충→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:형제궁→변함 / retarget ZIWEI:형제궁→변함 / rescope ZIWEI:NATAL→NATAL→변함 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_CONTRADICTION_RESOLVED — `NATAL_SEAT:DAY`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일주 천간합 (`NATAL_SEAT:DAY`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = DIRECTIONAL/RESTRICTED(TIMING)
+- **DERIVED_PROPOSITION** = 원국 일주 천간합은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
+- **INPUT_PREMISES** = CONNECTS·원국 일주 천간합
+- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 형, SUPPORTS·부처궁
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→결론 변함 / remove DESTABILIZES·원국 일주 형→변화 없음 / remove SUPPORTS·부처궁→결론 변함
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse SUPPORTS→OPPOSES·부처궁→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:WOLWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:부처궁→변함 / retarget ZIWEI:부처궁→없음 / rescope ZIWEI:NATAL→NATAL→변함 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 DIRECTION)
+- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+
+#### CROSS_AXIS_COMPOUND — `COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`
+
+- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 같이 사는 난도과 부딪힘 (`COMPOSITE:DIFFERENT_DOMAIN:NATAL_SEAT:DAY|PALACE:SIBLING_PALACE`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = COMPOUND/RESTRICTED(TIMING)
+- **DERIVED_PROPOSITION** = 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- **INPUT_PREMISES** = CONNECTS·원국 일주 천간합, SUPPORTS·형제궁
+- **COUNTER_PREMISES** = DESTABILIZES·원국 일주 형
+- **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 일주 천간합→결론 변함 / remove SUPPORTS·형제궁→결론 변함 / remove DESTABILIZES·원국 일주 형→결론 변함
+- **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 일주 천간합→결론 변함 / reverse SUPPORTS→OPPOSES·형제궁→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→없음 / rescope MYUNGRI:WOLWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:형제궁→변함 / retarget ZIWEI:형제궁→변함 / rescope ZIWEI:NATAL→NATAL→변함 / redirect ZIWEI:FAVORABLE→UNFAVORABLE→변함
+- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
+- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주 천간합(기대 ABSENT, 실제 DIRECTION)
 - **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
 
 ---
@@ -876,8 +1009,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 월주 해→결론 변함 / remove CONSTRAINS·원국 월주 해→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 월주 해→결론 변함 / reverse CONSTRAINS→ENABLES·원국 월주 해→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 월주 해` → **MATERIAL**
     - `CONSTRAINS·원국 월주 해` → **MATERIAL**
@@ -892,24 +1026,26 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 시주 파→결론 변함 / remove CONSTRAINS·원국 시주 파→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 시주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 시주 파→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 시주 파` → **MATERIAL**
     - `CONSTRAINS·원국 시주 파` → **MATERIAL**
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
-#### INFLOW_VS_RETENTION — `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.`
+#### INFLOW_VS_RETENTION — `COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`
 
-- **AXIS** = MONEY_INFLOW · **SUBJECT** = B · **TARGET** = 유입과 보유 (`COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.`)
+- **AXIS** = MONEY_INFLOW · **SUBJECT** = B · **TARGET** = 유입과 보유 (`COMPOSITE:INFLOW_VS_RETENTION:TEN_GOD_FAMILY:WEALTH.COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`)
 - **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = COMPOUND/RESTRICTED(SCOPE)
 - **DERIVED_PROPOSITION** = 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - **INPUT_PREMISES** = ACTIVATES·이 시기 흐름의 재물
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove ACTIVATES·이 시기 흐름의 재물→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse ACTIVATES→ABSENT·이 시기 흐름의 재물→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove parent CONTESTED_SHARE·벌이는 몫과 남는 몫 (전제 3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `ACTIVATES·이 시기 흐름의 재물` → **MATERIAL**
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
@@ -923,7 +1059,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONNECTS·원국 월주 천간합→변화 없음 / remove CONSTRAINS·원국 월주 해→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse CONNECTS→SEPARATES·원국 월주 천간합→변화 없음 / reverse CONSTRAINS→ENABLES·원국 월주 해→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간합→변함 / retarget MYUNGRI:원국 월주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 월주 해→변함 / retarget MYUNGRI:원국 월주 해→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 월주 천간합→변함 / retarget MYUNGRI:원국 월주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함 / remove MYUNGRI:원국 월주 해→변함 / retarget MYUNGRI:원국 월주 해→변함 / rescope MYUNGRI:DAEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
 - **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
@@ -949,7 +1085,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 지금 계약해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = DECISION · **VERDICT** = CONDITIONAL_AGAINST
 **결론** = 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
-**전제 수** = 35 · **명제 수** = 23 · **후보(runtime)** = 4
+**전제 수** = 35 · **명제 수** = 22 · **후보(runtime)** = 3
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -960,8 +1096,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -978,8 +1115,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -994,27 +1132,14 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 충` → **REDUNDANT**
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
-- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
-
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
-
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
-- **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 ---
@@ -1035,8 +1160,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일주 형→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (4건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -1053,8 +1179,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→결론 변함 / remove CONSTRAINS·원국 년주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 년주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 년주 파` → **MATERIAL**
     - `CONSTRAINS·원국 년주 자형` → **MATERIAL**
@@ -1069,8 +1196,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→결론 변함 / remove DESTABILIZES·원국 일주 천간충→변화 없음 / remove DESTABILIZES·원국 일주 충→변화 없음 / remove DESTABILIZES·원국 일주 형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→결론 변함 / reverse DESTABILIZES→CONNECTS·원국 일주 천간충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 충→변화 없음 / reverse DESTABILIZES→CONNECTS·원국 일주 형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove required 원국의 약한 자리 (1건)→변함 / remove ALL of 그 자리를 다시 건드리는 운 (3건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `DESTABILIZES·원국 일지(배우자·자기 자리)` → **MATERIAL**
     - `DESTABILIZES·원국 일주 천간충` → **REDUNDANT**
@@ -1078,33 +1206,33 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
     - `DESTABILIZES·원국 일주 형` → **MATERIAL**
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
-#### CROSS_STANDOFF — `NATAL_SEAT:DAY`
+#### CROSS_REINFORCEMENT — `COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE`
 
-- **AXIS** = RELATION_STABILITY · **SUBJECT** = A · **TARGET** = 원국 일지(배우자·자기 자리) (`NATAL_SEAT:DAY`)
-- **TEMPORAL_SCOPE** = NATAL · **TYPE** = STRUCTURAL/NONE
-- **DERIVED_PROPOSITION** = 원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- **INPUT_PREMISES** = DESTABILIZES·원국 일지(배우자·자기 자리), CONNECTS·원국 일주 천간합
-- **COUNTER_PREMISES** = (없음)
-- **PREMISE_REMOVAL_TESTS** = remove DESTABILIZES·원국 일지(배우자·자기 자리)→변화 없음 / remove CONNECTS·원국 일주 천간합→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse DESTABILIZES→CONNECTS·원국 일지(배우자·자기 자리)→변화 없음 / reverse CONNECTS→SEPARATES·원국 일주 천간합→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 일지(배우자·자기 자리)→변함 / retarget MYUNGRI:원국 일지(배우자·자기 자리)→변함 / rescope MYUNGRI:NATAL→NATAL→없음 / redirect MYUNGRI:UNFAVORABLE→FAVORABLE→변함 / remove MYUNGRI:원국 일주 천간합→변함 / retarget MYUNGRI:원국 일주 천간합→변함 / rescope MYUNGRI:DAEWOON→NATAL→없음 / redirect MYUNGRI:FAVORABLE→UNFAVORABLE→변함
+- **AXIS** = GENERAL · **SUBJECT** = A · **TARGET** = 원국 년주 자형·명궁 (`COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE`)
+- **TEMPORAL_SCOPE** = SEWOON · **TYPE** = DIRECTIONAL/RESTRICTED
+- **DERIVED_PROPOSITION** = 서로 다른 자리(원국 년주 자형 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+- **INPUT_PREMISES** = CONSTRAINS·원국 년주 자형, CONSTRAINS·명궁
+- **COUNTER_PREMISES** = SUPPORTS·명궁
+- **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 자형→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove SUPPORTS·명궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 자형→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 년주 자형→변함 / retarget MYUNGRI:원국 년주 자형→변함 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
 - **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
 - **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 #### CROSS_REINFORCEMENT — `COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE`
 
-- **AXIS** = GENERAL · **SUBJECT** = A · **TARGET** = 원국 년주 자형·명궁 (`COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE`)
-- **TEMPORAL_SCOPE** = SEWOON · **TYPE** = DIRECTIONAL/RESTRICTED
-- **DERIVED_PROPOSITION** = 서로 다른 자리(원국 년주 자형 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
-- **INPUT_PREMISES** = CONSTRAINS·원국 년주 자형, CONSTRAINS·명궁, CONSTRAINS·원국 년주 파
+- **AXIS** = GENERAL · **SUBJECT** = A · **TARGET** = 원국 년주 파·명궁 (`COMPOSITE:RIVAL:NATAL_SEAT:YEAR|PALACE:SELF_PALACE`)
+- **TEMPORAL_SCOPE** = WOLWOON · **TYPE** = DIRECTIONAL/RESTRICTED
+- **DERIVED_PROPOSITION** = 서로 다른 자리(원국 년주 파 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+- **INPUT_PREMISES** = CONSTRAINS·원국 년주 파, CONSTRAINS·명궁
 - **COUNTER_PREMISES** = SUPPORTS·명궁
-- **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 자형→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove CONSTRAINS·원국 년주 파→변화 없음 / remove SUPPORTS·명궁→변화 없음
-- **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 자형→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse CONSTRAINS→ENABLES·원국 년주 파→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
-- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 년주 자형→변함 / retarget MYUNGRI:원국 년주 자형→변함 / rescope MYUNGRI:SEWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함 / remove MYUNGRI:원국 년주 파→없음 / retarget MYUNGRI:원국 년주 파→없음 / rescope MYUNGRI:WOLWOON→NATAL→없음 / redirect MYUNGRI:RESTRICTED→FAVORABLE→없음
+- **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 년주 파→변화 없음 / remove CONSTRAINS·명궁→변화 없음 / remove SUPPORTS·명궁→변화 없음
+- **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 년주 파→변화 없음 / reverse CONSTRAINS→ENABLES·명궁→변화 없음 / reverse SUPPORTS→OPPOSES·명궁→변화 없음
+- **TARGET/TIME_MUTATION_TESTS** = remove MYUNGRI:원국 년주 파→변함 / retarget MYUNGRI:원국 년주 파→변함 / rescope MYUNGRI:WOLWOON→NATAL→변함 / redirect MYUNGRI:RESTRICTED→FAVORABLE→변함 / remove ZIWEI:명궁→변함 / retarget ZIWEI:명궁→변함 / rescope ZIWEI:NATAL→NATAL→없음 / redirect ZIWEI:RESTRICTED→FAVORABLE→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 년주 파(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 년주 파(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 SEMANTIC, 실제 NONE)
-- **INDEPENDENT_CLASSIFICATION** = **MULTI_FACT_SUMMARY**
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함
+- **INDEPENDENT_CLASSIFICATION** = **REAL_SYNTHETIC_INFERENCE**
 
 ---
 
@@ -1140,8 +1268,9 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 - **COUNTER_PREMISES** = (없음)
 - **PREMISE_REMOVAL_TESTS** = remove CONSTRAINS·원국 일주 파→결론 변함 / remove CONSTRAINS·원국 일주 자형→결론 변함
 - **PREMISE_REVERSAL_TESTS** = reverse CONSTRAINS→ENABLES·원국 일주 파→결론 변함 / reverse CONSTRAINS→ENABLES·원국 일주 자형→결론 변함
+- **TARGET/TIME_MUTATION_TESTS** = remove ALL of 같은 자리에 겹친 압력 (2건)→변함
 - **EXPECTED_DELTA** = 필요한 전제를 지우거나 뒤집으면 이 결론이 사라지거나 진술이 바뀐다
-- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(0건), 전제 삭제·역전에도 반응함
+- **ACTUAL_DELTA** = 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함
 - **PREMISE_MATERIALITY**:
     - `CONSTRAINS·원국 일주 파` → **MATERIAL**
     - `CONSTRAINS·원국 일주 자형` → **MATERIAL**

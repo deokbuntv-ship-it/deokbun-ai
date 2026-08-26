@@ -198,7 +198,11 @@ export function certify(
 
   // §17 — the per-input expectations that MUST hold.
   const requiredFailures = structural.filter((m) => m.required && !m.changed);
-  const anyRemovalBites = removals.some((m) => m.changed);
+  // §15 — a declared group is a STRONGER and more honest statement than "one removal moved something", so
+  // when a rule declares its groups they replace the fallback rather than being added to it. Group failures
+  // are already required mutations, so they land in `requiredFailures` above.
+  const declaresGroups = (proposition.supportGroups ?? []).length > 0;
+  const anyRemovalBites = declaresGroups || removals.some((m) => m.changed);
   const reversalsNeeded = reversals.length > 0;
   const anyReversalBites = reversals.some((m) => m.changed);
 
@@ -210,7 +214,12 @@ export function certify(
   // Its evidence is the parent attack set instead, every member of which is REQUIRED (§17/§18): removing a
   // parent must change the claim, making the halves about different things must delete it, and a parent
   // pointing the other way must change it.
-  const parentDriven = structural.some((m) => m.required);
+  //
+  // V4D — THIS IS NOW STATED DIRECTLY. V4C inferred it from "some structural mutation is required", which was
+  // true only while CROSS conclusions were the only ones with parent attacks. `parentMutations` gives Myungri
+  // conclusions required parent attacks too, and under the old predicate every Myungri conclusion with a
+  // derived parent would have been silently exempted from the premise attack it must still pass.
+  const parentDriven = proposition.discipline === 'CROSS';
   const real = requiredFailures.length === 0
     && (parentDriven
       ? true // every required parent attack held — checked by `requiredFailures` above
@@ -282,6 +291,96 @@ export const crossRederive = (
 export const candidatesOf = (
   props: ReasonedProposition[], premises: DivinationPremise[],
 ): ReasonedProposition[] => candidatePropositions(props, premises);
+
+/** Every premise a conclusion stands on, INCLUDING those reachable only through a derived parent. */
+function premiseClosure(
+  p: ReasonedProposition, props: ReasonedProposition[], seen = new Set<string>(),
+): Set<string> {
+  const out = new Set([...p.supportingPremiseIds, ...p.opposingPremiseIds]);
+  for (const id of p.derivedFromPropositionIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const parent = props.find((q) => q.id === id);
+    if (parent) for (const x of premiseClosure(parent, props, seen)) out.add(x);
+  }
+  return out;
+}
+
+/**
+ * V4D §13/§14 — ATTACK THE DERIVED PARENTS A PREMISE-BUILT CONCLUSION STANDS ON.
+ *
+ * `certify` mutates only the premises a conclusion cites DIRECTLY. INFLOW_VS_RETENTION stands on a derived
+ * CONTESTED_SHARE whose premises it does not cite, so the entire retention half of its claim sat outside the
+ * attack surface: the pack certified it REAL after mutating exactly one premise, and the independent audit
+ * counted that as one of two false REALs.
+ *
+ * A derived parent is removed the only way it CAN be — by removing the premises that produce it — and that
+ * removal is REQUIRED (§17): a parent a conclusion declares but does not depend on is not a parent.
+ *
+ * PRIMITIVE parents (`p:<premiseId>`) are skipped: their premise is already in the conclusion's own removal
+ * set, so attacking them again is the same mutation counted twice (§19).
+ */
+export function parentMutations(
+  conclusion: ReasonedProposition,
+  props: ReasonedProposition[],
+  premises: DivinationPremise[],
+  rederive: Rederive,
+): MutationResult[] {
+  const own = new Set([...conclusion.supportingPremiseIds, ...conclusion.opposingPremiseIds]);
+  const out: MutationResult[] = [];
+  for (const id of conclusion.derivedFromPropositionIds) {
+    const parent = props.find((q) => q.id === id);
+    if (!parent || parent.derivationRule === PRIMITIVE_RULE) continue;
+    const group = [...premiseClosure(parent, props)].filter((x) => !own.has(x));
+    if (group.length === 0) continue;                       // §19 — nothing to remove is not an attack
+    const observed = observe(conclusion, rederive(premises.filter((x) => !group.includes(x.id))));
+    out.push({
+      premiseId: parent.id,
+      label: `remove parent ${parent.derivationRule}·${parent.target.label} (전제 ${group.length}건)`,
+      kind: 'REMOVE_PARENT',
+      expect: 'SEMANTIC',
+      observed,
+      changed: satisfies('SEMANTIC', observed),
+      required: true,
+    });
+  }
+  return out;
+}
+
+/**
+ * V4D §15 — OVERDETERMINATION, TESTED HONESTLY.
+ *
+ * `anyRemovalBites` accepts a conclusion when ONE of its premises moves it, which cannot separate an honestly
+ * overdetermined conclusion (several interchangeable supports) from a decorated one (one premise doing all the
+ * work while three ride along). RECURRING_FRICTION_CAUSE passes today with two of four removals observing
+ * NONE. A rule that knows its inputs are interchangeable says so, and the group is attacked AS A GROUP: every
+ * member removed at once must move the conclusion, and no single member has to.
+ */
+export function groupMutations(
+  conclusion: ReasonedProposition,
+  premises: DivinationPremise[],
+  rederive: Rederive,
+): MutationResult[] {
+  const out: MutationResult[] = [];
+  for (const g of conclusion.supportGroups ?? []) {
+    const present = g.ids.filter((id) => premises.some((p) => p.id === id));
+    if (present.length === 0) continue;                                  // §19 — no-op
+    const sets = g.role === 'REQUIRED' ? present.map((id) => [id]) : [present];
+    for (const set of sets) {
+      const observed = observe(conclusion, rederive(premises.filter((p) => !set.includes(p.id))));
+      out.push({
+        premiseId: set.join('+'),
+        label: `${g.role === 'REQUIRED' ? 'remove required' : 'remove ALL of'} ${g.label} (${set.length}건)`,
+        kind: 'REMOVE_PREMISE',
+        expect: 'SEMANTIC',
+        observed,
+        changed: satisfies('SEMANTIC', observed),
+        required: true,
+      });
+    }
+  }
+  return out;
+}
 
 /**
  * Mutate the PROPOSITIONS a cross conclusion reasons over — removal, re-targeting, re-scoping, re-direction.

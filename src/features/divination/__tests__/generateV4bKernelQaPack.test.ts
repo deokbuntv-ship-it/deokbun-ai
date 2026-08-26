@@ -17,7 +17,8 @@ import {
   type CrossDivinationVerdict, type DerivationContext, type ReasonedProposition,
 } from '@/features/divination';
 import {
-  candidatesOf, certify, classifyPremiseMateriality, crossMutations, crossRederive, myungriRederive,
+  candidatesOf, certify, classifyPremiseMateriality, crossMutations, crossRederive, groupMutations,
+  myungriRederive, parentMutations,
   type Certification,
 } from './support/certify';
 
@@ -87,7 +88,12 @@ function certifyAll(v: CrossDivinationVerdict): { p: ReasonedProposition; c: Cer
       p,
       c: p.discipline === 'CROSS'
         ? certify(p, v.premises, crossRederive(v.propositions, ctx), crossMutations(p, v.propositions, v.premises, ctx))
-        : certify(p, v.premises, myungriRederive(ctx)),
+        // V4D §13/§15 — a Myungri conclusion is attacked through its own premises AND through the derived
+      // parents it stands on, with declared support groups attacked as groups.
+        : certify(p, v.premises, myungriRederive(ctx), [
+          ...parentMutations(p, v.propositions, v.premises, myungriRederive(ctx)),
+          ...groupMutations(p, v.premises, myungriRederive(ctx)),
+        ]),
     }));
 }
 

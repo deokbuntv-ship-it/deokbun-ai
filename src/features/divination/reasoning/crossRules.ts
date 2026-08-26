@@ -21,10 +21,21 @@ import {
 export type CrossRelation =
   | 'SAME_PROPOSITION'   // same axis, same target, same time band
   | 'DIFFERENT_AXIS'     // both true, about different things
-  | 'DIFFERENT_TIME'     // same claim, different time band
+  // V4D §4 — TIME IS SPLIT IN TWO, because the two cases mean different things.
+  //
+  // DIFFERENT_TIME_BAND is one matter whose long-run direction and near-term moment come apart — the only
+  // situation in which "방향은 맞지만 지금은 아니다" is a true statement about a single thing.
+  //
+  // DIFFERENT_TIME_SCALE is two INDEPENDENT time-scoped truths at the same distance: 올해 and 이 달, or 원국
+  // and 대운. V4C called both of these DIFFERENT_TIME because it compared BANDS, so a year-level pressure and
+  // a month-level window were fed to the direction/execution rule as though one were the "structural" half —
+  // and the timing rule then picked its "structural" half by array position. Neither is the
+  // structural half. Both are simply true, and both survive (§4: "keep both").
+  | 'DIFFERENT_TIME_BAND'
+  | 'DIFFERENT_TIME_SCALE'
   | 'DIFFERENT_TARGET'   // same axis, but about different seats/palaces
-  | 'REINFORCING'        // SAME target, same direction
-  | 'CONTRADICTORY'      // SAME target, opposed directions
+  | 'REINFORCING'        // SAME target, SAME exact scope, same direction
+  | 'CONTRADICTORY'      // SAME target, SAME exact scope, opposed directions
   // V4C §4/§5 — two DIFFERENT structures, each a rival ANSWER to the asked question. They may agree or
   // disagree, but they are never one claim about one thing, and the vocabulary now says so: V4B returned
   // REINFORCING / CONTRADICTORY / SAME_PROPOSITION here, so `answersAsked` was silently doing the work of
@@ -56,10 +67,16 @@ export function classifyPair(a: ReasonedProposition, b: ReasonedProposition): Cr
   const decisional = (p: ReasonedProposition) => p.conclusionType !== 'STRUCTURAL' && p.conclusionType !== 'CAUSAL';
   if (decisional(a) !== decisional(b)) return 'ORTHOGONAL';
 
-  // 3. SAME STRUCTURAL TARGET? This is the branch that may reach DIFFERENT_TIME.
+  // 3. SAME STRUCTURAL TARGET? This is the branch that may reach a temporal relation.
   if (sameTarget(a.target, b.target)) {
     if (a.questionAxis !== b.questionAxis) return 'DIFFERENT_AXIS';
-    if (band(a.temporalScope) !== band(b.temporalScope)) return 'DIFFERENT_TIME';
+    // V4D §4 — EXACT scope, not band. Two claims agree, contradict or restate each other only when they are
+    // about the SAME MOMENT. V4C compared bands, so a 세운 conclusion and a 월운 conclusion about the same
+    // seat were classified REINFORCING and merged into ONE cross conclusion whose scope was whichever of the
+    // two the loop reached first — the exact scope collapse the audit names in §5.
+    if (a.temporalScope !== b.temporalScope) {
+      return band(a.temporalScope) !== band(b.temporalScope) ? 'DIFFERENT_TIME_BAND' : 'DIFFERENT_TIME_SCALE';
+    }
     if (opposed(a, b)) return 'CONTRADICTORY';
     if (a.direction === b.direction) return 'REINFORCING';
     return 'SAME_PROPOSITION';
@@ -305,14 +322,19 @@ function crossProp(
   // were counted as backing it — so supportAdequacy ROSE because a rival disagreed, which is the disguised
   // score PropositionAdequacy was split apart to eliminate. A parent listed in "against" is therefore
   // re-sided: what supported IT opposes the new claim, and what opposed it supports the new claim.
-  const against = spec.against ?? [];
-  const parents = [...spec.from, ...against];
+  // V4D §7/§8 — parents are ordered by their own IDs, not by the order the pair loop happened to reach them.
+  // Candidate merging appends parents, so without this the id (content-addressed on the parent set),
+  // `derivedFromPropositionIds` and the premise-id ordering would all vary with input order.
+  const byIdAsc = (x: ReasonedProposition, y: ReasonedProposition) => x.id.localeCompare(y.id);
+  const from = [...spec.from].sort(byIdAsc);
+  const against = [...(spec.against ?? [])].sort(byIdAsc);
+  const parents = [...from, ...against];
   const supportIds = [...new Set([
-    ...spec.from.flatMap((p) => p.supportingPremiseIds),
+    ...from.flatMap((p) => p.supportingPremiseIds),
     ...against.flatMap((p) => p.opposingPremiseIds),
   ])];
   const opposeIds = [...new Set([
-    ...spec.from.flatMap((p) => p.opposingPremiseIds),
+    ...from.flatMap((p) => p.opposingPremiseIds),
     ...against.flatMap((p) => p.supportingPremiseIds),
   ])].filter((id) => !supportIds.includes(id));
   const pick = (ids: string[]) => ids.map((id) => premises.get(id)).filter((p): p is DivinationPremise => !!p);
@@ -366,6 +388,54 @@ export function deriveCross(
   const byId = new Map(premises.map((p) => [p.id, p]));
   const subCtx: SubordinationContext = { askedAxis: ctx.askedAxis, asksTiming: ctx.asksTiming ?? false };
 
+  /**
+   * V4D §6/§7 — THE FULL SEMANTIC IDENTITY OF A CROSS CANDIDATE.
+   *
+   * V4C hand-wrote each key at its `add()` call site, and every one of them omitted most of the semantics:
+   *
+   *   CROSS_REINFORCEMENT:<target>:<direction>          — no axis, no scope, no claim type, no restriction
+   *   CROSS_STANDOFF:<target>                           — no axis, no scope, no parties
+   *   CROSS_CONTRADICTION_RESOLVED:<dominant target>    — no axis, no scope, no demoted side
+   *   CROSS_TIMING_SPLIT:<target>:<structuralOpens>     — NO NEAR SCOPE
+   *   CROSS_AXIS_COMPOUND:<kind>:<targets>              — no axis, no scope, no direction
+   *
+   * So two semantically DIFFERENT conclusions collided, and `add()` then kept the FIRST candidate's
+   * specification while appending the second's parents. A 세운 timing split and a 월운 timing split on the
+   * same seat became ONE conclusion whose scope was whichever pair the loop reached first — the exact scope
+   * collapse §5 names — and a resolution that demoted 자미 merged with one that demoted 기문, keeping only
+   * the first `counter`.
+   *
+   * The key is now DERIVED from the specification mechanically, so it cannot drift from what it identifies,
+   * and it is renderer-independent: no Korean, no assertion text.
+   *
+   * `parties` is the identity of the specific claims the conclusion is ABOUT. It is empty only where the
+   * relation is genuinely transitive over one claim (agreement): three disciplines agreeing about one seat at
+   * one moment is ONE conclusion that three readings support. Wherever the conclusion NAMES the other side —
+   * a resolution that demotes a rival, a standoff between two claims, a split between two halves — the other
+   * side is part of what is being asserted, so it belongs in the identity and those candidates never merge.
+   */
+  const candidateIdentity = (
+    rule: string,
+    spec: Omit<Parameters<typeof crossProp>[2], 'from' | 'against'>,
+    parties: ReasonedProposition[],
+  ): string => [
+    rule,
+    ctx.subject,
+    ctx.questionIntent,
+    ctx.askedAxis,
+    spec.axis,
+    spec.target.kind,
+    spec.target.key,
+    spec.conclusionType,
+    spec.direction,
+    spec.temporalScope,
+    spec.restriction ?? '-',
+    parties
+      .map((p) => [p.discipline, p.target.key, p.questionAxis, p.temporalScope, p.direction].join('~'))
+      .sort()
+      .join('+'),
+  ].join('|');
+
   type Candidate = {
     key: string; rule: string; relation: CrossRelation;
     spec: Omit<Parameters<typeof crossProp>[2], 'from' | 'against'>;
@@ -378,12 +448,34 @@ export function deriveCross(
   const add = (c: Candidate) => {
     const existing = candidates.get(c.key);
     if (!existing) { candidates.set(c.key, c); return; }
+    // §7 — NEVER RETAIN "FIRST SPECIFICATION". Reaching here means the two candidates are identical in every
+    // semantic field (the key is derived from all of them), so there is no specification to choose between:
+    // only PROVENANCE is merged, and `existing.spec` is not touched. Two candidates that differ in any
+    // semantic field have different keys and stay two candidates.
     for (const p of c.from) if (!existing.from.some((x) => x.id === p.id)) existing.from.push(p);
     for (const p of c.against ?? []) {
       existing.against = existing.against ?? [];
       if (!existing.against.some((x) => x.id === p.id)) existing.against.push(p);
     }
+    for (const r of c.subordinationReasons ?? []) {
+      existing.subordinationReasons = existing.subordinationReasons ?? [];
+      if (!existing.subordinationReasons.includes(r)) existing.subordinationReasons.push(r);
+    }
   };
+
+  /**
+   * Emit a candidate whose key is DERIVED from its specification.
+   *
+   * Every V4C call site hand-wrote its own key, and every one of them left semantics out. Deriving the key
+   * here means a rule cannot forget a field: adding a new spec field automatically widens every identity.
+   */
+  const emit = (
+    rule: string,
+    relation: CrossRelation,
+    spec: Omit<Parameters<typeof crossProp>[2], 'from' | 'against'>,
+    parties: ReasonedProposition[],
+    rest: Omit<Candidate, 'key' | 'rule' | 'relation' | 'spec'>,
+  ) => add({ key: candidateIdentity(rule, spec, parties), rule, relation, spec, ...rest });
 
   for (let i = 0; i < props.length; i += 1) {
     for (let k = i + 1; k < props.length; k += 1) {
@@ -405,10 +497,7 @@ export function deriveCross(
           ? target('COMPOSITE', 'RIVAL:' + rivalPair.map((p) => p.target.key).join('|'),
             rivalPair.map((p) => p.target.label).join('·'))
           : a.target;
-        add({
-          key: 'CROSS_REINFORCEMENT:' + agreementTarget.key + ':' + a.direction,
-          rule: 'CROSS_REINFORCEMENT', relation, from: [a, b],
-          spec: {
+        emit('CROSS_REINFORCEMENT', relation, {
             axis: a.questionAxis,
             temporalScope: a.temporalScope,
             target: agreementTarget,
@@ -422,11 +511,15 @@ export function deriveCross(
                 : a.direction === 'UNFAVORABLE' ? '이 축은 막혀 있습니다.'
                   : '범위를 좁혀야 하는 자리입니다.')
               + ' 한쪽만 보고 내린 결론이 아니라는 뜻입니다.',
-            conclusionType: a.conclusionType === 'COMPOUND' || b.conclusionType === 'COMPOUND' ? 'COMPOUND' : 'DIRECTIONAL',
-            direction: a.direction,
-            ...(a.restriction ? { restriction: a.restriction } : {}),
-          },
-        });
+          conclusionType: a.conclusionType === 'COMPOUND' || b.conclusionType === 'COMPOUND' ? 'COMPOUND' : 'DIRECTIONAL',
+          direction: a.direction,
+          ...(a.restriction ? { restriction: a.restriction } : {}),
+        },
+        // Agreement is TRANSITIVE over one claim: 명리+자미 and 명리+기문 agreeing about the same seat at the
+        // same moment is ONE conclusion three readings support, not three conclusions. This is the only
+        // relation whose candidates may merge, and merging adds parents without touching the specification.
+        [],
+        { from: [a, b] });
         continue;
       }
 
@@ -439,42 +532,48 @@ export function deriveCross(
             ? target('COMPOSITE', 'RIVAL:' + standoffPair.map((p) => p.target.key).join('|'),
               standoffPair.map((p) => p.target.label).join('·'))
             : a.target;
-          add({
-            key: 'CROSS_STANDOFF:' + standoffTarget.key,
-            rule: 'CROSS_STANDOFF', relation, standoff: true, from: [a, b],
-            spec: {
-              axis: a.questionAxis,
-              temporalScope: a.temporalScope,
-              target: standoffTarget,
-              assertion: standoffTarget.label + '에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.',
-              conclusionType: 'STRUCTURAL',
-              direction: 'NONE',
-            },
-          });
+          emit('CROSS_STANDOFF', relation, {
+            axis: a.questionAxis,
+            temporalScope: a.temporalScope,
+            target: standoffTarget,
+            assertion: standoffTarget.label + '에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.',
+            conclusionType: 'STRUCTURAL',
+            direction: 'NONE',
+          },
+          // A standoff NAMES the two claims it declines to choose between, so a standoff between 명리 and 자미
+          // is not the same statement as one between 명리 and 기문. They never merge.
+          [a, b],
+          { standoff: true, from: [a, b] });
           continue;
         }
-        add({
-          key: 'CROSS_CONTRADICTION_RESOLVED:' + decided.dominant.target.key,
-          rule: 'CROSS_CONTRADICTION_RESOLVED', relation,
+        emit('CROSS_CONTRADICTION_RESOLVED', relation, {
+          axis: a.questionAxis,
+          temporalScope: decided.dominant.temporalScope,
+          target: decided.dominant.target,
+          assertion: decided.dominant.assertion + ' 반대 근거도 있으나, '
+            + decided.reasons.map((r) => SUBORDINATION_TEXT[r]).join('; ') + '.',
+          conclusionType: 'DIRECTIONAL',
+          direction: decided.dominant.direction,
+          ...(decided.dominant.restriction ? { restriction: decided.dominant.restriction } : {}),
+        },
+        // The DEMOTED side is part of what this conclusion asserts ("반대 근거도 있으나 …"), so a resolution
+        // that set aside 자미 is a different statement from one that set aside 기문. V4C keyed only the
+        // dominant's target, merged the two, and kept the first `counter` — the reader was then told about
+        // one rival and never learned the other existed.
+        [decided.dominant, decided.subordinate],
+        {
           // §12 — the demoted parent is the side that ARGUES WITH this conclusion, and is declared as such
           // so its evidence is re-sided rather than counted as backing the very claim it opposed.
           from: [decided.dominant], against: [decided.subordinate],
           dominant: decided.dominant, counter: decided.subordinate, subordinationReasons: decided.reasons,
-          spec: {
-            axis: a.questionAxis,
-            temporalScope: decided.dominant.temporalScope,
-            target: decided.dominant.target,
-            assertion: decided.dominant.assertion + ' 반대 근거도 있으나, '
-              + decided.reasons.map((r) => SUBORDINATION_TEXT[r]).join('; ') + '.',
-            conclusionType: 'DIRECTIONAL',
-            direction: decided.dominant.direction,
-            ...(decided.dominant.restriction ? { restriction: decided.dominant.restriction } : {}),
-          },
         });
         continue;
       }
 
-      if (relation === 'DIFFERENT_TIME' && opposed(a, b)) {
+      // DIFFERENT_TIME_SCALE deliberately produces NOTHING. Two independent time-scoped truths at the same
+      // distance are both reported as they are; relating them would need a higher-order synthesis this kernel
+      // does not have, and inventing one here is how the year claim used to swallow the month claim.
+      if (relation === 'DIFFERENT_TIME_BAND' && opposed(a, b)) {
         // Reachable ONLY after subject, target, axis and claim-kind have all matched. Both halves must also be
         // independently grounded — "방향은 맞지만 지금은 아니다" asserts two things, so a side resting on
         // nothing must not get to own the direction through the timing door.
@@ -485,11 +584,7 @@ export function deriveCross(
         const structural = band(a.temporalScope) === 'STRUCTURAL' ? a : b;
         const near = structural === a ? b : a;
         const structuralOpens = structural.direction === 'FAVORABLE';
-        add({
-          key: 'CROSS_TIMING_SPLIT:' + a.target.key + ':' + structuralOpens,
-          rule: 'CROSS_TIMING_SPLIT', relation, from: [structural, near],
-          compoundKind: near.temporalScope === 'PRESENT_MOMENT' ? 'ACTION_VS_TIMING' : 'DIFFERENT_TIMESCALE',
-          spec: {
+        emit('CROSS_TIMING_SPLIT', relation, {
             axis: a.questionAxis,
             temporalScope: near.temporalScope,
             target: a.target,
@@ -500,7 +595,13 @@ export function deriveCross(
             direction: 'RESTRICTED',
             restriction: structuralOpens ? 'TIMING' : 'SCOPE',
           },
-        });
+          // Both halves are named. V4C keyed this WITHOUT the near scope, so a 세운 split and a 월운 split on
+          // the same seat collided and the first one's scope survived — §5's exact-scope collapse.
+          [structural, near],
+          {
+            from: [structural, near],
+            compoundKind: near.temporalScope === 'PRESENT_MOMENT' ? 'ACTION_VS_TIMING' : 'DIFFERENT_TIMESCALE',
+          });
         continue;
       }
 
@@ -525,10 +626,7 @@ export function deriveCross(
           p.direction === 'FAVORABLE' ? '열립니다'
             : p.direction === 'UNFAVORABLE' ? '막힙니다'
               : '범위를 좁혀야 합니다';
-        add({
-          key: 'CROSS_AXIS_COMPOUND:' + frame.kind + ':' + [a.target.key, b.target.key].sort().join('|'),
-          rule: 'CROSS_AXIS_COMPOUND', relation, from: [a, b], compoundKind: frame.kind,
-          spec: {
+        emit('CROSS_AXIS_COMPOUND', relation, {
             axis: asked.questionAxis,
             temporalScope: asked.temporalScope,
             // V4C §2 — keyed by the compound's CANONICAL kind AND the two structures it spans, never by its
@@ -541,7 +639,10 @@ export function deriveCross(
             direction: asked.direction,
             ...(asked.restriction ? { restriction: asked.restriction } : {}),
           },
-        });
+          // The compound NAMES both axes and how each one goes, so a 유입-vs-보유 compound is not the same
+          // statement as a 유입-vs-자리 one even when the frame kind happens to match.
+          [a, b],
+          { from: [a, b], compoundKind: frame.kind });
       }
     }
   }

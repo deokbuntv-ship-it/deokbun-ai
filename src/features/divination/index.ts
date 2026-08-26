@@ -38,6 +38,7 @@ export {
   axesShareOneMatter, axisAspect, axisLabel, axisMatter, agreedHeadline, unresolvedHeadline,
   type AxisAspect, type AxisMatter,
 } from './axisOntology';
+export { claimKind, sameClaimKind, type ClaimKind } from './claimOntology';
 export { readNatalBaseline, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
 export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
@@ -80,6 +81,8 @@ export {
   type PremiseApplicability,
   type PremiseRole,
   type PropositionAdequacy,
+  type SupportGroup,
+  type SupportGroupRole,
   type ReasonedProposition,
   type RestrictionKind,
   type SemanticRelation,

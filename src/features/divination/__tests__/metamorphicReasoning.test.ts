@@ -244,7 +244,9 @@ describe('§15 — C7 attacks (no special-case code exists for any of them)', ()
   it('A — SAME target, long-term favourable + immediate unfavourable → a valid temporal decomposition', () => {
     const longTerm = prop({ id: 'A1', target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'DAEWOON', direction: 'FAVORABLE' });
     const now = prop({ id: 'A2', target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'SEWOON', direction: 'UNFAVORABLE', discipline: 'ZIWEI' });
-    expect(classifyPair(longTerm, now)).toBe('DIFFERENT_TIME');
+    // V4D §4 — one STRUCTURAL half and one NEAR half: the only shape in which one matter's direction and
+    // its moment can genuinely come apart.
+    expect(classifyPair(longTerm, now)).toBe('DIFFERENT_TIME_BAND');
   });
 
   it('B — DIFFERENT targets, same shape → NOT a temporal decomposition', () => {
@@ -264,7 +266,7 @@ describe('§15 — C7 attacks (no special-case code exists for any of them)', ()
       id: 'C2', target: SEAT_MONTH, questionAxis: 'CAREER', temporalScope: 'SEWOON', direction: 'UNFAVORABLE', discipline: 'ZIWEI',
     });
     // The relation is temporal, but the timing rule requires BOTH halves grounded — so no split is produced.
-    expect(classifyPair(weakStructural, strongNow)).toBe('DIFFERENT_TIME');
+    expect(classifyPair(weakStructural, strongNow)).toBe('DIFFERENT_TIME_BAND');
     const { deriveCross } = require('@/features/divination');
     const out = deriveCross([weakStructural, strongNow], [...premisesMap.values()], { ...ctx, askedAxis: 'CAREER' });
     expect(out.some((d: { proposition: ReasonedProposition }) => d.proposition.derivationRule === 'CROSS_TIMING_SPLIT')).toBe(false);

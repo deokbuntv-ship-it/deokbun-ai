@@ -11,7 +11,7 @@ import type { JudgmentDomain, TemporalScope } from '../contracts';
 import {
   computeAdequacy, PRIMITIVE_RULE, sameTarget, sideAdequacy, target,
   type DerivationContext, type DerivationRule, type DivinationPremise, type ReasonedProposition,
-  type SemanticTarget,
+  type SemanticTarget, type SupportGroup,
 } from './kernel';
 
 const NEAR: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
@@ -46,8 +46,17 @@ const narrowestScope = (ps: { temporalScope: TemporalScope }[]): TemporalScope =
  * Content-addressed id: the SAME pattern over the SAME premises is the SAME conclusion, so the fixed-point
  * loop converges and two runs of identical input produce identical graphs (no clock, no counter).
  */
-const derivedId = (rule: string, axis: JudgmentDomain, premiseIds: string[]): string =>
-  `d:${rule}:${axis}:${[...premiseIds].sort().join('+')}`;
+/**
+ * Content-addressed id. V4D §13 — DERIVED PARENTS COUNT TOWARD IDENTITY.
+ *
+ * V4C hashed only the premises a conclusion cites directly, so INFLOW_VS_RETENTION — which stands on a
+ * derived CONTESTED_SHARE it does not cite premise-wise — produced the SAME id for two conclusions built on
+ * two different contests. `runDerivations` dedupes by id, so one of them would simply never appear.
+ */
+const derivedId = (
+  rule: string, axis: JudgmentDomain, premiseIds: string[], parentIds: string[] = [],
+): string => `d:${rule}:${axis}:${[...premiseIds].sort().join('+')}`
+  + (parentIds.length > 0 ? `^${[...parentIds].sort().join('+')}` : '');
 
 function make(
   rule: string,
@@ -64,12 +73,15 @@ function make(
     from?: ReasonedProposition[];
     unresolved?: DivinationPremise[];
     target: SemanticTarget;
+    /** §15 — how this instance's inputs are load-bearing. Declarative; only certification reads it. */
+    supportGroups?: SupportGroup[];
   },
 ): ReasonedProposition {
   const support = spec.support;
   const oppose = spec.oppose;
   return {
-    id: derivedId(rule, spec.axis, [...support, ...oppose].map((p) => p.id)),
+    id: derivedId(rule, spec.axis, [...support, ...oppose].map((p) => p.id),
+      (spec.from ?? []).map((p) => p.id)),
     discipline: 'MYUNGRI',
     subject: ctx.subject,
     target: spec.target,
@@ -94,6 +106,7 @@ function make(
       ...(spec.from ?? []).map((p) => p.id),
       ...[...support, ...oppose].filter((p) => p.role === 'ASSERTS').map((p) => `p:${p.id}`),
     ])],
+    ...(spec.supportGroups ? { supportGroups: spec.supportGroups } : {}),
     unresolvedPremiseIds: (spec.unresolved ?? []).map((p) => p.id),
     doctrineReferences: [...new Set([...support, ...oppose].map((p) => p.doctrineReference))],
     derivationRule: rule,
@@ -138,8 +151,8 @@ const CONTESTED_SHARE: DerivationRule = {
  * and 세운, the same structural situation produced two different identities depending on which layer was
  * analysed first, and the "same" composite stopped matching itself across runs.
  */
-const memberKeys = (ps: DivinationPremise[]): string =>
-  [...new Set(ps.map((p) => p.target.key))].sort().join('|');
+const sortedKeys = (keys: string[]): string => [...new Set(keys)].sort().join('|');
+const memberKeys = (ps: DivinationPremise[]): string => sortedKeys(ps.map((p) => p.target.key));
 // '.' separates the two member GROUPS; member keys themselves contain ':' and are joined with '|'.
 const RIVAL_VS_WEALTH_KEY = (rivals: DivinationPremise[], wealth: DivinationPremise[]): string =>
   'RIVAL_VS_WEALTH:' + memberKeys(rivals) + '.' + memberKeys(wealth);
@@ -233,6 +246,10 @@ const CONVERGENT_SEAT_PRESSURE: DerivationRule = {
         // These premises SUPPORT the claim that the seat is repeatedly struck — the claim is about them.
         support: group,
         oppose: [],
+        // §15 — convergence is a claim about the GROUP: it needs two layers on one seat, and no particular
+        // one of them. Removing any single layer may legitimately leave a convergence standing, so the honest
+        // attack removes them all at once.
+        supportGroups: [{ role: 'ALTERNATIVE', label: '같은 자리에 겹친 압력', ids: group.map((p) => p.id) }],
       }));
     }
     return out;
@@ -248,13 +265,29 @@ const INFLOW_VS_RETENTION: DerivationRule = {
     const retentionRisk = premises.filter((p) => p.questionAxis === 'MONEY_RETENTION'
       && (p.semanticRelation === 'OPPOSES' || p.semanticRelation === 'WEAKENS' || p.semanticRelation === 'DESTABILIZES'));
     const contested = derived.filter((d) => d.derivationRule === 'CONTESTED_SHARE');
-    if (inflow.length === 0 || (retentionRisk.length === 0 && contested.length === 0)) return [];
+    // V4D §13 — THE RETENTION HALF IS NAMED BY WHATEVER ESTABLISHES IT.
+    //
+    // The guard has always accepted a derived CONTESTED_SHARE as an establishment of the retention side, but
+    // the composite key named only `retentionRisk`. With the contest as the ONLY retention-side finding, the
+    // key came out '…:TEN_GOD_FAMILY:WEALTH.' — a composite declaring a member group with NO members — so two
+    // different contests over two different wealth seats collapsed into one identity, and the certification
+    // harness (which mutates only directly-cited premises) never touched the contest at all. The audit found
+    // the result: a conclusion certified REAL after exactly one premise was mutated.
+    //
+    // The contest's PREMISES deliberately stay OUT of `support`: they are cited through the parent edge, they
+    // already reach the user through the contest's own standing conclusion, and copying them here would
+    // double-report them and let a premise-level citation stand in for a proposition-level one.
+    const retentionMembers = [
+      ...retentionRisk.map((p) => p.target.key),
+      ...contested.map((c) => c.target.key),
+    ];
+    if (inflow.length === 0 || retentionMembers.length === 0) return [];
     return [make('INFLOW_VS_RETENTION', ctx, {
       axis: 'MONEY_INFLOW',
       temporalScope: narrowestScope(inflow),
       // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
       target: target('COMPOSITE',
-        'INFLOW_VS_RETENTION:' + memberKeys(inflow) + '.' + memberKeys(retentionRisk), '유입과 보유'),
+        'INFLOW_VS_RETENTION:' + memberKeys(inflow) + '.' + sortedKeys(retentionMembers), '유입과 보유'),
       assertion: '돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.',
       conclusionType: 'COMPOUND',
       direction: 'RESTRICTED',
@@ -295,6 +328,12 @@ const RECURRING_FRICTION_CAUSE: DerivationRule = {
         direction: 'NONE',
         support: [weak, ...again],
         oppose: [],
+        // §15 — the natal weakness is REQUIRED (without it there is no recurrence, only an event); the luck
+        // layers that strike it again are interchangeable, so they are attacked as a group.
+        supportGroups: [
+          { role: 'REQUIRED', label: '원국의 약한 자리', ids: [weak.id] },
+          { role: 'ALTERNATIVE', label: '그 자리를 다시 건드리는 운', ids: again.map((p) => p.id) },
+        ],
       }));
     }
     return out;
