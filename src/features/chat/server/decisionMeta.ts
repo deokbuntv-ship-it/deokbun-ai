@@ -10,7 +10,9 @@ import {
   sideAdequacy,
 } from '@/features/divination';
 import { CROSS_RULE_IDS } from '@/features/divination/reasoning/crossRules';
-import { legitimatePrimaryConclusions } from '@/features/divination/reasoning/crossReasoner';
+import {
+  authoritativeConclusionForState, controlledDeclineConclusions,
+} from '@/features/divination/reasoning/crossReasoner';
 import {
   projectVerdictFromGraph, validateCrossDerivation, validateMyungriDerivation, validatePersistedPrimitive,
 } from '@/features/divination/reasoning/persistedGraphValidation';
@@ -571,23 +573,31 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
         || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) { return undefined; }
     }
   }
-  // G6 FINAL — `primaryConclusion` is the text rendered as the BINDING "결론" instruction (verdictDirective.ts)
-  // and, until now, was never checked against anything — restored as an opaque string regardless of which
-  // branch above ran. Unlike direction/headlines it is not a single deterministic value in the no-signal case
-  // (a fresh evaluation, an extension re-derivation, and a refinement's hard failure each state "no signal" in
-  // their own fixed wording — see legitimatePrimaryConclusions), so membership in the full legitimate set is
-  // checked here rather than equality to one recomputed value. This runs in BOTH branches above: the
-  // honest-decline bypass only ever skipped the direction/headline projection, never a primaryConclusion check,
-  // because none existed until now.
-  const applicableDisciplines = (o.disciplineJudgments as Record<string, unknown>[])
-    .filter((j) => j.applicable === true).map((j) => j.discipline as Discipline);
-  const legitimateConclusions = legitimatePrimaryConclusions(
-    parsed as unknown as ReasonedProposition[],
-    o.questionDomain as ReasonedProposition['questionAxis'],
-    o.questionIntent as ReasonedProposition['questionIntent'],
-    applicableDisciplines,
-  );
-  if (!legitimateConclusions.includes(o.primaryConclusion as string)) { return undefined; }
+  // G6 FINAL PATCH 3 — `primaryConclusion` is the text rendered as the BINDING "결론" instruction
+  // (verdictDirective.ts), and its validity is COUPLED to which of the two states above this row is actually
+  // in — never checked against a flat union of both. The AUTHORITATIVE branch (`!isHonestDecline`, direction/
+  // headlines already verified against the graph projection) accepts ONLY the one conclusion that SAME
+  // resolution states — never a decline template, however conservative-sounding. The DECLINE branch accepts
+  // ONLY one of the three legitimate decline shapes — never the graph's own assertive answer, even when the
+  // graph would actually support one (a decline may be more conservative than the graph, never less).
+  if (!isHonestDecline) {
+    const expectedConclusion = authoritativeConclusionForState(
+      parsed as unknown as ReasonedProposition[],
+      o.questionDomain as ReasonedProposition['questionAxis'],
+      o.questionIntent as ReasonedProposition['questionIntent'],
+    );
+    if (expectedConclusion === null || o.primaryConclusion !== expectedConclusion) { return undefined; }
+  } else {
+    const applicableDisciplines = (o.disciplineJudgments as Record<string, unknown>[])
+      .filter((j) => j.applicable === true).map((j) => j.discipline as Discipline);
+    const declineConclusions = controlledDeclineConclusions(
+      parsed as unknown as ReasonedProposition[],
+      o.questionDomain as ReasonedProposition['questionAxis'],
+      o.questionIntent as ReasonedProposition['questionIntent'],
+      applicableDisciplines,
+    );
+    if (!declineConclusions.includes(o.primaryConclusion as string)) { return undefined; }
+  }
   // G6 PATCH 2 §4 — legacy rows that never persisted headlinePropositionIds at all are reconstructed from
   // the graph projection (an honest decline already has an explicit `[]` to restore, never reaching here).
   const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds

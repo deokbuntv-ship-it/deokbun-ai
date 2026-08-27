@@ -108,44 +108,60 @@ export function selectAnswerCandidates(
 }
 
 /**
- * G6 FINAL — every `primaryConclusion` string the reasoning kernel can LEGITIMATELY produce for this exact
- * (already-validated) graph/axis/intent, so a persisted verdict's headline text can be checked for membership
- * instead of trusted as an unverified opaque string. Same "new export, not a refactor of either call site"
- * reasoning as `selectAnswerCandidates`: reasonCross() and graphExtension.ts's extendGraph()/refinementFailure()
- * are left untouched, and this recomputes what each of them would have produced from the graph alone.
+ * G6 FINAL PATCH 3 — conclusion validity is COUPLED to the semantic resolution state, not a flat allowlist.
  *
- * When a SINGLE proposition or an AGREED/UNRESOLVED set settles the answer, there is exactly one legitimate
- * string for what a SUCCESSFUL evaluation/extension would state — `primary.assertion` (a field of the
- * already-validated graph itself) or one of the two headline templates. The genuine NO-SIGNAL case is
- * multi-valued: a fresh evaluation and an extension re-derivation each state "no signal" in their own fixed
- * wording, and a persisted verdict legitimately carries whichever of the two actually ran.
+ * The prior single `legitimatePrimaryConclusions` unioned every shape a graph could ever legitimately state —
+ * the authoritative answer AND every decline template — into one array, and the caller checked membership
+ * regardless of what `direction`/`headlinePropositionIds` the row actually claimed. That let an assertive row
+ * (direction=FOR, real headlines) restore with `refinementFailureHeadline`'s decline text, and let a declining
+ * row (direction=INSUFFICIENT_EVIDENCE, empty headlines) restore with the graph's own assertive
+ * `primary.assertion` — two states that must never share a conclusion.
  *
- * `refinementFailureHeadline` is APPENDED to every case, not only the no-signal one: `refinementFailure()`
- * fires when `extendGraph` itself THROWS — a hard failure of the extension mechanism, orthogonal to what the
- * resolution over the standing graph would have been had extension succeeded. A restored verdict may
- * therefore legitimately carry that fixed decline text no matter what candidates/resolution would otherwise
- * resolve to.
+ * Split into two STATE-SPECIFIC functions instead. The caller (decisionMeta.ts) already computes which state a
+ * restored verdict is in — via the SAME `isHonestDecline` test used for the direction/headline check — and
+ * must call the matching one, never both.
  */
-export function legitimatePrimaryConclusions(
+
+/**
+ * State A — AUTHORITATIVE GRAPH VERDICT (non-empty headlines, or empty headlines with an assertive direction —
+ * the two cases the direction/headline projection check above already treats as `!isHonestDecline`).
+ *
+ * Exactly ONE conclusion is legitimate here: whatever `direction`/`headlinePropositionIds` were themselves
+ * verified against — the SAME `selectAnswerCandidates`/`resolveAnswer` resolution, carried one step further
+ * into its Korean statement. Returns `null` when the graph's own resolution is NONE (no authoritative
+ * conclusion exists) — a caller in the authoritative branch must reject on `null`, since a real graph in that
+ * branch always resolves to SINGLE/AGREED/UNRESOLVED (the earlier direction/headline check guarantees it).
+ */
+export function authoritativeConclusionForState(
   propositions: ReasonedProposition[], askedAxis: JudgmentDomain, intent: QuestionIntent,
-  applicableDisciplines: Discipline[],
-): string[] {
-  const refinementFailureAlternative = refinementFailureHeadline(askedAxis);
+): string | null {
   const standing = standingPropositions(propositions);
   const candidates = selectAnswerCandidates(standing, askedAxis, intent);
   const resolution = resolveAnswer(candidates);
-  const primary = resolution.kind === 'SINGLE' ? resolution.primary : null;
-  if (primary) return [primary.assertion, refinementFailureAlternative];
+  if (resolution.kind === 'SINGLE') return resolution.primary.assertion;
   if (resolution.kind === 'AGREED') {
-    return [agreedHeadline(askedAxis, resolution.direction, resolution.members.length), refinementFailureAlternative];
+    return agreedHeadline(askedAxis, resolution.direction, resolution.members.length);
   }
-  if (resolution.kind === 'UNRESOLVED') return [unresolvedHeadline(askedAxis), refinementFailureAlternative];
+  if (resolution.kind === 'UNRESOLVED') return unresolvedHeadline(askedAxis);
+  return null;
+}
 
-  // NO SIGNAL — reasonCross's own fresh-turn wording (nonDecision fixed text, else every unresolved standoff
-  // on the asked axis joined in ascending target order, else the default text with its coverage note), PLUS
-  // the other legitimate shape a restored verdict may carry over this same graph: an extension that re-derived
-  // and found nothing (extendGraph's own no-signal text — reached only when its OWN resolution is also NONE,
-  // matching this branch) — stated regardless of `intent`/standoffs, since extendGraph never reaches that branch.
+/**
+ * State B — CONTROLLED NON-AUTHORITATIVE DECLINE (empty headlines + a non-assertive direction — `isHonestDecline`).
+ *
+ * Multi-valued, deliberately: a decline may always be MORE CONSERVATIVE than what the graph's own resolution
+ * would support, never more assertive (`refinementFailure()` is the real, legitimate case — it declines over a
+ * PRESERVED graph that could still technically resolve to something, because the failure is in the EXTENSION
+ * mechanism, not in what the graph itself says). Three fixed shapes are legitimate regardless of what this
+ * graph's own resolution computes to: reasonCross's own fresh-turn no-signal wording, extendGraph's re-derived-
+ * and-found-nothing wording, and refinementFailure's hard-failure wording. NONE of the SINGLE/AGREED/UNRESOLVED
+ * authoritative texts are ever included here — an assertive conclusion is never a legitimate decline.
+ */
+export function controlledDeclineConclusions(
+  propositions: ReasonedProposition[], askedAxis: JudgmentDomain, intent: QuestionIntent,
+  applicableDisciplines: Discipline[],
+): string[] {
+  const standing = standingPropositions(propositions);
   const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
   const standoffs = standing
     .filter((p) => p.derivationRule === 'CROSS_STANDOFF' && p.questionAxis === askedAxis)
@@ -160,7 +176,7 @@ export function legitimatePrimaryConclusions(
     : standoffs.length > 0
       ? standoffHeadline(standoffs.map((p) => p.assertion))
       : defaultNoSignalHeadline(askedAxis, coverageNote);
-  return [freshNoSignal, extensionNoSignalHeadline(askedAxis), refinementFailureAlternative];
+  return [freshNoSignal, extensionNoSignalHeadline(askedAxis), refinementFailureHeadline(askedAxis)];
 }
 
 /**

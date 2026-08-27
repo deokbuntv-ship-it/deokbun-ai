@@ -9347,17 +9347,19 @@ function selectAnswerCandidates(standing, asked, intent) {
   const onAskedAxis = (p) => asked === "GENERAL" || p.questionAxis === asked;
   return nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : onAsked.filter((p) => p.direction !== "NONE");
 }
-function legitimatePrimaryConclusions(propositions, askedAxis, intent, applicableDisciplines) {
-  const refinementFailureAlternative = refinementFailureHeadline(askedAxis);
+function authoritativeConclusionForState(propositions, askedAxis, intent) {
   const standing = standingPropositions(propositions);
   const candidates = selectAnswerCandidates(standing, askedAxis, intent);
   const resolution = resolveAnswer(candidates);
-  const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
-  if (primary) return [primary.assertion, refinementFailureAlternative];
+  if (resolution.kind === "SINGLE") return resolution.primary.assertion;
   if (resolution.kind === "AGREED") {
-    return [agreedHeadline(askedAxis, resolution.direction, resolution.members.length), refinementFailureAlternative];
+    return agreedHeadline(askedAxis, resolution.direction, resolution.members.length);
   }
-  if (resolution.kind === "UNRESOLVED") return [unresolvedHeadline(askedAxis), refinementFailureAlternative];
+  if (resolution.kind === "UNRESOLVED") return unresolvedHeadline(askedAxis);
+  return null;
+}
+function controlledDeclineConclusions(propositions, askedAxis, intent, applicableDisciplines) {
+  const standing = standingPropositions(propositions);
   const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
   const standoffs = standing.filter((p) => p.derivationRule === "CROSS_STANDOFF" && p.questionAxis === askedAxis).sort((x, y) => x.target.key.localeCompare(y.target.key));
   const examined = new Set(
@@ -9366,7 +9368,7 @@ function legitimatePrimaryConclusions(propositions, askedAxis, intent, applicabl
   const blind = applicableDisciplines.filter((d) => !examined.has(d));
   const coverageNote = blind.length > 0 ? ` (${blind.map(disc).join("·")}에는 이 축을 직접 보는 자리가 없습니다.)` : "";
   const freshNoSignal = nonDecision ? NON_DECISION_NO_SIGNAL_HEADLINE : standoffs.length > 0 ? standoffHeadline(standoffs.map((p) => p.assertion)) : defaultNoSignalHeadline(askedAxis, coverageNote);
-  return [freshNoSignal, extensionNoSignalHeadline(askedAxis), refinementFailureAlternative];
+  return [freshNoSignal, extensionNoSignalHeadline(askedAxis), refinementFailureHeadline(askedAxis)];
 }
 function stanceOf(p) {
   if (p.conclusionType === "STRUCTURAL" || p.conclusionType === "CAUSAL") return "STRUCTURAL_ANSWER";
@@ -13120,15 +13122,26 @@ function parseDivinationVerdict(v) {
       }
     }
   }
-  const applicableDisciplines = o.disciplineJudgments.filter((j) => j.applicable === true).map((j) => j.discipline);
-  const legitimateConclusions = legitimatePrimaryConclusions(
-    parsed,
-    o.questionDomain,
-    o.questionIntent,
-    applicableDisciplines
-  );
-  if (!legitimateConclusions.includes(o.primaryConclusion)) {
-    return void 0;
+  if (!isHonestDecline) {
+    const expectedConclusion = authoritativeConclusionForState(
+      parsed,
+      o.questionDomain,
+      o.questionIntent
+    );
+    if (expectedConclusion === null || o.primaryConclusion !== expectedConclusion) {
+      return void 0;
+    }
+  } else {
+    const applicableDisciplines = o.disciplineJudgments.filter((j) => j.applicable === true).map((j) => j.discipline);
+    const declineConclusions = controlledDeclineConclusions(
+      parsed,
+      o.questionDomain,
+      o.questionIntent,
+      applicableDisciplines
+    );
+    if (!declineConclusions.includes(o.primaryConclusion)) {
+      return void 0;
+    }
   }
   const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds : projectVerdictFromGraph(
     parsed,

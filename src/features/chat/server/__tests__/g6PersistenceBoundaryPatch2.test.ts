@@ -13,7 +13,7 @@ import type { DigestProvider } from '@/features/interpretation';
 import { parseDecisionMeta, parseDivinationVerdict } from '@/features/chat/server/decisionMeta';
 import { compositeTarget, target } from '@/features/divination';
 import { axisLabel } from '@/features/divination/axisOntology';
-import { legitimatePrimaryConclusions } from '@/features/divination/reasoning/crossReasoner';
+import { authoritativeConclusionForState } from '@/features/divination/reasoning/crossReasoner';
 import type { ReasonedProposition } from '@/features/divination/reasoning/kernel';
 
 // ══ A-J — GRAPH-SHAPE ADVERSARIAL TESTS (pure parser) ═══════════════════════════════════════════
@@ -39,9 +39,12 @@ describe('§12 A-J — persisted graph semantics, adversarial', () => {
     adequacy: { supportAdequacy: 'ADEQUATE', counterAdequacy: 'NONE', dataCompleteness: 'COMPLETE', doctrineApplicability: 'PARTIAL' },
     ...over,
   });
-  // G6 FINAL — primaryConclusion is now verified against the graph (legitimatePrimaryConclusions), so a
-  // fixture's default must be a REAL legitimate value for its own propositions/axis/intent, not an arbitrary
-  // placeholder. Computed via the same shared function the validator uses, not guessed by hand.
+  // G6 FINAL PATCH 3 — primaryConclusion is now verified against the graph, coupled to authoritative-vs-decline
+  // state, so a fixture's default must be a REAL legitimate value for its own propositions/axis/intent. `base`
+  // defaults to an assertive (`direction: 'FOR'`, non-empty headline) shape, so its default primaryConclusion
+  // is computed via the AUTHORITATIVE state function — the same one the validator uses for that state. Calls
+  // that override into a decline shape (empty headlines + non-assertive direction) always pass an explicit
+  // `primaryConclusion` in `over` too, so this default is never reached for those.
   const base = (premises: unknown[], propositions: unknown[], over: Record<string, unknown> = {}) => {
     const questionDomain = (over.questionDomain as string) ?? 'MONEY_INFLOW';
     const questionIntent = (over.questionIntent as string) ?? 'DECISION';
@@ -52,12 +55,9 @@ describe('§12 A-J — persisted graph semantics, adversarial', () => {
       domainSubJudgments: [], confidence: 'HIGH', questionDirectness: 'DIRECT',
       evidenceStrength: 'MODERATE', factGroupsUsed: [],
     }];
-    const applicableDisciplines = (disciplineJudgments as { discipline: string; applicable: boolean }[])
-      .filter((j) => j.applicable).map((j) => j.discipline);
-    const defaultPrimaryConclusion = legitimatePrimaryConclusions(
+    const defaultPrimaryConclusion = authoritativeConclusionForState(
       propositions as ReasonedProposition[], questionDomain as never, questionIntent as never,
-      applicableDisciplines as never,
-    )[0];
+    );
     return {
       question: 'q', questionDomain, questionIntent,
       evaluatedAtEpochSeconds: 1000, asksTiming: false,
