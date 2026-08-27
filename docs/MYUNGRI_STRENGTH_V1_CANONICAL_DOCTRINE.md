@@ -1,35 +1,45 @@
-# MYUNGRI_STRENGTH_V1.2 — Canonical Doctrine Specification (Second Independent-Audit Remediation)
+# MYUNGRI_STRENGTH_V1.3 — Canonical Doctrine Specification (Final Doctrine Closure)
 
 > **STATUS: DOCTRINE PHASE ONLY.** No runtime strength code is implemented or approved by this document.
 > No Yongshin logic is implemented or approved. The frozen deterministic reasoning kernel and the frozen
 > Myungri calculation layer are **untouched** by this document.
 
-Base commit: `abc8b281d48a59e21906590bccdd0ef880943cdd` (V1.1); V1.2 remediation applied on
-`4d98ec1bd938d16be5295cd708981d40b9a251be`. Companion documents:
-`MYUNGRI_STRENGTH_V1_SOURCE_MATRIX.md`, `MYUNGRI_STRENGTH_V1_IMPLEMENTATION_GAP.md`.
+Base commit: `abc8b281d48a59e21906590bccdd0ef880943cdd` (V1.1); V1.2 remediation on
+`4d98ec1bd938d16be5295cd708981d40b9a251be`; V1.3 final closure on
+`ed903aa35c5a264c6c1e4a87d9b95132412a21e9`. Companion documents:
+`MYUNGRI_STRENGTH_V1_SOURCE_MATRIX.md`, `MYUNGRI_STRENGTH_V1_IMPLEMENTATION_GAP.md`,
+`MYUNGRI_STRENGTH_V1_FACT_FOUNDATION.md`.
 
-> ## ⚠️ V1.2 STATUS NOTICE — READ BEFORE USING THIS DOCUMENT
+> ## V1.3 STATUS NOTICE — READ BEFORE USING THIS DOCUMENT
 >
-> A second independent audit classified V1.1 as `DOCTRINE_NOT_READY` on four findings (D1–D4). This
-> revision closes **D1 in full** and makes disclosed, partial progress on D2–D4. It does **not** declare
-> the doctrine ready.
+> A second independent audit classified V1.1 as `DOCTRINE_NOT_READY` on four findings (D1–D4). V1.2 closed
+> D1. **V1.3 closes D2, D3 and D4**, and reconciles the source matrix (D9).
 >
-> **D1 (從兒 materially wrong) — CLOSED.** §10.1's 從兒格 entry is rewritten from its governing
-> ORIGINAL_TEXT verse. See §0's V1.2 table.
+> **The correction that unblocked D3.** V1.2 declared the ordinary strength verdict inexecutable, on the
+> reasoning that its governing source axis — 徐樂吾's 「黨眾為強，助寡為弱」 — is defined by *numerousness*,
+> which V1.2 read as forbidden scoring. That reading was **too strict**. The prohibition is on **opaque
+> arithmetic** (weights, percentages, hidden cutoffs, count-as-sole-authority), not on a source-backed
+> qualitative comparison the selected commentator himself reasons with. §3.5 now draws that line explicitly,
+> and §7.3 rebuilds the strength axes on it. A count may be a **transparent fact**; it may not be a
+> **hidden score**.
 >
-> **D2/D3/D4 — REMAIN OPEN, and one of them may be unclosable.** The central finding of this pass is
-> stated here rather than buried: 徐樂吾's own definition of the strength axes is
-> 「大致得時為旺，失時為衰；黨眾為強，助寡為弱」 — the second axis is explicitly **NUMEROUSNESS**
-> (黨眾/助寡). Since this project forbids counting, magnitude, and threshold rules as decision authority,
-> **that axis is not executable**, and every seven-band boundary contract in §12.2 depends on it (via
-> §7.3's never-defined WEAK/MODERATE/STRONG "effective force" gate). Independently, 子平真詮 ch.6
-> 「論十干得時不旺失時不弱」 forbids projecting a verdict from the seasonal axis alone. The honest
-> consequence is that **the ordinary seven-band strength verdict is not currently derivable from the
-> adopted sources under this project's own no-scoring constraint.**
+> **What is now closed:**
+> - **D1 — 從兒.** Rewritten from its ORIGINAL_TEXT verse (§10.1).
+> - **D2 — 從旺/從强/專旺.** Source-by-source reconciliation table at §10.1.1; all three rebuilt from
+>   verbatim-verified 任鐵樵 text; 從氣/從勢 disclosed rather than silently omitted.
+> - **D3 — ordinary strength.** §7.3's undefined WEAK/MODERATE/STRONG ordinal is **deleted** and replaced by
+>   a finite structural state model; §12 gives a **total 18-cell decision table**, a Stage-2 intensity
+>   contract, and a pure Stage-3 renderer. "Decisive tilt" is deleted from the document.
+> - **D4 — relations/roots.** §8.9 gives a per-mechanism V1 status table and a conservative
+>   detection-never-implies-effect policy; §8.10 reduces root integrity from four states to three, each with
+>   exactly one named consumer.
 >
-> Accordingly: **no part of §12 may be implemented as runtime code on the strength of this revision.**
-> §12's remediation is tracked as an open `P0_DOCTRINE_GAP` in `MYUNGRI_STRENGTH_V1_IMPLEMENTATION_GAP.md`,
-> not as closed. `STRENGTH_REASONER_IMPLEMENTATION_ALLOWED = NO` continues to hold.
+> **What remains, honestly:** the residual open items are **inference gaps** — the runtime reasoner is
+> deliberately unimplemented — plus the named `DOCTRINE_CONFLICT` routes this document preserves on purpose.
+> See `MYUNGRI_STRENGTH_V1_IMPLEMENTATION_GAP.md`.
+>
+> `STRENGTH_REASONER_IMPLEMENTATION_ALLOWED` remains **NO** until this revision passes independent re-audit.
+> The contracts here are written to be *implementable next*, not to authorize implementation now.
 
 **This is a structural revision of V1, not a defense of it.** An independent audit classified V1 as
 `MYUNGRI_STRENGTH_V1_DOCTRINE_NOT_READY` and found seven doctrine blockers: an over-broad universal
@@ -47,8 +57,8 @@ tiers. All seven are addressed below, not papered over with caveats. §0 records
 | Audit finding | What changed |
 |---|---|
 | 1. Special-structure gate overstates universal rules | SG-0 ("any rooted opposition breaks all 從格") **removed as a hard rule**. Replaced by a functional-integrity test applied to the *candidate disqualifying element itself* (§10.0), using the same B/E/F machinery already built for the ordinary model, not a separate short-circuit. Each pattern (從旺/從强/從財/從官殺/從兒/專旺) now has its own explicitly sourced, independently-stated disqualifier set — the "從弱 family" is no longer treated as one homogeneous category (§10.2–10.4). |
-| 2. Seven-band boundaries not reconstructable | Every boundary in §12.2 rewritten as a DECISION CONTRACT (required conditions / counterevidence / uncertainty conditions / special-pattern interaction / insufficiency examples) — no boundary is defined by an undefined term like "clearly dominant" without a structural predicate. |
-| 3. Structural caps contradict band definitions | Both caps **removed**. §6.2 already held that floating (rootless) support is "not zero" — an absolute cap forbidding a rootless DM from *ever* reaching a strong band contradicted that claim. Replaced with DISQUALIFYING/LIMITING EVIDENCE (§12.3) that participates in the ordinary A–H reasoning, not a bolt-on ceiling/floor. |
+| 2. Seven-band boundaries not reconstructable | Every boundary rewritten as a DECISION CONTRACT (superseded by V1.3's §12.1-§12.4) (required conditions / counterevidence / uncertainty conditions / special-pattern interaction / insufficiency examples) — no boundary is defined by an undefined term like "clearly dominant" without a structural predicate. |
+| 3. Structural caps contradict band definitions | Both caps **removed**. §6.2 already held that floating (rootless) support is "not zero" — an absolute cap forbidding a rootless DM from *ever* reaching a strong band contradicted that claim. Replaced with DISQUALIFYING/LIMITING EVIDENCE (§12.5) that participates in the ordinary A–H reasoning, not a bolt-on ceiling/floor. |
 | 4. Exact 司令 over-promoted to P0 | Downgraded to P1 (§4.2, §20, `IMPLEMENTATION_GAP.md`). V1.1 states explicitly that month-command/seasonal-structure reasoning does not require the exact day-count sub-period table; it requires *retaining explicit boundary uncertainty* near 節氣 changeovers, which is achievable without the table (see `OPTIONAL_SILING_POLICY`, §10 of the brief / §4.2 here). |
 | 5. Climate separation too absolute | §9 rewritten: `CLIMATE_DOMAIN` (downstream, never strength-authoritative) is kept, but the prior "climate can never affect functionality" absolute is removed. `EXTREME_CLIMATE_FUNCTIONALITY` is introduced as a narrowly-sourced modifier on a *specific element's effective manifestation*, never on the seven-band label directly, and only where doctrine actually supports it — unresolved specifics are marked `DEFERRED`, not asserted zero. |
 | 6. Relation/transformation rules insufficiently conditioned | §8 rewritten in full: every mechanism (天干合/六合/三合/方合/沖/刑/害/破) is now split into DETECTION / FORMATION-VALIDITY / TRANSFORMATION / FUNCTIONAL EFFECT / STRENGTH EFFECT as five separate questions. Detection is never treated as equal to transformation. |
@@ -64,14 +74,14 @@ further occurrences.
 
 ---
 
-## 0.2 V1.2 Second-Audit Remediation (D1–D4)
+## 0.2 Second-Audit Remediation record (D1–D4) — D1 closed in V1.2, D2–D4 closed in V1.3
 
 | Audit finding | Status | What changed |
 |---|---|---|
 | **D1. 從兒 doctrine materially wrong / overconstrained** | **CLOSED** | §10.1's 從兒格 entry rewritten from its own governing ORIGINAL_TEXT verse (滴天髓 順局). Three V1.1 errors corrected: (a) the **"DM exhaustively rootless" precondition is DELETED** — 「從兒不管身強弱」 states Day-Master strength is expressly *not* the governing question; (b) the **比劫 disqualifier is DELETED in all directions** — 任鐵樵: 「不論身強弱者，四柱雖有比劫仍去生助食傷也」 (比劫 may remain precisely because they feed 食傷). These two were the same error stated twice, since a branch rooting a 比/劫 necessarily roots the DM's own element under §5.1; (c) the condition 任鐵樵 marks **必要 was missing entirely** — 月令 must carry 食傷 (「必要食傷在提綱也」), now added. The 財-outlet condition is **retained and upgraded** from a weakly-sourced "extra" to ORIGINAL_TEXT (「只要吾兒又得兒」 + 任鐵樵 「必要局中有財」). The pattern's SOURCE grade is corrected from `SOURCE_CLASS_C` "thinnest-grounded of the four" to ORIGINAL_TEXT + NAMED_COMMENTARY — it is in fact the **best**-sourced pattern in the cluster. The unsourced "zero borderline flags" strictness bar is deleted. |
-| **D2. 從旺/從强 need source-by-source reconciliation** | **OPEN** | Not closed in this revision. A predicate×source reconciliation table is required (rows: formation condition / 印 / 財 / 官殺 / 食傷 / 月令 / residual root / opposing qi; columns: 滴天髓 verse, 原注, 任鐵樵, 子平真詮, 徐樂吾, 淵海子平, 三命通會, modern). 淵海子平's and 三命通會's own 從旺/從强 material remains **unretrieved** — recorded honestly rather than filled by inference. Tracked as `P0_DOCTRINE_GAP`. |
-| **D3. Seven-band boundaries not executable** | **OPEN — and possibly unclosable** | See the status notice above. §7.3's WEAK/MODERATE/STRONG "effective force" ordinal is **unsourced** and is the sole authority for four of the six band boundaries; "decisive tilt" carries the other two and §12.2 itself concedes it is irreducible judgment. The sourced replacement axis (徐樂吾's 黨眾為強) is **numerousness-based and therefore forbidden here**. `得令/得地/得勢` was investigated as an alternative backbone and **rejected**: it is not an attested classical triple, and the citation circulating in its support did not survive verification. No substitute has been found that is simultaneously sourced, threshold-free, and decisive. Tracked as `P0_DOCTRINE_GAP`. |
-| **D4. Relation/root-damage predicates not operational** | **PARTIALLY OPEN** | §8.4/§17's `DESTROYED` root state is **not** established as a categorical outcome by the sources, which treat 沖 severity contextually throughout; 「沖 detected → root destroyed」 remains forbidden as a direct rule (unchanged from V1.1) and the `DESTROYED` label itself is now flagged for removal-or-deferral pending the D4 close. Tracked as `P0_DOCTRINE_GAP`. |
+| **D2. 從旺/從强 need source-by-source reconciliation** | **CLOSED (V1.3)** | §10.1.1 supplies the predicate×source reconciliation table. 從旺 and 從强 rebuilt from verbatim-verified 任鐵樵 (從象 第四十七); the 從旺-vs-從强 distinction is confirmed **source-level**, drawn by 任鐵樵 himself on three explicit axes (印 weight · 日主當令 mandatory or not · composition), not a later systematizer's tidy-up. 專旺 rebuilt from 形象第十一, with V1.1's blanket 삼합/방합 clause **corrected for 稼穡** (四庫皆全 — neither a 三合 nor a 方合). 從氣/從勢 disclosed as co-equal members of the same 任鐵樵 passage that V1.1 silently dropped. 淵海子平 and 三命通會 rows are marked NOT RETRIEVED rather than inferred, and V1.1's unverified 徐樂吾 attribution for 從旺/從强 is **withdrawn**. |
+| **D3. Seven-band boundaries not executable** | **CLOSED (V1.3)** | The blocker was V1.2's own over-strict reading of the no-scoring rule, not the sources. §3.5 separates transparent numerousness from hidden scoring, which restores 徐樂吾's 黨眾/助寡 axis as usable. §7.3 deletes the undefined WEAK/MODERATE/STRONG ordinal and replaces it with four enumerated structural dimensions over existing deterministic facts; §12.1 gives a **total 18-cell decision table**; §12.2 an intensity contract; §12.3 a pure renderer; §12.4 restates every adjacent boundary as cell identity. **"decisive tilt" is deleted from the document.** 子平真詮 ch.6 得時不旺失時不弱 is enforced structurally — no single dimension can reach an extreme cell alone. |
+| **D4. Relation/root-damage predicates not operational** | **CLOSED (V1.3), conservatively** | §8.9 gives a per-mechanism DETECTION / FORMATION / TRANSFORMATION / FUNCTIONAL / STRENGTH status table with an explicit V1_STATUS, plus the binding DEOKBUNI_CONSERVATIVE_OPERATIONAL_POLICY: detection alone never changes root or stem function; unsupported outcomes emit RELATION_EFFECT_STATUS = UNRESOLVED and propagate uncertainty. §8.10 reduces root integrity from four states to **three**, deleting DESTROYED (no source supplies categorical destruction) and WEAKENED (computable but **no consumer** — a state nothing reads is decoration, not a contract). Every retained state has exactly one named consumer. |
 
 > **Numbering note.** `D1`–`D4` above are the **second audit's findings**. The gap register in
 > `MYUNGRI_STRENGTH_V1_IMPLEMENTATION_GAP.md` uses its own `D-1`…`D-10` identifiers for individual
@@ -118,7 +128,7 @@ AXIS C — ROOTEDNESS WITH INTEGRITY (§5) — contextual dimensions, not a rigi
 AXIS D — VISIBLE-STEM SUPPORT WITH FUNCTION (§6)
   ↓
 FINAL STRENGTH VERDICT = qualitative synthesis under DISQUALIFYING/LIMITING EVIDENCE, never a
-score, a vote, or an absolute cap (§12.3)
+score, a vote, or an absolute cap (§12.5)
   ↓
 억부 APPLICATION — downstream, out of scope (unchanged from V1)
 ```
@@ -155,6 +165,60 @@ This replaces V1's coarser A/B/C/D LEVEL tags (which conflated e.g. "任鐵樵's
 
 ---
 
+### 2.5 DEOKBUNI V1 SOURCE POLICY — new in V1.3 (final doctrine closure)
+
+V1.1 and V1.2 tried to make every historical lineage agree, and where they would not, the documents either
+averaged them or recorded an unresolvable conflict. Neither produces an implementable contract. V1.3 adopts
+an explicit selection policy instead. **Deokbuni selects; it does not adjudicate the tradition.**
+
+| Rule | Policy |
+|---|---|
+| **A. Base text governs where it speaks** | Where a classical text states a direct proposition, that proposition is preserved as-is and cited at `ORIGINAL_TEXT`. |
+| **B. Named commentary fills software gaps** | Where the base text is too terse to implement, a **named** historical commentator may supply the operational content — cited at `NAMED_COMMENTARY` with the commentator named in the rule itself, never merged into the base text's authority. |
+| **C. Disagreement is selected, not averaged** | Where named sources conflict, the doctrine picks exactly one of: `SELECTED_LINEAGE` (Deokbuni adopts one named reading for the V1 contract, and says so), `SCHOOL_DEPENDENT`, `DOCTRINE_CONFLICT` (runtime must surface both poles), or `DEFERRED`. **Averaging two lineages into a compromise rule is prohibited.** |
+| **D. Modern operationalization is labelled** | Anything Deokbuni decides for itself — a scope choice, a tie-break, a rendering — is `DEOKBUNI_OPERATIONALIZATION`. It may carry runtime authority. It may **never** be presented as, or footnoted to, a classical quotation. |
+| **E. No authority from false attribution** | No rule gains runtime authority from a citation that could not be verified. Unverifiable ⇒ `SOURCE_NOT_VERIFIABLE`, and the rule drops to `ADVISORY` or `DEFERRED`. |
+
+**Selection statement required.** Every rule adopted under B or C must contain the sentence form
+*"Deokbuni V1 adopts <named source>'s reading for this contract"* — never *"classical Myungri defines it
+this way."* Where this document says a pattern is defined a certain way, it means **the selected lineage**
+defines it that way.
+
+### 3.5 TRANSPARENT NUMEROUSNESS vs HIDDEN SCORING — new in V1.3
+
+V1.2 over-corrected. It treated *any* counting concept as forbidden scoring, and consequently declared the
+strength axis inexecutable because its own governing source (徐樂吾: 「黨眾為強，助寡為弱」) is stated in
+terms of numerousness. That was wrong: the prohibition is on **opaque arithmetic**, not on a source-backed
+qualitative comparison. V1.3 draws the line explicitly, and this distinction is load-bearing throughout §7.3
+and §12.
+
+**ALLOWED**
+
+| Construct | Why |
+|---|---|
+| `NUMEROUSNESS_FACT` — a transparent, enumerable **list** of the relevant occurrences (not merely a number) | The evidence is inspectable and replayable; a reader can see exactly which stems/branches were counted |
+| `SOURCE_BACKED_QUALITATIVE_COMPARISON` — "the supporting faction is more numerous than the opposing faction" | The selected source itself reasons this way (黨眾/助寡, 重重/疊疊, 多/寡). Retaining it is fidelity, not invention |
+| Finite categorical states with enumerated entry conditions | Inspectable; no arithmetic |
+| An explicit decision **graph/table** whose every cell is written out | A lookup table with all cells stated is not a hidden rule |
+| Explicit uncertainty exits | Honest non-resolution |
+
+**FORBIDDEN**
+
+| Construct | Why |
+|---|---|
+| Weighted additive scores (`season +30, root +20, support +15`) | Opaque; the weights are invented |
+| Arbitrary percentages or ratios ("60% ⇒ dominant") | Invented cutoff |
+| Hidden numeric cutoffs of any kind | Unreviewable |
+| **Count comparison as the SOLE authority** for a verdict | 子平真詮 ch.6 「論十干得時不旺失時不弱」 forbids single-axis projection; a count alone is exactly that |
+| Score bands presented as classical doctrine | Violates §2.5 rule D |
+
+**The boundary case, stated precisely.** A numeric cutoff *may* be adopted — but only as
+`DEOKBUNI_OPERATIONALIZATION`, only where the source states a quantitative concept it never quantifies
+(重重, 疊疊, 皆, 全, 絕無一毫), and only with the chosen cutoff written into the doctrine in the open. Example:
+任鐵樵's 從强 requires 印綬**重重** and 比劫**疊疊**; the doctrine may operationalize 重重/疊疊 as "two or
+more occurrences", provided it is labelled `DEOKBUNI_OPERATIONALIZATION` and never attributed to 任鐵樵.
+What is prohibited is inventing such a cutoff *silently*, or claiming the source supplied it.
+
 ## 3. Definition of strength (unchanged from V1 — not an audit finding)
 
 Five related-but-distinct concepts must not be collapsed into one:
@@ -173,7 +237,7 @@ AXIS B — SEASONAL VITALITY (§4)
 AXIS C — ROOTEDNESS WITH INTEGRITY (§5)
 AXIS D — VISIBLE-STEM SUPPORT WITH FUNCTION (§6)
   ↓ explanatory chaining, never vote-counting or score summation ↓
-FINAL STRENGTH VERDICT, subject to DISQUALIFYING/LIMITING EVIDENCE (§12.3)
+FINAL STRENGTH VERDICT, subject to DISQUALIFYING/LIMITING EVIDENCE (§12.5)
   ↓
 억부 APPLICATION (downstream, out of scope)
 ```
@@ -381,7 +445,7 @@ Sections 6.1–6.4 and 6.6 are unchanged in substance from V1 (not audit finding
 
 **TEXT_LAYER:** SOURCE_CLASS_C/D (a widespread convention, not rigorously codified with 월지-primacy-level
 rigor in the base texts). **RUNTIME_AUTHORITY:** CONDITIONAL. **This is the exact clause that made V1's Cap 1
-self-contradictory (§0, §12.3) — retained here unchanged, with the caps now removed instead of the doctrine
+self-contradictory (§0, §12.5) — retained here unchanged, with the caps now removed instead of the doctrine
 weakened.**
 
 ### 6.3 干合 (stem combination) can neutralize support
@@ -448,12 +512,93 @@ revision applies elsewhere.
 **TEXT_LAYER:** SOURCE_CLASS_A (生剋 cycle logic). **RUNTIME_AUTHORITY:** CONDITIONAL (structural-awareness
 requirement, not a quantified rule).
 
-### 7.3 Presence vs. effective force — symmetric to opposition
+### 7.3 Presence vs. effective force — **REPLACED IN V1.3 by the STRUCTURAL STATE MODEL (audit finding D3)**
 
-**TEXT_LAYER:** SOURCE_CLASS_B (窮通寶鑑, 調候派, for the seasonal-vitality-as-gate principle) / SOURCE_CLASS_B
-(滴천수, 病藥 framework). **RUNTIME_AUTHORITY:** BINDING for the principle that presence ≠ effective force,
-applied symmetrically to both DM-support and opposition. **CONFLICTS:** none doctrinal; the risk is
-implementational (conflating 조후-utility with 강약-strength — guarded against per §9).
+**What was wrong.** V1.1/V1.2's §7.3 asserted the principle "presence ≠ effective force" and stopped there —
+it never defined the WEAK/MODERATE/STRONG ordinal that §12.2's six band contracts then used as their *sole*
+decision authority. A developer reaching §12.2 had to invent the ordinal. That was the whole of finding D3.
+
+V1.3 deletes the undefined ordinal and replaces it with a **finite structural state model**: four independent
+dimensions, each with enumerated states, each state entered by a condition over deterministic facts that
+already exist in `src/features/myungri/`. No magnitude scale, no score, no "effective force" ordinal survives.
+
+**TEXT_LAYER:** the principle (presence ≠ function) is SOURCE_CLASS_B (滴天髓 病藥 framing). The four-dimension
+decomposition is `DEOKBUNI_OPERATIONALIZATION` (§2.5 rule D) built on 徐樂吾's own two-axis statement plus
+任鐵樵's root clause; it is not claimed as a classical taxonomy. **RUNTIME_AUTHORITY:** BINDING as the future
+inference contract. **This section specifies a FUTURE contract; no runtime code implements it.**
+
+#### 7.3.0 The two governing source statements
+
+1. **徐樂吾, 子平真詮評註 ch.6** (NAMED_COMMENTARY): 「大致得時為旺，失時為衰；黨眾為強，助寡為弱」
+   — two independent axes: a **seasonal** axis (得時/失時) and a **faction-numerousness** axis (黨眾/助寡).
+   *Deokbuni V1 adopts 徐樂吾's two-axis decomposition as the organizing structure for ordinary strength.*
+2. **子平真詮 ch.6 「論十干得時不旺失時不弱」** (ORIGINAL_TEXT, verified): 得令 alone does not establish 旺,
+   and 失令 alone does not establish 弱. **This is a binding NEGATIVE constraint**: no Stage-1 verdict may be
+   projected from the seasonal axis alone, in either direction. It is the single rule that would have
+   prevented the rejected `natalStrength.ts` RULE_TABLE from being written.
+
+A third statement supplies an independent existence gate:
+
+3. **任鐵樵** (NAMED_COMMENTARY): 「日干不論月令休囚，只要四柱有根，便能受財官食神而當傷官七殺」
+   — a Day Master with **any** root can bear opposition regardless of seasonal disadvantage. This is an
+   EXISTENCE test, not a magnitude test, and it is executable today.
+
+#### 7.3.1 `SEASONAL_STATE` — from 月令
+
+| State | Entry condition (deterministic) | Source |
+|---|---|---|
+| `SEASON_SUPPORTIVE` | `monthCommand.dayMasterSeasonalPhase ∈ {旺, 相}` | 徐樂吾 得時為旺; the 旺相/休囚死 cut is `DEOKBUNI_OPERATIONALIZATION` already disclosed in `monthCommand.ts` as `DEUKRYEONG_MAPS_WANG_AND_XIANG_TO_IN_COMMAND` |
+| `SEASON_OPPOSING` | `dayMasterSeasonalPhase ∈ {休, 囚, 死}` | 徐樂吾 失時為衰 |
+
+The 5-state phase is **retained in the evidence payload** and is display-authoritative; only the binary cut
+feeds the decision graph. Rejected alternative cuts, named per §2.5: 臨官/帝旺-only; 長生~帝旺; 월지가 인성/비겁.
+
+#### 7.3.2 `ROOT_STATE` — from 通根 existence
+
+| State | Entry condition (deterministic) | Source |
+|---|---|---|
+| `NO_ROOT` | `sameElementRooting.sameElementRoots` is empty | 任鐵樵 只要四柱有根 (negated) |
+| `ROOT_PRESENT` | at least one same-element root exists, and no root's branch participates in a relation whose outcome is UNRESOLVED (§8.9) | 任鐵樵 只要四柱有根 |
+| `ROOT_PRESENT_RELATION_UNRESOLVED` | at least one root exists, but at least one root's branch participates in a detected relation whose functional outcome is `UNRESOLVED` per §8.9 | `DEOKBUNI_CONSERVATIVE_OPERATIONAL_POLICY` (§8.9) |
+
+**Deliberately NOT defined:** `STRONG_ROOT`, `WEAK_ROOT`, `DESTROYED_ROOT`. No located source supplies
+executable conditions for a graded root magnitude (§8.10). Root tier (본기/중기/여기) is carried as evidence
+and is **not** a state discriminator in V1.
+
+#### 7.3.3 `SUPPORT_STATE` and `OPPOSITION_STATE` — the 勢 axis, via transparent numerousness
+
+Per §3.5, numerousness is retained because the selected source reasons with it. The **factions** are the
+fixed classical Ten-God grouping (`DEOKBUNI_OPERATIONALIZATION` of an undisputed taxonomy):
+
+- **SUPPORTING faction** = 比肩 · 劫財 · 正印 · 偏印 (비겁 + 인성)
+- **OPPOSING faction** = 食神 · 傷官 · 正財 · 偏財 · 正官 · 七殺 (식상 + 재성 + 관살)
+
+**`NUMEROUSNESS_FACT` (transparent, enumerable — the LIST is emitted, not merely a count).** One occurrence
+per: each visible non-DAY stem, and each hidden stem of each of the four branches. Every occurrence carries
+its pillar position, stem, and (for hidden stems) its qi tier, so the comparison is fully inspectable.
+This enumeration is `DEOKBUNI_OPERATIONALIZATION` — 徐樂吾 does not state what counts as a 黨 member.
+
+| `FACTION_STATE` | Entry condition | Source |
+|---|---|---|
+| `SUPPORT_NUMEROUS` | supporting occurrences **>** opposing occurrences | 徐樂吾 黨眾為強 |
+| `FACTION_EVEN` | supporting occurrences **=** opposing occurrences | not stated by any source ⇒ uncertainty exit |
+| `SUPPORT_SCARCE` | supporting occurrences **<** opposing occurrences | 徐樂吾 助寡為弱 |
+
+`OPPOSITION_CHANNELS` is carried **alongside** and never summed into the above: the three opposing channels
+(`OUTPUT_CHANNEL` 식상 · `WEALTH_CHANNEL` 재성 · `CONTROL_CHANNEL` 관살) are recorded separately, per §7.1's
+requirement that they stay mechanistically distinct. They inform §12's counterevidence clauses; they are
+**not** collapsed into a single negative quantity.
+
+> **Guard (§3.5).** The faction comparison is **never the sole authority** for a Stage-1 verdict — §12.1's
+> decision graph requires agreement across dimensions, and 子平真詮's 得時不旺失時不弱 independently forbids
+> single-axis projection. A bare count that outvoted the other dimensions would be exactly the "count voting
+> as sole authority" §3.5 prohibits.
+
+#### 7.3.4 What this replaces
+
+`WEAK / MODERATE / STRONG effective force` is **deleted from the doctrine**. Every §12.2 contract that
+referenced it is rewritten in §12 against the states above. Any future text reintroducing a magnitude ordinal
+for "effective force" is a regression against finding D3.
 
 ### 7.4 Strength and favorability are different axes
 
@@ -590,6 +735,70 @@ determination. This directly satisfies brief §8's instruction: absolute exclusi
 distinction between "insufficient evidence to make this runtime-authoritative" and "classical tradition says
 zero effect" is now explicit.
 
+### 8.9 RELATION OUTCOME CONTRACT — new in V1.3 (closes D4, conservatively)
+
+**The V1 status of every mechanism, stated per layer.** `V1_STATUS` governs what a future reasoner may do
+with the mechanism; `DETECTION_AVAILABLE` is already true everywhere (it is a frozen deterministic fact).
+
+| Mechanism | DETECTION | FORMATION rule | TRANSFORMATION rule | FUNCTIONAL EFFECT rule | STRENGTH EFFECT rule | V1_STATUS |
+|---|---|---|---|---|---|---|
+| 天干合 | ✅ frozen fact | partial (adjacency, 爭合/妒합) | 5-precondition set, DM-involvement disputed | ❌ none adopted | ❌ none adopted | `SUPPORTED_WITH_CONDITIONS` (detection + formation evidence only) |
+| 六合 | ✅ | thinner than stem 合 | ❌ neither pole cited | ❌ | ❌ | `UNRESOLVED` |
+| 三合 | ✅ | full-trio vs 半합 distinction | ❌ not adopted | ❌ | ❌ | `SUPPORTED_WITH_CONDITIONS` (formation only) |
+| 方合 | ✅ | full-set standard | ❌ not adopted | ❌ | ❌ | `SUPPORTED_WITH_CONDITIONS` (formation only) |
+| 沖 | ✅ | n/a | n/a | contextual only, no decision procedure | ❌ | `UNRESOLVED` |
+| 刑 | ✅ | — | — | — | — | `DEFERRED` |
+| 害 | ✅ | — | — | — | — | `DEFERRED` |
+| 破 | ✅ | — | — | — | — | `DEFERRED` |
+
+**`DEOKBUNI_CONSERVATIVE_OPERATIONAL_POLICY` (binding, and labelled as Deokbuni's own):**
+
+> **Detection alone NEVER changes root or stem function.** Where a relation's functional outcome is not
+> canonically supported, the engine must **not** weaken a root, destroy a root, transform an element, or
+> alter a strength reading. It emits `RELATION_EFFECT_STATUS = UNRESOLVED` and propagates an uncertainty
+> marker to the consumer (§7.3.2's `ROOT_PRESENT_RELATION_UNRESOLVED`, §12.1 row 13–18).
+
+This is a **software safety policy, not a doctrinal claim that classical Myungri says "no effect."** The
+sources plainly do describe effects; what they do not supply is a decision procedure a second implementer
+would reproduce. Under-claiming is recoverable; over-claiming silently corrupts every downstream verdict.
+
+**Hard contracts (each stated so it cannot be quietly relaxed):**
+
+- 沖 detected **≠** root destroyed. There is no rule in this document by which detecting a clash reduces a
+  root's status. Any future edit adding one must first supply the decision procedure.
+- 三合 detected **≠** 三合局 formed-and-transformed.
+- 方合 detected **≠** 方局 formed-and-transformed.
+- 六合 detected **≠** 化 succeeded.
+- 天干合 detected **≠** 合化 succeeded.
+
+**Deferring transformation does not block the strength engine.** §12's Stage-1 table reads `ROOT_STATE`,
+`SEASONAL_STATE`, `FACTION_STATE` — none of which requires a transformation verdict. An unresolved relation
+touching a root routes to `ROOT_PRESENT_RELATION_UNRESOLVED`, which caps the result at BALANCED and flags
+uncertainty. The engine therefore runs today, with honest uncertainty, rather than blocking on an advanced
+doctrine that is not ready.
+
+### 8.10 ROOT INTEGRITY STATE MODEL — new in V1.3, deliberately reduced
+
+V1.1 carried `INTACT / WEAKENED / DESTROYED / MEDIATED`. **V1.3 reduces this to three states**, because the
+four-state model failed on its own terms: `DESTROYED` had no source supplying categorical destruction (the
+sources treat 沖 severity contextually throughout), and `WEAKENED` had **no consumer** — nothing in the
+document said what a weakened root changes, so the one computable state was inert.
+
+| State | Entry condition | Consumer |
+|---|---|---|
+| `ROOT_PRESENT_UNMODIFIED` | a same-element root exists and its branch participates in no detected relation | §7.3.2 `ROOT_PRESENT` → §12.1 normally |
+| `ROOT_EFFECT_UNRESOLVED` | a root exists and its branch participates in a detected relation whose outcome is `UNRESOLVED` per §8.9 | §7.3.2 `ROOT_PRESENT_RELATION_UNRESOLVED` → §12.1 rows 13–18: caps at BALANCED, flags uncertainty |
+| `NO_ROOT` | no same-element root anywhere | §7.3.2 `NO_ROOT` → §12.1 rows 1–6; also the 從財/從官殺/從兒 entry premise |
+
+**Removed, with reasons:** `DESTROYED` — no source supplies categorical destruction; retaining it would
+license exactly the 沖⇒destroyed inference §8.9 forbids. `WEAKENED` — computable in principle but no
+consumer exists, and a state nothing reads is not a contract, it is decoration. `MEDIATED` (貪合忘沖) —
+genuinely attested as a *concept*, but no decision procedure for when mediation succeeds was located;
+folded into `ROOT_EFFECT_UNRESOLVED` rather than given false precision.
+
+**Every retained state has exactly one named consumer.** That is the test a future edit must pass before
+adding a fourth.
+
 ---
 
 ## 9. Climate (調候) vs. structural-strength separation — REVISED (audit finding 5)
@@ -643,7 +852,7 @@ facts, sourced and scoped, with unresolved specifics honestly deferred) is added
 **V1 stated:** "any single genuinely ROOTED opposing element is sufficient to break (破格) the pattern,"
 treated as a near-universal SG-0 rule applied identically across every 從-pattern. **The audit correctly
 found this insufficiently supported as a universal classical rule**, and its interaction with the caps (§0,
-§12.3) produced an internal contradiction.
+§12.5) produced an internal contradiction.
 
 **What the sources actually support, worked through carefully:** the disqualifying-root idea is real and
 commonly taught (a follow-pattern requires the DM to have *no* genuine alternative but to submit to the
@@ -663,7 +872,7 @@ vitality live or dead (§5.3)? A **functionally intact, rooted** opposing elemen
 usually decisive** counterevidence against CONFIRMED status — this document does not weaken that conclusion,
 it corrects how it is reached. A **nominally rooted but functionally neutralized** opposing element does not
 automatically disqualify; it becomes evidence feeding the `CANDIDATE_UNCONFIRMED` vs `CONFIRMED` boundary
-(§10.5), graded, not a hard veto. This is DISQUALIFYING/LIMITING EVIDENCE (matching §11/§12.3's general
+(§10.5), graded, not a hard veto. This is DISQUALIFYING/LIMITING EVIDENCE (matching §11/§12.5's general
 replacement of hard caps), not a bolt-on universal short circuit — and it directly fixes the gate-order
 contradiction the audit also flagged (§11 below): the gate no longer needs its own separate fact-gathering
 pass, because it consumes the SAME finalized (post-F) B/C/D/E facts the ordinary model already computed.
@@ -674,20 +883,27 @@ neutralized across the whole exhaustive scan; 假從 = a disqualifying element r
 partially-neutralized standing. This spectrum is the doctrinal basis for the three-state (now four-state,
 see below) output, not a binary.
 
-**Structural definition of "dominant force" (used throughout §10.1 — required by §21's no-hidden-threshold
-discipline):** every §10.1 pattern's MINIMUM POSITIVE CONDITIONS names a "dominant force." This is **not** a
-separate ratio/percentage test layered on top of §10.0's disqualifier mechanism — it is **defined BY that
-mechanism, by elimination:** a candidate force is "dominant" for gate purposes if and only if (a) it is itself
-functionally intact per §5/§7/§8 (rooted-or-generated, seasonally live or not clash-destroyed), AND (b) the
-exhaustive scan (§10.0) finds **no other functionally-intact competing force** anywhere in the chart for the
-role that pattern's DISQUALIFYING CONDITIONS name. Whatever functionally-intact presence exists for the
-claimed direction is, by this elimination test, uncontested — and therefore "dominant" in the only sense this
-gate operationalizes. This is explicitly **not** a magnitude/count/ratio threshold (no "N of 8 slots," no
-"majority of visible stems") — a chart with even a single functionally-intact instance of the claimed force,
-and zero functionally-intact competitors, satisfies "dominant force" under this definition. Where a pattern's
-own conditions additionally require multiple positions (e.g. 專旺's completed §8.3 harmony set, which is a
-DETECTION/FORMATION fact, not a magnitude judgment), that requirement is stated in that pattern's own entry
-and does not rely on this elimination-based "dominant" definition for its multi-position aspect.
+**"Dominant force" is DELETED from this document (V1.3).** V1.1/V1.2 defined it here, by elimination, as a
+shared abstraction that every §10.1 pattern's MINIMUM POSITIVE CONDITIONS then invoked. Two problems, both
+fatal: (a) the phrase is the *same* unsourced magnitude construct as the "decisive tilt" deleted from §12 —
+removing it from the band contracts while leaving it in the special-structure gate merely **relocated** the
+hidden threshold; and (b) no source states a shared "dominant force" premise across these patterns in the
+first place — each source names its **own** concrete condition.
+
+**Replacement.** Each pattern in §10.1 now states its own source-backed condition directly, and no pattern
+refers to a shared dominance abstraction:
+
+| Pattern | What replaced "dominant force" | Source |
+|---|---|---|
+| 從旺 | 四柱皆比劫 · 無官殺之制 · 有印綬之生 | 任鐵樵 從象 |
+| 從强 | 印綬重重 · 比劫疊疊 · 日主又當令 · 絕無一毫財星官殺之氣 | 任鐵樵 從象 |
+| 專旺 | 或方或局全 (稼穡: 四庫皆全) · 不雜\<controller\> | 任鐵樵 形象第十一 |
+| 從財 / 從官殺 | the relevant opposition channel is the **uniquely occupied** one | 任鐵樵 從勢 「視其財官食傷之中，何其獨旺」 |
+| 從兒 | 月令 carries 食傷 · ∃財 · (食傷多也 — DEFERRED, unquantified) | 滴天髓 順局 + 任鐵樵 |
+
+The elimination-style functional-integrity reasoning that motivated the old definition survives where it
+belongs — in §10.0's disqualifier mechanism — but it is no longer dressed up as a magnitude term, and no
+pattern's *positive* conditions depend on it.
 
 ### 10.1 Per-pattern rebuild — no homogeneous "從弱 family"
 
@@ -698,78 +914,135 @@ that shared-scaffold structure as such.** Each pattern below is now specified in
 SOURCE LINEAGE, and shared language between patterns is stated only where the *same* source material
 genuinely supports the same claim for each — not assumed by category membership.
 
-#### 從旺格 (Follow-Prosperous — DM's own element is itself the dominant, near-total force)
+#### 從旺格 — **REWRITTEN IN V1.3 (audit finding D2)**
 
-- **SOURCE LINEAGE:** SOURCE_CLASS_B, 從象 doctrine as developed in 滴天髓 commentary tradition (특히 任鐵樵),
-  later systematized (徐樂吾-lineage naming conventions). 子평真詮 does not use this vocabulary — its own
-  method does not carve out this named pattern separately, which is itself recorded as a school difference,
-  not silently smoothed over.
-- **MINIMUM POSITIVE CONDITIONS:** DM's own element (via 비겁, not 인성-generated — see 從强 below for the
-  generated-support variant) constitutes the composition's dominant force across visible stems and
-  functionally-intact roots (§5/§8); 월령 seasonally aligned with the DM's own element or neutral-to-favorable
-  toward it.
-- **DISQUALIFYING CONDITIONS:** a functionally-intact rooted controlling (克) or draining (洩/剋 via 官殺/財/
-  食傷) element anywhere, per §10.0's corrected mechanism — not mere presence.
-- **WEAK/RESIDUAL ROOT POLICY:** a disqualifying candidate present only as a 餘氣-tier, seasonally-dead,
-  clash-damaged root does not by itself disqualify — it is evidence toward 假從/`CANDIDATE_UNCONFIRMED`
-  (§10.0), not an automatic veto and not a silent pass either.
-- **眞假從 POLICY:** as §10.0.
-- **AMBIGUOUS CASE POLICY:** where the functional-integrity read of a candidate disqualifier is itself
-  genuinely contested (e.g. a clash-mediation call that could reasonably go either way), output
-  `DOCTRINE_CONFLICT`, not a forced resolution.
-- **SCHOOL CONFLICT:** 子평真詮's silence on this named pattern vs. 滴천수-descended lineages' active use of it
-  is a real, named school difference — not resolved here, both positions recorded.
-- **SOFTWARE STATUS:** `NOT_QUALIFIED` / `CANDIDATE_UNCONFIRMED` / `CONFIRMED` / `DOCTRINE_CONFLICT`.
+> **Deokbuni V1 adopts 任鐵樵's reading for this contract.** The 滴天髓 verse layer does not define 從旺;
+> 任鐵樵 does, in 六親論·從象 (chapter 第四十七). The V1.1 entry attributed the pattern to a "滴天髓 commentary
+> tradition … later systematized (徐樂吾-lineage naming conventions)" — the 徐樂吾 half of that attribution was
+> never verified and is withdrawn (§2.5 rule E).
 
-#### 從强格 (Follow-Strong — DM's own element + its generating element together dominate)
+- **SOURCE (verified verbatim):** NAMED_COMMENTARY — 任鐵樵《滴天髓闡微》六親論·從象:
+  「從旺者，四柱皆比劫，無官殺之制，有印綬之生，旺之極者，從其旺神也。」
+- **REQUIRED PREMISES** (each clause of the source, mapped to a deterministic fact):
+  1. `四柱皆比劫` — the chart's occurrences are 比劫 throughout. `NUMEROUSNESS_FACT` per §7.3.3, read as
+     **zero 官殺 occurrences and zero 財 occurrences** (see DISQUALIFIERS — 皆 leaves no room for them).
+  2. `無官殺之制` — no 官殺 exercising control. Existence test over `tenGodFacts`.
+  3. `有印綬之生` — **印綬 IS PRESENT and generating. This is a POSITIVE REQUIREMENT, not a disqualifier.**
+     V1.1 did not carry this clause at all; a chart with no 印 anywhere does not satisfy 任鐵樵's 從旺.
+- **DISQUALIFIERS:** any 官殺 occurrence; any 財 occurrence. Both follow from 四柱皆比劫 read together with
+  從强's parallel 絕無一毫財星官殺之氣 — **presence, not functional presence** (see the PRESENCE-vs-FUNCTION
+  conflict below).
+- **RESIDUAL_OPPOSITION_POLICY:** **V1.1's leniency is WITHDRAWN.** V1.1 said a 餘氣-tier, seasonally-dead,
+  clash-damaged disqualifier "does not by itself disqualify." 任鐵樵's own wording for the sibling pattern is
+  絕無一毫…之氣 — *not one hair of the qi* — which is **stricter** than "no functionally-intact root", and a
+  餘氣-tier root is still 氣 on the plain reading. Deokbuni V1 follows the source: presence disqualifies.
+- **ROOT_POLICY:** no branch-configuration (三合/方合) requirement. That belongs to 專旺 only — do not let
+  專旺's completed-set machinery leak here.
+- **SEASON_POLICY:** 任鐵樵 states none for 從旺 (contrast 從强, which requires 日主又當令). V1.1's
+  "월령 seasonally aligned … or neutral-to-favorable" is **unsourced and is deleted.**
+- **OUTPUT/WEALTH/OFFICER policies:** 財 and 食傷 appear in the source only in the following 行運 (luck-cycle)
+  clauses, which are **not** entry conditions (§2.5 rule A — do not promote luck commentary to a gate).
+- **TRUE_FALSE_FOLLOWING (眞從/假從):** **NOT APPLICABLE.** 眞從/假從 is ORIGINAL_TEXT (滴天髓
+  「真從之象有幾人，假從亦可發其身」) whose own gloss frames it entirely within the **weak-DM** follow family
+  (「日主弱矣，財官強矣，不能不從，中有所助者，便假」). Extending it to the strong-DM patterns is UNSOURCED;
+  V1.1's blanket "眞假從 POLICY: as §10.0" is withdrawn for 從旺/從强/專旺.
+- **RUNTIME_AUTHORITY:** CONDITIONAL (future inference; not implemented).
+- **CONFLICTS:** 子平真詮 does not use this vocabulary — a real, named school gap, recorded, not smoothed.
+- **REACHABILITY:** `CAN_REACH_CONFIRMED` — every premise is an existence/absence test over deterministic
+  facts, with no unquantified term.
 
-- **SOURCE LINEAGE:** SOURCE_CLASS_B, same 滴천수/任鐵樵-descended lineage as 從旺; **where the adopted school
-  actually distinguishes 從强 from 從旺** (some lineages treat 從强 as the broader category encompassing 從旺
-  as a sub-case where 비겁 alone, without 인성, dominates; others use the two terms closer to
-  interchangeably) — **this distinction is itself SCHOOL_DEPENDENT and is recorded as such, not silently
-  resolved.**
-- **MINIMUM POSITIVE CONDITIONS:** DM's own element + generating element (比劫+印星 combined) constitute the
-  composition's dominant, functionally-intact force; 월령 favorable or neutral.
-- **DISQUALIFYING CONDITIONS:** same corrected mechanism as 從旺 (§10.0) — a functionally-intact rooted 財 or
-  官殺.
-- **WEAK/RESIDUAL ROOT POLICY, 眞假從 POLICY, AMBIGUOUS CASE POLICY:** as 從旺.
-- **SCHOOL CONFLICT:** the 從强-vs-從旺 boundary itself (above); also, whether 印星 dominant with 비겁 nearly
-  absent (or the reverse) still qualifies as 從强 is genuinely school-variable.
-- **SOFTWARE STATUS:** four-state, as above.
+#### 從强格 — **REWRITTEN IN V1.3 (audit finding D2)**
 
-#### 從財格 (Follow-Wealth)
+> **Deokbuni V1 adopts 任鐵樵's reading.** The 從旺-vs-從强 distinction is **real and source-level**: both are
+> defined in adjacent sentences of the same 任氏曰 block, on three explicit axes. V1.1's claim that "some
+> lineages treat 從强 as the broader category … others use the two terms interchangeably" describes the
+> *modern reception* layer, not the source, and is demoted to a note.
 
-- **SOURCE LINEAGE:** SOURCE_CLASS_B/C, 滴천수-era 從 concepts as elaborated in later systematizing scholarship.
-- **MINIMUM POSITIVE CONDITIONS:** DM has **no functionally-intact root or generating support** anywhere
-  (exhaustive scan, per §10.0 — not merely "appears rootless"); dominant force is specifically 財星 (± its
-  generator 食傷), 월령 aligned with 財's season or the season of its generator.
-- **DISQUALIFYING CONDITIONS:** a functionally-intact rooted 比劫 or 印星 (reintroduces a viable alternative
-  for the DM, per §10.0). A chart with BOTH strong, functionally-intact 財 AND strong, functionally-intact
-  官殺 alongside an otherwise-qualifying rootless DM is a **genuinely disputed configuration** — some schools
-  read it as one continuous 財生官 flow still qualifying; others treat the two simultaneous dominant forces
-  as structurally competing and disqualifying. **V1.1 does not resolve this by default; it is
-  SCHOOL_DEPENDENT and routes to `DOCTRINE_CONFLICT` when the configuration is clean enough to reach this
-  question at all**, rather than V1's prior silent conservative default.
-- **WEAK/RESIDUAL ROOT POLICY:** as §10.0.
-- **眞假從 POLICY:** as §10.0.
-- **AMBIGUOUS CASE POLICY:** as above; the 財+官殺-both-present case specifically routes to `DOCTRINE_CONFLICT`.
-- **SCHOOL CONFLICT:** named above.
-- **SOFTWARE STATUS:** four-state.
+- **SOURCE (verified verbatim):** NAMED_COMMENTARY — 任鐵樵《滴天髓闡微》六親論·從象:
+  「從強者，四柱印綬重重，比劫疊疊，日主又當令。絕無一毫財星官殺之氣，謂二人同心，強之極矣，可順而不可逆也。」
+- **REQUIRED PREMISES:**
+  1. `印綬重重` — 印 occurrences are repeated. **Unquantified in the source.**
+     `DEOKBUNI_OPERATIONALIZATION` (§3.5): read as **two or more 印綬 occurrences**. This cutoff is Deokbuni's,
+     is stated here in the open, and is **not** attributed to 任鐵樵.
+  2. `比劫疊疊` — same treatment: **two or more 比劫 occurrences**, same disclosure.
+  3. `日主又當令` — **MANDATORY**, unlike 從旺. `SEASONAL_STATE = SEASON_SUPPORTIVE` (§7.3.1).
+  4. `絕無一毫財星官殺之氣` — not one hair of 財 or 官殺 qi.
+- **DISQUALIFIERS:** any 財 or 官殺 **occurrence**. **SCOPE — a real trap, flagged by adversarial review:**
+  read naively across *every* 지장간 tier this predicate self-destructs, because the very branches that
+  constitute the pattern carry hidden 財 (e.g. 亥 and 寅 both hold 戊). Deokbuni V1 therefore scopes
+  絕無一毫 to **visible stems plus 본기 (main-qi) hidden stems**, labelled `DEOKBUNI_OPERATIONALIZATION`, with
+  the residual 중기/여기 occurrence emitted as evidence and capping the result at `CANDIDATE_UNCONFIRMED`
+  rather than disqualifying. Without this scope the pattern is unreachable by construction.
+- **THE 從旺 / 從强 BOUNDARY (three source-level axes, not a matter of taste):**
 
-#### 從官殺格 (從殺格, Follow-Officer/Killing)
+  | Axis | 從旺 | 從强 |
+  |---|---|---|
+  | 印's role | present and generating (有印綬之生) | present **and repeated** (印綬重重) |
+  | 日主當令 | not stated | **mandatory** (日主又當令) |
+  | Composition | 四柱皆比劫 | 印綬 + 比劫 together (二人同心) |
 
-- **SOURCE LINEAGE:** SOURCE_CLASS_B/C, same lineage as 從財; relatively more confidently and consistently
-  attested across secondary literature than 從兒 (below).
-- **MINIMUM POSITIVE CONDITIONS:** DM exhaustively rootless (§10.0); dominant force is 官殺 (± its generator
-  財), 월령 aligned.
-- **DISQUALIFYING CONDITIONS:** functionally-intact rooted 比劫/印星 (as 從財); **additionally, a
-  functionally-intact rooted 食傷** — 食傷 directly controls 官殺 (食傷剋官殺), so its functional presence
-  means the chart is not helplessly submitting, which contradicts this pattern's own defining premise. Per
-  §10.0, this is evaluated for functional integrity, not mere presence — a nominally-present but
-  clash-neutralized 食傷 does not by itself disqualify.
-- **WEAK/RESIDUAL ROOT POLICY, 眞假從 POLICY, AMBIGUOUS CASE POLICY:** as §10.0.
-- **SCHOOL CONFLICT:** none major beyond the general 從財/從兒-adjacent disputes already named.
-- **SOFTWARE STATUS:** four-state.
+- **RESIDUAL_OPPOSITION_POLICY / ROOT_POLICY / TRUE_FALSE_FOLLOWING:** as 從旺 above.
+- **RUNTIME_AUTHORITY:** CONDITIONAL. **REACHABILITY:** `CAN_REACH_CONFIRMED`, given the two disclosed
+  operationalizations (重重/疊疊 cutoff; 絕無一毫 scope). Without them it would be `CANDIDATE_ONLY`.
+- **CONFLICTS:** modern/Korean reception conflates 從强 with 전왕격; that conflation is recorded and rejected.
+
+#### 從氣格 / 從勢格 — **NEWLY DISCLOSED IN V1.3 (they were silently omitted)**
+
+任鐵樵's 從象 passage enumerates **four** members, not two: 從旺, 從強, 從氣, 從勢. V1.1 and V1.2 cited the
+passage for the first two and silently dropped the others. That is a selection Deokbuni is entitled to make,
+but not to make invisibly.
+
+- **從氣者** — 「不論財官、印綬、食傷之類，如氣勢在木火，要行木火運…」 (NAMED_COMMENTARY, 任鐵樵).
+- **從勢者** — 「日主無根，四柱財官食傷並旺…視其財官食傷之中，何其獨旺…」 (NAMED_COMMENTARY, 任鐵樵).
+  **Correction to an earlier internal reading:** the fragment 「不分強弱」 attributed to this passage in
+  research notes could **not** be verified and is not used. The retrieved text says 視其…何其獨旺 — 從勢
+  identifies a *uniquely prosperous* force; it does **not** cover the "no force dominant" case.
+- **V1 STATUS: `DEFERRED_FROM_V1`.** Not because they are unsourced — they are as well-sourced as 從旺/從强 —
+  but because Deokbuni has not selected entry contracts for them. Recorded so that a future reader does not
+  mistake their absence for a claim that the enumeration is two-fold.
+#### 從財格 — **REVISED IN V1.3 (E-D3: "dominant force" removed)**
+
+> **Deokbuni V1 adopts 滴天髓's 假從 gloss as the governing frame for the weak-DM follow family:**
+> 「日主弱矣，財官強矣，不能不從，中有所助者，便假」 (ORIGINAL_TEXT gloss, verified). This is the one place
+> 眞從/假從 genuinely applies — unlike 從旺/從强/專旺, where V1.1 over-extended it.
+
+- **SOURCE LINEAGE:** ORIGINAL_TEXT for the 眞/假 frame (滴天髓 假從 verse and gloss); the per-pattern entry
+  conditions are `SELECTED_LINEAGE` from the 從象 family. `SOURCE_NOT_VERIFIABLE` for any claim that a single
+  named text enumerates 從財's conditions as a closed list — none was located, and none is asserted.
+- **MINIMUM POSITIVE CONDITIONS:**
+  1. `ROOT_STATE = NO_ROOT` (§7.3.2) — the DM has no same-element root anywhere. Existence test, exhaustive.
+  2. **`OPPOSITION_CHANNELS.WEALTH_CHANNEL` is occupied, and it is the *uniquely* occupied channel** among
+     식상/재성/관살. **This replaces "dominant force"** (deleted per E-D3 as unsourced magnitude language).
+     The uniqueness test is 任鐵樵's own 從勢 wording 「視其財官食傷之中，何其獨旺」 — *which one is uniquely
+     prosperous* — applied here as a structural uniqueness test, not a magnitude comparison.
+     Where two or more channels are occupied, this is not 從財; see the 財+官殺 conflict below.
+- **DISQUALIFYING CONDITIONS:** any 比劫 or 印星 occurrence (presence reading, consistent with the selected
+  lineage's 絕無一毫 standard for the sibling patterns). A 比劫/印 occurrence reintroduces the alternative the
+  pattern's own premise (不能不從 — *cannot but follow*) denies.
+- **THE 財+官殺 BOTH-PRESENT CASE:** genuinely disputed — one reading takes it as a continuous 財生官 flow that
+  still qualifies; another treats two simultaneously-occupied channels as structurally competing.
+  **Unresolved by design → `DOCTRINE_CONFLICT`.** Note that under the uniqueness test above this
+  configuration fails the positive condition anyway; the conflict is recorded because the two readings
+  disagree about whether it *should*.
+- **假從 POLICY:** a residual 比劫/印 occurrence that is present but contested → `CANDIDATE_UNCONFIRMED`
+  (假從 territory), never silent qualification. This is the gloss's own 中有所助者，便假.
+- **RUNTIME_AUTHORITY:** CONDITIONAL. **REACHABILITY:** `CAN_REACH_CONFIRMED`.
+
+#### 從官殺格 (從殺格) — **REVISED IN V1.3 (E-D3: "dominant force" removed)**
+
+- **SOURCE LINEAGE:** as 從財 — the 眞/假 frame is ORIGINAL_TEXT; the entry conditions are `SELECTED_LINEAGE`.
+- **MINIMUM POSITIVE CONDITIONS:**
+  1. `ROOT_STATE = NO_ROOT` (§7.3.2), exhaustive.
+  2. **`CONTROL_CHANNEL` is the uniquely occupied opposition channel** (何其獨旺 applied as above).
+     "Dominant force is 官殺" is deleted as unsourced magnitude language.
+- **DISQUALIFYING CONDITIONS:** any 比劫 or 印星 occurrence (as 從財); **additionally any 食傷 occurrence** —
+  食傷剋官殺, so an occupied OUTPUT_CHANNEL means the chart is not helplessly submitting, contradicting the
+  pattern's own premise. **V1.1 evaluated this "for functional integrity, not mere presence"; V1.3 uses the
+  presence reading**, for consistency with the selected lineage and because the functional-integrity grading
+  it relied on is itself unbuilt and arguably unsourceable (§8.9, §8.10).
+- **假從 POLICY / AMBIGUOUS CASE POLICY:** as 從財.
+- **SCHOOL CONFLICT:** none located beyond the family-level disputes already named.
+- **RUNTIME_AUTHORITY:** CONDITIONAL. **REACHABILITY:** `CAN_REACH_CONFIRMED`.
 
 #### 從兒格 (Follow-Child/Output) — **REWRITTEN IN V1.2 (audit finding D1: the V1.1 entry was materially wrong)**
 
@@ -845,36 +1118,122 @@ genuinely supports the same claim for each — not assumed by category membershi
   **`CONFIRMED` is currently unreachable for every chart.** This is stated as an outcome, not left for a
   reader to discover. It is the honest consequence of refusing to invent the missing quantifier.
 
-#### 專旺格/전왕격 (曲直/炎上/稼穡/從革/潤下)
+#### 專旺格 (曲直/炎上/稼穡/從革/潤下) — **REWRITTEN IN V1.3 (audit finding D2)**
 
-- **SOURCE LINEAGE:** SOURCE_CLASS_C — named mono-element structures widely attested in later systematizing
-  命理 scholarship building on classical 子평 fundamentals; a narrower, stricter case than 從强/從旺 (requires
-  near-total mono-element composition of the DM's OWN element specifically, typically via a completed §8.3
-  삼합/방합, not merely "DM+resource together dominate").
-- **MINIMUM POSITIVE CONDITIONS:** DM's own element forms a completed (per §8.3's FORMATION/VALIDITY
-  standard — full trio, not a bare 半합) 삼합 or 방합 across three or more branch positions; visible stems
-  consistent with (same as, or generating) the dominant element; 월령 squarely the matching season (treated
-  as closer to mandatory here than for 從强/從旺, since each of the five named patterns is explicitly
-  season-anchored: 曲直=spring/Wood, 炎上=summer/Fire, 稼穡=辰戌丑未/Earth-peak, 從革=autumn/Metal,
-  潤下=winter/Water); no functionally-intact rooted controlling (克) element anywhere.
-- **DISQUALIFYING CONDITIONS:** a functionally-intact rooted controlling element (per §10.0's corrected
-  mechanism — the most commonly cited breaker for 專旺); a clash/combination that breaks up the completed
-  trio/directional set itself (per §8.3/§8.4 — this is now evaluated via the SAME formation-validity/
-  functional-effect questions, not a separate rule); 월령 misaligned with the claimed dominant season.
-- **WEAK/RESIDUAL ROOT POLICY:** an unrooted transparent controlling stem present is evidence toward
-  `CANDIDATE_UNCONFIRMED`, per §10.0, school-variable on exact weight.
-- **眞假從 POLICY:** N/A in the same sense (專旺 is about the DM's own dominance, not the DM submitting to an
-  opposing force) — the analogous spectrum here is "clean completed set" vs. "partial/contested set," see
-  below.
-- **AMBIGUOUS CASE POLICY:** a partial (2-of-3) harmony set does **not** qualify for 專旺 under §8.3's
-  FORMATION/VALIDITY standard — this is not an ambiguous case, it is a clean `NOT_QUALIFIED` for 專旺
-  specifically (the chart likely still reads strongly on the ordinary axis, via §5/§6, independently). A
-  月령 in a transitional/boundary period (§4.2's boundary-sensitivity flag) genuinely IS ambiguous →
-  `CANDIDATE_UNCONFIRMED`, not silently resolved either way.
-- **SCHOOL CONFLICT:** none major on the pattern's existence; the completed-set standard itself inherits
-  §8.3's 방합-vs-三합 ranking dispute where relevant.
-- **SOFTWARE STATUS:** four-state.
+> **Naming, stated honestly first.** The label **專旺格 has no located classical attestation.** It is
+> `MODERN_SYSTEMATIZATION`. Its classical ancestor is **獨象**, which is verse-level:
+> 滴天髓 形象 「獨象喜行化地，而化神要昌」 (ORIGINAL_TEXT). The five sub-patterns are individually named and
+> defined by 任鐵樵, and 三命通會 does group the five as one section — so the *grouping* is attested even
+> though the *label* 專旺格 is not. Deokbuni V1 keeps the label as a convenience and marks it as its own.
 
+> **專旺 ≠ 從旺.** Same commentator, different chapters, different criteria: 獨象 is defined in
+> 通神論·形象第十一 by a **completed branch configuration** of the DM's own element plus non-admixture of its
+> controller; 從旺 is defined in 六親論·從象 by 比劫 composition plus absence of 官殺 plus presence of 印 —
+> with **no branch-configuration requirement at all**. They overlap in extension; they are not one structure.
+> A further corroboration that they differ: 獨象's classical luck prescription runs *toward* 食傷
+> (化神), whereas 從强 explicitly dislikes 食傷運.
+
+- **SOURCE (verified verbatim):** NAMED_COMMENTARY — 任鐵樵《滴天髓闡微》形象第十一:
+  「木日，或方或局全，不雜金為曲直」/「火日，或方或局全，不雜水為炎上」/「土日，四庫皆全，不雜木為稼穡」/
+  「金日，或方或局全，不雜火為從革」/「水日，或方或局全，不雜土為潤下」.
+  *(Layer correction applied: 「權在一人，曲直炎上之類是也」 is 任氏 commentary, not 原註. The 劉基-authorship
+  caveat V1.2 attached to it was scaffolding around a misattribution and is removed. The verse
+  「獨象喜行化地，而化神要昌」 remains correctly ORIGINAL_TEXT.)*
+
+- **REQUIRED PREMISES, per sub-pattern — V1.1's blanket clause was WRONG for 稼穡:**
+
+  | Sub-pattern | DM element | Required branch configuration (source wording) |
+  |---|---|---|
+  | 曲直 | 木 | `或方或局全` — the directional set **or** the trine, **complete** |
+  | 炎上 | 火 | `或方或局全` |
+  | **稼穡** | 土 | **`四庫皆全`** — all four of 辰戌丑未. **This is neither a 三合 nor a 方合.** |
+  | 從革 | 金 | `或方或局全` |
+  | 潤下 | 水 | `或方或局全` |
+
+  V1.1 required "a completed 삼합 or 방합 across three or more branch positions" **for all five**, which is
+  structurally unsatisfiable for 稼穡 — no 三合 or 方合 consists of 辰戌丑未. V1.1 did name 稼穡=辰戌丑未
+  in its season clause, so the defect was an **internal contradiction** between its positive-conditions
+  clause and its season clause, not unawareness. Corrected here.
+
+- **DISQUALIFIERS — scoped narrowly, per the source:** **only the controlling (剋我) element** breaks the
+  pattern — 不雜金 for 曲直, 不雜水 for 炎上, 不雜木 for 稼穡, 不雜火 for 從革, 不雜土 for 潤下. Every located
+  source names only the controller. **財 and 食傷 are NOT breakers** and V1.1's extension of the disqualifier
+  beyond the controller is withdrawn.
+
+- **PRESENCE vs FUNCTIONAL PRESENCE — a genuine inter-text conflict, now resolved by selection (§2.5 rule C):**
+
+  | Position | Sources | Wording |
+  |---|---|---|
+  | **Presence** breaks the pattern | 淵海子平 曲直格; 任鐵樵 從象/形象 | 「見庚辛即官殺，非此格也」 · 「絕無一毫財星官殺之氣」 · 「不雜金」 |
+  | **Degree/root-depth** decides | 子平真詮 論雜格 (ORIGINAL_TEXT) | 「大約要干頭無官無煞，方成外格。如有官煞，則自有官煞為用，無勞外格矣。若透財尚可取格，然財根深，或財透兩位，則亦以財為重，不取外格也」 |
+
+  **Deokbuni V1 adopts the PRESENCE reading for the controlling element** (任鐵樵/淵海子平), because 任鐵樵 is
+  the selected lineage for this whole cluster and his wording is unambiguous. **Deokbuni V1 additionally
+  adopts 子平真詮's 財 rule as a separate, narrower clause**, since it concerns 財 (which the controller rule
+  does not cover) and is ORIGINAL_TEXT: a transparent 財 does not break the pattern, but 財根深 or 財透兩位
+  does. This is a selection, not a synthesis — both poles are recorded and neither is averaged.
+  `DOCTRINE_CONFLICT` is emitted when the two readings would diverge on the same chart.
+
+- **SEASON_POLICY — a live, named conflict, NOT silently resolved:**
+  - **Requires it:** 子平真詮 論雜格 「有取五行一方秀氣者，取甲乙全亥卯未、寅卯辰，**又生春月**之類」.
+  - **Does not state it:** 任鐵樵 形象第十一 (only 或方或局全 + 不雜X); 淵海子平 曲直格.
+  - **Deokbuni V1:** season is **required for 稼穡 only** — and there it is *entailed* rather than imposed,
+    since 辰戌丑未 all being present forces the month branch into a 季月. For the other four, season is
+    recorded as evidence and its absence caps at `CANDIDATE_UNCONFIRMED`; it does not disqualify.
+    **Correction to a tempting shortcut:** "the month branch is a member of the set" is NOT the same test as
+    生春月, and a 亥卯未 chart with 월지=亥 separates them. The season test reads
+    `monthCommand.season`, never set membership.
+  - **Note on 三合 equality:** 「或方或局」 implies the two are interchangeable for 任鐵樵, but 三命通會 states
+    「甲乙日得亥卯未局，柱中須有亥字帶印為入格，若無亥有卯，止是木之本氣」 — requiring 亥 specifically and not
+    offering 寅卯辰 as an equal alternative. Recorded as `SCHOOL_DEPENDENT`; Deokbuni V1 follows 任鐵樵's
+    equality and emits the divergence as evidence.
+
+- **AMBIGUOUS CASE POLICY:** a partial (2-of-3) set is a clean `NOT_QUALIFIED` for 專旺 — not an ambiguous
+  case. The chart may still read STRONG on the ordinary axis via §12 independently. A `BOUNDARY_SENSITIVE`
+  month is genuinely ambiguous → `CANDIDATE_UNCONFIRMED`.
+- **TRUE_FALSE_FOLLOWING:** **NOT APPLICABLE** — 眞從/假從's own gloss scopes it to the weak-DM family
+  (see 從旺 above). The analogous 專旺 spectrum is "complete set" vs "partial/contested set", which is the
+  formation question, not a 眞/假 question.
+- **PRECONDITION INHERITED FROM THE SELECTED SOURCE (new in V1.3):** 子平真詮 論雜格 opens
+  「雜格者，月令無用，取外格而用之，其格甚多，故謂之雜」 — in that method the 外格 family is consulted **only
+  when the month branch yields no ordinary 用神**. Deokbuni V1 does **not** adopt this ordering, because
+  用神 selection (격국) is out of V1 scope and adopting it would make the gate depend on a deferred module.
+  Recorded as a named divergence from 子平真詮, per §2.5 rule C, rather than left unstated.
+- **RUNTIME_AUTHORITY:** CONDITIONAL. **REACHABILITY:** `CAN_REACH_CONFIRMED` — every premise is an
+  existence/configuration test over deterministic facts.
+
+### 10.1.1 從旺 / 從强 / 專旺 — SOURCE-BY-SOURCE RECONCILIATION (closes D2)
+
+Cell values: a sourced position, `SILENT` (source does not address it), or `NOT RETRIEVED` (could not be
+accessed — recorded honestly rather than inferred).
+
+| Predicate | 滴天髓 verse | 任鐵樵 闡微 | 子平真詮 | 淵海子平 | 三命通會 | 徐樂吾 |
+|---|---|---|---|---|---|---|
+| 從旺 defined | SILENT | **從象: 四柱皆比劫／無官殺之制／有印綬之生** | SILENT (no such vocabulary) | NOT RETRIEVED | NOT RETRIEVED | NOT RETRIEVED |
+| 從强 defined | SILENT | **從象: 印綬重重／比劫疊疊／日主又當令／絕無一毫財星官殺之氣** | SILENT | NOT RETRIEVED | NOT RETRIEVED | NOT RETRIEVED |
+| 從旺 vs 從强 distinct | SILENT | **YES — adjacent sentences, three explicit axes** | SILENT | NOT RETRIEVED | NOT RETRIEVED | NOT RETRIEVED |
+| 專旺 as a label | SILENT (has 獨象) | SILENT (has 獨象/形象) | SILENT (has 雜格) | SILENT | groups the five as one section | NOT RETRIEVED |
+| 專旺 branch configuration | 獨象 (no explicit set rule) | **或方或局全; 稼穡=四庫皆全** | 全亥卯未、寅卯辰 | 寅卯辰 or 亥卯未 木局 | 亥卯未 **must include 亥** | NOT RETRIEVED |
+| 專旺 breaker | SILENT | **不雜<controller> only** | 干頭無官無煞; 財根深 breaks | 見庚辛即官殺，非此格也 | NOT RETRIEVED | NOT RETRIEVED |
+| Season required | SILENT | **SILENT** | **又生春月 — required** | SILENT | 戊己生逢季月 (稼穡) | NOT RETRIEVED |
+| Presence vs degree | SILENT | **presence** (絕無一毫／不雜) | **degree** (財根深／財透兩位) | **presence** | NOT RETRIEVED | NOT RETRIEVED |
+| Residual/餘氣 root tolerated | SILENT | **NO — 絕無一毫…之氣** | partially (透財尚可取格) | SILENT | NOT RETRIEVED | NOT RETRIEVED |
+| 眞從/假從 scope | **真從之象有幾人，假從亦可發其身** — weak-DM family | gloss: 日主弱矣，財官強矣 | SILENT | SILENT | NOT RETRIEVED | NOT RETRIEVED |
+| 外格 precondition | SILENT | SILENT | **月令無用，取外格而用之** | SILENT | NOT RETRIEVED | NOT RETRIEVED |
+
+**Honest coverage statement.** 淵海子平's and 三命通會's own 從旺/從强 material was **not retrieved** in this
+pass; the cells are marked `NOT RETRIEVED`, not inferred, not filled from secondary summaries. 徐樂吾 was not
+verified for any 從-pattern predicate — V1.1's attribution of 從旺/從强 partly to a "徐樂吾-lineage" is
+therefore **withdrawn** (§2.5 rule E). 徐樂吾 is retained in this document **only** for the §7.3 two-axis
+statement, which was independently verified.
+
+**Enumeration finding.** 任鐵樵's 從象 passage enumerates **four** members — 從旺 / 從強 / 從氣 / 從勢. Deokbuni
+V1 adopts the first two and defers the latter two (see 從氣格/從勢格 above). The enumeration is stable within
+this source; what is *not* stable is the 專旺 label, which no source supplies.
+
+**Deokbuni V1 selection statement.** For this entire cluster, *Deokbuni V1 adopts 任鐵樵's readings as the
+selected lineage*, supplemented by 子平真詮's 財 clause where 任鐵樵 is silent. This is a selection under §2.5
+rule C. It is not a claim that classical Myungri universally defines these patterns this way.
 ### 10.2 Categories explicitly considered and excluded (unchanged from V1)
 
 - **化氣格** — NOT included; thin/disputed completion-criteria grounding, SOURCE_CLASS_E. Recommend a
@@ -898,33 +1257,72 @@ evidence (not merely an internal-to-the-chart ambiguity) routes to `DOCTRINE_CON
 `DOCTRINE_CONFLICT` at the gate stage is surfaced explicitly, never silently defaulted to either the ordinary
 model or a special-pattern verdict.
 
-### 10.6 REACHABILITY DISCLOSURE — mandatory, new in V1.2
+### 10.6 REACHABILITY DISCLOSURE — mandatory (V1.2), **satisfied in V1.3**
 
 A four-state output whose `CONFIRMED` state no real chart can ever reach is a **three-state output wearing a
-four-state label**. V1.1 shipped exactly that for 從兒 without noticing. Every pattern entry in §10.1 must
-therefore carry an explicit **REACHABILITY** field naming which of the four output states a real chart can
-actually attain, and any future edit to a pattern's conditions must re-derive it.
+four-state label**. V1.1 shipped exactly that for 從兒 without noticing. Every pattern entry in §10.1
+therefore carries an explicit **REACHABILITY** field, and any future edit to a pattern's conditions must
+re-derive it.
 
-Two structural facts currently suppress `CONFIRMED` across this gate:
+**What changed in V1.3.** V1.2 reported that *no* pattern could reach `CONFIRMED`. That was true under V1.2's
+over-strict reading of the no-scoring rule, which treated every quantitative concept — including the sources'
+own 重重/疊疊/皆/全 — as forbidden. §3.5 corrects that: a source-stated but unquantified concept may be
+operationalized **in the open**, as `DEOKBUNI_OPERATIONALIZATION`, with the chosen reading printed in this
+document. With that correction, five of six patterns become reachable.
 
-1. **Unquantifiable required conditions.** Where a source states a condition but never quantifies it
-   (食傷多也, 滿局, 重重, 疊疊, 根深, 不雜, 黨眾), §0.2's method note caps the pattern at
-   `CANDIDATE_UNCONFIRMED`. Any pattern with such a condition among its MINIMUM POSITIVE CONDITIONS cannot
-   reach `CONFIRMED` until that condition is either sourced with a real decision procedure or formally
-   dropped by an owner decision.
-2. **The P0-2 dependency.** Every pattern's disqualifier set is evaluated through §10.0's
-   functional-integrity mechanism, which routes into §8's clash/combination severity grading. That grading
-   is marked `CONDITIONAL` in this document and **is not implemented**. Until it lands, no `CONFIRMED`
-   verdict from this gate is trustworthy even where it is formally reachable.
+| Pattern | V1 status | Reachable states | What decides it |
+|---|---|---|---|
+| 從旺格 | `CAN_REACH_CONFIRMED` | all four | Every premise is an existence/absence test (四柱皆比劫 · 無官殺 · 有印綬). Nothing unquantified remains |
+| 從强格 | `CAN_REACH_CONFIRMED` | all four | Reachable **only because** 重重/疊疊 is operationalized as "two or more" (§3.5) and 絕無一毫 is scoped to visible + 본기 (§10.1). Both disclosures are load-bearing; remove either and this reverts to `CANDIDATE_ONLY_IN_V1` |
+| 從財格 | `CAN_REACH_CONFIRMED` | all four | "dominant force" replaced by the structural uniqueness test (何其獨旺) |
+| 從官殺格 | `CAN_REACH_CONFIRMED` | all four | as 從財, plus the 食傷 presence disqualifier |
+| 專旺격 | `CAN_REACH_CONFIRMED` | all four | Configuration tests (或方或局全 / 四庫皆全) are deterministic |
+| 從兒격 | **`CANDIDATE_ONLY_IN_V1`** | `NOT_QUALIFIED` · `CANDIDATE_UNCONFIRMED` · `DOCTRINE_CONFLICT` | 食傷多也/滿局 is required by the source and **not** operationalized here. Unlike 從强's 重重, no bounded reading suggested itself that did not amount to inventing the pattern's central criterion, so per §3.5 it stays DEFERRED and caps the gate |
+| 從氣격 / 從勢격 | **`DEFERRED_FROM_V1`** | — | Sourced, but no Deokbuni entry contract selected |
 
-| Pattern | Reachable states (V1.2) |
-|---|---|
-| 從兒格 | `NOT_QUALIFIED` · `CANDIDATE_UNCONFIRMED` · `DOCTRINE_CONFLICT` — **`CONFIRMED` unreachable** (食傷 multiplicity is required-but-unquantifiable) |
-| 從旺格 / 從强格 / 從財格 / 從官殺格 / 專旺격 | **NOT YET DERIVED** — pending the D2 reconciliation (§0.2). These five entries still carry V1.1's "dominant force" / "near-total force" language, which is the same unsourced magnitude construct as the deleted "decisive tilt" (§12.2) and must be removed or sourced before their reachability can be honestly stated. **Do not implement any of these five gates on the strength of this revision.** |
+**The `CONFIRMED` enum is therefore no longer fake** — it is reachable for five patterns. 從兒's cap is a
+substantive doctrinal position (its central quantifier is unresolved), not an artefact of over-strictness,
+and it is recorded as `CANDIDATE_ONLY_IN_V1` rather than left as a hidden dead end.
 
-**Consequence, stated plainly:** the special-structure gate cannot presently confirm any pattern. That is a
-disclosed limitation of the available doctrine under this project's no-invented-thresholds rule, not a bug
-to be patched by relaxing the rule.
+**Residual dependency, disclosed.** Where a pattern's disqualifier evaluation would route through §8's
+functional-integrity grading, V1.3 uses the **presence** reading instead (§10.1), precisely so the gate does
+not depend on the unbuilt and arguably unsourceable severity grading. That is a deliberate narrowing: it
+makes the gate stricter and buildable, rather than permissive and blocked.
+
+### 10.7 CROSS-PATTERN COMPOSITION — new in V1.3
+
+Six evaluators run independently over the same facts and each returns one of four states. §10.3 emits one
+gate output. The composition function was missing entirely; it is defined here as a **total** mapping.
+
+**Step 1 — structural exclusivity (proved, not asserted).** The patterns partition by the `ROOT_STATE` and
+channel premises they require, so most pairs cannot co-occur:
+
+- 從旺 / 從强 / 專旺 all require the DM's own element to be present and unopposed. 從財 / 從官殺 / 從兒 all
+  require `ROOT_STATE = NO_ROOT`. **No chart satisfies both groups** — a chart cannot simultaneously have
+  四柱皆比劫 and no same-element root. The strong-DM and weak-DM groups are therefore mutually exclusive by
+  construction.
+- Within the weak-DM group, 從財 / 從官殺 / 從兒 each require their own channel to be the **uniquely**
+  occupied one (何其獨旺). Uniqueness is exclusive by definition, so at most one can hold.
+- Within the strong-DM group, exclusivity is **not** guaranteed: 從旺 and 從强 differ on 印's weight and on
+  日主當令, and a chart with 印綬重重 + 比劫疊疊 + 當令 satisfies both 從旺's premises and 從强's. 專旺 may
+  also co-occur with either, since it adds a branch-configuration requirement without contradicting them.
+
+**Step 2 — resolution of the genuinely overlapping cases:**
+
+| Situation | Output | Authority |
+|---|---|---|
+| Exactly one pattern `CONFIRMED`, others `NOT_QUALIFIED` | that pattern | — |
+| 從强 and 從旺 both `CONFIRMED` | **從强** | Source-backed: 從强's premises are strictly stronger (印綬重重 ⊃ 有印綬之生; adds 日主當令). The more specific satisfied contract wins — a `SUBTYPE_RELATION`, not a ranking |
+| 專旺 and (從旺 or 從强) both `CONFIRMED` | **`AMBIGUOUS_MULTI_CANDIDATE`**, both named | **No source ranks them**, and they are defined in different chapters as different structures. Deokbuni does **not** invent a precedence. Both are surfaced |
+| Any pattern `DOCTRINE_CONFLICT` | **`DOCTRINE_CONFLICT`**, naming the poles | §13; conflict dominates a confirmation elsewhere because it means the evidence itself is contested |
+| One `CONFIRMED` + others `CANDIDATE_UNCONFIRMED` | the `CONFIRMED` one, with the near-misses attached as evidence | Near-misses are never silently dropped (§11.1 step 6) |
+| All `CANDIDATE_UNCONFIRMED` | `SPECIAL_PATTERN_UNCERTAIN` | §13 |
+| All `NOT_QUALIFIED` | `NOT_QUALIFIED` → ordinary model (§12) | — |
+
+**Prohibited resolutions, stated so they cannot be reintroduced:** majority vote across evaluators;
+first-match-wins by document order; an invented precedence rank; silently preferring the pattern with more
+satisfied conditions. If two patterns are genuinely co-confirmed and no source ranks them,
+`AMBIGUOUS_MULTI_CANDIDATE` is the honest output and it is authoritative.
 
 ---
 
@@ -959,7 +1357,7 @@ from **verdict priority** explicitly, as the brief requires.
    one of the four §10.3 states.
 
 4. IF CONFIRMED: route to special-structure strength semantics (a distinct
-   output category, out of this document's scope to design further — §12.4).
+   output category, out of this document's scope to design further — §12.6).
 
 5. IF NOT_QUALIFIED: proceed to the ordinary structural-strength model
    (Step H, §12) using the SAME finalized B–F facts.
@@ -1005,145 +1403,121 @@ become cross-step or final authority.
 
 ---
 
-## 12. Seven-band classification — REVISED (audit findings 2, 3)
+## 12. Ordinary strength classification — **REWRITTEN IN V1.3 (audit finding D3)**
 
-### 12.0 Explicit relabeling (brief §12)
+### 12.0 What the seven bands are, and what they are not
 
-**The seven bands are DEOKBUNI LEVEL-C / SOURCE_CLASS_D PRODUCT OPERATIONALIZATION, not a classical
-seven-category taxonomy.** Classical sources discuss strength on a spectrum with named extremes (신강/신약
-and 中和/balance are genuinely classical vocabulary), but the specific **seven-way** subdivision with two
-intensity levels inside each of the strong/weak wings is this project's own rendering choice for product
-purposes, not a claim that 子평真詮/滴천수/등 themselves enumerate exactly these seven labels as a fixed
-taxonomy. This is stated explicitly here and is retained **only** because each adjacent boundary below can be
-defined without hidden scoring (§12.2) — if a future revision cannot maintain that property, the seven-band
-rendering itself should be reconsidered, not patched with an undefined term.
+**The seven Korean labels are a Deokbuni product rendering (`DEOKBUNI_OPERATIONALIZATION`), not a classical
+seven-level taxonomy, and V1.3 stops trying to prove otherwise.** 신강/신약 and 中和 are genuine classical
+vocabulary; a fixed seven-way subdivision is not. This is now stated as a settled position rather than
+defended.
 
-### 12.1 Three-stage structure (unchanged from V1 — restated per brief §13)
+What the rendering must satisfy is therefore **not** historical attestation. It is four engineering
+properties, all of which §12.1–§12.3 must meet:
 
-- **Stage 1** (WEAK/BALANCED/STRONG structural family) — the sign of Step H's synthesis, or the routed output
-  of a CONFIRMED special structure (§12.4).
-- **Stage 2** (within-family intensity) — not a magnitude score; the qualitative question of how decisive the
-  tilt is.
-- **Stage 3** (seven-band product rendering) — a **renderer over the richer Stage 1/2 structural verdict, not
-  a separate doctrine engine** (brief §13's explicit requirement). The internal structural state (Steps A–H's
-  full evidence trail, §14) must contain enough evidence that the seven-band label is reconstructable from it
-  — the label is never computed independently of, or prior to, that evidence trail.
+1. **Explicit** — every label's entry condition is written down.
+2. **Deterministic / replayable** — same facts ⇒ same label, for any implementer.
+3. **Non-hidden** — no weight, percentage, or cutoff exists that is not printed in this document.
+4. **Structurally meaningful** — each label corresponds to a distinct cell of the §7.3 state model, not to a
+   position on an invented scale.
 
-### 12.2 Adjacent-pair DECISION CONTRACTS (rewritten per brief §12 — no undefined terms as sole authority)
+V1.2's escape clause ("retained only because each boundary can be defined without hidden scoring") is
+**discharged, not exercised**: §7.3's state model now supplies the missing definitions, so the bands survive.
 
-Each boundary below replaces V1's prose (which used terms like "clearly dominant," "decisive tilt,"
-"genuinely functional," and "outmatched" as the *entire* decision rule) with an explicit contract. Where a
-term like "functionally intact" or "seasonally vital" is used, it refers to the **already-defined** structural
-predicates from §5 (root existence/tier/vitality/survival), §6 (support rootedness/proximity/combination
-state), §7 (opposition presence/effective-force gate), and §8 (relation formation/transformation/functional
-effect) — not to a new undefined term. Where no such prior definition exists for a term this document would
-otherwise need, that term is marked `NON_EXECUTABLE / REQUIRES_FURTHER_DOCTRINE` rather than used as though it
-were self-evident (§21).
+### 12.1 Stage 1 — the WEAK / BALANCED / STRONG family, as a total decision table
 
-**On "decisive tilt" specifically (§22 item 12 cross-reference):** several contracts below reference whether
-Step H's synthesis reaches a "decisive tilt." This is **not** a hidden numeric threshold — it is the ONE
-place this document deliberately retains genuine, disclosed qualitative synthesis, by design, matching the
-classical grounding §11.0 argues for (子평真詮/滴천수's own method is explicitly NOT reducible to summing
-commensurable factors). The distinction that matters: a HIDDEN threshold is an undisclosed rule dressed up in
-prose that a developer would have to reverse-engineer or guess at. Step H's synthesis is the opposite — it is
-**explicitly named as the locus of irreducible judgment**, constrained by everything upstream (A's seasonal
-prior; B–F's finalized, individually-defined structural facts) and required to report HONESTLY when it does
-not resolve (feeding `중화`/`STRENGTH_BORDERLINE`, §13, rather than forcing a tie-break). Two independent
-implementers given the same finalized B–F facts are expected to converge on the same STRUCTURAL CONDITIONS
-verdicts (§12.2's contracts are fully executable for those), and are expected to converge on the same
-UNCERTAINTY-vs-CONFIDENT classification (a genuinely close call is discoverable from the same upstream facts
-by any competent implementer) — what is not mechanically guaranteed to converge, by the doctrine's own
-design, is a forced single answer on a chart where the sourced method itself does not produce one; the
-doctrine's answer in that case is to report the uncertainty, not to fabricate agreement.
+Stage 1 consumes exactly three dimensions from §7.3: `ROOT_STATE`, `SEASONAL_STATE`, `FACTION_STATE`.
+That is 3 × 2 × 3 = **18 cells**, and **every one is assigned below**. There is no formula: this is a lookup
+table, and each cell is individually justified. Nothing is summed, weighted, or voted.
 
-**극신약 vs. 신약**
+Read `R` = ROOT_STATE, `S` = SEASONAL_STATE, `F` = FACTION_STATE.
 
-- REQUIRED STRUCTURAL CONDITIONS (극신약): zero candidates pass §5's root-existence test with post-§8
-  functional survival (i.e., every candidate root found in B either did not exist, or was found DESTROYED/
-  fully diverted by F); no §6-qualifying support stem passes §7.3's effective-force gate at even a MODERATE
-  ordinal level; §10's gate returns `NOT_QUALIFIED` for every 從弱-family pattern (i.e., this is NOT itself a
-  confirmed special structure — see §12.4 for why 극신약-as-ordinary-band and 從弱-as-special-structure are
-  different verdict categories).
-- COUNTEREVIDENCE THAT PREVENTS 극신약 (→ 신약 instead): **any** single candidate root or support stem
-  surviving F at even a WEAK ordinal §7.3 level, even at a 여기 tier or seasonally-disadvantaged position —
-  this is the corrected replacement for V1's removed Cap 1 (§12.3): rootlessness is not an absolute cap
-  producing a separate impossible-to-exit state, it is the literal REQUIRED CONDITION for 극신약 specifically,
-  stated as a positive contract rather than a prohibition on the opposite band.
-- UNCERTAINTY CONDITIONS: if F's clash/combination-integrity read on the sole remaining candidate is itself
-  contested (a mediation call that could reasonably go either way) → `STRENGTH_BORDERLINE`, not a forced
-  choice between the two bands.
-- SPECIAL-PATTERN INTERACTION: if §10 returns `CANDIDATE_UNCONFIRMED` or `DOCTRINE_CONFLICT` for a 從弱-family
-  pattern on this same chart, the ordinary-model band (극신약 or 신약) may still be reported per §11.1 step 6,
-  but WITH the special-pattern uncertainty flagged alongside it, never silently suppressed.
-- EXAMPLES OF WHAT IS NOT SUFFICIENT: a chart with several candidate roots that are ALL destroyed by F is
-  still 극신약-eligible (destroyed roots do not count as surviving evidence) — raw candidate COUNT before F's
-  integrity check is never sufficient on its own, only post-F survival counts.
+| # | R | S | F | Stage 1 | Basis |
+|---|---|---|---|---|---|
+| 1 | `NO_ROOT` | `SEASON_OPPOSING` | `SUPPORT_SCARCE` | **WEAK** | All three dimensions agree. 任鐵樵's root gate fails outright (無根 ⇒ 不能受), 徐樂吾's both axes read 衰/弱 |
+| 2 | `NO_ROOT` | `SEASON_OPPOSING` | `FACTION_EVEN` | **WEAK** | Root gate fails and season opposes; the faction axis abstains rather than contradicting |
+| 3 | `NO_ROOT` | `SEASON_OPPOSING` | `SUPPORT_NUMEROUS` | **BALANCED** *(uncertainty-flagged)* | Genuine conflict: rootless (任鐵樵 ⇒ cannot bear) but 黨眾 (徐樂吾 ⇒ 強). Unrooted support is 浮 — §6.2 says not zero, and no source ranks these two against each other ⇒ `STRENGTH_BORDERLINE` |
+| 4 | `NO_ROOT` | `SEASON_SUPPORTIVE` | `SUPPORT_SCARCE` | **WEAK** | 得時 alone cannot establish 旺 — 子平真詮 得時不旺 applied directly; root gate fails and faction is scarce |
+| 5 | `NO_ROOT` | `SEASON_SUPPORTIVE` | `FACTION_EVEN` | **BALANCED** *(uncertainty-flagged)* | Season supports, root gate fails, faction abstains. No source resolves this ⇒ `STRENGTH_BORDERLINE` |
+| 6 | `NO_ROOT` | `SEASON_SUPPORTIVE` | `SUPPORT_NUMEROUS` | **BALANCED** | Two axes favourable, but 無根 blocks the STRONG family: a rootless DM 不能受 regardless of 勢. Sits at the top of BALANCED, never STRONG |
+| 7 | `ROOT_PRESENT` | `SEASON_OPPOSING` | `SUPPORT_SCARCE` | **WEAK** | Two dimensions oppose; the root gate passes but 任鐵樵's clause establishes only *能受*, not 旺 |
+| 8 | `ROOT_PRESENT` | `SEASON_OPPOSING` | `FACTION_EVEN` | **WEAK** | Season opposes, faction abstains. 失時 with no compensating 勢 |
+| 9 | `ROOT_PRESENT` | `SEASON_OPPOSING` | `SUPPORT_NUMEROUS` | **BALANCED** | 子平真詮 失時不弱 applied directly: 失令 does not settle 弱 when root and faction both hold |
+| 10 | `ROOT_PRESENT` | `SEASON_SUPPORTIVE` | `SUPPORT_SCARCE` | **BALANCED** | Mirror of #9: 得時 + root, but 助寡. 得時不旺 forbids STRONG on season alone |
+| 11 | `ROOT_PRESENT` | `SEASON_SUPPORTIVE` | `FACTION_EVEN` | **BALANCED** | Two favourable dimensions, faction abstains — insufficient for STRONG without 黨眾 |
+| 12 | `ROOT_PRESENT` | `SEASON_SUPPORTIVE` | `SUPPORT_NUMEROUS` | **STRONG** | All three agree: 得時 (旺) + 黨眾 (強) + 通根. This is 徐樂吾's 旺+強 corner |
+| 13–18 | `ROOT_PRESENT_RELATION_UNRESOLVED` | *any* | *any* | **= the corresponding `ROOT_PRESENT` cell, but the result is capped at BALANCED and always uncertainty-flagged** | §8.9's conservative policy: an unresolved relation may not *promote* a chart, and may not silently demote it either |
 
-**신약 vs. 중화신약**
+**Two invariants a reader can check against the table.** (a) `NO_ROOT` never yields STRONG — 任鐵樵's clause
+is an existence gate, and a chart that 不能受 is not 강. (b) No single dimension alone moves a chart to WEAK
+or STRONG — every extreme cell (#1, #12) requires all three to agree, which is 子平真詮's 得時不旺失時不弱
+enforced structurally rather than by exhortation.
 
-- REQUIRED STRUCTURAL CONDITIONS (신약): at least one candidate passes §7.3's effective-force gate at WEAK-to-
-  MODERATE ordinal level on the DM's own side (§5/§6), while the opposition side (§7/§8) has at least one
-  candidate passing at MODERATE-or-higher, AND no single DM-side candidate reaches STRONG.
-- COUNTEREVIDENCE THAT PREVENTS 신약 (→ 중화신약 instead): a DM-side candidate reaching STRONG ordinal level
-  post-F (an in-season-or-정기-layer root/support surviving intact), OR the opposition's candidates being
-  dispersed across multiple different §7.1 categories (食傷/財/官殺) rather than concentrated in one — per
-  §7.1's own distinction, a dispersed opposing force is weighed differently from a concentrated one of
-  equivalent raw presence, consistent with the anti-additive principle (§11.0).
-- UNCERTAINTY CONDITIONS: if the DM-side candidate's ordinal grade (WEAK vs. MODERATE) is itself a close call
-  under §7.3's own criteria → `STRENGTH_BORDERLINE`.
-- SPECIAL-PATTERN INTERACTION: same as above.
-- EXAMPLES OF WHAT IS NOT SUFFICIENT: a DM-side candidate that is merely PRESENT (pre-§7.3 gate) does not
-  count — it must have passed the effective-force gate at the stated ordinal level.
+### 12.2 Stage 2 — intensity, only where the table supports a distinction
 
-**중화신약 vs. 중화**
+Stage 2 does **not** subdivide every family into three merely to reach seven. It reports how many of the
+three dimensions agree with the family direction — a transparent enumeration over the same 18 cells, not a
+score.
 
-- REQUIRED STRUCTURAL CONDITIONS (중화신약): the qualitative comparison across A (seasonal prior), the DM-side
-  candidate set (post-E/F), and the opposition candidate set (post-E/F) still tips to opposition when all
-  three are weighed together per Step H (§11) — not summed, weighed as the sequenced synthesis §11.0 requires.
-- COUNTEREVIDENCE THAT PREVENTS 중화신약 (→ 중화 instead): no single one of A/DM-side/opposition-side produces
-  a decisive tilt in Step H's synthesis — i.e., Step H itself, applying its own sourced method (子평真詮/滴천수,
-  §11.0), reaches a genuine indeterminate reading, not merely "the numbers are close" (there are no numbers
-  to be close — indeterminacy here means the QUALITATIVE synthesis itself does not resolve, which Step H must
-  be able to report honestly rather than force a tie-break).
-- UNCERTAINTY CONDITIONS: 중화 frequently co-occurs with `STRENGTH_BORDERLINE` (§13) — this is expected and
-  correct, not a failure state; a chart can be genuinely 중화 with confidence (all evidence points to balance)
-  or 중화 with borderline uncertainty (the evidence is too thin/contested to be sure which way, if any, it
-  tips) — both are valid, distinguished by the CONFIDENCE field (§14), not by a different band.
-- SPECIAL-PATTERN INTERACTION: same as above (though 중화 charts are the least likely to have qualified for
-  any 從-pattern, since 從-patterns require an exhaustive rootless/dominant premise that a balanced chart by
-  definition does not have).
-- EXAMPLES OF WHAT IS NOT SUFFICIENT: "the chart has roughly equal support and opposition candidates by
-  count" is explicitly NOT the decision rule — count is never the decision rule anywhere in this document;
-  중화 is reached (or not) by Step H's qualitative synthesis, which may or may not correlate with raw counts
-  looking balanced.
+| Stage 1 | Intensity | Entry condition | Cells |
+|---|---|---|---|
+| WEAK | `EXTREME_WEAK` | all three dimensions weak-leaning (`NO_ROOT` + `SEASON_OPPOSING` + `SUPPORT_SCARCE`) | #1 |
+| WEAK | `CLEAR_WEAK` | WEAK family, not all three | #2, #4, #7, #8 |
+| BALANCED | `BALANCED_LEAN_WEAK` | BALANCED and the root gate fails (`NO_ROOT`) | #3, #5, #6 |
+| BALANCED | `BALANCED_CENTRAL` | BALANCED, root present, and the two remaining dimensions disagree with each other | #9, #10 |
+| BALANCED | `BALANCED_LEAN_STRONG` | BALANCED, root present, and no dimension is strong-opposing (season supportive, faction even) | #11 |
+| STRONG | `CLEAR_STRONG` | STRONG family reached, but a §12.5 limiting-evidence item applies | #12 with limiting evidence |
+| STRONG | `EXTREME_STRONG` | #12 with **no** limiting evidence and no opposing channel functionally present | #12 clean |
 
-**중화 vs. 중화신강 / 중화신강 vs. 신강 / 신강 vs. 극신강**
+**Honest disclosure about this stage.** The *corner* intensities (`EXTREME_WEAK`, `EXTREME_STRONG`) are
+doctrinally grounded — they are the 極 cases the 從-patterns are carved out of (§12.6). The *middle*
+gradations are `DEOKBUNI_OPERATIONALIZATION`: no source grades a BALANCED chart into three sub-levels. They
+are retained because they are transparent, replayable, and each maps to a named cell — not because a
+classical text licenses them. Any consumer requiring source-backed granularity must read Stage 1 only.
 
-Exact mirror images of 중화신약/신약/극신약 above, with DM-side and opposition-side swapped. Restated in full
-rather than left implicit, per §21's instruction against relying on an unstated "mirror" without executable
-content:
+### 12.3 Stage 3 — the seven-band renderer
 
-- **중화 vs. 중화신강:** REQUIRED (중화신강): qualitative tilt in Step H favors the DM's own side, weighed as
-  above. COUNTEREVIDENCE (→ 중화): no decisive tilt either way. UNCERTAINTY: same BORDERLINE co-occurrence
-  logic. EXAMPLES NOT SUFFICIENT: raw count comparisons.
-- **중화신강 vs. 신강:** REQUIRED (신강): a DM-side candidate reaches STRONG post-F, opposition candidates
-  remain at WEAK-to-MODERATE with none reaching STRONG. COUNTEREVIDENCE (→ 중화신강 instead, i.e. NOT yet
-  신강): an opposition candidate also reaching STRONG post-F, or the DM-side's STRONG candidate being itself
-  contested by an unresolved F-layer integrity question. UNCERTAINTY: `STRENGTH_BORDERLINE` on a contested
-  F-call. SPECIAL-PATTERN INTERACTION: as above. EXAMPLES NOT SUFFICIENT: mere presence without the §7.3
-  ordinal grade.
-- **신강 vs. 극신강:** REQUIRED (극신강): **every** opposition candidate fails §7.3's effective-force gate
-  post-F (none reach even WEAK) or is cancelled outright by F — the mirror of 극신약's "zero surviving DM-side
-  candidates" contract, stated positively: zero surviving opposition candidates. COUNTEREVIDENCE (→ 신강
-  instead): any single opposition candidate surviving F at even WEAK ordinal level. UNCERTAINTY: contested
-  F-call on the sole remaining opposition candidate → `STRENGTH_BORDERLINE`. SPECIAL-PATTERN INTERACTION: if
-  §10 returns anything other than `NOT_QUALIFIED` for 從强/從旺/專旺 on this chart, that is flagged alongside
-  (§12.4 — these are DIFFERENT verdict categories, not automatically the same claim, see §14 below).
-  EXAMPLES NOT SUFFICIENT: opposition candidates that are merely outnumbered, rather than failing the
-  effective-force gate, do not qualify the chart for 극신강 — a single functionally STRONG opposition
-  candidate, however outnumbered by DM-side candidates, keeps the chart at 신강, not 극신강.
+Stage 3 is a **pure mapping**. It introduces no new judgment, reads no facts, and cannot change a verdict.
 
-### 12.3 Structural caps REMOVED — replaced by disqualifying/limiting evidence (audit finding 3)
+| Stage 2 state | Band |
+|---|---|
+| `EXTREME_WEAK` | 극신약 |
+| `CLEAR_WEAK` | 신약 |
+| `BALANCED_LEAN_WEAK` | 중화신약 |
+| `BALANCED_CENTRAL` | 중화 |
+| `BALANCED_LEAN_STRONG` | 중화신강 |
+| `CLEAR_STRONG` | 신강 |
+| `EXTREME_STRONG` | 극신강 |
+
+`SEVEN_BAND_STATUS = CANONICAL_RENDERER_OVER_STAGE_2`. The bands are canonical **as a rendering of Stage 2**,
+and carry exactly the authority Stage 2 has — no more. Where Stage 2 is a `DEOKBUNI_OPERATIONALIZATION`
+middle gradation, the band inherits that status; a consumer needing source-backed resolution must branch on
+Stage 1.
+
+**Uncertainty overrides the band, never the reverse.** If `UNCERTAINTY_STATE ≠ STRENGTH_CONFIDENT` (§13), the
+band is emitted as `PROVISIONAL / DISPLAY_ONLY` and no downstream consumer (a future Yongshin phase, a UI
+badge, analytics) may treat it as equivalent to a confident label. Cells #3 and #5 always carry
+`STRENGTH_BORDERLINE`; row 13–18 always carries an unresolved-relation flag.
+
+### 12.4 Adjacent-boundary contracts, restated as cell identity
+
+Each boundary is now **a difference of cells**, not a threshold on a scale. Every boundary is decidable by
+reading the three §7.3 states.
+
+| Boundary | What actually separates them |
+|---|---|
+| 극신약 ↔ 신약 | Whether **all three** dimensions are weak-leaning (#1) or only some (#2/#4/#7/#8). Counterevidence blocking 극신약: any root at all, or `SEASON_SUPPORTIVE`, or a faction that is not scarce |
+| 신약 ↔ 중화신약 | Whether the chart is in the WEAK family at all. Root present + one favourable dimension moves it to BALANCED (#9/#10); rootless with a favourable dimension lands in BALANCED_LEAN_WEAK (#3/#5/#6) |
+| 중화신약 ↔ 중화 | The root gate. `NO_ROOT` ⇒ LEAN_WEAK (#3/#5/#6); `ROOT_PRESENT` with the other two disagreeing ⇒ CENTRAL (#9/#10) |
+| 중화 ↔ 중화신강 | Whether any dimension actively opposes. CENTRAL has one opposing dimension (#9 season, #10 faction); LEAN_STRONG has none, only abstention (#11) |
+| 중화신강 ↔ 신강 | Whether the faction axis reaches 黨眾. `FACTION_EVEN` ⇒ 중화신강 (#11); `SUPPORT_NUMEROUS` with root and season ⇒ STRONG (#12) |
+| 신강 ↔ 극신강 | Presence of §12.5 limiting evidence or a functionally-present opposing channel. Its absence, not its magnitude |
+
+**"Decisive tilt" is deleted from this document.** It appeared in V1.1/V1.2 as the sole authority for two
+boundaries while §12.2 itself conceded it was irreducible judgment. Every boundary above is now decided by
+cell identity over enumerated states. Any future text reintroducing a tilt/magnitude construct here is a
+regression against finding D3.
+### 12.5 Structural caps REMOVED — replaced by disqualifying/limiting evidence (audit finding 3)
 
 **V1's two caps are deleted as canonical rules.** They asserted that a rootless DM can **never** reach
 (극)신강, and a multiply-rooted, seasonally-supported DM can **never** reach (극)신약, through ordinary
@@ -1159,7 +1533,7 @@ opposition-side doctrine.
 
 **What replaces the caps:** the same evidence — rootlessness, or its mirror, exhaustive multi-root
 seasonal support — is retained as **extremely strong, usually decisive** evidence, now expressed as the
-positive REQUIRED CONDITIONS and COUNTEREVIDENCE fields of §12.2's own boundary contracts (e.g. 극신약's
+positive REQUIRED CONDITIONS and COUNTEREVIDENCE fields of §12.4's own boundary contracts (e.g. 극신약's
 REQUIRED CONDITIONS literally require zero surviving DM-side candidates — this achieves, through the ordinary
 evidence-weighing sequence, almost all of what Cap 1 was trying to guarantee, without asserting it as a
 separate, unconditional, non-participating rule that can contradict other stated doctrine). In the rare
@@ -1171,15 +1545,15 @@ real but consistently described as lesser than rooted support, §6.1), but is no
 This is the corrected, internally-consistent position.
 
 **This is a `DISQUALIFYING/LIMITING EVIDENCE` pattern, not a new arbitrary cap** (brief §11's explicit
-instruction) — it participates in the same Step H synthesis as everything else, expressed through §12.2's
+instruction) — it participates in the same Step H synthesis as everything else, expressed through §12.4's
 contracts rather than as a separate override layer.
 
-### 12.4 Extreme bands vs. special patterns — explicitly separated (audit finding, brief §14)
+### 12.6 Extreme bands vs. special patterns — explicitly separated (audit finding, brief §14)
 
 **극신약/극신강 (ordinary-model extreme bands) are NOT the same claim as a CONFIRMED special structure**, and
 must never be conflated:
 
-- An **ordinary-model 극신약** chart (§12.2's contract: zero surviving DM-side candidates) is reached through
+- An **ordinary-model 극신약** chart (§12.4's boundary: all three dimensions weak-leaning) is reached through
   Step H's normal weighing and remains an ORDINARY seven-band label — it does **not** imply 從財/從官殺/從兒
   are automatically CONFIRMED. Those patterns have their own independently-evaluated positive conditions
   (§10.1) that an ordinary-model 극신약 chart may or may not also satisfy.
@@ -1187,7 +1561,7 @@ must never be conflated:
   specifically requires a completed §8.3 harmony set, which an ordinary-model 극신강 chart (reached merely by
   every opposition candidate failing §7.3's gate) may not have at all.
 - Conversely, a chart where §10's gate returns `CONFIRMED` for a special pattern **does not receive an
-  ordinary-model seven-band label at all** — per §12.4's own routing (§11.1 step 4), it receives the
+  ordinary-model seven-band label at all** — per §12.6's own routing (§11.1 step 4), it receives the
   **named special-structure verdict** instead, a categorically different output. `SPECIAL_PATTERN_STATUS`
   (§14) is reported alongside CONFIRMED cases explicitly as `CONFIRMED`, not folded into whichever seven-band
   label the ordinary machinery would have separately produced.
@@ -1209,7 +1583,7 @@ all," since the phase computation is available today — it is specifically the 
 | State | Trigger condition |
 |---|---|
 | **STRENGTH_CONFIDENT** | Step H's synthesis shows a directional tilt independently reinforced at multiple steps, F introduces no material contradiction, and G's gate is cleanly closed (`NOT_QUALIFIED` with no near-misses, or `CONFIRMED` with zero unresolved sub-conditions). Seven-band label (or special-pattern verdict) asserted at face value. |
-| **STRENGTH_BORDERLINE** | Same-method evidence genuinely close per §12.2's own UNCERTAINTY CONDITIONS fields (a contested F-layer integrity call; a DM-side candidate's ordinal grade sitting right at a §7.3 boundary). Output = an adjacent-pair range, never a forced single label. |
+| **STRENGTH_BORDERLINE** | Same-method evidence genuinely close per §12.1's uncertainty-flagged cells (#3, #5) and rows 13-18, or a relation whose outcome is UNRESOLVED per §8.9. Output = an adjacent-pair range, never a forced single label. |
 | **SPECIAL_PATTERN_UNCERTAIN** | §10's gate returns `CANDIDATE_UNCONFIRMED` for the relevant pattern(s) — a near-miss that must never silently fall back to the ordinary ladder as though the question were never asked (§11.1 step 6). |
 | **DOCTRINE_CONFLICT** | Either (a) §10.1's per-pattern `AMBIGUOUS CASE POLICY` routes to this state at the gate level (e.g. the 財+官殺-both-present 從財 case), or (b) different named lineages/schools (§2) would weigh the *same* finalized B–F evidence differently at a specific step (e.g. §5.6's dimension-weighting question, or §8.1's DM-involvement 合화 dispute). Must name which schools/lineages disagree and how — never silently averaged. |
 | **INSUFFICIENT_STRUCTURAL_EVIDENCE** | The chart is flagged `BOUNDARY_SENSITIVE` per §4.2's `OPTIONAL_SILING_POLICY` (birth near a 節氣 changeover, where the exact 사령 sub-period table — still not built, now P1 — could plausibly change the seasonal reading) AND the case is plausibly sensitive to that precision (i.e., other evidence is not so one-sided that the boundary question is moot). This is narrower than V1's original trigger, consistent with §4.2's downgrade — it no longer fires merely because the sub-period table doesn't exist; it fires only for genuinely boundary-proximate charts. |
@@ -1272,7 +1646,7 @@ it does not control it). If Step E's search finds no OTHER unclashed 인성 root
 controlling faction (七殺, reinforced by the 財-suppressed 인성's absence from the support side) is judged
 functionally dominant and largely unmediated."
 
-**VERDICT** (Step I): "중화신약 — per §12.2's contract, the DM retains one functional-but-seasonally-weakened
+**VERDICT** (Step I): "중화신약 — per §12.4's boundary contract, the DM retains one functional-but-seasonally-weakened
 root (fails 극신약's zero-surviving-candidates requirement), while the functionally dominant, unmediated
 七殺, reinforced by a correctly-attributed 財-suppressed 인성 absence, tips the balance to the weak side of
 center."
@@ -1331,14 +1705,14 @@ directly, beyond Case 27's fix) — exceeding the 40-case minimum per the brief'
 | 1 | 得令 but structurally weak | DM 旺 by month, but zero functionally-surviving root elsewhere and the month branch itself is clashed | Reduced weight on the seasonal prior; verdict trends toward 신약/중화신약 depending on opposition | Verdict locked to 신강+ purely because month = 旺 | §4.4(1), §8.4 |
 | 2 | 失令 but structurally strong | DM 死/囚 by month, but multiple intact, functionally-surviving 본기-tier roots elsewhere plus rooted transparent 비겁 | Verdict trends 신강/중화신강 despite 실령 | Verdict locked to 신약 purely because month ≠ 旺/相 | §4.4, §5.7 |
 | 3 | One root vs. multiple roots (non-additive) | Chart A: one 본기-tier, seasonally vital, functionally-intact 월지 root. Chart B: three scattered 여기-tier roots in non-combining branches | Chart A may rate equal or stronger than Chart B despite fewer roots | Chart B automatically rated stronger purely by root COUNT | §5.7 |
-| 4 | Root present but functionally damaged | A same-stem root exists in an isolated branch that is then clashed with no mediation | Per §8.4, root graded WEAKENED/DESTROYED, not counted at full force in §5/§12.2's contracts | Root counted as fully functional because "root = +1" regardless of clash | §8.4 |
+| 4 | Root present but functionally damaged | A same-stem root exists in an isolated branch that is then clashed with no mediation | Per §8.4, root graded WEAKENED/DESTROYED, routed to ROOT_EFFECT_UNRESOLVED per §8.10 | Root counted as fully functional because "root = +1" regardless of clash | §8.4 |
 | 5 | Unrooted visible support | A visible 인성 stem with no root anywhere, distant column | Support graded FLOATING (§6.2) — contributes materially less than a rooted equivalent, but not zero | Support counted identically to a rooted 인성 in the same tally | §6.1, §6.2 |
 | 6 | Strong output drain | Multiple rooted, seasonally-vital 食傷 stems, DM otherwise moderate | Verdict trends toward 신약/중화신약 if unmediated; 신강 with 食神制殺 usefulness noted separately (favorability axis) if a controlling 관살 is present that 食傷 checks | Output drain treated identically regardless of whether it is checking a real 관살 threat (conflating strength-axis and favorability-axis, §7.4) | §7.1, §7.4 |
-| 7 | Strong officer pressure — REVISED per re-audit | Rooted, seasonally-vital 七殺 with no functionally-intact 食傷/印 mediation | Verdict trends 신약/중화신약 per §12.2's contract (opposition candidate reaches STRONG post-F); 七殺's unchecked-vs-正官 disposition is surfaced as a SEPARATE qualitative severity flag (§7.1) — the ORIGINAL case wording risked implying the disposition flag itself changes the strength magnitude, which §7.1 explicitly forbids; this revision makes the two claims (magnitude vs. disposition) textually distinct | 正官 and 七殺 treated as numerically different DRAIN MAGNITUDES (as opposed to different disposition/severity flags at equal magnitude) | §7.1 (explicit warning), §12.2 |
+| 7 | Strong officer pressure — REVISED per re-audit | Rooted, seasonally-vital 七殺 with no functionally-intact 食傷/印 mediation | Verdict trends 신약/중화신약 per §12.1's table (an occupied opposing channel with the faction axis not favouring the DM); 七殺's unchecked-vs-正官 disposition is surfaced as a SEPARATE qualitative severity flag (§7.1) — the ORIGINAL case wording risked implying the disposition flag itself changes the strength magnitude, which §7.1 explicitly forbids; this revision makes the two claims (magnitude vs. disposition) textually distinct | 正官 and 七殺 treated as numerically different DRAIN MAGNITUDES (as opposed to different disposition/severity flags at equal magnitude) | §7.1 (explicit warning), §12.1 |
 | 8 | Strong wealth burden | Multiple rooted 財 stems generating a rooted, functionally-intact 官殺 (財生官殺 chain) | Opposition faction tagged as reinforced/chained (§7.2), not three independent unrelated drains | 財 and its generated 官殺 counted as two unrelated, unlinked drain units | §7.2 |
-| 9 | Balanced chart | Season mixed (相), one moderate functionally-surviving root, one moderate rooted support stem, one moderate rooted opposing stem, Step H's synthesis genuinely does not resolve a tilt | 중화, STRENGTH_BORDERLINE or STRENGTH_CONFIDENT depending on how cleanly Step H resolves | Forced into a definite one-sided band merely because the engine must output *something* precise | §12.2 (중화 contract), §13 |
-| 10 | Near-balanced weak | Same as #9 but opposition has a slight, genuine post-F functional edge per Step H | 중화신약 | Forced all the way to 신약 or flattened to 중화 | §12.2 |
-| 11 | Near-balanced strong | Mirror of #10 | 중화신강 | Forced to 신강 or flattened to 중화 | §12.2 |
+| 9 | Balanced chart | Season mixed (相), one moderate functionally-surviving root, one moderate rooted support stem, one moderate rooted opposing stem, Step H's synthesis genuinely does not resolve a tilt | 중화, STRENGTH_BORDERLINE or STRENGTH_CONFIDENT depending on how cleanly Step H resolves | Forced into a definite one-sided band merely because the engine must output *something* precise | §12.1 (cells #9/#10), §13 |
+| 10 | Near-balanced weak | Root present, one dimension favourable and one opposing, and the root gate fails | 중화신약 (BALANCED_LEAN_WEAK) | Forced all the way to 신약 or flattened to 중화 | §12.1 cells #3/#5/#6, §12.2 |
+| 11 | Near-balanced strong | Root present, season supportive, faction EVEN (no dimension actively opposing) | 중화신강 (BALANCED_LEAN_STRONG) | Forced to 신강 or flattened to 중화 | §12.1 cell #11 |
 | 12 | Apparent special-pattern candidate, rejected | DM appears rootless, but one 정기-tier functionally-intact root branch is found on exhaustive scan | `NOT_QUALIFIED` (the corrected §10.0 mechanism finds a functionally-surviving disqualifier) → ordinary model; likely 극신약/신약 depending on that root's own vitality/survival | Special-pattern verdict issued despite a functionally-intact disqualifying root | §10.0, §10.3 |
 | 13 | Genuine special-pattern candidate | DM rootless on exhaustive scan, month and all branches dominated by one non-DM element, that element's own root-competitors are either absent or present-but-functionally-destroyed by F | `SPECIAL_PATTERN_CONFIRMED` (specific sub-type per §10.1) if EVERY sub-check independently clears through §10.0's mechanism | Ordinary seven-band label applied instead of the special-structure output category | §10.3, §12.4 |
 | 14 | Disputed special-pattern boundary | DM rootless, dominant element aligned, but one branch carries only a 여기-tier root of the opposing element with genuinely contested clash status | `SPECIAL_PATTERN_UNCERTAIN` | Silently defaulting to either CONFIRMED or the ordinary ladder without flagging the near-miss | §10.0, §13 |
@@ -1347,7 +1721,7 @@ directly, beyond Case 27's fix) — exceeding the 40-case minimum per the brief'
 | 17 | Clash affecting root | A 본기-tier root branch is clashed by an adjacent branch with no mediation and no reinforcement | Root tagged WEAKENED or DESTROYED (graded, per relative vitality of the two branches) | Uniform "root survives regardless of clash" or uniform "any clash = full destruction" without grading | §8.4 |
 | 18 | Clash not destroying structural support | Same clash as #17, but a third branch combines with one clash member (貪合忘沖) | Root tagged MEDIATED — reduced but non-zero force | Root treated as fully destroyed, ignoring the mediating principle | §8.4 |
 | 19 | Raw element count misleads | DM element appears 4 times across the 8 stem/branch slots (nominal high count), but all 4 occurrences are either 여기-tier hidden stems in seasonally-dead branches or floating unrooted stems | Verdict does NOT default to 신강 merely from the raw count; functional analysis (§5, §6) may still yield 신약/중화신약 | Raw element count used as a shortcut proxy for strength | §3 (concept #1), §5.1 |
-| 20 | Hidden stems materially matter — REVISED per re-audit | DM has no visible same-element stem anywhere, but a 본기-tier hidden root exists in a functionally-intact, seasonally-vital branch | Root counted according to its own §5.2/§5.3/§8.4 layer-vitality-survival characteristics — on EQUAL ONTOLOGICAL FOOTING with a visible-stem root of comparable tier/vitality/survival, neither discounted merely for being hidden-only NOR asserted as an absolute "full functional weight" (V1's original wording), since this document does not use numeric "weight" at all | Hidden-stem roots discounted purely because they are "hidden"; OR a hidden root asserted at some absolute maximal weight independent of its own tier/vitality/survival facts | §5.1, §5.2, §12.2 |
+| 20 | Hidden stems materially matter — REVISED per re-audit | DM has no visible same-element stem anywhere, but a 본기-tier hidden root exists in a functionally-intact, seasonally-vital branch | Root counted according to its own §5.2/§5.3/§8.4 layer-vitality-survival characteristics — on EQUAL ONTOLOGICAL FOOTING with a visible-stem root of comparable tier/vitality/survival, neither discounted merely for being hidden-only NOR asserted as an absolute "full functional weight" (V1's original wording), since this document does not use numeric "weight" at all | Hidden-stem roots discounted purely because they are "hidden"; OR a hidden root asserted at some absolute maximal weight independent of its own tier/vitality/survival facts | §5.1, §5.2, §12.1 |
 | 21 | Climate and strength must remain separate — hot chart | DM is Fire, born in 巳 month (peak Fire season, structurally 신강-favorable), chart also shows extreme heat/dryness by the separate `CLIMATE_DOMAIN` fact object | Strength verdict driven purely by §3–§12 structural facts; `EXTREME_CLIMATE_FUNCTIONALITY` (§9) may inform how a SPECIFIC element's own functional grading (§5.3/§7.3) reads, but climate is reported as a separate fact, never directly assigning the band | Climate ("needs water to cool down") used to lower/raise the strength band directly | §9 |
 | 22 | Climate and strength must remain separate — frozen chart | DM is Water, born in 子 month (peak Water season), chart shows extreme cold with no Fire anywhere | Same structural-strength verdict logic as any other 旺-season DM; `EXTREME_CLIMATE_FUNCTIONALITY` fact ("frozen, needs Fire to thaw for functional use") reported separately, may inform a SPECIFIC downstream element's functional grading, never the band directly | Structural strength band itself downgraded because the chart is climatically "unbalanced" | §9, CS-4-style "frozen water" example |
 | 23 | 節氣-boundary birth, residual qi | Birth falls within the `BOUNDARY_SENSITIVE` window of §4.2's `OPTIONAL_SILING_POLICY`; month branch nominally supports DM, but the residual 餘氣 of the prior (opposing) month plausibly still governs | `INSUFFICIENT_STRUCTURAL_EVIDENCE` (§13, narrowed trigger) if the case is plausibly sensitive to the missing exact table; a best-current reading using the nominal primary element is still reported, flagged PROVISIONAL | Full-confidence 旺/相 label asserted purely from the new month's nominal element, ignoring boundary proximity; OR the entire reasoning sequence blocked outright pending the P1 사령 table | §4.2, §13 |
@@ -1372,6 +1746,42 @@ directly, beyond Case 27's fix) — exceeding the 40-case minimum per the brief'
 | 40 | Legacy engine gap honestly flagged | A chart is `BOUNDARY_SENSITIVE` per §4.2, and other evidence is genuinely close enough that the missing 사령 table could plausibly change the reading | `INSUFFICIENT_STRUCTURAL_EVIDENCE`, explicitly distinct from a genuine chart-level BORDERLINE case (§13's narrowed trigger) | Verdict issued at full confidence despite a known, named boundary-sensitivity condition that could plausibly change it; OR the entire chart blocked from any reasoning merely because the P1 table doesn't exist | §13, §4.2 |
 | 41 (new) | Gate-level DOCTRINE_CONFLICT, not silently resolved | A 從財格 candidate chart has both a functionally-intact rooted 財 AND a functionally-intact rooted 官殺 (the explicitly named disputed configuration, §10.1) | §10.3 returns `DOCTRINE_CONFLICT` for the 從財 gate specifically, naming the two schools' opposite readings | The gate silently defaults to either qualifying or disqualifying without surfacing the named dispute | §10.1 (從財격 AMBIGUOUS CASE POLICY), §10.3 |
 | 42 (new) | Corrected §6.5 rule applied to a full chart, not just isolated | A chart has a functionally-intact rooted 官殺 AND a functionally-intact rooted 財, both adjacent to the same 인성 candidate stem | The 인성's suppression is attributed to the adjacent 財 stem specifically (財克印); the adjacent 官殺 is evaluated on its OWN merits as opposition (§7) and, separately, is noted as GENERATING the 인성 (官殺生印) — a structural fact recorded, not scored | 官殺 counted as ALSO suppressing the 인성 (double-counting the same Ten-God relationship's effect incorrectly, per the original V1 error) | §6.5 (corrected), §0 |
+
+### 17.1 V1.3 cases — special-pattern source conflicts (brief §37)
+
+Every expected outcome below follows from the **revised** doctrine. Where a V1.1 expectation no longer
+follows, it was changed rather than preserved.
+
+| # | Category | FACT CHANGE | EXPECTED STRUCTURAL EFFECT | WHAT MUST NOT HAPPEN | DOCTRINE BASIS |
+|---|---|---|---|---|---|
+| 43 | 從兒 with a **rooted** Day Master | 月令 carries 食傷, a 財 exists, and the DM has a functionally-intact same-element root | 從兒 is **NOT disqualified**. Caps at `CANDIDATE_UNCONFIRMED` on the unquantified 食傷多也, never `NOT_QUALIFIED` on rootedness | Rejecting the chart because the DM is rooted — the V1.1 behaviour, refuted by 從兒不管身強弱 | §10.1 從兒, §0.2 D1 |
+| 44 | 從兒 with 比劫 present feeding 食傷 | As #43, plus a rooted 比肩 | Unchanged outcome — 比劫 contributes **zero** evidence in either direction | Treating 比劫 as a disqualifier, or as positive evidence | 任鐵樵 「四柱雖有比劫仍去生助食傷也」 |
+| 45 | 從兒 obstructed by 印 | 月令 carries 食傷, 財 exists, and a **functionally-intact rooted 印星** is present | `NOT_QUALIFIED` — 印剋食傷 severs the 生育 flow | Treating 印 under the 從財 rationale ("the DM regains an alternative") — right conclusion, wrong mechanism | §10.1 從兒 |
+| 46 | 從兒 with no 財 outlet | 月令 carries 食傷, 食傷 abundant, **no 財 anywhere** | `NOT_QUALIFIED` — the outlet is ORIGINAL_TEXT (只要吾兒又得兒) | Qualifying on 食傷 abundance alone; **or** deciding the case on DM rootlessness, which is no longer a condition | §10.1 從兒 |
+| 47 | 從旺 with **no 印 anywhere** | 四柱皆비겁, no 官殺, no 財, and **no 印綬** | `NOT_QUALIFIED` for 從旺 — 有印綬之生 is a **positive requirement** in 任鐵樵's definition, not a disqualifier | Confirming 從旺 from 비겁 dominance alone; V1.1 carried no 印 clause at all | §10.1 從旺 |
+| 48 | 從旺 vs 從强 both satisfied | 印綬重重 + 比劫疊疊 + 日主當令, no 財/官殺 | **從强** wins — its premises are strictly stronger (`SUBTYPE_RELATION`), not a precedence rank | Emitting both; or picking 從旺 by document order | §10.7 |
+| 49 | 專旺 and 從强 both satisfied | As #48, plus a completed 方合 of the DM's element | **`AMBIGUOUS_MULTI_CANDIDATE`**, both named — no source ranks them | Inventing a precedence; silently preferring the one with more satisfied conditions | §10.7 |
+| 50 | 稼穡 with a 三合, not 四庫 | 土 DM, a completed 三合 of Earth-adjacent branches, but **not** all of 辰戌丑未 | `NOT_QUALIFIED` for 稼穡 — its requirement is 四庫皆全, which is neither a 三合 nor a 方合 | Applying the blanket "completed 삼합 or 방합" clause, which V1.1 wrongly extended to all five sub-patterns | §10.1 專旺 |
+| 51 | 專旺 with a 財 present | 曲直 configuration complete, no 金 anywhere, but a rooted 財 | **Not broken by 財 presence alone** — only the controlling element breaks 專旺. But 子平真詮's separate clause applies: 財根深 or 財透兩位 ⇒ `NOT_QUALIFIED`; a merely transparent 財 ⇒ still qualifies | Extending the controller disqualifier to 財/食傷 (V1.1's over-extension) | §10.1 專旺 |
+| 52 | Residual 餘氣 opposing root under 從强 | 印綬重重 + 比劫疊疊 + 當令, and a 餘氣-tier 財 hidden in a 중기 position | `CANDIDATE_UNCONFIRMED` — the scoped 絕無一毫 reading (visible + 본기) does not disqualify, but the residual occurrence is emitted as evidence | **V1.1's leniency** (a 餘氣, seasonally-dead root "does not by itself disqualify" ⇒ silent pass); **or** the unscoped reading, which would disqualify via the pattern's own constituent branches | §10.1 從强 |
+| 53 | 眞從/假從 applied to a strong-DM pattern | A 從旺 candidate with one contested opposing occurrence | The 眞/假 vocabulary is **not applied** — it is scoped by its own gloss to the weak-DM family. The chart resolves via `CANDIDATE_UNCONFIRMED` instead | Reporting 假從旺 or similar; V1.1 over-extended 眞假從 to all patterns | §10.1 從旺, source matrix G-眞假從 |
+| 54 | 從財 with both 財 and 官殺 occupied | `NO_ROOT`, and both WEALTH and CONTROL channels occupied | `DOCTRINE_CONFLICT`, naming both readings (continuous 財生官 flow vs structurally competing) | Silently qualifying or silently rejecting | §10.1 從財 |
+
+### 17.2 V1.3 cases — ordinal structural states (brief §38)
+
+Each case names the §12.1 cell it exercises, so the expected label is traceable rather than asserted.
+
+| # | Purpose | Structural state | Expected | WHAT MUST NOT HAPPEN | Cell |
+|---|---|---|---|---|---|
+| 55 | Extreme ordinary weak, **not** a 從 pattern | `NO_ROOT` + `SEASON_OPPOSING` + `SUPPORT_SCARCE`, but two opposition channels occupied (so no channel is uniquely occupied) | **극신약** on the ordinary axis; special gate returns `NOT_QUALIFIED` | Routing to 從財/從官殺 merely because the DM is rootless — channel **uniqueness** is required | #1 |
+| 56 | Weak family but not extreme | `ROOT_PRESENT` + `SEASON_OPPOSING` + `SUPPORT_SCARCE` | **신약** — the root gate passes, so not 극신약 | Collapsing to 극신약 because two dimensions oppose | #7 |
+| 57 | Balanced leaning weak | `NO_ROOT` + `SEASON_SUPPORTIVE` + `SUPPORT_NUMEROUS` | **중화신약** — 無根 blocks the STRONG family even with two favourable dimensions | Reaching 신강/중화신강 on two favourable dimensions while rootless | #6 |
+| 58 | True central balance | `ROOT_PRESENT` + `SEASON_OPPOSING` + `SUPPORT_NUMEROUS` | **중화** — 失時不弱 applied directly | Forcing 신약 because the season opposes | #9 |
+| 59 | Balanced leaning strong | `ROOT_PRESENT` + `SEASON_SUPPORTIVE` + `FACTION_EVEN` | **중화신강** — no dimension actively opposes, but 黨眾 is not reached | Promoting to 신강 on an even faction | #11 |
+| 60 | Strong but not extreme | `ROOT_PRESENT` + `SEASON_SUPPORTIVE` + `SUPPORT_NUMEROUS`, with a §12.5 limiting-evidence item | **신강** | Reaching 극신강 while limiting evidence stands | #12 |
+| 61 | Extreme ordinary strong, **not** 專旺/從旺 | Cell #12 clean, but no completed 方合/三合 and 官殺 present in the chart | **극신강** on the ordinary axis; special gate `NOT_QUALIFIED` | Escalating to 專旺 without the branch configuration, or to 從旺 with 官殺 present | #12 |
+| 62 | Root exists but its branch is in an unresolved relation | Cell #12 inputs, but a root branch participates in a detected 沖 | Capped at **BALANCED**, uncertainty-flagged — never promoted, never demoted to WEAK | Treating the clash as damage (forbidden), **or** ignoring it entirely | rows 13–18, §8.9 |
+| 63 | Faction tie | `ROOT_PRESENT` + `SEASON_SUPPORTIVE` + `FACTION_EVEN` where support and opposition occurrence counts are exactly equal | `FACTION_EVEN` ⇒ #11, and the tie is **recorded in evidence** | Breaking the tie by a weight, a tier preference, or "the more important pillar" | §7.3.3 |
 
 ---
 
@@ -1422,7 +1832,7 @@ Unchanged from V1's list, with two additions reflecting this revision:
 11. **(new) A universal, existence-only special-structure disqualifier (V1's SG-0)** — rejected as
     insufficiently supported; replaced by §10.0's functional-integrity mechanism, applied per-pattern.
 12. **(new) Two absolute structural caps that contradict the document's own floating-support doctrine** —
-    rejected; replaced by §12.2's positive boundary contracts and §12.3's disqualifying/limiting-evidence
+    rejected; replaced by §12.4's positive boundary contracts and §12.5's disqualifying/limiting-evidence
     framing.
 
 ---
@@ -1445,7 +1855,7 @@ Full detail and FACT-GAP/DOCTRINE-GAP/INFERENCE-GAP distinction in
 5. Canonical relation outcome/transformation policy sufficient for V1 — **DOCTRINE GAP, now closed by §8 of
    this revision** for 天干合/六合/三合/방합/沖 (five-question layering specified); 형/害/破 remain
    `RUNTIME_STRENGTH_AUTHORITY = DEFER` by deliberate conservative policy, not an unresolved gap.
-6. Executable seven-band boundary contract — **DOCTRINE GAP, now closed by §12.2 of this revision.**
+6. Executable seven-band boundary contract — **DOCTRINE GAP, closed by §12.1-§12.4 of the V1.3 revision.**
 
 **P1 (revised — 司令 moved here from P0, per audit finding 4):**
 1. Exact 사령 day-count refinement (§4.2) — **moved from P0.** V1.1's reasoning sequence runs fully without
@@ -1506,13 +1916,72 @@ entries from this revision:
     explicitly separates "insufficient evidence for runtime strength authority" (§8.8's actual position) from
     "classical tradition says zero effect" (which this revision explicitly does NOT claim) — the retention
     question for non-strength features remains a product decision, unchanged.
-11. **(new) The 從强-vs-從旺 boundary** (§10.1) — whether these are genuinely distinct patterns or largely
-    interchangeable naming is itself `SCHOOL_DEPENDENT`, not resolved here.
-12. **(new) The exact ordinal threshold values for §7.3/§12.2's WEAK/MODERATE/STRONG effective-force scale**
-    — this document specifies the EXISTENCE and STRUCTURAL ROLE of the ordinal scale (§7.3, §12.2) but does
-    not, and per §21's no-hidden-thresholds discipline should not, specify exactly what distinguishes
-    "WEAK" from "MODERATE" beyond the qualitative descriptions already given (in-season vs. out-of-season;
-    which qi-tier; survived vs. weakened by F) — a future implementer must derive the exact boundary from
-    those qualitative descriptions per-case, and if a genuinely executable line cannot be drawn for some
-    specific comparison, that comparison should be marked `NON_EXECUTABLE / REQUIRES_FURTHER_DOCTRINE` at
-    implementation time rather than assigned an invented number.
+11. ~~**The 從强-vs-從旺 boundary**~~ — **RESOLVED IN V1.3.** The distinction is drawn by 任鐵樵 himself, in
+    one continuous 從象 passage, on three explicit axes (印 present-and-generating vs 印綬重重; 日主當令
+    silent vs mandatory; 四柱皆比劫 vs 二人同心). It is **source-level**, not a naming convention. What
+    remains school-dependent is the *modern reception* of the pair, which is recorded in §10.1 as such.
+
+12. ~~**The exact ordinal threshold values for the WEAK/MODERATE/STRONG effective-force scale**~~ —
+    **DISSOLVED IN V1.3, not answered.** The question presupposed an ordinal magnitude scale that §7.3 has
+    now **deleted** as unsourced. There are no threshold values to specify because there is no scale: §7.3
+    replaces it with four enumerated structural dimensions, and §12.1 resolves them through a total 18-cell
+    decision table. A future revision that reintroduces an effective-force ordinal would be reopening
+    audit finding D3, not answering this question.
+---
+
+## 23. V1.3 FINAL SELF-AUDIT (brief §40–§42)
+
+### 23.1 Load-bearing language sweep
+
+Every occurrence of the flagged vocabulary was reviewed and classified. Classes:
+**A** = structural state name with an explicit contract · **B** = source language with an explicit
+interpretation · **C** = display/narrative language only · **D** = deferred / declared non-executable ·
+**E** = undefined but carrying runtime authority.
+
+| Term | Occurrences | Class | Disposition |
+|---|---|---|---|
+| `decisive tilt` | 2 | **C** | **DELETED as a rule.** Both remaining occurrences are meta-references recording the deletion (§0.2, §10.0) |
+| `dominant force` / `near-total force` | 7 | **C** | **DELETED as a rule** (§10.0). All remaining occurrences document the removal or name what replaced it |
+| `WEAK/MODERATE/STRONG` (effective force) | 4 | **C** | **DELETED as a scale** (§7.3.4). All remaining occurrences are meta-references |
+| `WEAK` / `BALANCED` / `STRONG` (Stage-1 families) | many | **A** | Defined by the total 18-cell table, §12.1 |
+| `numerous` / `黨眾` / `助寡` | several | **B** | 徐樂吾's own comparison, retained transparently per §3.5, with the occurrence LIST emitted |
+| `重重` / `疊疊` | 2 | **B + DEOKBUNI_OPERATIONALIZATION** | Source-stated, unquantified; operationalized in the open as "two or more" (§3.5, §10.1) |
+| `絕無一毫` | 3 | **B + DEOKBUNI_OPERATIONALIZATION** | Source-stated; **scope** disclosed as visible + 본기 (§10.1 從强) |
+| `食傷多也` / `滿局` | 2 | **D** | DEFERRED — not operationalized; caps 從兒 at `CANDIDATE_ONLY_IN_V1` (§10.6) |
+| `intact` / `unmodified` | several | **A** | §8.10's three-state model, each state with one named consumer |
+| `destroyed` / `weakened` (root) | meta only | **D** | **States deleted** (§8.10); remaining occurrences record the deletion |
+| `neutralized` | few | **C** | Narrative only; no rule branches on it |
+| `moderate` / `significant` / `material` | few | **C** | Narrative prose in explanatory passages; no rule branches on them |
+| `overwhelming` / `strong enough` | 0 | — | Absent |
+
+**`E` count = 0.** No term carries runtime authority without a definition in this document.
+
+### 23.2 Two-independent-implementers test
+
+Two developers are given this document, the source matrix, the implementation-gap register, and the fact
+foundation contract. They may not invent doctrine. Would both derive materially the same branching logic?
+
+| Subsystem | Verdict | Basis / residual risk |
+|---|---|---|
+| **Relation outcome** | **YES** | §8.9 is a status table plus one conservative default. Every mechanism is `SUPPORTED` / `SUPPORTED_WITH_CONDITIONS` / `UNRESOLVED` / `DEFERRED`, and unsupported ⇒ `UNRESOLVED` is total. There is nothing to interpret |
+| **Root integrity** | **YES** | Three states, each with an enumerated entry condition over deterministic facts, each with exactly one named consumer (§8.10) |
+| **Special pattern** | **PARTIAL** | 從旺/從强/專旺/從財/從官殺 are decidable — every premise is an existence, absence, uniqueness, or configuration test. **Residual risk on two disclosed operationalizations**: 重重/疊疊 = "two or more", and 絕無一毫 scoped to visible + 본기. Both are printed, so two implementers reading this document converge; two implementers reading only the *sources* would not. That is why they are labelled `DEOKBUNI_OPERATIONALIZATION` rather than presented as classical. 從兒 is `CANDIDATE_ONLY_IN_V1`, which both implementers would reach identically |
+| **Stage 1 (WEAK/BALANCED/STRONG)** | **YES** | §12.1 is a total 18-cell lookup table. No formula, no interpretation, no unassigned cell |
+| **Uncertainty** | **PARTIAL** | The *triggers* are explicit (cells #3/#5, rows 13–18, `UNRESOLVED` relations, `DOCTRINE_CONFLICT`). What remains under-specified is whether one `INSUFFICIENT_STRUCTURAL_EVIDENCE` state may carry three distinct kinds of unknown (boundary sensitivity, faction tie, relation unresolved) or whether they must be distinguished. **Recorded as an open inference-design question**, not silently merged |
+| **Seven-band rendering** | **YES** | §12.3 is a 7-row pure mapping from Stage 2. It reads no facts and cannot change a verdict |
+
+**No load-bearing subsystem is `NO`.** The two `PARTIAL`s are both *disclosed* rather than latent: one is a
+pair of printed operationalizations, the other is a named open question about uncertainty granularity.
+
+### 23.3 No-hidden-scoring final policy (binding)
+
+**ALLOWED:** transparent counts emitted as inspectable lists · source-backed qualitative numerousness
+comparison where the selected source reasons that way · finite categorical states with enumerated entry
+conditions · explicit decision tables/graphs with every cell written out · uncertainty exits.
+
+**FORBIDDEN:** weighted additive scores · secret weights · arbitrary percentages · hidden numeric cutoffs ·
+count comparison as the **sole** authority for a verdict · score bands presented as classical doctrine.
+
+A numeric cutoff may be adopted **only** as `DEOKBUNI_OPERATIONALIZATION`, **only** where the source states a
+concept it never quantifies, and **only** with the chosen value printed in this document. Two such cutoffs
+exist in V1.3, both in §10.1 從强, both listed in §23.1.
