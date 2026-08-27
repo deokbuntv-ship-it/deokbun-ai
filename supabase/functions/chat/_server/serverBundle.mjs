@@ -9204,6 +9204,13 @@ var RESOLUTION_KIND = {
   // the same structure as any other so the reader sees both sides and why neither won.
   CROSS_STANDOFF: "DIRECTNESS"
 };
+function selectAnswerCandidates(standing, asked, intent) {
+  const onAsked = standing.filter((p) => p.questionAxis === asked);
+  const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
+  const describesChart = (p) => p.conclusionType === "STRUCTURAL" && p.derivationRule !== "PRIMITIVE" && p.derivationRule !== "CROSS_STANDOFF";
+  const onAskedAxis = (p) => asked === "GENERAL" || p.questionAxis === asked;
+  return nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : onAsked.filter((p) => p.direction !== "NONE");
+}
 function stanceOf(p) {
   if (p.conclusionType === "STRUCTURAL" || p.conclusionType === "CAUSAL") return "STRUCTURAL_ANSWER";
   switch (p.direction) {
@@ -12058,8 +12065,252 @@ function safeResponseForRoute(route) {
   }
 }
 
+// src/features/divination/reasoning/persistedGraphValidation.ts
+var resolveIds = (ids, byId) => {
+  const out = [];
+  for (const id of ids) {
+    const p = byId.get(id);
+    if (!p) return null;
+    out.push(p);
+  }
+  return out;
+};
+var PRIMITIVE_RELATION_SHAPE = {
+  ABSENT: { conclusionType: "STRUCTURAL", direction: "NONE" },
+  ACTIVATES: { conclusionType: "STRUCTURAL", direction: "NONE" },
+  // myungri-native only
+  ENABLES: { conclusionType: "DIRECTIONAL", direction: "FAVORABLE" },
+  CONNECTS: { conclusionType: "DIRECTIONAL", direction: "FAVORABLE" },
+  // myungri-native only
+  SUPPORTS: { conclusionType: "DIRECTIONAL", direction: "FAVORABLE" },
+  // adapter only
+  DESTABILIZES: { conclusionType: "DIRECTIONAL", direction: "UNFAVORABLE" },
+  // myungri-native only
+  OPPOSES: { conclusionType: "DIRECTIONAL", direction: "UNFAVORABLE" },
+  CONSTRAINS: { conclusionType: "DIRECTIONAL", direction: "RESTRICTED" },
+  DELAYS: { conclusionType: "DIRECTIONAL", direction: "RESTRICTED" }
+  // adapter only
+};
+var MYUNGRI_NATIVE_TARGET_KINDS = /* @__PURE__ */ new Set([
+  "NATAL_SEAT",
+  "NATAL_SEAT_PAIR",
+  "TEN_GOD_FAMILY",
+  "LUCK_LAYER",
+  "DAY_MASTER_FOOTING"
+]);
+function validatePersistedPrimitive(prop, premiseById) {
+  if (prop.supportingPremiseIds.length !== 1) return false;
+  if (prop.opposingPremiseIds.length > 1) return false;
+  const src = premiseById.get(prop.supportingPremiseIds[0]);
+  if (!src) return false;
+  const shape = PRIMITIVE_RELATION_SHAPE[src.semanticRelation];
+  if (!shape) return false;
+  const expectedRole = src.semanticRelation === "ABSENT" ? "DESCRIBES" : "ASSERTS";
+  if (src.role !== expectedRole) return false;
+  if (src.target.key !== prop.target.key) return false;
+  if (src.questionAxis !== prop.questionAxis || src.temporalScope !== prop.temporalScope) return false;
+  if (src.subject !== prop.subject) return false;
+  if (prop.conclusionType !== shape.conclusionType) return false;
+  if (prop.direction !== shape.direction) return false;
+  if (prop.opposingPremiseIds.length === 1) {
+    if (MYUNGRI_NATIVE_TARGET_KINDS.has(prop.target.kind)) return false;
+    const counter2 = premiseById.get(prop.opposingPremiseIds[0]);
+    if (!counter2) return false;
+    if (counter2.role !== "QUALIFIES") return false;
+    if (counter2.target.key !== prop.target.key) return false;
+    const expectedCounterRelation = prop.direction === "UNFAVORABLE" || prop.direction === "RESTRICTED" ? "SUPPORTS" : "OPPOSES";
+    if (counter2.semanticRelation !== expectedCounterRelation) return false;
+  }
+  return true;
+}
+var STRUCTURAL_SCOPES = /* @__PURE__ */ new Set(["NATAL", "DAEWOON"]);
+var NEAR_SCOPES2 = /* @__PURE__ */ new Set(["SEWOON", "WOLWOON", "PRESENT_MOMENT"]);
+var allClassified = (premises, ...buckets) => premises.every((p) => buckets.some((b) => b.has(p.id)));
+var ancestryMatchesAssertsOnly = (ancestry, premises, extraPropositionParents = []) => {
+  const expected = /* @__PURE__ */ new Set([
+    ...extraPropositionParents,
+    ...premises.filter((p) => p.role === "ASSERTS").map((p) => `p:${p.id}`)
+  ]);
+  return ancestry.length === expected.size && ancestry.every((id) => expected.has(id));
+};
+function validateContestedShare(supporting, opposing, ancestry) {
+  if (opposing.length !== 0) return false;
+  const rivals = new Set(supporting.filter((p) => p.concept === "RIVAL_CLAIM").map((p) => p.id));
+  const wealth = new Set(supporting.filter((p) => p.concept === "NATAL_FAMILY" && p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "SUPPORTS").map((p) => p.id));
+  if (rivals.size === 0 || wealth.size === 0) return false;
+  if (!allClassified(supporting, rivals, wealth)) return false;
+  return ancestryMatchesAssertsOnly(ancestry, supporting);
+}
+function validateDirectionVsExecution(supporting, opposing, ancestry, target4, axis, scope) {
+  if (opposing.length !== 0) return false;
+  const opens = supporting.filter((p) => STRUCTURAL_SCOPES.has(p.temporalScope) && (p.semanticRelation === "ENABLES" || p.semanticRelation === "ACTIVATES" || p.semanticRelation === "CONNECTS"));
+  if (opens.length !== 1) return false;
+  const open = opens[0];
+  const strikes = supporting.filter((p) => p.id !== open.id);
+  if (strikes.length === 0) return false;
+  if (!strikes.every((p) => NEAR_SCOPES2.has(p.temporalScope) && p.target.key === open.target.key && p.subject === open.subject && p.questionAxis === open.questionAxis && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"))) return false;
+  if (!strikes.every((p) => p.temporalScope === strikes[0].temporalScope)) return false;
+  if (target4.key !== open.target.key || axis !== open.questionAxis || scope !== strikes[0].temporalScope) {
+    return false;
+  }
+  return ancestryMatchesAssertsOnly(ancestry, supporting);
+}
+function validateConvergentSeatPressure(supporting, opposing, ancestry, target4) {
+  if (opposing.length !== 0) return false;
+  if (supporting.length < 2) return false;
+  if (!supporting.every((p) => p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS")) {
+    return false;
+  }
+  if (!supporting.every((p) => p.target.key === supporting[0].target.key)) return false;
+  if (new Set(supporting.map((p) => p.temporalScope)).size < 2) return false;
+  if (target4.key !== supporting[0].target.key) return false;
+  return ancestryMatchesAssertsOnly(ancestry, supporting);
+}
+function validateRecurringFrictionCause(supporting, opposing, ancestry, target4, axis) {
+  if (opposing.length !== 0) return false;
+  const weaks = supporting.filter((p) => p.temporalScope === "NATAL" && p.semanticRelation === "DESTABILIZES");
+  if (weaks.length !== 1) return false;
+  const weak = weaks[0];
+  const again = supporting.filter((p) => p.id !== weak.id);
+  if (again.length === 0) return false;
+  if (!again.every((p) => p.temporalScope !== "NATAL" && p.target.key === weak.target.key && p.subject === weak.subject && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"))) return false;
+  if (target4.key !== weak.target.key || axis !== weak.questionAxis) return false;
+  return ancestryMatchesAssertsOnly(ancestry, supporting);
+}
+function validateInflowVsRetention(supporting, opposing, ancestry, axis, contestedShareParentIds) {
+  if (opposing.length !== 0) return false;
+  if (axis !== "MONEY_INFLOW") return false;
+  const inflow = new Set(supporting.filter((p) => p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "ACTIVATES").map((p) => p.id));
+  const retentionRisk = new Set(supporting.filter((p) => p.questionAxis === "MONEY_RETENTION" && (p.semanticRelation === "OPPOSES" || p.semanticRelation === "WEAKENS" || p.semanticRelation === "DESTABILIZES")).map((p) => p.id));
+  if (inflow.size === 0) return false;
+  if (retentionRisk.size === 0 && contestedShareParentIds.length === 0) return false;
+  if (!allClassified(supporting, inflow, retentionRisk)) return false;
+  return ancestryMatchesAssertsOnly(ancestry, supporting, contestedShareParentIds);
+}
+function validateMyungriDerivation(prop, premiseById, propositionById) {
+  const supporting = resolveIds(prop.supportingPremiseIds, premiseById);
+  const opposing = resolveIds(prop.opposingPremiseIds, premiseById);
+  if (!supporting || !opposing) return false;
+  switch (prop.derivationRule) {
+    case "CONTESTED_SHARE":
+      return validateContestedShare(supporting, opposing, prop.derivedFromPropositionIds);
+    case "DIRECTION_VS_EXECUTION":
+      return validateDirectionVsExecution(
+        supporting,
+        opposing,
+        prop.derivedFromPropositionIds,
+        prop.target,
+        prop.questionAxis,
+        prop.temporalScope
+      );
+    case "CONVERGENT_SEAT_PRESSURE":
+      return validateConvergentSeatPressure(supporting, opposing, prop.derivedFromPropositionIds, prop.target);
+    case "RECURRING_FRICTION_CAUSE":
+      return validateRecurringFrictionCause(
+        supporting,
+        opposing,
+        prop.derivedFromPropositionIds,
+        prop.target,
+        prop.questionAxis
+      );
+    case "INFLOW_VS_RETENTION": {
+      const contestedShareParentIds = prop.derivedFromPropositionIds.filter((id) => {
+        const parent = propositionById.get(id);
+        return parent !== void 0 && parent.derivationRule === "CONTESTED_SHARE";
+      });
+      return validateInflowVsRetention(
+        supporting,
+        opposing,
+        prop.derivedFromPropositionIds,
+        prop.questionAxis,
+        contestedShareParentIds
+      );
+    }
+    default:
+      return false;
+  }
+}
+function validateCrossDerivation(prop, propositionById, ctx) {
+  const parents = prop.derivedFromPropositionIds.map((id) => propositionById.get(id));
+  if (parents.some((p) => !p)) return false;
+  const resolved = parents;
+  switch (prop.derivationRule) {
+    case "CROSS_REINFORCEMENT": {
+      if (resolved.length < 2) return false;
+      for (let i = 0; i < resolved.length; i += 1) {
+        for (let k = i + 1; k < resolved.length; k += 1) {
+          const a = resolved[i];
+          const b = resolved[k];
+          if (a.discipline === b.discipline) return false;
+          const relation = classifyPair(a, b);
+          if (relation !== "REINFORCING" && relation !== "RIVAL_AGREEMENT") return false;
+        }
+      }
+      return true;
+    }
+    case "CROSS_STANDOFF": {
+      if (resolved.length < 2) return false;
+      const qualifies = (x, y) => {
+        const relation = classifyPair(x, y);
+        return relation === "CONTRADICTORY" || relation === "RIVAL_CONFLICT";
+      };
+      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)));
+    }
+    case "CROSS_CONTRADICTION_RESOLVED": {
+      if (resolved.length < 2) return false;
+      const qualifies = (x, y) => {
+        const relation = classifyPair(x, y);
+        return (relation === "CONTRADICTORY" || relation === "RIVAL_CONFLICT") && opposed(x, y);
+      };
+      if (!resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))) return false;
+      const matchesOperand = (p) => prop.direction === p.direction && prop.target.key === p.target.key && (prop.restriction ?? void 0) === (p.restriction ?? void 0);
+      return resolved.some(matchesOperand);
+    }
+    case "CROSS_TIMING_SPLIT": {
+      if (resolved.length < 2) return false;
+      const structuralParents = resolved.filter((p) => temporalBand(p.temporalScope) === "STRUCTURAL");
+      const nearParents = resolved.filter((p) => temporalBand(p.temporalScope) === "NEAR");
+      if (structuralParents.length !== 1 || nearParents.length === 0) return false;
+      const [structural] = structuralParents;
+      for (const near of nearParents) {
+        if (classifyPair(structural, near) !== "DIFFERENT_TIME_BAND") return false;
+        if (!opposed(structural, near)) return false;
+        if (!halfIsAsserted(structural) || !halfIsAsserted(near)) return false;
+      }
+      if (!nearParents.every((p) => p.temporalScope === nearParents[0].temporalScope)) {
+        return false;
+      }
+      return true;
+    }
+    case "CROSS_AXIS_COMPOUND": {
+      if (resolved.length < 2) return false;
+      const stated = (p) => p.supportingPremiseIds.length > 0 && p.supportingPremiseIds.some((id) => ctx.premiseById.get(id)?.applicability !== "BACKGROUND");
+      if (!resolved.every(stated)) return false;
+      const qualifies = (x, y) => {
+        const relation = classifyPair(x, y);
+        return (relation === "DIFFERENT_AXIS" || relation === "DIFFERENT_TARGET") && opposed(x, y) && axesShareOneMatter(x.questionAxis, y.questionAxis);
+      };
+      if (!resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))) return false;
+      const matchesOperand = (p) => prop.direction === p.direction && (prop.restriction ?? void 0) === (p.restriction ?? void 0);
+      if (!resolved.some(matchesOperand)) return false;
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+function projectVerdictFromGraph(propositions, askedAxis, intent) {
+  const standing = standingPropositions(propositions);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
+  const direction = primary ? stanceOf(primary) : resolution.kind === "AGREED" ? agreedStance(resolution.members, resolution.direction) : NO_SIGNAL;
+  const headlinePropositionIds = primary ? [primary.id] : resolution.members.map((p) => p.id);
+  return { direction, headlinePropositionIds };
+}
+
 // src/features/chat/server/decisionMeta.ts
-function buildConsultationDecisionMeta(question, plan, grounding, resolvedTemporalContext, modelId, carriedDomain, graphRevision) {
+function buildConsultationDecisionMeta(question, plan, grounding, resolvedTemporalContext, modelId, carriedDomain, graphRevision, priorHistoryUnavailable) {
   const domain = carriedDomain && carriedDomain !== "전반" ? carriedDomain : classifyConsultationDomain(question);
   return {
     answerPlanVersion: ANSWER_PLAN_VERSION,
@@ -12073,6 +12324,7 @@ function buildConsultationDecisionMeta(question, plan, grounding, resolvedTempor
     ...plan.polarity ? { polarity: plan.polarity } : {},
     domain,
     comparisonContext: plan.comparisonContext,
+    ...priorHistoryUnavailable ? { priorHistoryUnavailable: true } : {},
     // §17 — persist the FULL cross verdict so a later "왜요?" explains the SAME judgment (subject, evidence
     // and contradiction resolution), instead of falling back to a Myungri-only polarity snapshot.
     ...graphRevision ? { graphRevision } : {},
@@ -12196,13 +12448,6 @@ function parseDivinationVerdict(v) {
   const DOCTRINE_APPLICABILITY = /* @__PURE__ */ new Set(["ADOPTED", "PARTIAL", "BLOCKED"]);
   const RESTRICTIONS = /* @__PURE__ */ new Set(["TIMING", "SCOPE", "CAPACITY"]);
   const SUPPORT_GROUP_ROLES = /* @__PURE__ */ new Set(["REQUIRED", "ALTERNATIVE"]);
-  const MYUNGRI_PREMISE_TARGET_KINDS = /* @__PURE__ */ new Set([
-    "NATAL_SEAT",
-    "NATAL_SEAT_PAIR",
-    "TEN_GOD_FAMILY",
-    "LUCK_LAYER",
-    "DAY_MASTER_FOOTING"
-  ]);
   const STANCES = new Set(ALL_STANCES);
   const CONFIDENCES = new Set(ALL_CONFIDENCES);
   const DIRECTNESS = new Set(ALL_DIRECTNESS);
@@ -12386,12 +12631,7 @@ function parseDivinationVerdict(v) {
     if (CROSS_RULES.has(pr.derivationRule) !== (pr.discipline === "CROSS")) return void 0;
     if (MYUNGRI_RULE_IDS.has(pr.derivationRule) && pr.discipline !== "MYUNGRI") return void 0;
     const ancestry = pr.derivedFromPropositionIds.length;
-    if (pr.derivationRule === PRIMITIVE_RULE) {
-      if (ancestry !== 0) return void 0;
-    } else {
-      const requiredAncestry = pr.derivationRule === "CONTESTED_SHARE" ? 1 : 2;
-      if (ancestry < requiredAncestry) return void 0;
-    }
+    if (pr.derivationRule === PRIMITIVE_RULE && ancestry !== 0) return void 0;
     if ((pr.conclusionType === "STRUCTURAL" || pr.conclusionType === "CAUSAL") && pr.direction !== "NONE") {
       return void 0;
     }
@@ -12401,20 +12641,11 @@ function parseDivinationVerdict(v) {
     const opposePremises = lookUp(pr.opposingPremiseIds);
     if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) return void 0;
     if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) return void 0;
-    if (pr.derivationRule === PRIMITIVE_RULE && MYUNGRI_PREMISE_TARGET_KINDS.has(pr.target.kind)) {
-      const sup2 = pr.supportingPremiseIds;
-      if (sup2.length !== 1 || pr.opposingPremiseIds.length !== 0) return void 0;
-      const src = premiseById.get(sup2[0]);
-      if (!src) return void 0;
-      if (src.role !== "ASSERTS") return void 0;
-      if (src.target.key !== pr.target.key) return void 0;
-      if (src.questionAxis !== pr.questionAxis || src.temporalScope !== pr.temporalScope) return void 0;
-      if (src.subject !== pr.subject) return void 0;
-      const relation = src.semanticRelation;
-      const expectedType = relation === "ABSENT" || relation === "ACTIVATES" ? "STRUCTURAL" : "DIRECTIONAL";
-      if (pr.conclusionType !== expectedType) return void 0;
-      const expectedDirection = relation === "DESTABILIZES" || relation === "OPPOSES" ? "UNFAVORABLE" : relation === "CONSTRAINS" ? "RESTRICTED" : relation === "CONNECTS" || relation === "ENABLES" ? "FAVORABLE" : "NONE";
-      if (pr.direction !== expectedDirection) return void 0;
+    if (pr.derivationRule === PRIMITIVE_RULE) {
+      if (!validatePersistedPrimitive(
+        pr,
+        premiseById
+      )) return void 0;
     }
     parsed.push(pr);
   }
@@ -12467,17 +12698,46 @@ function parseDivinationVerdict(v) {
   for (const id of headlineIds) {
     if (!propositionIds.has(id)) return void 0;
   }
-  const NON_ASSERTIVE_STANCES = /* @__PURE__ */ new Set(["INSUFFICIENT_DATA", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]);
-  if (parsed.length === 0 && !NON_ASSERTIVE_STANCES.has(o.direction)) return void 0;
-  if (headlineIds.length > 0) {
-    const headlines = parsed.filter((pr) => headlineIds.includes(pr.id));
-    const headlineStances = new Set(headlines.map((pr) => stanceOf(pr)));
-    const verdictIsFor = FOR_STANCES.includes(o.direction);
-    const verdictIsAgainst = AGAINST_STANCES.includes(o.direction);
-    const headlineHasFor = [...headlineStances].some((st) => FOR_STANCES.includes(st));
-    const headlineHasAgainst = [...headlineStances].some((st) => AGAINST_STANCES.includes(st));
-    if (verdictIsFor && headlineHasAgainst || verdictIsAgainst && headlineHasFor) return void 0;
+  const propositionById = new Map(parsed.map((pr) => [pr.id, pr]));
+  const crossValidationCtx = {
+    premiseById
+  };
+  for (const pr of parsed) {
+    if (pr.derivationRule === PRIMITIVE_RULE) continue;
+    if (MYUNGRI_RULE_IDS.has(pr.derivationRule)) {
+      if (!validateMyungriDerivation(
+        pr,
+        premiseById,
+        propositionById
+      )) return void 0;
+    } else if (CROSS_RULES.has(pr.derivationRule)) {
+      if (!validateCrossDerivation(
+        pr,
+        propositionById,
+        crossValidationCtx
+      )) return void 0;
+    }
   }
+  const NON_ASSERTIVE_STANCES = /* @__PURE__ */ new Set(["INSUFFICIENT_DATA", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]);
+  const isHonestDecline = headlineIds.length === 0 && NON_ASSERTIVE_STANCES.has(o.direction);
+  if (!isHonestDecline) {
+    const projectedVerdict = projectVerdictFromGraph(
+      parsed,
+      o.questionDomain,
+      o.questionIntent
+    );
+    if (projectedVerdict.direction !== o.direction) return void 0;
+    if (Array.isArray(o.headlinePropositionIds)) {
+      const persistedHeadlineSet = new Set(headlineIds);
+      const projectedHeadlineSet = new Set(projectedVerdict.headlinePropositionIds);
+      if (persistedHeadlineSet.size !== projectedHeadlineSet.size || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) return void 0;
+    }
+  }
+  const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds : projectVerdictFromGraph(
+    parsed,
+    o.questionDomain,
+    o.questionIntent
+  ).headlinePropositionIds;
   const str2 = (x, fallback = "") => typeof x === "string" ? x : fallback;
   const strArr = (x) => isStringArray2(x) ? [...x] : [];
   const arr = (x) => Array.isArray(x) ? x.filter((e) => e !== null && typeof e === "object") : [];
@@ -12497,7 +12757,9 @@ function parseDivinationVerdict(v) {
     asksTiming: o.asksTiming,
     premises: premisesOut,
     primaryConclusion: str2(o.primaryConclusion),
-    headlinePropositionIds: strArr(o.headlinePropositionIds),
+    // G6 PATCH 2 §4 — legacy rows that never persisted this field are reconstructed from the graph
+    // projection rather than restored as an empty/trusted-absent list.
+    headlinePropositionIds: Array.isArray(o.headlinePropositionIds) ? strArr(o.headlinePropositionIds) : projectedHeadlinesForReconstruction,
     direction: o.direction,
     dominantBasis: str2(o.dominantBasis),
     disciplineJudgments: arr(o.disciplineJudgments).map((j) => ({
@@ -12671,6 +12933,9 @@ function parseDecisionMeta(v) {
     ...evidenceSnapshot ? { evidenceSnapshot } : {},
     ...divinationVerdict ? { divinationVerdict } : {},
     ...graphRevision ? { graphRevision } : {},
+    // G6 PATCH 2 §7 — restored as a strict boolean-or-absent so the loader's post-parse taint check
+    // (`parsed.priorHistoryUnavailable === true`) can never be defeated by a non-boolean forgery.
+    ...o.priorHistoryUnavailable === true ? { priorHistoryUnavailable: true } : {},
     resolvedTemporalContext: {
       anchorEpochSeconds: rtc.anchorEpochSeconds,
       timezone: "Asia/Seoul",
@@ -12946,9 +13211,6 @@ function classifyContinuationIntent(question, hasPriorDecision) {
   return "NEW_QUESTION";
 }
 
-// src/features/chat/server/serverConsultationTypes.ts
-var MALFORMED_PRIOR_DECISION = /* @__PURE__ */ Symbol("MALFORMED_PRIOR_DECISION");
-
 // src/features/chat/server/buildServerConsultation.ts
 var MAX_CONTEXT_TURNS = 12;
 var MAX_TURN_CHARS = 4e3;
@@ -13040,18 +13302,19 @@ async function buildServerConsultation(request, deps) {
   let followUpVersionMismatch = false;
   let previousDecision = null;
   let previousMeta = null;
-  let priorHistoryMalformed = false;
+  let priorHistoryProblem = null;
   if ((followUpIntent !== "NONE" || mayContinue) && deps.loadPreviousDecision) {
+    let loaded;
     try {
-      const loaded = await deps.loadPreviousDecision();
-      if (loaded === MALFORMED_PRIOR_DECISION) {
-        previousMeta = null;
-        priorHistoryMalformed = true;
-      } else {
-        previousMeta = loaded;
-      }
+      loaded = await deps.loadPreviousDecision();
     } catch {
+      loaded = { status: "LOAD_FAILED" };
+    }
+    if (loaded.status === "VALID") {
+      previousMeta = loaded.meta;
+    } else {
       previousMeta = null;
+      if (loaded.status === "MALFORMED" || loaded.status === "LOAD_FAILED") priorHistoryProblem = loaded.status;
     }
     previousDecision = previousDecisionFromMeta(previousMeta);
     if (followUpIntent !== "NONE") {
@@ -13069,7 +13332,7 @@ async function buildServerConsultation(request, deps) {
   if (followUpIntent === "WHY") {
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
-  } else if (priorHistoryMalformed && continuationIfHealthy === "REFINE_EXISTING") {
+  } else if (priorHistoryProblem && continuationIfHealthy === "REFINE_EXISTING") {
     grounding = { status: "unavailable", reason: "calculation_failed" };
     followUpDirective = "[후속 지침 — 이전 상담 복원 불가] 이전 상담 기록을 이번 답변에 안전하게 이어붙일 수 없습니다. 새로운 판정을 지어내지 말고, 이전 상담 내용을 지금 확인할 수 없다는 점을 안내한 뒤 원하시는 부분을 다시 구체적으로 질문해 달라고 정중히 요청하십시오.";
   } else {
@@ -13188,6 +13451,7 @@ ${extraDirective}` : base
     axis: resolveJudgmentDomain(question)
   } : void 0;
   const isAuthoritativeWhy = followUpIntent === "WHY" && followUpDirective !== null && previousMeta !== null;
+  const priorHistoryUnavailable = priorHistoryProblem !== null && (continuationIfHealthy === "REFINE_EXISTING" || followUpIntent === "WHY");
   const decisionMeta = isAuthoritativeWhy ? previousMeta : buildConsultationDecisionMeta(
     question,
     plan,
@@ -13195,7 +13459,8 @@ ${extraDirective}` : base
     resolvedTemporalContext,
     deps.modelId ?? null,
     carriedDomain,
-    graphRevision
+    graphRevision,
+    priorHistoryUnavailable
   );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
   const structuredResult = outcome.kind === "ACCEPTED" ? {
@@ -14766,7 +15031,6 @@ export {
   DEFAULT_TERRA_MODEL,
   HARD_MAX_OUTPUT_TOKENS,
   LLM_RATE_LIMITED_REQUEST_TYPES,
-  MALFORMED_PRIOR_DECISION,
   MAX_BIRTH_FIELD_CHARS,
   MAX_CONTEXT_ITEMS,
   MAX_CONTEXT_ITEM_CHARS,

@@ -9,7 +9,7 @@ import { createHash } from 'crypto';
 
 import { buildServerConsultation } from '@/features/chat/server';
 import type {
-  ConsultationDecisionMeta, ServerConsultationDeps, ServerConsultationRequest,
+  ConsultationDecisionMeta, PriorHistoryLoad, ServerConsultationDeps, ServerConsultationRequest,
 } from '@/features/chat/server';
 import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider } from '@/features/interpretation';
@@ -42,7 +42,7 @@ const GOOD_ANSWER = JSON.stringify({
 
 const deps = (
   nowEpochSeconds: number,
-  loadPreviousDecision?: () => Promise<ConsultationDecisionMeta | null>,
+  loadPreviousDecision?: () => Promise<PriorHistoryLoad>,
 ): ServerConsultationDeps => ({
   digestProvider,
   nowEpochSeconds,
@@ -56,10 +56,9 @@ const request = (question: string): ServerConsultationRequest => ({ birthInput: 
 async function turn(
   question: string, now: number, previous?: ConsultationDecisionMeta | null,
 ): Promise<ConsultationDecisionMeta> {
-  const out = await buildServerConsultation(
-    request(question),
-    deps(now, previous === undefined ? undefined : async () => previous),
-  );
+  const load = previous === undefined ? undefined
+    : async () => (previous === null ? { status: 'NONE' as const } : { status: 'VALID' as const, meta: previous });
+  const out = await buildServerConsultation(request(question), deps(now, load));
   if (!out.ok) throw new Error(`turn failed: ${out.reason}`);
   const meta = out.structuredResult?.decisionMeta as ConsultationDecisionMeta | undefined;
   if (!meta) throw new Error('no decisionMeta');

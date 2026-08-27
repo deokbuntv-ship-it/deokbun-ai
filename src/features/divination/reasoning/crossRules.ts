@@ -46,7 +46,9 @@ export type CrossRelation =
   | 'ORTHOGONAL';        // no meaningful relation
 
 const band = temporalBand;
-const opposed = (a: ReasonedProposition, b: ReasonedProposition): boolean =>
+// G6 PATCH 2 - Sec2 exported so decisionMeta.ts's persisted-graph validator can reuse the SAME
+// software-semantic relation this rule set itself uses, instead of a second doctrine table.
+export const opposed = (a: ReasonedProposition, b: ReasonedProposition): boolean =>
   (a.direction === 'FAVORABLE' && (b.direction === 'UNFAVORABLE' || b.direction === 'RESTRICTED'))
   || (b.direction === 'FAVORABLE' && (a.direction === 'UNFAVORABLE' || a.direction === 'RESTRICTED'));
 
@@ -183,7 +185,8 @@ const CONTEXT_TARGET_KINDS = new Set<TargetKind>(['COMPOSITE', 'DOCTRINE_GAP', '
  * birth time could still claim ownership of the direction while a well-evidenced negative was demoted to
  * "timing". Both halves must now be adequately supported in their own right, or no compound is stated at all.
  */
-const halfIsAsserted = (p: ReasonedProposition): boolean =>
+// G6 PATCH 2 Sec2 - exported for the same reason as opposed() above.
+export const halfIsAsserted = (p: ReasonedProposition): boolean =>
   p.adequacy.supportAdequacy === 'ADEQUATE' && p.supportingPremiseIds.length > 0;
 
 const TESTS: Record<SubordinationReason, Test> = {
@@ -296,7 +299,8 @@ const COMPOUND_FRAMES: { a: JudgmentDomain; b: JudgmentDomain; frame: string; ki
  * Note the deliberate difference from halfIsAsserted(): a compound does not hand either half OWNERSHIP OF THE
  * DIRECTION (it reports both), so it does not need each half to be independently decisive — only real.
  */
-const compoundEligible = (
+// G6 PATCH 2 Sec2 - exported for the same reason as opposed() above.
+export const compoundEligible = (
   a: ReasonedProposition, b: ReasonedProposition, askedAxis: JudgmentDomain,
   premises: Map<string, DivinationPremise>,
 ): boolean => {

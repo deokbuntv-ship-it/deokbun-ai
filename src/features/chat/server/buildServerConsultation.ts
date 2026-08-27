@@ -57,9 +57,9 @@ import {
 import type { ConsultationDomain } from './consultationDomain';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
-import { MALFORMED_PRIOR_DECISION } from './serverConsultationTypes';
 import type {
   ConsultationDecisionMeta,
+  PriorHistoryLoad,
   ServerConsultationDeps,
   ServerConsultationDiagnostics,
   ServerConsultationRequest,
@@ -239,26 +239,31 @@ export async function buildServerConsultation(
   let followUpVersionMismatch = false;
   let previousDecision: PreviousDecision | null = null;
   let previousMeta: ConsultationDecisionMeta | null = null;
-  // V4F §8/§9 — NO_PRIOR_HISTORY vs PRIOR_HISTORY_EXISTS_BUT_IS_INVALID.
+  // G6 PATCH 2 §6/§8 — FOUR STATES, NEVER COLLAPSED: NO_PRIOR_HISTORY / VALID_PRIOR_HISTORY /
+  // PRIOR_HISTORY_MALFORMED_OR_UNRESTORABLE / PRIOR_HISTORY_LOAD_FAILED.
   //
   // V4E made the GRAPH fail closed (a malformed persisted verdict is rejected). This is what fails closed on
-  // the LOAD: before, a row that existed but failed validation and a row that never existed both collapsed to
-  // the identical `null`, so an ordinary dependent follow-up ("돈은?", "왜?", "결혼하면?") over a malformed row
-  // classified exactly like the first turn of a brand-new conversation and silently answered as a fresh
-  // primary reading — the same "fail-open through the error path" failure §5 closed for extension, reachable
-  // one step earlier, at the load. `priorHistoryMalformed` is read once below, only to stop that.
-  let priorHistoryMalformed = false;
+  // the LOAD: a row that never existed, a row that exists but failed decisionMeta.ts's parser, a row that
+  // parsed but is itself an earlier turn's decline over malformed history (§7's durability taint), and the
+  // query itself throwing are four DIFFERENT facts. Collapsing any pair of them to the same `null` lets an
+  // ordinary dependent follow-up ("돈은?", "왜?", "결혼하면?") over a broken history classify exactly like the
+  // first turn of a brand-new conversation and silently answer as a fresh primary reading — the same
+  // "fail-open through the error path" failure §5 closed for extension, reachable one step earlier, at the
+  // load. `priorHistoryProblem` is read once below, only to stop that; MALFORMED and LOAD_FAILED are kept
+  // distinct for diagnostics even though both fail closed identically downstream.
+  let priorHistoryProblem: 'MALFORMED' | 'LOAD_FAILED' | null = null;
   if ((followUpIntent !== 'NONE' || mayContinue) && deps.loadPreviousDecision) {
+    let loaded: PriorHistoryLoad;
     try {
-      const loaded = await deps.loadPreviousDecision();
-      if (loaded === MALFORMED_PRIOR_DECISION) {
-        previousMeta = null;
-        priorHistoryMalformed = true;
-      } else {
-        previousMeta = loaded;
-      }
+      loaded = await deps.loadPreviousDecision();
     } catch {
+      loaded = { status: 'LOAD_FAILED' };
+    }
+    if (loaded.status === 'VALID') {
+      previousMeta = loaded.meta;
+    } else {
       previousMeta = null;
+      if (loaded.status === 'MALFORMED' || loaded.status === 'LOAD_FAILED') priorHistoryProblem = loaded.status;
     }
     previousDecision = previousDecisionFromMeta(previousMeta);
     if (followUpIntent !== 'NONE') {
@@ -295,19 +300,19 @@ export async function buildServerConsultation(
   if (followUpIntent === 'WHY') {
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
-  } else if (priorHistoryMalformed && continuationIfHealthy === 'REFINE_EXISTING') {
-    // V4F §9 — MALFORMED HISTORY FAILS CLOSED.
+  } else if (priorHistoryProblem && continuationIfHealthy === 'REFINE_EXISTING') {
+    // G6 PATCH 2 §9 — MALFORMED/LOAD-FAILED HISTORY FAILS CLOSED.
     //
-    // An ordinary dependent follow-up whose prior decision row exists but could not be validated must NOT
-    // fall through to the fresh-grounding branch below: that would run the engines at the CURRENT instant and
-    // hand back an unrelated first reading dressed as a continuation of one that no longer exists. No engine
-    // runs here and no professional verdict is claimed — the same honest `unavailable` state the WHY branch
-    // above already uses when it has nothing to restore.
+    // An ordinary dependent follow-up whose prior decision row exists-but-invalid, or could not even be
+    // loaded, must NOT fall through to the fresh-grounding branch below: that would run the engines at the
+    // CURRENT instant and hand back an unrelated first reading dressed as a continuation of one that no
+    // longer exists. No engine runs here and no professional verdict is claimed — the same honest
+    // `unavailable` state the WHY branch above already uses when it has nothing to restore.
     //
     // REEVALUATE_NOW is unaffected: `continuationIfHealthy` was computed with `hasPriorDecision: true`
     // BEFORE the load above, and an explicit re-evaluation marker in `classifyContinuationIntent` is checked
     // ahead of `hasPriorDecision` — so "지금 다시 보면?" still reaches the fresh-grounding branch below
-    // regardless of whether history was malformed, exactly as G5 requires.
+    // regardless of whether history was malformed/unloadable, exactly as G5 requires.
     grounding = { status: 'unavailable', reason: 'calculation_failed' };
     followUpDirective = '[후속 지침 — 이전 상담 복원 불가] 이전 상담 기록을 이번 답변에 안전하게 이어붙일 수 없습니다. '
       + '새로운 판정을 지어내지 말고, 이전 상담 내용을 지금 확인할 수 없다는 점을 안내한 뒤 원하시는 부분을 '
@@ -493,11 +498,20 @@ export async function buildServerConsultation(
         }
         : undefined;
   const isAuthoritativeWhy = followUpIntent === 'WHY' && followUpDirective !== null && previousMeta !== null;
+  // G6 PATCH 2 §7 — DURABLE ACROSS THE LIFECYCLE. Set on THIS turn's own persisted row only when history was
+  // malformed/unloadable AND this turn was itself trying to depend on it (a REFINE_EXISTING continuation, or
+  // an authoritative-shaped WHY) — never on a REEVALUATE_NOW turn, whose fresh graph is genuinely trustworthy
+  // and must not be poisoned, and never on a genuinely new question, which does not depend on the broken
+  // history at all. `continuationIfHealthy` (not `continuation`) is used for the same reason the decline
+  // branch above does: it answers "would this have continued IF history were healthy", independent of
+  // whether the load actually succeeded.
+  const priorHistoryUnavailable = priorHistoryProblem !== null
+    && (continuationIfHealthy === 'REFINE_EXISTING' || followUpIntent === 'WHY');
   const decisionMeta: ConsultationDecisionMeta = isAuthoritativeWhy
     ? previousMeta!
     : buildConsultationDecisionMeta(
       question, plan, effectiveGrounding, resolvedTemporalContext, deps.modelId ?? null, carriedDomain,
-      graphRevision,
+      graphRevision, priorHistoryUnavailable,
     );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
   const structuredResult =

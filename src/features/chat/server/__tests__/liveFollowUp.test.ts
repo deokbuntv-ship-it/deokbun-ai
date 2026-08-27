@@ -31,7 +31,9 @@ const META = (over: Partial<ConsultationDecisionMeta> = {}): ConsultationDecisio
 
 function harness(answer = GOOD, prev: ConsultationDecisionMeta | null = META()) {
   const sent: LLMMessage[][] = [];
-  const loadPreviousDecision = jest.fn(async () => prev);
+  const loadPreviousDecision = jest.fn(
+    async () => (prev === null ? { status: 'NONE' as const } : { status: 'VALID' as const, meta: prev }),
+  );
   const deps: ServerConsultationDeps = { digestProvider, nowEpochSeconds: NOW, modelId: 'gpt-5-mini', loadPreviousDecision, async callLLM(m) { sent.push(m); return answer; } };
   return { deps, sent, loadPreviousDecision };
 }

@@ -80,6 +80,29 @@ export type CrossReasoning = {
 };
 
 /**
+ * G6 PATCH 2 Sec3 - THE CANDIDATE SET resolveAnswer() IS RESOLVED OVER, AS A NAMED, REUSABLE EXPORT.
+ *
+ * Textually identical to the candidate computation inlined at the two live call sites (this file's
+ * reasonCross(), lines ~158-188, and graphExtension.ts's extendGraph(), which duplicates the same shape) - a
+ * new export, not a refactor of either call site, so G1-G5's own reasoning paths are untouched. Exists so a
+ * persisted-graph validator (decisionMeta.ts) can RECOMPUTE the same answer the live pipeline would have
+ * picked, from a restored graph, instead of re-deriving a second copy of this selection logic.
+ */
+export function selectAnswerCandidates(
+  standing: ReasonedProposition[], asked: JudgmentDomain, intent: QuestionIntent,
+): ReasonedProposition[] {
+  const onAsked = standing.filter((p) => p.questionAxis === asked);
+  const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
+  const describesChart = (p: ReasonedProposition) =>
+    p.conclusionType === 'STRUCTURAL' && p.derivationRule !== 'PRIMITIVE' && p.derivationRule !== 'CROSS_STANDOFF';
+  const onAskedAxis = (p: ReasonedProposition) => asked === 'GENERAL' || p.questionAxis === asked;
+  return nonDecision
+    ? standing.filter((p) => onAskedAxis(p)
+      && ((intent === 'CAUSE_WHY' && p.conclusionType === 'CAUSAL') || describesChart(p)))
+    : onAsked.filter((p) => p.direction !== 'NONE');
+}
+
+/**
  * PROJECTION — semantic conclusion → legacy stance enum.
  *
  * V4B §11: the firmness of a claim is read from the premises that SUPPORT THAT CLAIM, whatever its real-world

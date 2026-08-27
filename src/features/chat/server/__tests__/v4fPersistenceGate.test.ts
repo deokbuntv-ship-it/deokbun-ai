@@ -9,9 +9,9 @@
 // "no history".
 import { createHash } from 'crypto';
 
-import { buildServerConsultation, MALFORMED_PRIOR_DECISION } from '@/features/chat/server';
+import { buildServerConsultation } from '@/features/chat/server';
 import type {
-  ConsultationDecisionMeta, ServerConsultationDeps, ServerConsultationRequest,
+  ConsultationDecisionMeta, PriorHistoryLoad, ServerConsultationDeps, ServerConsultationRequest,
 } from '@/features/chat/server';
 import type { BirthInfoDraft } from '@/features/consultation';
 import type { DigestProvider } from '@/features/interpretation';
@@ -157,8 +157,7 @@ describe('§13 — G1-G5 regression, explicit', () => {
       + '꾸준히 쌓아 올리면 좋고 조급하게 서두르면 흐름이 흐트러지기 쉬우니 속도를 조절하는 편이 좋습니다.',
     strengths: ['끈기'], cautions: ['속도를 조절하는 편이 좋습니다.'], followUps: ['어떤 방식이 맞을까요?'],
   });
-  type LoadFn = () => Promise<ConsultationDecisionMeta | null | typeof MALFORMED_PRIOR_DECISION>;
-  const deps = (now: number, loadPreviousDecision?: LoadFn): ServerConsultationDeps => ({
+  const deps = (now: number, loadPreviousDecision?: () => Promise<PriorHistoryLoad>): ServerConsultationDeps => ({
     digestProvider, nowEpochSeconds: now, async callLLM() { return GOOD_ANSWER; },
     ...(loadPreviousDecision ? { loadPreviousDecision } : {}),
   });
@@ -168,9 +167,9 @@ describe('§13 — G1-G5 regression, explicit', () => {
   async function turn(
     question: string, now: number, previous?: ConsultationDecisionMeta | null,
   ): Promise<ConsultationDecisionMeta> {
-    const out = await buildServerConsultation(
-      request(question), deps(now, previous === undefined ? undefined : async () => previous),
-    );
+    const load = previous === undefined ? undefined
+      : async () => (previous === null ? { status: 'NONE' as const } : { status: 'VALID' as const, meta: previous });
+    const out = await buildServerConsultation(request(question), deps(now, load));
     if (!out.ok) throw new Error(`turn failed: ${out.reason}`);
     const meta = out.structuredResult?.decisionMeta as ConsultationDecisionMeta | undefined;
     if (!meta) throw new Error('no decisionMeta');
@@ -231,7 +230,7 @@ describe('§9 — a malformed (present but invalid) prior decision fails closed'
   });
   const deps = (now: number): ServerConsultationDeps => ({
     digestProvider, nowEpochSeconds: now, async callLLM() { return GOOD_ANSWER; },
-    loadPreviousDecision: async () => MALFORMED_PRIOR_DECISION,
+    loadPreviousDecision: async () => ({ status: 'MALFORMED' as const }),
   });
   const request = (question: string): ServerConsultationRequest => ({ birthInput: birth, question });
 

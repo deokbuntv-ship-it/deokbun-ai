@@ -62,7 +62,7 @@ describe('§12-14 crisis hard-stop is a PURE pre-check the Edge can run before a
   it('a crisis question in the orchestrator NEVER calls the LLM, the previous-decision loader, or grounding', async () => {
     clearZiweiCache(); clearQimenCache();
     const sent: LLMMessage[][] = [];
-    const loadPreviousDecision = jest.fn(async () => META());
+    const loadPreviousDecision = jest.fn(async () => ({ status: 'VALID' as const, meta: META() }));
     const deps: ServerConsultationDeps = {
       digestProvider, nowEpochSeconds: NOW, modelId: 'gpt-5-mini', loadPreviousDecision,
       async callLLM(m) { sent.push(m); return '{}'; },

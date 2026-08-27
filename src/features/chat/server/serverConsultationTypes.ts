@@ -72,21 +72,30 @@ export type ServerConsultationDeps = {
   // for the CURRENT conversation (ownership-verified) and injects this. Absent → no live follow-up. The
   // client's own copy of a previous polarity/version/target is NEVER trusted — only this server load is.
   //
-  // V4F §8 — THREE OUTCOMES, NOT TWO. `null` means NO_PRIOR_HISTORY: no row exists (first turn, or no
-  // conversation to look up). `MALFORMED_PRIOR_DECISION` means PRIOR_HISTORY_EXISTS_BUT_IS_INVALID: a row was
-  // found but failed graph validation (decisionMeta.ts's parser is fail-closed on the GRAPH; this is what
-  // fails closed on the LOAD). The two must never collapse to the same value — a caller that cannot tell them
-  // apart treats an ordinary dependent follow-up ("돈은?") exactly like the first turn of a brand-new
-  // conversation, silently recasting a continuation as an unrelated fresh reading.
-  loadPreviousDecision?: () => Promise<ConsultationDecisionMeta | null | typeof MALFORMED_PRIOR_DECISION>;
+  // G6 PATCH 2 §6/§8 — FOUR OUTCOMES, EXPLICITLY NAMED, NEVER COLLAPSED.
+  //
+  // V4F's two-outcome sentinel (a row exists-but-invalid vs no row) missed a THIRD failure mode: the query
+  // itself throwing (a DB/network/timeout error) is not the same fact as "no row was ever written," and both
+  // are not the same fact as "a row exists but decisionMeta.ts's parser rejected it." Collapsing any pair of
+  // these to the same value lets a caller treat an infrastructure hiccup, or a genuinely malformed row, as an
+  // ordinary first turn — silently recasting a dependent follow-up ("돈은?") as an unrelated fresh reading.
+  //   NONE          — NO_PRIOR_HISTORY: no row exists (first turn, or no conversation to look up).
+  //   VALID         — VALID_PRIOR_HISTORY: a row was found and parsed successfully, and does not itself carry
+  //                   a `priorHistoryUnavailable` taint from an earlier turn's own decline (see
+  //                   ConsultationDecisionMeta.priorHistoryUnavailable below — §7's durability mechanism).
+  //   MALFORMED     — PRIOR_HISTORY_MALFORMED_OR_UNRESTORABLE: a row was found but either failed
+  //                   decisionMeta.ts's fail-closed parser, or parsed fine but is ITSELF a prior decline over
+  //                   malformed history (the taint propagates forward through re-loads).
+  //   LOAD_FAILED   — PRIOR_HISTORY_LOAD_FAILED: the query/loader itself threw. Distinct from MALFORMED only
+  //                   for diagnostics; a dependent follow-up fails closed identically for both.
+  loadPreviousDecision?: () => Promise<PriorHistoryLoad>;
 };
 
-/**
- * V4F §8 — the sentinel for PRIOR_HISTORY_EXISTS_BUT_IS_INVALID. A unique value (not a string/enum) so it can
- * never be produced by JSON parsing or accidentally equal a legitimate return value; it exists only to be
- * compared with `===` inside one process, between `loadPreviousDecision` and `buildServerConsultation`.
- */
-export const MALFORMED_PRIOR_DECISION = Symbol('MALFORMED_PRIOR_DECISION');
+export type PriorHistoryLoad =
+  | { status: 'NONE' }
+  | { status: 'VALID'; meta: ConsultationDecisionMeta }
+  | { status: 'MALFORMED' }
+  | { status: 'LOAD_FAILED' };
 
 // Bounded, safe metadata (§17). No raw DB row, no provider object, no internal prompt, no secret.
 // Carries the decision/audit version bundle (Sprint A §11): `engineVersion` = frozen engine ruleset
@@ -174,6 +183,24 @@ export type ConsultationDecisionMeta = {
     engineVersion: string;
   };
   resolvedTemporalContext: ResolvedTemporalContext;
+  /**
+   * G6 PATCH 2 §7 — DURABLE ACROSS THE LIFECYCLE, NOT JUST THE IMMEDIATE TURN.
+   *
+   * Set true ONLY on a turn whose own answer declined because ITS prior history was MALFORMED or LOAD_FAILED
+   * (see PriorHistoryLoad above) and that turn was itself trying to depend on that history (a REFINE_EXISTING
+   * continuation, or an authoritative WHY). Never set on a REEVALUATE_NOW turn — a deliberate restart produces
+   * a genuinely fresh, trustworthy graph and must not poison it.
+   *
+   * The point of persisting this (rather than only tracking it in-memory for one turn) is durability: T1's row
+   * is malformed → T2 ("돈은?") declines and persists THIS flag on its own row → T3 ("왜?") loads T2 as its
+   * "previous" row. T2's row parses perfectly fine on its own (it is a well-formed decline, not a corrupted
+   * row) — without this flag, the loader would report VALID_PRIOR_HISTORY for T3 and T3 would silently start a
+   * fresh reading, dressed as a continuation of a judgment that never existed. The loader checks this flag
+   * AFTER a successful parse and reports MALFORMED instead of VALID when it is true, so the taint survives
+   * every re-load until an explicit REEVALUATE_NOW (or a genuinely NEW_QUESTION, which does not depend on the
+   * prior history at all) breaks the chain.
+   */
+  priorHistoryUnavailable?: true;
 };
 
 // Safe output diagnostics (no content) — how the LLM output was classified + the exact reason it was not

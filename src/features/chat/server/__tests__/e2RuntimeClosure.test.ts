@@ -90,7 +90,7 @@ describe('E.2 full prompt authority', () => {
   it('WHY uses stored A only and never calculates/injects current B', async () => {
     const sent: LLMMessage[][] = [];
     const deps: ServerConsultationDeps = {
-      digestProvider, nowEpochSeconds: NOW, loadPreviousDecision: async () => STORED_A,
+      digestProvider, nowEpochSeconds: NOW, loadPreviousDecision: async () => ({ status: 'VALID', meta: STORED_A }),
       async callLLM(messages) { sent.push(messages); return GOOD; },
     };
     const result = await buildServerConsultation({
@@ -134,7 +134,7 @@ describe('E.2 full prompt authority', () => {
         { role: 'user', content: '2030 또는 2040 중 골라줘.' },
       ],
     }, {
-      digestProvider, nowEpochSeconds: NOW, loadPreviousDecision: async () => comparison,
+      digestProvider, nowEpochSeconds: NOW, loadPreviousDecision: async () => ({ status: 'VALID', meta: comparison }),
       async callLLM(messages) { sent.push(messages); return GOOD; },
     });
     const prompt = systemText(sent[0]);
