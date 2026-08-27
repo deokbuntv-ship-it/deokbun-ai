@@ -11,6 +11,7 @@
 // multi-root charts, and zero-relation/zero-root charts — without hand-authoring each one.
 import { HEAVENLY_STEMS, EARTHLY_BRANCHES, type HeavenlyStem, type EarthlyBranch } from '../../interpretation';
 import { buildMyungriStrengthFactBundle, type NatalPillarContext } from '../index';
+import { ALL_SUPPORTED_RELATION_KINDS } from '../contracts/factLayerTypeFirewall';
 
 const stemAt = (i: number): HeavenlyStem => HEAVENLY_STEMS[((i % 10) + 10) % 10];
 const branchAt = (i: number): EarthlyBranch => EARTHLY_BRANCHES[((i % 12) + 12) % 12];
@@ -165,7 +166,14 @@ describe(`deterministic fixture corpus (${CORPUS.length} fixtures, HARDENING §1
     expect(seen).toEqual(new Set(['MAIN', 'MIDDLE', 'RESIDUAL']));
   });
 
-  it('the corpus reaches every supported relation kind at least once', () => {
+  // AUDIT FINDING F5. This assertion previously permitted `seen.size >= 6`, so six of the twelve
+  // supported relation kinds could silently vanish from the corpus without failing anything. It now
+  // requires EVERY supported kind, compared against the canonical exported set rather than a
+  // hard-coded list — so if a new relation kind is ever added to the frozen rule layer,
+  // `factLayerTypeFirewall.ts`'s exhaustiveness assertion forces it into
+  // ALL_SUPPORTED_RELATION_KINDS at COMPILE time, and this test then requires the corpus to
+  // actually exercise it at RUN time. Neither half can be satisfied by silence.
+  it('the corpus reaches EVERY supported relation kind — no kind may silently disappear', () => {
     const seen = new Set<string>();
     for (const { natal } of CORPUS) {
       const r = buildMyungriStrengthFactBundle(natal);
@@ -175,21 +183,8 @@ describe(`deterministic fixture corpus (${CORPUS.length} fixtures, HARDENING §1
       for (const x of relationParticipants.branchPair) seen.add(x.relation.kind);
       for (const x of relationParticipants.branchSet) seen.add(x.relation.kind);
     }
-    const expectedKinds = [
-      'STEM_COMBINATION', 'STEM_CLASH',
-      'BRANCH_SIX_COMBINATION', 'BRANCH_CLASH', 'BRANCH_PUNISHMENT', 'BRANCH_SELF_PUNISHMENT',
-      'BRANCH_DESTRUCTION', 'BRANCH_HARM', 'BRANCH_HALF_THREE_HARMONY',
-      'BRANCH_THREE_HARMONY', 'BRANCH_DIRECTIONAL_UNION', 'BRANCH_THREE_PUNISHMENT',
-    ];
-    const missing = expectedKinds.filter((k) => !seen.has(k));
-    // Not every kind is guaranteed by this particular deterministic generator (some, like a full
-    // 三刑 trio, need exact 3-branch coincidences); report exactly what's missing rather than
-    // silently passing — anything short of full coverage here is a fixture-generation gap, not a
-    // fact-layer defect (already proven exhaustively per-kind in relationParticipants.test.ts).
-    if (missing.length > 0) {
-      // eslint-disable-next-line no-console
-      console.warn(`fixture corpus did not organically reach: ${missing.join(', ')} (already exhaustively covered by relationParticipants.test.ts's dedicated per-kind fixtures)`);
-    }
-    expect(seen.size).toBeGreaterThanOrEqual(6); // meaningful organic diversity, not a hard 12/12 requirement
+    const missing = ALL_SUPPORTED_RELATION_KINDS.filter((k) => !seen.has(k));
+    expect(missing).toEqual([]);
+    expect(seen.size).toBe(ALL_SUPPORTED_RELATION_KINDS.length);
   });
 });

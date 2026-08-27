@@ -1,6 +1,8 @@
 // Relation PARTICIPANT LINKAGE — deterministic FACT only. DETECTION != EFFECT: this suite exists
 // specifically to prove no forbidden effect/transformation field is ever emitted.
-import { calculateRelationParticipants, type NatalPillarContext } from '../index';
+import {
+  calculateRelationParticipants, calculateSameElementRooting, type NatalPillarContext,
+} from '../index';
 
 // 甲 일간. 戊申년 丙子월 甲寅일 己辰시.
 //   YEAR(申)-DAY(寅): 寅申沖 (BRANCH_CLASH).
@@ -294,9 +296,171 @@ describe('factId stability', () => {
     expect(allIds.every((id) => !/[가-힣]/.test(id))).toBe(true); // no Korean text in any id
   });
 
-  it('the leading numeric index is REDUNDANT, not load-bearing: stripping it still leaves every factId unique', () => {
-    // Proves the index prefix documents scan order but is not secretly required for disambiguation
-    // — the structural suffix (positions/branches + relation kind) is ALREADY a unique key on its own.
+});
+
+// ══ F2 REGRESSION — relation fact IDs carry NO detector array index ═════════════════════════════
+// Audit finding F2: relation fact ids previously embedded the detector's own output index, so the
+// identity of a relation changed whenever the detector's scan order changed. Identity must be
+// SEMANTIC ONLY (relation kind + canonically-ordered participants).
+describe('factId semantic identity (audit finding F2)', () => {
+  const RICH: NatalPillarContext = {
+    dayMaster: 'JIA',
+    pillars: {
+      year: { stem: 'WU', branch: 'SHEN' }, month: { stem: 'BING', branch: 'ZI' },
+      day: { stem: 'JIA', branch: 'YIN' }, hour: { stem: 'JI', branch: 'CHEN' },
+    },
+  };
+
+  it('no factId contains a bare detector-index segment', () => {
+    const r = calculateRelationParticipants(RICH);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    for (const entry of [...r.stem, ...r.branchPair, ...r.branchSet]) {
+      // the old format was `<prefix>:<index>:...` — a numeric segment delimited by colons
+      expect(entry.factId).not.toMatch(/:\d+:/);
+    }
+  });
+
+  it('every factId is reconstructible from relation kind + participant positions/values alone', () => {
+    const r = calculateRelationParticipants(RICH);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const RANK: Record<string, number> = { YEAR: 0, MONTH: 1, DAY: 2, HOUR: 3 };
+    const branchAt: Record<string, string> = {
+      YEAR: 'SHEN', MONTH: 'ZI', DAY: 'YIN', HOUR: 'CHEN',
+    };
+    const stemAt: Record<string, string> = { YEAR: 'WU', MONTH: 'BING', DAY: 'JIA', HOUR: 'JI' };
+
+    for (const entry of r.branchPair) {
+      const token = [...entry.participantPillars]
+        .sort((a, b) => RANK[a] - RANK[b])
+        .map((p) => `${p}=${branchAt[p]}`)
+        .join('+');
+      expect(entry.factId).toBe(`branch-pair-relation-participants:${entry.relation.kind}:${token}`);
+    }
+    for (const entry of r.stem) {
+      const token = [...entry.participantPillars]
+        .sort((a, b) => RANK[a] - RANK[b])
+        .map((p) => `${p}=${stemAt[p]}`)
+        .join('+');
+      expect(entry.factId).toBe(`stem-relation-participants:${entry.relation.kind}:${token}`);
+    }
+  });
+
+  it('THE KEY PROPERTY: the same semantic relation keeps the same factId even when the detector emits it at a different array index', () => {
+    // Chart A: 寅申沖 between YEAR(申) and DAY(寅). The MONTH branch 子 forms no pair relation with
+    // 申 or 寅, so the clash lands early in the detector's scan output.
+    const chartA: NatalPillarContext = {
+      dayMaster: 'JIA',
+      pillars: {
+        year: { stem: 'JIA', branch: 'SHEN' }, month: { stem: 'JIA', branch: 'ZI' },
+        day: { stem: 'JIA', branch: 'YIN' },
+      },
+    };
+    // Chart B: the SAME 寅申沖 at the SAME positions, but MONTH is now 丑 — which forms extra
+    // relations (申丑? 子丑? etc.) and adds an HOUR pillar, so the detector's scan emits a different
+    // NUMBER of relations before and around the clash, shifting its array index.
+    const chartB: NatalPillarContext = {
+      dayMaster: 'JIA',
+      pillars: {
+        year: { stem: 'JIA', branch: 'SHEN' }, month: { stem: 'JIA', branch: 'CHOU' },
+        day: { stem: 'JIA', branch: 'YIN' }, hour: { stem: 'JIA', branch: 'SI' },
+      },
+    };
+    const a = calculateRelationParticipants(chartA);
+    const b = calculateRelationParticipants(chartB);
+    if (a.capability !== 'AVAILABLE' || b.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+
+    const clashA = a.branchPair.find((x) => x.relation.kind === 'BRANCH_CLASH')!;
+    const clashB = b.branchPair.find((x) => x.relation.kind === 'BRANCH_CLASH'
+      && x.participantPillars.includes('YEAR') && x.participantPillars.includes('DAY'))!;
+    expect(clashA).toBeDefined();
+    expect(clashB).toBeDefined();
+
+    // The detector genuinely emitted them at different positions in its output array...
+    const indexA = a.branchPair.indexOf(clashA);
+    const indexB = b.branchPair.indexOf(clashB);
+    expect(indexA).not.toBe(indexB);
+    // ...yet the semantic identity is IDENTICAL. This is the property the old index-based id broke.
+    expect(clashB.factId).toBe(clashA.factId);
+  });
+
+  it('genuinely DIFFERENT simultaneous relations remain distinguishable after the index is removed', () => {
+    // 子 at YEAR and HOUR both 육합 with 丑 at MONTH — two real, distinct relations that the old
+    // index disambiguated by accident. They must still be distinguishable by position alone.
+    const natal: NatalPillarContext = {
+      dayMaster: 'JIA',
+      pillars: {
+        year: { stem: 'JIA', branch: 'ZI' }, month: { stem: 'JIA', branch: 'CHOU' },
+        day: { stem: 'JIA', branch: 'HAI' }, hour: { stem: 'JIA', branch: 'ZI' },
+      },
+    };
+    const r = calculateRelationParticipants(natal);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const sixCombos = r.branchPair.filter((x) => x.relation.kind === 'BRANCH_SIX_COMBINATION');
+    expect(sixCombos.length).toBe(2);
+    expect(new Set(sixCombos.map((x) => x.factId)).size).toBe(2); // no collision
+  });
+
+  it('no factId collides anywhere in a relation-dense chart', () => {
+    const dense: NatalPillarContext = {
+      dayMaster: 'JIA',
+      pillars: {
+        year: { stem: 'JIA', branch: 'SHEN' }, month: { stem: 'JI', branch: 'ZI' },
+        day: { stem: 'JIA', branch: 'CHEN' }, hour: { stem: 'GENG', branch: 'YIN' },
+      },
+    };
+    const r = calculateRelationParticipants(dense);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const all = [...r.stem, ...r.branchPair, ...r.branchSet].map((x) => x.factId);
+    expect(all.length).toBeGreaterThan(2);
+    expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+// ══ F1 REGRESSION — candidateAffectedRootFactIds holds GENUINE DM roots only ════════════════════
+// Audit finding F1: the field previously received EVERY hidden-stem fact in a participating branch,
+// so a non-Day-Master-element hidden stem was reported as an affected "root" it never was.
+describe('root-only relation linkage (audit finding F1)', () => {
+  it('a branch holding ONE genuine DM root among unrelated hidden stems reports only the root', () => {
+    // DM 甲(WOOD). 寅 지장간 = 戊(EARTH, RESIDUAL) 丙(FIRE, MIDDLE) 甲(WOOD, MAIN).
+    // Only 甲 is a WOOD root; 戊/丙 are co-located non-roots and must NOT be listed.
+    const natal: NatalPillarContext = {
+      dayMaster: 'JIA',
+      pillars: {
+        year: { stem: 'JIA', branch: 'SHEN' }, month: { stem: 'JIA', branch: 'ZI' },
+        day: { stem: 'JIA', branch: 'YIN' },
+      },
+    };
+    const r = calculateRelationParticipants(natal);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const clash = r.branchPair.find((x) => x.relation.kind === 'BRANCH_CLASH')!; // 寅申沖
+    expect(clash).toBeDefined();
+    // 寅 contributes exactly its 甲 root; 申 (戊/壬/庚 — EARTH/WATER/METAL) contributes nothing.
+    expect(clash.candidateAffectedRootFactIds).toEqual(['hidden-stem:DAY:YIN:MAIN:JIA']);
+    // the non-root co-located hidden stems are explicitly absent
+    expect(clash.candidateAffectedRootFactIds.some((id) => id.includes(':WU'))).toBe(false);
+    expect(clash.candidateAffectedRootFactIds.some((id) => id.includes(':BING'))).toBe(false);
+    expect(clash.candidateAffectedRootFactIds.some((id) => id.includes(':GENG'))).toBe(false);
+  });
+
+  it('a relation touching branches with NO genuine DM root reports an EMPTY root list', () => {
+    // DM 丙(FIRE). 子(WATER 壬癸) and 午... use 子午沖 where neither branch holds a FIRE root for 丙?
+    // 午 지장간 = 丙(FIRE, MAIN) — so instead use 申寅? Use DM 庚(METAL) with 子午沖:
+    // 子 = 壬癸 (WATER), 午 = 丙己丁 (FIRE/EARTH) — no METAL anywhere. Genuinely rootless for this clash.
+    const natal: NatalPillarContext = {
+      dayMaster: 'GENG',
+      pillars: {
+        year: { stem: 'GENG', branch: 'ZI' }, month: { stem: 'GENG', branch: 'MAO' },
+        day: { stem: 'GENG', branch: 'WU' },
+      },
+    };
+    const r = calculateRelationParticipants(natal);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const clash = r.branchPair.find((x) => x.relation.kind === 'BRANCH_CLASH')!; // 子午沖
+    expect(clash).toBeDefined();
+    expect(clash.candidateAffectedRootFactIds).toEqual([]);
+  });
+
+  it('every reported id is a GENUINE same-element root, cross-checked against the root provider', () => {
     const natal: NatalPillarContext = {
       dayMaster: 'JIA',
       pillars: {
@@ -304,13 +468,38 @@ describe('factId stability', () => {
         day: { stem: 'JIA', branch: 'YIN' }, hour: { stem: 'JI', branch: 'CHEN' },
       },
     };
-    const result = calculateRelationParticipants(natal);
-    if (result.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
-    const stripIndex = (id: string) => id.replace(/^([a-z-]+:)\d+:/, '$1');
-    for (const group of [result.stem, result.branchPair, result.branchSet]) {
-      const suffixes = group.map((x) => stripIndex(x.factId));
-      expect(new Set(suffixes).size).toBe(suffixes.length);
+    const r = calculateRelationParticipants(natal);
+    const rooting = calculateSameElementRooting(natal);
+    if (r.capability !== 'AVAILABLE' || rooting.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const genuineRootIds = new Set(rooting.sameElementRoots.map((h) => h.factId));
+    const everyHiddenStemId = new Set(rooting.branches.flatMap((b) => b.hiddenStems).map((h) => h.factId));
+    // sanity: the complete catalog is strictly larger than the root subset, so this test has teeth
+    expect(everyHiddenStemId.size).toBeGreaterThan(genuineRootIds.size);
+
+    for (const entry of [...r.branchPair, ...r.branchSet]) {
+      for (const id of entry.candidateAffectedRootFactIds) {
+        expect(genuineRootIds.has(id)).toBe(true);
+      }
     }
+  });
+
+  it('a branch with MULTIPLE hidden stems of which several are roots reports each root separately', () => {
+    // DM 戊(EARTH). 辰 지장간 = 乙(WOOD) 癸(WATER) 戊(EARTH MAIN) → one EARTH root.
+    // 戌 지장간 = 辛(METAL) 丁(FIRE) 戊(EARTH MAIN) → one EARTH root. 辰戌沖 touches both.
+    const natal: NatalPillarContext = {
+      dayMaster: 'WU',
+      pillars: {
+        year: { stem: 'WU', branch: 'CHEN' }, month: { stem: 'WU', branch: 'ZI' },
+        day: { stem: 'WU', branch: 'XU' },
+      },
+    };
+    const r = calculateRelationParticipants(natal);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const clash = r.branchPair.find((x) => x.relation.kind === 'BRANCH_CLASH')!; // 辰戌沖
+    expect(clash).toBeDefined();
+    expect(clash.candidateAffectedRootFactIds.sort()).toEqual(
+      ['hidden-stem:DAY:XU:MAIN:WU', 'hidden-stem:YEAR:CHEN:MAIN:WU'].sort(),
+    );
   });
 });
 

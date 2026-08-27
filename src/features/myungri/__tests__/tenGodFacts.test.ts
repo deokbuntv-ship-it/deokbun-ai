@@ -85,6 +85,10 @@ describe('EXHAUSTIVE — ten-god mapping across all 10 Day Masters × 10 target 
     throw new Error(`unreachable: ${dmElement} vs ${targetElement}`);
   }
 
+  // 100/100 COVERAGE (audit finding F4). The diagonal (target === dayMaster) is NOT skipped: the
+  // provider excludes the DAY *position* (a stem has no ten-god relation to itself at its own
+  // pillar), NOT the Day Master's stem *value* appearing elsewhere. Placing the DM's own stem at
+  // YEAR is a real, ordinary chart (e.g. 甲 년간 with a 甲 일간) and must map to 比肩/PEER.
   for (const dayMaster of HEAVENLY_STEMS) {
     describe(`Day Master ${dayMaster}`, () => {
       const dmElement = getStemElement(dayMaster);
@@ -92,7 +96,6 @@ describe('EXHAUSTIVE — ten-god mapping across all 10 Day Masters × 10 target 
       if (!dmElement.ok || !dmYinYang.ok) throw new Error('frozen primitive failed for a valid stem');
 
       for (const target of HEAVENLY_STEMS) {
-        if (target === dayMaster) continue; // DAY position excluded — see #15 below
         it(`target=${target}: matches the independently-derived classical Ten-God rule`, () => {
           const targetElement = getStemElement(target);
           const targetYinYang = getStemYinYang(target);
@@ -117,6 +120,60 @@ describe('EXHAUSTIVE — ten-god mapping across all 10 Day Masters × 10 target 
       }
     });
   }
+
+  it('covers the full 10x10 mapping — all 100 (dayMaster, target) pairs, diagonal included', () => {
+    const covered = new Set<string>();
+    for (const dayMaster of HEAVENLY_STEMS) {
+      for (const target of HEAVENLY_STEMS) {
+        const r = calculateTenGodFacts({
+          dayMaster,
+          pillars: {
+            year: { stem: target, branch: 'ZI' },
+            month: { stem: dayMaster, branch: 'ZI' },
+            day: { stem: dayMaster, branch: 'ZI' },
+          },
+        });
+        if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+        expect(r.visibleStems.find((v) => v.position === 'YEAR')).toBeDefined();
+        covered.add(`${dayMaster}->${target}`);
+      }
+    }
+    expect(covered.size).toBe(100);
+  });
+
+  it('the diagonal specifically resolves to PEER (比肩) — same element, same polarity', () => {
+    for (const dayMaster of HEAVENLY_STEMS) {
+      const r = calculateTenGodFacts({
+        dayMaster,
+        pillars: {
+          year: { stem: dayMaster, branch: 'ZI' },
+          month: { stem: dayMaster, branch: 'ZI' },
+          day: { stem: dayMaster, branch: 'ZI' },
+        },
+      });
+      if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+      expect(r.visibleStems.find((v) => v.position === 'YEAR')!.tenGod).toBe('PEER');
+    }
+  });
+
+  it('all 10 TenGod values are reachable across the 100-pair matrix', () => {
+    const seen = new Set<TenGod>();
+    for (const dayMaster of HEAVENLY_STEMS) {
+      for (const target of HEAVENLY_STEMS) {
+        const r = calculateTenGodFacts({
+          dayMaster,
+          pillars: {
+            year: { stem: target, branch: 'ZI' },
+            month: { stem: dayMaster, branch: 'ZI' },
+            day: { stem: dayMaster, branch: 'ZI' },
+          },
+        });
+        if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+        seen.add(r.visibleStems.find((v) => v.position === 'YEAR')!.tenGod);
+      }
+    }
+    expect(seen.size).toBe(10);
+  });
 });
 
 // ══ order invariance / factId stability / duplicate-fact policy (HARDENING §11/§12/§14) ═════════

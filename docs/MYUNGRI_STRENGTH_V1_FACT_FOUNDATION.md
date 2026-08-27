@@ -152,12 +152,16 @@ YONGSHIN_JUDGMENT_ADDED = NO
 
 ## 9. FACT FOUNDATION FREEZE CONTRACT
 
-Added by the HARDENING sprint (base `e365f847d06bda741274fd49ff1f1970e68946a0`). This section is the
+Added by the HARDENING sprint (base `e365f847d06bda741274fd49ff1f1970e68946a0`), **corrected by the
+REMEDIATION batch** (base `4d98ec1bd938d16be5295cd708981d40b9a251be`) after an independent audit found
+three overclaims in the first version — see §9.9 for the exact corrections. This section is the
 authoritative, load-bearing contract for everything downstream of §1–§8 — a future Strength Reasoner,
-and any future edit to this fact layer, must satisfy it. Enforced by
-`sameElementRooting.test.ts`, `tenGodFacts.test.ts`, `generalSeasonalPhase.test.ts`,
+and any future edit to this fact layer, must satisfy it.
+
+Enforced by `contracts/factLayerTypeFirewall.ts` (**compile-time**, type-checked by `tsc --noEmit`),
+plus `sameElementRooting.test.ts`, `tenGodFacts.test.ts`, `generalSeasonalPhase.test.ts`,
 `relationParticipants.test.ts`, `specialPatternPrerequisites.test.ts`, `strengthFactBundle.test.ts`,
-`detectionEffectFirewall.test.ts` (compile-time + runtime), and
+`detectionEffectFirewall.test.ts` (**runtime only** — see §9.5), and
 `factFoundationFixtureCorpus.test.ts` (600 deterministic chart fixtures).
 
 ### 9.1 FACT LAYER MAY PRODUCE
@@ -173,9 +177,9 @@ and any future edit to this fact layer, must satisfy it. Enforced by
 - 旺相休囚死 phase for ANY element against ANY reference element — never a WEAK/STRONG conclusion
   derived from that phase.
 - Relation DETECTION (already existed) plus PARTICIPANT LINKAGE: exact pillar positions, stems,
-  branches, and candidate co-located root fact ids for every relation
+  branches, and candidate co-located **Day-Master same-element ROOT** fact ids for every relation
   `pillarRelations.ts`/`natalRelations.ts` detects — never whether the relation succeeds, transforms,
-  or damages anything it touches.
+  or damages anything it touches. See §9.10 for the root-only restriction.
 - A stable `factId`/`ruleVersion` per citable fact (or, where a provider emits pure aggregates with
   no natural per-record identity — `specialPatternPrerequisites.ts` — the fixed `role` enum or
   `position`+`branch` pair serves as that stable identity instead; see §9.4).
@@ -216,10 +220,24 @@ stem/branch identity, hidden-stem role, relation kind, and relation participants
   written in any key order with no change to any factId (every provider iterates a hardcoded
   position order internally, never `Object.keys(natal.pillars)`).
 - **Free of display text**: no factId contains Korean characters or any localized wording.
-- **Free of incidental array-index dependence** (`relationParticipants.ts` specifically): the leading
-  numeric index in `stem-relation-participants:${i}:...` etc. is a scan-order label, not a
-  disambiguator — stripping it still leaves every factId within one chart unique, because the
-  structural suffix (positions + relation kind) is already a complete key on its own.
+- **Free of ANY detector array-index dependence** (`relationParticipants.ts` specifically —
+  CORRECTED, see §9.9/F2). Relation fact ids previously embedded the detector's own output index
+  (`stem-relation-participants:${i}:...`), which made a relation's identity depend on the order
+  `natalRelations.ts` happened to emit it in — a genuine violation of order-independent identity, not
+  a cosmetic one. Relation fact ids are now **purely semantic**:
+
+  ```
+  stem-relation-participants:<KIND>:<POS>=<STEM>+<POS>=<STEM>
+  branch-pair-relation-participants:<KIND>:<POS>=<BRANCH>+<POS>=<BRANCH>
+  branch-set-relation-participants:<KIND>:<BRANCH>+<BRANCH>+<BRANCH>:<POS>+<POS>+<POS>
+  ```
+
+  Participants are canonically ordered (pillar positions by fixed YEAR→MONTH→DAY→HOUR rank; branch
+  sets by fixed 지지 order), and each participant's value is looked up **by position from the chart**
+  rather than zipped against the detector's own arrays, so the pairing cannot silently invert. The
+  governing property — *the same semantic relation keeps the same factId even when the detector emits
+  it at a different array index* — is proven by a regression test that constructs two charts in which
+  the identical 寅申沖 lands at genuinely different array indices and asserts the ids match.
 
 ### 9.4 Provenance completeness
 
@@ -233,14 +251,34 @@ dedicated cross-check test, not merely documented.
 
 ### 9.5 Detection/effect firewall
 
-Proven at two independent levels (`detectionEffectFirewall.test.ts`):
+Proven at two independent levels, **in two different files** (CORRECTED — see §9.9/F3):
 
-1. **Compile-time**: for every exported fact type, `Extract<keyof T, ForbiddenKey>` is asserted
-   `never` — if any future edit adds a forbidden key to any of these types, the codebase fails to
-   type-check, not merely fails a test.
-2. **Runtime**: a JSON sweep across varied fact bundles (plus all 600 fixtures in
-   `factFoundationFixtureCorpus.test.ts`) confirms no forbidden key or forbidden verdict string
-   appears anywhere in actual serialized output.
+1. **Compile-time — `src/features/myungri/contracts/factLayerTypeFirewall.ts`.** This is ordinary
+   `.ts` source, NOT a test file, specifically so `tsc --noEmit` actually type-checks it (both
+   `npm run preflight` and `npm run release-preflight` already run it). It asserts, for every
+   exported fact type:
+
+   ```ts
+   type AssertNever<T extends never> = T
+   export type _FirewallHiddenStemFact = AssertNever<Extract<keyof HiddenStemFact, ForbiddenFactKey>>
+   ```
+
+   If a forbidden key is ever added to a fact type, `Extract<...>` stops being `never`, the
+   `T extends never` constraint is violated, and the **build fails** with TS2344. Verified
+   empirically by injecting `rootDestroyed: boolean` into `HiddenStemFact` and observing
+   `error TS2344: Type '"rootDestroyed"' does not satisfy the constraint 'never'.` — not assumed.
+
+   The same file additionally asserts (a) that every member of `strengthFactBundle.ts`'s `future`
+   placeholder block is typed exactly `undefined`, and (b) that
+   `ALL_SUPPORTED_RELATION_KINDS` is **exhaustive** over the frozen relation-kind unions, so a newly
+   added relation kind cannot be omitted from coverage without failing compilation.
+
+2. **Runtime — `__tests__/detectionEffectFirewall.test.ts`.** A JSON sweep across varied fact bundles
+   (plus all 600 fixtures in `factFoundationFixtureCorpus.test.ts`) confirming no forbidden key or
+   forbidden verdict string appears anywhere in actual serialized output. This catches what a *value*
+   could smuggle in even when the declared shape is clean.
+
+Both halves are required. Neither alone is sufficient.
 
 ### 9.6 Rejected old-strength dependency firewall
 
@@ -270,3 +308,39 @@ underlying hidden stem legitimately appears as MULTIPLE distinct fact records ac
 providers (e.g. once in `sameElementRooting`'s `hidden-stem:` namespace, once in `tenGodFacts`'s
 `hidden-stem-ten-god:` namespace) — this is intentional multi-lens citation, never merged. Within any
 single provider's own output for one chart, no two facts ever share a `factId`.
+
+### 9.9 Corrections applied by the REMEDIATION batch
+
+The first version of this contract (commit `4d98ec1`) contained three claims an independent audit
+found to be **overclaims**. They are recorded here rather than quietly edited, because a freeze
+contract that has silently changed its meaning is worse than one that shows its history.
+
+| # | Overclaim as originally written | What was actually true | Fix |
+|---|---|---|---|
+| F1 | "candidate co-located **root** fact ids" | `rootsByPosition` was populated from `branch.hiddenStems`, the COMPLETE hidden-stem catalog — so a hidden stem of any *other* element was reported as an affected "root" it never was. A future reasoner would have received a false premise about what a clash could possibly be damaging. | `relationParticipants.ts` now filters to `sameElementAsDayMaster`. Four dedicated regression tests, incl. a cross-check that every reported id is a member of `sameElementRooting`'s own `sameElementRoots`. |
+| F2 | "`factId` … free of incidental array-index dependence" | Relation fact ids embedded the detector's output index. Identity therefore changed whenever detector output order changed — the exact property the contract claimed to guarantee. | Ids rebuilt from semantic content only (§9.3). Regression test proves identity survives a genuine index shift. |
+| F3 | "**Compile-time**: … the codebase fails to type-check" | Provably false twice over: `tsconfig.json` **excludes `**/*.test.ts`**, so `tsc --noEmit` never read the assertions; and Jest runs `tsconfig.jest.json` with `isolatedModules: true` (transpile-only, no semantic checking). Even had it been checked, the assertion shape reduced to `never` on violation, and `declare const x: never` is legal TS. | Real assertions moved to type-checked source, `contracts/factLayerTypeFirewall.ts`, using `AssertNever<T extends never>` (§9.5). Mutation-verified. |
+
+Two further audit findings were test-coverage gaps rather than contract overclaims, and are also
+closed: **F4** — the dedicated ten-god provider test covered only 90/100 (dayMaster, target) pairs,
+skipping the diagonal; it now covers 100/100, since the provider excludes the DAY *position*, not the
+Day Master's stem *value* appearing at another pillar (甲 년간 under a 甲 일간 is an ordinary chart
+and must map to 比肩/PEER). **F5** — the fixture corpus permitted `seen.size >= 6`, so half the
+supported relation kinds could vanish silently; it now requires every member of
+`ALL_SUPPORTED_RELATION_KINDS`, which is itself compile-time-exhaustive over the frozen unions.
+
+### 9.10 Root-only relation linkage (the F1 contract)
+
+`candidateAffectedRootFactIds` — on both `BranchPairRelationParticipants` and
+`BranchSetRelationParticipants` — contains **only genuine Day-Master same-element root fact ids**.
+
+- **It means exactly**: "this root's branch is one of the branches participating in this detected
+  relation." Co-occurrence. Nothing more.
+- **It does NOT mean**: that the relation damages, weakens, destroys, protects, or transforms that
+  root. Those are INFERENCE (§2) and remain unbuilt.
+- **A non-Day-Master-element hidden stem sharing the branch is NEVER listed.** It is not a root, and
+  labelling it a "candidate affected root" would hand a future reasoner a premise that is simply
+  false. A relation touching branches that hold no DM root yields an **empty list**, and an empty
+  list is a real, meaningful fact — not a computation failure.
+- The complete hidden-stem catalog remains available, unfiltered, at
+  `sameElementRooting.branches[].hiddenStems`, for any consumer that genuinely needs non-root stems.
