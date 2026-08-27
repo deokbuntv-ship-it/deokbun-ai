@@ -1,198 +1,215 @@
-# MYUNGRI_STRENGTH_V1 — Implementation Gap Analysis
+# MYUNGRI_STRENGTH_V1.1 — Implementation Gap Analysis (Independent-Audit Remediation)
 
-> Companion to `MYUNGRI_STRENGTH_V1_CANONICAL_DOCTRINE.md`. Answers: **what deterministic facts does the
-> current engine still lack before canonical strength can be implemented safely?** No gap listed here is
-> implemented in this phase — this document classifies and scopes only.
-
-Audit method: full read of every file under `src/features/myungri/` (services, rules, domain, adapters) plus
-the `src/features/interpretation` ten-god/hidden-stem/five-element functions Myungri consumes, plus
-`src/features/divination/myungriStrength.ts`, cross-checked against `docs/MYUNGRI_V1_FREEZE.md` and
-`docs/MYUNGRI_STRENGTH_V1.md`.
-
----
-
-## P0 — BLOCKER (canonical strength reasoning cannot proceed without these)
-
-### P0-1. Root/support-integrity judgment layer (clash/combination → does it destroy/weaken/transform a specific root or support stem)
-
-**Status:** Does not exist anywhere in the repository. Confirmed by direct inspection: `rules/pillarRelations.ts`
-computes all 8 relation types (합/충/형/파/해/삼합/방합/합화-nominal) at **detection only** — its own header
-comment states explicitly: "no 성립 조건(합화 성사 여부), no interpretation. Whether a 합 actually 化, or a 충
-is 'resolved', is INTERPRETIVE and lives in a later layer, never here." `services/rootingTransparency.ts`
-computes roots per branch. `services/natalRelations.ts`/`services/calculateTimeAxis.ts` compute relations per
-branch pair. **Nothing joins them.** A repo-wide search confirms no function anywhere connects a detected
-clash/punishment/harm/destruction on a branch to whether a root stored in that branch's 지장간 is destroyed or
-weakened.
-
-**Blocks:** Doctrine §5.4–5.5 (root survival under 沖/合), §6.3–6.5 (visible-stem 干合/克 suppression), §7.3
-(effective-force gate for opposition), §8 in full (all F-series rules), and therefore §12.2's seven-band
-boundaries and both structural caps (§12.3) at any but the most trivial charts (charts with zero detected
-relations).
-
-**Scope note:** this must remain a FACT-level structural co-occurrence check ("is branch X, which hosts root
-Y, also clashed by branch Z, and what do X and Z's relative seasonal vitality/reinforcement/pillar-distance
-facts say") — the doctrine's own qualitative grading (INTACT/WEAKENED/DESTROYED/MEDIATED, §5.4) is an
-INFERENCE consuming this fact, not something this fact module should itself decide. Building the inference
-rule and building the missing fact-linkage are two different pieces of future work; this gap is about the
-fact-linkage only.
-
-### P0-2. 사령 (day-count-within-month sub-period) calculator
-
-**Status:** Does not exist. `services/monthCommand.ts` computes 旺相休囚死 from the month branch's **primary
-element only** (`getBranchElement`), with an explicit code-level assumption tag
-`'EARTH_MONTH_YEOGI_RESIDUAL_QI_WEIGHTING_IS_A_DEFERRED_POLICY'`. No function anywhere computes elapsed days
-since the preceding 節入 (solar-term entry) or maps that count against a 여기/중기/정기 day-span table.
-
-**Blocks:** Doctrine §4.2 (사령 for both 격국 selection and boundary-birth vitality correction), §5.2–5.3
-(root qi-tier grading and 사령-adjusted override), and is the explicit trigger condition for the
-`INSUFFICIENT_STRUCTURAL_EVIDENCE` uncertainty state (§13) — without this calculator, that state cannot be
-scoped narrowly (to genuine boundary-birth cases) and risks either over-firing (treating every chart as
-uncertain) or under-firing (silently treating the primary-element phase as always sufficient, reintroducing a
-Level D simplification as if it were final authority).
-
-**Scope note:** requires (a) selecting and citing one specific named edition's day-count table (§22 unresolved
-question #1 in the canonical doctrine — multiple editions disagree, do not synthesize an average table), and
-(b) the month-boundary jie-instant is already resolved elsewhere in the frozen layer (`resolveSajuYearAndMonth`)
-and should be reused, not recomputed.
-
-### P0-3. Standalone, non-tainted same-element (득지) rooting fact
-
-**Status:** Currently computed **only** inline inside the rejected `natalStrength.ts`
-(`inputs.hiddenStems.filter(h => h.role === 'PARALLEL')`), which is not a standalone reusable fact module and
-is explicitly disposed-of alongside the rest of that file's rejected inference. `rootingTransparency.ts`'s
-`isRooted`/`roots` fields are same-STEM identity matches only (its own ASSUMPTION tag:
-`'ROOTING_IS_SAME_STEM_IDENTITY_MATCH_NOT_SAME_ELEMENT'`, with an explicit LIMITATION tag:
-`'SAME_ELEMENT_ROOTING_IS_A_SEPARATE_DEFERRED_POLICY_NOT_COMPUTED_HERE'`).
-
-**Blocks:** Doctrine §5.1's Row 1 ("branch's 지장간 contains DM's element — same-stem or same-element/
-diff-polarity, graded separately"). Same-stem rooting alone (already available) covers only the tighter of the
-two grades §5.1 requires.
-
-**Scope note:** this is a clean, low-risk extraction — a new pure function taking the same inputs
-`rootingTransparency.ts` already consumes, decoupled from any inference. No new theory; the doctrine's own
-polarity-grading distinction (§5.1) determines HOW the two grades differ once this fact exists — that grading
-logic is itself gated on P0-1's integrity layer for full accuracy, but the raw same-element detection itself
-is not.
+> Companion to `MYUNGRI_STRENGTH_V1_CANONICAL_DOCTRINE.md` §20. Adopts the independent audit's P0/P1/P2
+> reclassification. Three gap TYPES are now tracked separately per the audit's explicit instruction not to
+> mix them under one heading:
+>
+> - **FACT GAP** — a missing deterministic function reading already-known chart data. No new doctrine needed.
+> - **DOCTRINE GAP** — a missing *sourced rule* for how to interpret facts. Requires research, not code.
+> - **INFERENCE GAP** — a missing *implementation* of an already-specified doctrinal rule against
+>   already-available (or soon-to-exist) facts. The rule exists in the doctrine document; the code does not.
+>
+> No gap listed here is implemented in this phase — this document classifies and scopes only.
 
 ---
 
-## P1 — IMPORTANT (required before the FULL doctrine can run end-to-end, not required to start structural design work)
+## What changed from V1's classification
 
-### P1-1. 조후 (climate) fact module
-
-**Status:** Does not exist anywhere in the repository. An `extremeSeason: '한랭'|'염열'|null` field is
-**declared as an input type** in `divination/myungriNatal.ts` and `divination/myungriStrength.ts` (`judgeYongshin`
-input), but repo-wide search found **no function anywhere that computes or assigns this value** — it is a
-caller-supplied field with no producer.
-
-**Blocks:** Doctrine §9's climate/strength separation mandate can be *specified* without this (and is — §9
-requires climate to be a wholly separate fact object regardless of when it's built), but no downstream Yongshin
-work (§21) can begin until it exists, and its absence also means `extremeSeason`'s dangling declared-but-
-unproduced status should be resolved (either remove the unused declaration or build the producer) before any
-strength-adjacent consumer trusts it.
-
-**Scope note:** must be built as month-branch season + day-master element + overall element counts →
-hot/cold/dry/wet facts, grounded in a cited classical source (§9 of canonical doctrine names 窮通寶鑑/滴천수 as
-the doctrinal basis) — not fabricated from memory, and explicitly NOT merged into the strength fact path.
-
-### P1-2. Special-pattern (從格/專旺) prerequisite facts
-
-**Status:** No detector of any kind exists. Raw ingredients are available:
-`calculateFiveElementDistribution()` gives raw element counts across 6/8 direct slots (never weighted, per
-`temporalContext.ts`'s own comment: "RAW counts (NEVER 세력/percent)"); `dayMasterStrengthInputs.ts`'s
-`visibleSideCounts`/`hiddenRoleCounts` give role tallies. Neither module computes an element-dominance ratio,
-an "N of 8 slots is one element" check, or an "all visible stems are one side" check. `natalStrength.ts`'s
-`EXTREMELY_WEAK`/`EXTREMELY_STRONG` bands emit only a **warning string**, explicitly
-`specialPatternPolicy: 'NORMAL_CLASSIFIER_V1'` — deliberately not a detector.
-
-**Blocks:** Doctrine §10 in full (the entire special-structure gate, G1–G10 in the source matrix).
-
-**Scope note:** must stop at reporting counts/ratios (a FACT), never a threshold/verdict (that's doctrine,
-§10's own G1–G8 rules, already specified and awaiting this fact layer). Also depends on P0-1 for G2/G5/G6's
-root-integrity checks (is a candidate disqualifying root actually intact after clash/combination).
+| V1 said | V1.1 says | Why |
+|---|---|---|
+| 사령 day-count calculator = P0 blocker | 사령 day-count calculator = **P1** | Audit finding 4: over-promoted. V1.1's reasoning sequence runs fully today using `BOUNDARY_SENSITIVE` flagging + `INSUFFICIENT_STRUCTURAL_EVIDENCE` (canonical doctrine §4.2, §13) instead of blocking on an unbuilt, disputed-table dependency. |
+| Special-pattern prerequisite facts = P1 | Special-pattern prerequisite **FACTS** = **P0** (unchanged priority, reclassified as FACT GAP specifically, distinguished from the now-closed DOCTRINE GAP below) | The audit's expected P0 list places this at P0; V1.1 agrees the FACT layer (ratios/counts) is genuinely blocking, since even the now-specified §10 rule set (canonical doctrine) cannot run without it. |
+| Canonical special-pattern rule set = open research question | **DOCTRINE GAP CLOSED** by canonical doctrine §10.0–10.2 (this revision). Remaining work is an INFERENCE GAP (implementing the now-specified rules), listed at P0 because nothing in §10 can run without it. | The audit's expected P0 list names "canonical special-pattern RULE SET" as P0 — V1.1 satisfies this by writing the rule set into doctrine (§10), and reclassifies the REMAINING gap correctly as implementation work, not open research. |
+| Canonical relation-outcome/transformation policy = partially specified, inconsistently | **DOCTRINE GAP CLOSED** for 天干合/六合/三合/방합/沖 by canonical doctrine §8's five-question layering. 형/害/破 remain `DEFER`red by deliberate product policy (not an open gap — a decision). Remaining work for the five active mechanisms is an INFERENCE GAP. | Audit finding 6. |
+| Seven-band boundary semantics = qualitative prose, not fully reconstructable | **DOCTRINE GAP CLOSED** by canonical doctrine §12.2's per-boundary DECISION CONTRACTS. Remaining work is an INFERENCE GAP. | Audit finding 2. |
 
 ---
 
-## P2 — OPTIONAL (convenience/refactor; does not block correctness of any doctrine rule, only convenience/generality of the fact layer)
+## P0 — BLOCKER
 
-### P2-1. Standalone general seasonal-phase utility
+### P0-1. Root/support-integrity judgment layer (FACT GAP, feeding multiple INFERENCE GAPs)
 
-**Status:** The 旺相휴수死 phase-derivation logic inside `calculateMonthCommand()` is structurally
-element-vs-element already (via `calculateTenGod(ELEMENT_YANG_STEM[X], ELEMENT_YANG_STEM[monthElement])` →
-`TEN_GOD_TO_PHASE`), but is only reachable by calling `calculateMonthCommand` with a full
-`NatalPillarContext` — framed around "day master," not exposed as a general
+**Status:** unchanged from V1 — does not exist anywhere in the repository. `rules/pillarRelations.ts` computes
+all 8 relation types at **detection only**; nothing joins a detected clash/combination on a branch to whether
+a specific root stored in that branch's 지장간 is affected.
+
+**Gap type:** FACT GAP (the linkage itself — "is branch X, which hosts root Y, also clashed by branch Z, and
+what do X/Z's relative seasonal vitality/reinforcement/pillar-distance facts say" is a structural
+co-occurrence fact, computable deterministically once built).
+
+**Blocks:** canonical doctrine §5.4–5.5, §6.3/§6.5, §7.3, §8 (§8.1–8.4's FUNCTIONAL EFFECT/TRANSFORMATION
+questions for every mechanism), §10.0's corrected functional-integrity mechanism (the gate cannot evaluate
+whether a candidate disqualifier is functionally intact without this), §12.2's boundary contracts (nearly
+every contract references post-F survival).
+
+**Not blocked by this gap:** the DOCTRINE itself (§8's grading rules — INTACT/WEAKENED/DESTROYED/MEDIATED,
+and the five-question DETECTION/FORMATION/TRANSFORMATION/FUNCTIONAL/STRENGTH layering) is now fully specified
+(canonical doctrine §8, closing the prior DOCTRINE GAP). What remains is building (a) the FACT linkage and
+(b) the INFERENCE GAP of implementing §8's already-specified grading rules against it.
+
+### P0-2. 특별-pattern prerequisite FACTS (not verdict) (FACT GAP)
+
+**Status:** No detector of any kind exists. Raw ingredients available: `calculateFiveElementDistribution()`
+(raw counts, 6/8 direct slots, never weighted); `dayMasterStrengthInputs.ts`'s `visibleSideCounts`/
+`hiddenRoleCounts`. Neither computes an element-dominance ratio or an "N of 8 slots is one element" check.
+
+**Gap type:** FACT GAP — must stop at reporting counts/ratios, never a threshold/verdict (the threshold
+question is doctrine, and per canonical doctrine §10.1 the DOCTRINE is now specified — see P0-3).
+
+**Blocks:** canonical doctrine §10's entire gate (all patterns), since even a fully-specified rule set cannot
+run without the underlying ratio/count facts.
+
+### P0-3. Special-pattern RULE SET implementation (INFERENCE GAP — doctrine closed by this revision)
+
+**Status:** **Doctrine gap CLOSED.** V1 had no adopted rule set beyond a single universal SG-0 disqualifier
+and unstructured per-pattern sketches; this revision's canonical doctrine §10.0–10.2 fully specifies, per
+pattern (從旺/從强/從財/從官殺/從兒/專旺), the source lineage, minimum positive conditions, disqualifying
+conditions (via the corrected functional-integrity mechanism), weak/residual-root policy, 眞假從 policy,
+ambiguous-case policy, named school conflicts, and the four-state software output.
+
+**Gap type:** INFERENCE GAP — the doctrine exists; code implementing it against P0-1's and P0-2's facts does
+not. Listed at P0 because the audit's own expected P0 list places "canonical special-pattern RULE SET" here —
+V1.1 interprets this as: the rule set must EXIST (now true) and the implementation of it is equally blocking
+for any special-pattern feature to ship, hence retained at P0 as a combined doctrine-plus-implementation
+checkpoint, with the doctrine half now done.
+
+### P0-4. Relation outcome/transformation policy implementation (INFERENCE GAP — doctrine closed for 5 of 8 mechanisms)
+
+**Status:** **Doctrine gap CLOSED** for 天干合, 六合, 三合, 방합, 沖 by canonical doctrine §8.1–8.4's
+five-question layering. **Deliberately left as a product-policy `DEFER`** for 형/害/破 (§8.5–8.8) — not an
+open doctrine question, a decision not to grant runtime strength authority given thin/contested sourcing.
+
+**Gap type:** INFERENCE GAP for the five active mechanisms (the rules — FORMATION/VALIDITY tests, 合화's
+5-precondition set, 沖's four-factor severity grading, 三合/방합's full-vs-partial STRUCTURAL/FUNCTIONAL split
+— are specified; code implementing them against P0-1's fact linkage does not exist).
+
+### P0-5. Seven-band boundary contract implementation (INFERENCE GAP — doctrine closed by this revision)
+
+**Status:** **Doctrine gap CLOSED.** Canonical doctrine §12.2 specifies, per adjacent-pair boundary, REQUIRED
+STRUCTURAL CONDITIONS / COUNTEREVIDENCE / UNCERTAINTY CONDITIONS / SPECIAL-PATTERN INTERACTION / EXAMPLES OF
+WHAT IS NOT SUFFICIENT, in terms of already-defined structural predicates from §5–§8, with no term used as
+sole executable authority without a prior definition (§21's no-hidden-thresholds discipline).
+
+**Gap type:** INFERENCE GAP — the contracts exist in doctrine; code evaluating them against a chart's
+finalized B–F facts does not. Blocked transitively on P0-1 (most contracts reference post-F survival grades)
+and, for the ordinal WEAK/MODERATE/STRONG ranking specifically, on the unresolved question flagged in
+canonical doctrine §22 item 12 (exact ordinal boundaries are deliberately left to a future implementer's
+case-by-case derivation from the qualitative descriptions, per §21 — this is a genuine, disclosed remaining
+design choice, not a doctrine gap the way P0-3/P0-4/P0-5's *other* content was).
+
+### P0-6. Standalone, non-tainted same-element (득지) rooting fact (FACT GAP)
+
+**Status:** unchanged from V1 — currently computed only inline inside the rejected `natalStrength.ts`.
+`rootingTransparency.ts`'s rooting facts are same-STEM identity only.
+
+**Gap type:** FACT GAP — clean, low-risk extraction; no new theory. The doctrine's own polarity-grading
+distinction (canonical doctrine §5.1) determines how the two grades (same-stem vs. same-element/
+diff-polarity) differ once this fact exists.
+
+**Blocks:** canonical doctrine §5.1's Row 1 in full (the polarity-graded existence test needs both grades to
+exist as facts before grading can apply).
+
+---
+
+## P1 — IMPORTANT
+
+### P1-1. Exact 사령 (day-count) refinement — DOWNGRADED FROM P0
+
+**Status:** unchanged (does not exist) — but no longer blocking. Canonical doctrine §4.2 specifies
+`OPTIONAL_SILING_POLICY`: a `BOUNDARY_SENSITIVE` flag computable TODAY from the already-frozen 절입 instant
+(distance to the boundary only — not which qi-tier governs), feeding `INSUFFICIENT_STRUCTURAL_EVIDENCE`
+(§13) for genuinely boundary-proximate charts, rather than blocking all reasoning.
+
+**Gap type:** FACT GAP for the `BOUNDARY_SENSITIVE` flag itself (P2-level effort — trivial once the 절입
+instant, already available, is compared against a to-be-chosen window). DOCTRINE GAP, explicitly and
+deliberately left open, for the EXACT day-count sub-period table (canonical doctrine §22 item 1 — multiple
+named editions disagree, no single edition selected; this is not an oversight, it is a considered decision to
+avoid fabricating precision, per the brief's own stated preference for `DEFER` over invention).
+
+**Blocks:** full-precision root qi-tier assignment near boundaries (canonical doctrine §5.2's exact tier);
+does NOT block the ordinary reasoning sequence, which now runs with honest reduced confidence instead.
+
+### P1-2. Generalized seasonal-phase utility
+
+**Status:** unchanged from V1 — the logic inside `calculateMonthCommand()` is structurally element-vs-element
+already but only reachable via a full `NatalPillarContext` call, not exposed as a general
 `generalSeasonalPhase(element, monthBranch)` utility.
 
-**Scope note:** thin extraction/refactor of existing logic, zero new theory. Useful for Step D3/D4 (opposing
-candidates' own seasonal vitality, not just the DM's) and Step ROOT-B5 (a root's own seasonal vitality,
-independent of the DM's), both of which currently need "some element's phase given the month," not
-specifically the day master's.
+**Gap type:** FACT GAP — thin extraction/refactor, zero new theory.
 
-### P2-2. Revealed-hidden-stem × ten-god-side joiner
+**Blocks:** convenience only (canonical doctrine's D3/D4 opposition-candidate seasonal vitality; ROOT-B5's
+root-own-vitality check) — both are currently achievable by calling the existing function with a full
+context, just less cleanly.
 
-**Status:** `rootingTransparency.ts`'s `HiddenStemTransparency` (is a hidden stem revealed, and where) and
-`dayMasterStrengthInputs.ts`'s ten-god-side tallying exist as two separate facts; nothing joins them into one
-fact ("which specific *revealed* hidden stems are on the SUPPORT side"). A caller currently must hand-assemble
-this from the two separate modules (as `divination/myungriNatal.ts`'s `supportRevealed: boolean` field
-apparently already does, ad hoc).
+### P1-3. Visible-stem/root-function joins where not already P0
 
-**Scope note:** convenience joiner over two already-existing, already-clean facts. Not required for doctrine
-correctness (both underlying facts are independently available and sufficient), only for reducing duplicate
-hand-assembly logic across future consumers.
+**Status:** unchanged from V1 — `rootingTransparency.ts`'s transparency facts and `dayMasterStrengthInputs.ts`'s
+ten-god-side tallying exist separately; no joiner exists for "which specific revealed hidden stems are on the
+SUPPORT side."
+
+**Gap type:** FACT GAP — convenience joiner over two already-clean facts.
+
+**Blocks:** convenience only; both underlying facts are independently sufficient without the joiner.
 
 ---
 
-## Explicitly NOT gaps — safe to build on immediately
+## P2 for STRENGTH — becomes a prerequisite before YONGSHIN specifically
 
-Per the fact-coverage audit, these already exist as clean, reusable, fail-closed FACT modules and require no
-new deterministic-fact work before the doctrine's non-P0/P1-blocked rules can be designed against them:
+### P2-1. 조후 (climate) fact producer
 
-- Month command / 旺상휴수사 (primary-element phase only — see P0-2 for the sub-period refinement)
-- 지장간 with 여기/중기/정기 role tags (`getHiddenStems`)
+**Status:** unchanged from V1 — does not exist anywhere in the repository. `extremeSeason` is declared as an
+input type in `divination/myungriNatal.ts`/`divination/myungriStrength.ts` with no producer.
+
+**Gap type:** DOCTRINE GAP (partial) + FACT GAP. Canonical doctrine §9 specifies the STRUCTURAL rule
+(`CLIMATE_DOMAIN` separate, `EXTREME_CLIMATE_FUNCTIONALITY` as a narrowly-scoped modifier on already-
+established functional-force facts, never a direct band input) — this closes the *separation* doctrine
+question. It deliberately does **not** specify exact per-element/per-month operational thresholds (no
+per-cell 궁통보감 table is adopted, per canonical doctrine §22 and the brief's own instruction not to
+fabricate one) — that remains an open DOCTRINE GAP for a future research pass. The FACT-producing module
+itself (month-branch season + DM element + overall counts → hot/cold/dry/wet facts) does not exist at all.
+
+**Distinguished status (brief's explicit instruction):** remains **P2 for the STRENGTH engine itself**
+(§9's separation means strength reasoning does not need this module to run correctly), but is **required
+before any Yongshin-phase work begins** (canonical doctrine §21's dependencies are unimplementable without
+it). This dual status is recorded explicitly, not merged into one bucket that would undersell its
+Yongshin-blocking role.
+
+---
+
+## Explicitly NOT gaps — safe to build on immediately (unchanged from V1)
+
+- Month command / 旺相휴수死 (primary-element phase; see P1-1 for the sub-period refinement)
+- 지장간 with 여기/중기/정기 role tags
 - Same-stem rooting with tier preserved, transparency both directions (`rootingTransparency.ts`)
-- Ten-god calculation and visible/hidden role-composition tallying (`dayMasterStrengthInputs.ts` — the single
-  most reusable module in the repo for this work; its `TEN_GOD_ROLE` fixed classical mapping is not a
-  weighting choice)
+- Ten-god calculation and visible/hidden role-composition tallying (`dayMasterStrengthInputs.ts`)
 - All 8 branch/stem relation types at DETECTION level (`pillarRelations.ts`, `natalRelations.ts`,
-  `calculateTimeAxis.ts` for cross-layer)
-- Raw five-element distribution (`calculateFiveElementDistribution()`)
-- Full 대운/세운/월운 pillar + ten-god + relation facts (`daewoonTenGods.ts`, `calculateSewoon.ts`,
-  `calculateWolwoon.ts`)
+  `calculateTimeAxis.ts`)
+- Raw five-element distribution
+- Full 대운/세운/월운 pillar + ten-god + relation facts
 
----
+## Explicitly tainted — must NOT be reused as-is (unchanged from V1)
 
-## Explicitly tainted — must NOT be reused as-is
-
-- `services/natalStrength.ts` — the entire verdict path (`RULE_TABLE`, `rootingState()` NONE/SINGLE/MULTIPLE
-  bucketing, support/drain dominance comparison, agreement-count confidence). Individual FACT reads inside it
-  (e.g. reading `month.commandStatus`) are fine because the *source* they read from is fine — the inference
-  built on top is not.
+- `services/natalStrength.ts` — entire verdict path (RULE_TABLE, root-count bucketing, dominance comparison,
+  agreement-count confidence, and — per this revision's own §0 correction — its lineage's implicit reliance
+  on a universal existence-only disqualifier, now also rejected in the new doctrine, §10.0).
 - `services/currentStrength.ts` — `buildCurrentStrengthContext()` internally calls the rejected
-  `evaluateNatalStrength()` and returns its label verbatim; any caller of this function receives the rejected
-  verdict embedded in its output. `luckInfluence()` in isolation is lower-risk but was never independently
-  audited/approved — treat as a reasonable pattern, not pre-cleared doctrine. `combine()`'s
-  SUPPORTIVE-vs-DRAINING occurrence counting is the same vote-counting shape as the rejected confidence
-  calculation, at smaller scale.
-- `divination/myungriStrength.ts` — a separate, later rebuild that already documents its own rejection of
-  `natalStrength.ts` and deliberately withholds classification (`classification: 'UNDETERMINED'` always, with
-  an explicit `classificationBlocker` string). Its four-factor evidence shape
-  (`monthCommandEffect`/`rootingEffect`/`transparencyEffect`/`compositionEffect`) is useful *structural
-  precedent* for evidence presentation, but it is **not** itself clean fact — its own `confidence` field is
-  still computed from `ambiguities.length` thresholds (0→HIGH, >1→LOW, else MEDIUM), the same class of
-  un-cited count-threshold heuristic this document's doctrine (§13, §14) replaces. Treat as precedent for
-  structure, not as a source of pre-approved fact functions — it lives in `divination/` (the judgment layer)
-  not `myungri/` (the facts layer), and predates this document's doctrine work.
+  `evaluateNatalStrength()`.
+- `divination/myungriStrength.ts` — later rebuild, useful structural precedent for evidence presentation
+  only, not a source of pre-approved facts; its own `confidence` field is still a count-threshold heuristic.
 
 ---
 
 ## Summary table
 
-| Gap | Priority | Blocks (canonical doctrine §) | New theory required? |
+| Gap | Priority | Type | Blocks (canonical doctrine §) |
 |---|---|---|---|
-| Root/support-integrity judgment layer | P0 | §5.4–5.5, §6.3–6.5, §7.3, §8 (all F-series), §12.2, §12.3 | Fact-linkage: no. Inference grading (INTACT/WEAKENED/DESTROYED/MEDIATED): yes, already specified in this document, not yet implemented |
-| 사령 day-count calculator | P0 | §4.2, §5.2–5.3, §13 (INSUFFICIENT_STRUCTURAL_EVIDENCE scoping) | No — requires selecting one cited edition's table |
-| Standalone same-element (득지) rooting fact | P0 | §5.1 (polarity-graded existence test) | No — clean extraction |
-| 조후 (climate) fact module | P1 | §21 (Yongshin dependencies); not required to specify §9 itself | Yes — module does not exist at all, must be built from a cited source |
-| Special-pattern prerequisite facts | P1 | §10 (entire special-structure gate) | No (facts only) — but the gate's own doctrine rules (G1–G8) are already specified, only the fact-producer is missing |
-| General seasonal-phase utility | P2 | Convenience only (Step D3/D4, ROOT-B5) | No — refactor/extraction |
-| Revealed-hidden-stem × ten-god-side joiner | P2 | Convenience only | No — joiner over existing facts |
+| Root/support-integrity fact linkage | P0 | FACT | §5.4–5.5, §6.3/6.5, §7.3, §8, §10.0, §12.2 |
+| Special-pattern prerequisite facts (ratios/counts) | P0 | FACT | §10 (entire gate) |
+| Special-pattern rule set | P0 | DOCTRINE — **CLOSED this revision**; INFERENCE remains | §10.0–10.2 (now specified) |
+| Relation outcome/transformation policy (5 of 8 mechanisms) | P0 | DOCTRINE — **CLOSED this revision**; INFERENCE remains | §8.1–8.4 (now specified); §8.5–8.8 deliberately DEFERRED |
+| Seven-band boundary contract | P0 | DOCTRINE — **CLOSED this revision**; INFERENCE remains | §12.2 (now specified) |
+| Standalone same-element rooting fact | P0 | FACT | §5.1 |
+| Exact 사령 day-count refinement | **P1 (downgraded from P0)** | FACT (flag) + DOCTRINE (table, deliberately deferred) | §4.2, §5.2 (precision only — sequence runs without it) |
+| Generalized seasonal-phase utility | P1 | FACT | Convenience only |
+| Visible-stem/root-function joiner | P1 | FACT | Convenience only |
+| 조후 (climate) fact producer | P2 (strength) / effectively P0 for Yongshin | DOCTRINE (separation closed; operational thresholds open) + FACT | §21 (Yongshin dependencies) |
