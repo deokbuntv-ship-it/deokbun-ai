@@ -13,10 +13,18 @@ import { claimKind } from '../claimOntology';
 /** Which named decomposition a compound pair represents — carried through so the verdict can report it. */
 type CompoundKind = ContradictionResolutionKind;
 import {
-  compositeTarget, computeAdequacy, sameTarget, target, temporalBand,
+  computeAdequacy, sameTarget, target, temporalBand,
   type DerivationContext, type DivinationPremise, type ReasonedProposition, type SemanticTarget,
   type TargetKind,
 } from './kernel';
+import {
+  crossAxisCompoundChild,
+  crossChildEvidence,
+  crossContradictionResolvedChild,
+  crossReinforcementChild,
+  crossStandoffChild,
+  crossTimingSplitChild,
+} from './derivedChildPostconditions';
 
 /** How two propositions relate. Decided structurally, before any dominance question is asked. */
 export type CrossRelation =
@@ -285,6 +293,16 @@ const COMPOUND_FRAMES: { a: JudgmentDomain; b: JudgmentDomain; frame: string; ki
   { a: 'CAREER', b: 'MONEY_RETENTION', frame: '자리가 열리는 것과 실속이 남는 것', kind: 'DIFFERENT_DOMAIN' },
 ];
 
+/** Canonical compound identity shared by the live constructor and persisted-child validation. */
+export function crossCompoundFrame(a: JudgmentDomain, b: JudgmentDomain): {
+  frame: string; kind: CompoundKind;
+} {
+  return COMPOUND_FRAMES.find((p) => (p.a === a && p.b === b) || (p.a === b && p.b === a)) ?? {
+    frame: axisLabel(a) + '과 ' + axisLabel(b),
+    kind: 'DIFFERENT_DOMAIN',
+  };
+}
+
 /**
  * Is this opposed pair a COMPOUND TRUTH ("둘 다 사실이라 나누어 말씀드립니다") rather than two unrelated
  * statements? Structural conditions only:
@@ -343,7 +361,7 @@ const crossId = (rule: string, parts: ReasonedProposition[]): string =>
 function crossProp(
   rule: string, ctx: DerivationContext,
   spec: {
-    axis: JudgmentDomain; temporalScope: TemporalScope; target: SemanticTarget; assertion: string;
+    questionAxis: JudgmentDomain; temporalScope: TemporalScope; target: SemanticTarget; assertion: string;
     conclusionType: ReasonedProposition['conclusionType']; direction: ReasonedProposition['direction'];
     restriction?: ReasonedProposition['restriction'];
     /** Parents whose material BACKS the new assertion. */
@@ -368,14 +386,9 @@ function crossProp(
   const from = [...spec.from].sort(byIdAsc);
   const against = [...(spec.against ?? [])].sort(byIdAsc);
   const parents = [...from, ...against];
-  const supportIds = [...new Set([
-    ...from.flatMap((p) => p.supportingPremiseIds),
-    ...against.flatMap((p) => p.opposingPremiseIds),
-  ])];
-  const opposeIds = [...new Set([
-    ...from.flatMap((p) => p.opposingPremiseIds),
-    ...against.flatMap((p) => p.supportingPremiseIds),
-  ])].filter((id) => !supportIds.includes(id));
+  const evidence = crossChildEvidence(from, against);
+  const supportIds = evidence.supportingPremiseIds;
+  const opposeIds = evidence.opposingPremiseIds;
   const pick = (ids: string[]) => ids.map((id) => premises.get(id)).filter((p): p is DivinationPremise => !!p);
   return {
     id: crossId(rule, parents),
@@ -383,7 +396,7 @@ function crossProp(
     subject: ctx.subject,
     target: spec.target,
     questionIntent: ctx.questionIntent,
-    questionAxis: spec.axis,
+    questionAxis: spec.questionAxis,
     temporalScope: spec.temporalScope,
     assertion: spec.assertion,
     conclusionType: spec.conclusionType,
@@ -393,7 +406,7 @@ function crossProp(
     opposingPremiseIds: opposeIds,
     derivedFromPropositionIds: parents.map((p) => p.id),
     unresolvedPremiseIds: [],
-    doctrineReferences: [...new Set(parents.flatMap((p) => p.doctrineReferences))],
+    doctrineReferences: evidence.doctrineReferences,
     derivationRule: rule,
     adequacy: computeAdequacy(pick(supportIds), pick(opposeIds), { dataComplete: ctx.dataComplete, doctrine: 'ADOPTED' }),
   };
@@ -470,7 +483,7 @@ export function deriveCross(
     ctx.subject,
     ctx.questionIntent,
     ctx.askedAxis,
-    spec.axis,
+    spec.questionAxis,
     spec.target.kind,
     spec.target.key,
     spec.conclusionType,
@@ -551,13 +564,10 @@ export function deriveCross(
         // these call sites had drifted into (localeCompare here, code-unit order in myungriRules) collapse
         // into one. `rivalPair` remains only to order the two LABELS in the sentence the user reads.
         const rivalPair = [a, b].sort((x, y) => (x.target.key < y.target.key ? -1 : 1));
-        const agreementTarget = relation === 'RIVAL_AGREEMENT'
-          ? compositeTarget('RIVAL', [[a.target, b.target]], rivalPair.map((p) => p.target.label).join('·'))
-          : a.target;
+        const child = crossReinforcementChild(a, b, relation);
+        const agreementTarget = child.target;
         emit('CROSS_REINFORCEMENT', relation, {
-            axis: a.questionAxis,
-            temporalScope: a.temporalScope,
-            target: agreementTarget,
+            ...child,
             // "두 학문이 일치합니다" tells the reader that we agree — not what we agree ABOUT. A reinforcement
             // must carry the direction it reinforces, or it is a directional verdict whose own headline states
             // no direction.
@@ -568,9 +578,6 @@ export function deriveCross(
                 : a.direction === 'UNFAVORABLE' ? '이 축은 막혀 있습니다.'
                   : '범위를 좁혀야 하는 자리입니다.')
               + ' 한쪽만 보고 내린 결론이 아니라는 뜻입니다.',
-          conclusionType: a.conclusionType === 'COMPOUND' || b.conclusionType === 'COMPOUND' ? 'COMPOUND' : 'DIRECTIONAL',
-          direction: a.direction,
-          ...(a.restriction ? { restriction: a.restriction } : {}),
         },
         // Agreement is TRANSITIVE over one claim: 명리+자미 and 명리+기문 agreeing about the same seat at the
         // same moment is ONE conclusion three readings support, not three conclusions. This is the only
@@ -584,17 +591,11 @@ export function deriveCross(
         const decided = subordinate(a, b, byId, subCtx);
         if (!decided) {
           // §14 — the relationship does not settle it. Both truths are preserved; no winner is manufactured.
-          const standoffPair = [a, b].sort((x, y) => (x.target.key < y.target.key ? -1 : 1));
-          const standoffTarget = relation === 'RIVAL_CONFLICT'
-            ? compositeTarget('RIVAL', [[a.target, b.target]], standoffPair.map((p) => p.target.label).join('·'))
-            : a.target;
+          const child = crossStandoffChild(a, b, relation);
+          const standoffTarget = child.target;
           emit('CROSS_STANDOFF', relation, {
-            axis: a.questionAxis,
-            temporalScope: a.temporalScope,
-            target: standoffTarget,
+            ...child,
             assertion: standoffTarget.label + '에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.',
-            conclusionType: 'STRUCTURAL',
-            direction: 'NONE',
           },
           // A standoff NAMES the two claims it declines to choose between, so a standoff between 명리 and 자미
           // is not the same statement as one between 명리 and 기문. They never merge.
@@ -602,15 +603,11 @@ export function deriveCross(
           { standoff: true, from: [a, b] });
           continue;
         }
+        const child = crossContradictionResolvedChild(decided.dominant, a.questionAxis);
         emit('CROSS_CONTRADICTION_RESOLVED', relation, {
-          axis: a.questionAxis,
-          temporalScope: decided.dominant.temporalScope,
-          target: decided.dominant.target,
+          ...child,
           assertion: decided.dominant.assertion + ' 반대 근거도 있으나, '
             + decided.reasons.map((r) => SUBORDINATION_TEXT[r]).join('; ') + '.',
-          conclusionType: 'DIRECTIONAL',
-          direction: decided.dominant.direction,
-          ...(decided.dominant.restriction ? { restriction: decided.dominant.restriction } : {}),
         },
         // The DEMOTED side is part of what this conclusion asserts ("반대 근거도 있으나 …"), so a resolution
         // that set aside 자미 is a different statement from one that set aside 기문. V4C keyed only the
@@ -640,16 +637,12 @@ export function deriveCross(
         const structural = band(a.temporalScope) === 'STRUCTURAL' ? a : b;
         const near = structural === a ? b : a;
         const structuralOpens = structural.direction === 'FAVORABLE';
+        const child = crossTimingSplitChild(structural, near);
         emit('CROSS_TIMING_SPLIT', relation, {
-            axis: a.questionAxis,
-            temporalScope: near.temporalScope,
-            target: a.target,
+            ...child,
             assertion: structuralOpens
               ? a.target.label + '은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.'
               : a.target.label + '은(는) 가까운 시기에 움직일 여지가 보이지만 큰 흐름이 바로 그 자리를 받쳐주지 않습니다. 지금의 여지만 보고 크게 벌일 자리는 아닙니다.',
-            conclusionType: 'COMPOUND',
-            direction: 'RESTRICTED',
-            restriction: structuralOpens ? 'TIMING' : 'SCOPE',
           },
           // Both halves are named. V4C keyed this WITHOUT the near scope, so a 세운 split and a 월운 split on
           // the same seat collided and the first one's scope survived — §5's exact-scope collapse.
@@ -669,30 +662,21 @@ export function deriveCross(
       // "both are true about different matters", since both are about the matter that was asked.
       if ((relation === 'DIFFERENT_AXIS' || relation === 'DIFFERENT_TARGET') && opposed(a, b)) {
         if (!compoundEligible(a, b, ctx.askedAxis, byId)) continue;
-        const named = COMPOUND_FRAMES.find((p) =>
-          (p.a === a.questionAxis && p.b === b.questionAxis) || (p.a === b.questionAxis && p.b === a.questionAxis));
         // Unnamed pairs are still compounds — they are simply described by their two axis labels.
-        const frame = named ?? {
-          frame: axisLabel(a.questionAxis) + '과 ' + axisLabel(b.questionAxis),
-          kind: 'DIFFERENT_DOMAIN' as CompoundKind,
-        };
+        const frame = crossCompoundFrame(a.questionAxis, b.questionAxis);
         const asked = a.questionAxis === ctx.askedAxis ? a : b;
         const other = asked === a ? b : a;
         const way = (p: ReasonedProposition) =>
           p.direction === 'FAVORABLE' ? '열립니다'
             : p.direction === 'UNFAVORABLE' ? '막힙니다'
               : '범위를 좁혀야 합니다';
+        const child = crossAxisCompoundChild(a, b, ctx.askedAxis, frame.kind, frame.frame);
         emit('CROSS_AXIS_COMPOUND', relation, {
-            axis: asked.questionAxis,
-            temporalScope: asked.temporalScope,
+            ...child,
             // V4C §2 — keyed by the compound's CANONICAL kind AND the structures it spans, never by its
             // Korean sentence. Two different compounds of the same kind are different claims.
-            target: compositeTarget(frame.kind, [[a.target, b.target]], frame.frame),
             assertion: topic(frame.frame) + ' 다르게 봅니다. ' + axisLabel(asked.questionAxis) + '은 ' + way(asked)
               + ', ' + axisLabel(other.questionAxis) + '은 ' + way(other) + '. 둘 다 사실이라 나누어 말씀드립니다.',
-            conclusionType: 'COMPOUND',
-            direction: asked.direction,
-            ...(asked.restriction ? { restriction: asked.restriction } : {}),
           },
           // The compound NAMES both axes and how each one goes, so a 유입-vs-보유 compound is not the same
           // statement as a 유입-vs-자리 one even when the frame kind happens to match.

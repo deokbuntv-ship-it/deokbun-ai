@@ -8812,6 +8812,160 @@ function adaptJudgment(j, opts) {
   return { premises, propositions };
 }
 
+// src/features/divination/reasoning/derivedChildPostconditions.ts
+var MYUNGRI_CHILD_SHAPES = {
+  CONTESTED_SHARE: {
+    questionAxis: "MONEY_RETENTION",
+    conclusionType: "COMPOUND",
+    direction: "RESTRICTED",
+    restriction: "SCOPE"
+  },
+  DIRECTION_VS_EXECUTION: {
+    conclusionType: "COMPOUND",
+    direction: "RESTRICTED",
+    restriction: "TIMING"
+  },
+  CONVERGENT_SEAT_PRESSURE: { conclusionType: "CAUSAL", direction: "NONE" },
+  INFLOW_VS_RETENTION: {
+    questionAxis: "MONEY_INFLOW",
+    conclusionType: "COMPOUND",
+    direction: "RESTRICTED",
+    restriction: "SCOPE"
+  },
+  RECURRING_FRICTION_CAUSE: { conclusionType: "CAUSAL", direction: "NONE" }
+};
+var SCOPE_WIDTH = {
+  PRESENT_MOMENT: 0,
+  WOLWOON: 1,
+  SEWOON: 2,
+  DAEWOON: 3,
+  NATAL: 4,
+  UNSCOPED: 5
+};
+var narrowestDerivedScope = (items) => items.map((item) => item.temporalScope).sort((a, b) => SCOPE_WIDTH[a] - SCOPE_WIDTH[b])[0];
+function contestedShareChild(rivals, wealth) {
+  return {
+    ...MYUNGRI_CHILD_SHAPES.CONTESTED_SHARE,
+    temporalScope: narrowestDerivedScope(rivals),
+    target: compositeTarget(
+      "RIVAL_VS_WEALTH",
+      [rivals.map((p) => p.target), wealth.map((p) => p.target)],
+      "벌이는 몫과 남는 몫"
+    )
+  };
+}
+function directionVsExecutionChild(open, scope) {
+  return {
+    ...MYUNGRI_CHILD_SHAPES.DIRECTION_VS_EXECUTION,
+    target: open.target,
+    questionAxis: open.questionAxis,
+    temporalScope: scope
+  };
+}
+var canonicalConvergentGroup = (items) => [...items].sort((a, b) => a.questionAxis.localeCompare(b.questionAxis) || SCOPE_WIDTH[a.temporalScope] - SCOPE_WIDTH[b.temporalScope]);
+function convergentSeatPressureChild(unordered) {
+  const group = canonicalConvergentGroup(unordered);
+  return {
+    ...MYUNGRI_CHILD_SHAPES.CONVERGENT_SEAT_PRESSURE,
+    target: group[0].target,
+    questionAxis: group[0].questionAxis,
+    temporalScope: narrowestDerivedScope(group)
+  };
+}
+function inflowVsRetentionChild(inflow, retentionMembers) {
+  return {
+    ...MYUNGRI_CHILD_SHAPES.INFLOW_VS_RETENTION,
+    temporalScope: narrowestDerivedScope(inflow),
+    target: compositeTarget(
+      "INFLOW_VS_RETENTION",
+      [inflow.map((p) => p.target), retentionMembers],
+      "유입과 보유"
+    )
+  };
+}
+function recurringFrictionChild(weak, again) {
+  return {
+    ...MYUNGRI_CHILD_SHAPES.RECURRING_FRICTION_CAUSE,
+    target: weak.target,
+    questionAxis: weak.questionAxis,
+    temporalScope: narrowestDerivedScope(again)
+  };
+}
+function crossReinforcementChild(a, b, relation) {
+  const pair = [a, b].sort((x, y) => x.target.key < y.target.key ? -1 : 1);
+  return {
+    target: relation === "RIVAL_AGREEMENT" ? compositeTarget("RIVAL", [[a.target, b.target]], pair.map((p) => p.target.label).join("·")) : a.target,
+    questionAxis: a.questionAxis,
+    temporalScope: a.temporalScope,
+    conclusionType: a.conclusionType === "COMPOUND" || b.conclusionType === "COMPOUND" ? "COMPOUND" : "DIRECTIONAL",
+    direction: a.direction,
+    ...a.restriction ? { restriction: a.restriction } : {}
+  };
+}
+function crossStandoffChild(a, b, relation) {
+  const pair = [a, b].sort((x, y) => x.target.key < y.target.key ? -1 : 1);
+  return {
+    target: relation === "RIVAL_CONFLICT" ? compositeTarget("RIVAL", [[a.target, b.target]], pair.map((p) => p.target.label).join("·")) : a.target,
+    questionAxis: a.questionAxis,
+    temporalScope: a.temporalScope,
+    conclusionType: "STRUCTURAL",
+    direction: "NONE"
+  };
+}
+function crossContradictionResolvedChild(dominant, axis) {
+  return {
+    target: dominant.target,
+    questionAxis: axis,
+    temporalScope: dominant.temporalScope,
+    conclusionType: "DIRECTIONAL",
+    direction: dominant.direction,
+    ...dominant.restriction ? { restriction: dominant.restriction } : {}
+  };
+}
+function crossTimingSplitChild(structural, near) {
+  return {
+    target: structural.target,
+    questionAxis: structural.questionAxis,
+    temporalScope: near.temporalScope,
+    conclusionType: "COMPOUND",
+    direction: "RESTRICTED",
+    restriction: structural.direction === "FAVORABLE" ? "TIMING" : "SCOPE"
+  };
+}
+function crossAxisCompoundChild(a, b, askedAxis, kind, label = "") {
+  const asked = a.questionAxis === askedAxis ? a : b;
+  return {
+    target: compositeTarget(kind, [[a.target, b.target]], label),
+    questionAxis: asked.questionAxis,
+    temporalScope: asked.temporalScope,
+    conclusionType: "COMPOUND",
+    direction: asked.direction,
+    ...asked.restriction ? { restriction: asked.restriction } : {}
+  };
+}
+function crossChildEvidence(fromParents, againstParents = []) {
+  const byId = (a, b) => a.id.localeCompare(b.id);
+  const from = [...fromParents].sort(byId);
+  const against = [...againstParents].sort(byId);
+  const parents = [...from, ...against];
+  const supportingPremiseIds = [.../* @__PURE__ */ new Set([
+    ...from.flatMap((p) => p.supportingPremiseIds),
+    ...against.flatMap((p) => p.opposingPremiseIds)
+  ])];
+  const opposingPremiseIds = [.../* @__PURE__ */ new Set([
+    ...from.flatMap((p) => p.opposingPremiseIds),
+    ...against.flatMap((p) => p.supportingPremiseIds)
+  ])].filter((id) => !supportingPremiseIds.includes(id));
+  return {
+    supportingPremiseIds,
+    opposingPremiseIds,
+    doctrineReferences: [...new Set(parents.flatMap((p) => p.doctrineReferences))]
+  };
+}
+function derivedChildSemanticsMatch(actual, expected) {
+  return actual.target.key === expected.target.key && actual.target.kind === expected.target.kind && actual.questionAxis === expected.questionAxis && actual.temporalScope === expected.temporalScope && actual.conclusionType === expected.conclusionType && actual.direction === expected.direction && (actual.restriction ?? void 0) === (expected.restriction ?? void 0);
+}
+
 // src/features/divination/reasoning/crossRules.ts
 var band = temporalBand;
 var opposed = (a, b) => a.direction === "FAVORABLE" && (b.direction === "UNFAVORABLE" || b.direction === "RESTRICTED") || b.direction === "FAVORABLE" && (a.direction === "UNFAVORABLE" || a.direction === "RESTRICTED");
@@ -8914,6 +9068,12 @@ var COMPOUND_FRAMES = [
   { a: "OPPORTUNITY", b: "OUTCOME", frame: "기회가 오는 것과 그것을 잡아서 남는 것", kind: "OPPORTUNITY_VS_OUTCOME" },
   { a: "CAREER", b: "MONEY_RETENTION", frame: "자리가 열리는 것과 실속이 남는 것", kind: "DIFFERENT_DOMAIN" }
 ];
+function crossCompoundFrame(a, b) {
+  return COMPOUND_FRAMES.find((p) => p.a === a && p.b === b || p.a === b && p.b === a) ?? {
+    frame: axisLabel2(a) + "과 " + axisLabel2(b),
+    kind: "DIFFERENT_DOMAIN"
+  };
+}
 var compoundEligible = (a, b, askedAxis, premises) => {
   if (a.questionAxis !== askedAxis && b.questionAxis !== askedAxis) return false;
   if (!axesShareOneMatter(a.questionAxis, b.questionAxis)) return false;
@@ -8948,14 +9108,9 @@ function crossProp(rule, ctx, spec, premises) {
   const from = [...spec.from].sort(byIdAsc);
   const against = [...spec.against ?? []].sort(byIdAsc);
   const parents = [...from, ...against];
-  const supportIds = [.../* @__PURE__ */ new Set([
-    ...from.flatMap((p) => p.supportingPremiseIds),
-    ...against.flatMap((p) => p.opposingPremiseIds)
-  ])];
-  const opposeIds = [.../* @__PURE__ */ new Set([
-    ...from.flatMap((p) => p.opposingPremiseIds),
-    ...against.flatMap((p) => p.supportingPremiseIds)
-  ])].filter((id) => !supportIds.includes(id));
+  const evidence = crossChildEvidence(from, against);
+  const supportIds = evidence.supportingPremiseIds;
+  const opposeIds = evidence.opposingPremiseIds;
   const pick = (ids) => ids.map((id) => premises.get(id)).filter((p) => !!p);
   return {
     id: crossId(rule, parents),
@@ -8963,7 +9118,7 @@ function crossProp(rule, ctx, spec, premises) {
     subject: ctx.subject,
     target: spec.target,
     questionIntent: ctx.questionIntent,
-    questionAxis: spec.axis,
+    questionAxis: spec.questionAxis,
     temporalScope: spec.temporalScope,
     assertion: spec.assertion,
     conclusionType: spec.conclusionType,
@@ -8973,7 +9128,7 @@ function crossProp(rule, ctx, spec, premises) {
     opposingPremiseIds: opposeIds,
     derivedFromPropositionIds: parents.map((p) => p.id),
     unresolvedPremiseIds: [],
-    doctrineReferences: [...new Set(parents.flatMap((p) => p.doctrineReferences))],
+    doctrineReferences: evidence.doctrineReferences,
     derivationRule: rule,
     adequacy: computeAdequacy(pick(supportIds), pick(opposeIds), { dataComplete: ctx.dataComplete, doctrine: "ADOPTED" })
   };
@@ -8997,7 +9152,7 @@ function deriveCross(props, premises, ctx) {
     ctx.subject,
     ctx.questionIntent,
     ctx.askedAxis,
-    spec.axis,
+    spec.questionAxis,
     spec.target.kind,
     spec.target.key,
     spec.conclusionType,
@@ -9033,21 +9188,17 @@ function deriveCross(props, premises, ctx) {
       if (relation === "REINFORCING" || relation === "RIVAL_AGREEMENT") {
         if (a.discipline === b.discipline) continue;
         const rivalPair = [a, b].sort((x, y) => x.target.key < y.target.key ? -1 : 1);
-        const agreementTarget = relation === "RIVAL_AGREEMENT" ? compositeTarget("RIVAL", [[a.target, b.target]], rivalPair.map((p) => p.target.label).join("·")) : a.target;
+        const child = crossReinforcementChild(a, b, relation);
+        const agreementTarget = child.target;
         emit(
           "CROSS_REINFORCEMENT",
           relation,
           {
-            axis: a.questionAxis,
-            temporalScope: a.temporalScope,
-            target: agreementTarget,
+            ...child,
             // "두 학문이 일치합니다" tells the reader that we agree — not what we agree ABOUT. A reinforcement
             // must carry the direction it reinforces, or it is a directional verdict whose own headline states
             // no direction.
-            assertion: (relation === "RIVAL_AGREEMENT" ? "서로 다른 자리(" + rivalPair.map((p) => p.target.label).join(" / ") + ")를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: " : a.target.label + "에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: ") + (a.direction === "FAVORABLE" ? "이 축은 열려 있습니다." : a.direction === "UNFAVORABLE" ? "이 축은 막혀 있습니다." : "범위를 좁혀야 하는 자리입니다.") + " 한쪽만 보고 내린 결론이 아니라는 뜻입니다.",
-            conclusionType: a.conclusionType === "COMPOUND" || b.conclusionType === "COMPOUND" ? "COMPOUND" : "DIRECTIONAL",
-            direction: a.direction,
-            ...a.restriction ? { restriction: a.restriction } : {}
+            assertion: (relation === "RIVAL_AGREEMENT" ? "서로 다른 자리(" + rivalPair.map((p) => p.target.label).join(" / ") + ")를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: " : a.target.label + "에 대해 서로 다른 학문이 각각의 근거로 같은 결론에 이릅니다: ") + (a.direction === "FAVORABLE" ? "이 축은 열려 있습니다." : a.direction === "UNFAVORABLE" ? "이 축은 막혀 있습니다." : "범위를 좁혀야 하는 자리입니다.") + " 한쪽만 보고 내린 결론이 아니라는 뜻입니다."
           },
           // Agreement is TRANSITIVE over one claim: 명리+자미 and 명리+기문 agreeing about the same seat at the
           // same moment is ONE conclusion three readings support, not three conclusions. This is the only
@@ -9060,18 +9211,14 @@ function deriveCross(props, premises, ctx) {
       if (relation === "CONTRADICTORY" || relation === "RIVAL_CONFLICT") {
         const decided = subordinate(a, b, byId, subCtx);
         if (!decided) {
-          const standoffPair = [a, b].sort((x, y) => x.target.key < y.target.key ? -1 : 1);
-          const standoffTarget = relation === "RIVAL_CONFLICT" ? compositeTarget("RIVAL", [[a.target, b.target]], standoffPair.map((p) => p.target.label).join("·")) : a.target;
+          const child2 = crossStandoffChild(a, b, relation);
+          const standoffTarget = child2.target;
           emit(
             "CROSS_STANDOFF",
             relation,
             {
-              axis: a.questionAxis,
-              temporalScope: a.temporalScope,
-              target: standoffTarget,
-              assertion: standoffTarget.label + "에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.",
-              conclusionType: "STRUCTURAL",
-              direction: "NONE"
+              ...child2,
+              assertion: standoffTarget.label + "에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다."
             },
             // A standoff NAMES the two claims it declines to choose between, so a standoff between 명리 and 자미
             // is not the same statement as one between 명리 and 기문. They never merge.
@@ -9080,17 +9227,13 @@ function deriveCross(props, premises, ctx) {
           );
           continue;
         }
+        const child = crossContradictionResolvedChild(decided.dominant, a.questionAxis);
         emit(
           "CROSS_CONTRADICTION_RESOLVED",
           relation,
           {
-            axis: a.questionAxis,
-            temporalScope: decided.dominant.temporalScope,
-            target: decided.dominant.target,
-            assertion: decided.dominant.assertion + " 반대 근거도 있으나, " + decided.reasons.map((r) => SUBORDINATION_TEXT[r]).join("; ") + ".",
-            conclusionType: "DIRECTIONAL",
-            direction: decided.dominant.direction,
-            ...decided.dominant.restriction ? { restriction: decided.dominant.restriction } : {}
+            ...child,
+            assertion: decided.dominant.assertion + " 반대 근거도 있으나, " + decided.reasons.map((r) => SUBORDINATION_TEXT[r]).join("; ") + "."
           },
           // The DEMOTED side is part of what this conclusion asserts ("반대 근거도 있으나 …"), so a resolution
           // that set aside 자미 is a different statement from one that set aside 기문. V4C keyed only the
@@ -9114,17 +9257,13 @@ function deriveCross(props, premises, ctx) {
         const structural = band(a.temporalScope) === "STRUCTURAL" ? a : b;
         const near = structural === a ? b : a;
         const structuralOpens = structural.direction === "FAVORABLE";
+        const child = crossTimingSplitChild(structural, near);
         emit(
           "CROSS_TIMING_SPLIT",
           relation,
           {
-            axis: a.questionAxis,
-            temporalScope: near.temporalScope,
-            target: a.target,
-            assertion: structuralOpens ? a.target.label + "은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다." : a.target.label + "은(는) 가까운 시기에 움직일 여지가 보이지만 큰 흐름이 바로 그 자리를 받쳐주지 않습니다. 지금의 여지만 보고 크게 벌일 자리는 아닙니다.",
-            conclusionType: "COMPOUND",
-            direction: "RESTRICTED",
-            restriction: structuralOpens ? "TIMING" : "SCOPE"
+            ...child,
+            assertion: structuralOpens ? a.target.label + "은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다." : a.target.label + "은(는) 가까운 시기에 움직일 여지가 보이지만 큰 흐름이 바로 그 자리를 받쳐주지 않습니다. 지금의 여지만 보고 크게 벌일 자리는 아닙니다."
           },
           // Both halves are named. V4C keyed this WITHOUT the near scope, so a 세운 split and a 월운 split on
           // the same seat collided and the first one's scope survived — §5's exact-scope collapse.
@@ -9138,27 +9277,19 @@ function deriveCross(props, premises, ctx) {
       }
       if ((relation === "DIFFERENT_AXIS" || relation === "DIFFERENT_TARGET") && opposed(a, b)) {
         if (!compoundEligible(a, b, ctx.askedAxis, byId)) continue;
-        const named = COMPOUND_FRAMES.find((p) => p.a === a.questionAxis && p.b === b.questionAxis || p.a === b.questionAxis && p.b === a.questionAxis);
-        const frame = named ?? {
-          frame: axisLabel2(a.questionAxis) + "과 " + axisLabel2(b.questionAxis),
-          kind: "DIFFERENT_DOMAIN"
-        };
+        const frame = crossCompoundFrame(a.questionAxis, b.questionAxis);
         const asked = a.questionAxis === ctx.askedAxis ? a : b;
         const other = asked === a ? b : a;
         const way = (p) => p.direction === "FAVORABLE" ? "열립니다" : p.direction === "UNFAVORABLE" ? "막힙니다" : "범위를 좁혀야 합니다";
+        const child = crossAxisCompoundChild(a, b, ctx.askedAxis, frame.kind, frame.frame);
         emit(
           "CROSS_AXIS_COMPOUND",
           relation,
           {
-            axis: asked.questionAxis,
-            temporalScope: asked.temporalScope,
+            ...child,
             // V4C §2 — keyed by the compound's CANONICAL kind AND the structures it spans, never by its
             // Korean sentence. Two different compounds of the same kind are different claims.
-            target: compositeTarget(frame.kind, [[a.target, b.target]], frame.frame),
-            assertion: topic(frame.frame) + " 다르게 봅니다. " + axisLabel2(asked.questionAxis) + "은 " + way(asked) + ", " + axisLabel2(other.questionAxis) + "은 " + way(other) + ". 둘 다 사실이라 나누어 말씀드립니다.",
-            conclusionType: "COMPOUND",
-            direction: asked.direction,
-            ...asked.restriction ? { restriction: asked.restriction } : {}
+            assertion: topic(frame.frame) + " 다르게 봅니다. " + axisLabel2(asked.questionAxis) + "은 " + way(asked) + ", " + axisLabel2(other.questionAxis) + "은 " + way(other) + ". 둘 다 사실이라 나누어 말씀드립니다."
           },
           // The compound NAMES both axes and how each one goes, so a 유입-vs-보유 compound is not the same
           // statement as a 유입-vs-자리 one even when the frame kind happens to match.
@@ -9988,15 +10119,6 @@ var LAYER_LABEL = {
   UNSCOPED: "시기와 무관하게"
 };
 var STRUCTURAL = ["NATAL", "DAEWOON"];
-var SCOPE_WIDTH = {
-  PRESENT_MOMENT: 0,
-  WOLWOON: 1,
-  SEWOON: 2,
-  DAEWOON: 3,
-  NATAL: 4,
-  UNSCOPED: 5
-};
-var narrowestScope = (ps) => ps.map((p) => p.temporalScope).sort((a, b) => SCOPE_WIDTH[a] - SCOPE_WIDTH[b])[0];
 var derivedId = (rule, axis, premiseIds, parentIds = []) => `d:${rule}:${axis}:${[...premiseIds].sort().join("+")}` + (parentIds.length > 0 ? `^${[...parentIds].sort().join("+")}` : "");
 function make(rule, ctx, spec) {
   const support = spec.support;
@@ -10004,7 +10126,7 @@ function make(rule, ctx, spec) {
   return {
     id: derivedId(
       rule,
-      spec.axis,
+      spec.questionAxis,
       [...support, ...oppose].map((p) => p.id),
       (spec.from ?? []).map((p) => p.id)
     ),
@@ -10012,13 +10134,13 @@ function make(rule, ctx, spec) {
     subject: ctx.subject,
     target: spec.target,
     questionIntent: ctx.questionIntent,
-    questionAxis: spec.axis,
+    questionAxis: spec.questionAxis,
     temporalScope: spec.temporalScope,
     assertion: spec.assertion,
     conclusionType: spec.conclusionType,
     direction: spec.direction,
     ...spec.restriction ? { restriction: spec.restriction } : {},
-    answersAsked: spec.axis === ctx.askedAxis,
+    answersAsked: spec.questionAxis === ctx.askedAxis,
     supportingPremiseIds: support.map((p) => p.id),
     opposingPremiseIds: oppose.map((p) => p.id),
     // V4C §6/§7 — A DERIVED CONCLUSION DECLARES ITS PARENTS.
@@ -10047,17 +10169,8 @@ var CONTESTED_SHARE = {
     const wealth = premises.filter((p) => p.concept === "NATAL_FAMILY" && p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "SUPPORTS");
     if (rivals.length === 0 || wealth.length === 0) return [];
     return [make("CONTESTED_SHARE", ctx, {
-      axis: "MONEY_RETENTION",
-      temporalScope: narrowestScope(rivals),
-      target: compositeTarget(
-        "RIVAL_VS_WEALTH",
-        [rivals.map((p) => p.target), wealth.map((p) => p.target)],
-        "벌이는 몫과 남는 몫"
-      ),
+      ...contestedShareChild(rivals, wealth),
       assertion: "원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.",
-      conclusionType: "COMPOUND",
-      direction: "RESTRICTED",
-      restriction: "SCOPE",
       // Both sides SUPPORT this compound claim: the wealth seats and the rival together are what make it true.
       support: [...wealth, ...rivals],
       oppose: [],
@@ -10083,13 +10196,8 @@ var DIRECTION_VS_EXECUTION = {
       for (const [scope, layerStrikes] of byScope) {
         if (sideAdequacy(layerStrikes) !== "ADEQUATE") continue;
         out.push(make("DIRECTION_VS_EXECUTION", ctx, {
-          axis: open.questionAxis,
-          temporalScope: scope,
-          target: open.target,
+          ...directionVsExecutionChild(open, scope),
           assertion: open.target.label + "은(는) 큰 흐름에서 열려 있는 자리인데, " + LAYER_LABEL[scope] + "에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.",
-          conclusionType: "COMPOUND",
-          direction: "RESTRICTED",
-          restriction: "TIMING",
           // V4E §3 — SIDES ARE RELATIVE TO THIS ASSERTION. The compound claims "방향은 열려 있고 지금 실행은
           // 막혀 있다", and the strikes are what ESTABLISH the second half — they support this claim. V4D filed
           // them under `oppose` because their real-world valence is negative, which is precisely the blind
@@ -10118,19 +10226,15 @@ var CONVERGENT_SEAT_PRESSURE = {
     const bySeat = /* @__PURE__ */ new Map();
     for (const p of frictions) bySeat.set(p.target.key, [...bySeat.get(p.target.key) ?? [], p]);
     for (const [, unordered] of bySeat) {
-      const group = [...unordered].sort((a, b) => a.questionAxis.localeCompare(b.questionAxis) || SCOPE_WIDTH[a.temporalScope] - SCOPE_WIDTH[b.temporalScope]);
+      const group = canonicalConvergentGroup(unordered);
       const scopes = new Set(group.map((p) => p.temporalScope));
       if (scopes.size < 2) continue;
       out.push(make("CONVERGENT_SEAT_PRESSURE", ctx, {
-        axis: group[0].questionAxis,
-        temporalScope: narrowestScope(group),
-        target: group[0].target,
+        ...convergentSeatPressureChild(group),
         assertion: group[0].target.label + "에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.",
-        conclusionType: "CAUSAL",
         // §22 — a CAUSE is not a VERDICT. This explains why something keeps happening; it does not recommend
         // for or against anything. Carrying UNFAVORABLE here let a causal statement become the headline of a
         // money question, which is a category error of the same family as answering a description with advice.
-        direction: "NONE",
         // These premises SUPPORT the claim that the seat is repeatedly struck — the claim is about them.
         support: group,
         oppose: [],
@@ -10156,18 +10260,9 @@ var INFLOW_VS_RETENTION = {
     ];
     if (inflow.length === 0 || retentionMembers.length === 0) return [];
     return [make("INFLOW_VS_RETENTION", ctx, {
-      axis: "MONEY_INFLOW",
-      temporalScope: narrowestScope(inflow),
       // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
-      target: compositeTarget(
-        "INFLOW_VS_RETENTION",
-        [inflow.map((p) => p.target), retentionMembers],
-        "유입과 보유"
-      ),
+      ...inflowVsRetentionChild(inflow, retentionMembers),
       assertion: "돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.",
-      conclusionType: "COMPOUND",
-      direction: "RESTRICTED",
-      restriction: "SCOPE",
       support: [...inflow, ...retentionRisk],
       oppose: [],
       from: contested
@@ -10184,12 +10279,8 @@ var RECURRING_FRICTION_CAUSE = {
       const again = premises.filter((p) => p.temporalScope !== "NATAL" && sameTarget(p.target, weak.target) && p.subject === weak.subject && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"));
       if (again.length === 0) continue;
       out.push(make("RECURRING_FRICTION_CAUSE", ctx, {
-        axis: weak.questionAxis,
-        temporalScope: narrowestScope(again),
-        target: weak.target,
+        ...recurringFrictionChild(weak, again),
         assertion: "반복해서 부딪히는 데는 이유가 있다. " + weak.target.label + "가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.",
-        conclusionType: "CAUSAL",
-        direction: "NONE",
         support: [weak, ...again],
         oppose: [],
         // §15 — the natal weakness is REQUIRED (without it there is no recurrence, only an event); the luck
@@ -12136,15 +12227,25 @@ var ancestryMatchesAssertsOnly = (ancestry, premises, extraPropositionParents = 
   ]);
   return ancestry.length === expected.size && ancestry.every((id) => expected.has(id));
 };
-function validateContestedShare(supporting, opposing, ancestry) {
+var sameMembers = (actual, expected) => {
+  const a = new Set(actual);
+  const e = new Set(expected);
+  return actual.length === a.size && expected.length === e.size && a.size === e.size && [...a].every((id) => e.has(id));
+};
+var myungriEvidenceMatches = (prop, supporting, opposing) => prop.unresolvedPremiseIds.length === 0 && sameMembers(
+  prop.doctrineReferences,
+  [...new Set([...supporting, ...opposing].map((p) => p.doctrineReference))]
+);
+function validateContestedShare(prop, supporting, opposing) {
   if (opposing.length !== 0) return false;
-  const rivals = new Set(supporting.filter((p) => p.concept === "RIVAL_CLAIM").map((p) => p.id));
-  const wealth = new Set(supporting.filter((p) => p.concept === "NATAL_FAMILY" && p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "SUPPORTS").map((p) => p.id));
-  if (rivals.size === 0 || wealth.size === 0) return false;
-  if (!allClassified(supporting, rivals, wealth)) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  const rivalItems = supporting.filter((p) => p.concept === "RIVAL_CLAIM");
+  const wealthItems = supporting.filter((p) => p.concept === "NATAL_FAMILY" && p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "SUPPORTS");
+  const rivals = new Set(rivalItems.map((p) => p.id));
+  const wealth = new Set(wealthItems.map((p) => p.id));
+  if (rivals.size === 0 || wealth.size === 0 || !allClassified(supporting, rivals, wealth)) return false;
+  return derivedChildSemanticsMatch(prop, contestedShareChild(rivalItems, wealthItems)) && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
-function validateDirectionVsExecution(supporting, opposing, ancestry, target4, axis, scope) {
+function validateDirectionVsExecution(prop, supporting, opposing) {
   if (opposing.length !== 0) return false;
   const opens = supporting.filter((p) => STRUCTURAL_SCOPES.has(p.temporalScope) && (p.semanticRelation === "ENABLES" || p.semanticRelation === "ACTIVATES" || p.semanticRelation === "CONNECTS"));
   if (opens.length !== 1) return false;
@@ -12153,12 +12254,9 @@ function validateDirectionVsExecution(supporting, opposing, ancestry, target4, a
   if (strikes.length === 0) return false;
   if (!strikes.every((p) => NEAR_SCOPES2.has(p.temporalScope) && p.target.key === open.target.key && p.subject === open.subject && p.questionAxis === open.questionAxis && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"))) return false;
   if (!strikes.every((p) => p.temporalScope === strikes[0].temporalScope)) return false;
-  if (target4.key !== open.target.key || axis !== open.questionAxis || scope !== strikes[0].temporalScope) {
-    return false;
-  }
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  return derivedChildSemanticsMatch(prop, directionVsExecutionChild(open, strikes[0].temporalScope)) && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
-function validateConvergentSeatPressure(supporting, opposing, ancestry, target4) {
+function validateConvergentSeatPressure(prop, supporting, opposing) {
   if (opposing.length !== 0) return false;
   if (supporting.length < 2) return false;
   if (!supporting.every((p) => p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS")) {
@@ -12166,10 +12264,9 @@ function validateConvergentSeatPressure(supporting, opposing, ancestry, target4)
   }
   if (!supporting.every((p) => p.target.key === supporting[0].target.key)) return false;
   if (new Set(supporting.map((p) => p.temporalScope)).size < 2) return false;
-  if (target4.key !== supporting[0].target.key) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  return derivedChildSemanticsMatch(prop, convergentSeatPressureChild(supporting)) && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
-function validateRecurringFrictionCause(supporting, opposing, ancestry, target4, axis) {
+function validateRecurringFrictionCause(prop, supporting, opposing) {
   if (opposing.length !== 0) return false;
   const weaks = supporting.filter((p) => p.temporalScope === "NATAL" && p.semanticRelation === "DESTABILIZES");
   if (weaks.length !== 1) return false;
@@ -12177,62 +12274,57 @@ function validateRecurringFrictionCause(supporting, opposing, ancestry, target4,
   const again = supporting.filter((p) => p.id !== weak.id);
   if (again.length === 0) return false;
   if (!again.every((p) => p.temporalScope !== "NATAL" && p.target.key === weak.target.key && p.subject === weak.subject && (p.semanticRelation === "DESTABILIZES" || p.semanticRelation === "CONSTRAINS"))) return false;
-  if (target4.key !== weak.target.key || axis !== weak.questionAxis) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  return derivedChildSemanticsMatch(prop, recurringFrictionChild(weak, again)) && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
-function validateInflowVsRetention(supporting, opposing, ancestry, axis, contestedShareParentIds) {
+function validateInflowVsRetention(prop, supporting, opposing, contestedParents) {
   if (opposing.length !== 0) return false;
-  if (axis !== "MONEY_INFLOW") return false;
-  const inflow = new Set(supporting.filter((p) => p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "ACTIVATES").map((p) => p.id));
-  const retentionRisk = new Set(supporting.filter((p) => p.questionAxis === "MONEY_RETENTION" && (p.semanticRelation === "OPPOSES" || p.semanticRelation === "WEAKENS" || p.semanticRelation === "DESTABILIZES")).map((p) => p.id));
+  const inflowItems = supporting.filter((p) => p.questionAxis === "MONEY_INFLOW" && p.semanticRelation === "ACTIVATES");
+  const retentionItems = supporting.filter((p) => p.questionAxis === "MONEY_RETENTION" && (p.semanticRelation === "OPPOSES" || p.semanticRelation === "WEAKENS" || p.semanticRelation === "DESTABILIZES"));
+  const inflow = new Set(inflowItems.map((p) => p.id));
+  const retentionRisk = new Set(retentionItems.map((p) => p.id));
   if (inflow.size === 0) return false;
-  if (retentionRisk.size === 0 && contestedShareParentIds.length === 0) return false;
+  if (retentionRisk.size === 0 && contestedParents.length === 0) return false;
   if (!allClassified(supporting, inflow, retentionRisk)) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting, contestedShareParentIds);
+  const expected = inflowVsRetentionChild(
+    inflowItems,
+    [...retentionItems.map((p) => p.target), ...contestedParents.map((p) => p.target)]
+  );
+  return derivedChildSemanticsMatch(prop, expected) && ancestryMatchesAssertsOnly(
+    prop.derivedFromPropositionIds,
+    supporting,
+    contestedParents.map((p) => p.id)
+  );
 }
 function validateMyungriDerivation(prop, premiseById, propositionById) {
   const supporting = resolveIds(prop.supportingPremiseIds, premiseById);
   const opposing = resolveIds(prop.opposingPremiseIds, premiseById);
   if (!supporting || !opposing) return false;
+  if (!myungriEvidenceMatches(prop, supporting, opposing)) return false;
   switch (prop.derivationRule) {
     case "CONTESTED_SHARE":
-      return validateContestedShare(supporting, opposing, prop.derivedFromPropositionIds);
+      return validateContestedShare(prop, supporting, opposing);
     case "DIRECTION_VS_EXECUTION":
-      return validateDirectionVsExecution(
-        supporting,
-        opposing,
-        prop.derivedFromPropositionIds,
-        prop.target,
-        prop.questionAxis,
-        prop.temporalScope
-      );
+      return validateDirectionVsExecution(prop, supporting, opposing);
     case "CONVERGENT_SEAT_PRESSURE":
-      return validateConvergentSeatPressure(supporting, opposing, prop.derivedFromPropositionIds, prop.target);
+      return validateConvergentSeatPressure(prop, supporting, opposing);
     case "RECURRING_FRICTION_CAUSE":
-      return validateRecurringFrictionCause(
-        supporting,
-        opposing,
-        prop.derivedFromPropositionIds,
-        prop.target,
-        prop.questionAxis
-      );
+      return validateRecurringFrictionCause(prop, supporting, opposing);
     case "INFLOW_VS_RETENTION": {
-      const contestedShareParentIds = prop.derivedFromPropositionIds.filter((id) => {
+      const contestedParents = prop.derivedFromPropositionIds.flatMap((id) => {
         const parent = propositionById.get(id);
-        return parent !== void 0 && parent.derivationRule === "CONTESTED_SHARE";
+        return parent?.derivationRule === "CONTESTED_SHARE" ? [parent] : [];
       });
-      return validateInflowVsRetention(
-        supporting,
-        opposing,
-        prop.derivedFromPropositionIds,
-        prop.questionAxis,
-        contestedShareParentIds
-      );
+      return validateInflowVsRetention(prop, supporting, opposing, contestedParents);
     }
     default:
       return false;
   }
 }
+var crossEvidenceMatches = (prop, from, against = []) => {
+  if (prop.unresolvedPremiseIds.length !== 0) return false;
+  const expected = crossChildEvidence(from, against);
+  return sameMembers(prop.supportingPremiseIds, expected.supportingPremiseIds) && sameMembers(prop.opposingPremiseIds, expected.opposingPremiseIds) && sameMembers(prop.doctrineReferences, expected.doctrineReferences);
+};
 function validateCrossDerivation(prop, propositionById, ctx) {
   const parents = prop.derivedFromPropositionIds.map((id) => propositionById.get(id));
   if (parents.some((p) => !p)) return false;
@@ -12240,24 +12332,22 @@ function validateCrossDerivation(prop, propositionById, ctx) {
   switch (prop.derivationRule) {
     case "CROSS_REINFORCEMENT": {
       if (resolved.length < 2) return false;
-      for (let i = 0; i < resolved.length; i += 1) {
-        for (let k = i + 1; k < resolved.length; k += 1) {
-          const a = resolved[i];
-          const b = resolved[k];
-          if (a.discipline === b.discipline) return false;
-          const relation = classifyPair(a, b);
-          if (relation !== "REINFORCING" && relation !== "RIVAL_AGREEMENT") return false;
-        }
-      }
-      return true;
+      const qualifies = (a, b) => {
+        if (a.discipline === b.discipline) return false;
+        const relation = classifyPair(a, b);
+        if (relation !== "REINFORCING" && relation !== "RIVAL_AGREEMENT") return false;
+        return derivedChildSemanticsMatch(prop, crossReinforcementChild(a, b, relation)) || derivedChildSemanticsMatch(prop, crossReinforcementChild(b, a, relation));
+      };
+      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q))) && crossEvidenceMatches(prop, resolved);
     }
     case "CROSS_STANDOFF": {
       if (resolved.length < 2) return false;
       const qualifies = (x, y) => {
         const relation = classifyPair(x, y);
-        return relation === "CONTRADICTORY" || relation === "RIVAL_CONFLICT";
+        if (relation !== "CONTRADICTORY" && relation !== "RIVAL_CONFLICT") return false;
+        return derivedChildSemanticsMatch(prop, crossStandoffChild(x, y, relation)) || derivedChildSemanticsMatch(prop, crossStandoffChild(y, x, relation));
       };
-      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)));
+      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q))) && crossEvidenceMatches(prop, resolved);
     }
     case "CROSS_CONTRADICTION_RESOLVED": {
       if (resolved.length < 2) return false;
@@ -12266,8 +12356,12 @@ function validateCrossDerivation(prop, propositionById, ctx) {
         return (relation === "CONTRADICTORY" || relation === "RIVAL_CONFLICT") && opposed(x, y);
       };
       if (!resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))) return false;
-      const matchesOperand = (p) => prop.direction === p.direction && prop.target.key === p.target.key && (prop.restriction ?? void 0) === (p.restriction ?? void 0);
-      return resolved.some(matchesOperand);
+      const dominant = resolved.filter((p) => derivedChildSemanticsMatch(prop, crossContradictionResolvedChild(p, p.questionAxis)));
+      const against = resolved.filter((p) => !dominant.includes(p));
+      if (dominant.length === 0 || against.length === 0) return false;
+      if (!dominant.every((p) => against.some((q) => qualifies(p, q)))) return false;
+      if (!against.every((p) => dominant.some((q) => qualifies(p, q)))) return false;
+      return crossEvidenceMatches(prop, dominant, against);
     }
     case "CROSS_TIMING_SPLIT": {
       if (resolved.length < 2) return false;
@@ -12283,7 +12377,8 @@ function validateCrossDerivation(prop, propositionById, ctx) {
       if (!nearParents.every((p) => p.temporalScope === nearParents[0].temporalScope)) {
         return false;
       }
-      return true;
+      if (!nearParents.every((near) => derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near)))) return false;
+      return crossEvidenceMatches(prop, resolved);
     }
     case "CROSS_AXIS_COMPOUND": {
       if (resolved.length < 2) return false;
@@ -12291,12 +12386,18 @@ function validateCrossDerivation(prop, propositionById, ctx) {
       if (!resolved.every(stated)) return false;
       const qualifies = (x, y) => {
         const relation = classifyPair(x, y);
-        return (relation === "DIFFERENT_AXIS" || relation === "DIFFERENT_TARGET") && opposed(x, y) && axesShareOneMatter(x.questionAxis, y.questionAxis);
+        if (relation !== "DIFFERENT_AXIS" && relation !== "DIFFERENT_TARGET" || !opposed(x, y) || !axesShareOneMatter(x.questionAxis, y.questionAxis)) return false;
+        const frame = crossCompoundFrame(x.questionAxis, y.questionAxis);
+        return derivedChildSemanticsMatch(
+          prop,
+          crossAxisCompoundChild(x, y, x.questionAxis, frame.kind, frame.frame)
+        ) || derivedChildSemanticsMatch(
+          prop,
+          crossAxisCompoundChild(x, y, y.questionAxis, frame.kind, frame.frame)
+        );
       };
       if (!resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))) return false;
-      const matchesOperand = (p) => prop.direction === p.direction && (prop.restriction ?? void 0) === (p.restriction ?? void 0);
-      if (!resolved.some(matchesOperand)) return false;
-      return true;
+      return crossEvidenceMatches(prop, resolved);
     }
     default:
       return false;
@@ -12371,29 +12472,57 @@ var validRelationArray = (v, kinds) => Array.isArray(v) && v.length <= 8 && v.ev
   return typeof r.position === "string" && PILLAR_POSITIONS2.includes(r.position) && typeof r.kind === "string" && kinds.includes(r.kind);
 });
 function parseEvidenceSnapshot(v) {
-  if (v === null || typeof v !== "object") return void 0;
+  if (v === null || typeof v !== "object") {
+    return void 0;
+  }
   const ev2 = v;
   const target4 = ev2.target;
   const derivation = ev2.derivation;
-  if (ev2.schemaVersion !== "decision-evidence@1.0.0" || !target4 || typeof target4 !== "object") return void 0;
-  if (target4.granularity !== "YEAR" && target4.granularity !== "MONTH" || !isFiniteInteger2(target4.key)) return void 0;
-  if (typeof ev2.polarity !== "string" || !POLARITY_TIERS.includes(ev2.polarity)) return void 0;
-  if (!derivation || typeof derivation !== "object") return void 0;
-  if (!isFiniteInteger2(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) return void 0;
-  if (!isFiniteInteger2(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) return void 0;
-  if (!validRelationArray(derivation.stemRelations, STEM_RELATION_KINDS2) || !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS2)) return void 0;
-  if (typeof ev2.supportLevel !== "string" || typeof ev2.assertiveness !== "string" || typeof ev2.engineVersion !== "string" || ev2.engineVersion.length === 0) return void 0;
-  if (!Array.isArray(ev2.intents) || ev2.intents.length > 8 || !ev2.intents.every((x) => typeof x === "string")) return void 0;
+  if (ev2.schemaVersion !== "decision-evidence@1.0.0" || !target4 || typeof target4 !== "object") {
+    return void 0;
+  }
+  if (target4.granularity !== "YEAR" && target4.granularity !== "MONTH" || !isFiniteInteger2(target4.key)) {
+    return void 0;
+  }
+  if (typeof ev2.polarity !== "string" || !POLARITY_TIERS.includes(ev2.polarity)) {
+    return void 0;
+  }
+  if (!derivation || typeof derivation !== "object") {
+    return void 0;
+  }
+  if (!isFiniteInteger2(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) {
+    return void 0;
+  }
+  if (!isFiniteInteger2(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) {
+    return void 0;
+  }
+  if (!validRelationArray(derivation.stemRelations, STEM_RELATION_KINDS2) || !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS2)) {
+    return void 0;
+  }
+  if (typeof ev2.supportLevel !== "string" || typeof ev2.assertiveness !== "string" || typeof ev2.engineVersion !== "string" || ev2.engineVersion.length === 0) {
+    return void 0;
+  }
+  if (!Array.isArray(ev2.intents) || ev2.intents.length > 8 || !ev2.intents.every((x) => typeof x === "string")) {
+    return void 0;
+  }
   return ev2;
 }
 function parseDivinationVerdict(v) {
-  if (v === null || typeof v !== "object") return void 0;
-  const o = v;
-  if (typeof o.direction !== "string" || typeof o.primaryConclusion !== "string") return void 0;
-  if (o.headlinePropositionIds !== void 0 && !(Array.isArray(o.headlinePropositionIds) && o.headlinePropositionIds.every((x) => typeof x === "string"))) {
+  if (v === null || typeof v !== "object") {
     return void 0;
   }
-  if (typeof o.verdictVersion !== "string") return void 0;
+  const o = v;
+  if (typeof o.direction !== "string" || typeof o.primaryConclusion !== "string") {
+    return void 0;
+  }
+  if (o.headlinePropositionIds !== void 0 && !(Array.isArray(o.headlinePropositionIds) && o.headlinePropositionIds.every((x) => typeof x === "string"))) {
+    {
+      return void 0;
+    }
+  }
+  if (typeof o.verdictVersion !== "string") {
+    return void 0;
+  }
   const CONCLUSION_TYPES = /* @__PURE__ */ new Set(["STRUCTURAL", "CAUSAL", "DIRECTIONAL", "TEMPORAL", "COMPOUND"]);
   const DIRECTIONS = /* @__PURE__ */ new Set(["FAVORABLE", "UNFAVORABLE", "RESTRICTED", "NONE"]);
   const SCOPES = /* @__PURE__ */ new Set(["NATAL", "DAEWOON", "SEWOON", "WOLWOON", "PRESENT_MOMENT", "UNSCOPED"]);
@@ -12469,94 +12598,216 @@ function parseDivinationVerdict(v) {
   };
   const enumOk = (set, x) => typeof x === "string" && set.has(x);
   const isStringArray2 = (a) => Array.isArray(a) && a.every((x) => typeof x === "string");
-  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return void 0;
+  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) {
+    return void 0;
+  }
   for (const j of o.disciplineJudgments) {
-    if (j === null || typeof j !== "object") return void 0;
-    const dj = j;
-    if (typeof dj.applicable !== "boolean") return void 0;
-    if (!enumOk(DISCIPLINES, dj.discipline)) return void 0;
-    if (!enumOk(STANCES, dj.stance)) return void 0;
-    if (!enumOk(RELIABILITIES, dj.dataReliability)) return void 0;
-    if (!enumOk(AXES, dj.questionDomain)) return void 0;
-    if (!enumOk(SCOPES, dj.temporalScope)) return void 0;
-    if (!enumOk(CONFIDENCES, dj.confidence)) return void 0;
-    if (!enumOk(DIRECTNESS, dj.questionDirectness)) return void 0;
-    if (!enumOk(EVIDENCE_STRENGTHS, dj.evidenceStrength)) return void 0;
-    if (typeof dj.dominantConclusion !== "string" || typeof dj.dominantFactor !== "string") return void 0;
-    if (!evidenceOk(dj.directEvidence) || !evidenceOk(dj.counterEvidence) || !evidenceOk(dj.timingSignals)) {
+    if (j === null || typeof j !== "object") {
       return void 0;
     }
-    if (!isStringArray2(dj.internalContradictions) || !isStringArray2(dj.factGroupsUsed)) return void 0;
-    if (!Array.isArray(dj.domainSubJudgments)) return void 0;
+    const dj = j;
+    if (typeof dj.applicable !== "boolean") {
+      return void 0;
+    }
+    if (!enumOk(DISCIPLINES, dj.discipline)) {
+      return void 0;
+    }
+    if (!enumOk(STANCES, dj.stance)) {
+      return void 0;
+    }
+    if (!enumOk(RELIABILITIES, dj.dataReliability)) {
+      return void 0;
+    }
+    if (!enumOk(AXES, dj.questionDomain)) {
+      return void 0;
+    }
+    if (!enumOk(SCOPES, dj.temporalScope)) {
+      return void 0;
+    }
+    if (!enumOk(CONFIDENCES, dj.confidence)) {
+      return void 0;
+    }
+    if (!enumOk(DIRECTNESS, dj.questionDirectness)) {
+      return void 0;
+    }
+    if (!enumOk(EVIDENCE_STRENGTHS, dj.evidenceStrength)) {
+      return void 0;
+    }
+    if (typeof dj.dominantConclusion !== "string" || typeof dj.dominantFactor !== "string") {
+      return void 0;
+    }
+    if (!evidenceOk(dj.directEvidence) || !evidenceOk(dj.counterEvidence) || !evidenceOk(dj.timingSignals)) {
+      {
+        return void 0;
+      }
+    }
+    if (!isStringArray2(dj.internalContradictions) || !isStringArray2(dj.factGroupsUsed)) {
+      return void 0;
+    }
+    if (!Array.isArray(dj.domainSubJudgments)) {
+      return void 0;
+    }
     for (const sj of dj.domainSubJudgments) {
-      if (sj === null || typeof sj !== "object") return void 0;
+      if (sj === null || typeof sj !== "object") {
+        return void 0;
+      }
       const sub2 = sj;
-      if (!enumOk(AXES, sub2.domain) || !enumOk(STANCES, sub2.stance)) return void 0;
-      if (!enumOk(SCOPES, sub2.temporalScope) || !enumOk(DIRECTNESS, sub2.directness)) return void 0;
-      if (!enumOk(RELIABILITIES, sub2.reliability)) return void 0;
-      if (typeof sub2.conclusion !== "string") return void 0;
-      if (!evidenceOk(sub2.evidence) || !evidenceOk(sub2.counterEvidence)) return void 0;
+      if (!enumOk(AXES, sub2.domain) || !enumOk(STANCES, sub2.stance)) {
+        return void 0;
+      }
+      if (!enumOk(SCOPES, sub2.temporalScope) || !enumOk(DIRECTNESS, sub2.directness)) {
+        return void 0;
+      }
+      if (!enumOk(RELIABILITIES, sub2.reliability)) {
+        return void 0;
+      }
+      if (typeof sub2.conclusion !== "string") {
+        return void 0;
+      }
+      if (!evidenceOk(sub2.evidence) || !evidenceOk(sub2.counterEvidence)) {
+        return void 0;
+      }
     }
   }
-  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return void 0;
-  if (!Array.isArray(o.evidenceReferences)) return void 0;
-  if (!enumOk(STANCES, o.direction)) return void 0;
-  if (!enumOk(CONFIDENCES, o.confidence)) return void 0;
-  if (!evidenceOk(o.favorableFactors) || !evidenceOk(o.riskFactors)) return void 0;
+  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) {
+    return void 0;
+  }
+  if (!Array.isArray(o.evidenceReferences)) {
+    return void 0;
+  }
+  if (!enumOk(STANCES, o.direction)) {
+    return void 0;
+  }
+  if (!enumOk(CONFIDENCES, o.confidence)) {
+    return void 0;
+  }
+  if (!evidenceOk(o.favorableFactors) || !evidenceOk(o.riskFactors)) {
+    return void 0;
+  }
   for (const a of o.axisVerdicts) {
-    if (a === null || typeof a !== "object") return void 0;
+    if (a === null || typeof a !== "object") {
+      return void 0;
+    }
     const av = a;
-    if (!enumOk(AXES, av.domain) || !enumOk(STANCES, av.stance)) return void 0;
-    if (!enumOk(DISCIPLINES, av.dominantDiscipline)) return void 0;
-    if (typeof av.conclusion !== "string" || typeof av.contested !== "boolean") return void 0;
+    if (!enumOk(AXES, av.domain) || !enumOk(STANCES, av.stance)) {
+      return void 0;
+    }
+    if (!enumOk(DISCIPLINES, av.dominantDiscipline)) {
+      return void 0;
+    }
+    if (typeof av.conclusion !== "string" || typeof av.contested !== "boolean") {
+      return void 0;
+    }
   }
   for (const c of o.contributions) {
-    if (c === null || typeof c !== "object") return void 0;
+    if (c === null || typeof c !== "object") {
+      return void 0;
+    }
     const co = c;
-    if (!enumOk(DISCIPLINES, co.discipline) || !enumOk(STANCES, co.stance)) return void 0;
-    if (typeof co.applied !== "boolean" || typeof co.contribution !== "string") return void 0;
+    if (!enumOk(DISCIPLINES, co.discipline) || !enumOk(STANCES, co.stance)) {
+      return void 0;
+    }
+    if (typeof co.applied !== "boolean" || typeof co.contribution !== "string") {
+      return void 0;
+    }
   }
   for (const r of Array.isArray(o.contradictionResolutions) ? o.contradictionResolutions : []) {
-    if (r === null || typeof r !== "object") return void 0;
+    if (r === null || typeof r !== "object") {
+      return void 0;
+    }
     const re = r;
-    if (!enumOk(CONTRADICTION_KINDS, re.kind)) return void 0;
-    if (!enumOk(DISCIPLINES, re.dominant)) return void 0;
-    if (!isStringArray2(re.between) || !re.between.every((d) => DISCIPLINES.has(d))) return void 0;
-    if (typeof re.conflict !== "string" || typeof re.resolution !== "string") return void 0;
-    if (typeof re.whyOtherDidNotDominate !== "string") return void 0;
+    if (!enumOk(CONTRADICTION_KINDS, re.kind)) {
+      return void 0;
+    }
+    if (!enumOk(DISCIPLINES, re.dominant)) {
+      return void 0;
+    }
+    if (!isStringArray2(re.between) || !re.between.every((d) => DISCIPLINES.has(d))) {
+      return void 0;
+    }
+    if (typeof re.conflict !== "string" || typeof re.resolution !== "string") {
+      return void 0;
+    }
+    if (typeof re.whyOtherDidNotDominate !== "string") {
+      return void 0;
+    }
   }
   for (const e of o.evidenceReferences) {
-    if (e === null || typeof e !== "object") return void 0;
+    if (e === null || typeof e !== "object") {
+      return void 0;
+    }
     const ev2 = e;
-    if (typeof ev2.discipline !== "string") return void 0;
-    if (!DISCIPLINES.has(ev2.discipline) && ev2.discipline !== "CROSS") return void 0;
-    if (!isStringArray2(ev2.lines)) return void 0;
+    if (typeof ev2.discipline !== "string") {
+      return void 0;
+    }
+    if (!DISCIPLINES.has(ev2.discipline) && ev2.discipline !== "CROSS") {
+      return void 0;
+    }
+    if (!isStringArray2(ev2.lines)) {
+      return void 0;
+    }
   }
   const isTarget = isCanonicalTarget;
   const premiseIds = /* @__PURE__ */ new Set();
   const premisesOut = [];
   if (o.premises !== void 0) {
-    if (!Array.isArray(o.premises)) return void 0;
+    if (!Array.isArray(o.premises)) {
+      return void 0;
+    }
     for (const p of o.premises) {
-      if (p === null || typeof p !== "object") return void 0;
+      if (p === null || typeof p !== "object") {
+        return void 0;
+      }
       const pr = p;
-      if (typeof pr.id !== "string" || pr.id.length === 0) return void 0;
-      if (premiseIds.has(pr.id)) return void 0;
+      if (typeof pr.id !== "string" || pr.id.length === 0) {
+        return void 0;
+      }
+      if (premiseIds.has(pr.id)) {
+        return void 0;
+      }
       premiseIds.add(pr.id);
-      if (typeof pr.assertion !== "string" || pr.assertion.length === 0) return void 0;
-      if (typeof pr.semanticRelation !== "string" || !RELATIONS.has(pr.semanticRelation)) return void 0;
-      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== "string" || pr.subject.length === 0) return void 0;
-      if (!enumOk(SCOPES, pr.temporalScope)) return void 0;
-      if (!enumOk(DISCIPLINES, pr.discipline)) return void 0;
-      if (!enumOk(INTENTS, pr.questionIntent)) return void 0;
-      if (!enumOk(CONCEPTS, pr.concept)) return void 0;
-      if (!enumOk(ROLES, pr.role)) return void 0;
-      if (!enumOk(APPLICABILITIES, pr.applicability)) return void 0;
-      if (!enumOk(RELIABILITIES, pr.reliability)) return void 0;
-      if (typeof pr.doctrineReference !== "string") return void 0;
-      if (!isTarget(pr.target)) return void 0;
-      if (!isStringArray2(pr.sourceFactIds)) return void 0;
-      if (pr.sourceFactIds.length === 0 && pr.semanticRelation !== "ABSENT") return void 0;
+      if (typeof pr.assertion !== "string" || pr.assertion.length === 0) {
+        return void 0;
+      }
+      if (typeof pr.semanticRelation !== "string" || !RELATIONS.has(pr.semanticRelation)) {
+        return void 0;
+      }
+      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== "string" || pr.subject.length === 0) {
+        return void 0;
+      }
+      if (!enumOk(SCOPES, pr.temporalScope)) {
+        return void 0;
+      }
+      if (!enumOk(DISCIPLINES, pr.discipline)) {
+        return void 0;
+      }
+      if (!enumOk(INTENTS, pr.questionIntent)) {
+        return void 0;
+      }
+      if (!enumOk(CONCEPTS, pr.concept)) {
+        return void 0;
+      }
+      if (!enumOk(ROLES, pr.role)) {
+        return void 0;
+      }
+      if (!enumOk(APPLICABILITIES, pr.applicability)) {
+        return void 0;
+      }
+      if (!enumOk(RELIABILITIES, pr.reliability)) {
+        return void 0;
+      }
+      if (typeof pr.doctrineReference !== "string") {
+        return void 0;
+      }
+      if (!isTarget(pr.target)) {
+        return void 0;
+      }
+      if (!isStringArray2(pr.sourceFactIds)) {
+        return void 0;
+      }
+      if (pr.sourceFactIds.length === 0 && pr.semanticRelation !== "ABSENT") {
+        return void 0;
+      }
       premisesOut.push({
         id: pr.id,
         discipline: pr.discipline,
@@ -12577,51 +12828,117 @@ function parseDivinationVerdict(v) {
     }
   }
   const premiseById = new Map(premisesOut.map((p) => [p.id, p]));
-  if (!Array.isArray(o.propositions)) return void 0;
+  if (!Array.isArray(o.propositions)) {
+    return void 0;
+  }
   const propositionIds = /* @__PURE__ */ new Set();
   const parsed = [];
   for (const p of o.propositions) {
-    if (p === null || typeof p !== "object") return void 0;
+    if (p === null || typeof p !== "object") {
+      return void 0;
+    }
     const pr = p;
-    if (typeof pr.id !== "string" || pr.id.length === 0) return void 0;
-    if (propositionIds.has(pr.id)) return void 0;
+    if (typeof pr.id !== "string" || pr.id.length === 0) {
+      return void 0;
+    }
+    if (propositionIds.has(pr.id)) {
+      return void 0;
+    }
     propositionIds.add(pr.id);
-    if (typeof pr.assertion !== "string" || pr.assertion.length === 0) return void 0;
-    if (!enumOk(DERIVATION_RULES, pr.derivationRule)) return void 0;
-    if (typeof pr.conclusionType !== "string" || !CONCLUSION_TYPES.has(pr.conclusionType)) return void 0;
-    if (typeof pr.direction !== "string" || !DIRECTIONS.has(pr.direction)) return void 0;
-    if (!enumOk(SCOPES, pr.temporalScope)) return void 0;
-    if (!enumOk(AXES, pr.questionAxis)) return void 0;
-    if (typeof pr.subject !== "string" || pr.subject.length === 0) return void 0;
-    if (!enumOk(PROPOSITION_DISCIPLINES, pr.discipline)) return void 0;
-    if (!enumOk(INTENTS, pr.questionIntent)) return void 0;
-    if (pr.restriction !== void 0 && !enumOk(RESTRICTIONS, pr.restriction)) return void 0;
-    if (pr.answersAsked !== void 0 && typeof pr.answersAsked !== "boolean") return void 0;
-    if (pr.qualified !== void 0 && typeof pr.qualified !== "boolean") return void 0;
-    if (!isStringArray2(pr.doctrineReferences)) return void 0;
-    if (!isStringArray2(pr.unresolvedPremiseIds)) return void 0;
+    if (typeof pr.assertion !== "string" || pr.assertion.length === 0) {
+      return void 0;
+    }
+    if (!enumOk(DERIVATION_RULES, pr.derivationRule)) {
+      return void 0;
+    }
+    if (typeof pr.conclusionType !== "string" || !CONCLUSION_TYPES.has(pr.conclusionType)) {
+      return void 0;
+    }
+    if (typeof pr.direction !== "string" || !DIRECTIONS.has(pr.direction)) {
+      return void 0;
+    }
+    if (!enumOk(SCOPES, pr.temporalScope)) {
+      return void 0;
+    }
+    if (!enumOk(AXES, pr.questionAxis)) {
+      return void 0;
+    }
+    if (typeof pr.subject !== "string" || pr.subject.length === 0) {
+      return void 0;
+    }
+    if (!enumOk(PROPOSITION_DISCIPLINES, pr.discipline)) {
+      return void 0;
+    }
+    if (!enumOk(INTENTS, pr.questionIntent)) {
+      return void 0;
+    }
+    if (pr.restriction !== void 0 && !enumOk(RESTRICTIONS, pr.restriction)) {
+      return void 0;
+    }
+    if (pr.answersAsked !== void 0 && typeof pr.answersAsked !== "boolean") {
+      return void 0;
+    }
+    if (pr.qualified !== void 0 && typeof pr.qualified !== "boolean") {
+      return void 0;
+    }
+    if (!isStringArray2(pr.doctrineReferences)) {
+      return void 0;
+    }
+    if (!isStringArray2(pr.unresolvedPremiseIds)) {
+      return void 0;
+    }
     if (pr.supportGroups !== void 0) {
-      if (!Array.isArray(pr.supportGroups)) return void 0;
+      if (!Array.isArray(pr.supportGroups)) {
+        return void 0;
+      }
       for (const g of pr.supportGroups) {
-        if (g === null || typeof g !== "object") return void 0;
+        if (g === null || typeof g !== "object") {
+          return void 0;
+        }
         const grp = g;
-        if (!enumOk(SUPPORT_GROUP_ROLES, grp.role)) return void 0;
-        if (typeof grp.label !== "string") return void 0;
-        if (!isStringArray2(grp.ids) || grp.ids.length === 0) return void 0;
+        if (!enumOk(SUPPORT_GROUP_ROLES, grp.role)) {
+          return void 0;
+        }
+        if (typeof grp.label !== "string") {
+          return void 0;
+        }
+        if (!isStringArray2(grp.ids) || grp.ids.length === 0) {
+          return void 0;
+        }
       }
     }
-    if (!isTarget(pr.target)) return void 0;
-    if (!isStringArray2(pr.supportingPremiseIds) || !isStringArray2(pr.opposingPremiseIds)) return void 0;
-    if (!isStringArray2(pr.derivedFromPropositionIds)) return void 0;
-    if (pr.adequacy === null || typeof pr.adequacy !== "object") return void 0;
+    if (!isTarget(pr.target)) {
+      return void 0;
+    }
+    if (!isStringArray2(pr.supportingPremiseIds) || !isStringArray2(pr.opposingPremiseIds)) {
+      return void 0;
+    }
+    if (!isStringArray2(pr.derivedFromPropositionIds)) {
+      return void 0;
+    }
+    if (pr.adequacy === null || typeof pr.adequacy !== "object") {
+      return void 0;
+    }
     const ad = pr.adequacy;
-    if (!enumOk(ADEQUACY_LEVELS, ad.supportAdequacy)) return void 0;
-    if (!enumOk(ADEQUACY_LEVELS, ad.counterAdequacy)) return void 0;
-    if (!enumOk(COMPLETENESS, ad.dataCompleteness)) return void 0;
-    if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) return void 0;
+    if (!enumOk(ADEQUACY_LEVELS, ad.supportAdequacy)) {
+      return void 0;
+    }
+    if (!enumOk(ADEQUACY_LEVELS, ad.counterAdequacy)) {
+      return void 0;
+    }
+    if (!enumOk(COMPLETENESS, ad.dataCompleteness)) {
+      return void 0;
+    }
+    if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) {
+      return void 0;
+    }
     const sup = new Set(pr.supportingPremiseIds);
-    if (pr.opposingPremiseIds.some((id) => sup.has(id))) return void 0;
-    if (pr.restriction !== void 0 && pr.direction !== "RESTRICTED") return void 0;
+    if (pr.opposingPremiseIds.some((id) => sup.has(id))) {
+      return void 0;
+    }
+    if (pr.restriction !== void 0 && pr.direction !== "RESTRICTED") {
+      return void 0;
+    }
     const RULES_REQUIRING_RESTRICTION = /* @__PURE__ */ new Set([
       "CONTESTED_SHARE",
       "DIRECTION_VS_EXECUTION",
@@ -12629,26 +12946,42 @@ function parseDivinationVerdict(v) {
       "CROSS_TIMING_SPLIT"
     ]);
     if (pr.direction === "RESTRICTED" && pr.restriction === void 0 && RULES_REQUIRING_RESTRICTION.has(pr.derivationRule)) {
+      {
+        return void 0;
+      }
+    }
+    if (CROSS_RULES.has(pr.derivationRule) !== (pr.discipline === "CROSS")) {
       return void 0;
     }
-    if (CROSS_RULES.has(pr.derivationRule) !== (pr.discipline === "CROSS")) return void 0;
-    if (MYUNGRI_RULE_IDS.has(pr.derivationRule) && pr.discipline !== "MYUNGRI") return void 0;
-    const ancestry = pr.derivedFromPropositionIds.length;
-    if (pr.derivationRule === PRIMITIVE_RULE && ancestry !== 0) return void 0;
-    if ((pr.conclusionType === "STRUCTURAL" || pr.conclusionType === "CAUSAL") && pr.direction !== "NONE") {
+    if (MYUNGRI_RULE_IDS.has(pr.derivationRule) && pr.discipline !== "MYUNGRI") {
       return void 0;
+    }
+    const ancestry = pr.derivedFromPropositionIds.length;
+    if (pr.derivationRule === PRIMITIVE_RULE && ancestry !== 0) {
+      return void 0;
+    }
+    if ((pr.conclusionType === "STRUCTURAL" || pr.conclusionType === "CAUSAL") && pr.direction !== "NONE") {
+      {
+        return void 0;
+      }
     }
     const ad2 = pr.adequacy;
     const lookUp = (ids) => (Array.isArray(ids) ? ids : []).map((id) => premiseById.get(id)).filter((x) => !!x);
     const supportPremises = lookUp(pr.supportingPremiseIds);
     const opposePremises = lookUp(pr.opposingPremiseIds);
-    if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) return void 0;
-    if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) return void 0;
+    if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) {
+      return void 0;
+    }
+    if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) {
+      return void 0;
+    }
     if (pr.derivationRule === PRIMITIVE_RULE) {
       if (!validatePersistedPrimitive(
         pr,
         premiseById
-      )) return void 0;
+      )) {
+        return void 0;
+      }
     }
     parsed.push(pr);
   }
@@ -12658,11 +12991,17 @@ function parseDivinationVerdict(v) {
       ...pr.opposingPremiseIds,
       ...pr.unresolvedPremiseIds
     ]) {
-      if (!premiseIds.has(id)) return void 0;
+      if (!premiseIds.has(id)) {
+        return void 0;
+      }
     }
     for (const id of pr.derivedFromPropositionIds) {
-      if (id === pr.id) return void 0;
-      if (!propositionIds.has(id)) return void 0;
+      if (id === pr.id) {
+        return void 0;
+      }
+      if (!propositionIds.has(id)) {
+        return void 0;
+      }
     }
     const cited = /* @__PURE__ */ new Set([
       ...pr.supportingPremiseIds,
@@ -12670,7 +13009,9 @@ function parseDivinationVerdict(v) {
       ...pr.derivedFromPropositionIds
     ]);
     for (const g of Array.isArray(pr.supportGroups) ? pr.supportGroups : []) {
-      for (const id of g.ids) if (!cited.has(id)) return void 0;
+      for (const id of g.ids) if (!cited.has(id)) {
+        return void 0;
+      }
     }
   }
   const edges = new Map(parsed.map((pr) => [pr.id, pr.derivedFromPropositionIds]));
@@ -12684,22 +13025,38 @@ function parseDivinationVerdict(v) {
     state.set(id, "DONE");
     return false;
   };
-  for (const id of edges.keys()) if (hasCycle(id)) return void 0;
-  if (!enumOk(INTENTS, o.questionIntent)) return void 0;
-  if (!enumOk(AXES, o.questionDomain)) return void 0;
-  if (typeof o.asksTiming !== "boolean") return void 0;
-  if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger2(o.evaluatedAtEpochSeconds)) return void 0;
+  for (const id of edges.keys()) if (hasCycle(id)) {
+    return void 0;
+  }
+  if (!enumOk(INTENTS, o.questionIntent)) {
+    return void 0;
+  }
+  if (!enumOk(AXES, o.questionDomain)) {
+    return void 0;
+  }
+  if (typeof o.asksTiming !== "boolean") {
+    return void 0;
+  }
+  if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger2(o.evaluatedAtEpochSeconds)) {
+    return void 0;
+  }
   const subjects = new Set(parsed.map((pr) => pr.subject));
-  if (subjects.size > 1) return void 0;
+  if (subjects.size > 1) {
+    return void 0;
+  }
   if (subjects.size === 1 && Array.isArray(o.premises)) {
     const [subject] = subjects;
     for (const p of o.premises) {
-      if (p.subject !== subject) return void 0;
+      if (p.subject !== subject) {
+        return void 0;
+      }
     }
   }
   const headlineIds = Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds : [];
   for (const id of headlineIds) {
-    if (!propositionIds.has(id)) return void 0;
+    if (!propositionIds.has(id)) {
+      return void 0;
+    }
   }
   const propositionById = new Map(parsed.map((pr) => [pr.id, pr]));
   const crossValidationCtx = {
@@ -12712,13 +13069,17 @@ function parseDivinationVerdict(v) {
         pr,
         premiseById,
         propositionById
-      )) return void 0;
+      )) {
+        return void 0;
+      }
     } else if (CROSS_RULES.has(pr.derivationRule)) {
       if (!validateCrossDerivation(
         pr,
         propositionById,
         crossValidationCtx
-      )) return void 0;
+      )) {
+        return void 0;
+      }
     }
   }
   const NON_ASSERTIVE_STANCES = /* @__PURE__ */ new Set(["INSUFFICIENT_DATA", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]);
@@ -12729,11 +13090,15 @@ function parseDivinationVerdict(v) {
       o.questionDomain,
       o.questionIntent
     );
-    if (projectedVerdict.direction !== o.direction) return void 0;
+    if (projectedVerdict.direction !== o.direction) {
+      return void 0;
+    }
     if (Array.isArray(o.headlinePropositionIds)) {
       const persistedHeadlineSet = new Set(headlineIds);
       const projectedHeadlineSet = new Set(projectedVerdict.headlinePropositionIds);
-      if (persistedHeadlineSet.size !== projectedHeadlineSet.size || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) return void 0;
+      if (persistedHeadlineSet.size !== projectedHeadlineSet.size || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) {
+        return void 0;
+      }
     }
   }
   const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds : projectVerdictFromGraph(
@@ -12870,45 +13235,87 @@ function parseDivinationVerdict(v) {
   return restored;
 }
 function parseDecisionMeta(v) {
-  if (v === null || typeof v !== "object") return void 0;
+  if (v === null || typeof v !== "object") {
+    return void 0;
+  }
   const o = v;
-  if (typeof o.answerPlanVersion !== "string" || typeof o.decisionPolicyVersion !== "string" || typeof o.promptVersion !== "string") return void 0;
-  if (o.resolvedGranularity !== "NONE" && o.resolvedGranularity !== "YEAR" && o.resolvedGranularity !== "MONTH") return void 0;
+  if (typeof o.answerPlanVersion !== "string" || typeof o.decisionPolicyVersion !== "string" || typeof o.promptVersion !== "string") {
+    return void 0;
+  }
+  if (o.resolvedGranularity !== "NONE" && o.resolvedGranularity !== "YEAR" && o.resolvedGranularity !== "MONTH") {
+    return void 0;
+  }
   const resolvedTargets = strictNumArray(o.resolvedTargets);
-  if (!resolvedTargets) return void 0;
+  if (!resolvedTargets) {
+    return void 0;
+  }
   const rtc = o.resolvedTemporalContext;
-  if (rtc === null || typeof rtc !== "object" || !isFiniteInteger2(rtc.anchorEpochSeconds)) return void 0;
+  if (rtc === null || typeof rtc !== "object" || !isFiniteInteger2(rtc.anchorEpochSeconds)) {
+    return void 0;
+  }
   const rtcTargets = strictNumArray(rtc.resolvedTargets);
-  if (!rtcTargets || rtc.timezone !== "Asia/Seoul" || typeof rtc.qimenActive !== "boolean") return void 0;
-  if (rtc.referenceYear !== null && !isFiniteInteger2(rtc.referenceYear)) return void 0;
-  if (rtc.referenceMonth !== null && (!isFiniteInteger2(rtc.referenceMonth) || rtc.referenceMonth < 1 || rtc.referenceMonth > 12)) return void 0;
+  if (!rtcTargets || rtc.timezone !== "Asia/Seoul" || typeof rtc.qimenActive !== "boolean") {
+    return void 0;
+  }
+  if (rtc.referenceYear !== null && !isFiniteInteger2(rtc.referenceYear)) {
+    return void 0;
+  }
+  if (rtc.referenceMonth !== null && (!isFiniteInteger2(rtc.referenceMonth) || rtc.referenceMonth < 1 || rtc.referenceMonth > 12)) {
+    return void 0;
+  }
   const p = typeof o.polarity === "string" && POLARITY_TIERS.includes(o.polarity) ? o.polarity : void 0;
-  if (o.polarity !== void 0 && !p) return void 0;
+  if (o.polarity !== void 0 && !p) {
+    return void 0;
+  }
   const cc = o.comparisonContext;
   let comparisonContext;
   if (o.comparisonContext !== void 0) {
     const candidates = cc && typeof cc === "object" ? strictNumArray(cc.candidates) : void 0;
-    if (!cc || typeof cc !== "object" || typeof cc.isComparison !== "boolean" || !candidates) return void 0;
-    if (cc.isComparison && candidates.length < 2) return void 0;
+    if (!cc || typeof cc !== "object" || typeof cc.isComparison !== "boolean" || !candidates) {
+      return void 0;
+    }
+    if (cc.isComparison && candidates.length < 2) {
+      return void 0;
+    }
     comparisonContext = { isComparison: cc.isComparison, candidates };
   }
   const evidenceSnapshot = o.evidenceSnapshot === void 0 ? void 0 : parseEvidenceSnapshot(o.evidenceSnapshot);
-  if (o.evidenceSnapshot !== void 0 && !evidenceSnapshot) return void 0;
+  if (o.evidenceSnapshot !== void 0 && !evidenceSnapshot) {
+    return void 0;
+  }
   const divinationVerdict = o.divinationVerdict === void 0 || o.divinationVerdict === null ? void 0 : parseDivinationVerdict(o.divinationVerdict);
-  if (o.divinationVerdict !== void 0 && o.divinationVerdict !== null && !divinationVerdict) return void 0;
+  if (o.divinationVerdict !== void 0 && o.divinationVerdict !== null && !divinationVerdict) {
+    return void 0;
+  }
   let graphRevision;
   if (o.graphRevision !== void 0 && o.graphRevision !== null) {
-    if (typeof o.graphRevision !== "object") return void 0;
+    if (typeof o.graphRevision !== "object") {
+      return void 0;
+    }
     const gr = o.graphRevision;
-    if (gr.schemaVersion !== "graph-revision@1.0.0") return void 0;
-    if (gr.kind !== "EXTENDED" && gr.kind !== "REEVALUATED") return void 0;
-    if (!isFiniteInteger2(gr.previousEvaluatedAtEpochSeconds)) return void 0;
-    if (!isFiniteInteger2(gr.evaluationInstantEpochSeconds)) return void 0;
-    if (typeof gr.axis !== "string") return void 0;
+    if (gr.schemaVersion !== "graph-revision@1.0.0") {
+      return void 0;
+    }
+    if (gr.kind !== "EXTENDED" && gr.kind !== "REEVALUATED") {
+      return void 0;
+    }
+    if (!isFiniteInteger2(gr.previousEvaluatedAtEpochSeconds)) {
+      return void 0;
+    }
+    if (!isFiniteInteger2(gr.evaluationInstantEpochSeconds)) {
+      return void 0;
+    }
+    if (typeof gr.axis !== "string") {
+      return void 0;
+    }
     if (gr.kind === "EXTENDED") {
-      if (gr.previousEvaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) return void 0;
-      if (divinationVerdict && divinationVerdict.evaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) {
+      if (gr.previousEvaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) {
         return void 0;
+      }
+      if (divinationVerdict && divinationVerdict.evaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) {
+        {
+          return void 0;
+        }
       }
     }
     graphRevision = {
@@ -12919,9 +13326,15 @@ function parseDecisionMeta(v) {
       axis: gr.axis
     };
   }
-  if (evidenceSnapshot && (p !== evidenceSnapshot.polarity || o.engineVersion !== evidenceSnapshot.engineVersion || o.resolvedGranularity !== evidenceSnapshot.target.granularity || !resolvedTargets.includes(evidenceSnapshot.target.key))) return void 0;
-  if (comparisonContext?.isComparison && !comparisonContext.candidates.every((candidate2) => resolvedTargets.includes(candidate2))) return void 0;
-  if (o.domain !== void 0 && (typeof o.domain !== "string" || !DOMAINS.includes(o.domain))) return void 0;
+  if (evidenceSnapshot && (p !== evidenceSnapshot.polarity || o.engineVersion !== evidenceSnapshot.engineVersion || o.resolvedGranularity !== evidenceSnapshot.target.granularity || !resolvedTargets.includes(evidenceSnapshot.target.key))) {
+    return void 0;
+  }
+  if (comparisonContext?.isComparison && !comparisonContext.candidates.every((candidate2) => resolvedTargets.includes(candidate2))) {
+    return void 0;
+  }
+  if (o.domain !== void 0 && (typeof o.domain !== "string" || !DOMAINS.includes(o.domain))) {
+    return void 0;
+  }
   return {
     answerPlanVersion: o.answerPlanVersion,
     decisionPolicyVersion: o.decisionPolicyVersion,

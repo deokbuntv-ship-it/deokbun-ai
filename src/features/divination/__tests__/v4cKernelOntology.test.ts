@@ -726,9 +726,12 @@ describe('§27/§28/§29/§36 — the forbidden patterns cannot come back unnoti
   });
 
   it('§36 — no blind support/counter union survives in cross construction', () => {
-    const src = code('src/features/divination/reasoning/crossRules.ts');
-    expect(src).not.toContain('const supportIds = [...new Set(spec.from.flatMap((p) => p.supportingPremiseIds))];');
-    expect(src).toContain('against.flatMap((p) => p.opposingPremiseIds)');
+    const constructor = code('src/features/divination/reasoning/crossRules.ts');
+    const shared = code('src/features/divination/reasoning/derivedChildPostconditions.ts');
+    expect(constructor).not.toContain('const supportIds = [...new Set(spec.from.flatMap((p) => p.supportingPremiseIds))];');
+    expect(constructor).toContain('crossChildEvidence(from, against)');
+    expect(shared).toContain('against.flatMap((p) => p.opposingPremiseIds)');
+    expect(shared).toContain('against.flatMap((p) => p.supportingPremiseIds)');
   });
 
   it('§36 — a timing compound cannot be built without both sides adequate', () => {

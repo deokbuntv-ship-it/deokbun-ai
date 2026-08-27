@@ -88,7 +88,7 @@ describe('§42 — cross candidate identity is lossless, and no first specificat
     // V4C hand-wrote a key at each add() site and each one omitted most of the semantics.
     expect(s).toContain('const candidateIdentity = (');
     expect(s).not.toMatch(/key:\s*'CROSS_[A-Z_]+:'/);
-    for (const field of ['spec.axis', 'spec.target.key', 'spec.conclusionType', 'spec.direction',
+    for (const field of ['spec.questionAxis', 'spec.target.key', 'spec.conclusionType', 'spec.direction',
       'spec.temporalScope', 'spec.restriction']) {
       expect(s).toContain(field);
     }

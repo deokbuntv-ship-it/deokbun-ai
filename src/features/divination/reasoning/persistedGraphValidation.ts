@@ -10,7 +10,7 @@
 // disciplineAdapter.ts's and myungriRules.ts's own construction code exactly (cited inline), and the CROSS
 // validators call the SAME classifyPair/subordinate/opposed/halfIsAsserted/compoundEligible functions the
 // live reasoner uses to decide whether a pair may produce a given rule — imported, not re-implemented.
-import { classifyPair, halfIsAsserted, opposed } from './crossRules';
+import { classifyPair, crossCompoundFrame, halfIsAsserted, opposed } from './crossRules';
 import { axesShareOneMatter } from '../axisOntology';
 import {
   resolveAnswer, standingPropositions, temporalBand,
@@ -18,6 +18,21 @@ import {
 } from './kernel';
 import { agreedStance, selectAnswerCandidates, stanceOf } from './crossReasoner';
 import { NO_SIGNAL, type JudgmentDomain, type QuestionIntent, type Stance } from '../contracts';
+import {
+  contestedShareChild,
+  convergentSeatPressureChild,
+  crossAxisCompoundChild,
+  crossChildEvidence,
+  crossContradictionResolvedChild,
+  crossReinforcementChild,
+  crossStandoffChild,
+  crossTimingSplitChild,
+  derivedChildSemanticsMatch,
+  directionVsExecutionChild,
+  inflowVsRetentionChild,
+  recurringFrictionChild,
+  type DerivedChildSemantics,
+} from './derivedChildPostconditions';
 
 const resolveIds = (ids: string[], byId: Map<string, DivinationPremise>): DivinationPremise[] | null => {
   const out: DivinationPremise[] = [];
@@ -125,22 +140,38 @@ const ancestryMatchesAssertsOnly = (
   return ancestry.length === expected.size && ancestry.every((id) => expected.has(id));
 };
 
+const sameMembers = (actual: string[], expected: string[]): boolean => {
+  const a = new Set(actual); const e = new Set(expected);
+  return actual.length === a.size && expected.length === e.size
+    && a.size === e.size && [...a].every((id) => e.has(id));
+};
+
+type PersistedDerivedChild = DerivedChildSemantics & Pick<ReasonedProposition,
+  'derivationRule' | 'supportingPremiseIds' | 'opposingPremiseIds' | 'derivedFromPropositionIds'
+  | 'unresolvedPremiseIds' | 'doctrineReferences'>;
+
+const myungriEvidenceMatches = (
+  prop: PersistedDerivedChild, supporting: DivinationPremise[], opposing: DivinationPremise[],
+): boolean => prop.unresolvedPremiseIds.length === 0
+  && sameMembers(prop.doctrineReferences,
+    [...new Set([...supporting, ...opposing].map((p) => p.doctrineReference))]);
+
 function validateContestedShare(
-  supporting: DivinationPremise[], opposing: DivinationPremise[], ancestry: string[],
+  prop: PersistedDerivedChild, supporting: DivinationPremise[], opposing: DivinationPremise[],
 ): boolean {
   if (opposing.length !== 0) return false;
-  const rivals = new Set(supporting.filter((p) => p.concept === 'RIVAL_CLAIM').map((p) => p.id));
-  const wealth = new Set(supporting.filter((p) =>
-    p.concept === 'NATAL_FAMILY' && p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'SUPPORTS')
-    .map((p) => p.id));
-  if (rivals.size === 0 || wealth.size === 0) return false;
-  if (!allClassified(supporting, rivals, wealth)) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  const rivalItems = supporting.filter((p) => p.concept === 'RIVAL_CLAIM');
+  const wealthItems = supporting.filter((p) =>
+    p.concept === 'NATAL_FAMILY' && p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'SUPPORTS');
+  const rivals = new Set(rivalItems.map((p) => p.id));
+  const wealth = new Set(wealthItems.map((p) => p.id));
+  if (rivals.size === 0 || wealth.size === 0 || !allClassified(supporting, rivals, wealth)) return false;
+  return derivedChildSemanticsMatch(prop, contestedShareChild(rivalItems, wealthItems))
+    && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
 
 function validateDirectionVsExecution(
-  supporting: DivinationPremise[], opposing: DivinationPremise[], ancestry: string[],
-  target: { key: string }, axis: string, scope: string,
+  prop: PersistedDerivedChild, supporting: DivinationPremise[], opposing: DivinationPremise[],
 ): boolean {
   if (opposing.length !== 0) return false;
   const opens = supporting.filter((p) => STRUCTURAL_SCOPES.has(p.temporalScope)
@@ -153,14 +184,12 @@ function validateDirectionVsExecution(
     && p.subject === open.subject && p.questionAxis === open.questionAxis
     && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'))) return false;
   if (!strikes.every((p) => p.temporalScope === strikes[0].temporalScope)) return false; // one layer per node
-  if (target.key !== open.target.key || axis !== open.questionAxis || scope !== strikes[0].temporalScope) {
-    return false;
-  }
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  return derivedChildSemanticsMatch(prop, directionVsExecutionChild(open, strikes[0].temporalScope))
+    && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
 
 function validateConvergentSeatPressure(
-  supporting: DivinationPremise[], opposing: DivinationPremise[], ancestry: string[], target: { key: string },
+  prop: PersistedDerivedChild, supporting: DivinationPremise[], opposing: DivinationPremise[],
 ): boolean {
   if (opposing.length !== 0) return false;
   if (supporting.length < 2) return false;
@@ -169,13 +198,12 @@ function validateConvergentSeatPressure(
   }
   if (!supporting.every((p) => p.target.key === supporting[0].target.key)) return false;
   if (new Set(supporting.map((p) => p.temporalScope)).size < 2) return false; // real convergence, not one hit
-  if (target.key !== supporting[0].target.key) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  return derivedChildSemanticsMatch(prop, convergentSeatPressureChild(supporting))
+    && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
 
 function validateRecurringFrictionCause(
-  supporting: DivinationPremise[], opposing: DivinationPremise[], ancestry: string[],
-  target: { key: string }, axis: string,
+  prop: PersistedDerivedChild, supporting: DivinationPremise[], opposing: DivinationPremise[],
 ): boolean {
   if (opposing.length !== 0) return false;
   const weaks = supporting.filter((p) => p.temporalScope === 'NATAL' && p.semanticRelation === 'DESTABILIZES');
@@ -186,25 +214,33 @@ function validateRecurringFrictionCause(
   if (!again.every((p) => p.temporalScope !== 'NATAL' && p.target.key === weak.target.key
     && p.subject === weak.subject
     && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'))) return false;
-  if (target.key !== weak.target.key || axis !== weak.questionAxis) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting);
+  return derivedChildSemanticsMatch(prop, recurringFrictionChild(weak, again))
+    && ancestryMatchesAssertsOnly(prop.derivedFromPropositionIds, supporting);
 }
 
 function validateInflowVsRetention(
-  supporting: DivinationPremise[], opposing: DivinationPremise[], ancestry: string[],
-  axis: string, contestedShareParentIds: string[],
+  prop: PersistedDerivedChild,
+  supporting: DivinationPremise[],
+  opposing: DivinationPremise[],
+  contestedParents: ReasonedProposition[],
 ): boolean {
   if (opposing.length !== 0) return false;
-  if (axis !== 'MONEY_INFLOW') return false;
-  const inflow = new Set(supporting.filter((p) =>
-    p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'ACTIVATES').map((p) => p.id));
-  const retentionRisk = new Set(supporting.filter((p) => p.questionAxis === 'MONEY_RETENTION'
-    && (p.semanticRelation === 'OPPOSES' || p.semanticRelation === 'WEAKENS' || p.semanticRelation === 'DESTABILIZES'))
-    .map((p) => p.id));
+  const inflowItems = supporting.filter((p) =>
+    p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'ACTIVATES');
+  const retentionItems = supporting.filter((p) => p.questionAxis === 'MONEY_RETENTION'
+    && (p.semanticRelation === 'OPPOSES' || p.semanticRelation === 'WEAKENS' || p.semanticRelation === 'DESTABILIZES'));
+  const inflow = new Set(inflowItems.map((p) => p.id));
+  const retentionRisk = new Set(retentionItems.map((p) => p.id));
   if (inflow.size === 0) return false;
-  if (retentionRisk.size === 0 && contestedShareParentIds.length === 0) return false;
+  if (retentionRisk.size === 0 && contestedParents.length === 0) return false;
   if (!allClassified(supporting, inflow, retentionRisk)) return false;
-  return ancestryMatchesAssertsOnly(ancestry, supporting, contestedShareParentIds);
+  const expected = inflowVsRetentionChild(
+    inflowItems, [...retentionItems.map((p) => p.target), ...contestedParents.map((p) => p.target)],
+  );
+  return derivedChildSemanticsMatch(prop, expected)
+    && ancestryMatchesAssertsOnly(
+      prop.derivedFromPropositionIds, supporting, contestedParents.map((p) => p.id),
+    );
 }
 
 /**
@@ -213,35 +249,29 @@ function validateInflowVsRetention(
  * never supportingPremiseIds — myungriRules.ts's make() keeps them out of `support` deliberately).
  */
 export function validateMyungriDerivation(
-  prop: Pick<ReasonedProposition, 'target' | 'questionAxis' | 'temporalScope' | 'derivationRule'
-    | 'supportingPremiseIds' | 'opposingPremiseIds' | 'derivedFromPropositionIds'>,
+  prop: PersistedDerivedChild,
   premiseById: Map<string, DivinationPremise>,
-  propositionById: Map<string, Pick<ReasonedProposition, 'id' | 'derivationRule'>>,
+  propositionById: Map<string, ReasonedProposition>,
 ): boolean {
   const supporting = resolveIds(prop.supportingPremiseIds, premiseById);
   const opposing = resolveIds(prop.opposingPremiseIds, premiseById);
   if (!supporting || !opposing) return false;
+  if (!myungriEvidenceMatches(prop, supporting, opposing)) return false;
   switch (prop.derivationRule) {
     case 'CONTESTED_SHARE':
-      return validateContestedShare(supporting, opposing, prop.derivedFromPropositionIds);
+      return validateContestedShare(prop, supporting, opposing);
     case 'DIRECTION_VS_EXECUTION':
-      return validateDirectionVsExecution(
-        supporting, opposing, prop.derivedFromPropositionIds, prop.target, prop.questionAxis, prop.temporalScope,
-      );
+      return validateDirectionVsExecution(prop, supporting, opposing);
     case 'CONVERGENT_SEAT_PRESSURE':
-      return validateConvergentSeatPressure(supporting, opposing, prop.derivedFromPropositionIds, prop.target);
+      return validateConvergentSeatPressure(prop, supporting, opposing);
     case 'RECURRING_FRICTION_CAUSE':
-      return validateRecurringFrictionCause(
-        supporting, opposing, prop.derivedFromPropositionIds, prop.target, prop.questionAxis,
-      );
+      return validateRecurringFrictionCause(prop, supporting, opposing);
     case 'INFLOW_VS_RETENTION': {
-      const contestedShareParentIds = prop.derivedFromPropositionIds.filter((id) => {
+      const contestedParents = prop.derivedFromPropositionIds.flatMap((id) => {
         const parent = propositionById.get(id);
-        return parent !== undefined && parent.derivationRule === 'CONTESTED_SHARE';
+        return parent?.derivationRule === 'CONTESTED_SHARE' ? [parent] : [];
       });
-      return validateInflowVsRetention(
-        supporting, opposing, prop.derivedFromPropositionIds, prop.questionAxis, contestedShareParentIds,
-      );
+      return validateInflowVsRetention(prop, supporting, opposing, contestedParents);
     }
     default:
       return false; // an unknown rule id never reaches here — the enum whitelist rejects it earlier
@@ -254,14 +284,25 @@ export type CrossValidationCtx = {
   premiseById: Map<string, DivinationPremise>;
 };
 
+const crossEvidenceMatches = (
+  prop: PersistedDerivedChild,
+  from: ReasonedProposition[],
+  against: ReasonedProposition[] = [],
+): boolean => {
+  if (prop.unresolvedPremiseIds.length !== 0) return false;
+  const expected = crossChildEvidence(from, against);
+  return sameMembers(prop.supportingPremiseIds, expected.supportingPremiseIds)
+    && sameMembers(prop.opposingPremiseIds, expected.opposingPremiseIds)
+    && sameMembers(prop.doctrineReferences, expected.doctrineReferences);
+};
+
 /**
  * Validates a persisted CROSS proposition against its ACTUAL cited parent proposition(s), using the SAME
  * relation classifier and subordination logic the live reasoner uses to decide whether a pair may produce a
  * given rule at all — not a re-implementation, an import.
  */
 export function validateCrossDerivation(
-  prop: Pick<ReasonedProposition,
-    'derivationRule' | 'derivedFromPropositionIds' | 'direction' | 'restriction' | 'target'>,
+  prop: PersistedDerivedChild,
   propositionById: Map<string, ReasonedProposition>,
   ctx: CrossValidationCtx,
 ): boolean {
@@ -272,17 +313,21 @@ export function validateCrossDerivation(
   switch (prop.derivationRule) {
     case 'CROSS_REINFORCEMENT': {
       // The one rule whose candidates may MERGE (crossRules.ts's empty-`parties` key), so >2 parents is legal
-      // — every pairwise relationship among the merged set must still be REINFORCING or RIVAL_AGREEMENT.
+      // — every parent must join at least one constructor-valid reinforcement edge. Same-discipline duplicate
+      // claims may coexist in a real 3+ merge even though their direct pair was skipped by the runtime loop.
       if (resolved.length < 2) return false;
-      for (let i = 0; i < resolved.length; i += 1) {
-        for (let k = i + 1; k < resolved.length; k += 1) {
-          const a = resolved[i]; const b = resolved[k];
-          if (a.discipline === b.discipline) return false; // the loop gate applied after classification
-          const relation = classifyPair(a, b);
-          if (relation !== 'REINFORCING' && relation !== 'RIVAL_AGREEMENT') return false;
-        }
-      }
-      return true;
+      const qualifies = (a: ReasonedProposition, b: ReasonedProposition): boolean => {
+        if (a.discipline === b.discipline) return false;
+        const relation = classifyPair(a, b);
+        if (relation !== 'REINFORCING' && relation !== 'RIVAL_AGREEMENT') return false;
+        // crossReinforcementChild's questionAxis/temporalScope/direction/restriction come from its FIRST
+        // argument, so the pair only matches the child under whichever construction order was actually used —
+        // try both, rather than requiring both (a,b) and (b,a) to independently pass.
+        return derivedChildSemanticsMatch(prop, crossReinforcementChild(a, b, relation))
+          || derivedChildSemanticsMatch(prop, crossReinforcementChild(b, a, relation));
+      };
+      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))
+        && crossEvidenceMatches(prop, resolved);
     }
     case 'CROSS_STANDOFF': {
       // Like the other unparty-keyed rules, this can merge (measured on a real graph). And unlike
@@ -297,9 +342,13 @@ export function validateCrossDerivation(
       if (resolved.length < 2) return false;
       const qualifies = (x: ReasonedProposition, y: ReasonedProposition): boolean => {
         const relation = classifyPair(x, y);
-        return relation === 'CONTRADICTORY' || relation === 'RIVAL_CONFLICT';
+        if (relation !== 'CONTRADICTORY' && relation !== 'RIVAL_CONFLICT') return false;
+        // Same order-sensitivity as CROSS_REINFORCEMENT above — try both construction orders for this pair.
+        return derivedChildSemanticsMatch(prop, crossStandoffChild(x, y, relation))
+          || derivedChildSemanticsMatch(prop, crossStandoffChild(y, x, relation));
       };
-      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)));
+      return resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))
+        && crossEvidenceMatches(prop, resolved);
     }
     case 'CROSS_CONTRADICTION_RESOLVED': {
       // Same cross-turn caveat as CROSS_STANDOFF above — subordinate()'s outcome is not re-verifiable with
@@ -316,9 +365,15 @@ export function validateCrossDerivation(
         return (relation === 'CONTRADICTORY' || relation === 'RIVAL_CONFLICT') && opposed(x, y);
       };
       if (!resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))) return false;
-      const matchesOperand = (p: ReasonedProposition) => prop.direction === p.direction
-        && prop.target.key === p.target.key && (prop.restriction ?? undefined) === (p.restriction ?? undefined);
-      return resolved.some(matchesOperand);
+      // Historical subordination context is intentionally not replayed. The dominant side is nevertheless
+      // reconstructable as the parent(s) whose constructor-copied semantics exactly match the child.
+      const dominant = resolved.filter((p) =>
+        derivedChildSemanticsMatch(prop, crossContradictionResolvedChild(p, p.questionAxis)));
+      const against = resolved.filter((p) => !dominant.includes(p));
+      if (dominant.length === 0 || against.length === 0) return false;
+      if (!dominant.every((p) => against.some((q) => qualifies(p, q)))) return false;
+      if (!against.every((p) => dominant.some((q) => qualifies(p, q)))) return false;
+      return crossEvidenceMatches(prop, dominant, against);
     }
     case 'CROSS_TIMING_SPLIT': {
       // The candidate KEY does not bake in full party identity the way CROSS_CONTRADICTION_RESOLVED's does
@@ -341,7 +396,9 @@ export function validateCrossDerivation(
       if (!nearParents.every((p) => p.temporalScope === nearParents[0].temporalScope)) {
         return false; // merge only ever unions near premises sharing one scope
       }
-      return true;
+      if (!nearParents.every((near) =>
+        derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near)))) return false;
+      return crossEvidenceMatches(prop, resolved);
     }
     case 'CROSS_AXIS_COMPOUND': {
       // Like CROSS_TIMING_SPLIT, the candidate key is not party-identity-unique (candidateIdentity's `parties`
@@ -358,16 +415,19 @@ export function validateCrossDerivation(
       if (!resolved.every(stated)) return false;
       const qualifies = (x: ReasonedProposition, y: ReasonedProposition): boolean => {
         const relation = classifyPair(x, y);
-        return (relation === 'DIFFERENT_AXIS' || relation === 'DIFFERENT_TARGET')
-          && opposed(x, y) && axesShareOneMatter(x.questionAxis, y.questionAxis);
+        if ((relation !== 'DIFFERENT_AXIS' && relation !== 'DIFFERENT_TARGET')
+          || !opposed(x, y) || !axesShareOneMatter(x.questionAxis, y.questionAxis)) return false;
+        const frame = crossCompoundFrame(x.questionAxis, y.questionAxis);
+        // Which parent was historically asked is not replayed. The child itself must match one of the two
+        // constructor outputs that could result from this pair, and every merged parent must join such an edge.
+        return derivedChildSemanticsMatch(
+          prop, crossAxisCompoundChild(x, y, x.questionAxis, frame.kind, frame.frame),
+        ) || derivedChildSemanticsMatch(
+          prop, crossAxisCompoundChild(x, y, y.questionAxis, frame.kind, frame.frame),
+        );
       };
       if (!resolved.every((p, i) => resolved.some((q, k) => k !== i && qualifies(p, q)))) return false;
-      // The child's direction+restriction must still be copied from an ACTUAL parent — which one was
-      // historically "asked" is not recoverable across turns (same reasoning as CROSS_TIMING_SPLIT above).
-      const matchesOperand = (p: ReasonedProposition) =>
-        prop.direction === p.direction && (prop.restriction ?? undefined) === (p.restriction ?? undefined);
-      if (!resolved.some(matchesOperand)) return false;
-      return true;
+      return crossEvidenceMatches(prop, resolved);
     }
     default:
       return false;

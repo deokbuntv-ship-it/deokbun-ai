@@ -95,20 +95,20 @@ const validRelationArray = (v: unknown, kinds: readonly string[]): boolean =>
   });
 
 function parseEvidenceSnapshot(v: unknown): ConsultationDecisionMeta['evidenceSnapshot'] | undefined {
-  if (v === null || typeof v !== 'object') return undefined;
+  if (v === null || typeof v !== 'object') { return undefined; }
   const ev = v as Record<string, unknown>;
   const target = ev.target as Record<string, unknown> | null;
   const derivation = ev.derivation as Record<string, unknown> | null;
-  if (ev.schemaVersion !== 'decision-evidence@1.0.0' || !target || typeof target !== 'object') return undefined;
-  if ((target.granularity !== 'YEAR' && target.granularity !== 'MONTH') || !isFiniteInteger(target.key)) return undefined;
-  if (typeof ev.polarity !== 'string' || !POLARITY_TIERS.includes(ev.polarity)) return undefined;
-  if (!derivation || typeof derivation !== 'object') return undefined;
-  if (!isFiniteInteger(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) return undefined;
-  if (!isFiniteInteger(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) return undefined;
+  if (ev.schemaVersion !== 'decision-evidence@1.0.0' || !target || typeof target !== 'object') { return undefined; }
+  if ((target.granularity !== 'YEAR' && target.granularity !== 'MONTH') || !isFiniteInteger(target.key)) { return undefined; }
+  if (typeof ev.polarity !== 'string' || !POLARITY_TIERS.includes(ev.polarity)) { return undefined; }
+  if (!derivation || typeof derivation !== 'object') { return undefined; }
+  if (!isFiniteInteger(derivation.harmony) || derivation.harmony < 0 || derivation.harmony > 8) { return undefined; }
+  if (!isFiniteInteger(derivation.friction) || derivation.friction < 0 || derivation.friction > 8) { return undefined; }
   if (!validRelationArray(derivation.stemRelations, STEM_RELATION_KINDS) ||
-      !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS)) return undefined;
-  if (typeof ev.supportLevel !== 'string' || typeof ev.assertiveness !== 'string' || typeof ev.engineVersion !== 'string' || ev.engineVersion.length === 0) return undefined;
-  if (!Array.isArray(ev.intents) || ev.intents.length > 8 || !ev.intents.every((x) => typeof x === 'string')) return undefined;
+      !validRelationArray(derivation.branchRelations, BRANCH_RELATION_KINDS)) { return undefined; }
+  if (typeof ev.supportLevel !== 'string' || typeof ev.assertiveness !== 'string' || typeof ev.engineVersion !== 'string' || ev.engineVersion.length === 0) { return undefined; }
+  if (!Array.isArray(ev.intents) || ev.intents.length > 8 || !ev.intents.every((x) => typeof x === 'string')) { return undefined; }
   return ev as ConsultationDecisionMeta['evidenceSnapshot'];
 }
 
@@ -123,16 +123,16 @@ function parseEvidenceSnapshot(v: unknown): ConsultationDecisionMeta['evidenceSn
  * payload is rejected instead of silently restoring a hollow judgment. Structure only — no astrology here.
  */
 export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | undefined {
-  if (v === null || typeof v !== 'object') return undefined;
+  if (v === null || typeof v !== 'object') { return undefined; }
   const o = v as Record<string, unknown>;
-  if (typeof o.direction !== 'string' || typeof o.primaryConclusion !== 'string') return undefined;
+  if (typeof o.direction !== 'string' || typeof o.primaryConclusion !== 'string') { return undefined; }
   // Optional so rows persisted before V4C still restore; when present it must be a real list of ids, and the
   // referential check below proves every one of them resolves.
   if (o.headlinePropositionIds !== undefined
     && !(Array.isArray(o.headlinePropositionIds) && o.headlinePropositionIds.every((x) => typeof x === 'string'))) {
-    return undefined;
+    { return undefined; }
   }
-  if (typeof o.verdictVersion !== 'string') return undefined;
+  if (typeof o.verdictVersion !== 'string') { return undefined; }
 
   // V4B §23 — FULL GRAPH INTEGRITY. FAIL CLOSED.
   //
@@ -195,71 +195,71 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const enumOk = (set: Set<string>, x: unknown): boolean => typeof x === 'string' && set.has(x);
   const isStringArray = (a: unknown): a is string[] =>
     Array.isArray(a) && a.every((x) => typeof x === 'string');
-  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) return undefined;
+  if (!Array.isArray(o.disciplineJudgments) || o.disciplineJudgments.length === 0) { return undefined; }
   for (const j of o.disciplineJudgments) {
-    if (j === null || typeof j !== 'object') return undefined;
+    if (j === null || typeof j !== 'object') { return undefined; }
     const dj = j as Record<string, unknown>;
     // V4D §27 — V4C accepted any string for `discipline` and `stance` here, and never looked inside the
     // sub-judgments at all. A restored judgment could therefore carry a stance the projection layer has no
     // branch for, and a sub-judgment of an entirely foreign shape.
-    if (typeof dj.applicable !== 'boolean') return undefined;
-    if (!enumOk(DISCIPLINES, dj.discipline)) return undefined;
-    if (!enumOk(STANCES, dj.stance)) return undefined;
-    if (!enumOk(RELIABILITIES, dj.dataReliability)) return undefined;
-    if (!enumOk(AXES, dj.questionDomain)) return undefined;
-    if (!enumOk(SCOPES, dj.temporalScope)) return undefined;
-    if (!enumOk(CONFIDENCES, dj.confidence)) return undefined;
-    if (!enumOk(DIRECTNESS, dj.questionDirectness)) return undefined;
-    if (!enumOk(EVIDENCE_STRENGTHS, dj.evidenceStrength)) return undefined;
-    if (typeof dj.dominantConclusion !== 'string' || typeof dj.dominantFactor !== 'string') return undefined;
+    if (typeof dj.applicable !== 'boolean') { return undefined; }
+    if (!enumOk(DISCIPLINES, dj.discipline)) { return undefined; }
+    if (!enumOk(STANCES, dj.stance)) { return undefined; }
+    if (!enumOk(RELIABILITIES, dj.dataReliability)) { return undefined; }
+    if (!enumOk(AXES, dj.questionDomain)) { return undefined; }
+    if (!enumOk(SCOPES, dj.temporalScope)) { return undefined; }
+    if (!enumOk(CONFIDENCES, dj.confidence)) { return undefined; }
+    if (!enumOk(DIRECTNESS, dj.questionDirectness)) { return undefined; }
+    if (!enumOk(EVIDENCE_STRENGTHS, dj.evidenceStrength)) { return undefined; }
+    if (typeof dj.dominantConclusion !== 'string' || typeof dj.dominantFactor !== 'string') { return undefined; }
     if (!evidenceOk(dj.directEvidence) || !evidenceOk(dj.counterEvidence) || !evidenceOk(dj.timingSignals)) {
-      return undefined;
+      { return undefined; }
     }
-    if (!isStringArray(dj.internalContradictions) || !isStringArray(dj.factGroupsUsed)) return undefined;
-    if (!Array.isArray(dj.domainSubJudgments)) return undefined;
+    if (!isStringArray(dj.internalContradictions) || !isStringArray(dj.factGroupsUsed)) { return undefined; }
+    if (!Array.isArray(dj.domainSubJudgments)) { return undefined; }
     for (const sj of dj.domainSubJudgments) {
-      if (sj === null || typeof sj !== 'object') return undefined;
+      if (sj === null || typeof sj !== 'object') { return undefined; }
       const sub = sj as Record<string, unknown>;
-      if (!enumOk(AXES, sub.domain) || !enumOk(STANCES, sub.stance)) return undefined;
-      if (!enumOk(SCOPES, sub.temporalScope) || !enumOk(DIRECTNESS, sub.directness)) return undefined;
-      if (!enumOk(RELIABILITIES, sub.reliability)) return undefined;
-      if (typeof sub.conclusion !== 'string') return undefined;
-      if (!evidenceOk(sub.evidence) || !evidenceOk(sub.counterEvidence)) return undefined;
+      if (!enumOk(AXES, sub.domain) || !enumOk(STANCES, sub.stance)) { return undefined; }
+      if (!enumOk(SCOPES, sub.temporalScope) || !enumOk(DIRECTNESS, sub.directness)) { return undefined; }
+      if (!enumOk(RELIABILITIES, sub.reliability)) { return undefined; }
+      if (typeof sub.conclusion !== 'string') { return undefined; }
+      if (!evidenceOk(sub.evidence) || !evidenceOk(sub.counterEvidence)) { return undefined; }
     }
   }
-  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) return undefined;
-  if (!Array.isArray(o.evidenceReferences)) return undefined;
-  if (!enumOk(STANCES, o.direction)) return undefined;
-  if (!enumOk(CONFIDENCES, o.confidence)) return undefined;
-  if (!evidenceOk(o.favorableFactors) || !evidenceOk(o.riskFactors)) return undefined;
+  if (!Array.isArray(o.axisVerdicts) || !Array.isArray(o.contributions)) { return undefined; }
+  if (!Array.isArray(o.evidenceReferences)) { return undefined; }
+  if (!enumOk(STANCES, o.direction)) { return undefined; }
+  if (!enumOk(CONFIDENCES, o.confidence)) { return undefined; }
+  if (!evidenceOk(o.favorableFactors) || !evidenceOk(o.riskFactors)) { return undefined; }
   for (const a of o.axisVerdicts) {
-    if (a === null || typeof a !== 'object') return undefined;
+    if (a === null || typeof a !== 'object') { return undefined; }
     const av = a as Record<string, unknown>;
-    if (!enumOk(AXES, av.domain) || !enumOk(STANCES, av.stance)) return undefined;
-    if (!enumOk(DISCIPLINES, av.dominantDiscipline)) return undefined;
-    if (typeof av.conclusion !== 'string' || typeof av.contested !== 'boolean') return undefined;
+    if (!enumOk(AXES, av.domain) || !enumOk(STANCES, av.stance)) { return undefined; }
+    if (!enumOk(DISCIPLINES, av.dominantDiscipline)) { return undefined; }
+    if (typeof av.conclusion !== 'string' || typeof av.contested !== 'boolean') { return undefined; }
   }
   for (const c of o.contributions) {
-    if (c === null || typeof c !== 'object') return undefined;
+    if (c === null || typeof c !== 'object') { return undefined; }
     const co = c as Record<string, unknown>;
-    if (!enumOk(DISCIPLINES, co.discipline) || !enumOk(STANCES, co.stance)) return undefined;
-    if (typeof co.applied !== 'boolean' || typeof co.contribution !== 'string') return undefined;
+    if (!enumOk(DISCIPLINES, co.discipline) || !enumOk(STANCES, co.stance)) { return undefined; }
+    if (typeof co.applied !== 'boolean' || typeof co.contribution !== 'string') { return undefined; }
   }
   for (const r of (Array.isArray(o.contradictionResolutions) ? o.contradictionResolutions : [])) {
-    if (r === null || typeof r !== 'object') return undefined;
+    if (r === null || typeof r !== 'object') { return undefined; }
     const re = r as Record<string, unknown>;
-    if (!enumOk(CONTRADICTION_KINDS, re.kind)) return undefined;
-    if (!enumOk(DISCIPLINES, re.dominant)) return undefined;
-    if (!isStringArray(re.between) || !re.between.every((d) => DISCIPLINES.has(d))) return undefined;
-    if (typeof re.conflict !== 'string' || typeof re.resolution !== 'string') return undefined;
-    if (typeof re.whyOtherDidNotDominate !== 'string') return undefined;
+    if (!enumOk(CONTRADICTION_KINDS, re.kind)) { return undefined; }
+    if (!enumOk(DISCIPLINES, re.dominant)) { return undefined; }
+    if (!isStringArray(re.between) || !re.between.every((d) => DISCIPLINES.has(d))) { return undefined; }
+    if (typeof re.conflict !== 'string' || typeof re.resolution !== 'string') { return undefined; }
+    if (typeof re.whyOtherDidNotDominate !== 'string') { return undefined; }
   }
   for (const e of o.evidenceReferences) {
-    if (e === null || typeof e !== 'object') return undefined;
+    if (e === null || typeof e !== 'object') { return undefined; }
     const ev = e as Record<string, unknown>;
-    if (typeof ev.discipline !== 'string') return undefined;
-    if (!DISCIPLINES.has(ev.discipline) && ev.discipline !== 'CROSS') return undefined;
-    if (!isStringArray(ev.lines)) return undefined;
+    if (typeof ev.discipline !== 'string') { return undefined; }
+    if (!DISCIPLINES.has(ev.discipline) && ev.discipline !== 'CROSS') { return undefined; }
+    if (!isStringArray(ev.lines)) { return undefined; }
   }
 
 
@@ -273,30 +273,30 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const premiseIds = new Set<string>();
   const premisesOut: Record<string, unknown>[] = [];
   if (o.premises !== undefined) {
-    if (!Array.isArray(o.premises)) return undefined;
+    if (!Array.isArray(o.premises)) { return undefined; }
     for (const p of o.premises) {
-      if (p === null || typeof p !== 'object') return undefined;
+      if (p === null || typeof p !== 'object') { return undefined; }
       const pr = p as Record<string, unknown>;
-      if (typeof pr.id !== 'string' || pr.id.length === 0) return undefined;
-      if (premiseIds.has(pr.id)) return undefined;              // duplicate premise id
+      if (typeof pr.id !== 'string' || pr.id.length === 0) { return undefined; }
+      if (premiseIds.has(pr.id)) { return undefined; }              // duplicate premise id
       premiseIds.add(pr.id);
-      if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) return undefined;
-      if (typeof pr.semanticRelation !== 'string' || !RELATIONS.has(pr.semanticRelation)) return undefined;
-      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== 'string' || pr.subject.length === 0) return undefined;
-      if (!enumOk(SCOPES, pr.temporalScope)) return undefined;
-      if (!enumOk(DISCIPLINES, pr.discipline)) return undefined;
-      if (!enumOk(INTENTS, pr.questionIntent)) return undefined;
-      if (!enumOk(CONCEPTS, pr.concept)) return undefined;
-      if (!enumOk(ROLES, pr.role)) return undefined;
-      if (!enumOk(APPLICABILITIES, pr.applicability)) return undefined;
-      if (!enumOk(RELIABILITIES, pr.reliability)) return undefined;
-      if (typeof pr.doctrineReference !== 'string') return undefined;
-      if (!isTarget(pr.target)) return undefined;
-      if (!isStringArray(pr.sourceFactIds)) return undefined;
+      if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) { return undefined; }
+      if (typeof pr.semanticRelation !== 'string' || !RELATIONS.has(pr.semanticRelation)) { return undefined; }
+      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== 'string' || pr.subject.length === 0) { return undefined; }
+      if (!enumOk(SCOPES, pr.temporalScope)) { return undefined; }
+      if (!enumOk(DISCIPLINES, pr.discipline)) { return undefined; }
+      if (!enumOk(INTENTS, pr.questionIntent)) { return undefined; }
+      if (!enumOk(CONCEPTS, pr.concept)) { return undefined; }
+      if (!enumOk(ROLES, pr.role)) { return undefined; }
+      if (!enumOk(APPLICABILITIES, pr.applicability)) { return undefined; }
+      if (!enumOk(RELIABILITIES, pr.reliability)) { return undefined; }
+      if (typeof pr.doctrineReference !== 'string') { return undefined; }
+      if (!isTarget(pr.target)) { return undefined; }
+      if (!isStringArray(pr.sourceFactIds)) { return undefined; }
       // §28 — the contract says an empty fact list is legal ONLY for an ABSENT relation ("부재도 사실이다").
       // A premise asserting a relation while naming no engine fact is exactly the ungrounded interpretation
       // the premise layer exists to make impossible.
-      if (pr.sourceFactIds.length === 0 && pr.semanticRelation !== 'ABSENT') return undefined;
+      if (pr.sourceFactIds.length === 0 && pr.semanticRelation !== 'ABSENT') { return undefined; }
       premisesOut.push({
         id: pr.id, discipline: pr.discipline, sourceFactIds: [...(pr.sourceFactIds as string[])],
         subject: pr.subject, target: { key: pr.target.key, label: pr.target.label, kind: pr.target.kind },
@@ -312,54 +312,54 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const premiseById = new Map(premisesOut.map((p) => [p.id as string, p]));
 
   // ── PROPOSITIONS ───────────────────────────────────────────────────────────────────────────────
-  if (!Array.isArray(o.propositions)) return undefined;
+  if (!Array.isArray(o.propositions)) { return undefined; }
   const propositionIds = new Set<string>();
   const parsed: Record<string, unknown>[] = [];
   for (const p of o.propositions) {
-    if (p === null || typeof p !== 'object') return undefined;
+    if (p === null || typeof p !== 'object') { return undefined; }
     const pr = p as Record<string, unknown>;
-    if (typeof pr.id !== 'string' || pr.id.length === 0) return undefined;
-    if (propositionIds.has(pr.id)) return undefined;            // duplicate proposition id
+    if (typeof pr.id !== 'string' || pr.id.length === 0) { return undefined; }
+    if (propositionIds.has(pr.id)) { return undefined; }            // duplicate proposition id
     propositionIds.add(pr.id);
-    if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) return undefined;
+    if (typeof pr.assertion !== 'string' || pr.assertion.length === 0) { return undefined; }
     // §28 — a rule this kernel does not have cannot be re-derived, explained or attacked.
-    if (!enumOk(DERIVATION_RULES, pr.derivationRule)) return undefined;
-    if (typeof pr.conclusionType !== 'string' || !CONCLUSION_TYPES.has(pr.conclusionType)) return undefined;
-    if (typeof pr.direction !== 'string' || !DIRECTIONS.has(pr.direction)) return undefined;
-    if (!enumOk(SCOPES, pr.temporalScope)) return undefined;
-    if (!enumOk(AXES, pr.questionAxis)) return undefined;
-    if (typeof pr.subject !== 'string' || pr.subject.length === 0) return undefined;
-    if (!enumOk(PROPOSITION_DISCIPLINES, pr.discipline)) return undefined;
-    if (!enumOk(INTENTS, pr.questionIntent)) return undefined;
-    if (pr.restriction !== undefined && !enumOk(RESTRICTIONS, pr.restriction)) return undefined;
-    if (pr.answersAsked !== undefined && typeof pr.answersAsked !== 'boolean') return undefined;
-    if (pr.qualified !== undefined && typeof pr.qualified !== 'boolean') return undefined;
-    if (!isStringArray(pr.doctrineReferences)) return undefined;
-    if (!isStringArray(pr.unresolvedPremiseIds)) return undefined;
+    if (!enumOk(DERIVATION_RULES, pr.derivationRule)) { return undefined; }
+    if (typeof pr.conclusionType !== 'string' || !CONCLUSION_TYPES.has(pr.conclusionType)) { return undefined; }
+    if (typeof pr.direction !== 'string' || !DIRECTIONS.has(pr.direction)) { return undefined; }
+    if (!enumOk(SCOPES, pr.temporalScope)) { return undefined; }
+    if (!enumOk(AXES, pr.questionAxis)) { return undefined; }
+    if (typeof pr.subject !== 'string' || pr.subject.length === 0) { return undefined; }
+    if (!enumOk(PROPOSITION_DISCIPLINES, pr.discipline)) { return undefined; }
+    if (!enumOk(INTENTS, pr.questionIntent)) { return undefined; }
+    if (pr.restriction !== undefined && !enumOk(RESTRICTIONS, pr.restriction)) { return undefined; }
+    if (pr.answersAsked !== undefined && typeof pr.answersAsked !== 'boolean') { return undefined; }
+    if (pr.qualified !== undefined && typeof pr.qualified !== 'boolean') { return undefined; }
+    if (!isStringArray(pr.doctrineReferences)) { return undefined; }
+    if (!isStringArray(pr.unresolvedPremiseIds)) { return undefined; }
     // V4D §15 — support groups round-trip, or the certification harness silently loses the declaration the
     // deriving rule made and falls back to the weaker "some removal moved something" test on restored graphs.
     if (pr.supportGroups !== undefined) {
-      if (!Array.isArray(pr.supportGroups)) return undefined;
+      if (!Array.isArray(pr.supportGroups)) { return undefined; }
       for (const g of pr.supportGroups) {
-        if (g === null || typeof g !== 'object') return undefined;
+        if (g === null || typeof g !== 'object') { return undefined; }
         const grp = g as Record<string, unknown>;
-        if (!enumOk(SUPPORT_GROUP_ROLES, grp.role)) return undefined;
-        if (typeof grp.label !== 'string') return undefined;
-        if (!isStringArray(grp.ids) || grp.ids.length === 0) return undefined;
+        if (!enumOk(SUPPORT_GROUP_ROLES, grp.role)) { return undefined; }
+        if (typeof grp.label !== 'string') { return undefined; }
+        if (!isStringArray(grp.ids) || grp.ids.length === 0) { return undefined; }
       }
     }
-    if (!isTarget(pr.target)) return undefined;
-    if (!isStringArray(pr.supportingPremiseIds) || !isStringArray(pr.opposingPremiseIds)) return undefined;
-    if (!isStringArray(pr.derivedFromPropositionIds)) return undefined;
-    if (pr.adequacy === null || typeof pr.adequacy !== 'object') return undefined;
+    if (!isTarget(pr.target)) { return undefined; }
+    if (!isStringArray(pr.supportingPremiseIds) || !isStringArray(pr.opposingPremiseIds)) { return undefined; }
+    if (!isStringArray(pr.derivedFromPropositionIds)) { return undefined; }
+    if (pr.adequacy === null || typeof pr.adequacy !== 'object') { return undefined; }
     const ad = pr.adequacy as Record<string, unknown>;
-    if (!enumOk(ADEQUACY_LEVELS, ad.supportAdequacy)) return undefined;
-    if (!enumOk(ADEQUACY_LEVELS, ad.counterAdequacy)) return undefined;
-    if (!enumOk(COMPLETENESS, ad.dataCompleteness)) return undefined;
-    if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) return undefined;
+    if (!enumOk(ADEQUACY_LEVELS, ad.supportAdequacy)) { return undefined; }
+    if (!enumOk(ADEQUACY_LEVELS, ad.counterAdequacy)) { return undefined; }
+    if (!enumOk(COMPLETENESS, ad.dataCompleteness)) { return undefined; }
+    if (!enumOk(DOCTRINE_APPLICABILITY, ad.doctrineApplicability)) { return undefined; }
     // A premise cannot both support and oppose the same claim.
     const sup = new Set(pr.supportingPremiseIds as string[]);
-    if ((pr.opposingPremiseIds as string[]).some((id) => sup.has(id))) return undefined;
+    if ((pr.opposingPremiseIds as string[]).some((id) => sup.has(id))) { return undefined; }
 
     // ── V4E §7 — SEMANTIC INVARIANTS, FAIL CLOSED. Syntax and enums are necessary but not sufficient: a
     // graph can be enum-valid and still assert something the kernel could never have produced, and a restored
@@ -373,7 +373,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     // maps a bare CONSTRAINS premise straight to RESTRICTED with no restriction kind, because a single restated
     // premise has no TIMING-vs-SCOPE shape to name in the first place — only a compound that relates two things
     // can be about one or the other.
-    if (pr.restriction !== undefined && pr.direction !== 'RESTRICTED') return undefined;
+    if (pr.restriction !== undefined && pr.direction !== 'RESTRICTED') { return undefined; }
     // V4F Sec3 completes the converse — but only for the rules PROVEN (by reading every apply()/emit() body)
     // to always MINT a restriction fresh when they set RESTRICTED: CONTESTED_SHARE, DIRECTION_VS_EXECUTION and
     // INFLOW_VS_RETENTION (myungriRules.ts) and CROSS_TIMING_SPLIT (crossRules.ts) all set a literal
@@ -388,24 +388,24 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     ]);
     if (pr.direction === 'RESTRICTED' && pr.restriction === undefined
       && RULES_REQUIRING_RESTRICTION.has(pr.derivationRule as string)) {
-      return undefined;
+      { return undefined; }
     }
     // A derivation rule belongs to the layer that owns it: a CROSS rule on a discipline proposition (or the
     // reverse) is a conclusion no reasoner could have minted.
-    if (CROSS_RULES.has(pr.derivationRule as string) !== (pr.discipline === 'CROSS')) return undefined;
-    if (MYUNGRI_RULE_IDS.has(pr.derivationRule as string) && pr.discipline !== 'MYUNGRI') return undefined;
+    if (CROSS_RULES.has(pr.derivationRule as string) !== (pr.discipline === 'CROSS')) { return undefined; }
+    if (MYUNGRI_RULE_IDS.has(pr.derivationRule as string) && pr.discipline !== 'MYUNGRI') { return undefined; }
     // G6 PATCH 2 §2 — a PRIMITIVE restates one premise and has no parents. Every OTHER rule's actual required
     // parent SHAPE (not just a count) is validated in a second pass below, once every proposition's own id is
     // known — a persisted proposition can reference a sibling that has not been reached yet in array order.
     const ancestry = (pr.derivedFromPropositionIds as string[]).length;
-    if (pr.derivationRule === PRIMITIVE_RULE && ancestry !== 0) return undefined;
+    if (pr.derivationRule === PRIMITIVE_RULE && ancestry !== 0) { return undefined; }
     // V4F §3 — A DESCRIPTION OR A CAUSE NEVER CARRIES A DIRECTION. Every STRUCTURAL/CAUSAL proposition this
     // kernel actually produces sets `direction: 'NONE'` (primitivePropositions for ABSENT/ACTIVATES;
     // CONVERGENT_SEAT_PRESSURE and RECURRING_FRICTION_CAUSE explicitly, "a CAUSE is not a VERDICT"; CROSS_STANDOFF
     // explicitly). Combined with the restriction gate above, this is what makes "STRUCTURAL + RESTRICTED +
     // TIMING" — a combination no reasoner could produce — actually unreachable rather than merely unlikely.
     if ((pr.conclusionType === 'STRUCTURAL' || pr.conclusionType === 'CAUSAL') && pr.direction !== 'NONE') {
-      return undefined;
+      { return undefined; }
     }
     // V4F §2 — PERSISTED ADEQUACY IS NOT AUTHORITY. RECOMPUTE IT.
     //
@@ -427,8 +427,8 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       .filter((x): x is DivinationPremise => !!x);
     const supportPremises = lookUp(pr.supportingPremiseIds);
     const opposePremises = lookUp(pr.opposingPremiseIds);
-    if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) return undefined;
-    if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) return undefined;
+    if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) { return undefined; }
+    if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) { return undefined; }
 
     // G6 PATCH 2 §1 — ONE SHARED PRIMITIVE VALIDATOR, NATIVE + ADAPTER ALIKE.
     //
@@ -440,7 +440,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       if (!validatePersistedPrimitive(
         pr as unknown as Parameters<typeof validatePersistedPrimitive>[0],
         premiseById as unknown as Map<string, DivinationPremise>,
-      )) return undefined;
+      )) { return undefined; }
     }
     parsed.push(pr);
   }
@@ -455,11 +455,11 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     // is for, and the exemption made an empty premise list the way to smuggle one past.
     for (const id of [...(pr.supportingPremiseIds as string[]), ...(pr.opposingPremiseIds as string[]),
       ...(pr.unresolvedPremiseIds as string[])]) {
-      if (!premiseIds.has(id)) return undefined;                // dangling premise link
+      if (!premiseIds.has(id)) { return undefined; }                // dangling premise link
     }
     for (const id of pr.derivedFromPropositionIds as string[]) {
-      if (id === pr.id) return undefined;                       // self-reference
-      if (!propositionIds.has(id)) return undefined;            // dangling proposition link
+      if (id === pr.id) { return undefined; }                       // self-reference
+      if (!propositionIds.has(id)) { return undefined; }            // dangling proposition link
     }
     // §15 — a group may only name inputs this proposition ALREADY cites, so declaring groups can never
     // introduce a new class of reference for the integrity pass to miss.
@@ -469,7 +469,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       ...(pr.derivedFromPropositionIds as string[]),
     ]);
     for (const g of (Array.isArray(pr.supportGroups) ? pr.supportGroups as Record<string, unknown>[] : [])) {
-      for (const id of g.ids as string[]) if (!cited.has(id)) return undefined;
+      for (const id of g.ids as string[]) if (!cited.has(id)) { return undefined; }
     }
   }
   // The derivation graph must be a DAG: a follow-up traverses it, and a cycle would not terminate.
@@ -484,29 +484,29 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     state.set(id, 'DONE');
     return false;
   };
-  for (const id of edges.keys()) if (hasCycle(id)) return undefined;
+  for (const id of edges.keys()) if (hasCycle(id)) { return undefined; }
 
   // ── CONTEXT CONSISTENCY ────────────────────────────────────────────────────────────────────────
-  if (!enumOk(INTENTS, o.questionIntent)) return undefined;
-  if (!enumOk(AXES, o.questionDomain)) return undefined;
-  if (typeof o.asksTiming !== 'boolean') return undefined;
-  if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger(o.evaluatedAtEpochSeconds)) return undefined;
+  if (!enumOk(INTENTS, o.questionIntent)) { return undefined; }
+  if (!enumOk(AXES, o.questionDomain)) { return undefined; }
+  if (typeof o.asksTiming !== 'boolean') { return undefined; }
+  if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger(o.evaluatedAtEpochSeconds)) { return undefined; }
   // Every proposition must belong to the same person the verdict is about.
   const subjects = new Set(parsed.map((pr) => pr.subject as string));
-  if (subjects.size > 1) return undefined;
+  if (subjects.size > 1) { return undefined; }
   // V4E §7 — and so must every premise a proposition stands on. A premise about another person supporting
   // this person's conclusion is a relation the kernel never mints (classifyPair refuses cross-subject pairs;
   // a premise graph is built per chart), so restoring one would smuggle in evidence no reasoner produced.
   if (subjects.size === 1 && Array.isArray(o.premises)) {
     const [subject] = subjects;
     for (const p of o.premises as Record<string, unknown>[]) {
-      if (p.subject !== subject) return undefined;
+      if (p.subject !== subject) { return undefined; }
     }
   }
   // A headline that names a conclusion the graph does not contain is a dangling reference like any other.
   const headlineIds = Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds as string[] : [];
   for (const id of headlineIds) {
-    if (!propositionIds.has(id)) return undefined;
+    if (!propositionIds.has(id)) { return undefined; }
   }
 
   // G6 PATCH 2 §2 — RULE-AWARE DERIVATION VALIDATION, ONCE EVERY PROPOSITION'S OWN ID IS KNOWN.
@@ -526,14 +526,14 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       if (!validateMyungriDerivation(
         pr as unknown as Parameters<typeof validateMyungriDerivation>[0],
         premiseById as unknown as Map<string, DivinationPremise>,
-        propositionById as unknown as Map<string, Pick<ReasonedProposition, 'id' | 'derivationRule'>>,
-      )) return undefined;
+        propositionById as unknown as Map<string, ReasonedProposition>,
+      )) { return undefined; }
     } else if (CROSS_RULES.has(pr.derivationRule as string)) {
       if (!validateCrossDerivation(
         pr as unknown as Parameters<typeof validateCrossDerivation>[0],
         propositionById as unknown as Map<string, ReasonedProposition>,
         crossValidationCtx,
-      )) return undefined;
+      )) { return undefined; }
     }
   }
 
@@ -562,12 +562,12 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       o.questionDomain as ReasonedProposition['questionAxis'],
       o.questionIntent as ReasonedProposition['questionIntent'],
     );
-    if (projectedVerdict.direction !== o.direction) return undefined;
+    if (projectedVerdict.direction !== o.direction) { return undefined; }
     if (Array.isArray(o.headlinePropositionIds)) {
       const persistedHeadlineSet = new Set(headlineIds);
       const projectedHeadlineSet = new Set(projectedVerdict.headlinePropositionIds);
       if (persistedHeadlineSet.size !== projectedHeadlineSet.size
-        || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) return undefined;
+        || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) { return undefined; }
     }
   }
   // G6 PATCH 2 §4 — legacy rows that never persisted headlinePropositionIds at all are reconstructed from
@@ -700,34 +700,34 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
 }
 
 export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefined {
-  if (v === null || typeof v !== 'object') return undefined;
+  if (v === null || typeof v !== 'object') { return undefined; }
   const o = v as Record<string, unknown>;
-  if (typeof o.answerPlanVersion !== 'string' || typeof o.decisionPolicyVersion !== 'string' || typeof o.promptVersion !== 'string') return undefined;
-  if (o.resolvedGranularity !== 'NONE' && o.resolvedGranularity !== 'YEAR' && o.resolvedGranularity !== 'MONTH') return undefined;
+  if (typeof o.answerPlanVersion !== 'string' || typeof o.decisionPolicyVersion !== 'string' || typeof o.promptVersion !== 'string') { return undefined; }
+  if (o.resolvedGranularity !== 'NONE' && o.resolvedGranularity !== 'YEAR' && o.resolvedGranularity !== 'MONTH') { return undefined; }
   const resolvedTargets = strictNumArray(o.resolvedTargets);
-  if (!resolvedTargets) return undefined;
+  if (!resolvedTargets) { return undefined; }
   const rtc = o.resolvedTemporalContext as Record<string, unknown> | null;
-  if (rtc === null || typeof rtc !== 'object' || !isFiniteInteger(rtc.anchorEpochSeconds)) return undefined;
+  if (rtc === null || typeof rtc !== 'object' || !isFiniteInteger(rtc.anchorEpochSeconds)) { return undefined; }
   const rtcTargets = strictNumArray(rtc.resolvedTargets);
-  if (!rtcTargets || rtc.timezone !== 'Asia/Seoul' || typeof rtc.qimenActive !== 'boolean') return undefined;
-  if (rtc.referenceYear !== null && !isFiniteInteger(rtc.referenceYear)) return undefined;
-  if (rtc.referenceMonth !== null && (!isFiniteInteger(rtc.referenceMonth) || rtc.referenceMonth < 1 || rtc.referenceMonth > 12)) return undefined;
+  if (!rtcTargets || rtc.timezone !== 'Asia/Seoul' || typeof rtc.qimenActive !== 'boolean') { return undefined; }
+  if (rtc.referenceYear !== null && !isFiniteInteger(rtc.referenceYear)) { return undefined; }
+  if (rtc.referenceMonth !== null && (!isFiniteInteger(rtc.referenceMonth) || rtc.referenceMonth < 1 || rtc.referenceMonth > 12)) { return undefined; }
   const p = typeof o.polarity === 'string' && POLARITY_TIERS.includes(o.polarity) ? (o.polarity as ConsultationDecisionMeta['polarity']) : undefined;
-  if (o.polarity !== undefined && !p) return undefined;
+  if (o.polarity !== undefined && !p) { return undefined; }
   // Sprint E.1 §16-17 — comparison context is parsed fail-closed: a malformed/absent value → NOT a comparison
   // (never a silent "true" that would let a follow-up invent a winner over ungrounded candidates).
   const cc = o.comparisonContext as Record<string, unknown> | null | undefined;
   let comparisonContext: ConsultationDecisionMeta['comparisonContext'];
   if (o.comparisonContext !== undefined) {
     const candidates = cc && typeof cc === 'object' ? strictNumArray(cc.candidates) : undefined;
-    if (!cc || typeof cc !== 'object' || typeof cc.isComparison !== 'boolean' || !candidates) return undefined;
-    if (cc.isComparison && candidates.length < 2) return undefined;
+    if (!cc || typeof cc !== 'object' || typeof cc.isComparison !== 'boolean' || !candidates) { return undefined; }
+    if (cc.isComparison && candidates.length < 2) { return undefined; }
     comparisonContext = { isComparison: cc.isComparison, candidates };
   }
   // A claimed optional authority object is all-or-nothing. Malformed claims reject the whole row instead of
   // being silently dropped and letting an action proceed with a weaker authority substrate.
   const evidenceSnapshot = o.evidenceSnapshot === undefined ? undefined : parseEvidenceSnapshot(o.evidenceSnapshot);
-  if (o.evidenceSnapshot !== undefined && !evidenceSnapshot) return undefined;
+  if (o.evidenceSnapshot !== undefined && !evidenceSnapshot) { return undefined; }
   // V3 §34 — the cross-discipline verdict was WRITTEN by the builder but never read back here, so on the REAL
   // production path (write → JSONB → parse) it was silently discarded and a follow-up explained a degraded,
   // Myungri-only judgment. Restored fail-closed: a malformed claim rejects the row rather than downgrading
@@ -736,25 +736,25 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
     o.divinationVerdict === undefined || o.divinationVerdict === null
       ? undefined
       : parseDivinationVerdict(o.divinationVerdict);
-  if (o.divinationVerdict !== undefined && o.divinationVerdict !== null && !divinationVerdict) return undefined;
+  if (o.divinationVerdict !== undefined && o.divinationVerdict !== null && !divinationVerdict) { return undefined; }
 
   // V4D §23 — GRAPH PROVENANCE, PARSED ALL-OR-NOTHING. A row that CLAIMS a revision and gets it wrong is
   // rejected outright: a half-restored provenance record would assert continuity the graph may not have.
   let graphRevision: ConsultationDecisionMeta['graphRevision'];
   if (o.graphRevision !== undefined && o.graphRevision !== null) {
-    if (typeof o.graphRevision !== 'object') return undefined;
+    if (typeof o.graphRevision !== 'object') { return undefined; }
     const gr = o.graphRevision as Record<string, unknown>;
-    if (gr.schemaVersion !== 'graph-revision@1.0.0') return undefined;
-    if (gr.kind !== 'EXTENDED' && gr.kind !== 'REEVALUATED') return undefined;
-    if (!isFiniteInteger(gr.previousEvaluatedAtEpochSeconds)) return undefined;
-    if (!isFiniteInteger(gr.evaluationInstantEpochSeconds)) return undefined;
-    if (typeof gr.axis !== 'string') return undefined;
+    if (gr.schemaVersion !== 'graph-revision@1.0.0') { return undefined; }
+    if (gr.kind !== 'EXTENDED' && gr.kind !== 'REEVALUATED') { return undefined; }
+    if (!isFiniteInteger(gr.previousEvaluatedAtEpochSeconds)) { return undefined; }
+    if (!isFiniteInteger(gr.evaluationInstantEpochSeconds)) { return undefined; }
+    if (typeof gr.axis !== 'string') { return undefined; }
     // An EXTENDED graph did NOT move in time — that is what distinguishes it from a re-evaluation — and when
     // the verdict is present it must be the very graph that was extended.
     if (gr.kind === 'EXTENDED') {
-      if (gr.previousEvaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) return undefined;
+      if (gr.previousEvaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) { return undefined; }
       if (divinationVerdict && divinationVerdict.evaluatedAtEpochSeconds !== gr.evaluationInstantEpochSeconds) {
-        return undefined;
+        { return undefined; }
       }
     }
     graphRevision = {
@@ -771,10 +771,10 @@ export function parseDecisionMeta(v: unknown): ConsultationDecisionMeta | undefi
     o.engineVersion !== evidenceSnapshot.engineVersion ||
     o.resolvedGranularity !== evidenceSnapshot.target.granularity ||
     !resolvedTargets.includes(evidenceSnapshot.target.key)
-  )) return undefined;
+  )) { return undefined; }
   if (comparisonContext?.isComparison &&
-      !comparisonContext.candidates.every((candidate) => resolvedTargets.includes(candidate))) return undefined;
-  if (o.domain !== undefined && (typeof o.domain !== 'string' || !DOMAINS.includes(o.domain))) return undefined;
+      !comparisonContext.candidates.every((candidate) => resolvedTargets.includes(candidate))) { return undefined; }
+  if (o.domain !== undefined && (typeof o.domain !== 'string' || !DOMAINS.includes(o.domain))) { return undefined; }
   return {
     answerPlanVersion: o.answerPlanVersion,
     decisionPolicyVersion: o.decisionPolicyVersion,

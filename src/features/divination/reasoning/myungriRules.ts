@@ -9,10 +9,18 @@
 // settle the question (강약 등급, 용신), the rule does not fire and the premises stay `unresolved`.
 import type { JudgmentDomain, TemporalScope } from '../contracts';
 import {
-  compositeTarget, computeAdequacy, PRIMITIVE_RULE, sameTarget, sideAdequacy, target,
+  computeAdequacy, PRIMITIVE_RULE, sameTarget, sideAdequacy, target,
   type DerivationContext, type DerivationRule, type DivinationPremise, type ReasonedProposition,
   type SemanticTarget, type SupportGroup,
 } from './kernel';
+import {
+  canonicalConvergentGroup,
+  contestedShareChild,
+  convergentSeatPressureChild,
+  directionVsExecutionChild,
+  inflowVsRetentionChild,
+  recurringFrictionChild,
+} from './derivedChildPostconditions';
 
 const NEAR: TemporalScope[] = ['SEWOON', 'WOLWOON', 'PRESENT_MOMENT'];
 /** Axis names for user-facing assertions — two conclusions about different axes must not read identically. */
@@ -36,12 +44,6 @@ const STRUCTURAL: TemporalScope[] = ['NATAL', 'DAEWOON'];
  * claim. The layer a claim is most immediately about is the narrowest one it stands on, and "narrowest" is a
  * fixed property of the layers, not of the iteration.
  */
-const SCOPE_WIDTH: Record<TemporalScope, number> = {
-  PRESENT_MOMENT: 0, WOLWOON: 1, SEWOON: 2, DAEWOON: 3, NATAL: 4, UNSCOPED: 5,
-};
-const narrowestScope = (ps: { temporalScope: TemporalScope }[]): TemporalScope =>
-  ps.map((p) => p.temporalScope).sort((a, b) => SCOPE_WIDTH[a] - SCOPE_WIDTH[b])[0];
-
 /**
  * Content-addressed id: the SAME pattern over the SAME premises is the SAME conclusion, so the fixed-point
  * loop converges and two runs of identical input produce identical graphs (no clock, no counter).
@@ -62,7 +64,7 @@ function make(
   rule: string,
   ctx: DerivationContext,
   spec: {
-    axis: JudgmentDomain;
+    questionAxis: JudgmentDomain;
     temporalScope: TemporalScope;
     assertion: string;
     conclusionType: ReasonedProposition['conclusionType'];
@@ -80,19 +82,19 @@ function make(
   const support = spec.support;
   const oppose = spec.oppose;
   return {
-    id: derivedId(rule, spec.axis, [...support, ...oppose].map((p) => p.id),
+    id: derivedId(rule, spec.questionAxis, [...support, ...oppose].map((p) => p.id),
       (spec.from ?? []).map((p) => p.id)),
     discipline: 'MYUNGRI',
     subject: ctx.subject,
     target: spec.target,
     questionIntent: ctx.questionIntent,
-    questionAxis: spec.axis,
+    questionAxis: spec.questionAxis,
     temporalScope: spec.temporalScope,
     assertion: spec.assertion,
     conclusionType: spec.conclusionType,
     direction: spec.direction,
     ...(spec.restriction ? { restriction: spec.restriction } : {}),
-    answersAsked: spec.axis === ctx.askedAxis,
+    answersAsked: spec.questionAxis === ctx.askedAxis,
     supportingPremiseIds: support.map((p) => p.id),
     opposingPremiseIds: oppose.map((p) => p.id),
     // V4C §6/§7 — A DERIVED CONCLUSION DECLARES ITS PARENTS.
@@ -131,14 +133,8 @@ const CONTESTED_SHARE: DerivationRule = {
       p.concept === 'NATAL_FAMILY' && p.questionAxis === 'MONEY_INFLOW' && p.semanticRelation === 'SUPPORTS');
     if (rivals.length === 0 || wealth.length === 0) return [];
     return [make('CONTESTED_SHARE', ctx, {
-      axis: 'MONEY_RETENTION',
-      temporalScope: narrowestScope(rivals),
-      target: compositeTarget(
-        'RIVAL_VS_WEALTH', [rivals.map((p) => p.target), wealth.map((p) => p.target)], '벌이는 몫과 남는 몫'),
+      ...contestedShareChild(rivals, wealth),
       assertion: '원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.',
-      conclusionType: 'COMPOUND',
-      direction: 'RESTRICTED',
-      restriction: 'SCOPE',
       // Both sides SUPPORT this compound claim: the wealth seats and the rival together are what make it true.
       support: [...wealth, ...rivals],
       oppose: [],
@@ -192,14 +188,9 @@ const DIRECTION_VS_EXECUTION: DerivationRule = {
       for (const [scope, layerStrikes] of byScope) {
         if (sideAdequacy(layerStrikes) !== 'ADEQUATE') continue;
         out.push(make('DIRECTION_VS_EXECUTION', ctx, {
-          axis: open.questionAxis,
-          temporalScope: scope,
-          target: open.target,
+          ...directionVsExecutionChild(open, scope),
           assertion: open.target.label + '은(는) 큰 흐름에서 열려 있는 자리인데, ' + LAYER_LABEL[scope]
             + '에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다.',
-          conclusionType: 'COMPOUND',
-          direction: 'RESTRICTED',
-          restriction: 'TIMING',
           // V4E §3 — SIDES ARE RELATIVE TO THIS ASSERTION. The compound claims "방향은 열려 있고 지금 실행은
           // 막혀 있다", and the strikes are what ESTABLISH the second half — they support this claim. V4D filed
           // them under `oppose` because their real-world valence is negative, which is precisely the blind
@@ -232,20 +223,15 @@ const CONVERGENT_SEAT_PRESSURE: DerivationRule = {
     for (const [, unordered] of bySeat) {
       // §28 — every member shares the seat (that is the grouping key), but not necessarily the axis. Ordering
       // the group by its own content keeps the reported axis independent of premise emission order.
-      const group = [...unordered].sort((a, b) => a.questionAxis.localeCompare(b.questionAxis)
-        || SCOPE_WIDTH[a.temporalScope] - SCOPE_WIDTH[b.temporalScope]);
+      const group = canonicalConvergentGroup(unordered);
       const scopes = new Set(group.map((p) => p.temporalScope));
       if (scopes.size < 2) continue; // one layer hitting once is not convergence
       out.push(make('CONVERGENT_SEAT_PRESSURE', ctx, {
-        axis: group[0].questionAxis,
-        temporalScope: narrowestScope(group),
-        target: group[0].target,
+        ...convergentSeatPressureChild(group),
         assertion: group[0].target.label + '에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.',
-        conclusionType: 'CAUSAL',
         // §22 — a CAUSE is not a VERDICT. This explains why something keeps happening; it does not recommend
         // for or against anything. Carrying UNFAVORABLE here let a causal statement become the headline of a
         // money question, which is a category error of the same family as answering a description with advice.
-        direction: 'NONE',
         // These premises SUPPORT the claim that the seat is repeatedly struck — the claim is about them.
         support: group,
         oppose: [],
@@ -286,15 +272,9 @@ const INFLOW_VS_RETENTION: DerivationRule = {
     ];
     if (inflow.length === 0 || retentionMembers.length === 0) return [];
     return [make('INFLOW_VS_RETENTION', ctx, {
-      axis: 'MONEY_INFLOW',
-      temporalScope: narrowestScope(inflow),
       // Named members, sorted — a bare constant key made every inflow/retention split in the app one identity.
-      target: compositeTarget('INFLOW_VS_RETENTION',
-        [inflow.map((p) => p.target), retentionMembers], '유입과 보유'),
+      ...inflowVsRetentionChild(inflow, retentionMembers),
       assertion: '돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.',
-      conclusionType: 'COMPOUND',
-      direction: 'RESTRICTED',
-      restriction: 'SCOPE',
       support: [...inflow, ...retentionRisk],
       oppose: [],
       from: contested,
@@ -322,13 +302,9 @@ const RECURRING_FRICTION_CAUSE: DerivationRule = {
         && (p.semanticRelation === 'DESTABILIZES' || p.semanticRelation === 'CONSTRAINS'));
       if (again.length === 0) continue;
       out.push(make('RECURRING_FRICTION_CAUSE', ctx, {
-        axis: weak.questionAxis,
-        temporalScope: narrowestScope(again),
-        target: weak.target,
+        ...recurringFrictionChild(weak, again),
         assertion: '반복해서 부딪히는 데는 이유가 있다. ' + weak.target.label
           + '가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.',
-        conclusionType: 'CAUSAL',
-        direction: 'NONE',
         support: [weak, ...again],
         oppose: [],
         // §15 — the natal weakness is REQUIRED (without it there is no recurrence, only an event); the luck
