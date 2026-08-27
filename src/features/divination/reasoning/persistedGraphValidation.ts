@@ -378,26 +378,27 @@ export function validateCrossDerivation(
     case 'CROSS_TIMING_SPLIT': {
       // The candidate KEY does not bake in full party identity the way CROSS_CONTRADICTION_RESOLVED's does
       // (candidateIdentity's `parties` component is {discipline,target.key,axis,temporalScope,direction} per
-      // party, not the id) — two DIFFERENT near-band premises on the SAME seat/axis/near-scope can coincide
-      // on that tuple and merge into one candidate exactly like CROSS_REINFORCEMENT does by design (measured:
-      // a real graph produced a 3-parent CROSS_TIMING_SPLIT this way). At least one STRUCTURAL parent and at
-      // least one NEAR parent, and every (structural, near) pair among them must independently satisfy the
-      // rule's real precondition.
+      // party, not the id) — two DIFFERENT premises sharing that tuple coincide and merge into one candidate
+      // exactly like CROSS_REINFORCEMENT does by design. This applies on EITHER side of the split: two
+      // near-band premises on the same seat/axis/near-scope merge (as already measured), and — since
+      // crossTimingSplitChild(structural, near)'s spec is keyed off `structural` alone — two duplicate-shaped
+      // STRUCTURAL premises (same discipline/target/axis/scope/direction, different provenance) merge too
+      // (measured: a real graph produced a 3-parent CROSS_TIMING_SPLIT with TWO structural parents + one near
+      // parent this way). Requiring exactly one structural parent rejected this legitimate runtime shape.
+      // What is actually checkable without replaying turn-local context: every parent must qualify with SOME
+      // parent on the opposite band — the child it would construct must match the persisted child under the
+      // rule's real precondition — a bipartite star, not a fixed "one structural" assumption.
       if (resolved.length < 2) return false;
       const structuralParents = resolved.filter((p) => temporalBand(p.temporalScope) === 'STRUCTURAL');
       const nearParents = resolved.filter((p) => temporalBand(p.temporalScope) === 'NEAR');
-      if (structuralParents.length !== 1 || nearParents.length === 0) return false;
-      const [structural] = structuralParents;
-      for (const near of nearParents) {
-        if (classifyPair(structural, near) !== 'DIFFERENT_TIME_BAND') return false;
-        if (!opposed(structural, near)) return false;
-        if (!halfIsAsserted(structural) || !halfIsAsserted(near)) return false;
-      }
-      if (!nearParents.every((p) => p.temporalScope === nearParents[0].temporalScope)) {
-        return false; // merge only ever unions near premises sharing one scope
-      }
-      if (!nearParents.every((near) =>
-        derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near)))) return false;
+      if (structuralParents.length === 0 || nearParents.length === 0) return false;
+      const qualifies = (structural: ReasonedProposition, near: ReasonedProposition): boolean =>
+        classifyPair(structural, near) === 'DIFFERENT_TIME_BAND'
+        && opposed(structural, near)
+        && halfIsAsserted(structural) && halfIsAsserted(near)
+        && derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near));
+      if (!structuralParents.every((s) => nearParents.some((n) => qualifies(s, n)))) return false;
+      if (!nearParents.every((n) => structuralParents.some((s) => qualifies(s, n)))) return false;
       return crossEvidenceMatches(prop, resolved);
     }
     case 'CROSS_AXIS_COMPOUND': {

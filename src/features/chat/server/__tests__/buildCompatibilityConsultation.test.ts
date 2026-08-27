@@ -6,7 +6,8 @@ import { createHash } from 'crypto';
 import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 import type { DigestProvider } from '@/features/interpretation';
 import { buildCompatibilityConsultation } from '../buildCompatibilityConsultation';
-import type { ServerConsultationDeps, ServerConsultationRequest } from '../serverConsultationTypes';
+import { parseDecisionMeta } from '../decisionMeta';
+import type { ConsultationDecisionMeta, ServerConsultationDeps, ServerConsultationRequest } from '../serverConsultationTypes';
 
 const digestProvider: DigestProvider = {
   async sha256Utf8(s: string) {
@@ -114,5 +115,74 @@ describe('buildCompatibilityConsultation — one LLM call, deterministic tier, p
     const { deps } = makeDeps();
     const r = await buildCompatibilityConsultation(baseRequest({ question: '   ' }), deps);
     expect(r.ok).toBe(false);
+  });
+});
+
+// FINAL TWO RUNTIME FIXES — judgeCross() previously omitted the canonical compatibility subject, so every
+// adapted/CROSS proposition fell back to reasonCross's hardcoded '본인' regardless of who actually asked
+// (a real subject like 조세영 was persisted as '본인'). Proves the fix end-to-end: raw verdict, JSON-round-tripped
+// persisted verdict, and strict restoration all carry the SAME canonical asker subject, for the default label
+// and for non-default Korean names alike — never a '본인' fallback unless that IS the canonical subject.
+describe('buildCompatibilityConsultation — canonical subject propagation into judgeCross', () => {
+  const SUBJECTS = ['본인', '조세영', '이하늘'] as const;
+
+  function expectCanonicalSubject(meta: ConsultationDecisionMeta, subject: string): void {
+    const verdict = meta.divinationVerdict;
+    expect(verdict).toBeTruthy();
+    expect(verdict!.premises.length).toBeGreaterThan(0);
+    expect(verdict!.propositions.length).toBeGreaterThan(0);
+    expect(new Set(verdict!.premises.map((p) => p.subject))).toEqual(new Set([subject]));
+    expect(new Set(verdict!.propositions.map((p) => p.subject))).toEqual(new Set([subject]));
+    const cross = verdict!.propositions.filter((p) => p.discipline === 'CROSS');
+    expect(cross.length).toBeGreaterThan(0);
+    expect(new Set(cross.map((p) => p.subject))).toEqual(new Set([subject]));
+  }
+
+  it.each(SUBJECTS)(
+    'stamps the compatibility CROSS verdict with the canonical subject %s, raw + persisted + restored',
+    async (subject) => {
+      const { deps } = makeDeps();
+      const r = await buildCompatibilityConsultation(
+        baseRequest({
+          birthInput: birth({ displayName: subject, gender: 'female' }) as never,
+          subjectLabel: subject,
+          // 돈 → MONEY_RETENTION domain, the one pair-judgment axis askedAxis aligns with (both judgePairMyungri
+          // and judgePairZiwei emit a MONEY_RETENTION sub-judgment), so this actually exercises deriveCross's
+          // CROSS_STANDOFF branch rather than abstaining with INSUFFICIENT_EVIDENCE.
+          question: '돈 문제는 잘 맞을까요?',
+        }),
+        deps,
+      );
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const raw = r.structuredResult?.decisionMeta as ConsultationDecisionMeta | undefined;
+      expect(raw?.divinationVerdict).toBeTruthy();
+      expectCanonicalSubject(raw!, subject);
+
+      // The Edge writes this JSON shape to consultation_decisions.decision_meta; strict restore must agree.
+      const persisted = JSON.parse(JSON.stringify(raw)) as ConsultationDecisionMeta;
+      expectCanonicalSubject(persisted, subject);
+      const restored = parseDecisionMeta(persisted);
+      expect(restored?.divinationVerdict).toBeTruthy();
+      expectCanonicalSubject(restored!, subject);
+    },
+  );
+
+  it('never falls back to 본인 when the canonical subject is a different name', async () => {
+    const { deps } = makeDeps();
+    const r = await buildCompatibilityConsultation(
+      baseRequest({
+        birthInput: birth({ displayName: '조세영', gender: 'female' }) as never,
+        subjectLabel: '조세영',
+        question: '돈 문제는 잘 맞을까요?',
+      }),
+      deps,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const raw = r.structuredResult?.decisionMeta as ConsultationDecisionMeta | undefined;
+    const verdict = raw?.divinationVerdict;
+    expect(verdict).toBeTruthy();
+    expect(verdict!.propositions.some((p) => p.subject === '본인')).toBe(false);
   });
 });

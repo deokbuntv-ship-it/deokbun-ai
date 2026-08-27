@@ -265,7 +265,9 @@ export async function buildCompatibilityConsultation(
             selfLabel, targetLabel,
           }),
         ];
-        divinationVerdict = judgeCross({ question, questionDomain, judgments, asksTiming: wantsTiming(question) });
+        divinationVerdict = judgeCross({
+          question, questionDomain, judgments, asksTiming: wantsTiming(question), subject: selfLabel,
+        });
       } catch {
         // V4B §27 — fail-open, but NOT fail-over. The numeric tier does not step in as the divination
         // judgment; the answer says the structural judgment is unavailable (see the directive below).

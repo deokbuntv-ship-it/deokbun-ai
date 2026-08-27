@@ -252,6 +252,18 @@ const MERGED_TIMING = crossCase('CROSS_TIMING_SPLIT', [
   { id: 'merge-t3', discipline: 'QIMEN', direction: 'UNFAVORABLE', target: PALACE, axis: 'CAREER', scope: 'WOLWOON' },
 ], 'CAREER');
 
+// Codex production case: TWO duplicate-shaped STRUCTURAL parents (same discipline/target/axis/scope/direction,
+// different provenance) + ONE near parent. crossTimingSplitChild's spec is keyed off the structural side alone,
+// so two structural premises with an identical value-tuple collide into the same candidate exactly like
+// MERGED_REINFORCEMENT's duplicate MYUNGRI parents do — a real runtime shape the old "exactly one structural
+// parent" validator rejected.
+const TIMING_STRUCTURAL_SPECS: CrossParentSpec[] = [
+  { id: 'merge-ts1', discipline: 'MYUNGRI', direction: 'FAVORABLE', target: PALACE, axis: 'CAREER', scope: 'NATAL' },
+  { id: 'merge-ts2', discipline: 'MYUNGRI', direction: 'FAVORABLE', target: PALACE, axis: 'CAREER', scope: 'NATAL' },
+  { id: 'merge-ts3', discipline: 'QIMEN', direction: 'UNFAVORABLE', target: PALACE, axis: 'CAREER', scope: 'WOLWOON' },
+];
+const MERGED_TIMING_STRUCTURAL = crossCase('CROSS_TIMING_SPLIT', TIMING_STRUCTURAL_SPECS, 'CAREER');
+
 describe('Cross derived-child postconditions', () => {
   it.each([
     ['CROSS_REINFORCEMENT', REINFORCEMENT, (p: Record<string, unknown>) => { p.direction = 'UNFAVORABLE'; }],
@@ -275,6 +287,54 @@ describe('Cross derived-child postconditions', () => {
       .derivedFromPropositionIds).toHaveLength(3);
     expect(timing!.propositions.find((p) => p.derivationRule === 'CROSS_TIMING_SPLIT')!
       .derivedFromPropositionIds).toHaveLength(3);
+  });
+
+  describe('CROSS_TIMING_SPLIT — two structural parents + one near parent (Codex production case)', () => {
+    it('runtime-generated 2-structural+1-near split serializes and strictly restores with identity preserved', () => {
+      const restored = restore(MERGED_TIMING_STRUCTURAL);
+      expect(restored).toBeDefined();
+      const child = restored!.propositions.find((p) => p.derivationRule === 'CROSS_TIMING_SPLIT')!;
+      expect(child.derivedFromPropositionIds).toHaveLength(3);
+      expect(child.target).toEqual(PALACE);
+      expect(child.questionAxis).toBe('CAREER');
+      expect(child.conclusionType).toBe('COMPOUND');
+      expect(child.direction).toBe('RESTRICTED');
+      // structural (ts1/ts2) is FAVORABLE → crossTimingSplitChild's restriction is 'TIMING', not 'SCOPE'.
+      expect(child.restriction).toBe('TIMING');
+    });
+
+    it('rejects the same graph with an unrelated extra parent spliced into derivedFromPropositionIds', () => {
+      const cloned = JSON.parse(JSON.stringify(MERGED_TIMING_STRUCTURAL)) as Record<string, unknown>;
+      const propositions = cloned.propositions as Record<string, unknown>[];
+      const child = propositions.find((p) => p.derivationRule === 'CROSS_TIMING_SPLIT')!;
+      // An unrelated proposition: different target, different axis, never paired with anything in this graph.
+      const stray = crossParent({
+        id: 'stray-unrelated', discipline: 'ZIWEI', direction: 'FAVORABLE',
+        target: CAREER_PALACE, axis: 'MONEY_INFLOW', scope: 'SEWOON',
+      });
+      propositions.push(stray.proposition as unknown as Record<string, unknown>);
+      (cloned.premises as unknown[]).push(stray.premise);
+      (child.derivedFromPropositionIds as string[]).push(stray.proposition.id);
+      expect(restore(cloned)).toBeUndefined();
+    });
+
+    it('accepts the identical valid parent set under permutation of derivedFromPropositionIds order', () => {
+      const cloned = JSON.parse(JSON.stringify(MERGED_TIMING_STRUCTURAL)) as Record<string, unknown>;
+      const propositions = cloned.propositions as Record<string, unknown>[];
+      const child = propositions.find((p) => p.derivationRule === 'CROSS_TIMING_SPLIT')!;
+      const ids = child.derivedFromPropositionIds as string[];
+      expect(ids).toHaveLength(3);
+      child.derivedFromPropositionIds = [...ids].reverse();
+      const restored = restore(cloned);
+      expect(restored).toBeDefined();
+      expect(new Set(restored!.propositions.find((p) => p.derivationRule === 'CROSS_TIMING_SPLIT')!
+        .derivedFromPropositionIds)).toEqual(new Set(ids));
+    });
+
+    it('rejects a mutated restriction (TIMING → SCOPE) on the same valid 2-structural+1-near parents', () => {
+      expect(restore(cloneWithMutation(MERGED_TIMING_STRUCTURAL, 'CROSS_TIMING_SPLIT',
+        (p) => { p.restriction = 'SCOPE'; }))).toBeUndefined();
+    });
   });
 
   it('accepts a historical Cross child when the restored turn now asks a different axis', () => {

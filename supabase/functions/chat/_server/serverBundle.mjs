@@ -12367,17 +12367,10 @@ function validateCrossDerivation(prop, propositionById, ctx) {
       if (resolved.length < 2) return false;
       const structuralParents = resolved.filter((p) => temporalBand(p.temporalScope) === "STRUCTURAL");
       const nearParents = resolved.filter((p) => temporalBand(p.temporalScope) === "NEAR");
-      if (structuralParents.length !== 1 || nearParents.length === 0) return false;
-      const [structural] = structuralParents;
-      for (const near of nearParents) {
-        if (classifyPair(structural, near) !== "DIFFERENT_TIME_BAND") return false;
-        if (!opposed(structural, near)) return false;
-        if (!halfIsAsserted(structural) || !halfIsAsserted(near)) return false;
-      }
-      if (!nearParents.every((p) => p.temporalScope === nearParents[0].temporalScope)) {
-        return false;
-      }
-      if (!nearParents.every((near) => derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near)))) return false;
+      if (structuralParents.length === 0 || nearParents.length === 0) return false;
+      const qualifies = (structural, near) => classifyPair(structural, near) === "DIFFERENT_TIME_BAND" && opposed(structural, near) && halfIsAsserted(structural) && halfIsAsserted(near) && derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near));
+      if (!structuralParents.every((s) => nearParents.some((n) => qualifies(s, n)))) return false;
+      if (!nearParents.every((n) => structuralParents.some((s) => qualifies(s, n)))) return false;
       return crossEvidenceMatches(prop, resolved);
     }
     case "CROSS_AXIS_COMPOUND": {
@@ -14495,7 +14488,13 @@ async function buildCompatibilityConsultation(request, deps) {
             targetLabel
           })
         ];
-        divinationVerdict = judgeCross({ question, questionDomain, judgments, asksTiming: wantsTiming(question) });
+        divinationVerdict = judgeCross({
+          question,
+          questionDomain,
+          judgments,
+          asksTiming: wantsTiming(question),
+          subject: selfLabel
+        });
       } catch {
         divinationVerdict = null;
       }
