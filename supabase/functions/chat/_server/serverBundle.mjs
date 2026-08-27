@@ -7737,6 +7737,11 @@ var agreedHeadline = (axis, direction, count) => {
   }
 };
 var unresolvedHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.`;
+var extensionNoSignalHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 앞선 판정의 근거만으로 방향을 정할 수 없습니다. 없는 이야기를 지어내지는 않겠습니다.`;
+var refinementFailureHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 앞선 판정을 이어서 더 좁혀 드리기 어렵습니다. 앞서 드린 판정이 그대로 유효하며, 새로 보시려면 "지금 다시 보면?"이라고 물어봐 주세요.`;
+var NON_DECISION_NO_SIGNAL_HEADLINE = "지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.";
+var standoffHeadline = (standoffAssertions) => standoffAssertions.join(" ");
+var defaultNoSignalHeadline = (axis, coverageNote) => `${axisLabel(axis, "전반")}에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다.${coverageNote}`;
 
 // src/features/divination/claimOntology.ts
 function claimKind(p) {
@@ -9341,6 +9346,27 @@ function selectAnswerCandidates(standing, asked, intent) {
   const describesChart = (p) => p.conclusionType === "STRUCTURAL" && p.derivationRule !== "PRIMITIVE" && p.derivationRule !== "CROSS_STANDOFF";
   const onAskedAxis = (p) => asked === "GENERAL" || p.questionAxis === asked;
   return nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : onAsked.filter((p) => p.direction !== "NONE");
+}
+function legitimatePrimaryConclusions(propositions, askedAxis, intent, applicableDisciplines) {
+  const refinementFailureAlternative = refinementFailureHeadline(askedAxis);
+  const standing = standingPropositions(propositions);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
+  if (primary) return [primary.assertion, refinementFailureAlternative];
+  if (resolution.kind === "AGREED") {
+    return [agreedHeadline(askedAxis, resolution.direction, resolution.members.length), refinementFailureAlternative];
+  }
+  if (resolution.kind === "UNRESOLVED") return [unresolvedHeadline(askedAxis), refinementFailureAlternative];
+  const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
+  const standoffs = standing.filter((p) => p.derivationRule === "CROSS_STANDOFF" && p.questionAxis === askedAxis).sort((x, y) => x.target.key.localeCompare(y.target.key));
+  const examined = new Set(
+    propositions.filter((p) => p.questionAxis === askedAxis && p.discipline !== "CROSS").map((p) => p.discipline)
+  );
+  const blind = applicableDisciplines.filter((d) => !examined.has(d));
+  const coverageNote = blind.length > 0 ? ` (${blind.map(disc).join("·")}에는 이 축을 직접 보는 자리가 없습니다.)` : "";
+  const freshNoSignal = nonDecision ? NON_DECISION_NO_SIGNAL_HEADLINE : standoffs.length > 0 ? standoffHeadline(standoffs.map((p) => p.assertion)) : defaultNoSignalHeadline(askedAxis, coverageNote);
+  return [freshNoSignal, extensionNoSignalHeadline(askedAxis), refinementFailureAlternative];
 }
 function stanceOf(p) {
   if (p.conclusionType === "STRUCTURAL" || p.conclusionType === "CAUSAL") return "STRUCTURAL_ANSWER";
@@ -13093,6 +13119,16 @@ function parseDivinationVerdict(v) {
         return void 0;
       }
     }
+  }
+  const applicableDisciplines = o.disciplineJudgments.filter((j) => j.applicable === true).map((j) => j.discipline);
+  const legitimateConclusions = legitimatePrimaryConclusions(
+    parsed,
+    o.questionDomain,
+    o.questionIntent,
+    applicableDisciplines
+  );
+  if (!legitimateConclusions.includes(o.primaryConclusion)) {
+    return void 0;
   }
   const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds : projectVerdictFromGraph(
     parsed,

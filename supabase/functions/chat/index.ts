@@ -1247,7 +1247,7 @@ export default {
           admin && userId && verifiedConversationId
             ? async () => {
                 try {
-                  const { data: dec } = await admin
+                  const { data: dec, error } = await admin
                     .from('consultation_decisions')
                     .select('decision_meta')
                     .eq('conversation_id', verifiedConversationId)
@@ -1256,6 +1256,12 @@ export default {
                     .order('id', { ascending: false })
                     .limit(1)
                     .maybeSingle();
+                  // G6 FINAL — a PostgREST query failure returns `{data: null, error}`, it does not throw. The
+                  // `error` field was previously discarded, so a genuine backend error surfaced as `data: null`
+                  // and fell straight into the `!row` branch below — indistinguishable from "no prior decision
+                  // exists". A dependent follow-up over a real query error therefore classified as a brand-new
+                  // conversation and answered with a fresh, unrelated reading instead of failing closed.
+                  if (error) return { status: 'LOAD_FAILED' };
                   const row = dec as { decision_meta?: unknown } | null;
                   if (!row) return { status: 'NONE' };
                   const parsed = parseDecisionMeta(row.decision_meta);

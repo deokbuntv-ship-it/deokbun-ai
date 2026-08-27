@@ -255,7 +255,9 @@ describe('§7 — a graph that asserts what the kernel could never produce is re
       semanticRelation: 'CONNECTS', concept: 'SEAT_CONTACT', assertion: 'a', role: 'ASSERTS',
       reliability: 'EXACT', applicability: 'DIRECT', doctrineReference: 'd',
     }],
-    primaryConclusion: 'c', direction: 'FOR', dominantBasis: 'b', verdictVersion: 'v',
+    // G6 FINAL — primaryConclusion is now verified against the graph; the sole standing proposition's own
+    // `assertion` ('a') is the only legitimate value here, matching what a real SINGLE resolution would state.
+    primaryConclusion: 'a', direction: 'FOR', dominantBasis: 'b', verdictVersion: 'v',
     disciplineJudgments: [{
       discipline: 'MYUNGRI', stance: 'FOR', applicable: true, dataReliability: 'EXACT',
       questionDomain: 'CAREER', temporalScope: 'DAEWOON', dominantConclusion: 'c', dominantFactor: 'f',

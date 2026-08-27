@@ -10,10 +10,11 @@ import {
   sideAdequacy,
 } from '@/features/divination';
 import { CROSS_RULE_IDS } from '@/features/divination/reasoning/crossRules';
+import { legitimatePrimaryConclusions } from '@/features/divination/reasoning/crossReasoner';
 import {
   projectVerdictFromGraph, validateCrossDerivation, validateMyungriDerivation, validatePersistedPrimitive,
 } from '@/features/divination/reasoning/persistedGraphValidation';
-import type { CrossDivinationVerdict, DivinationPremise, ReasonedProposition } from '@/features/divination';
+import type { CrossDivinationVerdict, Discipline, DivinationPremise, ReasonedProposition } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
 
@@ -570,6 +571,23 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
         || [...persistedHeadlineSet].some((id) => !projectedHeadlineSet.has(id))) { return undefined; }
     }
   }
+  // G6 FINAL — `primaryConclusion` is the text rendered as the BINDING "결론" instruction (verdictDirective.ts)
+  // and, until now, was never checked against anything — restored as an opaque string regardless of which
+  // branch above ran. Unlike direction/headlines it is not a single deterministic value in the no-signal case
+  // (a fresh evaluation, an extension re-derivation, and a refinement's hard failure each state "no signal" in
+  // their own fixed wording — see legitimatePrimaryConclusions), so membership in the full legitimate set is
+  // checked here rather than equality to one recomputed value. This runs in BOTH branches above: the
+  // honest-decline bypass only ever skipped the direction/headline projection, never a primaryConclusion check,
+  // because none existed until now.
+  const applicableDisciplines = (o.disciplineJudgments as Record<string, unknown>[])
+    .filter((j) => j.applicable === true).map((j) => j.discipline as Discipline);
+  const legitimateConclusions = legitimatePrimaryConclusions(
+    parsed as unknown as ReasonedProposition[],
+    o.questionDomain as ReasonedProposition['questionAxis'],
+    o.questionIntent as ReasonedProposition['questionIntent'],
+    applicableDisciplines,
+  );
+  if (!legitimateConclusions.includes(o.primaryConclusion as string)) { return undefined; }
   // G6 PATCH 2 §4 — legacy rows that never persisted headlinePropositionIds at all are reconstructed from
   // the graph projection (an honest decline already has an explicit `[]` to restore, never reaching here).
   const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds

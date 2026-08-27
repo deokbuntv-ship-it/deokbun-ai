@@ -11,6 +11,7 @@ import {
   type SemanticTarget,
 } from '@/features/divination/reasoning/kernel';
 import { deriveCross } from '@/features/divination/reasoning/crossRules';
+import { legitimatePrimaryConclusions } from '@/features/divination/reasoning/crossReasoner';
 import { MYUNGRI_RULES, primitivePropositions } from '@/features/divination/reasoning/myungriRules';
 import { projectVerdictFromGraph } from '@/features/divination/reasoning/persistedGraphValidation';
 
@@ -57,11 +58,14 @@ function verdict(
   premises: DivinationPremise[], propositions: ReasonedProposition[], axis: JudgmentDomain,
 ): Record<string, unknown> {
   const projection = projectVerdictFromGraph(propositions, axis, 'DECISION');
+  // G6 FINAL — primaryConclusion is now verified against the graph; compute the actual legitimate value via
+  // the same shared function the validator uses, rather than an arbitrary placeholder.
+  const primaryConclusion = legitimatePrimaryConclusions(propositions, axis, 'DECISION', ['MYUNGRI'])[0];
   return {
     question: 'q', questionDomain: axis, questionIntent: 'DECISION',
     evaluatedAtEpochSeconds: 1_700_000_000, asksTiming: false,
     premises, propositions,
-    primaryConclusion: 'c', direction: projection.direction, dominantBasis: 'b', verdictVersion: 'v',
+    primaryConclusion, direction: projection.direction, dominantBasis: 'b', verdictVersion: 'v',
     headlinePropositionIds: projection.headlinePropositionIds,
     disciplineJudgments: [{
       discipline: 'MYUNGRI', stance: projection.direction, applicable: true, dataReliability: 'EXACT',

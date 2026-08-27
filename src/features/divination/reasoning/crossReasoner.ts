@@ -10,7 +10,10 @@ import {
   type JudgmentDomain, type JudgmentEvidence, type QuestionIntent, type Stance,
 } from '../contracts';
 import { axisLabel as sharedAxisLabel } from '../axisOntology';
-import { agreedHeadline, unresolvedHeadline } from './headlineProse';
+import {
+  agreedHeadline, defaultNoSignalHeadline, extensionNoSignalHeadline, NON_DECISION_NO_SIGNAL_HEADLINE,
+  refinementFailureHeadline, standoffHeadline, unresolvedHeadline,
+} from './headlineProse';
 import { adaptJudgment } from './disciplineAdapter';
 import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
@@ -102,6 +105,62 @@ export function selectAnswerCandidates(
     ? standing.filter((p) => onAskedAxis(p)
       && ((intent === 'CAUSE_WHY' && p.conclusionType === 'CAUSAL') || describesChart(p)))
     : onAsked.filter((p) => p.direction !== 'NONE');
+}
+
+/**
+ * G6 FINAL — every `primaryConclusion` string the reasoning kernel can LEGITIMATELY produce for this exact
+ * (already-validated) graph/axis/intent, so a persisted verdict's headline text can be checked for membership
+ * instead of trusted as an unverified opaque string. Same "new export, not a refactor of either call site"
+ * reasoning as `selectAnswerCandidates`: reasonCross() and graphExtension.ts's extendGraph()/refinementFailure()
+ * are left untouched, and this recomputes what each of them would have produced from the graph alone.
+ *
+ * When a SINGLE proposition or an AGREED/UNRESOLVED set settles the answer, there is exactly one legitimate
+ * string for what a SUCCESSFUL evaluation/extension would state — `primary.assertion` (a field of the
+ * already-validated graph itself) or one of the two headline templates. The genuine NO-SIGNAL case is
+ * multi-valued: a fresh evaluation and an extension re-derivation each state "no signal" in their own fixed
+ * wording, and a persisted verdict legitimately carries whichever of the two actually ran.
+ *
+ * `refinementFailureHeadline` is APPENDED to every case, not only the no-signal one: `refinementFailure()`
+ * fires when `extendGraph` itself THROWS — a hard failure of the extension mechanism, orthogonal to what the
+ * resolution over the standing graph would have been had extension succeeded. A restored verdict may
+ * therefore legitimately carry that fixed decline text no matter what candidates/resolution would otherwise
+ * resolve to.
+ */
+export function legitimatePrimaryConclusions(
+  propositions: ReasonedProposition[], askedAxis: JudgmentDomain, intent: QuestionIntent,
+  applicableDisciplines: Discipline[],
+): string[] {
+  const refinementFailureAlternative = refinementFailureHeadline(askedAxis);
+  const standing = standingPropositions(propositions);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const resolution = resolveAnswer(candidates);
+  const primary = resolution.kind === 'SINGLE' ? resolution.primary : null;
+  if (primary) return [primary.assertion, refinementFailureAlternative];
+  if (resolution.kind === 'AGREED') {
+    return [agreedHeadline(askedAxis, resolution.direction, resolution.members.length), refinementFailureAlternative];
+  }
+  if (resolution.kind === 'UNRESOLVED') return [unresolvedHeadline(askedAxis), refinementFailureAlternative];
+
+  // NO SIGNAL — reasonCross's own fresh-turn wording (nonDecision fixed text, else every unresolved standoff
+  // on the asked axis joined in ascending target order, else the default text with its coverage note), PLUS
+  // the other legitimate shape a restored verdict may carry over this same graph: an extension that re-derived
+  // and found nothing (extendGraph's own no-signal text — reached only when its OWN resolution is also NONE,
+  // matching this branch) — stated regardless of `intent`/standoffs, since extendGraph never reaches that branch.
+  const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
+  const standoffs = standing
+    .filter((p) => p.derivationRule === 'CROSS_STANDOFF' && p.questionAxis === askedAxis)
+    .sort((x, y) => x.target.key.localeCompare(y.target.key));
+  const examined = new Set(
+    propositions.filter((p) => p.questionAxis === askedAxis && p.discipline !== 'CROSS').map((p) => p.discipline),
+  );
+  const blind = applicableDisciplines.filter((d) => !examined.has(d));
+  const coverageNote = blind.length > 0 ? ` (${blind.map(disc).join('·')}에는 이 축을 직접 보는 자리가 없습니다.)` : '';
+  const freshNoSignal = nonDecision
+    ? NON_DECISION_NO_SIGNAL_HEADLINE
+    : standoffs.length > 0
+      ? standoffHeadline(standoffs.map((p) => p.assertion))
+      : defaultNoSignalHeadline(askedAxis, coverageNote);
+  return [freshNoSignal, extensionNoSignalHeadline(askedAxis), refinementFailureAlternative];
 }
 
 /**

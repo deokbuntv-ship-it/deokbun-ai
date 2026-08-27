@@ -389,7 +389,9 @@ describe('§33-17 / §25 — the graph parser reconstructs, and fails closed', (
       semanticRelation: 'CONNECTS', concept: 'SEAT_CONTACT', assertion: 'a', role: 'ASSERTS',
       reliability: 'EXACT', applicability: 'DIRECT', doctrineReference: 'd',
     }],
-    primaryConclusion: 'c', direction: 'FOR', dominantBasis: 'b', verdictVersion: 'v',
+    // G6 FINAL — primaryConclusion is now verified against the graph; the sole standing proposition's own
+    // `assertion` ('a') is the only legitimate value here, matching what a real SINGLE resolution would state.
+    primaryConclusion: 'a', direction: 'FOR', dominantBasis: 'b', verdictVersion: 'v',
     // V4D §27 — the parser now checks every nested enum, so a judgment must be a REAL judgment. A fixture
     // thin enough to pass the old checks was exactly the payload shape the audit said could restore.
     disciplineJudgments: [{
