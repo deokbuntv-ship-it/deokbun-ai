@@ -135,3 +135,51 @@ export {
   type ActiveDaewoonContext,
   type MyungriTemporalContext,
 } from './services/temporalContext';
+
+// ── MYUNGRI_STRENGTH_V1 deterministic FACT foundation (doctrine-neutral; see
+//    docs/MYUNGRI_STRENGTH_V1_FACT_FOUNDATION.md) — FACTS ONLY, no strength/special-pattern/
+//    transformation/Yongshin judgment anywhere below. ──────────────────────────────────────
+export {
+  DEOKBUNAI_MYUNGRI_SAME_ELEMENT_ROOTING_V1_RULE,
+  calculateSameElementRooting,
+  type BranchHiddenStemFacts,
+  type DayMasterIdentityFact,
+  type HiddenStemFact,
+  type SameElementRootingResult,
+} from './services/sameElementRooting';
+export {
+  DEOKBUNAI_MYUNGRI_TEN_GOD_FACTS_V1_RULE,
+  calculateTenGodFacts,
+  type HiddenStemTenGodFact,
+  type TenGodFactsResult,
+  type VisibleStemTenGodFact,
+} from './services/tenGodFacts';
+export {
+  DEOKBUNAI_MYUNGRI_RELATION_PARTICIPANTS_V1_RULE,
+  calculateRelationParticipants,
+  type BranchPairRelationParticipants,
+  type BranchSetRelationParticipants,
+  type RelationParticipantsResult,
+  type StemRelationParticipants,
+} from './services/relationParticipants';
+export {
+  DEOKBUNAI_MYUNGRI_GENERAL_SEASONAL_PHASE_V1_RULE,
+  generalSeasonalPhase,
+  generalSeasonalPhaseForMonthBranch,
+  type GeneralSeasonalPhaseResult,
+} from './services/generalSeasonalPhase';
+export {
+  DEOKBUNAI_MYUNGRI_SPECIAL_PATTERN_PREREQUISITES_V1_RULE,
+  calculateSpecialPatternPrerequisites,
+  type ElementCounts,
+  type RoleCategory,
+  type RoleCategoryPresenceFact,
+  type SameElementRootPosition,
+  type SpecialPatternPrerequisitesResult,
+} from './services/specialPatternPrerequisites';
+export {
+  DEOKBUNAI_MYUNGRI_STRENGTH_FACT_BUNDLE_V1_RULE,
+  buildMyungriStrengthFactBundle,
+  type MyungriStrengthFactBundle,
+  type StrengthFactBundleResult,
+} from './services/strengthFactBundle';
