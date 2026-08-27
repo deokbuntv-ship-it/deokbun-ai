@@ -5,11 +5,13 @@ import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultatio
 import { ANSWER_PLAN_VERSION, DECISION_POLICY_VERSION, type AnswerPlan } from './answerPlan';
 import { classifyConsultationDomain, type ConsultationDomain } from './consultationDomain';
 import {
-  ALL_CONFIDENCES, ALL_CONTRADICTION_KINDS, ALL_DERIVATION_RULES, ALL_DIRECTNESS, ALL_EVIDENCE_STRENGTHS,
-  ALL_STANCES, MYUNGRI_RULES, PRIMITIVE_RULE, isCanonicalTarget,
+  AGAINST_STANCES, ALL_CONFIDENCES, ALL_CONTRADICTION_KINDS, ALL_DERIVATION_RULES, ALL_DIRECTNESS,
+  ALL_EVIDENCE_STRENGTHS, ALL_STANCES, FOR_STANCES, MYUNGRI_RULES, PRIMITIVE_RULE, isCanonicalTarget,
+  sideAdequacy,
 } from '@/features/divination';
 import { CROSS_RULE_IDS } from '@/features/divination/reasoning/crossRules';
-import type { CrossDivinationVerdict } from '@/features/divination';
+import { stanceOf } from '@/features/divination/reasoning/crossReasoner';
+import type { CrossDivinationVerdict, DivinationPremise } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
 
@@ -163,6 +165,11 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const DOCTRINE_APPLICABILITY = new Set(['ADOPTED', 'PARTIAL', 'BLOCKED']);
   const RESTRICTIONS = new Set(['TIMING', 'SCOPE', 'CAPACITY']);
   const SUPPORT_GROUP_ROLES = new Set(['REQUIRED', 'ALTERNATIVE']);
+  // V4F §4 — the target kinds `buildMyungriPremises` actually mints (targets.ts's registry). Disjoint from
+  // the discipline adapter's PALACE / BOARD_SEAT / ADAPTED_READING / (Ziwei's gap-fallback) DOCTRINE_GAP.
+  const MYUNGRI_PREMISE_TARGET_KINDS = new Set([
+    'NATAL_SEAT', 'NATAL_SEAT_PAIR', 'TEN_GOD_FAMILY', 'LUCK_LAYER', 'DAY_MASTER_FOOTING',
+  ]);
   // V4D §27/§28 — the remaining unions, taken from the kernel's own registries rather than re-typed here.
   const STANCES = new Set<string>(ALL_STANCES);
   const CONFIDENCES = new Set<string>(ALL_CONFIDENCES);
@@ -298,6 +305,10 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     }
   }
 
+  // V4F §2 — indexed for RECOMPUTING adequacy below, from the SAME validated premise objects propositions
+  // will cite. Built once here rather than per-proposition.
+  const premiseById = new Map(premisesOut.map((p) => [p.id as string, p]));
+
   // ── PROPOSITIONS ───────────────────────────────────────────────────────────────────────────────
   if (!Array.isArray(o.propositions)) return undefined;
   const propositionIds = new Set<string>();
@@ -354,25 +365,126 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     // malformed graph is rejected whole.
     //
     // A restriction is the SHAPE of a RESTRICTED direction; on any other direction it is a contradiction in
-    // terms (and stanceOf would read it anyway).
+    // terms (and stanceOf would read it anyway). V4F Sec3 completes the converse: for a DERIVED conclusion,
+    // RESTRICTED with no restriction at all is equally shapeless — stanceOf's own RESTRICTED branch reads
+    // pr.restriction to choose FOR_BUT_LATER vs CONDITIONAL_AGAINST. PRIMITIVE is exempt: primitivePropositions()
+    // maps a bare CONSTRAINS premise straight to RESTRICTED with no restriction kind, because a single restated
+    // premise has no TIMING-vs-SCOPE shape to name in the first place — only a compound that relates two things
+    // can be about one or the other.
     if (pr.restriction !== undefined && pr.direction !== 'RESTRICTED') return undefined;
+    // V4F Sec3 completes the converse — but only for the rules PROVEN (by reading every apply()/emit() body)
+    // to always MINT a restriction fresh when they set RESTRICTED: CONTESTED_SHARE, DIRECTION_VS_EXECUTION and
+    // INFLOW_VS_RETENTION (myungriRules.ts) and CROSS_TIMING_SPLIT (crossRules.ts) all set a literal
+    // restriction beside every RESTRICTED they emit. Everyone else may legitimately omit it: a PRIMITIVE's
+    // bare CONSTRAINS premise has no TIMING-vs-SCOPE shape to name, and CROSS_REINFORCEMENT /
+    // CROSS_CONTRADICTION_RESOLVED / CROSS_AXIS_COMPOUND all COPY `direction`/`restriction` forward from
+    // whichever operand they relay (e.g. `direction: asked.direction, ...(asked.restriction ? {...} : {})`),
+    // so a RESTRICTED verdict relayed from a restriction-less PRIMITIVE parent is itself restriction-less by
+    // the same, real construction — not a corrupted row.
+    const RULES_REQUIRING_RESTRICTION = new Set([
+      'CONTESTED_SHARE', 'DIRECTION_VS_EXECUTION', 'INFLOW_VS_RETENTION', 'CROSS_TIMING_SPLIT',
+    ]);
+    if (pr.direction === 'RESTRICTED' && pr.restriction === undefined
+      && RULES_REQUIRING_RESTRICTION.has(pr.derivationRule as string)) {
+      return undefined;
+    }
     // A derivation rule belongs to the layer that owns it: a CROSS rule on a discipline proposition (or the
     // reverse) is a conclusion no reasoner could have minted.
     if (CROSS_RULES.has(pr.derivationRule as string) !== (pr.discipline === 'CROSS')) return undefined;
     if (MYUNGRI_RULE_IDS.has(pr.derivationRule as string) && pr.discipline !== 'MYUNGRI') return undefined;
-    // Ancestry is a property of the rule: a PRIMITIVE restates one premise and has no parents; every derived
-    // rule in this kernel declares at least one (make() emits the primitive parents of its ASSERTS premises,
-    // crossProp always cites the pair it reconciled). A derived conclusion with no ancestry cannot be
-    // re-derived, explained, or attacked.
+    // V4F §5 — RULE-AWARE REQUIRED ANCESTRY. A PRIMITIVE restates one premise and has no parents. Every OTHER
+    // rule in this kernel — verified against its actual `apply()`/`emit()` body, not against how many premises
+    // it reads — has a known minimum ANCESTRY (not input) count, because `derivedFromPropositionIds` only
+    // counts `role === 'ASSERTS'` premises (`make()`) or proposition parents (`crossProp()`), and some inputs a
+    // rule reads never carry either: CONTESTED_SHARE's wealth-seat leg is always `role: 'DESCRIBES'`
+    // (myungriPremises.ts — presence is not significance), so it requires a rival AND a wealth seat to fire but
+    // records ancestry ONLY for the rival — its true minimum is ONE, not two. Every other Myungri rule's
+    // apparent single-parent path is structurally inert (a NATAL_SEAT_PAIR target can never equal a NATAL_SEAT
+    // target, so the QUALIFIES-role natal-friction premises DIRECTION_VS_EXECUTION and RECURRING_FRICTION_CAUSE
+    // could in principle read never find a matching partner and so never actually emit) — their real minimum,
+    // and CONVERGENT_SEAT_PRESSURE's (`scopes.size >= 2`) and INFLOW_VS_RETENTION's (inflow AND (retention risk OR
+    // a contested-share parent)), is genuinely two. Cross derives only from PAIRS (`crossProp`'s
+    // `[...from, ...against]`) and every call site passes exactly two parents. A derived conclusion citing
+    // fewer parents than its own rule's verified minimum could not have been produced by any rule this kernel
+    // has — "known rule name + an arbitrary parent set" is exactly the shape a corrupted or hand-edited row
+    // would take.
     const ancestry = (pr.derivedFromPropositionIds as string[]).length;
-    if (pr.derivationRule === PRIMITIVE_RULE ? ancestry !== 0 : ancestry === 0) return undefined;
-    // Adequacy must be consistent with the cited inputs where that is recomputable without context: a side
-    // with no cited premises has NO adequacy, and a side with cited premises has some. (The exact THIN /
-    // ADEQUATE grade depends on sideAdequacy's current definition and is deliberately not re-derived here —
-    // rejecting every row persisted under an older grading would invalidate history for a cosmetic reason.)
+    if (pr.derivationRule === PRIMITIVE_RULE) {
+      if (ancestry !== 0) return undefined;
+    } else {
+      const requiredAncestry = pr.derivationRule === 'CONTESTED_SHARE' ? 1 : 2;
+      if (ancestry < requiredAncestry) return undefined;
+    }
+    // V4F §3 — A DESCRIPTION OR A CAUSE NEVER CARRIES A DIRECTION. Every STRUCTURAL/CAUSAL proposition this
+    // kernel actually produces sets `direction: 'NONE'` (primitivePropositions for ABSENT/ACTIVATES;
+    // CONVERGENT_SEAT_PRESSURE and RECURRING_FRICTION_CAUSE explicitly, "a CAUSE is not a VERDICT"; CROSS_STANDOFF
+    // explicitly). Combined with the restriction gate above, this is what makes "STRUCTURAL + RESTRICTED +
+    // TIMING" — a combination no reasoner could produce — actually unreachable rather than merely unlikely.
+    if ((pr.conclusionType === 'STRUCTURAL' || pr.conclusionType === 'CAUSAL') && pr.direction !== 'NONE') {
+      return undefined;
+    }
+    // V4F §2 — PERSISTED ADEQUACY IS NOT AUTHORITY. RECOMPUTE IT.
+    //
+    // `sideAdequacy` is a pure function of the cited premises' own `applicability`/`reliability` fields,
+    // and every one of those premises is already validated and sitting in `premiseById` by this point in
+    // parsing — so the grade a proposition claims is not trusted, it is REPRODUCED from the same premise
+    // objects the reasoner would have used, with the kernel's own current rule (one premise DIRECT *and*
+    // EXACT), and compared. A mismatch — most dangerously a forged upgrade, DIRECT from one premise plus EXACT
+    // from an unrelated one composed into a persisted `ADEQUATE` neither actually earned — rejects the row
+    // rather than silently trusting a grade nothing here can verify was ever produced by this reasoning.
+    //
+    // Referential integrity (every cited id resolves to a real premise) is checked in the pass below this
+    // loop; if that later rejects the graph, this recomputation was performed against whatever ANY dangling
+    // id happened to resolve to = nothing, so it is re-validated there regardless — this check is not weakened
+    // by running before it.
     const ad2 = pr.adequacy as Record<string, unknown>;
-    if (((pr.supportingPremiseIds as string[]).length === 0) !== (ad2.supportAdequacy === 'NONE')) return undefined;
-    if (((pr.opposingPremiseIds as string[]).length === 0) !== (ad2.counterAdequacy === 'NONE')) return undefined;
+    const lookUp = (ids: unknown) => (Array.isArray(ids) ? ids : [])
+      .map((id) => premiseById.get(id as string))
+      .filter((x): x is DivinationPremise => !!x);
+    const supportPremises = lookUp(pr.supportingPremiseIds);
+    const opposePremises = lookUp(pr.opposingPremiseIds);
+    if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) return undefined;
+    if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) return undefined;
+
+    // V4F §4 — PREMISE → PROPOSITION SEMANTIC COMPATIBILITY, FOR GRAPH-NATIVE MYUNGRI PRIMITIVES.
+    //
+    // A Myungri PRIMITIVE restates exactly ONE asserting premise (`primitivePropositions`, myungriRules.ts):
+    // one supporting id, zero opposing, the SAME target/axis/scope/subject as that premise, and a
+    // direction/type that is a FIXED function of the premise's own `semanticRelation` — never chosen
+    // independently. A restored PRIMITIVE claiming a relation/direction pairing that table does not produce
+    // (the audit's example: an OPPOSES premise "supporting" a FAVORABLE primitive) asserts something no
+    // reasoner minted.
+    //
+    // Scoped to the MYUNGRI_PREMISE_TARGET_KINDS: `derivationRule === PRIMITIVE_RULE` is shared with the
+    // discipline adapter's ZIWEI/QIMEN/pair-MYUNGRI output (disciplineAdapter.ts, "PRIMITIVE — not synthesis,
+    // and deliberately not dressed up as any"), which is a DIFFERENT, legitimate shape: it can carry BOTH a
+    // supporting AND an opposing premise (contrary evidence becomes its own counter-premise), and its role can
+    // be DESCRIBES as well as ASSERTS. Its targets are always PALACE / BOARD_SEAT / ADAPTED_READING (or, for
+    // Ziwei with no palace mapping, DOCTRINE_GAP) — never the myungriPremises-native kinds — so filtering on
+    // target.kind cleanly separates the two constructions without needing to distinguish them any other way.
+    //
+    // Derived conclusions are NOT re-verified here either: a rule may legitimately RE-SIDE a parent's premises
+    // relative to its own new assertion (§11/§12 — a demoted rival's support becomes the new conclusion's
+    // opposition), so "which side a premise sits on" is only fixed-by-relation for this native-primitive case.
+    if (pr.derivationRule === PRIMITIVE_RULE
+      && MYUNGRI_PREMISE_TARGET_KINDS.has((pr.target as Record<string, unknown>).kind as string)) {
+      const sup = pr.supportingPremiseIds as string[];
+      if (sup.length !== 1 || (pr.opposingPremiseIds as string[]).length !== 0) return undefined;
+      const src = premiseById.get(sup[0]);
+      if (!src) return undefined; // referential integrity is re-checked below regardless
+      if (src.role !== 'ASSERTS') return undefined;
+      if ((src.target as Record<string, unknown>).key !== (pr.target as Record<string, unknown>).key) return undefined;
+      if (src.questionAxis !== pr.questionAxis || src.temporalScope !== pr.temporalScope) return undefined;
+      if (src.subject !== pr.subject) return undefined;
+      const relation = src.semanticRelation as string;
+      const expectedType = relation === 'ABSENT' || relation === 'ACTIVATES' ? 'STRUCTURAL' : 'DIRECTIONAL';
+      if (pr.conclusionType !== expectedType) return undefined;
+      const expectedDirection = relation === 'DESTABILIZES' || relation === 'OPPOSES' ? 'UNFAVORABLE'
+        : relation === 'CONSTRAINS' ? 'RESTRICTED'
+          : relation === 'CONNECTS' || relation === 'ENABLES' ? 'FAVORABLE'
+            : 'NONE';
+      if (pr.direction !== expectedDirection) return undefined;
+    }
     parsed.push(pr);
   }
 
@@ -435,8 +547,34 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     }
   }
   // A headline that names a conclusion the graph does not contain is a dangling reference like any other.
-  for (const id of (Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds as string[] : [])) {
+  const headlineIds = Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds as string[] : [];
+  for (const id of headlineIds) {
     if (!propositionIds.has(id)) return undefined;
+  }
+
+  // V4F §7 — AN EMPTY GRAPH HAS NOTHING TO STAND ON. Zero propositions can back a NO_RESULT-shaped stance
+  // (no chart signal, nothing computed, or the question doesn't apply) and nothing else — a persisted
+  // FOR/AGAINST/STRUCTURAL_ANSWER/etc. resting on zero propositions is a verdict manufactured out of nothing.
+  const NON_ASSERTIVE_STANCES = new Set(['INSUFFICIENT_DATA', 'INSUFFICIENT_EVIDENCE', 'NOT_APPLICABLE']);
+  if (parsed.length === 0 && !NON_ASSERTIVE_STANCES.has(o.direction as string)) return undefined;
+
+  // V4F §6 — GRAPH TO VERDICT CONSISTENCY. The parser does not re-run the reasoner (no facts, no engines
+  // are available here, and re-deriving would redesign G1-G5's resolution architecture rather than merely
+  // check it) — but the graph already tells us what camp its own cited evidence is in, via the SAME
+  // projection (stanceOf) the runtime uses to read a proposition as a stance. A persisted FOR-family verdict
+  // whose named headline propositions project to the AGAINST family (or vice versa) is not a graph the
+  // verdict could have been read off of; it is the direction field disagreeing with the propositions field.
+  // §D2/§D3 pre-V4C rows, and any row persisted before a headline was recorded, leave this field absent —
+  // that is an existing, intentionally-supported shape (see the optionality note above), so only a headline
+  // list that IS present and DOES contradict the verdict is rejected; absence proves nothing either way.
+  if (headlineIds.length > 0) {
+    const headlines = parsed.filter((pr) => headlineIds.includes(pr.id as string));
+    const headlineStances = new Set(headlines.map((pr) => stanceOf(pr as unknown as Parameters<typeof stanceOf>[0])));
+    const verdictIsFor = (FOR_STANCES as readonly string[]).includes(o.direction as string);
+    const verdictIsAgainst = (AGAINST_STANCES as readonly string[]).includes(o.direction as string);
+    const headlineHasFor = [...headlineStances].some((st) => (FOR_STANCES as readonly string[]).includes(st));
+    const headlineHasAgainst = [...headlineStances].some((st) => (AGAINST_STANCES as readonly string[]).includes(st));
+    if ((verdictIsFor && headlineHasAgainst) || (verdictIsAgainst && headlineHasFor)) return undefined;
   }
 
   // ── V4C §25 — RECONSTRUCTION, NOT PASS-THROUGH ─────────────────────────────────────────────────

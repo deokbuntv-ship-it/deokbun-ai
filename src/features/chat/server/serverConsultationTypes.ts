@@ -71,8 +71,22 @@ export type ServerConsultationDeps = {
   // Server-authoritative previous-decision loader (Sprint E §2). The Edge queries the persisted decisionMeta
   // for the CURRENT conversation (ownership-verified) and injects this. Absent → no live follow-up. The
   // client's own copy of a previous polarity/version/target is NEVER trusted — only this server load is.
-  loadPreviousDecision?: () => Promise<ConsultationDecisionMeta | null>;
+  //
+  // V4F §8 — THREE OUTCOMES, NOT TWO. `null` means NO_PRIOR_HISTORY: no row exists (first turn, or no
+  // conversation to look up). `MALFORMED_PRIOR_DECISION` means PRIOR_HISTORY_EXISTS_BUT_IS_INVALID: a row was
+  // found but failed graph validation (decisionMeta.ts's parser is fail-closed on the GRAPH; this is what
+  // fails closed on the LOAD). The two must never collapse to the same value — a caller that cannot tell them
+  // apart treats an ordinary dependent follow-up ("돈은?") exactly like the first turn of a brand-new
+  // conversation, silently recasting a continuation as an unrelated fresh reading.
+  loadPreviousDecision?: () => Promise<ConsultationDecisionMeta | null | typeof MALFORMED_PRIOR_DECISION>;
 };
+
+/**
+ * V4F §8 — the sentinel for PRIOR_HISTORY_EXISTS_BUT_IS_INVALID. A unique value (not a string/enum) so it can
+ * never be produced by JSON parsing or accidentally equal a legitimate return value; it exists only to be
+ * compared with `===` inside one process, between `loadPreviousDecision` and `buildServerConsultation`.
+ */
+export const MALFORMED_PRIOR_DECISION = Symbol('MALFORMED_PRIOR_DECISION');
 
 // Bounded, safe metadata (§17). No raw DB row, no provider object, no internal prompt, no secret.
 // Carries the decision/audit version bundle (Sprint A §11): `engineVersion` = frozen engine ruleset

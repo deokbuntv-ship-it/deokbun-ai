@@ -107,3 +107,6 @@ export type {
   TrustedBirthResolution,
   UntrustedTurn,
 } from './serverConsultationTypes';
+// V4F §8 — a VALUE export (not type-only): the Edge loader returns this sentinel at runtime to distinguish
+// "no prior decision row" from "a row existed but failed graph validation".
+export { MALFORMED_PRIOR_DECISION } from './serverConsultationTypes';

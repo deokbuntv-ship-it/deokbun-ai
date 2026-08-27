@@ -37,6 +37,7 @@ import {
   buildCompatibilityConsultation,
   evaluateConsultationSafetyStop,
   parseDecisionMeta,
+  MALFORMED_PRIOR_DECISION,
   buildTodayFortune,
   dailyFortuneResponseFormat,
   buildMonthlyFortune,
@@ -1235,8 +1236,17 @@ export default {
         // read conversation_messages.structured_result.decisionMeta — a CLIENT-written row — so a modified
         // client could forge the polarity/domain/target/versions of the "previous" decision and steer this
         // turn. We now query the latest server-written decision for (conversation_id, user_id). Ownership is
-        // enforced by the user_id filter (a cross-user conversation returns no row). Fail-closed: any gap /
-        // legacy / malformed row → null → no follow-up (normal behavior). Never reads client message rows.
+        // enforced by the user_id filter (a cross-user conversation returns no row). Fail-closed: a missing
+        // row → null (no follow-up, normal behavior); a malformed row → MALFORMED_PRIOR_DECISION (see V4F §8
+        // below — a distinct outcome, not the same as "no follow-up"). Never reads client message rows.
+        // V4F §8 — DISTINGUISH "no row" FROM "row present but invalid". Both used to `?? null` into the
+        // exact same value, so a dependent follow-up over a corrupted row read identically to the first turn
+        // of a brand-new conversation. `dec === null` (no row queried back at all) stays `null` —
+        // NO_PRIOR_HISTORY, ordinary behavior. A row that WAS found but whose decisionMeta fails the graph
+        // parser returns `MALFORMED_PRIOR_DECISION` instead — PRIOR_HISTORY_EXISTS_BUT_IS_INVALID — so
+        // `buildServerConsultation` can refuse to silently recast a continuation as a fresh reading. A query
+        // exception itself (network/timeout) is a different failure class and still falls back to `null`,
+        // matching existing behavior — this is about a validated row that fails DATA integrity, not infra.
         const loadPreviousDecision =
           admin && userId && verifiedConversationId
             ? async () => {
@@ -1250,8 +1260,10 @@ export default {
                     .order('id', { ascending: false })
                     .limit(1)
                     .maybeSingle();
-                  const meta = (dec as { decision_meta?: unknown } | null)?.decision_meta;
-                  return parseDecisionMeta(meta) ?? null;
+                  const row = dec as { decision_meta?: unknown } | null;
+                  if (!row) return null;
+                  const parsed = parseDecisionMeta(row.decision_meta);
+                  return parsed ?? MALFORMED_PRIOR_DECISION;
                 } catch {
                   return null;
                 }

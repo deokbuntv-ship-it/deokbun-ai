@@ -12196,6 +12196,13 @@ function parseDivinationVerdict(v) {
   const DOCTRINE_APPLICABILITY = /* @__PURE__ */ new Set(["ADOPTED", "PARTIAL", "BLOCKED"]);
   const RESTRICTIONS = /* @__PURE__ */ new Set(["TIMING", "SCOPE", "CAPACITY"]);
   const SUPPORT_GROUP_ROLES = /* @__PURE__ */ new Set(["REQUIRED", "ALTERNATIVE"]);
+  const MYUNGRI_PREMISE_TARGET_KINDS = /* @__PURE__ */ new Set([
+    "NATAL_SEAT",
+    "NATAL_SEAT_PAIR",
+    "TEN_GOD_FAMILY",
+    "LUCK_LAYER",
+    "DAY_MASTER_FOOTING"
+  ]);
   const STANCES = new Set(ALL_STANCES);
   const CONFIDENCES = new Set(ALL_CONFIDENCES);
   const DIRECTNESS = new Set(ALL_DIRECTNESS);
@@ -12321,6 +12328,7 @@ function parseDivinationVerdict(v) {
       });
     }
   }
+  const premiseById = new Map(premisesOut.map((p) => [p.id, p]));
   if (!Array.isArray(o.propositions)) return void 0;
   const propositionIds = /* @__PURE__ */ new Set();
   const parsed = [];
@@ -12366,13 +12374,48 @@ function parseDivinationVerdict(v) {
     const sup = new Set(pr.supportingPremiseIds);
     if (pr.opposingPremiseIds.some((id) => sup.has(id))) return void 0;
     if (pr.restriction !== void 0 && pr.direction !== "RESTRICTED") return void 0;
+    const RULES_REQUIRING_RESTRICTION = /* @__PURE__ */ new Set([
+      "CONTESTED_SHARE",
+      "DIRECTION_VS_EXECUTION",
+      "INFLOW_VS_RETENTION",
+      "CROSS_TIMING_SPLIT"
+    ]);
+    if (pr.direction === "RESTRICTED" && pr.restriction === void 0 && RULES_REQUIRING_RESTRICTION.has(pr.derivationRule)) {
+      return void 0;
+    }
     if (CROSS_RULES.has(pr.derivationRule) !== (pr.discipline === "CROSS")) return void 0;
     if (MYUNGRI_RULE_IDS.has(pr.derivationRule) && pr.discipline !== "MYUNGRI") return void 0;
     const ancestry = pr.derivedFromPropositionIds.length;
-    if (pr.derivationRule === PRIMITIVE_RULE ? ancestry !== 0 : ancestry === 0) return void 0;
+    if (pr.derivationRule === PRIMITIVE_RULE) {
+      if (ancestry !== 0) return void 0;
+    } else {
+      const requiredAncestry = pr.derivationRule === "CONTESTED_SHARE" ? 1 : 2;
+      if (ancestry < requiredAncestry) return void 0;
+    }
+    if ((pr.conclusionType === "STRUCTURAL" || pr.conclusionType === "CAUSAL") && pr.direction !== "NONE") {
+      return void 0;
+    }
     const ad2 = pr.adequacy;
-    if (pr.supportingPremiseIds.length === 0 !== (ad2.supportAdequacy === "NONE")) return void 0;
-    if (pr.opposingPremiseIds.length === 0 !== (ad2.counterAdequacy === "NONE")) return void 0;
+    const lookUp = (ids) => (Array.isArray(ids) ? ids : []).map((id) => premiseById.get(id)).filter((x) => !!x);
+    const supportPremises = lookUp(pr.supportingPremiseIds);
+    const opposePremises = lookUp(pr.opposingPremiseIds);
+    if (sideAdequacy(supportPremises) !== ad2.supportAdequacy) return void 0;
+    if (sideAdequacy(opposePremises) !== ad2.counterAdequacy) return void 0;
+    if (pr.derivationRule === PRIMITIVE_RULE && MYUNGRI_PREMISE_TARGET_KINDS.has(pr.target.kind)) {
+      const sup2 = pr.supportingPremiseIds;
+      if (sup2.length !== 1 || pr.opposingPremiseIds.length !== 0) return void 0;
+      const src = premiseById.get(sup2[0]);
+      if (!src) return void 0;
+      if (src.role !== "ASSERTS") return void 0;
+      if (src.target.key !== pr.target.key) return void 0;
+      if (src.questionAxis !== pr.questionAxis || src.temporalScope !== pr.temporalScope) return void 0;
+      if (src.subject !== pr.subject) return void 0;
+      const relation = src.semanticRelation;
+      const expectedType = relation === "ABSENT" || relation === "ACTIVATES" ? "STRUCTURAL" : "DIRECTIONAL";
+      if (pr.conclusionType !== expectedType) return void 0;
+      const expectedDirection = relation === "DESTABILIZES" || relation === "OPPOSES" ? "UNFAVORABLE" : relation === "CONSTRAINS" ? "RESTRICTED" : relation === "CONNECTS" || relation === "ENABLES" ? "FAVORABLE" : "NONE";
+      if (pr.direction !== expectedDirection) return void 0;
+    }
     parsed.push(pr);
   }
   for (const pr of parsed) {
@@ -12420,8 +12463,20 @@ function parseDivinationVerdict(v) {
       if (p.subject !== subject) return void 0;
     }
   }
-  for (const id of Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds : []) {
+  const headlineIds = Array.isArray(o.headlinePropositionIds) ? o.headlinePropositionIds : [];
+  for (const id of headlineIds) {
     if (!propositionIds.has(id)) return void 0;
+  }
+  const NON_ASSERTIVE_STANCES = /* @__PURE__ */ new Set(["INSUFFICIENT_DATA", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]);
+  if (parsed.length === 0 && !NON_ASSERTIVE_STANCES.has(o.direction)) return void 0;
+  if (headlineIds.length > 0) {
+    const headlines = parsed.filter((pr) => headlineIds.includes(pr.id));
+    const headlineStances = new Set(headlines.map((pr) => stanceOf(pr)));
+    const verdictIsFor = FOR_STANCES.includes(o.direction);
+    const verdictIsAgainst = AGAINST_STANCES.includes(o.direction);
+    const headlineHasFor = [...headlineStances].some((st) => FOR_STANCES.includes(st));
+    const headlineHasAgainst = [...headlineStances].some((st) => AGAINST_STANCES.includes(st));
+    if (verdictIsFor && headlineHasAgainst || verdictIsAgainst && headlineHasFor) return void 0;
   }
   const str2 = (x, fallback = "") => typeof x === "string" ? x : fallback;
   const strArr = (x) => isStringArray2(x) ? [...x] : [];
@@ -12891,6 +12946,9 @@ function classifyContinuationIntent(question, hasPriorDecision) {
   return "NEW_QUESTION";
 }
 
+// src/features/chat/server/serverConsultationTypes.ts
+var MALFORMED_PRIOR_DECISION = /* @__PURE__ */ Symbol("MALFORMED_PRIOR_DECISION");
+
 // src/features/chat/server/buildServerConsultation.ts
 var MAX_CONTEXT_TURNS = 12;
 var MAX_TURN_CHARS = 4e3;
@@ -12976,14 +13034,22 @@ async function buildServerConsultation(request, deps) {
   if (selectedContext === null) return { ok: false, reason: "INVALID_INPUT" };
   let graphExtended = false;
   const followUpIntent = classifyFollowUpIntent(question);
-  const mayContinue = classifyContinuationIntent(question, true) !== "NEW_QUESTION";
+  const continuationIfHealthy = classifyContinuationIntent(question, true);
+  const mayContinue = continuationIfHealthy !== "NEW_QUESTION";
   let followUpDirective = null;
   let followUpVersionMismatch = false;
   let previousDecision = null;
   let previousMeta = null;
+  let priorHistoryMalformed = false;
   if ((followUpIntent !== "NONE" || mayContinue) && deps.loadPreviousDecision) {
     try {
-      previousMeta = await deps.loadPreviousDecision();
+      const loaded = await deps.loadPreviousDecision();
+      if (loaded === MALFORMED_PRIOR_DECISION) {
+        previousMeta = null;
+        priorHistoryMalformed = true;
+      } else {
+        previousMeta = loaded;
+      }
     } catch {
       previousMeta = null;
     }
@@ -13003,6 +13069,9 @@ async function buildServerConsultation(request, deps) {
   if (followUpIntent === "WHY") {
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
+  } else if (priorHistoryMalformed && continuationIfHealthy === "REFINE_EXISTING") {
+    grounding = { status: "unavailable", reason: "calculation_failed" };
+    followUpDirective = "[후속 지침 — 이전 상담 복원 불가] 이전 상담 기록을 이번 답변에 안전하게 이어붙일 수 없습니다. 새로운 판정을 지어내지 말고, 이전 상담 내용을 지금 확인할 수 없다는 점을 안내한 뒤 원하시는 부분을 다시 구체적으로 질문해 달라고 정중히 요청하십시오.";
   } else {
     try {
       grounding = toSafeGrounding(
@@ -14697,6 +14766,7 @@ export {
   DEFAULT_TERRA_MODEL,
   HARD_MAX_OUTPUT_TOKENS,
   LLM_RATE_LIMITED_REQUEST_TYPES,
+  MALFORMED_PRIOR_DECISION,
   MAX_BIRTH_FIELD_CHARS,
   MAX_CONTEXT_ITEMS,
   MAX_CONTEXT_ITEM_CHARS,

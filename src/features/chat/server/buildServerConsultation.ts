@@ -57,6 +57,7 @@ import {
 import type { ConsultationDomain } from './consultationDomain';
 import type { ChatMessage } from '@/features/chat/types/chat';
 import type { BirthInfoDraft, ConsultationDraft } from '@/features/consultation';
+import { MALFORMED_PRIOR_DECISION } from './serverConsultationTypes';
 import type {
   ConsultationDecisionMeta,
   ServerConsultationDeps,
@@ -230,14 +231,32 @@ export async function buildServerConsultation(
   // downstream was dead. The load condition now also covers a question that is syntactically DEPENDENT on the
   // previous turn. `true` is passed here deliberately: this is the "could this be a continuation at all?"
   // probe, asked before we know whether a prior decision exists; the real classification happens after.
-  const mayContinue = classifyContinuationIntent(question, true) !== 'NEW_QUESTION';
+  // V4F §8 — the same probe, captured so the REFINE_EXISTING/REEVALUATE_NOW distinction survives even when
+  // the load below turns out to be malformed and `previousMeta` has to be treated as null.
+  const continuationIfHealthy = classifyContinuationIntent(question, true);
+  const mayContinue = continuationIfHealthy !== 'NEW_QUESTION';
   let followUpDirective: string | null = null;
   let followUpVersionMismatch = false;
   let previousDecision: PreviousDecision | null = null;
   let previousMeta: ConsultationDecisionMeta | null = null;
+  // V4F §8/§9 — NO_PRIOR_HISTORY vs PRIOR_HISTORY_EXISTS_BUT_IS_INVALID.
+  //
+  // V4E made the GRAPH fail closed (a malformed persisted verdict is rejected). This is what fails closed on
+  // the LOAD: before, a row that existed but failed validation and a row that never existed both collapsed to
+  // the identical `null`, so an ordinary dependent follow-up ("돈은?", "왜?", "결혼하면?") over a malformed row
+  // classified exactly like the first turn of a brand-new conversation and silently answered as a fresh
+  // primary reading — the same "fail-open through the error path" failure §5 closed for extension, reachable
+  // one step earlier, at the load. `priorHistoryMalformed` is read once below, only to stop that.
+  let priorHistoryMalformed = false;
   if ((followUpIntent !== 'NONE' || mayContinue) && deps.loadPreviousDecision) {
     try {
-      previousMeta = await deps.loadPreviousDecision();
+      const loaded = await deps.loadPreviousDecision();
+      if (loaded === MALFORMED_PRIOR_DECISION) {
+        previousMeta = null;
+        priorHistoryMalformed = true;
+      } else {
+        previousMeta = loaded;
+      }
     } catch {
       previousMeta = null;
     }
@@ -276,6 +295,23 @@ export async function buildServerConsultation(
   if (followUpIntent === 'WHY') {
     grounding = toSafeGrounding(groundingFromStoredDecision(previousMeta) ?? GROUNDING_UNAVAILABLE);
     if (!followUpDirective) grounding = GROUNDING_UNAVAILABLE;
+  } else if (priorHistoryMalformed && continuationIfHealthy === 'REFINE_EXISTING') {
+    // V4F §9 — MALFORMED HISTORY FAILS CLOSED.
+    //
+    // An ordinary dependent follow-up whose prior decision row exists but could not be validated must NOT
+    // fall through to the fresh-grounding branch below: that would run the engines at the CURRENT instant and
+    // hand back an unrelated first reading dressed as a continuation of one that no longer exists. No engine
+    // runs here and no professional verdict is claimed — the same honest `unavailable` state the WHY branch
+    // above already uses when it has nothing to restore.
+    //
+    // REEVALUATE_NOW is unaffected: `continuationIfHealthy` was computed with `hasPriorDecision: true`
+    // BEFORE the load above, and an explicit re-evaluation marker in `classifyContinuationIntent` is checked
+    // ahead of `hasPriorDecision` — so "지금 다시 보면?" still reaches the fresh-grounding branch below
+    // regardless of whether history was malformed, exactly as G5 requires.
+    grounding = { status: 'unavailable', reason: 'calculation_failed' };
+    followUpDirective = '[후속 지침 — 이전 상담 복원 불가] 이전 상담 기록을 이번 답변에 안전하게 이어붙일 수 없습니다. '
+      + '새로운 판정을 지어내지 말고, 이전 상담 내용을 지금 확인할 수 없다는 점을 안내한 뒤 원하시는 부분을 '
+      + '다시 구체적으로 질문해 달라고 정중히 요청하십시오.';
   } else {
     // V4C §23/§24 — A REFINEMENT INHERITS THE ORIGINAL EVALUATION INSTANT (decided above, §22).
     //
