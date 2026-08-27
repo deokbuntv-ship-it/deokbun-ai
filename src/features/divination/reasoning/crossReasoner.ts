@@ -46,6 +46,8 @@ const RESOLUTION_KIND: Record<string, ContradictionResolutionKind> = {
 export type CrossReasonInput = {
   question: string;
   questionDomain: JudgmentDomain;
+  /** Canonical chart-owner subject supplied by the production grounding boundary. */
+  subject?: string;
   questionIntent?: QuestionIntent;
   /** V4D §10 — the matter the question named. Absent → UNKNOWN, which is fail-closed (see DerivationContext). */
   askedTarget?: SemanticTarget | null;
@@ -151,7 +153,7 @@ const evidenceFrom = (
 export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const asked = input.questionDomain;
   const intent = input.questionIntent ?? 'OUTCOME';
-  const subject = input.propositions?.[0]?.subject ?? '본인';
+  const subject = input.subject ?? input.propositions?.[0]?.subject ?? '본인';
   const applicable = input.judgments.filter((j) => j.applicable);
   const ctx: DerivationContext = {
     subject, questionIntent: intent, askedAxis: asked, askedTarget: input.askedTarget ?? null,

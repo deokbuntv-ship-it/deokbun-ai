@@ -15,6 +15,8 @@ import type { DivinationPremise, ReasonedProposition, SemanticTarget } from './r
 export type CrossJudgeInput = {
   question: string;
   questionDomain: JudgmentDomain;
+  /** Canonical chart-owner subject. Required by production callers; legacy/synthetic callers may omit it. */
+  subject?: string;
   judgments: DivinationJudgment[];
   asksTiming: boolean;
   /** Server evaluation instant, preserved into the verdict so follow-ups share the temporal frame. */
@@ -41,6 +43,7 @@ export function judgeCrossReasoned(input: CrossJudgeInput): CrossReasoning {
   return reasonCross({
     question: input.question,
     questionDomain: input.questionDomain,
+    subject: input.subject,
     questionIntent: input.questionIntent,
     askedTarget: input.askedTarget,
     judgments: input.judgments,

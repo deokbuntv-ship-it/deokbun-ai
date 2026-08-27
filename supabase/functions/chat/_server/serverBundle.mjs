@@ -9239,7 +9239,7 @@ var evidenceFrom = (premises, ids, axis) => ids.map((id) => premises.get(id)).fi
 function reasonCross(input) {
   const asked = input.questionDomain;
   const intent = input.questionIntent ?? "OUTCOME";
-  const subject = input.propositions?.[0]?.subject ?? "본인";
+  const subject = input.subject ?? input.propositions?.[0]?.subject ?? "본인";
   const applicable = input.judgments.filter((j) => j.applicable);
   const ctx = {
     subject,
@@ -9372,6 +9372,7 @@ function judgeCrossReasoned(input) {
   return reasonCross({
     question: input.question,
     questionDomain: input.questionDomain,
+    subject: input.subject,
     questionIntent: input.questionIntent,
     askedTarget: input.askedTarget,
     judgments: input.judgments,
@@ -10817,6 +10818,7 @@ async function buildConsultationGrounding(draft, deps, question) {
     return GROUNDING_UNAVAILABLE;
   }
   const withBirth = draft;
+  const canonicalSubject = draft.subject.displayName;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
   const ziweiParts = buildZiweiParts(withBirth.birthInfo);
   const ziwei = ziweiParts.evidence;
@@ -10841,7 +10843,7 @@ async function buildConsultationGrounding(draft, deps, question) {
       question: q,
       questionDomain,
       questionIntent,
-      subject: draft.subject?.displayName ?? "본인",
+      subject: canonicalSubject,
       hourKnown: judgeFacts?.hourKnown ?? false,
       natal: judgeFacts?.natal ?? null,
       activeDaewoon: judgeFacts?.activeDaewoon ?? null,
@@ -10857,6 +10859,7 @@ async function buildConsultationGrounding(draft, deps, question) {
     divinationVerdict = judgeCross({
       question: q,
       questionDomain,
+      subject: canonicalSubject,
       askedTarget: resolveAskedTarget(q),
       judgments,
       asksTiming,

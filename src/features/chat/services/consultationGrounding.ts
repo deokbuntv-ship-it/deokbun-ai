@@ -504,6 +504,7 @@ export async function buildConsultationGrounding(
     return GROUNDING_UNAVAILABLE;
   }
   const withBirth = draft as ConsultationDraft & { birthInfo: BirthInfoDraft };
+  const canonicalSubject = draft.subject.displayName;
   const now = deps.nowEpochSeconds ?? Math.floor(Date.now() / 1000);
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode). The CHART is kept
@@ -542,7 +543,7 @@ export async function buildConsultationGrounding(
       question: q,
       questionDomain,
       questionIntent,
-      subject: draft.subject?.displayName ?? '본인',
+      subject: canonicalSubject,
       hourKnown: judgeFacts?.hourKnown ?? false,
       natal: judgeFacts?.natal ?? null,
       activeDaewoon: judgeFacts?.activeDaewoon ?? null,
@@ -556,7 +557,7 @@ export async function buildConsultationGrounding(
       judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
     ];
     divinationVerdict = judgeCross({
-      question: q, questionDomain,
+      question: q, questionDomain, subject: canonicalSubject,
       askedTarget: resolveAskedTarget(q), judgments, asksTiming, questionIntent,
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
