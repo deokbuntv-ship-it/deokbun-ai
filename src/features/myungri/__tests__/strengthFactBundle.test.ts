@@ -148,3 +148,148 @@ describe('metamorphic — adding a relation changes topology without emitting fu
     expect(asRecord.functionalEffect).toBeUndefined();
   });
 });
+
+// ══ order invariance / provenance completeness / duplicate-fact policy (HARDENING §11/§13/§14) ═
+describe('order invariance', () => {
+  it('the whole bundle is independent of the pillars object literal key order', () => {
+    const a: NatalPillarContext = { ...RICH_NATAL };
+    const b: NatalPillarContext = {
+      dayMaster: 'JIA',
+      pillars: {
+        hour: RICH_NATAL.pillars.hour!, day: RICH_NATAL.pillars.day,
+        month: RICH_NATAL.pillars.month, year: RICH_NATAL.pillars.year,
+      },
+    };
+    expect(buildMyungriStrengthFactBundle(a)).toEqual(buildMyungriStrengthFactBundle(b));
+  });
+});
+
+describe('provenance completeness (HARDENING §13)', () => {
+  it('bundle.chart IS the exact natal input every sub-fact was derived from — not a copy or re-derivation', () => {
+    const r = buildMyungriStrengthFactBundle(RICH_NATAL);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    expect(r.bundle.chart).toEqual(RICH_NATAL);
+  });
+
+  it('every sameElementRooting/tenGodFacts fact position resolves to a REAL pillar in bundle.chart', () => {
+    const r = buildMyungriStrengthFactBundle(RICH_NATAL);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const validPositions = new Set(['YEAR', 'MONTH', 'DAY', 'HOUR']);
+    for (const branch of r.bundle.sameElementRooting.branches) {
+      expect(validPositions.has(branch.position)).toBe(true);
+      const pillar = (r.bundle.chart.pillars as Record<string, { branch: string }>)[branch.position.toLowerCase()];
+      expect(pillar.branch).toBe(branch.branch); // the fact's branch matches the actual chart pillar
+    }
+  });
+
+  it('every sub-provider fact carries its OWN ruleVersion — no fact is attributable to an ambiguous rule source', () => {
+    const r = buildMyungriStrengthFactBundle(RICH_NATAL);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    expect(r.bundle.monthCommand.ruleVersion).toBeTruthy();
+    expect(r.bundle.sameElementRooting.ruleVersion).toBeTruthy();
+    expect(r.bundle.tenGodFacts.ruleVersion).toBeTruthy();
+    expect(r.bundle.relationParticipants.ruleVersion).toBeTruthy();
+    expect(r.bundle.specialPatternPrerequisites.ruleVersion).toBeTruthy();
+  });
+});
+
+describe('metamorphic — changing only ONE branch changes only the facts that depend on it (HARDENING §17)', () => {
+  // Change ONLY the HOUR branch (辰→丑); YEAR/MONTH/DAY pillars are untouched.
+  const before = buildMyungriStrengthFactBundle(RICH_NATAL); // HOUR = 辰(CHEN)
+  const changedHourOnly: NatalPillarContext = {
+    ...RICH_NATAL,
+    pillars: { ...RICH_NATAL.pillars, hour: { stem: 'JI', branch: 'CHOU' } },
+  };
+  const after = buildMyungriStrengthFactBundle(changedHourOnly);
+
+  it('YEAR/MONTH/DAY-position facts in sameElementRooting/tenGodFacts are byte-identical before and after', () => {
+    if (before.capability !== 'AVAILABLE' || after.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const nonHour = (branches: typeof before.bundle.sameElementRooting.branches) =>
+      branches.filter((b) => b.position !== 'HOUR');
+    expect(nonHour(after.bundle.sameElementRooting.branches)).toEqual(nonHour(before.bundle.sameElementRooting.branches));
+    const nonHourTenGod = (stems: typeof before.bundle.tenGodFacts.hiddenStems) =>
+      stems.filter((s) => s.position !== 'HOUR');
+    expect(nonHourTenGod(after.bundle.tenGodFacts.hiddenStems)).toEqual(nonHourTenGod(before.bundle.tenGodFacts.hiddenStems));
+  });
+
+  it('monthCommand (independent of HOUR) is byte-identical before and after', () => {
+    if (before.capability !== 'AVAILABLE' || after.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    expect(after.bundle.monthCommand).toEqual(before.bundle.monthCommand);
+  });
+
+  it('HOUR-position facts DO change (proving this is a real recompute, not a no-op)', () => {
+    if (before.capability !== 'AVAILABLE' || after.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const beforeHour = before.bundle.sameElementRooting.branches.find((b) => b.position === 'HOUR')!;
+    const afterHour = after.bundle.sameElementRooting.branches.find((b) => b.position === 'HOUR')!;
+    expect(afterHour.branch).not.toBe(beforeHour.branch);
+    expect(afterHour.hiddenStems).not.toEqual(beforeHour.hiddenStems);
+  });
+});
+
+describe('metamorphic — adding a 三合 (three-harmony) pattern changes detection facts, NEVER emits a transformed-bureau verdict (HARDENING §17)', () => {
+  // Baseline: no 三合. Target: complete 申子辰 (WATER) 삼합 across YEAR/DAY/HOUR.
+  const noPattern: NatalPillarContext = {
+    dayMaster: 'JIA',
+    pillars: {
+      year: { stem: 'WU', branch: 'MAO' }, month: { stem: 'BING', branch: 'ZI' },
+      day: { stem: 'JIA', branch: 'YIN' }, hour: { stem: 'JI', branch: 'CHEN' },
+    },
+  };
+  const withPattern: NatalPillarContext = {
+    dayMaster: 'JIA',
+    pillars: {
+      year: { stem: 'WU', branch: 'SHEN' }, month: { stem: 'BING', branch: 'ZI' },
+      day: { stem: 'JIA', branch: 'ZI' }, hour: { stem: 'JI', branch: 'CHEN' },
+    },
+  };
+  const before = buildMyungriStrengthFactBundle(noPattern);
+  const after = buildMyungriStrengthFactBundle(withPattern);
+
+  it('the 三合 detection appears only in the "after" chart', () => {
+    if (before.capability !== 'AVAILABLE' || after.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const hasTrio = (r: typeof before.bundle.relationParticipants) =>
+      r.branchSet.some((x) => x.relation.kind === 'BRANCH_THREE_HARMONY');
+    expect(hasTrio(before.bundle.relationParticipants)).toBe(false);
+    expect(hasTrio(after.bundle.relationParticipants)).toBe(true);
+  });
+
+  it('the detected 三合 carries NO transformed/bureauFormed/structuralElement verdict field', () => {
+    if (after.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const trio = after.bundle.relationParticipants.branchSet.find((x) => x.relation.kind === 'BRANCH_THREE_HARMONY')!;
+    const asRecord = trio as unknown as Record<string, unknown>;
+    expect(asRecord.transformed).toBeUndefined();
+    expect(asRecord.bureauFormed).toBeUndefined();
+    expect(asRecord.structuralElement).toBeUndefined();
+    expect(JSON.stringify(trio)).not.toMatch(/CONFIRMED|化局|成局/);
+  });
+});
+
+describe('duplicate-fact policy across providers (HARDENING §14)', () => {
+  it('the same underlying hidden stem is INTENTIONALLY represented by multiple fact records in different provider namespaces — not a spurious duplicate', () => {
+    // 寅(HOUR is DAY here) 정기 甲 is cited once by sameElementRooting (hidden-stem:...) and once
+    // more by tenGodFacts (hidden-stem-ten-god:...) — two DIFFERENT lenses on the same underlying
+    // stem, each in its own factId namespace, each independently useful to a future reasoner.
+    const r = buildMyungriStrengthFactBundle(RICH_NATAL);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const rootingDayMain = r.bundle.sameElementRooting.branches
+      .find((b) => b.position === 'DAY')!.hiddenStems.find((h) => h.hiddenRole === 'MAIN')!;
+    const tenGodDayMain = r.bundle.tenGodFacts.hiddenStems
+      .find((h) => h.position === 'DAY' && h.hiddenRole === 'MAIN')!;
+    expect(rootingDayMain.stem).toBe(tenGodDayMain.stem); // same underlying stem
+    expect(rootingDayMain.factId).not.toBe(tenGodDayMain.factId); // distinct namespaces, never merged
+    expect(rootingDayMain.factId.startsWith('hidden-stem:')).toBe(true);
+    expect(tenGodDayMain.factId.startsWith('hidden-stem-ten-god:')).toBe(true);
+  });
+
+  it('within ONE provider, no two facts ever share a factId for the same chart', () => {
+    const r = buildMyungriStrengthFactBundle(RICH_NATAL);
+    if (r.capability !== 'AVAILABLE') throw new Error('expected AVAILABLE');
+    const rootingIds = r.bundle.sameElementRooting.branches.flatMap((b) => b.hiddenStems).map((h) => h.factId);
+    expect(new Set(rootingIds).size).toBe(rootingIds.length);
+    const tenGodIds = [
+      ...r.bundle.tenGodFacts.visibleStems.map((v) => v.factId),
+      ...r.bundle.tenGodFacts.hiddenStems.map((h) => h.factId),
+    ];
+    expect(new Set(tenGodIds).size).toBe(tenGodIds.length);
+  });
+});

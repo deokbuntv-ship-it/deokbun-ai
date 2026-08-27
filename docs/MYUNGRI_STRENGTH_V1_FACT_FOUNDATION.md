@@ -149,3 +149,124 @@ YONGSHIN_JUDGMENT_ADDED = NO
    this bundle — never added as a new field inside `sameElementRooting.ts` et al., which must stay
    pure fact providers indefinitely, independent of how many times the doctrine documents are
    revised.
+
+## 9. FACT FOUNDATION FREEZE CONTRACT
+
+Added by the HARDENING sprint (base `e365f847d06bda741274fd49ff1f1970e68946a0`). This section is the
+authoritative, load-bearing contract for everything downstream of §1–§8 — a future Strength Reasoner,
+and any future edit to this fact layer, must satisfy it. Enforced by
+`sameElementRooting.test.ts`, `tenGodFacts.test.ts`, `generalSeasonalPhase.test.ts`,
+`relationParticipants.test.ts`, `specialPatternPrerequisites.test.ts`, `strengthFactBundle.test.ts`,
+`detectionEffectFirewall.test.ts` (compile-time + runtime), and
+`factFoundationFixtureCorpus.test.ts` (600 deterministic chart fixtures).
+
+### 9.1 FACT LAYER MAY PRODUCE
+
+- Raw stem/branch/hidden-stem identity: element, yin-yang polarity, hidden-stem qi-tier role
+  (RESIDUAL/MIDDLE/MAIN), pillar position, chart-relative Day Master identity.
+- Existence booleans relating a hidden stem to the Day Master: same element / same stem / same
+  polarity — never a rank, score, or weighting over them.
+- Raw `TenGod` identity (all 10 values) for any visible or hidden stem — never a role-group
+  (비겁/인성/식상/재성/관성) aggregation with a support/drain side tag attached.
+- Raw element/role-category COUNTS and POSITIONS (visible, hidden, same-element-root) — never a
+  ratio, percentage, or dominance threshold over them.
+- 旺相休囚死 phase for ANY element against ANY reference element — never a WEAK/STRONG conclusion
+  derived from that phase.
+- Relation DETECTION (already existed) plus PARTICIPANT LINKAGE: exact pillar positions, stems,
+  branches, and candidate co-located root fact ids for every relation
+  `pillarRelations.ts`/`natalRelations.ts` detects — never whether the relation succeeds, transforms,
+  or damages anything it touches.
+- A stable `factId`/`ruleVersion` per citable fact (or, where a provider emits pure aggregates with
+  no natural per-record identity — `specialPatternPrerequisites.ts` — the fixed `role` enum or
+  `position`+`branch` pair serves as that stable identity instead; see §9.4).
+- Composition of all of the above into one `MyungriStrengthFactBundle`, fail-closed as a whole.
+
+### 9.2 FACT LAYER MUST NEVER PRODUCE
+
+Zero code path in `services/sameElementRooting.ts`, `tenGodFacts.ts`, `relationParticipants.ts`,
+`generalSeasonalPhase.ts`, `specialPatternPrerequisites.ts`, or `strengthFactBundle.ts` may ever
+assign a real (non-`undefined`) value to any of the following classes, now or after any future edit:
+
+- **Root function/survival** — `rootFunction`, `rootDestroyed`, `rootWeakened`, `rootSurvived`,
+  `rootStrength`, `rootRank`, `rootSurvivability`, `functionalForce`, `structuralDominance`.
+- **Relation effect/transformation** — `relationEffect`, `transformed`, `transformationSucceeded`,
+  `huaCheng`, `bureauFormed`, `structuralElement`, `combinationSuccessful`, `functionalEffect`,
+  `effect`.
+- **Special-pattern verdict** — `specialPatternVerdict`, `specialPatternStatus`,
+  `specialPatternConfirmed`, `congCaiCandidate`, `congGuanShaCandidate`, `congErCandidate`,
+  `specialPatternScore`, or any 從强/從財/從官殺/從兒/專旺/眞從/假從 status value.
+- **Strength verdict** — `strength`, `confidence`, `weak`/`strong`/`balanced` booleans or labels, any
+  of the seven bands (극신약/신약/중화신약/중화/중화신강/신강/극신강).
+- **Climate/Yongshin** — `climate`, `yongshin`, or any 억부/조후/통관/병약용신 selection.
+
+`strengthFactBundle.ts`'s `future` object is the ONE deliberate, documented exception to "these key
+names never appear": its six keys are named exactly after these forbidden concepts, but every value
+is permanently `undefined` and no code path ever assigns a real one — `JSON.stringify` drops them
+entirely, so they contribute nothing to any actual serialized bundle. This is verified at both the
+type level and the runtime/JSON level (§9.5).
+
+### 9.3 Fact ID stability
+
+Every per-record `factId` is built from structural components ONLY — chart layer, pillar position,
+stem/branch identity, hidden-stem role, relation kind, and relation participants — and is proven
+(not merely asserted) to be:
+
+- **Repeatable**: identical across two independent computations of the same chart.
+- **Independent of object-literal key order**: the `pillars: {year, month, day, hour}` object may be
+  written in any key order with no change to any factId (every provider iterates a hardcoded
+  position order internally, never `Object.keys(natal.pillars)`).
+- **Free of display text**: no factId contains Korean characters or any localized wording.
+- **Free of incidental array-index dependence** (`relationParticipants.ts` specifically): the leading
+  numeric index in `stem-relation-participants:${i}:...` etc. is a scan-order label, not a
+  disambiguator — stripping it still leaves every factId within one chart unique, because the
+  structural suffix (positions + relation kind) is already a complete key on its own.
+
+### 9.4 Provenance completeness
+
+Every fact traces to an exact pillar position, stem/branch value, and (where applicable) hidden-stem
+role, plus its provider's own `ruleVersion` constant — never opaque prose-only evidence.
+`specialPatternPrerequisites.ts` is the one provider whose facts are aggregates (counts, position
+lists) rather than one-record-per-occurrence: it has no synthesized `factId`, and its
+`sameElementRootPositions` field is a direct, order-preserving REDUCTION of
+`sameElementRooting.ts`'s own `sameElementRoots` (not a second independent derivation) — proven by a
+dedicated cross-check test, not merely documented.
+
+### 9.5 Detection/effect firewall
+
+Proven at two independent levels (`detectionEffectFirewall.test.ts`):
+
+1. **Compile-time**: for every exported fact type, `Extract<keyof T, ForbiddenKey>` is asserted
+   `never` — if any future edit adds a forbidden key to any of these types, the codebase fails to
+   type-check, not merely fails a test.
+2. **Runtime**: a JSON sweep across varied fact bundles (plus all 600 fixtures in
+   `factFoundationFixtureCorpus.test.ts`) confirms no forbidden key or forbidden verdict string
+   appears anywhere in actual serialized output.
+
+### 9.6 Rejected old-strength dependency firewall
+
+`services/natalStrength.ts` and `services/currentStrength.ts` (the rejected 18-cell `RULE_TABLE`,
+root-count bucketing, support/drain dominance comparison, seven-band threshold, special-pattern/
+transformation/root-damage/Yongshin assumptions) are **not imported, called, or transitively
+depended upon** by any file in this fact layer. Verified by tracing the full import graph of all six
+new providers down to their frozen primitives (`pillarFacts.ts`, `natalRelations.ts`,
+`monthCommand.ts`, `pillarRelations.ts`, and the `interpretation` barrel) and grepping that entire
+transitive closure for `natalStrength|currentStrength|dayMasterStrengthInputs` — zero matches outside
+of comments explaining why they were deliberately not reused.
+`TRANSITIVE_OLD_STRENGTH_DEPENDENCY = NO`.
+
+### 9.7 Day Master representation
+
+The Day Master's own stem is deliberately excluded from `tenGodFacts.ts`'s `visibleStems` (a stem has
+no ten-god relation to itself) — this is an intentional exclusion, not an "does not exist" gap: the
+Day Master identity is still exposed unambiguously exactly once, at `dayMaster` (top-level) and inside
+`sameElementRooting.ts`'s `dayMaster: DayMasterIdentityFact`. The Day branch's own hidden stems
+(일지 지장간) remain fully catalogued in both `hiddenStems` arrays — only the visible DAY-position
+ten-god slot is (correctly) absent.
+
+### 9.8 Order invariance and duplicate-fact policy
+
+Every provider's output is proven independent of the `pillars` object literal's key order. The same
+underlying hidden stem legitimately appears as MULTIPLE distinct fact records across DIFFERENT
+providers (e.g. once in `sameElementRooting`'s `hidden-stem:` namespace, once in `tenGodFacts`'s
+`hidden-stem-ten-god:` namespace) — this is intentional multi-lens citation, never merged. Within any
+single provider's own output for one chart, no two facts ever share a `factId`.
