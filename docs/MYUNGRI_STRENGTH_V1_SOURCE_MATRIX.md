@@ -1,9 +1,10 @@
-# MYUNGRI_STRENGTH_V1.3 — Source Matrix (Final Doctrine Closure)
+# MYUNGRI_STRENGTH_V1.4 — Source Matrix (Bounded Remediation)
 
-> Companion to `MYUNGRI_STRENGTH_V1_CANONICAL_DOCTRINE.md`. **Reconciled in V1.3 (audit finding D9).**
-> V1.2 left this file knowingly inconsistent with the corrected doctrine — six rows contradicted it outright
-> and the citation-layer vocabulary had no column at all, which made the layer discipline unenforceable and
-> therefore decorative. Every affected row is corrected below.
+> Companion to `MYUNGRI_STRENGTH_V1_CANONICAL_DOCTRINE.md`. **Re-reconciled in V1.4.** V1.3 closed the
+> V1.2 contradictions and added the citation-layer column; an independent audit then found this file still
+> carried **material incorrect claims** — chiefly that 任鐵樵 is silent on 專旺's season (he is not), and a
+> 從財/從官殺 entry test built on a clause that belongs to 從勢. Those are corrected, and every G-row's
+> status is brought into line with §10.6's definitive table: **no pattern confirms in V1.**
 >
 > ## Citation layer vocabulary (new column, V1.3)
 >
@@ -65,13 +66,15 @@
 
 | RULE_ID | RULE_SUMMARY | TEXT_LAYER | NAMED_COMMENTATOR | SOURCE_LOCATION | RUNTIME_AUTHORITY | DISPUTED | CANONICAL_STATUS | CONFIDENCE |
 |---|---|---|---|---|---|---|---|---|
-| **SS-01** | Two-axis decomposition: 得時/失時 (seasonal) × 黨眾/助寡 (faction) | `NAMED_COMMENTARY` — 「大致得時為旺，失時為衰；黨眾為強，助寡為弱」 | 徐樂吾 | 子平真詮評註 ch.6 | **BINDING** (organizing structure) | None located | ADOPT — *Deokbuni V1 adopts 徐樂吾's decomposition* | MEDIUM |
-| **SS-02** | Faction membership: 비겁+인성 vs 식상+재성+관살 | `DEOKBUNI_OPERATIONALIZATION` of an undisputed Ten-God taxonomy | — | — | BINDING | 徐樂吾 does not state what counts as a 黨 member | ADOPT | — |
-| **SS-03** | `NUMEROUSNESS_FACT` — enumerable LIST of occurrences, not a bare number | `DEOKBUNI_OPERATIONALIZATION` | — | doctrine §7.3.3 | BINDING | — | ADOPT | — |
-| **SS-04** | Transparent count comparison allowed; hidden additive scoring forbidden | `DEOKBUNI_OPERATIONALIZATION` | — | doctrine §3.5 | **BINDING** | Reverses V1.2's blanket ban on counting | ADOPT | — |
-| **SS-05** | Stage-1 total 18-cell decision table | `DEOKBUNI_OPERATIONALIZATION` over SS-01 + MC-10 + ROOT-B10 | — | doctrine §12.1 | BINDING | Corner cells doctrinally grounded; middle cells are Deokbuni's | ADOPT | — |
-| **SS-06** | Stage-2 intensity; Stage-3 seven-band renderer | `DEOKBUNI_OPERATIONALIZATION` | — | doctrine §12.2–12.3 | BINDING **as product rendering** | Explicitly **not** claimed as a classical seven-level taxonomy | ADOPT | — |
-| **SS-07** | Faction count is never sole authority for a verdict | `ORIGINAL_TEXT` basis (MC-10) + policy | 沈孝瞻 | 子平真詮 ch.6 | **BINDING** | — | ADOPT | HIGH |
+| **SS-01** | Two-axis decomposition: 得時/失時 (seasonal) × 黨眾/助寡 (faction) | `NAMED_COMMENTARY` — 「大致得時為旺，失時為衰；黨眾為強，助寡為弱」 | 徐樂吾 | 子平真詮評註 ch.6 | **ADVISORY only in V1.4.** The seasonal axis is adopted (MC-09); the 黨眾/助寡 axis is **NOT** — it means factional abundance *with functional backing*, not an occurrence tally, and no sourced decision procedure was located | Named | ADOPT (seasonal half) / DEFER (faction half) | MEDIUM |
+| **SS-02** | Faction membership: 비겁+인성 vs 식상+재성+관살 | `DEOKBUNI_OPERATIONALIZATION` of an undisputed Ten-God taxonomy | — | — | Grouping only; carries no verdict authority | — | ADOPT | — |
+| **SS-03** | `NUMEROUSNESS_RAW_FACT` — an enumerable occurrence **inventory**, not a number | `DEOKBUNI_OPERATIONALIZATION` | — | doctrine §7.3.3 | **DIAGNOSTIC EVIDENCE ONLY.** May not select a strength family | — | ADOPT | — |
+| **SS-04** | Transparent inventory allowed; equal-weight tally as verdict forbidden; weighted score forbidden | `DEOKBUNI_OPERATIONALIZATION` | — | doctrine §3.5, §23.3 | **BINDING** | **V1.4 correction:** V1.3 allowed a transparent *comparison* to help decide a family. That was the vote model; it is withdrawn | ADOPT | — |
+| ~~**SS-05**~~ | ~~Stage-1 total 18-cell decision table~~ | — | — | — | **WITHDRAWN IN V1.4** — its deciding axis was SS-01's faction half; several middle cells underdetermined; #6 embedded an unsourced single-factor cap | — | REJECT (`HISTORICAL_REJECTED_DESIGN`) | — |
+| ~~**SS-06**~~ | ~~Stage-2 intensity; canonical seven-band~~ | — | — | — | **WITHDRAWN IN V1.4** — Stage 2 was not total, and its `CLEAR`/`EXTREME` boundary rested on undefined "limiting evidence". The **renderer's purity** is retained for a future batch | — | REJECT (Stage 2) / DEFER (band status) | — |
+| **SS-07** | No count comparison may be *any* verdict authority | `ORIGINAL_TEXT` basis (MC-10) + policy | 沈孝瞻 | 子平真詮 ch.6 | **BINDING**, strengthened in V1.4 from "never sole authority" to "never any authority" | — | ADOPT | HIGH |
+| **SS-08 (new, V1.4)** | `BEARING_CAPACITY` — a rooted DM can bear, regardless of season | `NAMED_COMMENTARY` — 「日干不論月令休囚，只要四柱有根，便能受財官食神而當傷官七殺」 | 任鐵樵 | 滴天髓闡微 | **BINDING** — the one canonical ordinary output of V1 (§7.3.4). Explicitly **not** a strength band | None located | ADOPT | HIGH |
+| **SS-09 (new, V1.4)** | Ordinary family WEAK/BALANCED/STRONG is `DEFERRED_V1` | `DEOKBUNI_OPERATIONALIZATION` (a scope decision) | — | doctrine §12.1 | BINDING | Requires SS-01's deferred faction half | ADOPT | — |
 
 ## Step F — Relation layer (§8) — RECONCILED IN V1.3
 
@@ -90,41 +93,60 @@
 
 | RULE_ID | RULE_SUMMARY | TEXT_LAYER | NAMED_COMMENTATOR | SOURCE_LOCATION | PRECONDITIONS | COUNTEREVIDENCE | REACHABILITY | DISPUTED | CANONICAL_STATUS | CONFIDENCE |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **G-從旺** | 四柱皆比劫 · 無官殺之制 · **有印綬之生** | `NAMED_COMMENTARY` | 任鐵樵 | 滴天髓闡微 六親論·從象 (第四十七) | 印 must be PRESENT (positive condition) | any 官殺 or 財 occurrence | `CAN_REACH_CONFIRMED` | **CORRECTED from "none material":** 子平真詮 does not use this vocabulary at all — a real, named school gap. V1.1's 徐樂吾 co-attribution **withdrawn as unverified** | ADOPT — *Deokbuni V1 adopts 任鐵樵* | HIGH |
-| **G-從强** | 印綬重重 · 比劫疊疊 · **日主又當令** · 絕無一毫財星官殺之氣 | `NAMED_COMMENTARY` | 任鐵樵 | same passage | 當令 mandatory (unlike 從旺) | any 財/官殺 occurrence, scoped to visible + 본기 | `CAN_REACH_CONFIRMED` | **CORRECTED:** the 從旺/從强 boundary is **source-level**, drawn by 任鐵樵 on three axes — not "school-dependent" as V1.1 said. The genuine dispute is at the modern-reception layer | ADOPT_WITH_CONDITION — depends on two disclosed operationalizations (重重/疊疊 = "two or more"; 絕無一毫 scope) | HIGH (source) / — (operationalizations) |
-| **G-專旺** | 或方或局全 + 不雜\<controller\>; **稼穡 = 四庫皆全** | `NAMED_COMMENTARY` (five-pattern list); `ORIGINAL_TEXT` for 獨象 verse | 任鐵樵 | 滴天髓闡微 形象第十一; 滴天髓 「獨象喜行化地，而化神要昌」 | branch configuration per sub-pattern | controlling element **only** (not 財/食傷) | `CAN_REACH_CONFIRMED` | **CORRECTED:** the LABEL 專旺格 has **no located classical attestation** (`MODERN_SYSTEMATIZATION`); 三命通會 does group the five. Season required by 子平真詮, silent in 任鐵樵/淵海子平 — named, unresolved. 三命通會 requires 亥 in 亥卯未, contradicting 方/局 equality | ADOPT_WITH_CONDITION | HIGH |
-| **G-從財** | `NO_ROOT` + WEALTH_CHANNEL uniquely occupied | `SELECTED_LINEAGE`; 眞/假 frame is `ORIGINAL_TEXT` | 任鐵樵 (何其獨旺) | 滴天髓 假從 verse + gloss; 從象 | exhaustive rootlessness | any 比劫/印 occurrence | `CAN_REACH_CONFIRMED` | 財+官殺 both present → `DOCTRINE_CONFLICT` | ADOPT_WITH_CONDITION | MEDIUM |
-| **G-從官殺** | `NO_ROOT` + CONTROL_CHANNEL uniquely occupied | `SELECTED_LINEAGE` | 任鐵樵 | as above | exhaustive rootlessness | any 比劫/印/**食傷** occurrence | `CAN_REACH_CONFIRMED` | none located | ADOPT_WITH_CONDITION | MEDIUM |
-| **G-從兒** | 月令 carries 食傷 · ∃財 · 食傷多也 | `ORIGINAL_TEXT` (verse) + `NAMED_COMMENTARY` (提綱/財 clauses) | 任鐵樵 | 滴天髓 順局 「從兒不管身強弱，只要吾兒又得兒」; 闡微 「必要食傷在提綱也」/「必要局中有財」 | **NO rootlessness requirement** | functionally-intact rooted 印 | **`CANDIDATE_ONLY_IN_V1`** — 食傷多也 unquantified | **CORRECTED from "thinnest-grounded… biased toward CANDIDATE_UNCONFIRMED":** 從兒 is the **best**-sourced pattern in the cluster (own verse + mechanism gloss). The V1.1 CANDIDATE bias was an unsourced thumb on the scale and is **deleted**; the current cap is a different thing — an unresolved quantifier | ADOPT | HIGH |
-| **G-從氣 / G-從勢** | Co-equal members of the same 任鐵樵 passage | `NAMED_COMMENTARY` | 任鐵樵 | 從象 | — | — | **`DEFERRED_FROM_V1`** | Not disputed — simply not selected | DEFER |
+| **G-從旺** | 四柱皆比劫 · 無官殺之制 · **有印綬之生** | `NAMED_COMMENTARY` | 任鐵樵 | 滴天髓闡微 六親論·從象 (第四十七) | 印 must be PRESENT (positive condition) | any 官殺/財 occurrence | **`CANDIDATE_ONLY_V1`** | 皆-scope (visible only? 지장간? which tiers?) is **not stated by the source** — V1.3 resolved it silently to control a CONFIRMED verdict; withdrawn | ADOPT (candidate) / REJECT (confirmation) | HIGH (clauses) / — (scope) |
+| **G-從强** | 印綬重重 · 比劫疊疊 · **日主又當令** · 絕無一毫財星官殺之氣 | `NAMED_COMMENTARY` | 任鐵樵 | same 從象 passage | 當令 mandatory (unlike 從旺) | 財/官殺 occurrences, reported unfiltered | **`CANDIDATE_ONLY_V1`** | **Two unsourced operationalizations withdrawn:** 重重/疊疊 = "two or more" and 絕無一毫 scoped to visible+본기. Both retained as `DEOKBUNI_EXPERIMENTAL_OPERATIONALIZATION` · `NOT_AUTHORIZED_FOR_CONFIRMED` | ADOPT (candidate) / REJECT (confirmation) | HIGH (clauses) / — (operationalizations) |
+| **G-專旺** | 或方或局全 + 不雜\<controller\>; **稼穡 = 四庫皆全**; **必要得時當令，遇旺逢生** | `NAMED_COMMENTARY` (five-pattern list + season clause); `ORIGINAL_TEXT` for the 獨象 verse | 任鐵樵 | 滴天髓闡微 形象第十一 | branch configuration per sub-pattern **and season** | controlling element **only** (not 財/食傷) | **`CANDIDATE_ONLY_V1`** | **V1.4 PROVENANCE CORRECTION:** V1.3 claimed 任鐵樵 is **silent on season** and manufactured a conflict with 子平真詮 on that basis. He is not — 形象第十一 states 「必要得時當令，遇旺逢生」. There is no such conflict; both require season. Confirmation still withheld because 不雜's scope is unstated and 遇旺逢生 is not reducible to a predicate | ADOPT (candidate) / REJECT (confirmation) | HIGH |
+| **G-從財** | `NO_ROOT` + WEALTH channel occupied (candidate prerequisite) | 眞/假 frame is `ORIGINAL_TEXT`; entry conditions `SOURCE_NOT_VERIFIABLE` | — | 滴天髓 假從 verse + gloss | exhaustive rootlessness | any 比劫/印 occurrence | **`CANDIDATE_ONLY_V1`** | **V1.4 CORRECTION:** the 「何其獨旺」 "uniquely occupied channel" entry test is **withdrawn** — that clause sits inside 從勢 and selects which force an already-qualifying 從勢 chart follows. It is not a 從財 entry test. 從財 is also not defined in the 從象 passage at all. 財+官殺 both present → `DOCTRINE_CONFLICT` | ADOPT (candidate) / REJECT (confirmation) | MEDIUM (frame) / — (entry) |
+| **G-從官殺** | `NO_ROOT` + CONTROL channel occupied (candidate prerequisite) | as 從財 | — | as 從財 | exhaustive rootlessness | 比劫/印 occurrences; 食傷 reported as counterevidence, not adjudicated | **`CANDIDATE_ONLY_V1`** | as 從財 — the 何其獨旺 reading is withdrawn here too | ADOPT (candidate) / REJECT (confirmation) | MEDIUM / — |
+| **G-從兒** | 月令 carries 食傷 · ∃財 · 食傷多也 | `ORIGINAL_TEXT` (verse) + `NAMED_COMMENTARY` (提綱/財 clauses) | 任鐵樵 | 滴天髓 順局 「從兒不管身強弱，只要吾兒又得兒」; 闡微 「必要食傷在提綱也」/「必要局中有財」 | **NO rootlessness requirement** (D1, unchanged) | functionally-intact rooted 印 → `DOCTRINE_CONFLICT` (scope disputed) | **`CANDIDATE_ONLY_V1`** | 食傷多也 unquantified and deliberately not quantified. Best-sourced pattern in the cluster; still not confirmable | ADOPT (candidate) / REJECT (confirmation) | HIGH |
+| **G-從氣 / G-從勢** | Co-equal members of the same 任鐵樵 從象 passage | `NAMED_COMMENTARY` | 任鐵樵 | 從象 | — | — | **`DEFERRED_V1`** | **V1.4 SOURCE CORRECTIONS:** 「不分強弱」 **is** in the 從勢 text (V1.3 called it unverifiable and dropped it) and appears twice; 從勢 covers **both** 何其獨旺 (one uniquely prosperous force) **and** 如三者均停 (all three balanced) — V1.3 asserted it did not cover the balanced case; 從氣 states a luck-direction rule only, with no entry test | DEFER | HIGH |
 | **G-眞假從** | 真從之象有幾人，假從亦可發其身 | **`ORIGINAL_TEXT`** | — | 滴天髓 假從; gloss 「日主弱矣，財官強矣，不能不從，中有所助者，便假」 | weak-DM family **only** | — | — | **CORRECTED from `SOURCE_CLASS_C` "not tied to one citable passage":** it **is** tied to one verse and is ORIGINAL_TEXT. V1.1 also **over-extended** it to 從旺/從强/專旺 — withdrawn | ADOPT (weak-DM family) / REJECT (strong-DM extension) | HIGH |
 | **G-COMPOSITION** | Cross-pattern composition, total mapping | `DEOKBUNI_OPERATIONALIZATION`; 從强⊃從旺 subtype relation is source-derived | — | doctrine §10.7 | — | — | — | 專旺 vs 從旺/從强 → `AMBIGUOUS_MULTI_CANDIDATE`; no source ranks them | ADOPT |
-
 ---
 
-## Cross-check (audit finding D9, brief §32)
+## Cross-check (brief §40) — bidirectional, re-run for V1.4
 
 **No orphan doctrine rules.** Every `RULE_ID` cited by the canonical doctrine has a row here:
 MC-01…MC-04, MC-09, MC-10, ROOT-B1…B5, ROOT-B10, ROOT-B11, SUPPORT-C1/C2/C6, D1/D2/D5, E2, E4,
-SS-01…SS-07, F-천간합-*, F-육합, F-삼합방합-*, F-충-FUNC, F-형/해/파, F-CONSERVATIVE,
+SS-01…SS-04, SS-07…SS-09 (SS-05/SS-06 withdrawn, retained struck through), F-천간합-*, F-육합,
+F-삼합방합-*, F-충-FUNC, F-형/해/파, F-CONSERVATIVE,
 G-從旺/從强/專旺/從財/從官殺/從兒/從氣/從勢/眞假從/COMPOSITION.
 
-**No orphan runtime-authoritative matrix rules.** Every row above marked `RUNTIME_AUTHORITY = BINDING` has a
-corresponding contract section in the canonical doctrine: MC-09 → §7.3.1 · MC-10 → §7.3.0/§12.1 ·
-ROOT-B10 → §7.3.2 · ROOT-B11 → §8.10 · SS-01…SS-07 → §3.5/§7.3/§12 · F-CONSERVATIVE → §8.9 ·
+**No orphan runtime-authoritative matrix rules.** Every row marked `RUNTIME_AUTHORITY = BINDING` has a
+corresponding contract section: MC-09 → §7.3.1 · MC-10 → §7.3.0 · ROOT-B10 → §7.3.2 · ROOT-B11 → §8.10 ·
+SS-02/03/04/07 → §3.5, §7.3.3 · **SS-08 → §7.3.4** · **SS-09 → §12.1** · F-CONSERVATIVE → §8.9 ·
 E2/E4 → §7.3/§9 · G-* → §10.1/§10.6/§10.7.
 
-**Withdrawn/deleted in V1.3, recorded so they cannot silently return:**
+**No contradictory status.** Every G-row's `V1_STATUS` matches §10.6's definitive table
+(six `CANDIDATE_ONLY_V1`, two `DEFERRED_V1`, zero `CONFIRMABLE_V1`), and no row claims a
+`RUNTIME_AUTHORITY` that its doctrine section withholds.
+
+**Withdrawn in V1.4, recorded so they cannot silently return:**
 
 | Item | Why |
 |---|---|
-| `E1` ordinal WEAK/MODERATE/STRONG effective force | Unsourced magnitude scale (finding D3) |
-| `DESTROYED` root state | No source supplies categorical destruction |
-| `WEAKENED` root state | Computable, but no consumer — decoration, not a contract |
-| 徐樂吾 co-attribution for 從旺/從强 | Never verified (§2.5 rule E) |
-| 眞從/假從 applied to 從旺/從强/專旺 | Over-extension; the verse's gloss scopes it to the weak-DM family |
-| G-從兒's "biased toward CANDIDATE_UNCONFIRMED" | Unsourced thumb on the scale |
-| "dominant force" / "near-total force" in every 從 pattern | Same unsourced construct as the deleted "decisive tilt" |
+| All six special-pattern `CONFIRMED` verdicts | Each rested on an undocumented scope choice or an unsourced quantifier (§10.6) |
+| 從强's 重重/疊疊 = "two or more" | Not in the source; retained only as `DEOKBUNI_EXPERIMENTAL_OPERATIONALIZATION` · `NOT_AUTHORIZED_FOR_CONFIRMED` |
+| 從强's 絕無一毫 = visible + 본기 scope | Same; and a reading adopted *because it makes the rule work* is not evidence of intent |
+| 從財/從官殺's 何其獨旺 "uniquely occupied channel" entry test | The clause belongs to **從勢**, selecting which force a qualifying 從勢 chart follows — not an entry test for these patterns |
+| The claim that **任鐵樵 is silent on 專旺's season** | False. 形象第十一 states 「必要得時當令，遇旺逢生」. The "conflict" V1.3 recorded with 子平真詮 did not exist |
+| The claim that 「不分強弱」 is unverifiable | False. It is in the 從勢 passage, twice |
+| The claim that 從勢 does not cover the balanced case | False. 「如三者均停，不分強弱」 covers it explicitly |
+| `SS-05` 18-cell Stage-1 table | Deciding axis was the deferred faction half; middle cells underdetermined; #6 embedded an unsourced single-factor cap |
+| `SS-06` Stage-2 intensity + canonical seven-band | Stage 2 was not total; its `CLEAR`/`EXTREME` boundary rested on undefined "limiting evidence" |
+| Equal-weight faction comparison as *any* verdict authority | The rejected vote model (§7.3.3) |
+| "directional tilt"; the boundary-proximity window trigger | Undefined judgments in the uncertainty model (§13) |
+| §10.7's `NO_ROOT` group-exclusivity proof | Placed 從兒 in a `NO_ROOT` group, contradicting D1's own correction |
+
+**Withdrawn in V1.3, still withdrawn:**
+
+| Item | Why |
+|---|---|
+| `E1` ordinal WEAK/MODERATE/STRONG effective force | Unsourced magnitude scale |
+| `DESTROYED` / `WEAKENED` root states | No source for categorical destruction; no consumer for weakening |
+| 徐樂吾 co-attribution for 從旺/從强 | Never verified |
+| 眞從/假從 applied to 從旺/從强/專旺 | The verse's gloss scopes it to the weak-DM family |
+| "dominant force" / "near-total force" | Same unsourced construct as "decisive tilt" |
 
 ## Explicitly excluded / deferred categories (carried forward)
 
@@ -133,7 +155,9 @@ E2/E4 → §7.3/§9 · G-* → §10.1/§10.6/§10.7.
 | 化氣格 · 兩神成象格 | DEFER | Thin/disputed completion criteria |
 | 從印格 (as a separate name) | REJECT | Collapses into 從强 |
 | 형 / 害 / 破 as strength authority | DEFER | Substantial unresolved disagreement — **not** asserted as zero effect |
-| Any specific 사령 day-count table | DEFER | Named editions disagree; none selected |
+| Any specific 사령 day-count table | DEFER | Named editions disagree; none selected. **P1, not P0** (V1.4) |
 | Any per-cell 궁통보감 climate table | DEFER | Belongs to a future Yongshin phase |
 | A universal existence-only special-structure disqualifier (V1's SG-0) | REJECT | Contradicted the document's own existence-vs-function principle |
-| 得令/得地/得勢 as a classical triple | **REJECT** | Not an attested triple; the citation offered for it did not survive verification. The three underlying facts are adopted **separately**, each under its own source |
+| 得令/得地/得勢 as a classical triple | REJECT | Not an attested triple; its supporting citation failed verification. The underlying facts are adopted separately |
+| Ordinary family WEAK/BALANCED/STRONG in V1 | **DEFER** (V1.4) | Requires the faction functional-context inference, which has no located decision procedure |
+| Canonical seven-band status in V1 | **DEFER** (V1.4) | The family it would subdivide is itself deferred |

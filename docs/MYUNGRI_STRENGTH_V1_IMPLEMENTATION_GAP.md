@@ -1,25 +1,28 @@
-# MYUNGRI_STRENGTH_V1.3 — Implementation Gap Register + DOCTRINE↔FACT MATRIX
+# MYUNGRI_STRENGTH_V1.4 — Implementation Gap Register + DOCTRINE↔FACT MATRIX
 
-> **Supersedes V1.1 of this file in full.** V1.1 listed six P0 gaps; **three of them are closed in code**
-> and V1.1 never noticed, while **three "DOCTRINE GAP CLOSED" claims in V1.1 are false** and are reopened
-> here. Every closure and every non-closure below was re-verified against the working tree on 2026-08-28 by
-> reading `src/features/myungri/services/**` and `src/features/myungri/index.ts` directly — not from any
-> prior document's summary.
+> **Supersedes V1.3 of this file.** The fact foundation is now **independently FROZEN**
+> (`FACT_FOUNDATION_CLASSIFICATION = A`) — no fact-layer code, test, fact id, root linkage, ten-god mapping,
+> relation-participant logic, or type firewall may be modified. This register therefore tracks **doctrine
+> and inference only**.
 >
-> **Bucket vocabulary (fixed by the governing brief — exactly five, no others):**
+> **V1.4's headline change:** `P0_DOCTRINE_GAPS` is empty **by narrowing, not by answering.** V1.3 claimed
+> five confirmable special patterns and a three-way strength family; each rested on something the sources do
+> not supply. Those claims are withdrawn (§B.1), and the underlying questions are recorded as a research
+> backlog in **B.6** — which does not block implementation.
+>
+> **Bucket vocabulary (exactly five, no others):**
 >
 > | Bucket | Means |
 > |---|---|
-> | `P0_FACT_GAP` | A deterministic function reading already-known chart data does not exist. No doctrine needed. |
-> | `P0_INFERENCE_GAP` | The rule is **already specified and adopted**; the code implementing it does not exist. |
-> | `P0_DOCTRINE_GAP` | There is **no adopted, sourced, threshold-free rule** to implement. Research or an owner decision, not code. |
-> | `P1_REFINEMENT` | Real but non-blocking: precision, convenience, or a join over facts that already stand alone. |
-> | `P2_LATER` | Out of scope for STRENGTH; may become blocking for a later phase (named explicitly). |
+> | `P0_FACT_GAP` | A deterministic function reading known chart data does not exist. **Empty — layer frozen.** |
+> | `P0_INFERENCE_GAP` | The rule is adopted; the code implementing it does not exist. **Expected and intended.** |
+> | `P0_DOCTRINE_GAP` | No adopted rule exists to implement, **and V1 claims one anyway**. Empty in V1.4 |
+> | `P1_REFINEMENT` | Real but non-blocking |
+> | `P2_LATER` | Out of scope for STRENGTH; may block a later phase |
 >
-> **Classification discipline enforced here (V1.1 violated it in both directions):** an unbuilt implementation
-> of an already-adopted rule is an **INFERENCE** gap, never a doctrine gap. Conversely, a rule whose only
-> executable form requires a count, a magnitude comparison, or a private cut on an ordered scale is a
-> **DOCTRINE** gap and stays one — writing prose about it in the canonical doctrine does not close it.
+> **Classification discipline:** an unbuilt implementation of an adopted rule is an **INFERENCE** gap. A rule
+> whose only executable form needs an invented cutoff is a **DOCTRINE** gap **only if V1 still claims it** —
+> if V1 withdraws the claim, the scope is bounded and the question moves to B.6.
 
 ---
 
@@ -65,43 +68,46 @@ The FACT/INFERENCE boundary is enforced at **two** independent levels (see
 
 ## B. Gap register
 
-### B.1 `P0_DOCTRINE_GAP` — no adopted, sourced, threshold-free rule exists to implement
+### B.1 `P0_DOCTRINE_GAP` — no adopted, sourced rule exists to implement
 
-> **STATUS CHANGE IN V1.3.** This section listed ten doctrine gaps. **Eight are now CLOSED** by the V1.3
-> canonical doctrine revision. The two that remain are genuine and are stated below without softening.
+> **V1.4 STATUS: EMPTY.** Not because every question was answered, but because **V1 authority was narrowed
+> to what the sources actually support.** Where V1.3 claimed a contract that rested on an undocumented scope
+> choice or an unsourced quantifier, V1.4 withdraws the claim rather than keeping an unsafe rule. A
+> withdrawn claim is not a doctrine gap — it is a bounded scope.
 >
-> The unlock was not new research — it was correcting an **over-strict rule of our own making**. V1.2 treated
-> every quantitative concept as forbidden scoring, which made 徐樂吾's own 黨眾/助寡 axis unusable and
-> cascaded into D-1, D-2 and D-3. Canonical doctrine §3.5 now separates *transparent numerousness* (allowed,
-> because the selected source reasons that way, and the occurrence list is emitted for inspection) from
-> *hidden scoring* (forbidden: weights, percentages, opaque cutoffs, count-as-sole-authority).
+> The questions themselves are recorded in **B.6 (`OPEN_SOURCE_QUESTIONS`)**, which is a research backlog,
+> not a blocker. None of them prevents the reasoner from being implemented against the V1.4 contracts.
 
-| Former gap | Status | Closed by |
+| Former gap | V1.4 status | Where it went |
 |---|---|---|
-| **D-1** faction (勢) axis not executable | **CLOSED** | §3.5 + §7.3.3 — 黨眾/助寡 retained as a transparent comparison over an emitted occurrence list; guarded by §12.1 so it is never the sole authority |
-| **D-2** seven-band boundary contracts | **CLOSED** | §12.1's total 18-cell table, §12.2 intensity, §12.3 pure renderer, §12.4 boundaries as cell identity |
-| **D-3** special-pattern gate | **CLOSED** | §10.1 rebuilt from verbatim-verified sources; "dominant force" deleted; §10.6 reachability now honest (5 of 6 reach CONFIRMED) |
-| **D-4** cross-pattern composition | **CLOSED** | §10.7 — total mapping, with structural exclusivity *proved* rather than asserted, and `AMBIGUOUS_MULTI_CANDIDATE` where no source ranks |
-| **D-5** 沖 outcome / orphaned WEAKENED | **CLOSED** | §8.9 status table + conservative policy; §8.10 deletes `DESTROYED` and `WEAKENED`, leaving three states each with exactly one named consumer |
-| **D-8** 지장간 scope convention | **CLOSED** (as a disclosure) | §10.1 從强 scopes 絕無一毫 to visible + 본기, labelled `DEOKBUNI_OPERATIONALIZATION`; 從兒's 提綱 scope defaults to 본기 with 중기/여기 → `CANDIDATE_UNCONFIRMED` |
-| **D-9** two canonical documents contradicting | **CLOSED** | `MYUNGRI_STRENGTH_V1_SOURCE_MATRIX.md` fully reconciled, with a citation-layer column, per-rule fields, and an explicit orphan cross-check |
-| **D-10** no Korean named lineage | **CLOSED as a gap, by scope decision** | V1.3 adopts 任鐵樵 as the selected lineage and says so (§2.5). The absence of a *named Korean authority* is now a deliberate, recorded scope decision rather than an unexplained hole. Adding one remains optional future work, not a blocker |
+| D-1 faction axis not executable | **RESOLVED BY NARROWING** | The equal-weight comparison is deleted as any verdict authority; the correct 黨眾/助寡 reading is deferred with a specified contract (§7.3.5). The ordinary family is `DEFERRED_V1` — an explicit, implementable scope, not a gap |
+| D-2 seven-band contracts | **RESOLVED BY NARROWING** | `NOT_CANONICAL_UNTIL_CALIBRATION` (§12.3). The renderer's purity contract is preserved for the future batch |
+| D-3 special-pattern gate | **RESOLVED BY NARROWING** | All six patterns `CANDIDATE_ONLY_V1` (§10.6). The gate's job is candidate detection plus ambiguity reporting, both fully specified |
+| D-4 cross-pattern composition | **CLOSED** | §10.7, rebuilt in V1.4 without the invalid `NO_ROOT` exclusivity proof |
+| D-5 沖 outcome / orphaned WEAKENED | **CLOSED** | §8.9 conservative policy; §8.10's three states, each with one named consumer. All stale four-state language reconciled |
+| **D-6** 사령 sub-period table | **RECLASSIFIED → `P1_REFINEMENT`** | See B.4/F-7. `D6_BLOCKS_REASONER = NO` — §12 reads the month phase, never the sub-period, and V1.4 removed the boundary-window trigger that was its only path into a decision |
+| **D-7** uncertainty granularity | **RECLASSIFIED → `NON_BLOCKING_OPEN_QUESTION`** | See B.6. `D7_BLOCKS_REASONER = NO` — §13's triggers are individually boolean and separately emitted; whether they *also* need a merged summary state is a presentation choice, not a prerequisite |
+| D-8 지장간 scope convention | **CLOSED** — and V1.4 removes the contradiction | V1.3 marked it closed in B.1 while B.3/matrix still listed it as an open owner decision. It is closed **in the only sense that matters now**: no V1 contract depends on resolving it, because the patterns whose confirmation would have needed it do not confirm. The underlying source question moves to B.6 |
+| D-9 documents contradicting | **CLOSED** | Source matrix re-reconciled in V1.4, with a bidirectional cross-check and a no-contradictory-status check |
+| D-10 no Korean named lineage | **CLOSED by scope decision** | 任鐵樵 is the selected lineage and is named as such (§2.5) |
 
-**D-6. 사령 sub-period table — STILL OPEN, deliberately.**
-Multiple named editions disagree; no edition is selected; inventing a default is forbidden. Its V1.1
-mitigation is still hollow: `BOUNDARY_SENSITIVE` needs a **distance window**, which is itself an undetermined
-numeric cut. Split honestly: the flag as a *non-authoritative annotation* with the window disclosed is
-`P1_REFINEMENT` (F-4); the flag as a *trigger* for `INSUFFICIENT_STRUCTURAL_EVIDENCE` is an owner disclosure
-decision and stays here. **Does not block the ordinary strength engine** — §12.1 reads the phase, not the
-sub-period.
+### B.6 `OPEN_SOURCE_QUESTIONS` — research backlog, **not** blockers
 
-**D-7. `INSUFFICIENT_STRUCTURAL_EVIDENCE` granularity — STILL OPEN.**
-Canonical doctrine §13 narrows the trigger to §4.2's boundary-sensitivity case. V1.3 now produces **three**
-distinct kinds of unknown — boundary sensitivity, a faction tie (`FACTION_EVEN`), and an `UNRESOLVED`
-relation. Whether one state may carry all three, or whether they must be distinguished so a caller can tell
-*which* thing is unknown, is **not decided**. V1.3 does not silently merge them: §23.2 records this as an
-open inference-design question. **Does not block implementation** — the triggers themselves are explicit;
-only the state's granularity is undecided.
+Each would *widen* V1 authority if answered. None blocks implementing V1.4 as written.
+
+| # | Question | What it would unlock |
+|---|---|---|
+| Q-1 | A sourced decision procedure for 黨眾/助寡 as factional abundance **with functional backing** | The ordinary family (WEAK/BALANCED/STRONG), and with it Stage 2 and canonical seven-band status |
+| Q-2 | A sourced scope for 四柱皆比劫 (從旺) | 從旺 → `CONFIRMABLE_V1` |
+| Q-3 | A sourced scope for 絕無一毫 (從强), and a sourced reading of 重重/疊疊 | 從强 → `CONFIRMABLE_V1` |
+| Q-4 | A sourced scope for 不雜\<controller\> (專旺), and an operational reading of 遇旺逢生 | 專旺 → `CONFIRMABLE_V1`. **Closest of the four** — three of four premises are already clean |
+| Q-5 | A located entry contract for 從財/從官殺 not built on the withdrawn 何其獨旺 reading | those two → `CONFIRMABLE_V1` |
+| Q-6 | A sourced quantifier for 食傷多也 (從兒) | 從兒 → `CONFIRMABLE_V1` |
+| Q-7 | Whether 從兒's 印 disqualifier is bare-presence or rootedness-scoped | removes a standing `DOCTRINE_CONFLICT` |
+| Q-8 | An exact 사령 sub-period edition (D-6) | root qi-tier precision near 節氣 boundaries |
+| Q-9 | Whether one uncertainty state should carry several kinds of unknown (D-7) | a presentation simplification |
+
+**None of Q-1…Q-9 is a code task.** All are source questions, and V1.4 is implementable without any of them.
 
 ### B.2 `P0_INFERENCE_GAP` — the rule IS adopted; the code does not exist
 
@@ -135,38 +141,58 @@ rather than partially degrade. **Not written** (no reasoner exists).
 
 ### B.3 `P0_FACT_GAP` — a deterministic function over known chart data is missing
 
-**F-1. Root/support **FUNCTIONAL-INTEGRITY** grading input set.** The *linkage* half is CLOSED
-(`relationParticipants.ts`, A.1). What remains missing on the fact side is thin: branch-class membership
-(四生/四庫/四敗) as a first-class fact, and mediation status (which detected 合 covers which detected 沖).
-**Read the warning:** this is listed as a fact gap only for those two mechanical items. The *grading* that would
-consume them is **D-5**, and per RULE-G8 nothing downstream may be stamped executable while it is conditional.
-V1.1 filed the whole of P0-1 as a fact gap; that was the misclassification that let the doctrine gap hide.
+> **NONE. The fact foundation is FROZEN** by independent audit (`FACT_FOUNDATION_CLASSIFICATION = A`).
+> No fact-layer code, test, fact id, root linkage, ten-god mapping, relation-participant logic, or type
+> firewall may be modified.
 
-**F-2. Visible-stem ↔ root joiner.** No single fact answers "which specific revealed hidden stems are on the
-support side." Both halves exist independently (`calculateRootingTransparency` for same-stem transparency,
-`calculateTenGodFacts` for raw ten-god identity per hidden stem). **Note:** V1.1 filed this as P1 convenience.
-It is retained at P1 (see F-5) — it is listed here only to record that it was checked and is not blocking.
+**V1.4 removes stale F-1.** V1.3 listed "branch-class (四生/四庫/四敗) membership and mediation status" as a
+residual P0 fact gap. Both existed only to feed a 沖 severity grader — and §8.9 does not grade 沖 severity in
+V1. A fact whose only consumer is a contract V1 does not have is not a gap; it is speculative work. If a
+future batch adopts a severity contract, it may re-open the request then, against a real consumer.
 
-**F-3. 조후 climate fact producer.** Does not exist (A.2). See `P2_LATER`.
+**F-2 (visible-stem ↔ root joiner)** is likewise not a gap: both halves exist independently
+(`rootingTransparency.ts`, `tenGodFacts.ts`), and the SUPPORT/DRAIN **side tag** the joiner would add is
+deliberately absent — that framing is doctrine-dependent and the fact layer refuses directional framing.
+Retained at P1 as convenience only (F-5).
 
-**F-4. `BOUNDARY_SENSITIVE` annotation.** Does not exist (A.2). Buildable in minutes from the already-frozen
-절입 instant — but only as a **disclosed** annotation; the window is D-6. See `P1_REFINEMENT`.
+**Still genuinely absent, and correctly not P0:** the `BOUNDARY_SENSITIVE` annotation (F-4 → P1) and the
+조후 climate producer (F-3 → P2).
+
+### B.3.1 COUNT POLICY — one consistent statement (brief §44)
+
+V1.3's register said in one place that side tallies are forbidden and in another that transparent
+inventories are allowed. Both were half-true and together they read as a contradiction. The single correct
+statement, matching canonical doctrine §3.5 and §23.3:
+
+| Construct | Status |
+|---|---|
+| **Raw fact inventory / count**, emitted as an inspectable list | **ALLOWED** — diagnostic evidence |
+| **Equal-weight tally used as a verdict** (support count vs opposition count ⇒ family) | **FORBIDDEN** |
+| **Weighted score** of any kind | **FORBIDDEN** |
+| **Source-backed functional numerousness** (黨眾/助寡 with rooting and context) | **FUTURE INFERENCE CONTRACT** (§7.3.5) — informed by raw counts, never equal to them |
+
+The distinction that matters: counting is fine as *evidence*, forbidden as *authority*. V1.3 allowed a
+transparent comparison to help decide a family, which crossed that line while looking like it had not.
 
 ### B.4 `P1_REFINEMENT`
 
 **F-5.** Visible-stem/root-function joiner (F-2) — convenience over two already-clean facts; both are
 independently sufficient without it.
 
-**F-6.** `BOUNDARY_SENSITIVE` as a **non-authoritative annotation only**, window explicitly disclosed as
-SOURCE_CLASS_D engineering with the alternative windows named. Zero state effect. Promoting it to a decision
-trigger is D-6, not this item.
+**F-6.** `BOUNDARY_SENSITIVE` as a **non-authoritative annotation only**, its window explicitly disclosed as
+Deokbuni engineering with the alternative windows named. **Zero state effect** — V1.4 removed the boundary
+window as a decision trigger entirely (§13), so this can only ever be an annotation.
 
-**F-7.** 사령 day-count precision, *once* an edition is selected (D-6). Affects root qi-tier precision near
-boundaries only; does not gate anything that runs today.
+**F-7. 사령 day-count precision (formerly D-6) — `P1_REFINEMENT`, `D6_BLOCKS_REASONER = NO`.**
+Multiple named editions disagree and none is selected; inventing a default remains forbidden. It affects root
+qi-tier precision near 節氣 boundaries only. It gates **nothing** that V1.4 runs: §12 reads the month phase,
+never the sub-period, and the boundary-proximity trigger that was its only path into a decision is deleted.
+V1.3 filed this at P0 largely on the strength of a mitigation flag (`BOUNDARY_SENSITIVE`) that does not exist
+in code — a circular justification, now removed.
 
-**F-8.** Source-matrix reconciliation tooling (a citation-layer column, a per-quotation witness ledger of
-`{quotation, witness count, witness type, RULE-G2 status}`). The *content* correction is D-9; the mechanism to
-keep it from drifting again is refinement.
+**F-8.** Source-matrix reconciliation tooling (a per-quotation witness ledger of `{quotation, witness count,
+witness type}`). The content corrections are done in V1.3/V1.4; the mechanism to keep the file from drifting
+again is refinement.
 
 ### B.5 `P2_LATER`
 
@@ -186,66 +212,65 @@ consulting 대운 at the natal gate inverts fact→verdict ordering by construct
 
 ---
 
-## C. DOCTRINE↔FACT MATRIX
+## C. DOCTRINE↔FACT MATRIX (V1.4)
 
-> `FACT SUPPORT` names the **exact provider**, or `NONE`. `FUTURE INFERENCE REQUIRED` is what the next reasoner
-> batch must build. `DEFERRED` names what is deliberately not being built and under which rule. `STATUS` is one
-> of `FACT_EXISTS` · `FACT_MISSING` · `DOCTRINE_CONTRACT_READY` · `INFERENCE_MISSING` · `DOCTRINE_MISSING` · `NOT_EXECUTABLE`.
+> `FACT SUPPORT` names the exact provider, or `NONE`. `STATUS` is one of `FACT_EXISTS` · `FACT_MISSING` ·
+> `DOCTRINE_CONTRACT_READY` · `INFERENCE_MISSING` · `DEFERRED_V1`.
 
-| DOCTRINE REQUIREMENT | FACT SUPPORT (exact provider, or NONE) | FUTURE INFERENCE REQUIRED | DEFERRED | STATUS |
-|---|---|---|---|---|
-| **Month command (월령/득령)** | `services/monthCommand.ts` → `calculateMonthCommand`: `monthBranch`, `monthElement`, `season`, `sajuMonthOrdinal`, `dayMasterSeasonalPhase` (旺相휴수사), `commandStatus` | None for the raw phase. The 旺相 vs 휴수사 **cut** into IN/OUT_OF_COMMAND is a **disclosed repo policy** (`DEUKRYEONG_MAPS_WANG_AND_XIANG_TO_IN_COMMAND`), not a classical fact — a future reasoner must consume it as policy and name the three rejected rivals (臨官/帝旺 only; 長生~帝旺; 월지가 인성/비겁) | 사령 sub-period precision (D-6); 當令 as a separate predicate (it is 왕상휴수, not stem-element identity) | `FACT_EXISTS` (cut = `DEOKBUNI_POLICY`, must stay disclosed per RULE-G6) |
-| **Seasonal phase, general (any element)** | `services/generalSeasonalPhase.ts` → `generalSeasonalPhase` / `generalSeasonalPhaseForMonthBranch` | Consumers: an opposition candidate's own vitality; a root's own vitality independent of the DM | Any *comparison* of two phases as a magnitude (`VITALITY_ASYMMETRY`, 旺者沖衰 direction) — NOT_EXECUTABLE, degenerates precisely when the month branch is a clash participant | `FACT_EXISTS` |
-| **Same-element roots (통근 existence)** | `services/sameElementRooting.ts` → `calculateSameElementRooting`: every hidden stem + `sameElementAsDayMaster` / `sameStemAsDayMaster` / `samePolarityAsDayMaster` + `sameElementRoots` | `ROOT_EXISTS` / `CAN_BEAR` predicate (**I-1**) — pure existence over these booleans | `ROOT_TIER` HEAVY/LIGHT — NOT_EXECUTABLE (no 12운성 table in repo, 陰干逆行 unresolved, mixes two partitions, non-total). 「干多不如根重」 is a *bounded* comparative, not a general licence | `FACT_EXISTS` / `INFERENCE_MISSING` |
-| **Hidden-stem roles (지장간 본기·중기·여기)** | `sameElementRooting.ts` (`hiddenRole` per stem) and `tenGodFacts.ts` (`hiddenRole` + `tenGod`) | Which tier confers ten-god identity for a given test — **unanswered by every source** | 지장간 SCOPE convention (**D-8**) — OWNER DECISION, no invented 본기-only default | `FACT_EXISTS` / `DOCTRINE_MISSING` |
-| **Visible stems** | `services/tenGodFacts.ts` → `visibleStems` (년간·월간·시간; 일간 excluded — a stem has no ten-god to itself); `services/rootingTransparency.ts` for same-stem transparency both directions | Support-side membership joiner (**F-2/F-5**) | 透干 as a *weight* ("strengthens toward CONFIRMED") — that is a score with the number omitted; disclosure flag only, zero state effect | `FACT_EXISTS` |
-| **TenGod (십신)** | `services/tenGodFacts.ts` → raw `TenGod` per visible + hidden stem, **no** role grouping, **no** SUPPORT/DRAIN tag. 5-role grouping available separately via `specialPatternPrerequisites.ts` (`roleCategoryPresence`) and, in the older layer, `dayMasterStrengthInputs.ts` (which *does* carry a side tag — treat as legacy) | A reasoner's own role/side categorization, applied explicitly rather than inherited | Any tallying of sides as a decision rule (that is the counting D-1 forbids) | `FACT_EXISTS` |
-| **Relation topology (detection)** | `rules/pillarRelations.ts` + `services/natalRelations.ts` → all 12 relation kinds (합·충·형·파·해·삼합·방합) at detection level | None — detection is complete | — | `FACT_EXISTS` |
-| **Root ↔ relation linkage** | `services/relationParticipants.ts` → `calculateRelationParticipants`: participant pillars/stems/branches + `candidateAffectedRootFactIds` (**Day-Master same-element roots only**, semantic fact ids) | Consume the linkage inside an integrity grader — blocked on the row below | Distance/adjacency as a severity input — DELETED: no source ties pillar distance to 沖 severity (the sourceable distance rule belongs to STEM combination, 隔位太遠, and was transplanted) | `FACT_EXISTS` |
-| **Relation OUTCOME (합화 / 국 성립 / 沖 severity)** | `NONE` for outcome; relation kind + participants exist as facts | Per canonical doctrine §8.9's per-mechanism `V1_STATUS` table. **The V1 contract is deliberately thin:** detection + formation evidence only; every transformation and severity outcome is `UNRESOLVED` | 六合 化 and 沖 severity → `UNRESOLVED`; 형/害/破 → `DEFERRED`; 三合-vs-方合 relative force → permanent defer | **`DOCTRINE_CONTRACT_READY` (conservative)** — the contract is closed by §8.9; what is unbuilt is the code |
-| **Root integrity (does a root survive?)** | Linkage exists (`relationParticipants.ts`); grading does not | Emit one of three states per canonical doctrine §8.10: `ROOT_PRESENT_UNMODIFIED` · `ROOT_EFFECT_UNRESOLVED` · `NO_ROOT`. Each has exactly one named consumer in §7.3.2/§12.1 | `DESTROYED` — **deleted**, no source supplies categorical destruction. `WEAKENED` — **deleted**, computable but no consumer | **`DOCTRINE_CONTRACT_READY`** — reduced from four states to three; `INFERENCE_MISSING` |
-| **Special-pattern PREREQUISITES** | `services/specialPatternPrerequisites.ts` → `visibleElementCounts`, `hiddenElementCounts`, `sameElementRootPositions`, `roleCategoryPresence` (raw counts + positions, never a ratio) | None — the facts are complete for their layer | Any dominance **ratio** or count threshold over them | `FACT_EXISTS` |
-| **Special-pattern QUALIFICATION (從/專旺 gate)** | Prerequisites + `sameElementRooting` + `tenGodFacts` + `relationParticipants` | Six independent evaluators + the §10.7 composition function. Contracts are in canonical doctrine §10.1; reachability in §10.6 | 從氣/從勢 → `DEFERRED_FROM_V1`. 食傷多也/滿局 → DEFERRED, which caps 從兒 at `CANDIDATE_ONLY_IN_V1` | **`DOCTRINE_CONTRACT_READY`** — 5 of 6 patterns `CAN_REACH_CONFIRMED`; 從兒 `CANDIDATE_ONLY_IN_V1`; `INFERENCE_MISSING` |
-| **Ordinary strength synthesis (신강/신약)** | All required facts exist: `monthCommand` (seasonal axis), `sameElementRooting` (root axis), `tenGodFacts` + `specialPatternPrerequisites` (faction occurrences) | The §12.1 total 18-cell decision table over `ROOT_STATE` x `SEASONAL_STATE` x `FACTION_STATE`, then §12.2 intensity, then §12.3's pure renderer | 得令/得地/得勢 as a *triple* — REJECT (not attested; its supporting citation failed verification). The three underlying facts are adopted **separately** | **`DOCTRINE_CONTRACT_READY`** — the faction axis is executable as transparent numerousness (§3.5); `INFERENCE_MISSING` |
-| **Uncertainty** | `NONE` as a producer | An emitter for the explicit triggers: §12.1 cells #3/#5, rows 13-18, `FACTION_EVEN`, `UNRESOLVED` relations, `DOCTRINE_CONFLICT` | Whether ONE state may carry three distinct unknowns, or whether they must be distinguished — **D-7, still open** | `DOCTRINE_CONTRACT_READY` for the triggers; **`DOCTRINE_MISSING` for granularity (D-7)** |
-| **Seven-band rendering** | `NONE`. `STRENGTH_LABEL_KO` exists only inside the rejected `services/natalStrength.ts` | A 7-row pure mapping from Stage 2 (canonical doctrine §12.3). Reads no facts; cannot change a verdict | Nothing — the bands are now a closed renderer, not an open question. Their authority equals Stage 2's, no more | **`DOCTRINE_CONTRACT_READY`**; `INFERENCE_MISSING` |
-| **Climate (조후)** | `NONE`. Only a nullable `extremeSeason` input type, hardcoded `null` at its single call site | Month-branch season + DM element + counts → hot/cold/dry/wet facts, then a narrowly-scoped `EXTREME_CLIMATE_FUNCTIONALITY` modifier that never becomes a direct band input | Per-element/per-month operational thresholds — no per-cell 궁통보감 table adopted. RULE-G4: 조후 favorability may never enter a STRENGTH verdict | `FACT_MISSING` + `DOCTRINE_MISSING`; P2 for strength, **P0 for Yongshin** |
+| DOCTRINE REQUIREMENT | DETERMINISTIC_FACT_READY | DOCTRINE_CONTRACT_READY | FUTURE_INFERENCE_REQUIRED | DEFERRED | SEVERITY |
+|---|---|---|---|---|---|
+| Month command (월령/득령) | **YES** — `monthCommand.ts` | YES — §7.3.1; the 旺相 cut is disclosed `DEOKBUNI_POLICY` | none | 사령 sub-period precision (P1) | — |
+| Seasonal phase, any element | **YES** — `generalSeasonalPhase.ts` | YES | consumers only | phase-vs-phase magnitude comparison | — |
+| Same-element roots (통근) | **YES** — `sameElementRooting.ts` | YES — §7.3.2 | `ROOT_STATE` producer | root tier as a discriminator | — |
+| Hidden-stem roles | **YES** | YES — carried as evidence | none | 지장간 scope for pattern tests (Q-2…Q-4) | — |
+| Visible stems | **YES** — `tenGodFacts.ts` | YES | none | SUPPORT/DRAIN side tag (deliberate) | — |
+| TenGod (십신) | **YES** — 100/100 verified | YES | a reasoner's own role/side framing, applied explicitly | any tally as authority | — |
+| Relation topology (detection) | **YES** — all 12 kinds | YES | none | — | — |
+| Root ↔ relation linkage | **YES** — `relationParticipants.ts`, DM same-element roots only | YES | consumed by the `ROOT_STATE` producer | — | — |
+| **Numerousness facts** | **YES** — derivable from `tenGodFacts` + `specialPatternPrerequisites` | YES — §7.3.3, **diagnostic only** | inventory emitter | using it as verdict authority — **prohibited** | — |
+| Relation outcome | facts YES; outcome `NONE` | YES — §8.9, everything but detection is `UNRESOLVED` | `UNRESOLVED` emitter | all transformation/severity outcomes | — |
+| Root integrity | linkage YES | YES — §8.10, three states, one consumer each | root-state resolver | `DESTROYED` / `WEAKENED` / `MEDIATED` (deleted) | — |
+| Special-pattern prerequisites | **YES** — `specialPatternPrerequisites.ts` | YES | none | any ratio/threshold over them | — |
+| Special-pattern qualification | facts YES | YES — §10.1/§10.6, **candidate-only** | candidate evaluators + §10.7 composition | all six `CONFIRMED` verdicts; 從氣/從勢 entirely | — |
+| **Bearing capacity** | **YES** | **YES — §7.3.4**, the one canonical ordinary output | `BEARING_CAPACITY` resolver | — | — |
+| Ordinary strength family | facts YES | **`DEFERRED_V1`** — §12.1 | the faction functional-context inference (Q-1) | WEAK/BALANCED/STRONG | — |
+| Uncertainty | n/a | YES — §13, boolean triggers | trigger emitter | merged-granularity question (Q-9) | — |
+| Seven-band rendering | n/a | **`DEFERRED_V1`** — §12.3 `NOT_CANONICAL_UNTIL_CALIBRATION` | renderer, once a family exists | canonical band status | — |
+| Climate (조후) | **NO** — no producer | NO | producer + modifier | per-cell 궁통보감 table | P2 strength / P0 Yongshin |
 
 ---
 
 ## D. What the next reasoner batch must build, in order
 
-**Everything below is code against a contract that now exists.** No item requires new doctrinal research.
+**Every item is code against a contract that exists.** No item requires new doctrinal research.
 
-1. **The three §7.3 state producers**, in this order, because each is independently useful and testable:
-   `SEASONAL_STATE` (reads `monthCommand.dayMasterSeasonalPhase`), `ROOT_STATE` (reads
-   `sameElementRooting.sameElementRoots` plus §8.10's three-state reduction), then `FACTION_STATE` (reads
-   `tenGodFacts` + `specialPatternPrerequisites`, emitting the **occurrence list**, not just a count).
-2. **The §12.1 Stage-1 table.** It is a lookup over the three states above — 18 cells, all assigned. Implement
-   it as data, not as branching logic, so an auditor can diff the table against the doctrine directly.
-3. **§12.2 intensity and §12.3's renderer.** The renderer must be a pure function with no fact access, so that
-   "the renderer invented a judgment" is structurally impossible rather than merely discouraged.
-4. **The uncertainty emitter**, wired to the explicit triggers (cells #3/#5, rows 13–18, `FACTION_EVEN`,
-   `UNRESOLVED` relations, `DOCTRINE_CONFLICT`). **First** make the D-7 granularity decision — one state or
-   three — because retrofitting that distinction later would silently change past outputs.
-5. **The six special-pattern evaluators + §10.7 composition.** Contracts are in §10.1; reachability in §10.6.
-   Implement 從兒's cap (`CANDIDATE_ONLY_IN_V1`) as a structural property, not a runtime special case.
-6. **F-1's two mechanical facts** (branch class 四生/四庫/四敗, mediation status) — cheap, and they make any
-   future revisit of §8.9's `UNRESOLVED` verdicts concrete rather than abstract.
+1. **`ROOT_STATE` producer** (§7.3.2 + §8.10's three states) and **`BEARING_CAPACITY`** (§7.3.4). This is
+   the entire canonical ordinary output of V1, and it is small.
+2. **`SEASONAL_STATE` producer** (§7.3.1) — trivial over `monthCommand`, consumed as evidence.
+3. **`NUMEROUSNESS_RAW_FACT` inventory emitter** (§7.3.3). Emit the **list**. Wire it to nothing that
+   decides. A code review that finds it feeding a comparison has found a regression.
+4. **`UNRESOLVED` relation emitter** (§8.9) — in V1 this fires for essentially every detected relation, which
+   is the intended behaviour, not a bug.
+5. **Six special-pattern candidate evaluators + §10.7 composition** (§10.1, §10.6). Each must emit its named
+   open question alongside the candidacy. **No evaluator may return `CONFIRMED`** — implement that as a
+   structural impossibility, not a runtime check that could later be relaxed.
+6. **Uncertainty emitter** (§13) — boolean triggers only.
+7. *(optional)* a product display layer, which must carry uncertainty metadata and must not persist any band
+   as canonical (§12.3).
 
-**What must NOT be built:** any 沖 severity grader, any transformation outcome, any root damage state beyond
-§8.10's three, any 형/害/破 effect. §8.9's conservative policy is a contract, not a placeholder awaiting a
-better idea.
+**What must NOT be built:** any 沖 severity grader · any transformation outcome · any root damage state
+beyond §8.10's three · any 형/害/破 effect · any faction comparison that decides anything · any
+WEAK/BALANCED/STRONG resolver · any seven-band verdict.
 
-**Certification obligation.** Every predicate must be run against at least one real chart before being marked
-executable — the failure mode this project has actually hit twice is a predicate that is *provably vacuous* or
-*provably unreachable* and was never evaluated on a single chart. Specifically required:
+**Certification obligations:**
 
-- Assert every one of §12.1's 18 cells is reachable by some constructed chart, or document why not.
-- Assert 從兒 never returns `CONFIRMED` (its documented cap), and that the other five patterns each can.
-- Assert no code path assigns a non-`ROOT_PRESENT_UNMODIFIED` root state from inputs that are only
-  `{relation-exists, relation-kind}` — that is the §8.9 hard contract, expressed as a test.
-- Rewrite canonical doctrine §18's metamorphic plan (M1/M2/M7/M8), which still references deleted constructs.
+- Assert `BEARING_CAPACITY` is reachable in all three states.
+- Assert **no** special-pattern evaluator can return `CONFIRMED`, for any constructed chart.
+- Assert a **rooted 從兒 candidate** composes correctly with a strong-DM candidate (case 56) — this is the
+  regression guard for the withdrawn `NO_ROOT` exclusivity proof.
+- Assert no code path lets a supporting-vs-opposing count change any emitted state (case 60).
+- Assert adding a mediating combination to a clashed root branch changes nothing (M7).
+- Rewrite §18's metamorphic plan where it still references withdrawn constructs.
 
 ---
 
@@ -254,54 +279,36 @@ executable — the failure mode this project has actually hit twice is a predica
 `calculateMonthCommand` · `calculateSameElementRooting` · `calculateTenGodFacts` · `calculateNatalRelations` +
 `rules/pillarRelations` · `calculateRelationParticipants` · `calculateSpecialPatternPrerequisites` ·
 `generalSeasonalPhase` · `calculateRootingTransparency` · `buildMyungriStrengthFactBundle` · full
-대운/세운/월운 pillar + ten-god + relation facts (`calculateTimeAxis`, `calculateSewoon`, `calculateWolwoon`,
-`daewoonTenGods`, `luckForInstant`, `temporalContext`) · raw five-element distribution.
+대운/세운/월운 facts · raw five-element distribution. **All frozen — read, do not modify.**
 
 ## F. Explicitly tainted — must NOT be reused as-is
 
-- `services/natalStrength.ts` — the entire verdict path (RULE_TABLE, root-count bucketing, dominance comparison,
-  agreement-count confidence). Every one of those four mechanisms is a form of counting or magnitude comparison
-  now prohibited outright.
-- `services/currentStrength.ts` — `buildCurrentStrengthContext()` internally calls `evaluateNatalStrength()`.
-- `divination/myungriStrength.ts` — useful as structural precedent for evidence presentation only; its
-  `confidence` field is still a count-threshold heuristic.
-- `services/dayMasterStrengthInputs.ts` — **not** tainted as a fact source, but it carries a SUPPORT/DRAIN side
-  tag that the newer fact layer deliberately dropped. Prefer `tenGodFacts.ts` and apply role/side framing
-  explicitly, so no directional assumption is inherited silently.
+- `services/natalStrength.ts` — the rejected verdict path (`RULE_TABLE`, root-count bucketing, dominance
+  comparison, agreement-count confidence). **`LEGACY_PRESENT = YES`, `CANONICAL_AUTHORITY = NO`.** It still
+  exists in the repository and is quarantined: do not reactivate it, route new logic through it, copy its
+  scoring, or delete/refactor it. Its existence is not evidence of V1 reasoner work.
+- `services/currentStrength.ts` — calls `evaluateNatalStrength()`. Same standing.
+- `divination/myungriStrength.ts` — its `confidence` field is a count-threshold heuristic.
+- `services/dayMasterStrengthInputs.ts` — not tainted as a fact source, but it carries a SUPPORT/DRAIN side
+  tag the newer fact layer deliberately dropped. Prefer `tenGodFacts.ts`.
 
-## G. Honest bottom line (V1.3)
+## G. Honest bottom line (V1.4)
 
-**The fact foundation is complete and frozen.** `P0_FACT_GAP` is empty. Every deterministic fact the doctrine
-asks for exists, is exported, and is protected by a compile-time type firewall plus a runtime sweep.
+**The fact foundation is frozen and complete.** `P0_FACT_GAPS = NONE`, independently confirmed.
 
-**Eight of the ten doctrine gaps are closed.** The unlock was not new research — it was correcting an
-over-strict rule we had imposed on ourselves. V1.2 treated *any* counting concept as forbidden scoring, which
-made the selected commentator's own axis (徐樂吾's 黨眾為強，助寡為弱) unusable and cascaded into three
-separate "unclosable" verdicts. Canonical doctrine §3.5 now separates **transparent numerousness** — allowed,
-because the source reasons that way and the occurrence list is emitted for inspection — from **hidden
-scoring**, which stays forbidden.
+**`P0_DOCTRINE_GAPS = NONE` — by narrowing, not by answering.** This is the honest framing and it should be
+read carefully. V1.3 claimed five confirmable special patterns and a three-way strength family. Every one of
+those claims rested on something the sources do not supply: an undocumented 지장간 scope, an unsourced
+multiplicity cutoff, a clause transplanted from a different pattern, or an equal-weight occurrence tally
+standing in for factional abundance. V1.4 withdraws the claims. What remains is smaller and true.
 
-State of the engine after V1.3:
+**What V1 actually produces:** a `BEARING_CAPACITY` verdict (sourced, executable, three states), a
+special-pattern **candidate** set with each candidate's blocking question named, a full structural evidence
+inventory, and explicit boolean uncertainty states. It does **not** produce a strength band, a seven-band
+label, or a confirmed pattern.
 
-- **Five of six special patterns can reach `CONFIRMED`.** 從兒 is `CANDIDATE_ONLY_IN_V1`, because its
-  central quantifier (食傷多也) is stated by the source and never quantified, and we declined to invent it.
-- **All seven bands are reachable**, via a total 18-cell decision table, a Stage-2 intensity contract, and a
-  pure Stage-3 renderer. No cell is unassigned; no boundary rests on a magnitude term.
-- **Relation outcomes are deliberately thin**: detection and formation evidence only, everything else
-  `UNRESOLVED`, under an explicitly-labelled conservative policy. This is a software safety choice, not a
-  claim that the classics say "no effect."
-- **Root integrity is three states, not four** — `DESTROYED` deleted (no source supplies categorical
-  destruction) and `WEAKENED` deleted (computable, but nothing consumed it).
+**The nine open source questions (B.6) are a research backlog, not blockers.** Answering Q-4 alone would make
+專旺 confirmable — three of its four premises are already clean. Answering Q-1 would restore the ordinary
+family and, with it, the seven bands.
 
-**Two doctrine gaps remain open, and neither blocks implementation:** D-6 (the 사령 sub-period table, and the
-undetermined distance window its mitigation needs) and D-7 (whether one uncertainty state may carry three
-distinct kinds of unknown). Both are recorded rather than papered over.
-
-**The withdraw-vs-remediate question posed by V1.2 is answered: remediate.** V1.2 asked whether a full
-신강/신약 verdict was buildable at all. It is — but only at the granularity the sources actually support, with
-two numeric operationalizations printed in the open (§10.1 從强's 重重/疊疊 and 絕無一毫 scope) rather than
-hidden, and with one pattern honestly capped below `CONFIRMED`. That is a smaller, more disclosed engine than
-V1 promised. It is the one the sources support.
-
-**The next batch is an INFERENCE batch.** Every remaining P0 item is unwritten code against a contract that
-now exists — not an unanswered doctrinal question.
+**The next batch is an INFERENCE batch**: unwritten code against contracts that now exist.
