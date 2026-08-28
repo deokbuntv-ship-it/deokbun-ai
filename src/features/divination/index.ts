@@ -60,6 +60,11 @@ export {
   type QimenConsultationDomain, type QimenDomainJudgeResult, type QimenTargetRef,
 } from './qimenConsultationJudge';
 export { judgeCross, judgeCrossReasoned, type CrossJudgeInput } from './crossJudge';
+export {
+  judgeCrossConsultation, CROSS_CONSULTATION_JUDGE_V1_METHOD,
+  type CrossConsultationJudgeInput, type CrossConsultationResult, type CrossSystemContribution,
+  type CrossConsultationScope, type SystemAvailability,
+} from './crossConsultationJudge';
 export { extendGraph, refinementFailure } from './reasoning/graphExtension';
 export { judgePairMyungri, judgePairZiwei, type PairMyungriJudgeInput } from './compatibilityJudge';
 export { renderVerdictDirective, verdictEvidenceLines, verdictIsDirectional } from './verdictDirective';

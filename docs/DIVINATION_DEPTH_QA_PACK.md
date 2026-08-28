@@ -140,7 +140,7 @@
 - NEW_INFERENCE = 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 월주 천간합 / 올해 흐름 → 원국 시주 천간합 / 이 시기 흐름 → 원국 일주 천간합
-- COUNTER_EVIDENCE_REF = 자녀(대궁)에 태음 화록
+- COUNTER_EVIDENCE_REF = 자녀(대궁)에 태음 화록 / 형제(삼합궁)에 거문 화기
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = WOLWOON/NATAL
 - TRACEABLE = YES
@@ -413,7 +413,7 @@
 - NEW_INFERENCE = 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 일주 천간합 / 지금의 큰 흐름 → 원국 시주 반합 / 올해 흐름 → 원국 시주 육합
-- COUNTER_EVIDENCE_REF = 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+- COUNTER_EVIDENCE_REF = 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과 / 지금의 큰 흐름 → 원국 월주 해
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI+QIMEN
 - TEMPORAL_SCOPE = NATAL/PRESENT_MOMENT
 - TRACEABLE = YES
@@ -702,7 +702,7 @@
 - NEW_INFERENCE = 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 월주 천간합 / 올해 흐름 → 원국 시주 천간합 / 이 시기 흐름 → 원국 시주 천간합
-- COUNTER_EVIDENCE_REF = 乾궁 九地
+- COUNTER_EVIDENCE_REF = 乾궁 九地 / 값사문(驚門)
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI+QIMEN
 - TEMPORAL_SCOPE = NATAL/PRESENT_MOMENT
 - TRACEABLE = YES
@@ -753,7 +753,7 @@
 - **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - NEW_INFERENCE = 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
-- SUPPORTED_BY = (없음)
+- SUPPORTED_BY = 원국/운 식상 존재=true, 재성 존재=true
 - COUNTER_EVIDENCE_REF = (없음)
 - DISCIPLINES_CONTRIBUTING = MYUNGRI
 - TEMPORAL_SCOPE = NATAL
@@ -961,7 +961,7 @@
 - NEW_INFERENCE = 끌리는 힘에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 월주 천간합 / 올해 흐름 → 원국 시주 천간합 / 이 시기 흐름 → 원국 일주 천간합
-- COUNTER_EVIDENCE_REF = 형제(본궁)에 천기 화과
+- COUNTER_EVIDENCE_REF = 형제(본궁)에 천기 화과 / 원국 일지(배우자 자리) 충·형·파·해
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = NATAL
 - TRACEABLE = YES
@@ -1085,7 +1085,7 @@
 - NEW_INFERENCE = 지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 년주 반합 / 올해 흐름 → 원국 년주 천간합 / 이 시기 흐름 → 원국 월주 반합
-- COUNTER_EVIDENCE_REF = 전택(삼합궁)에 태양 화권
+- COUNTER_EVIDENCE_REF = 전택(삼합궁)에 태양 화권 / 올해 흐름 → 원국 일주 자형 / 이 시기 흐름 → 원국 일주 파
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = NATAL
 - TRACEABLE = YES
@@ -1289,7 +1289,7 @@
 - NEW_INFERENCE = 돈이 남는 쪽에 대해서는 서로 다른 근거 2가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 월주 천간합 / 올해 흐름 → 원국 시주 천간합 / 이 시기 흐름 → 원국 일주 천간합
-- COUNTER_EVIDENCE_REF = 자녀(대궁)에 태음 화록
+- COUNTER_EVIDENCE_REF = 자녀(대궁)에 태음 화록 / 형제(삼합궁)에 거문 화기
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = SEWOON/NATAL
 - TRACEABLE = YES
@@ -1355,7 +1355,7 @@
 - NEW_INFERENCE = 이동에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리·기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 년주 반합 / 올해 흐름 → 원국 년주 천간합 / 이 시기 흐름 → 원국 월주 반합
-- COUNTER_EVIDENCE_REF = (없음)
+- COUNTER_EVIDENCE_REF = 이 시기 흐름 → 원국 시주 천간충
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI+QIMEN
 - TEMPORAL_SCOPE = NATAL/PRESENT_MOMENT
 - TRACEABLE = YES

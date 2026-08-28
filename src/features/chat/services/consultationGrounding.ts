@@ -65,6 +65,7 @@ import {
   judgeAllZiweiConsultationDomains,
   judgeAllQimenConsultationDomains,
   routeConsultationJudgeDomain,
+  judgeCrossConsultation,
   type CrossDivinationVerdict,
   type JudgmentDomain,
   type NatalStructureInput,
@@ -603,6 +604,39 @@ export async function buildConsultationGrounding(
       myungriPropositions: myungriReasoning.standing,
       myungriPropositionGraph: myungriReasoning.propositions,
     });
+    // Cross Divination Judge V1 (consultation layer) — synthesizes the SAME three consultation-domain
+    // results just computed above (`myungriReasoning.consultationJudgments`/`ziweiConsultationJudgment`/
+    // `qimenConsultationJudgment`) into one proposition-specific compound verdict, then folds ONLY into
+    // the existing verdict's already-lenient array fields (never touching `natalBaseline`/`currentFlow`/
+    // `timingConclusion`/`axisVerdicts`/`contributions`, which stay the existing kernel's own unmodified
+    // authority). `qimenRoutedDomain` already carries the EVENT_SUCCESS fallback (§24: Qimen may be the
+    // only applicable system for a pure event-success question) — Myungri/Ziwei naturally resolve
+    // NOT_APPLICABLE there since `ziweiRoutedDomain` is null in that same fallback branch.
+    const myungriConsultationResult = ziweiRoutedDomain && myungriReasoning.consultationJudgments
+      ? myungriReasoning.consultationJudgments[ziweiRoutedDomain]
+      : null;
+    const crossConsultation = qimenRoutedDomain
+      ? judgeCrossConsultation({
+          domain: qimenRoutedDomain,
+          myungri: myungriConsultationResult,
+          ziwei: ziweiConsultationJudgment,
+          qimen: qimenConsultationJudgment,
+        })
+      : null;
+    if (divinationVerdict && crossConsultation
+      && (crossConsultation.supportingEvidence.length > 0 || crossConsultation.counterEvidence.length > 0)) {
+      divinationVerdict = {
+        ...divinationVerdict,
+        agreementPoints: [...divinationVerdict.agreementPoints, ...crossConsultation.scopeSeparatedTruths],
+        contradictionPoints: [...divinationVerdict.contradictionPoints, ...crossConsultation.trueContradictions],
+        favorableFactors: [...divinationVerdict.favorableFactors, ...crossConsultation.supportingEvidence],
+        riskFactors: [...divinationVerdict.riskFactors, ...crossConsultation.counterEvidence],
+        evidenceReferences: [
+          ...divinationVerdict.evidenceReferences,
+          { discipline: 'CROSS', lines: [crossConsultation.finalConclusion, ...crossConsultation.scopeSeparatedTruths, ...crossConsultation.trueContradictions] },
+        ],
+      };
+    }
   } catch {
     divinationVerdict = null; // fail-open — never break a paid answer on a judgment error
   }
