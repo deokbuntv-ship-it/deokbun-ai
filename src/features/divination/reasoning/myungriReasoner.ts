@@ -14,6 +14,7 @@ import { agreedHeadline, unresolvedHeadline } from './headlineProse';
 import { analyzeLayer, type LayerAnalysis } from '../myungriLayer';
 import { readNatalBaseline } from '../myungriNatal';
 import type { MyungriJudgeInput } from '../myungriJudge';
+import { judgeMyungriStructuralV2FromStrengthInputs, type MyungriStructuralV2Result } from '../myungriStructuralV2';
 import { buildMyungriPremises } from './myungriPremises';
 import { MYUNGRI_RULES, primitivePropositions } from './myungriRules';
 import {
@@ -123,10 +124,25 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
   if (input.wolwoon) layers.push(analyzeLayer('WOLWOON', input.wolwoon.stemTenGod, input.wolwoon.branchTenGod, input.wolwoon.relationsToNatal));
   const baseline = input.natal ? readNatalBaseline(input.natal) : null;
 
+  // Myungri Structural V2 (frozen judgment graph) — computed ONCE here, from exactly the fields
+  // `NatalStructureInput`/`.strengthInputs` already carries; passed down as a finished RESULT so
+  // `myungriPremises.ts` only has to report it, never recompute it (§4 — no duplicated logic).
+  const structuralV2: MyungriStructuralV2Result | null = input.natal?.strengthInputs
+    ? judgeMyungriStructuralV2FromStrengthInputs({
+        dayMaster: input.natal.strengthInputs.dayMaster,
+        dayMasterElement: input.natal.strengthInputs.dayMasterElement,
+        seasonalPhase: input.natal.seasonalPhase,
+        dayMasterRootPositions: input.natal.strengthInputs.dayMasterRootPositions,
+        peerHiddenPositions: input.natal.strengthInputs.peerHiddenPositions,
+        hourKnown: input.natal.hourKnown,
+        positionedTenGods: input.natal.positionedTenGods,
+      })
+    : null;
+
   // ── 1. PREMISES (no stance exists yet, and nothing here can see one) ────────────────────────────
   const premises = buildMyungriPremises({
     subject, questionIntent: intent, askedAxis: asked, baseline, layers, reliability,
-    strengthInputsPresent: input.natal?.strengthInputs !== undefined && input.natal?.strengthInputs !== null,
+    structuralV2,
   });
 
   // ── 2/3. PROPOSITIONS + DERIVATIONS to a fixed point ───────────────────────────────────────────
@@ -169,6 +185,10 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     );
   }
   const blocked = premises.filter((p) => p.doctrineReference.startsWith('BLOCKED'));
+  // §7 of the live-pipeline integration brief: strength is no longer PERMANENTLY blocked — a real
+  // Structural V2 premise is reported here as genuine evidence, the same visibility mechanism the
+  // withheld marker used, just not filed under 'BLOCKED'.
+  const structural = premises.filter((p) => p.doctrineReference.startsWith('STRUCTURAL_V2'));
 
   // `factGroupsUsed` is the user-facing depth-utilization report ("이 판단에 무엇을 실제로 썼는가"), so it keeps
   // the product's own vocabulary rather than the internal doctrine-reference strings.
@@ -182,8 +202,11 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     ...(layers.some((l) => l.scope === 'SEWOON') ? ['세운'] : []),
     ...(layers.some((l) => l.scope === 'WOLWOON') ? ['월운'] : []),
     ...(used.has('궁위 + 합충형파해 (frozen relations to natal)') ? ['원국×운 관계(종류·위치)'] : []),
-    // Reported as WITHHELD, not as used — the depth report must not imply a capability the engine declines to use.
-    ...(used.has('BLOCKED: 강약 학파 미채택 → 강약 등급·억부용신 판정 보류') ? ['일간 강약·용신(판정 보류)'] : []),
+    // Reported as USED (a real classification was computed), not withheld — Myungri Structural V2.
+    ...(structural.length > 0 ? ['일간 강약(구조)'] : []),
+    // Genuinely withheld — either strength inputs were unavailable, or (always, this batch) Yongshin.
+    ...(used.has('BLOCKED: 일간 강약 판정에 필요한 입력 부족') ? ['일간 강약(판정 보류)'] : []),
+    ...(used.has('BLOCKED: 억부용신 범위 밖 → 판정 보류') ? ['억부용신(판정 보류)'] : []),
   ];
 
   const judgment: DivinationJudgment = {
@@ -224,6 +247,7 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     directEvidence: [
       ...evidenceOf(premises, answering(resolution).flatMap((p) => p.supportingPremiseIds), asked, asked),
       ...evidenceOf(premises, blocked.map((b) => b.id), 'GENERAL', asked),
+      ...evidenceOf(premises, structural.map((s) => s.id), 'GENERAL', asked),
     ],
     counterEvidence: evidenceOf(premises, answering(resolution).flatMap((p) => p.opposingPremiseIds), asked, asked),
     internalContradictions,

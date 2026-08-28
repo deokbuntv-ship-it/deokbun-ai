@@ -72,6 +72,7 @@ export type PremiseConcept =
   | 'SEAT_CONTACT'      // 시기 층이 원국 자리에 닿음 (충·형·합…)
   | 'LAYER_SILENT'      // 시기 층이 원국과 관계를 맺지 않음
   | 'DOCTRINE_BLOCK'    // 채택 학파가 없어 판정을 보류한 지점
+  | 'DAY_MASTER_STRENGTH' // 일간 구조적 강약 (Myungri Structural V2, frozen judgment graph)
   | 'ADAPTED';          // 아직 전제 그래프로 이관되지 않은 학문의 출력
 
 /**

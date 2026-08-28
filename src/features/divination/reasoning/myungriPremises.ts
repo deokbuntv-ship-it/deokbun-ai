@@ -19,6 +19,7 @@ import type {
 import { domainFamily, type NatalBaseline } from '../myungriNatal';
 import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
+import type { MyungriStructuralV2Result } from '../myungriStructuralV2';
 import {
   natalSeatPairTarget, natalSeatTarget, nextId, target, type DivinationPremise,
 } from './kernel';
@@ -44,8 +45,22 @@ export type MyungriPremiseInput = {
   baseline: NatalBaseline | null;
   layers: LayerAnalysis[];
   reliability: DataReliability;
-  /** True when the chart HAS the inputs a 강약 judgment would need — used to surface the doctrine blocker. */
-  strengthInputsPresent?: boolean;
+  /**
+   * The frozen Myungri Structural V2 judgment graph's result for this chart, when the chart HAS the
+   * inputs that judgment needs (`NatalStructureInput.strengthInputs` present) — computed by the
+   * caller (`reasoning/myungriReasoner.ts`) via `judgeMyungriStructuralV2FromStrengthInputs`. `null`
+   * only when those inputs are genuinely absent (no chart, or the frozen fact services themselves
+   * could not compute them) — never when a result was computed but happened to be UNRESOLVED, which
+   * is itself a real (not blocked) result and is reported as one below.
+   */
+  structuralV2?: MyungriStructuralV2Result | null;
+};
+
+const STRENGTH_CLASSIFICATION_LABEL: Record<string, string> = {
+  STRONG_LEANING: '일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.',
+  WEAK_LEANING: '일간이 계절과 뿌리 양쪽에서 힘을 받지 못하는 구조입니다.',
+  MIXED_EVIDENCE: '일간의 계절과 뿌리가 서로 다른 방향을 가리켜, 구조적 방향을 하나로 단정하지 않습니다.',
+  UNRESOLVED: '시주 등 필요한 정보가 확정되지 않아 일간의 구조적 방향을 판단하지 않습니다.',
 };
 
 export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPremise[] {
@@ -243,21 +258,72 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     }
   }
 
-  // ── WITHHELD DOCTRINE (§2) — the gap must stay VISIBLE, not merely absent ──────────────────────
-  // 강약 등급과 억부용신은 채택 학파가 없어 판정하지 않는다. 계산할 입력은 다 있으므로, '못 한다'가 아니라
-  // '보류한다'는 사실 자체를 전제로 남긴다 — 그래야 depth 리포트와 QA 팩에서 공백이 보인다.
-  if (input.strengthInputsPresent) {
+  // ── DAY-MASTER STRENGTH (Myungri Structural V2, frozen judgment graph — see myungriStructuralV2.ts)
+  //
+  // Was a permanent DOCTRINE_BLOCK premise until the Structural V2 graph was frozen and implemented.
+  // `strengthView.classification` now speaks for itself; `role: 'QUALIFIES'`/`'DESCRIBES'` and
+  // `applicability: 'CONTEXTUAL'`/`'BACKGROUND'` (never 'ASSERTS') mean this premise NEVER enters
+  // `primitivePropositions`/`runDerivations` (those only lift `role === 'ASSERTS'` premises) — exactly
+  // the same non-competing shape the withheld premise it replaces always had. It is surfaced to the
+  // user via the SAME `directEvidence`/`factGroupsUsed` mechanism `myungriReasoner.ts` already used
+  // for the withheld marker (see that file's `STRUCTURAL_V2:`-prefixed `doctrineReference` handling).
+  //
+  // 용신(Yongshin) remains OUT OF SCOPE and stays reported as withheld, unchanged — Structural V2 only
+  // supplies 강약(strength), never 용신.
+  if (input.structuralV2) {
+    const r = input.structuralV2;
+    if (r.capability === 'AVAILABLE') {
+      const directional = r.strengthView.classification === 'STRONG_LEANING'
+        || r.strengthView.classification === 'WEAK_LEANING';
+      let assertion = STRENGTH_CLASSIFICATION_LABEL[r.strengthView.classification];
+      if (r.specialStructureStatus.status === 'CANDIDATE') {
+        // §6 — CANDIDATE is carried as supporting structural metadata alongside the strength read; it
+        // never becomes its own verdict and never gates/replaces strengthView.
+        assertion += ' 다만 이 배치는 특수구조(종격 등) 후보 조건도 보여, 후속 검토가 필요합니다.';
+      }
+      out.push(base({
+        sourceFactIds: [`일간 강약: ${r.strengthView.classification} (Myungri Structural V2)`],
+        target: target('DAY_MASTER_FOOTING', 'STRENGTH', '일간의 구조적 강약'),
+        concept: 'DAY_MASTER_STRENGTH',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: r.strengthView.classification === 'STRONG_LEANING' ? 'ENABLES'
+          : r.strengthView.classification === 'WEAK_LEANING' ? 'CONSTRAINS'
+            : 'ABSENT', // MIXED_EVIDENCE / UNRESOLVED — no directional claim, never mapped to BALANCED
+        assertion,
+        role: directional ? 'QUALIFIES' : 'DESCRIBES',
+        applicability: directional ? 'CONTEXTUAL' : 'BACKGROUND',
+        doctrineReference: `STRUCTURAL_V2: 일간 강약(구조) — frozen judgment graph ${r.graphVersion}`,
+      }));
+    } else {
+      out.push(base({
+        sourceFactIds: [`일간 강약: 판정 보류(${r.reason})`],
+        // Reuses the SAME registered DOCTRINE_GAP id the pre-existing withheld premise used
+        // ('STRENGTH_YONGSHIN' — the only id registered for this kind besides 'AXIS:...', see
+        // reasoning/targets.ts's FOOTING/DOCTRINE_GAP validators) rather than minting a new one.
+        target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '일간 강약'),
+        concept: 'DOCTRINE_BLOCK',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'ABSENT',
+        assertion: r.reason,
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: 'BLOCKED: 일간 강약 판정에 필요한 입력 부족',
+      }));
+    }
+    // 용신 is never supplied by Structural V2 (out of scope) — stays reported as withheld.
     out.push(base({
-      sourceFactIds: ['일간 강약: 판정 보류(채택 학파 없음)'],
-      target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '일간 강약 · 억부용신'),
+      sourceFactIds: ['억부용신: 판정 보류(범위 밖)'],
+      target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '억부용신'),
       concept: 'DOCTRINE_BLOCK',
       questionAxis: 'GENERAL',
       temporalScope: 'NATAL',
       semanticRelation: 'ABSENT',
-      assertion: '강약 등급과 억부용신은 채택된 학파가 없어 판정을 보류한다. 구조 요소는 모두 산출되어 있다.',
+      assertion: '억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.',
       role: 'DESCRIBES',
       applicability: 'BACKGROUND',
-      doctrineReference: 'BLOCKED: 강약 학파 미채택 → 강약 등급·억부용신 판정 보류',
+      doctrineReference: 'BLOCKED: 억부용신 범위 밖 → 판정 보류',
     }));
   }
 

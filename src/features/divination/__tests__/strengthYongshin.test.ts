@@ -181,10 +181,13 @@ describe('REAL RUNTIME — the structure reaches the paid consultation without a
     return g.divinationVerdict;
   };
 
-  it('the Myungri judgment consumes the strength structure', async () => {
+  it('the Myungri judgment consumes the strength structure via Structural V2 (live-pipeline integration)', async () => {
+    // Was '일간 강약·용신(판정 보류)' (permanently BLOCKED) before Structural V2 was wired into
+    // reasoning/myungriReasoner.ts — 강약 is now a REAL, live-computed classification; 용신 remains
+    // out of scope and stays reported as withheld, separately from strength.
     const v = await groundingFor('올해 돈을 벌 수 있을까요?');
     const myungri = v.disciplineJudgments.find((j) => j.discipline === 'MYUNGRI')!;
-    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약·용신(판정 보류)']));
+    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약(구조)', '억부용신(판정 보류)']));
   });
 
   it('no 신강/신약 verdict word is emitted to the paying user', async () => {

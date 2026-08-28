@@ -166,7 +166,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   ]);
   const CONCEPTS = new Set([
     'NATAL_FAMILY', 'SEASONAL_FOOTING', 'ROOTING', 'NATAL_SEAT_STRAIN', 'LAYER_ACTIVATION', 'RIVAL_CLAIM',
-    'SEAT_CONTACT', 'LAYER_SILENT', 'DOCTRINE_BLOCK', 'ADAPTED',
+    'SEAT_CONTACT', 'LAYER_SILENT', 'DOCTRINE_BLOCK', 'DAY_MASTER_STRENGTH', 'ADAPTED',
   ]);
   const ROLES = new Set(['ASSERTS', 'QUALIFIES', 'DESCRIBES']);
   const APPLICABILITIES = new Set(['DIRECT', 'CONTEXTUAL', 'BACKGROUND']);

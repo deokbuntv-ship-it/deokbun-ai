@@ -38,7 +38,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 올해 돈을 벌 수 있을까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = MONEY_INFLOW · **VERDICT** = AGAINST
 **결론** = 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-**전제 수** = 30 · **명제 수** = 21 · **후보(runtime)** = 4
+**전제 수** = 31 · **명제 수** = 21 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -116,7 +116,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 저축이 남을까요?
 **INTENT** = OUTCOME · **ASKED_AXIS** = MONEY_RETENTION · **VERDICT** = FOR
 **결론** = 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
-**전제 수** = 30 · **명제 수** = 21 · **후보(runtime)** = 4
+**전제 수** = 31 · **명제 수** = 21 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -194,7 +194,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 올해 돈을 벌 수 있을까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = MONEY_INFLOW · **VERDICT** = CONDITIONAL_AGAINST
 **결론** = 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
-**전제 수** = 28 · **명제 수** = 22 · **후보(runtime)** = 6
+**전제 수** = 29 · **명제 수** = 22 · **후보(runtime)** = 6
 
 #### CONTESTED_SHARE — `COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`
 
@@ -299,7 +299,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 저축이 남을까요?
 **INTENT** = OUTCOME · **ASKED_AXIS** = MONEY_RETENTION · **VERDICT** = FOR
 **결론** = 전택에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
-**전제 수** = 30 · **명제 수** = 16 · **후보(runtime)** = 2
+**전제 수** = 31 · **명제 수** = 16 · **후보(runtime)** = 2
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:YEAR`
 
@@ -339,7 +339,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 사업을 더 키워도 될까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = OPPORTUNITY · **VERDICT** = CONDITIONAL_AGAINST
 **결론** = 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-**전제 수** = 34 · **명제 수** = 26 · **후보(runtime)** = 7
+**전제 수** = 35 · **명제 수** = 26 · **후보(runtime)** = 7
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -459,7 +459,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 사업을 더 키워도 될까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = OPPORTUNITY · **VERDICT** = INSUFFICIENT_EVIDENCE
 **결론** = 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
-**전제 수** = 28 · **명제 수** = 19 · **후보(runtime)** = 3
+**전제 수** = 29 · **명제 수** = 19 · **후보(runtime)** = 3
 
 #### CONTESTED_SHARE — `COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:WOLWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`
 
@@ -516,7 +516,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 이직해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = MOVEMENT · **VERDICT** = FOR
 **결론** = 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
-**전제 수** = 31 · **명제 수** = 22 · **후보(runtime)** = 4
+**전제 수** = 32 · **명제 수** = 22 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -594,7 +594,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 이사해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = MOVEMENT · **VERDICT** = CONDITIONAL_AGAINST
 **결론** = 이동에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-**전제 수** = 32 · **명제 수** = 20 · **후보(runtime)** = 5
+**전제 수** = 33 · **명제 수** = 20 · **후보(runtime)** = 5
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:YEAR`
 
@@ -676,7 +676,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 결혼해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = RELATION_STABILITY · **VERDICT** = INSUFFICIENT_EVIDENCE
 **결론** = 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-**전제 수** = 30 · **명제 수** = 37 · **후보(runtime)** = 19
+**전제 수** = 31 · **명제 수** = 37 · **후보(runtime)** = 19
 
 #### DIRECTION_VS_EXECUTION — `NATAL_SEAT:DAY`
 
@@ -971,7 +971,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 재회 가능성이 있을까요?
 **INTENT** = PROBABILITY · **ASKED_AXIS** = GENERAL · **VERDICT** = INSUFFICIENT_EVIDENCE
 **결론** = 전반에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
-**전제 수** = 27 · **명제 수** = 22 · **후보(runtime)** = 6
+**전제 수** = 28 · **명제 수** = 22 · **후보(runtime)** = 6
 
 #### CONTESTED_SHARE — `COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:DAEWOON:RIVAL|LUCK_LAYER:SEWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`
 
@@ -1076,7 +1076,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 지금 계약해도 될까요?
 **INTENT** = DECISION · **ASKED_AXIS** = DECISION · **VERDICT** = CONDITIONAL_AGAINST
 **결론** = 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
-**전제 수** = 35 · **명제 수** = 22 · **후보(runtime)** = 3
+**전제 수** = 36 · **명제 수** = 22 · **후보(runtime)** = 3
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -1140,7 +1140,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 제 타고난 성격이 어떤가요?
 **INTENT** = DESCRIPTIVE · **ASKED_AXIS** = GENERAL · **VERDICT** = INSUFFICIENT_EVIDENCE
 **결론** = 지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.
-**전제 수** = 30 · **명제 수** = 20 · **후보(runtime)** = 3
+**전제 수** = 31 · **명제 수** = 20 · **후보(runtime)** = 3
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`
 
@@ -1204,7 +1204,7 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 **QUESTION** = 왜 자꾸 부딪힐까요?
 **INTENT** = CAUSE_WHY · **ASKED_AXIS** = GENERAL · **VERDICT** = STRUCTURAL_ANSWER
 **결론** = 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-**전제 수** = 26 · **명제 수** = 17 · **후보(runtime)** = 3
+**전제 수** = 27 · **명제 수** = 17 · **후보(runtime)** = 3
 
 #### CONTESTED_SHARE — `COMPOSITE:RIVAL_VS_WEALTH:LUCK_LAYER:WOLWOON:RIVAL.TEN_GOD_FAMILY:WEALTH`
 

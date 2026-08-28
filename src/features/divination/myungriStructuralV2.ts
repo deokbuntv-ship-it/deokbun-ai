@@ -14,16 +14,32 @@
 // consumer label, task capacity (WEALTH_LOAD/CONTROL_LOAD/OUTPUT_LOAD), transformation judgment
 // (TRANSFORMATION_JUDGMENT_V2 = DEFERRED), GEJU, climate, Yongshin.
 //
-// This is the SOLE canonical Myungri structural-strength verdict authority going forward. The
-// previously-rejected seven-band `services/natalStrength.ts` stays quarantined (P0-07) and the
-// existing evidence-only `myungriStrength.ts` (`judgeDayMasterStrength`) is untouched — it still
-// returns `UNDETERMINED` by its own design, and is not wired to this module this batch (wiring it
-// into the live consultation reasoning pipeline — `reasoning/myungriReasoner.ts` and its premise/
-// derivation kernel — would mean editing frozen kernel files, which this batch does not do; see this
-// module's own handoff note at the bottom of the file).
+// This is the SOLE canonical Myungri structural-strength verdict authority. The previously-rejected
+// seven-band `services/natalStrength.ts` stays quarantined (P0-07) and the existing evidence-only
+// `myungriStrength.ts` (`judgeDayMasterStrength`) is untouched — it still returns `UNDETERMINED` by
+// its own design and does not compete with this module.
+//
+// TWO ENTRY POINTS, ONE SHARED CORE (`runCore`) — see "final live-pipeline integration" note below:
+//   - `judgeMyungriStructuralV2(bundle)`: consumes a full `MyungriStrengthFactBundle` (built via
+//     `buildMyungriStrengthFactBundle(NatalPillarContext)`). Used where the raw pillar chart is
+//     available.
+//   - `judgeMyungriStructuralV2FromStrengthInputs(input)`: consumes the ALREADY-DIGESTED structural
+//     facts the live consultation reasoning pipeline already computes and carries on
+//     `NatalStructureInput`/`NatalStructureInput['strengthInputs']` (`reasoning/myungriReasoner.ts`,
+//     `myungriNatal.ts`) — used at that call site, which has no raw `NatalPillarContext` to rebuild a
+//     full fact bundle from. Both entry points run the IDENTICAL `runCore` decision logic; neither
+//     duplicates SYNTH-01/SPECIAL-01/SV-01. The second entry point cannot supply
+//     `touchesRootPosition`/`transformationGlyphPresent` (not carried on `NatalStructureInput`) or a
+//     full numerousness count, so it degrades honestly: no relation-context caveat is assumed (never
+//     fabricated), and numerousness is reported as `{0, 0, incompleteCount: true}` when the caller has
+//     no ten-god position data to hand, `incompleteCount` making the omission visible rather than
+//     silently defaulting. Neither omission can change `structuralState`/`strengthView.classification`/
+//     `specialStructureStatus.status` — the two facts those decisions depend on
+//     (`RootExistsFact`/`SeasonRoleFact`) are supplied in full at both entry points.
 import type { FiveElement, HeavenlyStem, SajuPillarPosition } from '@/features/interpretation';
 import type { MyungriStrengthFactBundle } from '@/features/myungri/services/strengthFactBundle';
 import { tenGodSide } from '@/features/myungri/services/dayMasterStrengthInputs';
+import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 
 import type { JudgmentEvidence } from './contracts';
 
@@ -110,51 +126,6 @@ const ev = (fact: string, meaning: string): JudgmentEvidence => ({
   fact, meaning, domain: 'GENERAL', temporalScope: 'NATAL', directness: 'ADJACENT',
 });
 
-// ── FACT-03: AX01_fact — root/hidden-peer existence, EXISTENCE ONLY (no rank, no survivability). ──
-function computeRootExistsFact(
-  bundle: MyungriStrengthFactBundle,
-): { fact: RootExistsFact; hourKnown: boolean; rootPositions: SajuPillarPosition[] } {
-  const hourKnown = bundle.sameElementRooting.branches.some((b) => b.position === 'HOUR');
-  const rootPositions = [...new Set(bundle.sameElementRooting.sameElementRoots.map((r) => r.position))];
-  if (rootPositions.length > 0) return { fact: 'ROOT_EXISTS_TRUE', hourKnown, rootPositions };
-  if (!hourKnown) return { fact: 'ROOT_EXISTS_UNKNOWN', hourKnown, rootPositions };
-  return { fact: 'ROOT_EXISTS_FALSE', hourKnown, rootPositions };
-}
-
-// ── FACT-04: AX02_fact — raw month-command role, descriptive only. ─────────────────────────────
-const PHASE_TO_SEASON_ROLE: Readonly<Record<string, SeasonRoleFact>> = {
-  WANG: 'IN_COMMAND', XIANG: 'SUPPORTED', XIU: 'NEUTRAL', QIU: 'DRAINED', SI: 'OPPOSED',
-};
-function computeSeasonRoleFact(bundle: MyungriStrengthFactBundle): SeasonRoleFact {
-  return PHASE_TO_SEASON_ROLE[bundle.monthCommand.dayMasterSeasonalPhase];
-}
-
-// ── FACT-05: AX03_fact — relation existence + context annotations, no effect claim. ────────────
-function computeRelationContextFact(
-  bundle: MyungriStrengthFactBundle,
-): { touchesRootPosition: boolean; transformationGlyphPresent: boolean } {
-  const { relationParticipants } = bundle;
-  const touchesRootPosition =
-    relationParticipants.branchPair.some((r) => r.candidateAffectedRootFactIds.length > 0)
-    || relationParticipants.branchSet.some((r) => r.candidateAffectedRootFactIds.length > 0);
-  // Every 天干 STEM_COMBINATION is one of the five classical transformation glyphs (甲己/乙庚/丙辛/
-  // 丁壬/戊癸) — there is no other kind of stem "combination" in the frozen relation detector, so
-  // kind alone is sufficient; no new glyph table is invented here.
-  const transformationGlyphPresent = relationParticipants.stem.some((r) => r.relation.kind === 'STEM_COMBINATION');
-  return { touchesRootPosition, transformationGlyphPresent };
-}
-
-// ── FACT-06: AX09_fact — numerousness, FACT ONLY. Deduplicated by DISTINCT POSITION, never by raw
-//    stem/hidden-stem occurrence count, matching the frozen graph's own POSITIVE_CONDITIONS. ─────
-function computeNumerousnessEvidence(bundle: MyungriStrengthFactBundle, hourKnown: boolean): NumerousnessEvidence {
-  const supportPositions = new Set<SajuPillarPosition>();
-  const drainPositions = new Set<SajuPillarPosition>();
-  for (const f of [...bundle.tenGodFacts.visibleStems, ...bundle.tenGodFacts.hiddenStems]) {
-    (tenGodSide(f.tenGod) === 'SUPPORT' ? supportPositions : drainPositions).add(f.position);
-  }
-  return { supportCount: supportPositions.size, drainCount: drainPositions.size, incompleteCount: !hourKnown };
-}
-
 // ── SPECIAL-01: special-structure SCREEN. CANDIDATE ceiling only — see graph node for the full
 //    rationale on why HIGH_CONFIDENCE/DISPUTED/a transformation disjunct do not exist here.
 //    Exported (alongside runStructuralSynthesis below) so the decision LOGIC itself is directly and
@@ -201,39 +172,45 @@ export const STRUCTURAL_STATE_TO_STRENGTH: Readonly<Record<StructuralState, Stre
   MIXED_STRUCTURE: 'MIXED_EVIDENCE', UNRESOLVED: 'UNRESOLVED',
 };
 
+function seasonRoleMeaning(fact: SeasonRoleFact): string {
+  switch (fact) {
+    case 'IN_COMMAND': return '계절이 일간과 같은 오행입니다(旺).';
+    case 'SUPPORTED': return '계절이 일간을 생(生)해 줍니다(相).';
+    case 'NEUTRAL': return '계절이 일간의 힘을 밀지도 빼지도 않습니다(休).';
+    case 'DRAINED': return '계절이 일간에게 극(剋)을 당합니다(囚).';
+    case 'OPPOSED': return '계절이 일간을 정면으로 극(剋)합니다(死).';
+  }
+}
+
 /**
- * Judge the frozen Myungri Structural V2 graph against one already-built fact bundle. Pure,
- * deterministic, synchronous — same bundle always produces the same result (no clock, no random,
- * no network, no LLM). See module header for exact scope.
+ * SHARED CORE — every entry point in this module funnels through here. This is the ONLY place
+ * SYNTH-01/SPECIAL-01/SV-01/UNC-FINAL logic is written; no caller (including
+ * `reasoning/myungriPremises.ts`) may reimplement any part of it (§4 of the live-pipeline
+ * integration brief).
  */
-export function judgeMyungriStructuralV2(bundle: MyungriStrengthFactBundle): MyungriStructuralV2Result {
-  const trace: ReasoningTraceEntry[] = [];
-
-  // FACT-01/FACT-02 — chart completeness + Day Master identity. The bundle builder
-  // (buildMyungriStrengthFactBundle) already fails closed on an invalid natal context before this
-  // function is ever reached, so both are always satisfied for an AVAILABLE bundle; recorded in the
-  // trace for completeness, not because either can fail here.
-  const dayMaster = bundle.sameElementRooting.dayMaster.stem;
-  const dayMasterElement = bundle.sameElementRooting.dayMaster.element;
-  trace.push({ nodeId: 'FACT-01', nodeType: 'FACT_CHECK', premises: [], conclusion: 'chart facts available' });
-  trace.push({ nodeId: 'FACT-02', nodeType: 'FACT_CHECK', premises: [], conclusion: `dayMaster=${dayMaster}` });
-
-  // FACT-03
-  const { fact: rootFact, hourKnown, rootPositions } = computeRootExistsFact(bundle);
-  trace.push({ nodeId: 'FACT-03', nodeType: 'FACT_CHECK', premises: ['sameElementRooting.sameElementRoots'], conclusion: `AX01_fact=${rootFact}` });
-
-  // FACT-04
-  const seasonFact = computeSeasonRoleFact(bundle);
-  trace.push({ nodeId: 'FACT-04', nodeType: 'FACT_CHECK', premises: ['monthCommand.dayMasterSeasonalPhase'], conclusion: `AX02_fact=${seasonFact}` });
-
-  // FACT-05
-  const { touchesRootPosition, transformationGlyphPresent } = computeRelationContextFact(bundle);
-  trace.push({ nodeId: 'FACT-05', nodeType: 'FACT_CHECK', premises: ['relationParticipants'], conclusion: `AX03_fact.touchesRootPosition=${touchesRootPosition}` });
-
-  // FACT-06 — HARD CONTRACT: numerousness is computed and returned, but nothing below this line
-  // reads `numerousnessEvidence` to decide anything (P0-05). See the dedicated non-authority test.
-  const numerousnessEvidence = computeNumerousnessEvidence(bundle, hourKnown);
-  trace.push({ nodeId: 'FACT-06', nodeType: 'FACT_CHECK', premises: ['tenGodFacts'], conclusion: `AX09_fact=${JSON.stringify(numerousnessEvidence)}` });
+function runCore(facts: {
+  dayMaster: HeavenlyStem;
+  dayMasterElement: FiveElement;
+  hourKnown: boolean;
+  rootFact: RootExistsFact;
+  rootPositions: SajuPillarPosition[];
+  seasonFact: SeasonRoleFact;
+  touchesRootPosition: boolean;
+  transformationGlyphPresent: boolean;
+  numerousnessEvidence: NumerousnessEvidence;
+}): MyungriStructuralV2Result {
+  const {
+    dayMaster, dayMasterElement, hourKnown, rootFact, rootPositions, seasonFact,
+    touchesRootPosition, transformationGlyphPresent, numerousnessEvidence,
+  } = facts;
+  const trace: ReasoningTraceEntry[] = [
+    { nodeId: 'FACT-01', nodeType: 'FACT_CHECK', premises: [], conclusion: 'chart facts available' },
+    { nodeId: 'FACT-02', nodeType: 'FACT_CHECK', premises: [], conclusion: `dayMaster=${dayMaster}` },
+    { nodeId: 'FACT-03', nodeType: 'FACT_CHECK', premises: ['root/hidden-peer existence'], conclusion: `AX01_fact=${rootFact}` },
+    { nodeId: 'FACT-04', nodeType: 'FACT_CHECK', premises: ['month-command seasonal phase'], conclusion: `AX02_fact=${seasonFact}` },
+    { nodeId: 'FACT-05', nodeType: 'FACT_CHECK', premises: ['relation participants'], conclusion: `AX03_fact.touchesRootPosition=${touchesRootPosition}` },
+    { nodeId: 'FACT-06', nodeType: 'FACT_CHECK', premises: ['ten-god facts'], conclusion: `AX09_fact=${JSON.stringify(numerousnessEvidence)}` },
+  ];
 
   // SPECIAL-01
   const special = runSpecialScreen(rootFact, seasonFact);
@@ -324,24 +301,122 @@ export function judgeMyungriStructuralV2(bundle: MyungriStrengthFactBundle): Myu
   };
 }
 
-function seasonRoleMeaning(fact: SeasonRoleFact): string {
-  switch (fact) {
-    case 'IN_COMMAND': return '계절이 일간과 같은 오행입니다(旺).';
-    case 'SUPPORTED': return '계절이 일간을 생(生)해 줍니다(相).';
-    case 'NEUTRAL': return '계절이 일간의 힘을 밀지도 빼지도 않습니다(休).';
-    case 'DRAINED': return '계절이 일간에게 극(剋)을 당합니다(囚).';
-    case 'OPPOSED': return '계절이 일간을 정면으로 극(剋)합니다(死).';
-  }
+// ── FACT-03: AX01_fact — root/hidden-peer existence, EXISTENCE ONLY (no rank, no survivability). ──
+function rootExistsFactFromBundle(
+  bundle: MyungriStrengthFactBundle,
+): { fact: RootExistsFact; hourKnown: boolean; rootPositions: SajuPillarPosition[] } {
+  const hourKnown = bundle.sameElementRooting.branches.some((b) => b.position === 'HOUR');
+  const rootPositions = [...new Set(bundle.sameElementRooting.sameElementRoots.map((r) => r.position))];
+  if (rootPositions.length > 0) return { fact: 'ROOT_EXISTS_TRUE', hourKnown, rootPositions };
+  if (!hourKnown) return { fact: 'ROOT_EXISTS_UNKNOWN', hourKnown, rootPositions };
+  return { fact: 'ROOT_EXISTS_FALSE', hourKnown, rootPositions };
 }
 
-// ── HANDOFF NOTE (not code) ─────────────────────────────────────────────────────────────────────
-// This module is not yet wired into the live consultation reasoning pipeline
-// (`reasoning/myungriReasoner.ts` / `reasoning/myungriPremises.ts` / `reasoning/kernel.ts`). That
-// pipeline currently marks Myungri strength as a named BLOCKED premise
-// ('BLOCKED: 강약 학파 미채택 → 강약 등급·억부용신 판정 보류') precisely because no classification was
-// available to report. Wiring this module in would mean editing those frozen kernel files to consume
-// a real classification instead of the BLOCKED marker — a separate, larger integration task with its
-// own scoping, not attempted this batch per the instruction to STOP rather than touch frozen kernel
-// code for an adapter. `myungriStrength.ts` (`judgeDayMasterStrength`) is untouched and continues to
-// return `UNDETERMINED` by its own design; this module does not compete with it, it simply has not
-// been connected to the same call site yet.
+const PHASE_TO_SEASON_ROLE: Readonly<Record<string, SeasonRoleFact>> = {
+  WANG: 'IN_COMMAND', XIANG: 'SUPPORTED', XIU: 'NEUTRAL', QIU: 'DRAINED', SI: 'OPPOSED',
+};
+
+/**
+ * Judge the frozen Myungri Structural V2 graph against one already-built fact bundle. Pure,
+ * deterministic, synchronous — same bundle always produces the same result (no clock, no random,
+ * no network, no LLM). See module header for exact scope.
+ */
+export function judgeMyungriStructuralV2(bundle: MyungriStrengthFactBundle): MyungriStructuralV2Result {
+  const { fact: rootFact, hourKnown, rootPositions } = rootExistsFactFromBundle(bundle);
+  const seasonFact = PHASE_TO_SEASON_ROLE[bundle.monthCommand.dayMasterSeasonalPhase];
+
+  const { relationParticipants } = bundle;
+  const touchesRootPosition =
+    relationParticipants.branchPair.some((r) => r.candidateAffectedRootFactIds.length > 0)
+    || relationParticipants.branchSet.some((r) => r.candidateAffectedRootFactIds.length > 0);
+  // Every 天干 STEM_COMBINATION is one of the five classical transformation glyphs (甲己/乙庚/丙辛/
+  // 丁壬/戊癸) — there is no other kind of stem "combination" in the frozen relation detector.
+  const transformationGlyphPresent = relationParticipants.stem.some((r) => r.relation.kind === 'STEM_COMBINATION');
+
+  const supportPositions = new Set<SajuPillarPosition>();
+  const drainPositions = new Set<SajuPillarPosition>();
+  for (const f of [...bundle.tenGodFacts.visibleStems, ...bundle.tenGodFacts.hiddenStems]) {
+    (tenGodSide(f.tenGod) === 'SUPPORT' ? supportPositions : drainPositions).add(f.position);
+  }
+  const numerousnessEvidence: NumerousnessEvidence = {
+    supportCount: supportPositions.size, drainCount: drainPositions.size, incompleteCount: !hourKnown,
+  };
+
+  return runCore({
+    dayMaster: bundle.sameElementRooting.dayMaster.stem,
+    dayMasterElement: bundle.sameElementRooting.dayMaster.element,
+    hourKnown, rootFact, rootPositions, seasonFact,
+    touchesRootPosition, transformationGlyphPresent, numerousnessEvidence,
+  });
+}
+
+/**
+ * Live-pipeline entry point — consumes the ALREADY-DIGESTED structural facts
+ * `reasoning/myungriReasoner.ts` already carries (`NatalStructureInput`/`.strengthInputs`), rather
+ * than a full `MyungriStrengthFactBundle` (that call site has no raw `NatalPillarContext` to rebuild
+ * one from). Runs the IDENTICAL `runCore` — see this module's header note on what this entry point
+ * cannot supply (`touchesRootPosition`, `transformationGlyphPresent`, full numerousness) and why
+ * that never changes `structuralState`/`strengthView.classification`/`specialStructureStatus.status`.
+ */
+export function judgeMyungriStructuralV2FromStrengthInputs(input: {
+  dayMaster: HeavenlyStem;
+  dayMasterElement: FiveElement;
+  /** Raw month-command phase string, as `monthCommand.ts` computes it (e.g. 'WANG'). Matched
+   *  case-sensitively against the exact enum values that service produces — no fuzzy text search,
+   *  unlike the quarantined `myungriStrength.ts`'s `monthFactor()`, because this call site is known
+   *  to receive the raw enum value directly (`NatalStructureInput.seasonalPhase`), not free text. */
+  seasonalPhase: string | null;
+  /** 통근 — same-stem root positions (rootingTransparency.ts, via NatalStructureInput.strengthInputs). */
+  dayMasterRootPositions: SajuPillarPosition[];
+  /** 득지 — same-element hidden-peer positions, kept distinct from 통근 per canonical doctrine. */
+  peerHiddenPositions: SajuPillarPosition[];
+  hourKnown: boolean;
+  /** Optional: when the caller has positioned ten-god facts to hand (NatalStructureInput.positionedTenGods),
+   *  numerousness is reported in full. Omitted → reported as {0, 0, incompleteCount: true}, which can
+   *  never change any decision (P0-05) but is disclosed rather than silently guessed. */
+  positionedTenGods?: readonly { position: SajuPillarPosition; tenGod: TenGod }[];
+}): MyungriStructuralV2Result {
+  const rootPositions = [...new Set([...input.dayMasterRootPositions, ...input.peerHiddenPositions])];
+  const rootFact: RootExistsFact = rootPositions.length > 0
+    ? 'ROOT_EXISTS_TRUE'
+    : input.hourKnown ? 'ROOT_EXISTS_FALSE' : 'ROOT_EXISTS_UNKNOWN';
+
+  const seasonFact: SeasonRoleFact | undefined = input.seasonalPhase
+    ? PHASE_TO_SEASON_ROLE[input.seasonalPhase]
+    : undefined;
+  if (!seasonFact) {
+    return {
+      capability: 'INSUFFICIENT',
+      ruleVersion: MYUNGRI_STRUCTURAL_V2_METHOD,
+      graphVersion: MYUNGRI_STRUCTURAL_V2_GRAPH_VERSION,
+      reason: '월령 계절 정보(旺相休囚死)가 없어 구조 판정을 시작할 수 없습니다.',
+      blockedAtNodeId: 'FACT-04',
+    };
+  }
+
+  let numerousnessEvidence: NumerousnessEvidence = { supportCount: 0, drainCount: 0, incompleteCount: true };
+  if (input.positionedTenGods) {
+    const supportPositions = new Set<SajuPillarPosition>();
+    const drainPositions = new Set<SajuPillarPosition>();
+    for (const f of input.positionedTenGods) {
+      (tenGodSide(f.tenGod) === 'SUPPORT' ? supportPositions : drainPositions).add(f.position);
+    }
+    numerousnessEvidence = {
+      supportCount: supportPositions.size, drainCount: drainPositions.size, incompleteCount: !input.hourKnown,
+    };
+  }
+
+  return runCore({
+    dayMaster: input.dayMaster,
+    dayMasterElement: input.dayMasterElement,
+    hourKnown: input.hourKnown,
+    rootFact, rootPositions, seasonFact,
+    // Not derivable from NatalStructureInput at this call site (no relation-participant/root-linkage
+    // or transformation-glyph data is carried on it) — honestly reported as false/absent rather than
+    // guessed. Affects only `confidenceClass` (HIGH vs MODERATE), never structuralState/strengthView/
+    // specialStructureStatus.
+    touchesRootPosition: false,
+    transformationGlyphPresent: false,
+    numerousnessEvidence,
+  });
+}

@@ -199,7 +199,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:zp_26+p:zp_28` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:zp_27+p:zp_29` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_INFLOW |
@@ -213,9 +213,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `zp_26`, `zp_28` |
-| OPPOSING_PARENTS | `zc_27` |
-| DERIVED_FROM | `p:zp_26`, `p:zp_28` |
+| SUPPORTING_PARENTS | `zp_27`, `zp_29` |
+| OPPOSING_PARENTS | `zc_28` |
+| DERIVED_FROM | `p:zp_27`, `p:zp_29` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -264,7 +264,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_38+mp_47+mp_49+mp_53` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_39+mp_48+mp_50+mp_54` |
 | SUBJECT | A |
 | INTENT | OUTCOME |
 | AXIS | RELATION_STABILITY |
@@ -277,10 +277,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_53`, `mp_47`, `mp_49`, `mp_38` |
-| SUPPORTING_PARENTS | `mp_53`, `mp_47`, `mp_49`, `mp_38` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_54`, `mp_48`, `mp_50`, `mp_39` |
+| SUPPORTING_PARENTS | `mp_54`, `mp_48`, `mp_50`, `mp_39` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_53`, `p:mp_47`, `p:mp_49`, `p:mp_38` |
+| DERIVED_FROM | `p:mp_54`, `p:mp_48`, `p:mp_50`, `p:mp_39` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -312,7 +312,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_48+mp_52` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_49+mp_53` |
 | SUBJECT | A |
 | INTENT | OUTCOME |
 | AXIS | GENERAL |
@@ -325,10 +325,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_52`, `mp_48` |
-| SUPPORTING_PARENTS | `mp_52`, `mp_48` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_53`, `mp_49` |
+| SUPPORTING_PARENTS | `mp_53`, `mp_49` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_52`, `p:mp_48` |
+| DERIVED_FROM | `p:mp_53`, `p:mp_49` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -356,7 +356,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_38+mp_47+mp_49+mp_53` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_39+mp_48+mp_50+mp_54` |
 | SUBJECT | A |
 | INTENT | OUTCOME |
 | AXIS | RELATION_STABILITY |
@@ -368,11 +368,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_38` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_47`, `mp_49`, `mp_53` |
-| SUPPORTING_PARENTS | `mp_38`, `mp_47`, `mp_49`, `mp_53` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_39` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_48`, `mp_50`, `mp_54` |
+| SUPPORTING_PARENTS | `mp_39`, `mp_48`, `mp_50`, `mp_54` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_38`, `p:mp_47`, `p:mp_49`, `p:mp_53` |
+| DERIVED_FROM | `p:mp_39`, `p:mp_48`, `p:mp_50`, `p:mp_54` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -405,7 +405,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:zp_56+p:zp_57` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:zp_58+p:zp_59` |
 | SUBJECT | A |
 | INTENT | OUTCOME |
 | AXIS | MONEY_RETENTION |
@@ -419,9 +419,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `zp_56`, `zp_57` |
-| OPPOSING_PARENTS | `zc_58` |
-| DERIVED_FROM | `p:zp_56`, `p:zp_57` |
+| SUPPORTING_PARENTS | `zp_58`, `zp_59` |
+| OPPOSING_PARENTS | `zc_60` |
+| DERIVED_FROM | `p:zp_58`, `p:zp_59` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -470,7 +470,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_61+mp_73+mp_78` |
+| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_63+mp_75+mp_80` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_RETENTION |
@@ -483,10 +483,10 @@
 | RESTRICTIONS | SCOPE |
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_73`, `mp_78` · 원국의 재물 자리: `mp_61` |
-| SUPPORTING_PARENTS | `mp_61`, `mp_73`, `mp_78` |
+| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_75`, `mp_80` · 원국의 재물 자리: `mp_63` |
+| SUPPORTING_PARENTS | `mp_63`, `mp_75`, `mp_80` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_73`, `p:mp_78` |
+| DERIVED_FROM | `p:mp_75`, `p:mp_80` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -517,7 +517,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:CAREER:mp_75+mp_80` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:CAREER:mp_77+mp_82` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | CAREER |
@@ -530,10 +530,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_80`, `mp_75` |
-| SUPPORTING_PARENTS | `mp_80`, `mp_75` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_82`, `mp_77` |
+| SUPPORTING_PARENTS | `mp_82`, `mp_77` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_80`, `p:mp_75` |
+| DERIVED_FROM | `p:mp_82`, `p:mp_77` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -561,7 +561,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:OUTCOME:mp_76+mp_81` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:OUTCOME:mp_78+mp_83` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | OUTCOME |
@@ -574,10 +574,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_81`, `mp_76` |
-| SUPPORTING_PARENTS | `mp_81`, `mp_76` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_83`, `mp_78` |
+| SUPPORTING_PARENTS | `mp_83`, `mp_78` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_81`, `p:mp_76` |
+| DERIVED_FROM | `p:mp_83`, `p:mp_78` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -605,7 +605,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_82^d:CONTESTED_SHARE:MONEY_RETENTION:mp_61+mp_73+mp_78` |
+| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_84^d:CONTESTED_SHARE:MONEY_RETENTION:mp_63+mp_75+mp_80` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_INFLOW |
@@ -619,9 +619,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_82` |
+| SUPPORTING_PARENTS | `mp_84` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_61+mp_73+mp_78`, `p:mp_82` |
+| DERIVED_FROM | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_63+mp_75+mp_80`, `p:mp_84` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -647,7 +647,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_74+p:mp_75` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_76+p:mp_77` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | CAREER |
@@ -661,9 +661,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_74`, `mp_75` |
+| SUPPORTING_PARENTS | `mp_76`, `mp_77` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_74`, `p:mp_75` |
+| DERIVED_FROM | `p:mp_76`, `p:mp_77` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -706,7 +706,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_79+p:mp_81` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_81+p:mp_83` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | OUTCOME |
@@ -720,9 +720,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_79`, `mp_81` |
+| SUPPORTING_PARENTS | `mp_81`, `mp_83` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_79`, `p:mp_81` |
+| DERIVED_FROM | `p:mp_81`, `p:mp_83` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -769,7 +769,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_110+mp_113` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_113+mp_116` |
 | SUBJECT | D |
 | INTENT | OUTCOME |
 | AXIS | GENERAL |
@@ -782,10 +782,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_113`, `mp_110` |
-| SUPPORTING_PARENTS | `mp_113`, `mp_110` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_116`, `mp_113` |
+| SUPPORTING_PARENTS | `mp_116`, `mp_113` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_113`, `p:mp_110` |
+| DERIVED_FROM | `p:mp_116`, `p:mp_113` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -813,7 +813,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_105+p:mp_107` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_108+p:mp_110` |
 | SUBJECT | D |
 | INTENT | OUTCOME |
 | AXIS | CAREER |
@@ -827,9 +827,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_105`, `mp_107` |
+| SUPPORTING_PARENTS | `mp_108`, `mp_110` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_105`, `p:mp_107` |
+| DERIVED_FROM | `p:mp_108`, `p:mp_110` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -878,7 +878,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_126+mp_135+mp_137+mp_141` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_130+mp_139+mp_141+mp_145` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | RELATION_STABILITY |
@@ -891,10 +891,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_141`, `mp_135`, `mp_137`, `mp_126` |
-| SUPPORTING_PARENTS | `mp_141`, `mp_135`, `mp_137`, `mp_126` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_145`, `mp_139`, `mp_141`, `mp_130` |
+| SUPPORTING_PARENTS | `mp_145`, `mp_139`, `mp_141`, `mp_130` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_141`, `p:mp_135`, `p:mp_137`, `p:mp_126` |
+| DERIVED_FROM | `p:mp_145`, `p:mp_139`, `p:mp_141`, `p:mp_130` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -926,7 +926,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_136+mp_140` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_140+mp_144` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | GENERAL |
@@ -939,10 +939,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_140`, `mp_136` |
-| SUPPORTING_PARENTS | `mp_140`, `mp_136` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_144`, `mp_140` |
+| SUPPORTING_PARENTS | `mp_144`, `mp_140` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_140`, `p:mp_136` |
+| DERIVED_FROM | `p:mp_144`, `p:mp_140` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -970,7 +970,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_126+mp_135+mp_137+mp_141` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_130+mp_139+mp_141+mp_145` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | RELATION_STABILITY |
@@ -982,11 +982,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_126` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_135`, `mp_137`, `mp_141` |
-| SUPPORTING_PARENTS | `mp_126`, `mp_135`, `mp_137`, `mp_141` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_130` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_139`, `mp_141`, `mp_145` |
+| SUPPORTING_PARENTS | `mp_130`, `mp_139`, `mp_141`, `mp_145` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_126`, `p:mp_135`, `p:mp_137`, `p:mp_141` |
+| DERIVED_FROM | `p:mp_130`, `p:mp_139`, `p:mp_141`, `p:mp_145` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -1019,7 +1019,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_133+p:zp_144` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_137+p:zp_149` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | OPPORTUNITY |
@@ -1033,9 +1033,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_133`, `zp_144` |
-| OPPOSING_PARENTS | `zc_145` |
-| DERIVED_FROM | `p:mp_133`, `p:zp_144` |
+| SUPPORTING_PARENTS | `mp_137`, `zp_149` |
+| OPPOSING_PARENTS | `zc_150` |
+| DERIVED_FROM | `p:mp_137`, `p:zp_149` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -1080,7 +1080,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_138+p:zp_144` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_142+p:zp_149` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | OPPORTUNITY |
@@ -1094,9 +1094,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_138`, `zp_144` |
-| OPPOSING_PARENTS | `zc_145` |
-| DERIVED_FROM | `p:mp_138`, `p:zp_144` |
+| SUPPORTING_PARENTS | `mp_142`, `zp_149` |
+| OPPOSING_PARENTS | `zc_150` |
+| DERIVED_FROM | `p:mp_142`, `p:zp_149` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -1141,7 +1141,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_142+p:zp_144` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_146+p:zp_149` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | OPPORTUNITY |
@@ -1155,9 +1155,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_142`, `zp_144` |
-| OPPOSING_PARENTS | `zc_145` |
-| DERIVED_FROM | `p:mp_142`, `p:zp_144` |
+| SUPPORTING_PARENTS | `mp_146`, `zp_149` |
+| OPPOSING_PARENTS | `zc_150` |
+| DERIVED_FROM | `p:mp_146`, `p:zp_149` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 시주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 시주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -1202,7 +1202,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:zp_144+p:zp_146` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:zp_149+p:zp_151` |
 | SUBJECT | A |
 | INTENT | PROBABILITY |
 | AXIS | OPPORTUNITY |
@@ -1216,9 +1216,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `zp_144`, `zp_146` |
-| OPPOSING_PARENTS | `zc_145`, `zc_147` |
-| DERIVED_FROM | `p:zp_144`, `p:zp_146` |
+| SUPPORTING_PARENTS | `zp_149`, `zp_151` |
+| OPPOSING_PARENTS | `zc_150`, `zc_152` |
+| DERIVED_FROM | `p:zp_149`, `p:zp_151` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -1269,7 +1269,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_153+mp_170` |
+| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_158+mp_175` |
 | SUBJECT | C |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_RETENTION |
@@ -1282,10 +1282,10 @@
 | RESTRICTIONS | SCOPE |
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_170` · 원국의 재물 자리: `mp_153` |
-| SUPPORTING_PARENTS | `mp_153`, `mp_170` |
+| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_175` · 원국의 재물 자리: `mp_158` |
+| SUPPORTING_PARENTS | `mp_158`, `mp_175` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_170` |
+| DERIVED_FROM | `p:mp_175` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -1314,7 +1314,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_168+mp_173` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_173+mp_178` |
 | SUBJECT | C |
 | INTENT | PROBABILITY |
 | AXIS | RELATION_STABILITY |
@@ -1327,10 +1327,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_173`, `mp_168` |
-| SUPPORTING_PARENTS | `mp_173`, `mp_168` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_178`, `mp_173` |
+| SUPPORTING_PARENTS | `mp_178`, `mp_173` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_173`, `p:mp_168` |
+| DERIVED_FROM | `p:mp_178`, `p:mp_173` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -1358,7 +1358,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_171+p:mp_174` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_176+p:mp_179` |
 | SUBJECT | C |
 | INTENT | PROBABILITY |
 | AXIS | OUTCOME |
@@ -1372,9 +1372,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_171`, `mp_174` |
+| SUPPORTING_PARENTS | `mp_176`, `mp_179` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_171`, `p:mp_174` |
+| DERIVED_FROM | `p:mp_176`, `p:mp_179` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -1423,7 +1423,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_188+mp_197+mp_199+mp_203` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_194+mp_203+mp_205+mp_209` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -1436,10 +1436,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_203`, `mp_197`, `mp_199`, `mp_188` |
-| SUPPORTING_PARENTS | `mp_203`, `mp_197`, `mp_199`, `mp_188` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_209`, `mp_203`, `mp_205`, `mp_194` |
+| SUPPORTING_PARENTS | `mp_209`, `mp_203`, `mp_205`, `mp_194` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_203`, `p:mp_197`, `p:mp_199`, `p:mp_188` |
+| DERIVED_FROM | `p:mp_209`, `p:mp_203`, `p:mp_205`, `p:mp_194` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -1471,7 +1471,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_198+mp_202` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_204+mp_208` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | GENERAL |
@@ -1484,10 +1484,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_202`, `mp_198` |
-| SUPPORTING_PARENTS | `mp_202`, `mp_198` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_208`, `mp_204` |
+| SUPPORTING_PARENTS | `mp_208`, `mp_204` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_202`, `p:mp_198` |
+| DERIVED_FROM | `p:mp_208`, `p:mp_204` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -1515,7 +1515,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_188+mp_197+mp_199+mp_203` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_194+mp_203+mp_205+mp_209` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -1527,11 +1527,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_188` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_197`, `mp_199`, `mp_203` |
-| SUPPORTING_PARENTS | `mp_188`, `mp_197`, `mp_199`, `mp_203` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_194` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_203`, `mp_205`, `mp_209` |
+| SUPPORTING_PARENTS | `mp_194`, `mp_203`, `mp_205`, `mp_209` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_188`, `p:mp_197`, `p:mp_199`, `p:mp_203` |
+| DERIVED_FROM | `p:mp_194`, `p:mp_203`, `p:mp_205`, `p:mp_209` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -1564,7 +1564,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_194+p:zp_206` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_200+p:zp_213` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | MOVEMENT |
@@ -1578,9 +1578,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_194`, `zp_206` |
+| SUPPORTING_PARENTS | `mp_200`, `zp_213` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_194`, `p:zp_206` |
+| DERIVED_FROM | `p:mp_200`, `p:zp_213` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -1627,7 +1627,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_233+mp_236` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_240+mp_243` |
 | SUBJECT | D |
 | INTENT | DECISION |
 | AXIS | GENERAL |
@@ -1640,10 +1640,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_236`, `mp_233` |
-| SUPPORTING_PARENTS | `mp_236`, `mp_233` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_243`, `mp_240` |
+| SUPPORTING_PARENTS | `mp_243`, `mp_240` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_236`, `p:mp_233` |
+| DERIVED_FROM | `p:mp_243`, `p:mp_240` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -1671,7 +1671,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_228+p:mp_230` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_235+p:mp_237` |
 | SUBJECT | D |
 | INTENT | DECISION |
 | AXIS | CAREER |
@@ -1685,9 +1685,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_228`, `mp_230` |
+| SUPPORTING_PARENTS | `mp_235`, `mp_237` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_228`, `p:mp_230` |
+| DERIVED_FROM | `p:mp_235`, `p:mp_237` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -1730,7 +1730,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_230+p:zp_238` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_237+p:zp_246` |
 | SUBJECT | D |
 | INTENT | DECISION |
 | AXIS | MOVEMENT |
@@ -1744,9 +1744,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_230`, `zp_238` |
-| OPPOSING_PARENTS | `zc_239` |
-| DERIVED_FROM | `p:mp_230`, `p:zp_238` |
+| SUPPORTING_PARENTS | `mp_237`, `zp_246` |
+| OPPOSING_PARENTS | `zc_247` |
+| DERIVED_FROM | `p:mp_237`, `p:zp_246` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -1791,7 +1791,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_232+p:zp_238` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_239+p:zp_246` |
 | SUBJECT | D |
 | INTENT | DECISION |
 | AXIS | MOVEMENT |
@@ -1805,9 +1805,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_232`, `zp_238` |
-| OPPOSING_PARENTS | `zc_239` |
-| DERIVED_FROM | `p:mp_232`, `p:zp_238` |
+| SUPPORTING_PARENTS | `mp_239`, `zp_246` |
+| OPPOSING_PARENTS | `zc_247` |
+| DERIVED_FROM | `p:mp_239`, `p:zp_246` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 월주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 월주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:FAVORABLE→UNFAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -1852,7 +1852,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_234+p:zp_238` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_241+p:zp_246` |
 | SUBJECT | D |
 | INTENT | DECISION |
 | AXIS | MOVEMENT |
@@ -1866,9 +1866,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_234`, `zp_238` |
-| OPPOSING_PARENTS | `zc_239` |
-| DERIVED_FROM | `p:mp_234`, `p:zp_238` |
+| SUPPORTING_PARENTS | `mp_241`, `zp_246` |
+| OPPOSING_PARENTS | `zc_247` |
+| DERIVED_FROM | `p:mp_241`, `p:zp_246` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -1919,7 +1919,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262` |
+| CANDIDATE_ID | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -1931,11 +1931,11 @@
 | DIRECTION | RESTRICTED |
 | RESTRICTIONS | TIMING |
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
-| REQUIRED_PARENT_IDS | 큰 흐름의 개방: `mp_256` |
-| ALTERNATIVE_SUPPORT_GROUPS | 올해의 타격: `mp_260`, `mp_262` |
-| SUPPORTING_PARENTS | `mp_256`, `mp_260`, `mp_262` |
+| REQUIRED_PARENT_IDS | 큰 흐름의 개방: `mp_264` |
+| ALTERNATIVE_SUPPORT_GROUPS | 올해의 타격: `mp_268`, `mp_270` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_268`, `mp_270` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_256`, `p:mp_260`, `p:mp_262` |
+| DERIVED_FROM | `p:mp_264`, `p:mp_268`, `p:mp_270` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -1966,7 +1966,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266` |
+| CANDIDATE_ID | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -1978,11 +1978,11 @@
 | DIRECTION | RESTRICTED |
 | RESTRICTIONS | TIMING |
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
-| REQUIRED_PARENT_IDS | 큰 흐름의 개방: `mp_256` |
-| ALTERNATIVE_SUPPORT_GROUPS | 이 달의 타격: `mp_266` |
-| SUPPORTING_PARENTS | `mp_256`, `mp_266` |
+| REQUIRED_PARENT_IDS | 큰 흐름의 개방: `mp_264` |
+| ALTERNATIVE_SUPPORT_GROUPS | 이 달의 타격: `mp_274` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_274` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_256`, `p:mp_266` |
+| DERIVED_FROM | `p:mp_264`, `p:mp_274` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -2011,7 +2011,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_251+mp_260+mp_262+mp_266` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_259+mp_268+mp_270+mp_274` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2024,10 +2024,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_266`, `mp_260`, `mp_262`, `mp_251` |
-| SUPPORTING_PARENTS | `mp_266`, `mp_260`, `mp_262`, `mp_251` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_274`, `mp_268`, `mp_270`, `mp_259` |
+| SUPPORTING_PARENTS | `mp_274`, `mp_268`, `mp_270`, `mp_259` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_266`, `p:mp_260`, `p:mp_262`, `p:mp_251` |
+| DERIVED_FROM | `p:mp_274`, `p:mp_268`, `p:mp_270`, `p:mp_259` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -2059,7 +2059,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_261+mp_265` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_269+mp_273` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | GENERAL |
@@ -2072,10 +2072,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_265`, `mp_261` |
-| SUPPORTING_PARENTS | `mp_265`, `mp_261` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_273`, `mp_269` |
+| SUPPORTING_PARENTS | `mp_273`, `mp_269` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_265`, `p:mp_261` |
+| DERIVED_FROM | `p:mp_273`, `p:mp_269` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -2103,7 +2103,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_251+mp_260+mp_262+mp_266` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_259+mp_268+mp_270+mp_274` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2115,11 +2115,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_251` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_260`, `mp_262`, `mp_266` |
-| SUPPORTING_PARENTS | `mp_251`, `mp_260`, `mp_262`, `mp_266` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_259` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_268`, `mp_270`, `mp_274` |
+| SUPPORTING_PARENTS | `mp_259`, `mp_268`, `mp_270`, `mp_274` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_251`, `p:mp_260`, `p:mp_262`, `p:mp_266` |
+| DERIVED_FROM | `p:mp_259`, `p:mp_268`, `p:mp_270`, `p:mp_274` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -2152,7 +2152,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_251+p:zp_269` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_259+p:zp_278` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2166,9 +2166,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_251`, `zp_269` |
+| SUPPORTING_PARENTS | `mp_259`, `zp_278` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_251`, `p:zp_269` |
+| DERIVED_FROM | `p:mp_259`, `p:zp_278` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -2211,7 +2211,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_251+p:zp_272` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_259+p:zp_281` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2225,9 +2225,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_251`, `zp_272` |
+| SUPPORTING_PARENTS | `mp_259`, `zp_281` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_251`, `p:zp_272` |
+| DERIVED_FROM | `p:mp_259`, `p:zp_281` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -2270,7 +2270,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:p:mp_256+p:mp_260+p:mp_262` |
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:p:mp_264+p:mp_268+p:mp_270` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2284,9 +2284,9 @@
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_260`, `mp_262` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_268`, `mp_270` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_256`, `p:mp_260`, `p:mp_262` |
+| DERIVED_FROM | `p:mp_264`, `p:mp_268`, `p:mp_270` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 NONE); remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -2335,7 +2335,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:p:mp_256+p:mp_266` |
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:p:mp_264+p:mp_274` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2349,9 +2349,9 @@
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_266` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_274` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_256`, `p:mp_266` |
+| DERIVED_FROM | `p:mp_264`, `p:mp_274` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -2394,7 +2394,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+p:mp_256` |
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270+p:mp_264` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2408,9 +2408,9 @@
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_260`, `mp_262` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_268`, `mp_270` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `p:mp_256` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270`, `p:mp_264` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); rescope MYUNGRI:SEWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -2455,7 +2455,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:mp_256` |
+| CANDIDATE_ID | `x:CROSS_TIMING_SPLIT:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274+p:mp_264` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2469,9 +2469,9 @@
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_266` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_274` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:mp_256` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274`, `p:mp_264` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); rescope MYUNGRI:WOLWOON→NATAL(기대 ABSENT, 실제 NONE); redirect MYUNGRI:RESTRICTED→FAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -2514,7 +2514,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:p:mp_260+p:mp_262+p:zp_269` |
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:p:mp_268+p:mp_270+p:zp_278` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2528,9 +2528,9 @@
 | CLAIM_KIND | OBSTRUCTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_260`, `mp_262` |
-| OPPOSING_PARENTS | `zp_269` |
-| DERIVED_FROM | `p:mp_260`, `p:mp_262`, `p:zp_269` |
+| SUPPORTING_PARENTS | `mp_268`, `mp_270` |
+| OPPOSING_PARENTS | `zp_278` |
+| DERIVED_FROM | `p:mp_268`, `p:mp_270`, `p:zp_278` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 ASSERTION); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 ASSERTION); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 ASSERTION); remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 NONE); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
 
@@ -2579,7 +2579,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_260+p:mp_262+p:zp_272` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_268+p:mp_270+p:zp_281` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2593,9 +2593,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_260`, `mp_262`, `zp_272` |
+| SUPPORTING_PARENTS | `mp_268`, `mp_270`, `zp_281` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_260`, `p:mp_262`, `p:zp_272` |
+| DERIVED_FROM | `p:mp_268`, `p:mp_270`, `p:zp_281` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 NONE); remove MYUNGRI:원국 일주(기대 SEMANTIC, 실제 NONE); retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 NONE); redirect MYUNGRI:UNFAVORABLE→FAVORABLE(기대 DIRECTION, 실제 NONE) |
 
@@ -2644,7 +2644,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:p:mp_266+p:zp_269` |
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:p:mp_274+p:zp_278` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2658,9 +2658,9 @@
 | CLAIM_KIND | OBSTRUCTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_266` |
-| OPPOSING_PARENTS | `zp_269` |
-| DERIVED_FROM | `p:mp_266`, `p:zp_269` |
+| SUPPORTING_PARENTS | `mp_274` |
+| OPPOSING_PARENTS | `zp_278` |
+| DERIVED_FROM | `p:mp_274`, `p:zp_278` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
 
@@ -2703,7 +2703,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_266+p:zp_272` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:p:mp_274+p:zp_281` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2717,9 +2717,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_266`, `zp_272` |
+| SUPPORTING_PARENTS | `mp_274`, `zp_281` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_266`, `p:zp_272` |
+| DERIVED_FROM | `p:mp_274`, `p:zp_281` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 DIRECTION) |
 
@@ -2762,7 +2762,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+p:zp_269` |
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270+p:zp_278` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2776,9 +2776,9 @@
 | CLAIM_KIND | TIMING_WINDOW |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_260`, `mp_262` |
-| OPPOSING_PARENTS | `zp_269` |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `p:zp_269` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_268`, `mp_270` |
+| OPPOSING_PARENTS | `zp_278` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270`, `p:zp_278` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
 
@@ -2825,7 +2825,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262+p:zp_272` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270+p:zp_281` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2839,9 +2839,9 @@
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_260`, `mp_262`, `zp_272` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_268`, `mp_270`, `zp_281` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_260+mp_262`, `p:zp_272` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_268+mp_270`, `p:zp_281` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 DIRECTION) |
 
@@ -2888,7 +2888,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:zp_269` |
+| CANDIDATE_ID | `x:CROSS_CONTRADICTION_RESOLVED:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274+p:zp_278` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2902,9 +2902,9 @@
 | CLAIM_KIND | TIMING_WINDOW |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_266` |
-| OPPOSING_PARENTS | `zp_269` |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:zp_269` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_274` |
+| OPPOSING_PARENTS | `zp_278` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274`, `p:zp_278` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 DIRECTION); retarget ZIWEI:부처궁(기대 ABSENT, 실제 NONE) |
 
@@ -2949,7 +2949,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266+p:zp_272` |
+| CANDIDATE_ID | `x:CROSS_AXIS_COMPOUND:d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274+p:zp_281` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -2963,9 +2963,9 @@
 | CLAIM_KIND | DIRECTION_VS_EXECUTION |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_256`, `mp_266`, `zp_272` |
+| SUPPORTING_PARENTS | `mp_264`, `mp_274`, `zp_281` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_256+mp_266`, `p:zp_272` |
+| DERIVED_FROM | `d:DIRECTION_VS_EXECUTION:RELATION_STABILITY:mp_264+mp_274`, `p:zp_281` |
 | **CERTIFICATION_RESULT** | **MULTI_FACT_SUMMARY** |
 | 판정 근거 | 필수 변형이 결론을 바꾸지 못함: retarget MYUNGRI:원국 일주(기대 ABSENT, 실제 DIRECTION) |
 
@@ -3014,7 +3014,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_274+mp_286+mp_291` |
+| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_283+mp_295+mp_300` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_RETENTION |
@@ -3027,10 +3027,10 @@
 | RESTRICTIONS | SCOPE |
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_286`, `mp_291` · 원국의 재물 자리: `mp_274` |
-| SUPPORTING_PARENTS | `mp_274`, `mp_286`, `mp_291` |
+| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_295`, `mp_300` · 원국의 재물 자리: `mp_283` |
+| SUPPORTING_PARENTS | `mp_283`, `mp_295`, `mp_300` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_286`, `p:mp_291` |
+| DERIVED_FROM | `p:mp_295`, `p:mp_300` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -3061,7 +3061,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:CAREER:mp_288+mp_293` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:CAREER:mp_297+mp_302` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | CAREER |
@@ -3074,10 +3074,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_293`, `mp_288` |
-| SUPPORTING_PARENTS | `mp_293`, `mp_288` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_302`, `mp_297` |
+| SUPPORTING_PARENTS | `mp_302`, `mp_297` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_293`, `p:mp_288` |
+| DERIVED_FROM | `p:mp_302`, `p:mp_297` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3105,7 +3105,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:OUTCOME:mp_289+mp_294` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:OUTCOME:mp_298+mp_303` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | OUTCOME |
@@ -3118,10 +3118,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_294`, `mp_289` |
-| SUPPORTING_PARENTS | `mp_294`, `mp_289` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_303`, `mp_298` |
+| SUPPORTING_PARENTS | `mp_303`, `mp_298` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_294`, `p:mp_289` |
+| DERIVED_FROM | `p:mp_303`, `p:mp_298` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3149,7 +3149,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_295^d:CONTESTED_SHARE:MONEY_RETENTION:mp_274+mp_286+mp_291` |
+| CANDIDATE_ID | `d:INFLOW_VS_RETENTION:MONEY_INFLOW:mp_304^d:CONTESTED_SHARE:MONEY_RETENTION:mp_283+mp_295+mp_300` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | MONEY_INFLOW |
@@ -3163,9 +3163,9 @@
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_295` |
+| SUPPORTING_PARENTS | `mp_304` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_274+mp_286+mp_291`, `p:mp_295` |
+| DERIVED_FROM | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_283+mp_295+mp_300`, `p:mp_304` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3191,7 +3191,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_287+p:mp_288` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_296+p:mp_297` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | CAREER |
@@ -3205,9 +3205,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_287`, `mp_288` |
+| SUPPORTING_PARENTS | `mp_296`, `mp_297` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_287`, `p:mp_288` |
+| DERIVED_FROM | `p:mp_296`, `p:mp_297` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -3250,7 +3250,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_292+p:mp_294` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_301+p:mp_303` |
 | SUBJECT | B |
 | INTENT | PROBABILITY |
 | AXIS | OUTCOME |
@@ -3264,9 +3264,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_292`, `mp_294` |
+| SUPPORTING_PARENTS | `mp_301`, `mp_303` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_292`, `p:mp_294` |
+| DERIVED_FROM | `p:mp_301`, `p:mp_303` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -3315,7 +3315,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_308+mp_317+mp_319+mp_323` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_318+mp_327+mp_329+mp_333` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -3328,10 +3328,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_323`, `mp_317`, `mp_319`, `mp_308` |
-| SUPPORTING_PARENTS | `mp_323`, `mp_317`, `mp_319`, `mp_308` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_333`, `mp_327`, `mp_329`, `mp_318` |
+| SUPPORTING_PARENTS | `mp_333`, `mp_327`, `mp_329`, `mp_318` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_323`, `p:mp_317`, `p:mp_319`, `p:mp_308` |
+| DERIVED_FROM | `p:mp_333`, `p:mp_327`, `p:mp_329`, `p:mp_318` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3363,7 +3363,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_318+mp_322` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_328+mp_332` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | GENERAL |
@@ -3376,10 +3376,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_322`, `mp_318` |
-| SUPPORTING_PARENTS | `mp_322`, `mp_318` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_332`, `mp_328` |
+| SUPPORTING_PARENTS | `mp_332`, `mp_328` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_322`, `p:mp_318` |
+| DERIVED_FROM | `p:mp_332`, `p:mp_328` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3407,7 +3407,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_308+mp_317+mp_319+mp_323` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_318+mp_327+mp_329+mp_333` |
 | SUBJECT | A |
 | INTENT | DECISION |
 | AXIS | RELATION_STABILITY |
@@ -3419,11 +3419,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_308` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_317`, `mp_319`, `mp_323` |
-| SUPPORTING_PARENTS | `mp_308`, `mp_317`, `mp_319`, `mp_323` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_318` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_327`, `mp_329`, `mp_333` |
+| SUPPORTING_PARENTS | `mp_318`, `mp_327`, `mp_329`, `mp_333` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_308`, `p:mp_317`, `p:mp_319`, `p:mp_323` |
+| DERIVED_FROM | `p:mp_318`, `p:mp_327`, `p:mp_329`, `p:mp_333` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -3462,7 +3462,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_343+mp_352+mp_354+mp_358` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_354+mp_363+mp_365+mp_369` |
 | SUBJECT | A |
 | INTENT | DESCRIPTIVE |
 | AXIS | RELATION_STABILITY |
@@ -3475,10 +3475,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_358`, `mp_352`, `mp_354`, `mp_343` |
-| SUPPORTING_PARENTS | `mp_358`, `mp_352`, `mp_354`, `mp_343` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_369`, `mp_363`, `mp_365`, `mp_354` |
+| SUPPORTING_PARENTS | `mp_369`, `mp_363`, `mp_365`, `mp_354` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_358`, `p:mp_352`, `p:mp_354`, `p:mp_343` |
+| DERIVED_FROM | `p:mp_369`, `p:mp_363`, `p:mp_365`, `p:mp_354` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3510,7 +3510,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_353+mp_357` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_364+mp_368` |
 | SUBJECT | A |
 | INTENT | DESCRIPTIVE |
 | AXIS | GENERAL |
@@ -3523,10 +3523,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_357`, `mp_353` |
-| SUPPORTING_PARENTS | `mp_357`, `mp_353` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_368`, `mp_364` |
+| SUPPORTING_PARENTS | `mp_368`, `mp_364` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_357`, `p:mp_353` |
+| DERIVED_FROM | `p:mp_368`, `p:mp_364` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3554,7 +3554,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_343+mp_352+mp_354+mp_358` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_354+mp_363+mp_365+mp_369` |
 | SUBJECT | A |
 | INTENT | DESCRIPTIVE |
 | AXIS | RELATION_STABILITY |
@@ -3566,11 +3566,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_343` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_352`, `mp_354`, `mp_358` |
-| SUPPORTING_PARENTS | `mp_343`, `mp_352`, `mp_354`, `mp_358` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_354` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_363`, `mp_365`, `mp_369` |
+| SUPPORTING_PARENTS | `mp_354`, `mp_363`, `mp_365`, `mp_369` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_343`, `p:mp_352`, `p:mp_354`, `p:mp_358` |
+| DERIVED_FROM | `p:mp_354`, `p:mp_363`, `p:mp_365`, `p:mp_369` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -3609,7 +3609,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_366+mp_383` |
+| CANDIDATE_ID | `d:CONTESTED_SHARE:MONEY_RETENTION:mp_378+mp_395` |
 | SUBJECT | C |
 | INTENT | CAUSE_WHY |
 | AXIS | MONEY_RETENTION |
@@ -3622,10 +3622,10 @@
 | RESTRICTIONS | SCOPE |
 | CLAIM_KIND | COMPOUND_TRUTH |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_383` · 원국의 재물 자리: `mp_366` |
-| SUPPORTING_PARENTS | `mp_366`, `mp_383` |
+| ALTERNATIVE_SUPPORT_GROUPS | 몫을 나누는 기운: `mp_395` · 원국의 재물 자리: `mp_378` |
+| SUPPORTING_PARENTS | `mp_378`, `mp_395` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_383` |
+| DERIVED_FROM | `p:mp_395` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
@@ -3654,7 +3654,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_381+mp_386` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_393+mp_398` |
 | SUBJECT | C |
 | INTENT | CAUSE_WHY |
 | AXIS | RELATION_STABILITY |
@@ -3667,10 +3667,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_386`, `mp_381` |
-| SUPPORTING_PARENTS | `mp_386`, `mp_381` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_398`, `mp_393` |
+| SUPPORTING_PARENTS | `mp_398`, `mp_393` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_386`, `p:mp_381` |
+| DERIVED_FROM | `p:mp_398`, `p:mp_393` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3698,7 +3698,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_384+p:mp_387` |
+| CANDIDATE_ID | `x:CROSS_STANDOFF:p:mp_396+p:mp_399` |
 | SUBJECT | C |
 | INTENT | CAUSE_WHY |
 | AXIS | OUTCOME |
@@ -3712,9 +3712,9 @@
 | CLAIM_KIND | STATE |
 | REQUIRED_PARENT_IDS | — |
 | ALTERNATIVE_SUPPORT_GROUPS | — |
-| SUPPORTING_PARENTS | `mp_384`, `mp_387` |
+| SUPPORTING_PARENTS | `mp_396`, `mp_399` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_384`, `p:mp_387` |
+| DERIVED_FROM | `p:mp_396`, `p:mp_399` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(6건), 전제 삭제·역전에도 반응함 |
 
@@ -3763,7 +3763,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_399+mp_403+mp_405+mp_408` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:RELATION_STABILITY:mp_412+mp_416+mp_418+mp_421` |
 | SUBJECT | E |
 | INTENT | PROBABILITY |
 | AXIS | RELATION_STABILITY |
@@ -3776,10 +3776,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_408`, `mp_403`, `mp_405`, `mp_399` |
-| SUPPORTING_PARENTS | `mp_408`, `mp_403`, `mp_405`, `mp_399` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_421`, `mp_416`, `mp_418`, `mp_412` |
+| SUPPORTING_PARENTS | `mp_421`, `mp_416`, `mp_418`, `mp_412` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_408`, `p:mp_403`, `p:mp_405`, `p:mp_399` |
+| DERIVED_FROM | `p:mp_421`, `p:mp_416`, `p:mp_418`, `p:mp_412` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3811,7 +3811,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_404+mp_407` |
+| CANDIDATE_ID | `d:CONVERGENT_SEAT_PRESSURE:GENERAL:mp_417+mp_420` |
 | SUBJECT | E |
 | INTENT | PROBABILITY |
 | AXIS | GENERAL |
@@ -3824,10 +3824,10 @@
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
 | REQUIRED_PARENT_IDS | — |
-| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_407`, `mp_404` |
-| SUPPORTING_PARENTS | `mp_407`, `mp_404` |
+| ALTERNATIVE_SUPPORT_GROUPS | 같은 자리에 겹친 압력: `mp_420`, `mp_417` |
+| SUPPORTING_PARENTS | `mp_420`, `mp_417` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_407`, `p:mp_404` |
+| DERIVED_FROM | `p:mp_420`, `p:mp_417` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(1건), 전제 삭제·역전에도 반응함 |
 
@@ -3855,7 +3855,7 @@
 
 | 항목 | 값 |
 |---|---|
-| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_399+mp_403+mp_405+mp_408` |
+| CANDIDATE_ID | `d:RECURRING_FRICTION_CAUSE:RELATION_STABILITY:mp_412+mp_416+mp_418+mp_421` |
 | SUBJECT | E |
 | INTENT | PROBABILITY |
 | AXIS | RELATION_STABILITY |
@@ -3867,11 +3867,11 @@
 | DIRECTION | NONE |
 | RESTRICTIONS | — |
 | CLAIM_KIND | CAUSE |
-| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_399` |
-| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_403`, `mp_405`, `mp_408` |
-| SUPPORTING_PARENTS | `mp_399`, `mp_403`, `mp_405`, `mp_408` |
+| REQUIRED_PARENT_IDS | 원국의 약한 자리: `mp_412` |
+| ALTERNATIVE_SUPPORT_GROUPS | 그 자리를 다시 건드리는 운: `mp_416`, `mp_418`, `mp_421` |
+| SUPPORTING_PARENTS | `mp_412`, `mp_416`, `mp_418`, `mp_421` |
 | OPPOSING_PARENTS | — |
-| DERIVED_FROM | `p:mp_399`, `p:mp_403`, `p:mp_405`, `p:mp_408` |
+| DERIVED_FROM | `p:mp_412`, `p:mp_416`, `p:mp_418`, `p:mp_421` |
 | **CERTIFICATION_RESULT** | **REAL_SYNTHETIC_INFERENCE** |
 | 판정 근거 | 필수 변형이 모두 이 결론을 바꿨고(2건), 전제 삭제·역전에도 반응함 |
 
