@@ -153,6 +153,34 @@ for (const node of graph.NODES) {
   }
 }
 
+// ── undeclared variable references in REQUIRED_INFERENCES (NEW-P0-01 class) ─
+// The defect this catches: a node declares Day-Master-scoped INPUT_FACTS but its
+// REQUIRED_INFERENCES silently invents a differently-scoped variable name (e.g. a
+// "resultElementMonthRole" never produced by any declared input or upstream OUTPUT).
+// Heuristic, not a full type-checker: flag a camelCase identifier used in
+// REQUIRED_INFERENCES that does not appear anywhere in the node's own INPUT_FACTS
+// text, any node's OUTPUT.field, or the graph's known enum-value vocabulary.
+const KNOWN_OUTPUT_FIELDS = new Set(graph.NODES.map((n) => n.OUTPUT?.field).filter(Boolean));
+const KNOWN_ENUM_VALUES = new Set(
+  graph.NODES.flatMap((n) => n.OUTPUT?.values ?? [])
+);
+for (const node of graph.NODES) {
+  const inferenceText = (node.REQUIRED_INFERENCES ?? []).join(' \n ');
+  const inputText = (node.INPUT_FACTS ?? []).join(' \n ');
+  const candidateIdentifiers = new Set(
+    (inferenceText.match(/\b[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/g) ?? [])
+  );
+  const ownShapeText = node.OUTPUT?.shape ?? '';
+  for (const ident of candidateIdentifiers) {
+    if (KNOWN_OUTPUT_FIELDS.has(ident)) continue;
+    if (KNOWN_ENUM_VALUES.has(ident)) continue;
+    if (inputText.includes(ident)) continue;
+    if ((node.OUTPUT?.field ?? '') === ident) continue;
+    if (ownShapeText.includes(ident)) continue; // node computes this as its own sub-field, e.g. UNC-FINAL's confidenceClass inside finalReport
+    warn(`${node.NODE_ID}.REQUIRED_INFERENCES: references identifier '${ident}' that is not in this node's INPUT_FACTS, any node's OUTPUT.field/shape, or the known enum vocabulary — possible undeclared/nondeterministic reference (the NEW-P0-01 class of defect)`);
+  }
+}
+
 // ── prohibited numeric-score fields absent anywhere in the tree ────────────
 function scanForProhibited(value, path) {
   if (value == null) return;

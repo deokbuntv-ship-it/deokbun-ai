@@ -53,7 +53,7 @@ current fact provider cannot support.
 | P3 | CF-013 strength ≠ climate ≠ yongshin | Unchanged — three separate modules forever | `OBS-18/19` |
 | P4 | 통근 vs 득지 | Unchanged — kept structurally distinct within AX-01's existence check | Matches the frozen kernel's F2/F3 split |
 | P5 | 眾/寡 vs 強/弱 | Unchanged, now graph-topology-enforced (§S2_STRUCTURAL_AXES_FREEZE.md AX-09) — no edge from the numerousness fact node reaches any decision-bearing node | `CONFLICT_REGISTER.md` CF-005 |
-| P6 | AX-04 outlet presence | Still folded, but now only as one of `TRANSFORM-01`'s two conjuncts (transparent root check), not as a special-screen counterevidence conjunct (that whole compound test was removed with `HIGH_CONFIDENCE`) | P0-01 |
+| P6 | AX-04 outlet presence | Not part of the runtime special screen at all. It was folded into `TRANSFORM-01`'s transparent-root conjunct, but that whole node was removed this batch (`NEW-P0-01` — declared Day-Master-scoped inputs, needed result-element-scoped facts). Not rebuilt narrower, per explicit instruction | P0-01, NEW-P0-01 |
 | P7 | 格局 (GEJU) | Deferred entirely, unchanged | `S2_AXIS_CANDIDATES.md` AX-08 |
 | P8 | R11 encoding | R11 stays `SCHOOL_DEPENDENT`; **the entire compound-test apparatus that used to let R11-adjacent evidence reach `HIGH_CONFIDENCE` is removed**, not just the binary-gate shortcut | P0-01, required-zero item `ROOT_PRESENT_ALWAYS_BREAKS_FOLLOWING = 0` |
 | P9 | CF-002 (DTS-SHUAIWANG-10) | Unchanged — known source-internal print inconsistency, not re-researched | `CONFLICT_REGISTER.md` CF-002 |
@@ -64,11 +64,13 @@ current fact provider cannot support.
 
 States: `NONE_DETECTED / CANDIDATE / INSUFFICIENT`. **No `HIGH_CONFIDENCE`. No `DISPUTED`.**
 
-`CANDIDATE` fires when (season role is `OPPOSED` AND root is absent) OR (transformation evidence is
-present per `TRANSFORM-01`). Both disjuncts are fully executable from the current fact layer — no count, no
-threshold, no case-ID branch. `CANDIDATE` is evidence, not a verdict: it never blocks, gates, or modifies
-the strength view (§1). `INSUFFICIENT` is reserved for the case where the CANDIDATE test itself cannot be
-completed (a needed root fact is unresolvable from the available pillars).
+`CANDIDATE` fires when season role is `OPPOSED` AND root is absent — a single, Day-Master-scoped disjunct.
+(An earlier version of this graph also had a transformation-based disjunct; it was removed this batch,
+`NEW-P0-01` — see `S3_OPERATIONAL_JUDGMENT_GRAPH.md` §2. `TRANSFORMATION_JUDGMENT_V2 = DEFERRED`.) This
+remaining disjunct is fully executable from the current fact layer — no count, no threshold, no case-ID
+branch. `CANDIDATE` is evidence, not a verdict: it never blocks, gates, or modifies the strength view (§1).
+`INSUFFICIENT` is reserved for the case where the CANDIDATE test itself cannot be completed (a needed root
+fact is unresolvable from the available pillars).
 
 Every route to `HIGH_CONFIDENCE` this program tried during S2/S3 and during this remediation had a real
 corpus counterexample under close scrutiny:
@@ -80,9 +82,15 @@ corpus counterexample under close scrutiny:
   flagged).
 - **Transformation-transparency + seasonal-support** looked cleanly executable until `DTS-GUANSHA-12`: both
   conjuncts are satisfied, yet the source states the combination explicitly does NOT transform, because of a
-  branch-specific buffering fact (`丑`'s own nature) this graph has no provider for.
+  branch-specific buffering fact (`丑`'s own nature) this graph has no provider for — demoted to a
+  `CANDIDATE`-tier evidence check (`TRANSFORM-01`) rather than removed outright at that point.
+- **`TRANSFORM-01` itself was then found to be internally inconsistent** (`NEW-P0-01`, a second-pass audit
+  finding, independent of the `DTS-GUANSHA-12` semantic issue above): its declared inputs were
+  Day-Master-scoped, but its own inference needed result-element-scoped facts those inputs never produce.
+  Removed entirely rather than rebound to a correctly-scoped input, per explicit instruction not to add new
+  facts.
 
-No fourth attempt was made. Per §7/§8 of the remediation brief, the honest conclusion is that
+No further attempt was made. Per §7/§8 of the remediation brief, the honest conclusion is that
 `HIGH_CONFIDENCE` special-structure detection is not currently executable, and the graph says so by not
 having the state at all rather than keeping a dead enum value.
 

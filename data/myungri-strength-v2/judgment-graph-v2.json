@@ -1,8 +1,8 @@
 {
   "GRAPH_ID": "myungri-structural-judgment-v2",
-  "GRAPH_VERSION": "v3.0.0",
+  "GRAPH_VERSION": "v3.1.0",
   "STATUS": "RESEARCH_ARTIFACT_NOT_IMPORTED_INTO_SRC",
-  "DESCRIPTION": "P0 remediation (Codex audit 2026-08-28, C. NOT_READY_FOR_IMPLEMENTATION, 7 P0s) rebuilt this graph smaller and more conservative than v2.0.1. Removed: EXTREME_* strength states, HIGH_CONFIDENCE special-structure routes, CAP-02/03/04 task-capacity verdicts, DISPUTED runtime state, the undefined 'CANDIDATE-ruled-out' pseudo-state, and every count/threshold that materially determined a verdict. Kept only what is fully executable from the frozen fact layer's OWN stated capability (see FACT-03's citation of sameElementRooting.ts's LIMITATIONS array — 'EXISTENCE_FACT_ONLY, NO ... SURVIVABILITY, NO FUNCTIONAL_EFFECTIVENESS' — which independently corroborates the audit's P0-03 finding). See docs/myungri-strength-v2/S3_OPERATIONAL_JUDGMENT_GRAPH.md for full rationale per node and docs/myungri-strength-v2/S2_S3_FREEZE_GATE_REPORT.md for the P0 closure accounting.",
+  "DESCRIPTION": "P0 remediation (Codex audit 2026-08-28, C. NOT_READY_FOR_IMPLEMENTATION, 7 P0s) rebuilt this graph smaller and more conservative than v2.0.1. Removed: EXTREME_* strength states, HIGH_CONFIDENCE special-structure routes, CAP-02/03/04 task-capacity verdicts, DISPUTED runtime state, the undefined 'CANDIDATE-ruled-out' pseudo-state, and every count/threshold that materially determined a verdict. Kept only what is fully executable from the frozen fact layer's OWN stated capability (see FACT-03's citation of sameElementRooting.ts's LIMITATIONS array — 'EXISTENCE_FACT_ONLY, NO ... SURVIVABILITY, NO FUNCTIONAL_EFFECTIVENESS' — which independently corroborates the audit's P0-03 finding). v3.1.0 (final single-P0 closure patch, same audit round): removed TRANSFORM-01 and the transformation disjunct from SPECIAL-01 — TRANSFORM-01 declared Day-Master-scoped INPUT_FACTS (AX01_fact/AX02_fact) but its REQUIRED_INFERENCES actually needed result-element-scoped values (transparentRootForResultElement, resultElementMonthRole) that those facts do not produce, making transformationEvidencePresent nondeterministic. TRANSFORMATION_JUDGMENT_V2 = DEFERRED (see docs/myungri-strength-v2/S3_OPERATIONAL_JUDGMENT_GRAPH.md §Transformation judgment deferred) — a deliberate scope decision, not a missing Fact Foundation defect; no new fact provider was added to close this gap. See docs/myungri-strength-v2/S3_OPERATIONAL_JUDGMENT_GRAPH.md for full rationale per node and docs/myungri-strength-v2/S2_S3_FREEZE_GATE_REPORT.md for the P0 closure accounting.",
   "ENTRY_NODE": "FACT-01",
   "NODE_TYPES": ["FACT_CHECK", "INFERENCE", "SPECIAL_SCREEN", "STRUCTURAL_SYNTHESIS", "STRENGTH_VIEW", "UNCERTAINTY_EXIT"],
   "REMOVED_NODE_TYPES_THIS_VERSION": ["BRANCH", "TASK_CAPACITY"],
@@ -96,8 +96,8 @@
       "COUNTEREXAMPLE_CASE_IDS": [],
       "OUTPUT": { "type": "object", "field": "AX03_fact", "shape": "{ relations: RelationFact[], touchesRootPosition: boolean, transformationGlyphPresent: boolean }" },
       "UNCERTAINTY_EXIT": { "condition": "hourKnown === false", "routeTo": null, "note": "시지-participant relations simply absent from the list, not blocking" },
-      "NEXT_NODES": ["SPECIAL-01", "TRANSFORM-01", "SYNTH-01"],
-      "DOES_NOT_IMPLY": ["RELATION_EXISTS does NOT imply any functional effect (destroyed root, activated support, etc.) — no general relation-precedence or relation-effect rule exists in this graph (P0-03/§14/§15, removed from v2.0.1). touchesRootPosition is carried as a CONTEXTUAL ANNOTATION only; it never changes AX01_fact's value and never independently changes SYNTH-01's classification"]
+      "NEXT_NODES": ["SPECIAL-01", "SYNTH-01", "UNC-FINAL"],
+      "DOES_NOT_IMPLY": ["RELATION_EXISTS does NOT imply any functional effect (destroyed root, activated support, etc.) — no general relation-precedence or relation-effect rule exists in this graph (P0-03/§14/§15, removed from v2.0.1). touchesRootPosition is carried as a CONTEXTUAL ANNOTATION only; it never changes AX01_fact's value and never independently changes SYNTH-01's classification. transformationGlyphPresent is carried to UNC-FINAL as non-decision descriptive metadata ONLY (NEW-P0-01 remediation, v3.1.0) — no node in this graph consumes it for any decision anymore; TRANSFORM-01, which used to promote it toward a CANDIDATE verdict, was removed because its inference required result-element-scoped facts (transparent root / month role FOR THE TRANSFORMED ELEMENT) that this graph's declared inputs do not produce — see TRANSFORMATION_JUDGMENT_V2 = DEFERRED"]
     },
     {
       "NODE_ID": "FACT-06",
@@ -118,40 +118,22 @@
       "DOES_NOT_IMPLY": ["HARD CONTRACT (P0-05/§4): AX09_fact NEVER drives SPECIAL-01, SYNTH-01, or SV-01. It is carried to the final report as descriptive evidence only — no node in this graph reads supportCount/drainCount to decide anything. This is a structural guarantee, not a style note: no edge in NEXT_NODES from FACT-06 leads anywhere but the terminal report"]
     },
     {
-      "NODE_ID": "TRANSFORM-01",
-      "NODE_TYPE": "INFERENCE",
-      "QUESTION": "When a transformation-combination glyph (甲己/乙庚/丙辛/丁壬/戊癸) is present, does the resulting element have BOTH a transparent same-element root elsewhere in the visible stems AND month-command support — the two facts that are actually executable, without claiming this settles whether the transformation is 真/假?",
-      "INPUT_FACTS": ["AX03_fact.transformationGlyphPresent", "AX01_fact (transparent-root check for the RESULTING element, not the Day Master)", "AX02_fact (month-command role for the resulting element)"],
-      "REQUIRED_INFERENCES": ["TRANSFORMATION_EVIDENCE_PRESENT = transformationGlyphPresent AND transparentRootForResultElement AND resultElementMonthRole in {IN_COMMAND, SUPPORTED}"],
-      "POSITIVE_CONDITIONS": ["both conjuncts true"],
-      "COUNTEREVIDENCE": ["DTS-GUANSHA-12 (戊癸合, day stem 丙 transparent for the resulting fire, month 午 in-command for fire — both conjuncts SATISFIED — yet the source states 不化反喜其合, does NOT transform, because of a branch-specific buffering effect (年支丑) this graph has no executable fact for. This is the reason TRANSFORM-01's output is evidence, never a verdict — see DOES_NOT_IMPLY"],
-      "SCHOOL_SCOPE": "SCHOOL_SENSITIVE",
-      "SOURCE_IDS": ["SRC-001"],
-      "PROPOSITION_IDS": [],
-      "SUPPORTING_CASE_IDS": ["DTS-HUAXIANG-03"],
-      "COUNTEREXAMPLE_CASE_IDS": ["DTS-GUANSHA-12", "DTS-JIAHUA-02"],
-      "OUTPUT": { "type": "boolean", "field": "transformationEvidencePresent" },
-      "UNCERTAINTY_EXIT": { "condition": "transformationGlyphPresent === false", "routeTo": null, "note": "simply reports false, not an error" },
-      "NEXT_NODES": ["SPECIAL-01", "UNC-FINAL"],
-      "DOES_NOT_IMPLY": ["transformationEvidencePresent = true does NOT imply TRUE_TRANSFORMATION and does NOT alone justify a HIGH_CONFIDENCE special-structure verdict (P0-01/§7 — DTS-GUANSHA-12 is a real, documented counterexample to treating this test as sufficient). It contributes only to SPECIAL-01's CANDIDATE-tier evidence, never to a confident verdict"]
-    },
-    {
       "NODE_ID": "SPECIAL-01",
       "NODE_TYPE": "SPECIAL_SCREEN",
-      "QUESTION": "Is there CANDIDATE-tier evidence of a non-ordinary (following/transformation/dominant) structure, using only fully executable facts?",
-      "INPUT_FACTS": ["AX01_fact", "AX02_fact", "TRANSFORM-01.transformationEvidencePresent"],
-      "REQUIRED_INFERENCES": ["CANDIDATE if (AX02_fact === 'OPPOSED' AND AX01_fact === 'ROOT_EXISTS_FALSE') OR (transformationEvidencePresent === true); NONE_DETECTED if neither disjunct holds; INSUFFICIENT if the CANDIDATE test cannot be completed because a needed fact is ROOT_EXISTS_UNKNOWN. No HIGH_CONFIDENCE route exists in this graph version (P0-01/§7) — see DOES_NOT_IMPLY"],
-      "POSITIVE_CONDITIONS": ["see REQUIRED_INFERENCES — a named lookup over two/three boolean-or-enum facts, with no count-based decision rule anywhere in it"],
-      "COUNTEREVIDENCE": ["DTS-SHUAIWANG-04/06/08/09/10/12/13/14 (extreme SEASON+no-root by the SHUAIWANG chapter's own 太/極 vocabulary, yet tagged ORDINARY_STRENGTH not SPECIAL_PATTERN — CANDIDATE is the correct, non-committal output for these too under this graph, and that is fine: CANDIDATE never asserts a following pattern, it only flags evidence worth a human/future-module look. See S3_CASE_REPLAY_REPORT.md for the full accounting of which cases land at CANDIDATE without contradiction", "DTS-CONGXIANG-01: root EXISTS at 未 (AX01_fact = ROOT_EXISTS_TRUE), so this rule correctly does NOT grant CANDIDATE via the following-branch disjunct even though the source calls it 從財 — this graph does not claim a verdict for that chart beyond NONE_DETECTED; a human reader must supply the compound root+outlet judgment this V2 does not attempt, per P0-01's instruction to accept CANDIDATE/INSUFFICIENT over false certainty"],
+      "QUESTION": "Is there CANDIDATE-tier evidence of a non-ordinary (following/dominant) structure, using only fully executable facts?",
+      "INPUT_FACTS": ["AX01_fact", "AX02_fact"],
+      "REQUIRED_INFERENCES": ["CANDIDATE if (AX02_fact === 'OPPOSED' AND AX01_fact === 'ROOT_EXISTS_FALSE'); NONE_DETECTED if the disjunct does not hold; INSUFFICIENT if the CANDIDATE test cannot be completed because a needed fact is ROOT_EXISTS_UNKNOWN. No HIGH_CONFIDENCE route exists in this graph version (P0-01/§7) — see DOES_NOT_IMPLY. No transformation-based disjunct exists in this graph version (NEW-P0-01, v3.1.0) — see DOES_NOT_IMPLY for why TRANSFORM-01 was removed"],
+      "POSITIVE_CONDITIONS": ["see REQUIRED_INFERENCES — a named lookup over two boolean-or-enum facts, with no count-based decision rule anywhere in it"],
+      "COUNTEREVIDENCE": ["DTS-SHUAIWANG-04/06/08/09/10/12/13/14 (extreme SEASON+no-root by the SHUAIWANG chapter's own 太/極 vocabulary, yet tagged ORDINARY_STRENGTH not SPECIAL_PATTERN — CANDIDATE is the correct, non-committal output for these too under this graph, and that is fine: CANDIDATE never asserts a following pattern, it only flags evidence worth a human/future-module look. See S3_CASE_REPLAY_REPORT.md for the full accounting of which cases land at CANDIDATE without contradiction", "DTS-CONGXIANG-01/DTS-CONGXIANG-04/DTS-TIYONG-02: each has a real root at some position (未/戌/寅 respectively), so this rule correctly does NOT grant CANDIDATE via the following-branch disjunct even though the source calls each 從 — this graph does not claim a verdict for these charts beyond NONE_DETECTED; a human reader must supply the compound root+outlet judgment this V2 does not attempt, per P0-01's instruction to accept CANDIDATE/INSUFFICIENT over false certainty"],
       "SCHOOL_SCOPE": "SCHOOL_SENSITIVE",
       "SOURCE_IDS": ["SRC-001"],
       "PROPOSITION_IDS": [],
-      "SUPPORTING_CASE_IDS": ["DTS-CONGXIANG-04", "DTS-TIYONG-02"],
-      "COUNTEREXAMPLE_CASE_IDS": ["DTS-CONGXIANG-01"],
+      "SUPPORTING_CASE_IDS": ["BR-015"],
+      "COUNTEREXAMPLE_CASE_IDS": ["DTS-CONGXIANG-01", "DTS-CONGXIANG-04", "DTS-TIYONG-02"],
       "OUTPUT": { "type": "enum", "field": "specialStructureStatus", "values": ["NONE_DETECTED", "CANDIDATE", "INSUFFICIENT"] },
       "UNCERTAINTY_EXIT": { "condition": "AX01_fact === 'ROOT_EXISTS_UNKNOWN' AND AX02_fact === 'OPPOSED' (the CANDIDATE test cannot be completed)", "routeTo": "UNC-EXIT-INSUFFICIENT", "note": "routes to INSUFFICIENT for THIS axis only; does not block SYNTH-01, which has its own independent UNRESOLVED path for the same missing fact" },
       "NEXT_NODES": ["UNC-FINAL"],
-      "DOES_NOT_IMPLY": ["CANDIDATE does NOT gate, block, or modify SYNTH-01/SV-01's strength-view computation (P0-02 — the undefined 'CANDIDATE-ruled-out' pseudo-state from v2.0.1 is deleted; there is nothing to rule out, because CANDIDATE never blocked anything to begin with in this version). specialStructureStatus and strengthClassification are reported as two SEPARATE fields in the final output, never merged, never one implying the other — this is how 'strength != special structure' is preserved without needing a gate node. HIGH_CONFIDENCE and DISPUTED do not exist as reachable outputs of this node in v3.0.0 (P0-01/P0-06 — see S2_S3_FREEZE_GATE_REPORT.md for why: every candidate positive-predicate set found during remediation had at least one real corpus counterexample under close scrutiny, so none qualified as 'fully executable' per §7's own standard)"]
+      "DOES_NOT_IMPLY": ["CANDIDATE does NOT gate, block, or modify SYNTH-01/SV-01's strength-view computation (P0-02 — the undefined 'CANDIDATE-ruled-out' pseudo-state from v2.0.1 is deleted; there is nothing to rule out, because CANDIDATE never blocked anything to begin with in this version). specialStructureStatus and strengthClassification are reported as two SEPARATE fields in the final output, never merged, never one implying the other — this is how 'strength != special structure' is preserved without needing a gate node. HIGH_CONFIDENCE and DISPUTED do not exist as reachable outputs of this node in v3.0.0 (P0-01/P0-06 — see S2_S3_FREEZE_GATE_REPORT.md for why: every candidate positive-predicate set found during remediation had at least one real corpus counterexample under close scrutiny, so none qualified as 'fully executable' per §7's own standard)", "A transformation-based disjunct does NOT exist in this version and its removal does not imply the special screen is broken (NEW-P0-01, v3.1.0): the removed TRANSFORM-01 node declared Day-Master-scoped inputs (AX01_fact/AX02_fact) but its own required inference actually needed a root/season reading for the RESULT element of a stem combination, a differently-scoped pair of values its declared inputs never produced — making its output nondeterministic given only its stated dependencies. TRANSFORMATION_JUDGMENT_V2 = DEFERRED (a scope decision, not a Fact Foundation gap) rather than rebuilt narrower, per instruction not to add a replacement rule this batch"]
     },
     {
       "NODE_ID": "SYNTH-01",

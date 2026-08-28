@@ -51,13 +51,14 @@ AX-01, AX-02, AX-03, AX-06, AX-09, plus AX-10 as the orchestration layer (6 tota
   stated relation involve a position already counted for AX-01 — existence overlap only) and
   `transformationGlyphPresent` (is a stated combination one of the five stem-pair transformation glyphs).
 - **Removed**: any claim about what a relation DOES (activates, destroys, removes) beyond its bare
-  existence and position overlap. The one exception is `TRANSFORM-01`, a narrowly-scoped INFERENCE that
-  computes transformation-EVIDENCE (not a verdict) from two independently fact-checkable conditions
-  (transparent root for the resulting element + its seasonal support) — kept because it is genuinely
-  executable, but explicitly demoted from a TRUE/FALSE verdict to an evidence boolean after `DTS-GUANSHA-12`
-  showed the two conditions together are not sufficient for a confident transformation call.
-- **DOWNSTREAM_USE**: `SPECIAL-01` (CANDIDATE via transformation-glyph disjunct), `SYNTH-01` (annotation
-  only — never changes which lookup cell is selected, per Option B of §16).
+  existence and position overlap. An earlier attempt (`TRANSFORM-01`) tried to compute transformation
+  EVIDENCE from a transparent-root + seasonal-support test, but was itself removed this batch
+  (`NEW-P0-01`): it declared Day-Master-scoped inputs while actually needing result-element-scoped facts
+  those inputs do not produce. `transformationGlyphPresent` (does a combination glyph exist at all) is kept
+  as a FACT, but is now purely descriptive metadata — no node consumes it for a decision.
+  `TRANSFORMATION_JUDGMENT_V2 = DEFERRED`.
+- **DOWNSTREAM_USE**: `SYNTH-01` (annotation only — never changes which lookup cell is selected, per
+  Option B of §16 of the operation policy).
 
 ## AX-05 — CAPACITY: DEFERRED_TO_DOMAIN_JUDGES
 
@@ -70,8 +71,9 @@ build against — this graph exposes `taskCapacities = 'NOT_EVALUATED'` in its o
 
 - **TYPE**: `STRUCTURAL_INFERENCE_AXIS` (kept — this is still a real inference, just a much more modest one)
 - **STATES**: `NONE_DETECTED / CANDIDATE / INSUFFICIENT` — **`HIGH_CONFIDENCE` and `DISPUTED` removed**.
-- **Rule**: `CANDIDATE` if (season is `OPPOSED` AND root is absent) OR (transformation evidence present,
-  per `TRANSFORM-01`); else `NONE_DETECTED`.
+- **Rule**: `CANDIDATE` if season is `OPPOSED` AND root is absent (Day-Master-scoped, single disjunct —
+  the transformation disjunct that used to exist alongside this was removed this batch, `NEW-P0-01`; see
+  `S3_OPERATIONAL_JUDGMENT_GRAPH.md` §2); else `NONE_DETECTED`.
 - **What this means in practice**: the graph can flag "this chart shows non-ordinary-structure-suggestive
   facts" but never asserts a following/transformation/dominance VERDICT. A chart the classical corpus
   confidently calls 從財 (e.g. `DTS-CONGXIANG-01`) may correctly resolve to `NONE_DETECTED` here (root

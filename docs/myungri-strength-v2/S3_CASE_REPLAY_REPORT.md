@@ -1,99 +1,109 @@
-# S3 — CASE REPLAY REPORT (P0 REMEDIATION, v3.0.0)
+# S3 — CASE REPLAY REPORT (P0 REMEDIATION, v3.1.0)
 
-**Rewritten for the P0 remediation batch.** Per the remediation brief §33/§34, the prior graph's replay
-metrics (23/41 EXACT, 0 critical mismatches) are explicitly NOT the target to recover — "do not try to
-recover old replay metrics... a lower coverage rate is acceptable... we prefer 70% meaningful deterministic
-outcomes + 30% honest unresolved over 95% forced outcomes with unsupported rules." This report replays the
-**8 mandatory high-risk cases** named in the remediation brief §39, plus a smaller, carefully hand-verified
-supporting set (rather than mechanically re-running all 41 prior cases, several of which would need
-per-case hidden-stem/seasonal-role recomputation at a level of manual precision this format cannot fully
-guarantee — see §Method note below).
+**Updated for the final single-P0 closure patch (`NEW-P0-01`).** Two correction rounds are folded into this
+version: (1) the P0 remediation batch's original 13-case replay, and (2) a second-pass Codex re-audit that
+found four season-role (`AX02_fact`) errors in round 1's hand computation, plus the removal of
+`TRANSFORM-01` (§below), which changes `DTS-HUAXIANG-03`'s special-structure result. No new cases collected
+in either round. All records real, from the already-verified corpus.
 
-No new cases collected. All records real, from the already-verified corpus.
+## Method note — hand computation, not a running engine, corrected twice
 
-## Method note — hand computation, not a running engine
+Round 1 (P0 remediation) traced each case's stated classical facts by hand and caught one Day-Master
+identity error (`DTS-JINGSHEN-01`, DM is 丙 not 甲). Round 2 (this patch) accepted four further corrections
+to `AX02_fact` (season role) that a second-pass audit identified independently:
 
-This replay traces each case's stated classical facts (root existence, season role, transformation glyphs)
-through the graph's node logic by hand, the same methodology used in the prior S2/S3 batch. During this
-remediation, re-deriving `DTS-JINGSHEN-01`'s Day Master identity caught a genuine hand-computation error
-from the prior batch (the day master is 丙, not 甲 — 甲 is the resource/印 star discussed in the source
-text) that changed its classification from `STRONG_LEANING` to `MIXED_EVIDENCE`. This is disclosed rather
-than quietly corrected, because it is direct evidence that hand-tracing complex charts at scale (41 cases,
-prior batch) carries real error risk that a smaller, more carefully checked set reduces. The mandatory 8
-were re-derived from raw pillars (stem/branch), not copied from the prior batch's conclusions.
+| CASE_ID | Round-1 season (wrong) | Corrected season | Bottom-line result change? |
+|---|---|---|---|
+| `DTS-CONGXIANG-01` | SUPPORTED | **DRAINED** | Yes: `ANCHORED→STRONG_LEANING` becomes `MIXED_STRUCTURE→MIXED_EVIDENCE` |
+| `DTS-YUELING-02` | IN_COMMAND | **OPPOSED** | Yes: `ANCHORED→STRONG_LEANING` becomes `MIXED_STRUCTURE→MIXED_EVIDENCE` |
+| `DTS-TIYONG-02` | OPPOSED | **DRAINED** | No: `DRAINED` and `OPPOSED` share the same `SYNTH-01` lookup bucket against a true root — still `MIXED_STRUCTURE→MIXED_EVIDENCE` |
+| `DTS-SHUAIWANG-04` | OPPOSED | **NEUTRAL** | No: with root absent, `NEUTRAL` still routes through "follow `AX01_fact` alone" — still `UNANCHORED→WEAK_LEANING` |
 
-## Mandatory 8 (remediation brief §39)
+These corrections are accepted as given rather than re-derived from scratch: round 1's own season-role
+hand-computation is exactly the process that produced the `DTS-JINGSHEN-01` Day-Master error, so it carries
+real, demonstrated error risk, and re-deriving 旺相休囚死 from unaided memory a second time risked repeating
+that error rather than fixing it. This is a judgment call, disclosed rather than hidden: an independent
+review is treated as more reliable here than a third attempt at the same manual derivation.
+
+Separately, `TRANSFORM-01` (the node that used to grant `DTS-HUAXIANG-03` a `CANDIDATE` special-structure
+flag) was removed this patch (`NEW-P0-01` — see `S3_OPERATIONAL_JUDGMENT_GRAPH.md` §2). This is NOT a
+season-role correction; it changes `DTS-HUAXIANG-03`'s `specialStructureStatus` from `CANDIDATE` to
+`NONE_DETECTED` because the transformation disjunct no longer exists at all.
+
+## Mandatory 8 (remediation brief §39, corrected)
 
 | CASE_ID | Root (AX01) | Season (AX02) | specialStructureStatus | structuralState → strengthClassification | Source reading | MATCH_TYPE |
 |---|---|---|---|---|---|---|
-| DTS-TIYONG-01 | TRUE (丙 hidden in hour 巳) | IN_COMMAND (month 午, fire's own season) | NONE_DETECTED (season not OPPOSED) | ANCHORED → STRONG_LEANING | 從其強勢 (從强-family: DM's own dominance) | COMPATIBLE |
-| DTS-TIYONG-02 | TRUE (丙 hidden in year 寅 — existence only, no clash-removal credited) | OPPOSED (month 申, metal season vs fire DM) | NONE_DETECTED (root exists, so the following disjunct does not fire) | MIXED_STRUCTURE → **MIXED_EVIDENCE** | 從其弱勢 (source explicitly credits a clash with destroying the root — this graph no longer claims that) | MIXED_EVIDENCE_CORRECT |
-| DTS-CONGXIANG-01 | TRUE (乙 hidden root at day branch 未, 蟠根在未) | SUPPORTED (month 辰, late spring, still within wood's growing season) | NONE_DETECTED (root exists) | ANCHORED → STRONG_LEANING | 從財 (source: DM submits despite the root, a compound judgment this graph does not attempt) | GRAPH_MISMATCH (argued non-critical — see narrative) |
-| DTS-CONGXIANG-06 | TRUE (甲 hidden root at day branch 寅) | IN_COMMAND (month 卯, wood's own season) | NONE_DETECTED (root exists) | ANCHORED → STRONG_LEANING | 從其旺神 (從强-family: DM's own party dominance) | COMPATIBLE |
-| DTS-YUELING-02 | TRUE (戊 self-seated at day branch 辰) | IN_COMMAND (month 寅, within 戊's brief 6-day governing sub-period, per source's own "正戊土司令，生於立春後六日") | NONE_DETECTED | ANCHORED → STRONG_LEANING | SOURCE_STRONG (raw label) | COMPATIBLE (raw-label match; deeper 任鐵樵 nuance about the broken 관인 chain not captured — accepted per §32, "do not chase the surface label further than the graph honestly supports") |
-| BR-015 | FALSE (乙, zero wood hidden anywhere in 酉酉酉申) | OPPOSED (month 酉, metal season vs wood DM) | **CANDIDATE** (following disjunct fires) | UNANCHORED → WEAK_LEANING | 沈孝瞻: 棄命從煞 / 萬民英: 胞胎格 — two incompatible non-ordinary readings | SCHOOL_CONFLICT_DEFERRED |
-| DTS-JINGSHEN-01 | TRUE (丙 self-seated at day branch 寅) | OPPOSED (month 子, water season directly conquers fire DM) | NONE_DETECTED | **MIXED_STRUCTURE → MIXED_EVIDENCE** | SOURCE_BALANCED | MIXED_EVIDENCE_CORRECT |
-| DTS-BAGE-04 | TRUE (癸's same-element peer 壬 hidden in month 申) | SUPPORTED (month 申, metal generates water) | NONE_DETECTED | ANCHORED → STRONG_LEANING | 中和純粹 ("balanced and pure") | COMPATIBLE (granularity gap: this graph cannot distinguish "harmoniously strong" from "one-sided strong" — disclosed, not smoothed over; per §31 no bespoke BALANCED state was invented to close this gap) |
+| DTS-TIYONG-01 | TRUE (丙 hidden in hour 巳) | IN_COMMAND (month 午, fire's own season) | NONE_DETECTED | ANCHORED → STRONG_LEANING | 從其強勢 (從强-family: DM's own dominance) | COMPATIBLE |
+| DTS-TIYONG-02 | TRUE (丙 hidden in year 寅 — existence only, no clash-removal credited) | **DRAINED** (corrected from OPPOSED) | NONE_DETECTED (root exists) | MIXED_STRUCTURE → MIXED_EVIDENCE | 從其弱勢 (source credits a clash with destroying the root — this graph no longer claims that) | MIXED_EVIDENCE_CORRECT |
+| DTS-CONGXIANG-01 | TRUE (乙 hidden root at day branch 未, 蟠根在未) | **DRAINED** (corrected from SUPPORTED) | NONE_DETECTED (root exists) | MIXED_STRUCTURE → **MIXED_EVIDENCE** (corrected from STRONG_LEANING) | 從財 (source: DM submits despite the root, a compound judgment this graph does not attempt) | MIXED_EVIDENCE_CORRECT (upgraded — see narrative) |
+| DTS-CONGXIANG-06 | TRUE (甲 hidden root at day branch 寅) | IN_COMMAND (month 卯, wood's own season) | NONE_DETECTED | ANCHORED → STRONG_LEANING | 從其旺神 (從强-family: DM's own party dominance) | COMPATIBLE |
+| DTS-YUELING-02 | TRUE (戊 self-seated at day branch 辰) | **OPPOSED** (corrected from IN_COMMAND) | NONE_DETECTED | MIXED_STRUCTURE → **MIXED_EVIDENCE** (corrected from STRONG_LEANING) | SOURCE_STRONG (raw label) | MIXED_EVIDENCE_CORRECT — diverges from the raw label but tracks 任鐵樵's own argument (he explicitly rejects the surface 身旺 reading) better than a forced STRONG_LEANING did |
+| BR-015 | FALSE (乙, zero wood hidden anywhere in 酉酉酉申) | OPPOSED (month 酉, metal season vs wood DM) | **CANDIDATE** (single disjunct fires) | UNANCHORED → WEAK_LEANING | 沈孝瞻: 棄命從煞 / 萬民英: 胞胎格 — two incompatible non-ordinary readings | SCHOOL_CONFLICT_DEFERRED |
+| DTS-JINGSHEN-01 | TRUE (丙 self-seated at day branch 寅) | OPPOSED (month 子, water season directly conquers fire DM) | NONE_DETECTED | MIXED_STRUCTURE → MIXED_EVIDENCE | SOURCE_BALANCED | MIXED_EVIDENCE_CORRECT |
+| DTS-BAGE-04 | TRUE (癸's same-element peer 壬 hidden in month 申) | SUPPORTED (month 申, metal generates water) | NONE_DETECTED | ANCHORED → STRONG_LEANING | 中和純粹 ("balanced and pure") | COMPATIBLE (granularity gap, disclosed — see prior round's note) |
 
 ## Supporting cases (smaller set, hand-verified)
 
 | CASE_ID | Root | Season | specialStructureStatus | Result | Source | MATCH_TYPE |
 |---|---|---|---|---|---|---|
 | DTS-SHUAIWANG-03 | FALSE (source states 木無盤根之處 explicitly) | DRAINED/OPPOSED (太衰 tier) | NONE_DETECTED | UNANCHORED → WEAK_LEANING | SOURCE_WEAK | COMPATIBLE |
-| DTS-SHUAIWANG-04 | FALSE (zero wood in 巳巳酉戌, source: 全無水氣) | OPPOSED (衰極 tier) | NONE_DETECTED | UNANCHORED → WEAK_LEANING | SOURCE_EXTREME_WEAK | COMPATIBLE (extreme-tier distinction lost — accepted, P0-05 removed EXTREME states entirely) |
+| DTS-SHUAIWANG-04 | FALSE (zero wood in 巳巳酉戌, source: 全無水氣) | **NEUTRAL** (corrected from OPPOSED) | NONE_DETECTED | UNANCHORED → WEAK_LEANING (unchanged — root-absent + NEUTRAL still follows root alone) | SOURCE_EXTREME_WEAK | COMPATIBLE (extreme-tier distinction lost — accepted, unchanged from round 1) |
 | DTS-GANGROU-01 | TRUE (庚 self-seated ×2, 申申) | IN_COMMAND (month 申, metal's own season) | NONE_DETECTED | ANCHORED → STRONG_LEANING | ORDINARY_STRENGTH (旺之極矣, no 從 stated) | COMPATIBLE |
 | DTS-XINGXIANG-18 | TRUE (庚 self-seated at year+day 申) | SUPPORTED (month 戌, earth generates metal) | NONE_DETECTED | ANCHORED → STRONG_LEANING | 從其強勢/權在一人 (從强-family) | COMPATIBLE |
-| DTS-HUAXIANG-03 | TRUE (壬's peer 癸 hidden in hour 辰) | NEUTRAL (water in wood season — 休/resting, not cleanly DRAINED or SUPPORTED; treated conservatively as NEUTRAL) | **CANDIDATE** (transformation disjunct fires: 甲 transparent for resulting wood + 卯 month in-command for wood) | ANCHORED → STRONG_LEANING (ordinary reading, reported alongside the CANDIDATE flag, independently) | 化象斯真 (confirmed transformation) | COMPATIBLE — the ordinary and special readings are reported side by side without contradiction, the intended v3.0.0 behavior (policy §1) |
+| DTS-HUAXIANG-03 | TRUE (壬's peer 癸 hidden in hour 辰) | NEUTRAL (water in wood season, treated conservatively) | **NONE_DETECTED** (changed from CANDIDATE — TRANSFORM-01 removed, `NEW-P0-01`) | ANCHORED → STRONG_LEANING (unaffected — root exists, so "follow root alone" applies) | 化象斯真 (confirmed transformation) | GRAPH_MISMATCH (argued non-critical — see narrative; direct, disclosed cost of `TRANSFORMATION_JUDGMENT_V2 = DEFERRED`) |
 
 ## Aggregate accounting
 
 | MATCH_TYPE | Count | Cases |
 |---|---|---|
-| `COMPATIBLE` | 8 | TIYONG-01, CONGXIANG-06, YUELING-02, BAGE-04, SHUAIWANG-03, SHUAIWANG-04, GANGROU-01, XINGXIANG-18, HUAXIANG-03 *(9 — see note)* |
-| `MIXED_EVIDENCE_CORRECT` | 2 | TIYONG-02, JINGSHEN-01 |
+| `COMPATIBLE` | 7 | TIYONG-01, CONGXIANG-06, BAGE-04, SHUAIWANG-03, SHUAIWANG-04, GANGROU-01, XINGXIANG-18 |
+| `MIXED_EVIDENCE_CORRECT` | 4 | TIYONG-02, CONGXIANG-01, YUELING-02, JINGSHEN-01 |
 | `SCHOOL_CONFLICT_DEFERRED` | 1 | BR-015 |
-| `GRAPH_MISMATCH` (argued non-critical) | 1 | CONGXIANG-01 |
+| `GRAPH_MISMATCH` (argued non-critical) | 1 | HUAXIANG-03 |
 | **Total** | **13** | |
-
-*(Count note: `COMPATIBLE` lists 9 case IDs against a stated count of 8 in the table header — corrected
-here: `COMPATIBLE = 9`, total replayed = 13 cases across 5 distinct MATCH_TYPEs.)*
 
 **`CRITICAL_MISMATCH = 0`.**
 
-## Case narrative — DTS-CONGXIANG-01, the central "what we gave up" case
+## Case narrative — DTS-CONGXIANG-01, now MIXED_EVIDENCE (improved from round 1)
 
-This is the one case in the mandatory 8 that the prior (v2.0.1) graph got RIGHT on paper — asserting
-`HIGH_CONFIDENCE` following-pattern for a chart with a real root, via a compound test — and that the audit
-correctly identified as internally INCONSISTENT: the general rule that produced that answer, read literally,
-required root ABSENCE, which this chart does not have. The prior batch's case narrative papered over the
-gap with prose ("root exists at a governing position; chart still follows — root alone does not block")
-that never made it back into the formal rule. That is a textbook case-memorization pattern dressed as a
-general rule (P0-01).
+This remains the flagship "what we gave up" case: `specialStructureStatus` stays `NONE_DETECTED` (root
+exists, so the single surviving disjunct still does not fire), so the graph still does not confirm the
+source's own 從財 reading. But the CORRECTED season fact (`DRAINED`, not `SUPPORTED`) changes the ordinary
+axis result from a confident `STRONG_LEANING` to an honest `MIXED_EVIDENCE` — root evidence leans one way,
+season evidence leans the other, and no rule in this graph resolves the conflict. This is a strictly BETTER
+outcome than round 1's: a chart the source treats as genuinely contested (從財 requires overriding a real
+root) now gets an output that itself reflects genuine internal tension, rather than confidently asserting
+`STRONG_LEANING` — which was arguably closer to a `GRAPH_MISMATCH` in spirit even though it wasn't flagged
+`CRITICAL`. No new rule was added to produce this improvement; it fell out of correcting a factual input.
 
-v3.0.0's honest answer is `NONE_DETECTED` for special structure and `STRONG_LEANING` for the ordinary
-axes — neither of which is what 任鐵樵 concludes (從財). This is a real, disclosed loss of capability, not
-a hidden one: the graph no longer claims to solve "when does a real root still get overridden by
-overwhelming numerousness" — because no rule this program has found survives contact with BOTH
-`DTS-CONGXIANG-01` (root exists, still follows) AND the ordinary `SHUAIWANG`-chapter charts (root absent,
-does NOT follow) without either contradicting a real case or quietly leaning on a case ID. Per §8 of the
-remediation brief, this is the textually correct outcome: "accept that those cases remain
-CANDIDATE/INSUFFICIENT in V2. This is preferable to false HIGH_CONFIDENCE" (here, `NONE_DETECTED` rather
-than `CANDIDATE`, since the specific test that would grant even `CANDIDATE` — root absence — is not met
-either; the chart simply does not clear the bar this graph is willing to assert).
+## Case narrative — DTS-HUAXIANG-03, the disclosed cost of deferring transformation judgment
+
+Round 1 gave this case a `CANDIDATE` special-structure flag via `TRANSFORM-01`. That node is now removed
+(`NEW-P0-01`) because its own inference needed result-element-scoped facts its declared inputs never
+produced. With it gone, `SPECIAL-01`'s one remaining disjunct (Day-Master root-absence + season-opposed)
+does not fire for this chart either (Day Master 壬 has a root) — so `DTS-HUAXIANG-03` now gets NO
+special-structure flag at all, despite the source's confident 化象斯真 (confirmed transformation). This is
+the direct, disclosed price of `TRANSFORMATION_JUDGMENT_V2 = DEFERRED`: the graph does not merely decline to
+confirm transformation cases, it currently has no route to flag them as candidates either. Recorded as
+`GRAPH_MISMATCH` (non-critical — the graph asserts `NONE_DETECTED`, an absence of evidence, not a confident
+contradiction of the source) rather than smoothed over.
 
 ## ORDINARY_MEANINGFUL_DECISION_RATE
 
-**ADEQUATE.** Every one of the 13 replayed cases produced a named, non-default `structuralState` →
-`strengthClassification` (never a silent fallback) with the correct evidence attached. Two cases
-(`TIYONG-02`, `JINGSHEN-01`) correctly land on `MIXED_EVIDENCE` rather than being forced into a leaning —
-this is success, not failure, per §17's explicit requirement that `MIXED_EVIDENCE` be reachable. The one
-genuinely missing capability is special-structure detection for the "從强/從旺 with an actually-absent DM
-root" and "從財/從殺 with a present-but-overridden DM root" families (`CONGXIANG-01`-shaped cases) — named
-explicitly rather than papered over, and not chased with an invented predicate.
+**ADEQUATE.** All 13 replayed cases still produce a named, non-default `structuralState` →
+`strengthClassification`. `MIXED_EVIDENCE` is now hit by 4 of 13 cases (up from 2), which is a direct,
+positive consequence of correcting hand-computation errors rather than a regression — it means genuine
+root/season tension is being surfaced honestly instead of resolved by an error-prone guess. The two
+genuinely missing capabilities, both disclosed rather than hidden, are: (1) special-structure detection for
+"root present but overridden" following families (`DTS-CONGXIANG-01`-shaped), and (2) any transformation
+detection at all, now that `TRANSFORM-01` is gone (`DTS-HUAXIANG-03`-shaped).
 
 ## What would raise this to HIGH
 
-A `COMPLETE_BRANCH_ALLIANCE_FACT` provider (deferred, `V2_FACT_EXTENSION_CANDIDATES.md`) that can check
-"zero elemental trace anywhere, including hidden stems, for the outnumbered party" would let `SPECIAL-01`
-add a third, genuinely executable disjunct distinguishing `DTS-CONGXIANG-01`-shaped root-but-still-follows
-charts from ordinary rooted charts — without it, this remains the honest ceiling.
+Two independent extensions, neither attempted this batch:
+
+1. A `COMPLETE_BRANCH_ALLIANCE_FACT` provider (deferred, `V2_FACT_EXTENSION_CANDIDATES.md`) — would let
+   `SPECIAL-01` add a genuinely executable third disjunct for root-present-but-overridden following charts.
+2. A result-element-scoped root/season fact provider (deferred, same document, new entry this patch) — would
+   let a transformation disjunct return safely, unlike the removed `TRANSFORM-01`.

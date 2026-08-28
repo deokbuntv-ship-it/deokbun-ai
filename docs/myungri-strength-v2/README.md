@@ -7,20 +7,22 @@ Governing plan: [`../MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md`](../MYUNGRI_STRENGTH_
 Why V1 was closed: [`../MYUNGRI_STRENGTH_V1_CLOSURE.md`](../MYUNGRI_STRENGTH_V1_CLOSURE.md).
 What the frozen input layer is: [`../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md`](../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md).
 
-## Current gate: **S2/S3 P0 REMEDIATION** — `READY_FOR_ONE_SHORT_CODEX_P0_CLOSURE_REAUDIT`
+## Current gate: **S2/S3 P0 REMEDIATION (v3.1.0, closed)** — `READY_FOR_ONE_FINAL_MINIMAL_CODEX_CLOSURE_CHECK`
 
 An independent Codex audit of the first S2/S3 freeze found 7 P0 executable-spec defects
 (`C. NOT_READY_FOR_IMPLEMENTATION`) — the graph claimed more certainty than the frozen fact layer and the
-corpus evidence actually support. This remediation batch fixed all 7 by removing/narrowing/deferring rather
-than inventing new doctrine: the judgment graph shrank from 23 nodes to **12**, `HIGH_CONFIDENCE`/`DISPUTED`
+corpus evidence actually support. A remediation batch fixed all 7 by removing/narrowing/deferring rather
+than inventing new doctrine: the judgment graph shrank from 23 nodes to 12, `HIGH_CONFIDENCE`/`DISPUTED`
 special-structure states and both `EXTREME_*` strength states are gone, task-capacity verdicts moved out of
 Strength V2 entirely (`AX-05` deferred to a future domain-level judge), and the previously-rejected
 seven-band `natalStrength.ts` classifier was quarantined out of the public barrel (it was still exported and
-callable). Full P0-by-P0 and P1-by-P1 closure accounting: `S2_S3_FREEZE_GATE_REPORT.md`. Case replay against
-the reduced graph: `S3_CASE_REPLAY_REPORT.md` (13 cases incl. all 8 audit-flagged high-risk cases, 0 critical
-mismatches — smaller and more carefully hand-verified than the prior 41-case pass by design, per the
-remediation brief's explicit "accuracy > feature breadth"). Still research artifacts only; no runtime code
-exists for any of this.
+callable). A second-pass re-audit then found ONE further defect (`NEW-P0-01`: a node consumed inputs it
+never declared, making its output nondeterministic) — fixed the same way, by removing the node rather than
+rebinding it, shrinking the graph to **11 nodes** (v3.1.0) and deferring transformation-pattern detection
+entirely (`TRANSFORMATION_JUDGMENT_V2 = DEFERRED`). Full P0-by-P0 and P1-by-P1 closure accounting:
+`S2_S3_FREEZE_GATE_REPORT.md`. Case replay against the final graph: `S3_CASE_REPLAY_REPORT.md` (13 cases
+incl. all 8 audit-flagged high-risk cases, 0 critical mismatches). Still research artifacts only; no runtime
+code exists for any of this.
 
 ## Previous gate: **S2/S3 — STRUCTURAL AXES + OPERATIONAL JUDGMENT GRAPH (v1, superseded)** — `FROZEN_FOR_AUDIT`
 
