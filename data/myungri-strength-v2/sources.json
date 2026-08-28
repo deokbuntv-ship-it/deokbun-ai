@@ -336,6 +336,122 @@
     "MACHINE_READABLE_ALLOWED": true
   },
   {
+    "SOURCE_ID": "SRC-007",
+    "TITLE": "神峰通考 (命理正宗)",
+    "BASE_TEXT_AUTHOR": "張楠 (Ming)",
+    "COMMENTATOR": "張楠 own voice, signed 楠曰, PLUS an unsigned 注釋/補曰 commentary layer of separate provenance",
+    "ERA": "Ming",
+    "SOURCE_TIER_VERSE": "A",
+    "SOURCE_FUNCTION": [
+      "WORKED_CASE_SOURCE",
+      "DOCTRINE_SOURCE",
+      "RULE_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT",
+      "NAMED_COMMENTARY",
+      "UNSIGNED_COMMENTARY"
+    ],
+    "EDITION": "zh.wikisource raw wikitext (453,298 B / 156,770 chars of book text) cross-checked against 8bei8.com (115 pages). Both are ONE simplified digitization, not independent witnesses — share errors verbatim (雕桔 for 凋枯, 印緩 for 印綬). A photographic NLC scan exists (Wikimedia Commons NLC416-13jh001619-43305) but has NOT been OCRd.",
+    "ACCESS_LOCATION": "https://zh.wikisource.org/w/index.php?title=神峰通考&action=raw",
+    "CHAPTER_STRUCTURE": "卷一-卷六 (some digital splits present 4 juan). Fixed case shape: eight characters -> label naming pattern AND defect -> a 七言 verse -> prose naming 病, 藥, and luck-pillar outcomes with ages and causes of death.",
+    "CASE_DENSITY": "THE HIGHEST-VALUE NEW CORPUS FOUND IN S1.6. 307 four-pillar chart occurrences, 296 distinct (~2 charts/1000 chars). 142 blocks signed 楠曰 (張楠 own voice, median 178 chars); 132 charts followed within 120 chars by 楠曰, 74 by 補曰, 46 by 此造, 16 by 此命.",
+    "REASONING_DENSITY": "HIGH in the 楠曰 layer -- dense causal 病/藥 reasoning with named subjects (276 of 305 charts carry a person/rank marker, many locatable: 嚴嵩 matches his attested birth year).",
+    "STRENGTH_TERMINOLOGY": "扶抑 = 0 occurrences. Content renamed 損/益, demoted to two of张楠 own four \"medicines\". 中和 = 47, 用神 = 58. 專旺 = exactly 2, BOTH glossing an unrelated 喜忌篇 line (食神干旺之方), one explicitly reported as an inherited 舊注 label, not 張楠 coinage. 從旺 = 0.",
+    "SPECIAL_PATTERN_TERMINOLOGY": "五行元理消息賦 has a full 從化格 chapter (十干從化定訣): 先明從化為本，從化不成方論財官，財官無取方論格局 -- an explicit sequencing ladder, attributed by 張楠 to a 賦, not claimed as his own coinage. 棄命從殺格 given the richest single root-doctrine passage found in the whole program (see CF-011 Position 2): entry bar is 全無一點生氣 (zero, not merely weak), root argued fatal via a bandit metaphor, and the doctrine is explicitly YIN-DAY-STEM-ONLY (六陰日干有從之之理; 六陽日干 read as 殺重身輕 instead).",
+    "KNOWN_LINEAGE": "病藥 (disease-and-remedy) doctrine, genuinely independent of both 滴天髓 and 子平真詮 vocabulary",
+    "KNOWN_EDITORIAL_LAYER": "TWO layers present and must be distinguished before attribution: 楠曰 (142 instances, 張楠 himself) and unsigned 注釋/補曰 (139+74 instances, separate provenance, self-dates internally to >=1589 in at least one passage -- after 三命通會 1578).",
+    "RELIABILITY_NOTES": "diancang.xyz copy of 卷四 is CONTAMINATED with an interleaved non-張楠 layer (滴天髓-style verses, no 楠曰 marker) -- do not use that host for 卷四.",
+    "OCR_RISK": "MODERATE-HIGH -- single digitization lineage, known corruptions catalogued in BRIDGE_SEARCH_REGISTER.md section 13.",
+    "COPYRIGHT": "PUBLIC_DOMAIN",
+    "CHARTS_LOCATED": 296,
+    "CASES_EXTRACTED_S1_6": 0,
+    "BRIDGES_CONTRIBUTED": 8,
+    "STATUS": "EXAMINED S1.6 -- highest-value new worked-case source found this gate; contributed 3 of 4 Grade-A bridges",
+    "KEY_FINDINGS": [
+      "THE RICHEST ROOT-VS-FOLLOWING DOCTRINE FOUND: yin/yang-asymmetric, entry bar is ZERO qi not merely weak, argued by a bandit metaphor -- CF-011 Position 2",
+      "譚綸 chart (庚辰甲申丁未丙午) vs 萬民英 三命通會 -- Grade A TRUE_DOCTRINE_CONFLICT, opposite polarity AND quantity assigned to the same water element",
+      "專旺 occurs only twice, both glossing an unrelated concept, one explicitly reported as inherited from a 舊注 -- extends the 專旺 provenance chain past 徐樂吾 into unrelated Ming usage",
+      "扶抑 = 0 occurrences -- a second classical source (after 沈孝瞻 base text) confirmed to lack the term entirely"
+    ],
+    "MACHINE_READABLE_ALLOWED": true
+  },
+  {
+    "SOURCE_ID": "SRC-008",
+    "TITLE": "命理約言",
+    "BASE_TEXT_AUTHOR": "陳素庵 (陳之遴, Qing)",
+    "COMMENTATOR": "none (韋千里 later selected/republished it as 精選命理約言 without adding commentary of his own)",
+    "ERA": "Qing",
+    "SOURCE_TIER_VERSE": "A",
+    "SOURCE_FUNCTION": [
+      "DOCTRINE_SOURCE"
+    ],
+    "SOURCE_FUNCTION_NOT": [
+      "WORKED_CASE_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT"
+    ],
+    "EDITION": "diancang.xyz (double-sourced, byte-identical to suanzhun.net, confirming one digital lineage). 4 juan, 法四十八篇 + 賦二十篇 + 論四十八篇 + 雜論.",
+    "ACCESS_LOCATION": "https://www.diancang.xyz/xuanxuewushu/9589/195796.html (看命總法二) and neighbouring chapter IDs",
+    "CHAPTER_STRUCTURE": "卷一 法四十八篇 (method chapters, incl. 看命總法一/二, 看正官法, 看從局法) / 卷二 賦二十篇 / 卷三 論四十八篇 (incl. 天干論) / 卷四 雜論",
+    "CASE_DENSITY": "EXHAUSTIVELY MACHINE-CHECKED = ZERO. All ten contiguous four-pillar runs found across the full text are non-charts (hypothetical 拱夾 illustrations, day-pillar lists being debunked, or material embedded from 張楠 own 附張神峰辟五行諸謬). 陳素庵 argues his entire doctrine without case material.",
+    "REASONING_DENSITY": "VERY HIGH -- dense, systematic, first-principles doctrine. The single most forceful and explicit statement of strength-first sequencing found anywhere in the program.",
+    "STRENGTH_TERMINOLOGY": "推命先看日干，或得時，或失時，或得勢，或失勢 -- 此看命第一要訣也, applied RECURSIVELY over every pillar (不特日干而已，凡柱中干支皆當如此研究), both main-session-verified verbatim.",
+    "SPECIAL_PATTERN_TERMINOLOGY": "看從局法 gives a genuine THIRD position on root-vs-following (CF-011 Position 3): root is one conjunct of a COMPOUND adverse condition (從神受剋 AND 日主逢根 together), not a standalone entry bar. Expands 從 well beyond the tradition (從官/從食/從傷 in addition to the usual 從財/從殺) and explicitly REJECTS the term 棄命: 豈有命而可棄者乎.",
+    "KNOWN_LINEAGE": "day-master-strength-first, but folds special-structure determination into a single recursive strength-and-relation audit rather than treating it as a separate gate",
+    "RELIABILITY_NOTES": "Known corruptions shared across both hosts (one digital lineage): 凡若者宜扶 for 凡弱者宜扶; 看用身 for 看用神; 相姿 for 相資; 凡主中干支 for 凡柱中干支 (the last VERIFIED present in the main-session spot-check -- corruption reproduced consistently, expected).",
+    "OCR_RISK": "MODERATE, single lineage",
+    "COPYRIGHT": "PUBLIC_DOMAIN",
+    "CHARTS_LOCATED": 0,
+    "CASES_EXTRACTED_S1_6": 0,
+    "BRIDGES_CONTRIBUTED": 1,
+    "STATUS": "EXAMINED S1.6 -- doctrine-only, zero case density, but the single most consequential sequencing witness found",
+    "KEY_FINDINGS": [
+      "THE STRONGEST STRENGTH-FIRST SEQUENCING STATEMENT IN THE PROGRAM, main-session-verified verbatim: 推命先看日干...此看命第一要訣也 -- gives Pipeline A (旺衰 -> 格局 -> 用神) a genuine forceful Qing adherent, correcting the earlier framing of that pipeline as a purely modern (1936) artefact",
+      "A GENUINE THIRD POSITION ON CF-011: root as one conjunct of a compound condition, neither the binary entry-bar view (淵海子平) nor the axis-inapplicable view (任鐵樵)",
+      "Redefines 用神 against 沈孝瞻: NOT the 月令 god, but a separate balancing agent found only after a whole-chart strength audit -- 命以用神為緊要，看用神之法，不過扶抑而已"
+    ],
+    "MACHINE_READABLE_ALLOWED": true
+  },
+  {
+    "SOURCE_ID": "SRC-009",
+    "TITLE": "千里命稿 + 呱呱集 (上集)",
+    "BASE_TEXT_AUTHOR": "韋千里 (1911-1988)",
+    "COMMENTATOR": "none -- first-person case-file work",
+    "ERA": "1935 (千里命稿 self-preface 乙亥); 呱呱集 undated, later",
+    "SOURCE_TIER_VERSE": "D",
+    "SOURCE_TIER_COMMENTARY": "D",
+    "SOURCE_FUNCTION": [
+      "WORKED_CASE_SOURCE",
+      "COMMENTARY_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "MODERN_SYSTEMATIZATION"
+    ],
+    "EDITION": "diancang.xyz, 8bei8.com, quanxue.cn (三 independent hosts, cross-verified byte-consistent for the load-bearing passages). 呱呱集 pillars exist on ONE host only (suanzhun.net) -- a second host (dclef.com) corroborates the framing prose but systematically OMITS every four-pillar line.",
+    "ACCESS_LOCATION": "https://www.diancang.xyz/xuanxuewushu/qianliminggao/53755.html (應運篇上) and neighbouring chapter IDs",
+    "CHAPTER_STRUCTURE": "23 chapters incl. 補充篇, 評斷篇, 應運篇上/下",
+    "CASE_DENSITY": "286 distinct four-pillar strings in 千里命稿 + 31 in 呱呱集 上集. Case-file prose with named Republican-era clients and public figures.",
+    "REASONING_DENSITY": "HIGH -- first-person analytical prose, explicit 用神 selection reasoning, luck-cycle timelines tied to real biographies.",
+    "STRENGTH_TERMINOLOGY": "交互得祿 (mutual rooting as a virtue) contrasted directly against 任鐵樵 own reading of a near-identical chart (比肩奪去 -- root/peer support as illusory) -- see BRIDGE-B4.",
+    "KNOWN_LINEAGE": "Republican-era 格局/用神 synthesis, contemporary with and independent of 徐樂吾",
+    "RELIABILITY_NOTES": "ONLY ONE OCR lineage of the 應運篇 exists online and it is visibly corrupt: 午水洩秀 for 午火洩秀, 干上庚庚辛酉方一氣 for ...西方一氣, 柄 for 丙, 這 for 之. No print or scanned witness reached.",
+    "OCR_RISK": "HIGH -- single lineage, multiple confirmed corruptions",
+    "COPYRIGHT": "韋千里 died 1988 -- IN COPYRIGHT. Short necessary excerpts only, never bulk reproduction.",
+    "CHARTS_LOCATED": 317,
+    "CASES_EXTRACTED_S1_6": 0,
+    "BRIDGES_CONTRIBUTED": 3,
+    "STATUS": "EXAMINED S1.6 -- contributed 2 of 4 Grade-A bridges (both vs 徐樂吾, both chronologically provable as independent via preface datelines)",
+    "KEY_FINDINGS": [
+      "PREFACE DATELINE PROVES INDEPENDENCE: 韋 self-dates 乙亥 (1935), predating 徐樂吾 own 民國二十五年二月 (Feb 1936) preface by 6-12 months -- the single most decisive independence test found in the whole program, more reliable than any vocabulary argument",
+      "段祺瑞 chart dispute (BRIDGE-A1): 韋 REJECTS 曲直仁壽格 for the 癸未-hour chart on hidden-stem grounds (曲直已破) that 徐樂吾 does not apply; gives 段祺瑞 own real chart as the 壬午-hour variant instead",
+      "楊杏佛 timing dispute (BRIDGE-A2): agrees with 徐樂吾 on every structural fact, disagrees by roughly a decade on WHEN the fatal luck period lands -- checkable and consistent with the subject real 1933 assassination at 虛歲41",
+      "韋 own two publications (千里命稿 vs 呱呱集) do not fully agree with each other on 段祺瑞 -- a documented self-revision, not two independent witnesses (see BRIDGE-B4)"
+    ],
+    "MACHINE_READABLE_ALLOWED": true
+  },
+  {
     "SOURCE_ID": "NEG-001",
     "TITLE": "legacy solve/sinyaksingang.php (219-product Korean fortune system)",
     "SOURCE_TIER_VERSE": "E",

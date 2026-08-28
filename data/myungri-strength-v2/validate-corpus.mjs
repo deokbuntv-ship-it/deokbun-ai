@@ -199,6 +199,49 @@ console.log(`source tier        : ${JSON.stringify(by('SOURCE_TIER'))}`);
 console.log(`normalized label   : ${JSON.stringify(by('V2_NORMALIZED_STRUCTURAL_LABEL'))}`);
 console.log(`duplicate charts   : ${dupes.length}`);
 
+// ── S1.6 bridge-cases.json validation ───────────────────────────────────────
+const BRIDGE_GRADES = ['A', 'B', 'C', 'D', 'REFUTED', 'UNGRADED'];
+let bridges = [];
+try {
+  bridges = JSON.parse(readFileSync(join(HERE, 'bridge-cases.json'), 'utf8'));
+} catch {
+  warn('bridge-cases.json', 'not found or unparsable — S1.6 bridge validation skipped');
+}
+if (bridges.length) {
+  const seenBridgeIds = new Set();
+  for (const b of bridges) {
+    const id = b.BRIDGE_ID ?? '<missing BRIDGE_ID>';
+    if (!b.BRIDGE_ID) err(id, 'missing BRIDGE_ID');
+    if (seenBridgeIds.has(b.BRIDGE_ID)) err(id, 'duplicate BRIDGE_ID');
+    seenBridgeIds.add(b.BRIDGE_ID);
+    if (!BRIDGE_GRADES.includes(b.BRIDGE_GRADE)) err(id, `BRIDGE_GRADE invalid: ${b.BRIDGE_GRADE}`);
+    if (b.CHART_FINGERPRINT !== null) {
+      const fp = b.CHART_FINGERPRINT;
+      if (typeof fp !== 'string' || [...fp].length !== 8) {
+        err(id, `CHART_FINGERPRINT malformed: ${JSON.stringify(fp)}`);
+      } else {
+        for (let i = 0; i < 8; i += 2) {
+          if (!STEMS.includes(fp[i])) err(id, `CHART_FINGERPRINT stem invalid at position ${i}: '${fp[i]}'`);
+          if (!BRANCHES.includes(fp[i + 1])) err(id, `CHART_FINGERPRINT branch invalid at position ${i + 1}: '${fp[i + 1]}'`);
+        }
+      }
+    }
+    if (b.IS_SYNTHETIC === true) err(id, 'synthetic bridge present — bridges must be real cross-lineage attestations only');
+    if (b.RESEARCH_ONLY !== true) err(id, 'RESEARCH_ONLY must be true — no bridge record may claim production authority');
+    if ((b.BRIDGE_GRADE === 'A' || b.BRIDGE_GRADE === 'B') && !b.AUTHORITY_A) {
+      err(id, 'GRADE A/B bridge missing AUTHORITY_A — a graded bridge may never be anonymous on either side');
+    }
+    if ((b.BRIDGE_GRADE === 'A' || b.BRIDGE_GRADE === 'B') && !b.AUTHORITY_B) {
+      err(id, 'GRADE A/B bridge missing AUTHORITY_B — a graded bridge may never be anonymous on either side');
+    }
+  }
+  const byBridgeGrade = bridges.reduce((a, b) => ((a[b.BRIDGE_GRADE] = (a[b.BRIDGE_GRADE] ?? 0) + 1), a), {});
+  console.log(`\n=== S1.6 BRIDGE-CASES VALIDATION ===`);
+  console.log(`bridges            : ${bridges.length}`);
+  console.log(`by grade           : ${JSON.stringify(byBridgeGrade)}`);
+  console.log(`main-session spot-verified : ${bridges.filter((b) => b.MAIN_SESSION_SPOT_VERIFIED).length}`);
+}
+
 if (warnings.length) {
   console.log(`\n--- ${warnings.length} warning(s) ---`);
   warnings.forEach((w) => console.log('  ' + w));

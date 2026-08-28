@@ -292,6 +292,21 @@
 
 ---
 
+## OBS-22 — even 徐樂吾 (1936) does not use 專旺 as a 格 name — it is a taxonomic BUCKET (S1.6)
+
+| Field | Value |
+|---|---|
+| **The refinement** | OBS-21 found 專旺 present as a named category in 徐樂吾. S1.6's cross-lineage bridge hunt re-examined the actual passage and found it is **not** a 格 name even there. |
+| **The passage, ✓ MAIN-SESSION VERIFIED** by direct retrieval (`suanzhun.net/book/320.html`): 徐樂吾's 論用神 commentary organizes 取用之法 into a five-fold taxonomy: 「（一）扶抑。（二）病藥。（三）調候。（四）**專旺**。（五）通關。」 Under the **（四）專旺** heading itself, the worked example reads: 「春木成局，四柱無金，為**曲直仁壽格**，乃段執政祺瑞命造也。」 |
+| **What this shows** | 專旺 is the label of a *method category* — one of five ways to select a 用神 — under which the actual pattern name, **曲直仁壽格**, still does the naming work. 徐樂吾 does not write 「此為專旺格」; he writes 「為曲直仁壽格」 and files it under a heading called 專旺. |
+| **A second, independent finding narrows the pre-history further** | 神峰通考 (Ming, 張楠) contains 專旺 exactly twice, and both occurrences gloss a *different* concept — 《喜忌篇》's 「庚申時逢戊日，名食神干旺之方」, glossed as **專旺食神格**. One occurrence explicitly reports this as an inherited label, not 張楠's coinage: 「補曰：此段舊注謂**專旺食神格**，而或者又謂合神格，亦通。」 The referent is a 食神 in a specially-prosperous position — unrelated to the dominant-Day-Master-element sense V1 used. |
+| **Provenance warning attached to the 徐樂吾 finding** | On the most common online edition (8bei8.com), this taxonomy is mislabelled `"原文2"` — presented as if it were 沈孝瞻's Qing base text. It is not: the collated 沈孝瞻-only witness (`donglishuzhai.net`, commentary-free) contains no such taxonomy, and the passage is immediately followed by worked charts of **twenty Republican-era politicians** (伍朝樞, 蔡孑民, 朱家驊, 段祺瑞, and others) — an 18th-century author did not chart 20th-century heads of state. **The 8bei8 原文/譯文 layer boundary is unreliable for this entire book** — a corroborating instance of the same hazard `OBS-19` documented for 沈孝瞻's own chapter. |
+| **Confidence** | **HIGH** — direct main-session retrieval, cross-checked against a second author (張楠) using the same string |
+| **Updated provenance statement** | The lexical precedent for 「專旺 + 格」 is Ming (神峰通考), and even there it is attributed to a 舊注 and glosses an unrelated concept. The transfer of the label to the *dominant-element* category is not attested in any of the five sources now checked (滴天髓, 淵海子平, 三命通會, 子平真詮 base, 徐樂吾). **Even the 1936 commentary that was the leading candidate for the coinage uses it only as a method-category bucket, with the classical 格 name (曲直仁壽格 etc.) still doing the actual naming.** The true 格-name coinage is later than every source examined so far, or lives in a corpus not yet searched (子平粹言 is the next candidate — see `BRIDGE_SEARCH_REGISTER.md` §2). |
+| `READY_FOR_RULE?` | **NO** — sharpens OBS-21's prohibition rather than reversing it. If V2 uses 專旺 as a 格 name, it must be labelled `MODERN_SYSTEMATIZATION` and dated later than 1936, since even 1936 does not yet use it that way |
+
+---
+
 ## What S1 has **not** found
 
 - **No numeric threshold anywhere.** Not one quantifier (皆/全/滿局/重重/疊疊/一毫/眾/寡/多/深) is given a

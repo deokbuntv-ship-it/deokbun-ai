@@ -1,10 +1,24 @@
-# S2 PRE-FREEZE PACKAGE — S1.5
+# S2 PRE-FREEZE PACKAGE — S1.5 (updated S1.6, not superseded)
 
 Status: **PREPARED, NOT EXECUTED.** Per §75, nothing here is frozen.
 `STRUCTURAL_AXES_FROZEN = NO`.
 
 This is the input S2 would work from. It is a recommendation with its own
 objections attached, not a decision.
+
+> **S1.6 update, read this first.** A systematic cross-lineage bridge hunt ran
+> since this package was drafted (`CROSS_LINEAGE_BRIDGE_CASES.md`,
+> `BRIDGE_SEARCH_REGISTER.md`, `SEQUENCING_COMPARISON.md`,
+> `CROSS_LINEAGE_EVIDENCE_MATRIX.md`). Headline effect on this package: item 6
+> (`CF-011`/`CF-012`) is **not resolved** — both conflicts are now sharper and
+> better-evidenced (5-way and 3-way respectively) rather than closed. Item 1
+> (`PROPOSED_ENGINE_OBJECT`) gained direct cross-lineage worked-case support
+> (BRIDGE-B1's 3-way convergence) alongside three genuine
+> `SAME_PROPOSITION_DIFFERENT_ANSWER` conflicts (BRIDGE-A1/A2/A3) that any
+> engine design must accommodate, not explain away. The recommendation in §12
+> below (do not open S2 yet) **still holds**, and is now better justified: the
+> blockers were tested directly rather than merely reasoned about, and they
+> held. Full detail: `S1_6_GATE_REPORT.md`, `S2_BLOCKER_REGISTER.md`.
 
 ---
 

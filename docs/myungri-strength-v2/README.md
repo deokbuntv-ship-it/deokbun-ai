@@ -7,7 +7,44 @@ Governing plan: [`../MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md`](../MYUNGRI_STRENGTH_
 Why V1 was closed: [`../MYUNGRI_STRENGTH_V1_CLOSURE.md`](../MYUNGRI_STRENGTH_V1_CLOSURE.md).
 What the frozen input layer is: [`../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md`](../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md).
 
-## Current gate: **S1.5 — SOURCE DIVERSIFICATION** — `PARTIAL_SOURCE_DIVERSITY_SHORTFALL`
+## Current gate: **S1.6 — CROSS-LINEAGE BRIDGE CASES** — `PARTIAL_BRIDGE_EVIDENCE_INSUFFICIENT`
+
+S1.6 hunted for same-chart cross-lineage adjudication (S1.5's headline gap) across 8 search angles,
+77 candidates, 28 adversarially verified. **4 Grade-A + 13 Grade-B + 1 Grade-C bridges survived** —
+the raw target was exceeded, but `S2_PRE_FREEZE_READY` is still **NO**: the two conflicts the bridges
+were meant to resolve (`CF-011`, `CF-012`) were **sharpened, not resolved** — 5-way and 3-way
+respectively. Full accounting: [`S1_6_GATE_REPORT.md`](S1_6_GATE_REPORT.md).
+
+The single richest expected vein — 任鐵樵 vs 徐樂吾 — turned out to be **largely a mirage**: 徐's own
+front matter states his 滴天髓徵義 is a republication of 任's commentary under his own press, and his
+genuine second work (滴天髓補註) deliberately does not re-analyse 任's charts. The real bridges came
+from elsewhere — two new source families found this gate, 神峰通考 (張楠, Ming) and 千里命稿/呱呱集
+(韋千里, 1935), which together contributed 5 of the 4 Grade-A bridges.
+
+Three findings worth knowing before using anything here:
+
+- **A correction to this program's own earlier claim.** An S1.6 draft stated 滴天髓 has no comparable
+  sequencing order. It does — 任鐵樵's 八格 commentary gives 先觀月令 → 次看天干透出 → 再究司令以定真假 →
+  然後取用. `CF-012` is now a confirmed three-way conflict between named authorities, not two.
+- **CF-011 (root vs following) is now five-way**, not two — 淵海子平 (binary), 張楠 (yin/yang-asymmetric,
+  the richest single passage found), 陳素庵 (root as one conjunct of a compound condition), 任鐵樵 (strength
+  is the wrong axis), 沈孝瞻/徐樂吾 (傷食/印 are the real disqualifiers, not root).
+- **Real cross-lineage doctrinal conflicts do survive adversarial testing**, not only compatible
+  re-readings — 徐樂吾 vs 韋千里 dispute whether a 專旺 admission test sees hidden stems; 張楠 vs 萬民英
+  assign the same water element opposite polarity *and* opposite quantity in the same chart. Two Grade-A
+  bridges are genuine `SAME_PROPOSITION_DIFFERENT_ANSWER` conflicts, kept alongside the confirming
+  evidence rather than downplayed.
+
+⚠️ **Tooling warning, worse than S1.5 found:** the workflow caught a **fabricated quote submitted as
+evidence** plus six further summarizer fabrications, and one Grade-A bridge dissolved into an
+**intra-source inconsistency** once a table-extraction defect was found by a second independent
+verifier. Every load-bearing quote in `CROSS_LINEAGE_BRIDGE_CASES.md` was obtained by raw retrieval;
+`insource:` literal search on MediaWiki-hosted texts is the most trustworthy tool found. See
+[`BRIDGE_SEARCH_REGISTER.md`](BRIDGE_SEARCH_REGISTER.md) §10–13 for the full environment-trap catalogue.
+
+---
+
+## Previous gate: **S1.5 — SOURCE DIVERSIFICATION** — `PARTIAL_SOURCE_DIVERSITY_SHORTFALL`
 
 S1.5 added four lineages (子平真詮, 淵海子平, 三命通會, 窮通寶鑑) plus the 徐樂吾 commentary layer.
 **146 records · 15 non-滴天髓 · 6 source families.** Full accounting: [`S1_5_GATE_REPORT.md`](S1_5_GATE_REPORT.md).
@@ -82,6 +119,19 @@ Full accounting, including six named weaknesses: [`S1_GATE_REPORT.md`](S1_GATE_R
 | `S2_AXIS_CANDIDATES.md` | 10 candidates with evidence **and** counterexamples — **not a freeze** |
 | `S2_PRE_FREEZE_PACKAGE.md` | what S2 would work from, with its own objections attached |
 | `S1_5_GATE_REPORT.md` | S1.5 metrics and honest shortfall accounting |
+
+### S1.6 additions
+
+| File | Purpose |
+|---|---|
+| `CROSS_LINEAGE_BRIDGE_CASES.md` | the 4 Grade-A + selected Grade-B bridges, full quotes and formal propositions |
+| `BRIDGE_SEARCH_REGISTER.md` | search catalogue, fabrication census, environment traps — read before repeating this work |
+| `CASE_TRANSMISSION_CHAIN.md` | 6 traced chains distinguishing independent reasoning from copied tradition |
+| `SEQUENCING_COMPARISON.md` | 5 step-1 positions across the tradition; supersedes the S1.6-draft version with a correction |
+| `CROSS_LINEAGE_EVIDENCE_MATRIX.md` | every candidate axis × 8 source families, one cell each |
+| `S2_BLOCKER_REGISTER.md` | what stands between here and a safe S2 freeze, B1–B7 |
+| `S1_6_GATE_REPORT.md` | S1.6 metrics and honest accounting of what did and did not resolve |
+| `../../data/myungri-strength-v2/bridge-cases.json` | machine-readable bridge data, 28 records incl. refuted |
 
 ## The three rules that make this corpus worth having
 

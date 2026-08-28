@@ -67,9 +67,56 @@ edition rather than a genuine doctrinal split — the surrounding pattern
 source text.** Both readings are transcribed as printed and the case carries a
 `SOURCE_AMBIGUITY` note.
 
-**RESOLUTION: OPEN — requires a second edition.** Closing this needs a print or
-independently-typeset edition of 滴天髓闡微, not a plausibility argument. Recorded
-in `SOURCE_REGISTER.md` as a known reliability limit of SRC-001's transcription.
+**RESOLUTION (S1.6): CLOSED — `COPY_ERROR` in the 任氏曰 list. Example 10
+preserves the correct reading.**
+
+A second transcription was obtained — zh.wikisource's 滴天髓阐微, independent of
+guwendao. It reads **the same** as guwendao: 土旺極者而似水. So the two editions do
+not disagree, and edition-variance is eliminated as the explanation.
+
+The case is instead settled by **internal evidence**, and decisively.
+
+**① The五-element pattern.** The 旺極 series maps each element to **what it
+generates** (its 洩神):
+
+| | printed | 所生 | fits? |
+|---|---|---|---|
+| 木旺極 | 似火 | 木生火 | ✅ |
+| 火旺極 | 似土 | 火生土 | ✅ |
+| **土旺極** | **似水** | 土生**金** | ❌ |
+| 金旺極 | 似水 | 金生水 | ✅ |
+| 水旺極 | 似木 | 水生木 | ✅ |
+
+Four of five follow the rule. 土 is the sole exception — and it **duplicates**
+金旺極's value, which is itself a corruption signature.
+
+**② The treatment clause in the same sentence refutes 似水.** As printed:
+
+> 土旺極者而似水也，**宜火以練之**
+
+**火 refines metal** — 火煉金 is the standard idiom. You do not refine *water*
+with fire. Compare the neighbouring line, which is internally coherent:
+
+> 金旺極者而似水也，**宜土以止之**  ← earth dams water ✅
+
+So the printed sentence pairs a 水 resemblance with a 金 treatment. Substituting
+似金 makes it coherent: 土旺極者而似**金**也，宜火以練之.
+
+**③ Example 10 preserves exactly that reading** — 土旺极者，似金也.
+
+**Conclusion:** the 任氏曰 list carries a copying error that both surviving online
+transcriptions inherit (they very likely share an ancestor, so their agreement is
+not independent corroboration). The worked example transmits the correct text.
+
+**What is still not proved:** whether the error is 任鐵樵's own slip or a later
+copyist's. That would need a print or manuscript witness. The *reading* is
+settled; its *origin* is not.
+
+⚠️ **Method note:** the retrieval layer returned **two different treatment clauses
+for this same line across two calls** (宜金以生之, then 宜火以練之). The 火練 reading
+is corroborated by an independently-recorded S1 note from guwendao (喜火之練也) and
+is the one used above. This is a further instance of the fabrication hazard
+recorded in the S1.5 gate report.
 
 ---
 
@@ -298,103 +345,193 @@ dependency as CF-002.
 
 ---
 
-## CF-011 — Root and following: two lineages take opposite positions (S1.5)
+## CF-011 — Root and following: a five-position dispute, now with worked-case evidence (S1.5 → S1.6)
 
 **Type:** `ONTOLOGY_CONFLICT` + `VERDICT_CONFLICT`
-**This is the first genuine cross-lineage conflict in the corpus.**
 
-**淵海子平 (SRC-003), 卷二 外十八格 棄命從財格 眉批** — verified verbatim by direct
-retrieval:
+**S1.6 update: this is no longer a two-lineage conflict. It is at least
+five-way, and every position is independently quotable. Full detail and full
+citations in `docs/myungri-strength-v2/CROSS_LINEAGE_BRIDGE_CASES.md`;
+summarized here.**
 
-> 日主有根則不可棄，主貧。無根棄之則富。
+### Position 1 — ROOT IS FATAL, binary (淵海子平)
 
-And 棄命從殺格:
+Four independent statements, all raw-verified:
+> 命逢根氣，命殞無猜。(棄命從殺論 — root-qi means **death**, not merely a broken 格)
+> 丙火申提，無根從殺；有根南旺，**脫根壽促**。(棄命從殺論)
+> 忌日主有根及比肩之地。(外十八格 棄命從殺格)
+> 或天干有甲己字，**或有根者不吉**。(從象)
 
-> 忌日主有根及比肩之地。
+The rule is a **two-state switch**: root present ⇒ following void ⇒ poverty or
+death. Root absent ⇒ following holds ⇒ wealth. No gradient, no weighing of a
+root's quality, position, or function.
 
-And 神趣八法·從象 (卷三):
+### Position 2 — ROOT IS FATAL, WITH A YIN/YANG ASYMMETRY (張楠, signed 楠曰)
 
-> 或天干有甲乙字者不吉，**或有根者不吉**。
+The richest single statement in the corpus (神峰通考 卷一 偏官格附棄命從殺格):
+> 棄命從殺格，緣日主全無一點生氣，四柱純然有官殺，則不得已而只得從殺也…**畏見
+> 八字有根處**，及制殺運猶如從盜，又思歸父母兄弟之鄉，則盜必惡汝…**但六陰日干
+> 有從之之理**，如婦人屬陰，亦有從人之道。**若六陽日干，見殺多，只或作殺重身輕
+> 看**，若日主全無氣，亦作棄命看，亦畏見根死。
 
-Three independent statements in one book. The rule is a **two-state switch**:
-root present ⇒ following is void ⇒ poverty. Root absent ⇒ following ⇒ wealth. No
-gradient, no weighing of the root's quality, position or function.
+Three implementable sub-positions in one passage: (i) entry bar is **zero**
+生氣, not merely weak; (ii) root is fatal, argued by a bandit metaphor (a root
+is the thought of going home, which makes the bandit turn on you); (iii)
+**only the six yin day stems** genuinely follow — yang stems with heavy 殺 are
+read as 殺重身輕, not as following at all. The asymmetry is **格-specific**:
+從財 is explicitly NOT yin-only (此則不論陰陽日主皆從也), 從化 is stricter still
+(六陽日干，不能從化也), and 張楠 elsewhere states the root doctrine generally,
+outside any 從 context (根在苗先).
 
-**滴天髓闡微 (SRC-001)** — six charts where a root, 餘氣, 祿 or 比劫 is *named* and
-the following pattern *still holds* (`CF-008`), plus two explicit refusals of the
-weak-body reading:
+### Position 3 — ROOT IS ONE CONJUNCT OF AN ADVERSE CONDITION, NOT AN ENTRY BAR (陳素庵)
+
+**The direct answer neither pole usually states** (命理約言 卷一 看從局法):
+> 凡看日主無根，滿柱皆官則當從官…滿柱皆印綬，則無從理，蓋皆生助日主，旺甚無依
+> 決矣。**凡從何神，只要此神生旺則吉。若從神受剋，日主逢根則凶。**
+
+Read literally: root is **not** an entry bar and **not** automatically fatal.
+It is one conjunct — 從神受剋 **AND** 日主逢根 *together* produce 凶. The entry
+test (日主無根) and the outcome test (逢根則凶) are two **separate** clauses.
+He also expands 從 well beyond the tradition and rejects the word 棄命 itself:
+「至於從局動云棄命，豈有命而可棄者乎？」, and states a supporting axis neither
+pole of the dispute usually invokes: 「陰易於他從，陽難於他從」.
+
+### Position 4 — STRENGTH IS THE WRONG AXIS ENTIRELY (任鐵樵)
+
+Six charts naming a root, 餘氣, 祿 or 比劫 where the following pattern *still
+holds* (`CF-008`), with two explicit refusals of the weak-body reading:
 
 > 從兒不論身強弱，**非身弱論也** (`DTS-SHUNJU-05` — DM has 祿 and 比肩)
 > 格取從官，**非身衰論也** (`DTS-JIACONG-03` — DM sits on its own element)
 
+This is not silence about roots — it is a **pre-emptive refusal of the
+objection**. 任 concedes the support exists and rules the strength axis
+inapplicable to 從兒.
+
+### Position 5 (Qing 格局 orthodoxy) — DISQUALIFIERS ARE 傷食 AND 印, NOT ROOT PER SE
+
+沈孝瞻, 論雜格:
+> 四柱皆煞，而日主無根，捨而從之，格成大貴。**若有傷食，則煞受制而不從，有印
+> 則印以化煞而不從。**
+
+徐樂吾's 徐注 on the same passage:
+> 從財從煞，其理一也。氣勢偏旺，日主無根，不得不從其旺勢也…從煞格喜行財生煞
+> 之運，**印則洩煞之氣為不美**，比劫非宜，而食傷制煞為最忌。
+
 ### What this does to R11
 
-S1 recorded **R11 (any root breaks 從格) as REFUTED**, on six charts.
+S1 recorded R11 as **REFUTED** on six 滴天髓 charts, lineage-scoped without
+saying so. S1.5 corrected it to `SCHOOL_DEPENDENT` on a two-way split. **S1.6
+supersedes both**:
 
-That verdict was **lineage-scoped and did not say so**. Corrected status:
-
-| Lineage | R11 | Basis |
+| Position | Holder | Root rule |
 |---|---|---|
-| 滴天髓 / 任鐵樵 | **REFUTED** | 6 worked charts + 2 explicit doctrinal refusals |
-| 淵海子平 | **ASSERTED AS DOCTRINE** | 3 independent statements, binary form |
+| 1 | 淵海子平 | root present ⇒ following void, binary |
+| 2 | 張楠 (神峰通考) | root fatal, but **only for yang day stems**; yin stems may follow despite root |
+| 3 | 陳素庵 (命理約言) | root is one conjunct of a compound adverse condition, not an entry bar |
+| 4 | 任鐵樵 (滴天髓) | strength/rootedness is the wrong axis for 從兒 specifically |
+| 5 | 沈孝瞻/徐樂吾 (子平真詮) | disqualifiers are 傷食 and 印, not root itself |
 
-`R11_STATUS = SCHOOL_DEPENDENT`. It is neither universally true nor universally
-false, and any V2 rule touching it must declare which lineage it follows.
+`R11_STATUS = SCHOOL_DEPENDENT`, and more precisely: **at least five
+non-equivalent formal rules circulate under one name**, no two of which are the
+same proposition even when they agree on a verdict. A single boolean
+"root disqualifies" flag cannot represent positions 2 and 3 at all, let alone
+reconcile them with 4 and 5.
 
-**This is the correction S1.5 was created to catch.** With one source, a
-lineage-specific doctrine is indistinguishable from a universal one.
+### Worked-case evidence, not only doctrine (S1.6 addition)
 
-### Is it a real disagreement or a terminology difference?
+`CROSS_LINEAGE_BRIDGE_CASES.md` BRIDGE-B2/B3 — the chart 甲午 丁丑 甲午 丙寅
+(`DTS-SHUNJU-05`), where 任鐵樵 pre-emptively rules root irrelevant (非身弱論也)
+— is independently contested by **two** modern practitioners, each rejecting a
+different part of his reasoning: one accepts the root objection 任 forecloses
+and downgrades the 格 to 假從兒; the other rejects following outright, reads
+**身也不弱**, and treats the very luck period 任's own chapter calls worst-case
+(官殺) as favourable. **This is now the best-attested single case for CF-011**
+in the whole program — a worked chart, not only doctrine on both sides.
 
-Real, on the evidence available — but with an unresolved component.
+### Is it a real disagreement, or terminology?
 
-The two books are not describing the same object with different words. 淵海子平's
-following patterns (棄命從財, 棄命從殺, 從象) are **admission-gated categories**
-with binary entry tests. 滴天髓's are **whole-chart 氣勢 readings** where a root's
-significance depends on whether it functions. Those are different machines, and
-they genuinely disagree about the same charts.
+Real. 淵海子平's following patterns are **admission-gated categories** with
+binary entry tests. 陳素庵's is a **compound-condition audit**. 任鐵樵's is a
+**whole-chart 氣勢 reading** where a root's significance depends on function,
+not presence. These are three different kinds of machine, genuinely disagreeing
+about overlapping objects.
 
-What is **not** resolved: whether 任鐵樵 would accept 淵海子平's cases as 從格 at
-all, or would reclassify them. Testing that needs a chart adjudicated by both,
-and no such chart is yet in the corpus.
+**Zero charts are adjudicated by both a strict-root lineage and 任鐵樵.**
+BRIDGE-B2/B3 comes closest — modern authors disputing 任 — but does not settle
+whether 淵海子平, 張楠, or 陳素庵 would rule the same way on 任's own charts.
 
-**RESOLUTION: OPEN — school-dependent, load-bearing for any special-pattern axis.**
+**RESOLUTION: OPEN — five-way, school-dependent, load-bearing for any
+special-pattern axis. Worked-case evidence now exists (BRIDGE-B2/B3) but does
+not yet adjudicate the classical lineages against each other directly.**
 
 ---
 
-## CF-012 — Sequencing: which question is asked first? (S1.5)
+## CF-012 — Sequencing: which question is asked first? (S1.5 → S1.6, sharpened to three-way)
 
-**Type:** `SEQUENCING_CONFLICT` — the category S1 predicted would appear once a
-second lineage was examined.
+**Type:** `SEQUENCING_CONFLICT`
+
+**S1.6 update: a systematic literal sweep found five distinct step-1 claims
+across the tradition, one classical author (三命通會 卷十) holding four of them
+in one unreconciled section, and — critically — a correction to this
+program's own prior claim that 滴天髓 states no order.** Full detail in
+`docs/myungri-strength-v2/SEQUENCING_COMPARISON.md`, which now supersedes the
+two-lineage account below in every particular except the headline conflict,
+which survives sharpened.
 
 **淵海子平, 神趣八法 總釋 眉批** — verified verbatim:
-
 > 看八字**先明從化爲本**，化不成方論財官，財官無取方論格局
 
-An explicit three-stage order: **從化 → 財官 → 格局**. Special structure is
-screened *first*; ordinary analysis runs only if the screen fails.
+Special structure screened **first**; 格局 **last**.
 
-Strength does not appear in that order at all. It enters as a **gate condition on
-admission** (main body, same chapter):
+**沈孝瞻, 子平真詮 論用神** — verified verbatim:
+> 八字用神，專求月令，以日干配月令地支，而生尅不同，格局分焉
 
-> 類屬要身旺，而**從化要衰也**
+月令/格局 **first**; special structure (外格) explicitly **last** — 月令，本
+也；外格，末也.
 
-**滴天髓闡微** places no comparable ordering statement. Its 衰旺 chapter reasons
-about degree without a prior structural screen, and `DTS-BAGE-06` shows an
-extreme composition being *refused* special-pattern status on structural grounds
-discovered during ordinary analysis — the opposite order.
+**任鐵樵, 滴天髓闡微 八格 — CORRECTION to the prior S1.6 draft**, which claimed
+no comparable order exists. It does:
+> 先觀月令 → 次看天干透出 → 再究司令以定真假 → 然後取用
 
-**Bearing on the §38 hypotheses:**
+月令 first, but the special-pattern authenticity check (真假) sits at **step
+three**, neither first (淵海子平) nor last (沈孝瞻) — a third position.
 
-| Hypothesis | 淵海子平 | 滴天髓 |
-|---|---|---|
-| H1 facts → ordinary strength → special pattern | contradicted | partially supported |
-| H2 facts → special screen → ordinary only if ordinary | **supported** | not stated |
-| H4 facts → 格局 structure → strength as secondary | partially (格局 is *last* here) | not stated |
+**Three named/lineage-identified authorities, three different answers to the
+same question, verified verbatim on all three.**
 
-**RESOLUTION: OPEN.** Two lineages appear to sequence differently. This must be
-settled before any V2 pipeline order is frozen, because H1 and H2 produce
-different answers on exactly the borderline charts that matter.
+`CF012_CLASSIFICATION` = **SAME_PROPOSITION_DIFFERENT_ANSWER — a confirmed
+three-way sequencing conflict.**
+
+A fourth apparent data point (三命通會 卷十's 「凡命先論化氣」, read as agreeing
+with 淵海子平) was tested adversarially and **REFUTED**: it is one of four
+unreconciled 「凡…先…」 openers in the same section, the first of which states
+the *opposite* thesis, and in context it is a 本體/化 classification mechanism
+(day/night birth), not an ordering rule at all. See `SEQUENCING_COMPARISON.md`
+§4 for the full refutation — it is retained here as a documented negative,
+because surface-matching a phrase without reading its context is exactly the
+failure mode this whole program exists to catch.
+
+**Bearing on the pipeline hypotheses (§38), rescored:**
+
+| Hypothesis | 淵海子平 | 子平真詮 | 任鐵樵 | 陳素庵 |
+|---|---|---|---|---|
+| A: 旺衰 → 格局 → 用神 | contradicted (格局 last, not after 旺衰) | contradicted | not this shape | **explicitly supported** (看命第一要訣) |
+| B: 月令/格局 first, 旺衰 subordinate | contradicted (格局 last) | **explicitly supported** | **explicitly supported** (corrected) | not this shape |
+| C: special screen first, ordinary only if ordinary | **explicitly supported** | contradicted (外格，末也) | partially (真假 check is step 3, not step 1) | not addressed |
+
+**RESOLUTION: OPEN, and load-bearing.** Pipeline B is now the best-attested (3
+lineages including a corrected 任鐵樵). Pipeline A is not a purely modern
+artefact — it has a forceful Qing adherent in 陳素庵. This must be settled, or
+explicitly parameterised by lineage, before any V2 pipeline order is frozen,
+because the three positions produce different answers on exactly the
+borderline charts that matter (`CF-011`'s six 滴天髓 rooted-following cases
+among them).
+
+**Hypothesis on record, strengthened but not proven by S1.6**: CF-011 may be
+partly downstream of CF-012 — under a special-screen-first order the root test
+pre-empts any whole-chart 氣勢 reading, so the question CF-011 asks may not
+arise the same way in every pipeline. See `SEQUENCING_COMPARISON.md` §6.
 
 ---
 
@@ -464,7 +601,7 @@ those give different answers.
 | ID | Subject | Resolution |
 |---|---|---|
 | CF-001 | one chart, two chapter readings | OPEN |
-| CF-002 | 土旺極 internal contradiction | OPEN — needs 2nd edition |
+| CF-002 | 土旺極 internal contradiction | **CLOSED — COPY_ERROR** (S1.6) |
 | CF-003 | 專旺 absent from primary text | PARTIALLY CLOSED |
 | CF-004 | 從兒 vs body-strength | OPEN |
 | CF-005 | 眾寡 vs 強弱 | CLOSED — independent axes |
@@ -473,11 +610,15 @@ those give different answers.
 | CF-008 | root present, still follows | R11 REFUTED; replacement OPEN |
 | CF-009 | classification depends on the question asked | **CLOSED — TASK_RELATIVE_COMPATIBLE** (S1.5) |
 | CF-010 | irreconcilable biographies for one chart | OPEN — needs 2nd edition |
-| CF-011 | root vs following — lineages take opposite positions | **OPEN — school-dependent** |
-| CF-012 | sequencing: special screen first, or ordinary first? | **OPEN — blocks pipeline order** |
+| CF-011 | root vs following — now a FIVE-position dispute | **OPEN — school-dependent; first worked-case bridge found (S1.6)** |
+| CF-012 | sequencing — THREE named authorities give three answers | **OPEN — blocks pipeline order; 滴天髓's own position corrected (S1.6)** |
 | CF-013 | climate prescribes what 扶抑 forbids | **OPEN — forces module separation** |
 
-**10 open, 1 partially closed, 2 closed.**
+**9 open, 1 partially closed, 3 closed.**
+
+Closed so far: **CF-005** (眾/寡 and 強/弱 are independent axes), **CF-009**
+(`TASK_RELATIVE_COMPATIBLE`), **CF-002** (`COPY_ERROR`, closed in S1.6 on internal
+evidence). Partially closed: **CF-003** (專旺 absent).
 
 Conflict types present: `ONTOLOGY` (CF-001, CF-007, CF-011, CF-013), `VERDICT`
 (CF-004, CF-008, CF-011), `TERMINOLOGY` (CF-003, CF-005), `QUANTIFIER` (CF-006),
@@ -486,6 +627,17 @@ Conflict types present: `ONTOLOGY` (CF-001, CF-007, CF-011, CF-013), `VERDICT`
 **CF-011 and CF-012 are the first cross-lineage conflicts.** Both were invisible
 while the corpus had one source, and both change conclusions S1 had recorded as
 settled. That is the S1.5 diversification working as intended.
+
+**S1.6 update.** A systematic bridge-case hunt (`CROSS_LINEAGE_BRIDGE_CASES.md`,
+`BRIDGE_SEARCH_REGISTER.md`) sharpened both further rather than resolving
+either: CF-011 decomposes into five non-equivalent formal positions (淵海子平
+binary / 張楠 yin-yang-asymmetric / 陳素庵 compound-conjunct / 任鐵樵 axis-inapplicable
+/ 沈孝瞻-徐樂吾 傷食+印-only), and now has its first worked-case bridge
+(`CROSS_LINEAGE_BRIDGE_CASES.md` BRIDGE-B2/B3). CF-012 gained a third named
+position and a correction to this program's own prior claim that 滴天髓 states no
+order — it does (先觀月令 → 次看天干透出 → 再究司令以定真假 → 然後取用). Neither
+conflict is closed. Both are better specified, which is the honest and useful
+outcome of the additional evidence.
 
 An open conflict blocks any V2 rule that would depend on it. That is the point
 of the register.

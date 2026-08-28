@@ -251,15 +251,98 @@ life is described.
 
 ---
 
-## Part 5 — Status
+## Part 6 — S1.6: the cross-lineage test, run
+
+Part 2's caveat — "this rests on SRC-001 alone, the cross-lineage test is
+pending" — is now partly answered, by a systematic bridge-case hunt. Full
+citations in `CROSS_LINEAGE_BRIDGE_CASES.md`; synthesized here against this
+document's specific claims.
+
+### The task-relative model gains its first cross-lineage confirmation
+
+BRIDGE-B1 (葛參政, 壬申 壬子 戊午 乙卯) is the clearest possible case:
+**three** lineages — 淵海子平, 三命通會, 子平真詮, spanning roughly six centuries
+— independently converge on the same practical conclusion (乙卯 官星 is
+decisive, outcome favourable) via **three mechanisms that share no
+vocabulary**: 官 subdues a blade (淵海子平) · a clash is neutralised by a
+competing combination, so a 財官 reading holds (三命通會) · exposed 財 is safe
+because it generates 官, which guards it (子平真詮). This is
+`DIFFERENT_PROPOSITION_COMPATIBLE` at the highest achievable confidence — see
+`CASE_TRANSMISSION_CHAIN.md` CHAIN-02 for the transmission analysis that rules
+out this being one argument counted three times.
+
+Several Grade-B bridges add weaker versions of the same pattern (BRIDGE [10],
+[13]/[14]): different lineages reading the same chart through structurally
+disjoint apparatus, converging only on the coarse outcome (貴), which is
+compatible with — though it does not by itself prove — a task-relative reading
+where each lineage answers a genuinely different question about the same facts.
+
+### But real SAME_PROPOSITION_DIFFERENT_ANSWER conflicts also survive cross-lineage testing
+
+This section did not exist before S1.6, and it matters precisely because it
+keeps the task-relative finding honest: **not every cross-lineage disagreement
+dissolves into compatible questions.** Three bridges are irreducibly
+`SAME_PROPOSITION_DIFFERENT_ANSWER`:
+
+- **BRIDGE-A1** (乙丑 己卯 乙亥 癸未): 徐樂吾 and 韋千里 answer the identical,
+  narrow, formally specifiable question — *does a 專旺 Wood structure's
+  "no metal" admission test range over hidden stems?* — with opposite answers.
+  This is not two questions in different vocabulary. It is one question, one
+  vocabulary, two answers.
+- **BRIDGE-A3** (庚辰 甲申 丁未 丙午, 譚綸): 張楠 and 萬民英 assign the *same*
+  water element opposite polarity (deficient 七殺 needing help vs prosperous
+  正印 needing nothing) for the *same* explanandum (top military office). The
+  disagreement is not about which question to ask; it is about what the
+  element *is*, structurally, in this chart.
+- **BRIDGE-A2** (楊杏佛): 徐樂吾 and 韋千里 agree on every structural fact — Day
+  Master, favourable god, its root, the year and mechanism of death — and
+  disagree by roughly a decade on *when* the fatal luck period lands, in a way
+  checkable against the subject's real biography.
+
+**What this means for the task-relative model, stated precisely**: `TASK_
+RELATIVE_MODEL = SUPPORTED` was never a claim that all apparent disagreements
+dissolve under closer reading. It is a claim that *some* do, systematically,
+and that surface-label disagreement is not reliable evidence of a real
+conflict without checking. BRIDGE-A1/A2/A3 show the check sometimes comes back
+positive — a real conflict, not a misreading. Both results are now on record,
+not just the reassuring one.
+
+### CHART_PROPERTY vs QUESTION_SPECIFIC_PREDICATE, restated with bridge evidence
+
+Per the governing brief's own framing (§76): every bridge here can be sorted by
+which side of this line its disagreement falls on.
+
+| Bridge | What's disputed | Category |
+|---|---|---|
+| BRIDGE-A1 (曲直 admission test) | whether a *chart property* (hidden-stem metal content) is visible to a specific test | CHART_PROPERTY scope dispute |
+| BRIDGE-A3 (譚綸) | what a *chart property* (the water element's role) fundamentally is | CHART_PROPERTY identity dispute |
+| BRIDGE-A2 (楊杏佛 timing) | a *question-specific predicate* (which luck period is fatal, and why) | QUESTION_SPECIFIC_PREDICATE dispute |
+| BRIDGE-B1 (葛參政) | none — convergent answers via different *question-specific predicates* (官制刃 / 會局解沖 / 生官護財) | compatible QUESTION_SPECIFIC_PREDICATEs, same CHART_PROPERTY substrate |
+| BRIDGE-B2/B3 (從兒, root) | whether a *chart property* (root/peer presence) determines eligibility for a *question* (following classification) | boundary case — the two categories interact directly, which is exactly what CF-011's five positions are about |
+
+**The boundary case is the important one.** CF-011 is not cleanly a
+CHART_PROPERTY dispute (everyone agrees a root is present) nor cleanly a
+QUESTION_SPECIFIC_PREDICATE dispute (everyone agrees the question is "does this
+follow?"). It is a dispute about **whether a chart property gates a question at
+all**, which is a third category this framework did not anticipate before
+S1.6's bridge evidence surfaced it.
+
+---
+
+## Part 7 — Status (supersedes Part 5)
 
 | | |
 |---|---|
 | CF-009 | **RESOLVED — TASK_RELATIVE_COMPATIBLE** |
-| CF-010 | **OPEN** (new; narrative discrepancy, needs 2nd edition) |
-| Global capacity | **NOT SUPPORTED** (single lineage) |
-| Load-specific capacity | **SUPPORTED** (single lineage; cross-lineage test pending) |
-| Label ⇒ treatment | **REFUTED**, by doctrine and by three chart pairs |
+| CF-010 | **OPEN** (narrative discrepancy, needs 2nd edition) |
+| Global capacity | **NOT SUPPORTED** (still single-lineage on the 足以 token; cross-lineage on the *shape* only) |
+| Load-specific capacity | **SUPPORTED** (single lineage on 足以; the shape recurs in 子平真詮's 便能受…而當… but not the token) |
+| Label ⇒ treatment | **REFUTED**, by doctrine and by three chart pairs (S1, single lineage) |
+| Task-relative model, cross-lineage | **SUPPORTED, with real exceptions now documented** — BRIDGE-B1 (3-way convergence) is the strongest confirming case; BRIDGE-A1/A2/A3 are strongest disconfirming cases, and both are now on record together |
+| CHART_PROPERTY vs QUESTION_SPECIFIC_PREDICATE | **a third category found**: chart-property-gates-a-question disputes (CF-011), not anticipated by the original two-way split |
 
-Everything in Parts 2 and 3 rests on SRC-001 alone. The cross-lineage test is the
-whole point of S1.5 and is recorded in `CROSS_SOURCE_CASE_MATRIX.md`.
+Parts 2 and 3 still rest on SRC-001 alone for their specific numeric claims
+(18/18 occurrences of 足以, etc.) — that has not changed. What has changed is
+that the *model* those parts support has now been tested against four other
+lineages via worked cases, not only via doctrine, and has survived with
+documented exceptions rather than being either confirmed cleanly or refuted.
