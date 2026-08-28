@@ -7,7 +7,17 @@ Governing plan: [`../MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md`](../MYUNGRI_STRENGTH_
 Why V1 was closed: [`../MYUNGRI_STRENGTH_V1_CLOSURE.md`](../MYUNGRI_STRENGTH_V1_CLOSURE.md).
 What the frozen input layer is: [`../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md`](../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md).
 
-## Current gate: **S1.6 — CROSS-LINEAGE BRIDGE CASES** — `PARTIAL_BRIDGE_EVIDENCE_INSUFFICIENT`
+## Current gate: **S2/S3 — STRUCTURAL AXES + OPERATIONAL JUDGMENT GRAPH** — `FROZEN_FOR_AUDIT`
+
+The research phase (S1/S1.5/S1.6) is closed. S2/S3 converts it into a productized doctrine: 7 structural
+axes (`S2_STRUCTURAL_AXES_FREEZE.md`), a 23-node deterministic judgment graph with zero LLM verdict nodes
+and zero numeric scoring (`S3_OPERATIONAL_JUDGMENT_GRAPH.md` + `data/myungri-strength-v2/judgment-graph-v2.json`),
+a school-conflict operation policy (`DEOKBUNI_CANONICAL_OPERATION_POLICY.md`), and a 41-case replay against
+the existing corpus with zero critical mismatches (`S3_CASE_REPLAY_REPORT.md`). `MYUNGRI_STRUCTURAL_DOCTRINE_V2
+= READY_FOR_INDEPENDENT_FREEZE_AUDIT` — full accounting in `S2_S3_FREEZE_GATE_REPORT.md`. Still research
+artifacts only; no runtime code exists for any of this.
+
+## Previous gate: **S1.6 — CROSS-LINEAGE BRIDGE CASES** — `PARTIAL_BRIDGE_EVIDENCE_INSUFFICIENT`
 
 S1.6 hunted for same-chart cross-lineage adjudication (S1.5's headline gap) across 8 search angles,
 77 candidates, 28 adversarially verified. **4 Grade-A + 13 Grade-B + 1 Grade-C bridges survived** —
@@ -132,6 +142,19 @@ Full accounting, including six named weaknesses: [`S1_GATE_REPORT.md`](S1_GATE_R
 | `S2_BLOCKER_REGISTER.md` | what stands between here and a safe S2 freeze, B1–B7 |
 | `S1_6_GATE_REPORT.md` | S1.6 metrics and honest accounting of what did and did not resolve |
 | `../../data/myungri-strength-v2/bridge-cases.json` | machine-readable bridge data, 28 records incl. refuted |
+
+### S2/S3 additions
+
+| File | Purpose |
+|---|---|
+| `DEOKBUNI_CANONICAL_OPERATION_POLICY.md` | school-conflict resolution table, strength-view/special-pattern policy, sequencing decision |
+| `S2_STRUCTURAL_AXES_FREEZE.md` | 7 frozen structural axes (FACT/INFERENCE layers), 3 deferred candidates |
+| `S3_OPERATIONAL_JUDGMENT_GRAPH.md` | 23-node graph walkthrough, worked traces, repair history |
+| `S3_CASE_REPLAY_REPORT.md` | 41-case replay against the existing corpus, match-type accounting |
+| `V2_FACT_EXTENSION_CANDIDATES.md` | 4 node-justified future fact candidates, none implemented |
+| `S2_S3_FREEZE_GATE_REPORT.md` | freeze-gate metrics and declarations |
+| `../../data/myungri-strength-v2/judgment-graph-v2.json` | machine-readable graph, research-artifact-only |
+| `../../scripts/research/validate-judgment-graph.mjs` | graph validator (unique IDs, edges, no orphans, no prohibited fields) |
 
 ## The three rules that make this corpus worth having
 
