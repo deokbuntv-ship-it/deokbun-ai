@@ -7,15 +7,27 @@ Governing plan: [`../MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md`](../MYUNGRI_STRENGTH_
 Why V1 was closed: [`../MYUNGRI_STRENGTH_V1_CLOSURE.md`](../MYUNGRI_STRENGTH_V1_CLOSURE.md).
 What the frozen input layer is: [`../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md`](../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md).
 
-## Current gate: **S2/S3 — STRUCTURAL AXES + OPERATIONAL JUDGMENT GRAPH** — `FROZEN_FOR_AUDIT`
+## Current gate: **S2/S3 P0 REMEDIATION** — `READY_FOR_ONE_SHORT_CODEX_P0_CLOSURE_REAUDIT`
 
-The research phase (S1/S1.5/S1.6) is closed. S2/S3 converts it into a productized doctrine: 7 structural
-axes (`S2_STRUCTURAL_AXES_FREEZE.md`), a 23-node deterministic judgment graph with zero LLM verdict nodes
-and zero numeric scoring (`S3_OPERATIONAL_JUDGMENT_GRAPH.md` + `data/myungri-strength-v2/judgment-graph-v2.json`),
-a school-conflict operation policy (`DEOKBUNI_CANONICAL_OPERATION_POLICY.md`), and a 41-case replay against
-the existing corpus with zero critical mismatches (`S3_CASE_REPLAY_REPORT.md`). `MYUNGRI_STRUCTURAL_DOCTRINE_V2
-= READY_FOR_INDEPENDENT_FREEZE_AUDIT` — full accounting in `S2_S3_FREEZE_GATE_REPORT.md`. Still research
-artifacts only; no runtime code exists for any of this.
+An independent Codex audit of the first S2/S3 freeze found 7 P0 executable-spec defects
+(`C. NOT_READY_FOR_IMPLEMENTATION`) — the graph claimed more certainty than the frozen fact layer and the
+corpus evidence actually support. This remediation batch fixed all 7 by removing/narrowing/deferring rather
+than inventing new doctrine: the judgment graph shrank from 23 nodes to **12**, `HIGH_CONFIDENCE`/`DISPUTED`
+special-structure states and both `EXTREME_*` strength states are gone, task-capacity verdicts moved out of
+Strength V2 entirely (`AX-05` deferred to a future domain-level judge), and the previously-rejected
+seven-band `natalStrength.ts` classifier was quarantined out of the public barrel (it was still exported and
+callable). Full P0-by-P0 and P1-by-P1 closure accounting: `S2_S3_FREEZE_GATE_REPORT.md`. Case replay against
+the reduced graph: `S3_CASE_REPLAY_REPORT.md` (13 cases incl. all 8 audit-flagged high-risk cases, 0 critical
+mismatches — smaller and more carefully hand-verified than the prior 41-case pass by design, per the
+remediation brief's explicit "accuracy > feature breadth"). Still research artifacts only; no runtime code
+exists for any of this.
+
+## Previous gate: **S2/S3 — STRUCTURAL AXES + OPERATIONAL JUDGMENT GRAPH (v1, superseded)** — `FROZEN_FOR_AUDIT`
+
+The research phase (S1/S1.5/S1.6) is closed. The first S2/S3 pass built 7 structural axes and a 23-node
+judgment graph replayed against 41 cases with 0 apparent critical mismatches — an independent Codex audit
+subsequently found the graph's certainty claims exceeded what was actually executable (see the P0
+remediation gate above, which supersedes this version).
 
 ## Previous gate: **S1.6 — CROSS-LINEAGE BRIDGE CASES** — `PARTIAL_BRIDGE_EVIDENCE_INSUFFICIENT`
 

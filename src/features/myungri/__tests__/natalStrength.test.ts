@@ -7,7 +7,10 @@
 // Charts are hand-built for a 甲(JIA, WOOD) day master; each comment states the (month/rooting/composition)
 // triple the chart produces. Roots = same-element(WOOD 甲/乙) 지장간: present in 寅卯辰未亥, absent in 子丑巳午申酉戌.
 // 득령(SUPPORT): WOOD월(寅卯)=旺, WATER월(亥子)=相. 실령(DRAIN): 火(巳午)/土(辰戌丑未)/金(申酉).
-import { evaluateNatalStrength, type NatalPillarContext } from '../index';
+// Imports directly from the service file, NOT the public barrel — natalStrength.ts is quarantined
+// (P0-07, NON_AUTHORITY / REFERENCE_ONLY) and no longer exported from '../index'.
+import { evaluateNatalStrength } from '../services/natalStrength';
+import type { NatalPillarContext } from '../index';
 
 type P = NatalPillarContext['pillars'];
 const chart = (dayMaster: NatalPillarContext['dayMaster'], pillars: P): NatalPillarContext => ({ dayMaster, pillars });

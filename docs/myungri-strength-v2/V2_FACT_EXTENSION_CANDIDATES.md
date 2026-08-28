@@ -1,25 +1,42 @@
-# V2 FACT EXTENSION CANDIDATES
+# V2 FACT EXTENSION CANDIDATES (P0 REMEDIATION, revised)
 
-Not implemented. Each entry below is justified by a specific graph node (`S3_OPERATIONAL_JUDGMENT_GRAPH.md`)
-that needs it — nothing here is speculative. The frozen V1 fact foundation (`src/features/myungri/services/`)
-is **not modified** by this document; these are candidates for a FUTURE extension, gated on independent
-review, not a to-do list this batch acts on.
+Not implemented. Revised per the Codex audit's §21 review — every prior candidate re-classified, most
+removed. `NEW_FACT_PROVIDERS_REQUIRED = 0` for the reduced v3.0.0 graph: nothing in
+`judgment-graph-v2.json` currently needs a fact provider that does not already exist.
 
-| Candidate | Justifying node | What is missing today | Why it is not `DERIVABLE_INFERENCE` |
-|---|---|---|---|
-| `WEALTH_OUTLET_CHAIN_FACT` — is there a live 식상→재 conversion chain from the party to a specific load target | `CAP-02` (WEALTH_LOAD capacity) | No frozen service currently names "does an outlet chain connect position X to a specific 재성 position" — `tenGodFacts.ts` gives per-position 십신 identity but not chain-connectivity | Chain connectivity between two positions through an intermediate 십신 role is not implicit in any single existing service's output; it requires cross-referencing `relationParticipants.ts` activation state with `tenGodFacts.ts` identity, which no current function composes |
-| `OFFICER_RESOURCE_CHAIN_FACT` — is there a live 관인상생 (관→인→일간) conversion chain, and is it intact or broken | `CAP-03` (CONTROL_LOAD capacity) | Same composition gap as above, specific to the 관/인 chain; DTS-YUELING-02 (丙火臨絶 breaks exactly this chain) is the direct case motivating this candidate | Requires the same cross-referencing composition the WEALTH case does |
-| `DRAIN_THRESHOLD_FACT` — is the party's own resource-family presence already below a level where more 식상 output is depleting rather than expressive | `CAP-04` (OUTPUT_LOAD capacity) | `familyPresence` gives raw counts; nothing currently distinguishes "healthy outlet" from "already-drained party outputting further" — DTS-JINGSHEN-03 (泄盡) is the motivating case | This is a genuinely new qualitative judgment (not a recount) requiring the same structural-synthesis-style combination this V2 batch is defining for the first time, not a simple service composition |
-| `COMPLETE_BRANCH_ALLIANCE_FACT` — does a stated 방합/삼합 leave literally zero elemental trace for the outnumbered party, checked against ALL hidden stems, not only visible ones | `SPECIAL-04` (special-structure compound test, post-Repair-Pass-1) | `sameElementRooting.ts`/`rootingTransparency.ts` already enumerate hidden stems per position; what is missing is an aggregation across the FULL branch set answering "is there truly zero trace of element E anywhere" as a single boolean, rather than per-position facts a caller must combine | Borderline `DERIVABLE_INFERENCE` — likely composable from existing services without a new fact provider; listed here rather than promoted to `DERIVABLE_INFERENCE` in `S3_OPERATIONAL_JUDGMENT_GRAPH.md` §6 only because no existing function currently performs the full-branch aggregation, so a future implementer needs to write (not merely call) this composition |
+## Disposition of the prior candidates
 
-## Explicitly NOT candidates
+| Prior candidate | Disposition | Why |
+|---|---|---|
+| `WEALTH_OUTLET_CHAIN_FACT` | **NOT A FACT — moved to future domain-level inference.** No longer tracked as a Strength V2 candidate | It was never a deterministic FACT in the first place — "does an outlet chain connect position X to a specific 재성 position" is a doctrine judgment about chain sufficiency, which is exactly the kind of undisclosed inference §4/P0-04 flags. It belongs to a FUTURE money/wealth domain judge, not to this graph, which no longer computes task capacity at all |
+| `OFFICER_RESOURCE_CHAIN_FACT` | **NOT A FACT — moved to future domain-level inference.** No longer tracked | Same reasoning as above, for the 관인상생 chain — a future career/control domain judge's concern, not Strength V2's |
+| `DRAIN_THRESHOLD_FACT` | **DELETED.** No longer tracked in any form | It was explicitly a threshold ("is the party's own resource-family presence already below a level where...") — exactly the hidden-numeric-authority pattern P0-05 forbids. Not deferred, not renamed — removed outright |
+| `COMPLETE_BRANCH_ALLIANCE_FACT` | **DEFERRED, not built.** Would be needed only if a future batch wants to re-attempt a `HIGH_CONFIDENCE` special-structure route; not required by anything in the current v3.0.0 graph | The current graph does not attempt to compute this — `SPECIAL-01`'s CANDIDATE test uses only root-existence and season-role, neither of which needs it. Composability note preserved for a future batch: `sameElementRooting.ts`/`rootingTransparency.ts` already enumerate hidden stems per position, so a full-branch "zero elemental trace anywhere" aggregation is likely composable from EXISTING exports without a new provider — but no current graph node calls for it, so it is not built now |
 
-- A numeric "how much" for any of the above — every candidate above is a boolean/enum fact, per the
-  absolute prohibition on scoring.
-- A climate (調候) fact provider — `AX-07` stays deferred as a separate module (policy P3/P7).
-- A 격局 (GEJU) naming provider — `AX-08` stays deferred (policy P7).
-- Anything the special-structure DISPUTED path (`BR-015`) needs to resolve which of two lineages is
-  "right" — that is a doctrine question, not a missing fact, and this batch's policy is to report both
-  readings, not to adjudicate.
+## Current V2 fact-extension requirement
 
-`V2_FACT_EXTENSION_CANDIDATES = 4, all justified by a named S3 node, none implemented, frozen V1 untouched.`
+**`NEW_FACT_PROVIDERS_REQUIRED = 0`.** Every input `judgment-graph-v2.json` v3.0.0 actually uses
+(`AX01_fact`, `AX02_fact`, `AX03_fact`, `AX09_fact`, `TRANSFORM-01`'s transparent-root + seasonal-support
+check) is composable from already-existing frozen exports:
+
+- `sameElementRooting.ts` → `AX01_fact`
+- `generalSeasonalPhase.ts` / `monthCommand.ts` → `AX02_fact`
+- `relationParticipants.ts` / `natalRelations.ts` → `AX03_fact`
+- `tenGodFacts.ts` / `myungriJudge.ts:tenGodFamily()` → `AX09_fact`
+- `sameElementRooting.ts` (checked for the resulting element of a combination, not just the Day Master) →
+  `TRANSFORM-01`'s transparent-root conjunct
+
+## Explicitly NOT candidates (unchanged from the prior version, still true)
+
+- Any numeric "how much" for any fact — every candidate is boolean/enum, per the absolute prohibition on
+  scoring.
+- A climate (調候) fact provider — deferred, separate module forever.
+- A 격局 (GEJU) naming provider — deferred.
+- Anything a `DISPUTED` runtime state would need to resolve which of two lineages is "right" — `DISPUTED`
+  itself is removed from the runtime graph (P0-06); this is not a missing-fact problem, it is a scope
+  decision.
+- Any task-capacity fact (`WEALTH_LOAD`/`CONTROL_LOAD`/`OUTPUT_LOAD` truth tables) — entirely out of Strength
+  V2 scope now (P0-04); belongs to a future domain-level judge's own fact-extension list, not this one.
+
+`V2_FACT_EXTENSION_CANDIDATES = 0 active, 1 deferred-and-unneeded (COMPLETE_BRANCH_ALLIANCE_FACT), 3
+removed/relocated out of scope. Frozen V1 fact foundation untouched.`

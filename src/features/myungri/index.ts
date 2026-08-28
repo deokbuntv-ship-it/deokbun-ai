@@ -106,28 +106,12 @@ export {
   type StrengthSide,
   type StrengthTenGodEntry,
 } from './services/dayMasterStrengthInputs';
-export {
-  DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE,
-  STRENGTH_LABEL_KO,
-  evaluateNatalStrength,
-  type CompositionState,
-  type MonthState,
-  type NatalStrengthProfile,
-  type RootingState,
-  type StrengthConfidence,
-  type StrengthDirection,
-  type StrengthFactor,
-  type StrengthFactorKind,
-  type StrengthLabel,
-} from './services/natalStrength';
-export {
-  buildCurrentStrengthContext,
-  luckInfluence,
-  type CombinedDirection,
-  type CurrentStrengthContext,
-  type LuckDirection,
-  type LuckInfluence,
-} from './services/currentStrength';
+// natalStrength.ts / currentStrength.ts are intentionally NOT exported here (P0-07, Codex audit
+// 2026-08-28: the seven-band classifier must not remain a public callable verdict authority once
+// V2 is in development). NON_AUTHORITY / REFERENCE_ONLY — see their own file headers. Import
+// directly from './services/natalStrength' / './services/currentStrength' only for the
+// consistency tests that still exercise the candidate rule table; do not add a new caller.
+// See src/features/myungri/__tests__/publicSurfaceQuarantine.test.ts for the enforcing guard.
 export {
   buildMyungriTemporalContext,
   resolveActiveDaewoonAtInstant,

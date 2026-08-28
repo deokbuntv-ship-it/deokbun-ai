@@ -1,174 +1,187 @@
 # DEOKBUNI CANONICAL OPERATION POLICY — MYUNGRI STRUCTURAL JUDGMENT V2
 
 > Governs how Deokbuni resolves school disagreement operationally. This is a **product policy**, not a
-> historical-scholarship verdict. It selects ONE interpretation per contested point so the judgment graph
-> (`S3_OPERATIONAL_JUDGMENT_GRAPH.md`) can be deterministic, and states explicitly where it declines to
-> select and flags `SCHOOL_SENSITIVE` / `UNRESOLVED_STRUCTURE` instead.
+> historical-scholarship verdict.
+
+**Rewritten for the P0 remediation batch (Codex audit 2026-08-28, `C. NOT_READY_FOR_IMPLEMENTATION`, 7
+P0s).** The prior version of this policy described a graph that claimed more certainty than the frozen fact
+layer and the corpus evidence actually support (`HIGH_CONFIDENCE` special structure, `DISPUTED` as a runtime
+state, extreme strength bands, task-capacity verdicts). Every one of those claims is removed or narrowed
+below. See `S2_S3_FREEZE_GATE_REPORT.md` for the full P0-by-P0 closure accounting.
 
 ## 0. What this document is not
 
-It is not a claim that the selected reading is the historically "correct" one, and not a claim that the
-excluded readings are wrong. `CONFLICT_REGISTER.md` and `COUNTEREXAMPLE_REGISTER.md` remain the honest
-scholarly record. This document exists because a product cannot present a user with five schools and ask
-them to choose — it must compute one deterministic structural read per chart, or say plainly that it
-cannot.
+Not a claim that a removed reading is historically wrong, and not a claim the reduced graph is "the smart
+version." `CONFLICT_REGISTER.md` and `COUNTEREXAMPLE_REGISTER.md` remain the honest scholarly record. This
+document governs what the RUNTIME GRAPH may assert with full confidence — which is now deliberately less
+than what the scholarship supports, because full confidence requires a fully executable rule, and several
+rules this program previously relied on turned out not to be one.
 
-## 1. Architecture — strength is a derived view, not the engine
+## 1. Architecture — strength is a derived view, reported independently of special-structure evidence
 
 ```
 DETERMINISTIC FACTS (frozen src/features/myungri services)
         ↓
-STRUCTURAL INFERENCES  (AX-01 rooting, AX-02 seasonal state, AX-03 relation activation)
-        ↓
-SPECIAL-STRUCTURE SCREEN (AX-06)  ──→ if CANDIDATE/HIGH_CONFIDENCE, strength view is SUBORDINATED, not computed as usual
-        ↓
-STRUCTURAL SYNTHESIS  (qualitative structural state — never a score)
-        ↓
-QUESTION-SPECIFIC CAPACITY (AX-05, only for the load domains actually asked about)
-        ↓
-STRENGTH VIEW  (WEAK_LEANING / BALANCED_OR_MIXED / STRONG_LEANING / UNRESOLVED, evidence-carrying)
-        ↓
-(future, NOT this batch) Yongshin ← kernel evidence/inference/verdict system (src/features/divination)
+FACT LAYER (AX-01 rooting existence, AX-02 seasonal role, AX-03 relation existence + context, AX-09 count)
+        ↓                                              ↓
+SPECIAL-STRUCTURE SCREEN (AX-06)               STRUCTURAL SYNTHESIS (root × season lookup)
+   → NONE_DETECTED / CANDIDATE / INSUFFICIENT           ↓
+   (never gates or blocks the other branch)      STRENGTH VIEW (WEAK_LEANING / STRONG_LEANING /
+        ↓                                          MIXED_EVIDENCE / UNRESOLVED)
+        └──────────────────┬───────────────────────────┘
+                            ↓
+              UNCERTAINTY + PROVENANCE (both fields reported together, independently)
 ```
 
-Strength is read off the structural synthesis after the special-structure screen has run — it is never the
-first thing computed and never the thing special-structure candidacy is measured against. A chart is not
-"actually EXTREME_WEAK, but we call it FOLLOWING for style" — following and strength are answers to two
-different structural questions.
+**This is a structural change from the prior version.** Previously, a `HIGH_CONFIDENCE` special-structure
+verdict GATED the strength view off, producing `NOT_APPLICABLE_SPECIAL_STRUCTURE`. That gate is gone because
+`HIGH_CONFIDENCE` is gone (P0-01) — there is nothing left to gate. `specialStructureStatus` and
+`strengthClassification` are now two INDEPENDENT fields on every result, always both present, never one
+implying the other. A reader who sees `specialStructureStatus: CANDIDATE` alongside
+`strengthClassification: STRONG_LEANING` is seeing an honest report of two separately-computed, possibly
+tension-holding facts about the chart — not a contradiction the graph failed to resolve. Resolving that
+tension (is this really an ordinary strong chart, or does the following-pattern evidence dominate?) is
+explicitly left to a human reader or a future module, per §8 P1's instruction not to force a verdict a
+current fact provider cannot support.
 
-## 2. School-conflict resolution table
+## 2. School-conflict resolution table (updated)
 
-Every row: what Deokbuni operationally selects, what stays `SCHOOL_SENSITIVE`, and why. This table is the
-single place the graph's `SCHOOL_SCOPE` fields point back to.
+| # | Conflict | Deokbuni selects | Why (updated) |
+|---|---|---|---|
+| P1 | CF-012 sequencing | Fact validation → special screen (evidence-only, non-gating) → structural synthesis, in parallel/independent branches, both reported | The screen no longer needs to run "before" synthesis in a gating sense, since neither blocks the other now — both are computed from the same fact layer and reported side by side |
+| P2 | CF-011 root vs following | Root existence is ONE of two disjuncts in the CANDIDATE test (§3) — never a universal gate in either direction. `ROOT_PRESENT ⇒ NOT_FOLLOWING` does not exist anywhere in the graph (required-zero item, P0-09) | A chart with a surviving root (e.g. `DTS-CONGXIANG-01`) simply does not satisfy the CANDIDATE disjunct — it is NOT asserted "not following"; it is only NOT asserted "CANDIDATE for following" by this graph. The difference matters: this graph makes no claim either way for that chart beyond what its own two facts support |
+| P3 | CF-013 strength ≠ climate ≠ yongshin | Unchanged — three separate modules forever | `OBS-18/19` |
+| P4 | 통근 vs 득지 | Unchanged — kept structurally distinct within AX-01's existence check | Matches the frozen kernel's F2/F3 split |
+| P5 | 眾/寡 vs 強/弱 | Unchanged, now graph-topology-enforced (§S2_STRUCTURAL_AXES_FREEZE.md AX-09) — no edge from the numerousness fact node reaches any decision-bearing node | `CONFLICT_REGISTER.md` CF-005 |
+| P6 | AX-04 outlet presence | Still folded, but now only as one of `TRANSFORM-01`'s two conjuncts (transparent root check), not as a special-screen counterevidence conjunct (that whole compound test was removed with `HIGH_CONFIDENCE`) | P0-01 |
+| P7 | 格局 (GEJU) | Deferred entirely, unchanged | `S2_AXIS_CANDIDATES.md` AX-08 |
+| P8 | R11 encoding | R11 stays `SCHOOL_DEPENDENT`; **the entire compound-test apparatus that used to let R11-adjacent evidence reach `HIGH_CONFIDENCE` is removed**, not just the binary-gate shortcut | P0-01, required-zero item `ROOT_PRESENT_ALWAYS_BREAKS_FOLLOWING = 0` |
+| P9 | CF-002 (DTS-SHUAIWANG-10) | Unchanged — known source-internal print inconsistency, not re-researched | `CONFLICT_REGISTER.md` CF-002 |
+| P10 | AX-05 CAPACITY scope | **Removed from Strength V2.** `CAPACITY(party, load, ground, time)` remains a documented architectural principle for a FUTURE domain-level judge; this graph never computes a capacity verdict | P0-04 |
+| P11 | BR-015 / DISPUTED | **Removed from runtime.** BR-015 (沈孝瞻 從煞 vs 萬民英 胞胎格, same chart, no scope split) is preserved as `KNOWN_SCHOOL_CONFLICT` in research documentation only. This graph cannot independently generate the second (GEJU) candidate reading, so it cannot detect the dispute at runtime — claiming `DISPUTED` would require case-ID recognition, which is forbidden (P0-06, `CASE_MEMORIZATION_RULES = 0`) | P0-06 |
 
-| # | Conflict | Deokbuni selects | Excluded / deferred position | Why | Evidence |
-|---|---|---|---|---|---|
-| P1 | CF-012 sequencing (Fact→special-screen→ordinary vs 從化-first vs 月令-first-外格-last) | **Fact validation → special/non-ordinary screen → ordinary axes** (tested as the S3 pipeline, §5 of this doc) | 淵海子平's screen-only-first-then-nothing-else and 沈孝瞻's 外格-last are not adopted as stated | 2 of 3 named lineages (任鐵樵, and structurally 淵海子平's philosophical priority) put non-ordinary-structure detection ahead of ordinary axis work; running fact validation first is required by every lineage since the screen itself needs 통근/월령 facts | `SEQUENCING_COMPARISON.md` |
-| P2 | CF-011 root vs following (5-way) | Root presence is **COUNTEREVIDENCE to a following/transformation candidacy, never an automatic disqualifier and never irrelevant** — a compound-conjunct test (root at a governing position + absence of an outlet/protector) is required to move a candidate to `HIGH_CONFIDENCE`; a bare root elsewhere downgrades to `CANDIDATE`, not to `NONE_DETECTED` | 淵海子平's binary "root ⇒ not following" and 任鐵樵's "strength axis inapplicable, root is a non-issue" are both rejected as stated | Binary root-voids-following is refuted by DTS-CONGXIANG-01 (蟠根在未 + 餘氣在辰, still 從財); "root never matters" is refuted by DTS-CONGXIANG-05 (從殺 breaks the moment luck restores 蟠根). A compound test is the only reading both cases survive | `COUNTEREXAMPLE_REGISTER.md` R11, `CONFLICT_REGISTER.md` CF-011 |
-| P3 | CF-013 strength ≠ climate ≠ yongshin | Kept as three **separate modules forever** — climate (調候) is evidence a strength-view node MAY cite as context but never folds into the structural state; yongshin is out of scope this batch entirely | A unified 扶抑+調候 single verdict (徐樂吾-style) is not adopted as the primary engine shape | `OBS-18/19`: 扶抑+調候-as-one-doctrine traces to 徐樂吾 1936, not the classical corpus; keeping them separate is the more conservative, more falsifiable structure | `DOCTRINE_OBSERVATIONS.md` |
-| P4 | 통근 vs 득지 conflation | Kept **structurally distinct** (same-stem rooting vs same-element hidden peer), matching the frozen kernel's own F2/F3 split | A single "has support" boolean is rejected | The already-frozen `myungriStrength.ts` header states this exact distinction was a defect in an earlier build ("the rejected build conflated them") | `src/features/divination/myungriStrength.ts` |
-| P5 | 眾/寡 vs 強/弱 | Kept **independent axes**; 眾/寡 (AX-09) is FACT-only evidence, never promoted to a verdict by itself | Treating a numeric majority of supporting positions as sufficient for a strength verdict is rejected | DTS-FANGJU-09's decisive `強眾而敵寡…非煞旺宜制而推也`: the treatment follows the 眾/寡 relation, explicitly NOT from whether the opposing party is itself 旺; CF-005 closed this as two axes | `CONFLICT_REGISTER.md` CF-005, `S2_AXIS_CANDIDATES.md` |
-| P6 | AX-04 outlet presence — standalone axis or folded? | **Folded into the special-structure screen** as a supporting counterevidence check for following/transformation candidates (an outlet/protector is one of the compound-test conjuncts in P2), not promoted to a top-level axis | A standalone OUTLET_PRESENCE axis with independent downstream use | Single-lineage evidentiary support and no case found where outlet presence changes a decision *outside* the special-screen context — minimality criterion (§S2, "omit anything that doesn't change a decision") | `S2_AXIS_CANDIDATES.md` AX-04 |
-| P7 | 格局 (GEJU) taxonomy | **Deferred entirely.** GEJU-tagged corpus cases are replayed only through the axes that already exist (rooting, seasonal state, relation activation) — no 格 is named, no 格 taxonomy is built | A full 格局 classifier | Explicit brief instruction: 格局 is a separate/higher-level module, not built merely because research exists | `S2_AXIS_CANDIDATES.md` AX-08 |
-| P8 | R11 encoding | R11 is encoded as `SCHOOL_DEPENDENT`, **never** as a universal `ROOT_PRESENT ⇒ NOT_FOLLOWING` rule anywhere in the graph | — | Direct instruction; also the required-zero gate item `ROOT_PRESENT_ALWAYS_BREAKS_FOLLOWING = 0` | `COUNTEREXAMPLE_REGISTER.md` R11 |
-| P9 | CF-002 (滴天髓's internal 土旺極 contradiction, DTS-SHUAIWANG-10) | Treated as a **known source-internal printing inconsistency** (already closed `COPY_ERROR` in S1.6) — not a runtime blocker, not re-researched | — | Already resolved; brief explicitly forbids spending further time on it | `CONFLICT_REGISTER.md` CF-002 |
+## 3. Special-pattern state policy (shrunk)
 
-## 3. Special-pattern state policy
+States: `NONE_DETECTED / CANDIDATE / INSUFFICIENT`. **No `HIGH_CONFIDENCE`. No `DISPUTED`.**
 
-`NONE_DETECTED / CANDIDATE / HIGH_CONFIDENCE / DISPUTED / INSUFFICIENT` (naming aligned to the existing
-kernel's `specialStructureStatus` contract, see §8). A chart never receives a bare "yes/no" on following or
-transformation — every positive read carries the compound-test evidence, every negative read carries what
-countervailing evidence was found.
+`CANDIDATE` fires when (season role is `OPPOSED` AND root is absent) OR (transformation evidence is
+present per `TRANSFORM-01`). Both disjuncts are fully executable from the current fact layer — no count, no
+threshold, no case-ID branch. `CANDIDATE` is evidence, not a verdict: it never blocks, gates, or modifies
+the strength view (§1). `INSUFFICIENT` is reserved for the case where the CANDIDATE test itself cannot be
+completed (a needed root fact is unresolvable from the available pillars).
 
-`DISPUTED` is reserved for exactly the shape BR-015 demonstrates: two named authorities read the identical
-chart into two different non-ordinary structures with no documented scope split (§6 below). `DISPUTED` is
-not a defeat of the system — it is the honest output when the corpus itself disagrees at the chart level.
+Every route to `HIGH_CONFIDENCE` this program tried during S2/S3 and during this remediation had a real
+corpus counterexample under close scrutiny:
 
-## 4. Strength-view policy
+- **Root-absence alone** over-triggered on ordinary extreme charts (`DTS-SHUAIWANG-04` etc. — extreme,
+  rootless, yet tagged `ORDINARY_STRENGTH`, never `SPECIAL_PATTERN`).
+- **A compound test adding "no outlet"** still asserted `HIGH_CONFIDENCE` for `DTS-CONGXIANG-01` despite a
+  SURVIVING root — the general rule and the case-level narrative had drifted apart (exactly what P0-01
+  flagged).
+- **Transformation-transparency + seasonal-support** looked cleanly executable until `DTS-GUANSHA-12`: both
+  conjuncts are satisfied, yet the source states the combination explicitly does NOT transform, because of a
+  branch-specific buffering fact (`丑`'s own nature) this graph has no provider for.
 
-- Computed only from the structural synthesis, and **only when the special-structure screen returned
-  `NONE_DETECTED`** or a `CANDIDATE` that a downstream node explicitly ruled out. If special status is
-  `HIGH_CONFIDENCE` or `DISPUTED`, the strength view returns `NOT_APPLICABLE_SPECIAL_STRUCTURE` — it is not
-  computed as if the chart were ordinary. This is the direct implementation of "FOLLOWING != EXTREME_WEAK".
-- Classification vocabulary: `WEAK_LEANING / BALANCED_OR_MIXED / STRONG_LEANING / UNRESOLVED`, plus
-  `EXTREME_WEAK_LEANING_CANDIDATE` / `EXTREME_STRONG_LEANING_CANDIDATE` only when the structural synthesis
-  shows one-sided dominance across ALL THREE structural axes (rooting, seasonal state, relation activation)
-  with zero counterevidence recorded anywhere in the graph for that chart — never from a single axis alone.
-- The seven-band consumer vocabulary (극신약…극신강) is explicitly **not** built this batch. Any future
-  mapping from this internal vocabulary to a seven-band consumer label is a separate, later decision.
-- Every strength-view output carries `evidenceFor`, `evidenceAgainst`, and `doesNotImply` — never a bare
-  label. `doesNotImply` exists specifically to prevent the invalid-converse error the V1 closure was built
-  to stop (`NO_ROOT ⇒ CANNOT_BEAR` is exactly the shape being guarded against here too).
+No fourth attempt was made. Per §7/§8 of the remediation brief, the honest conclusion is that
+`HIGH_CONFIDENCE` special-structure detection is not currently executable, and the graph says so by not
+having the state at all rather than keeping a dead enum value.
 
-## 5. Sequencing decision (tested, not assumed)
+## 4. Strength-view policy (shrunk)
 
-The brief's suggested 7-stage shape was tested against the replay pool (`S3_CASE_REPLAY_REPORT.md`) rather
-than adopted blindly. It holds with no case forcing a reorder:
+- States: `WEAK_LEANING / STRONG_LEANING / MIXED_EVIDENCE / UNRESOLVED`. **No `EXTREME_*` states. No
+  `BALANCED`. No `NOT_APPLICABLE_SPECIAL_STRUCTURE`.**
+- Computed purely from `SYNTH-01`'s root × season lookup (`S3_OPERATIONAL_JUDGMENT_GRAPH.md` §2) —
+  independent of `specialStructureStatus` (§1).
+- `MIXED_EVIDENCE` fires when root and season genuinely disagree (root says one lean, season says the
+  other) — a real, executable, reachable state, not a leftover. `UNRESOLVED` fires when a fact the
+  classification materially depends on could not be resolved (typically an hour-dependent root fact).
+- `MIXED_EVIDENCE != UNRESOLVED` (contradiction ≠ missing data — kept structurally distinct, preserved from
+  the original kernel doctrine: "`MIXED` is deliberately NOT a stance").
+- `BALANCED` was considered and rejected: no currently-executable rule distinguishes genuine harmonious/中和
+  structure from `MIXED_EVIDENCE`'s contradictory-evidence state. Cases that read as harmonious in the
+  source (`DTS-JINGSHEN-01`, `DTS-BAGE-04`) are NOT given a bespoke exception — they resolve to whatever
+  cell the root × season lookup actually produces (§P1-05 of the remediation brief).
+- The seven-band consumer vocabulary remains **not built**.
+- Confidence: `HIGH`/`MODERATE` apply only to `STRONG_LEANING`/`WEAK_LEANING`, keyed to whether an
+  unresolved relation-context caveat exists; `MIXED_EVIDENCE`/`UNRESOLVED` imply `LOW` by construction. No
+  numeric confidence anywhere.
 
-1. **FACT_VALIDATION** — every axis needs 통근/월령/관계 facts; running this first costs nothing under any
-   lineage's sequencing and is required before a special-screen can even be attempted.
-2. **SPECIAL/NON-ORDINARY STRUCTURE SCREEN** — placed before ordinary axis synthesis because a positive
-   `HIGH_CONFIDENCE` result changes what "structural state" even means for the chart (following/transformed
-   charts are not scored on the ordinary rooting/seasonal axes the same way — see P1 above and DTS-CONGXIANG
-   cases). This matches 淵海子平's and 任鐵樵's shared priority of resolving non-ordinary structure early,
-   over 沈孝瞻's외격-last ordering.
-3. **ORDINARY STRUCTURAL AXES** — only reached when the screen did not return `HIGH_CONFIDENCE`/`DISPUTED`.
-4. **STRUCTURAL SYNTHESIS** — combine axis-level inferences into one of a small number of named qualitative
-   states (§4 of `S2_STRUCTURAL_AXES_FREEZE.md`), never a score.
-5. **QUESTION-SPECIFIC CAPACITY** — only the load domains the actual question touches.
-6. **STRENGTH VIEW** — derived, subordinate, per §4 above.
-7. **UNCERTAINTY + PROVENANCE** — always present; every node's authority level and source support is
-   carried to the final output.
+## 5. Sequencing (updated — no gate)
 
-Confirmed by replay: no case in the pool required the special-screen to run *after* ordinary axis synthesis
-to reach a coherent result, and several cases (DTS-CONGXIANG-01, BR-015) would have produced a materially
-worse read if ordinary rooting/seasonal axes had been synthesized into a strength view before the special
-screen ran (a rooted-and-in-command 從財 candidate would misread as `STRONG_LEANING` instead of being
-correctly routed to `NOT_APPLICABLE_SPECIAL_STRUCTURE`).
+1. **FACT LAYER** — AX-01/02/03/09 facts, gracefully degrading around a missing hour pillar rather than
+   discarding the chart (§6).
+2. **SPECIAL-STRUCTURE SCREEN** and **STRUCTURAL SYNTHESIS** run from the SAME fact layer, independently —
+   neither blocks the other (§1). This replaces the prior "screen must run before synthesis" gate, which
+   only made sense when a screen result could change synthesis's applicability. It no longer can.
+3. **STRENGTH VIEW** — derived from synthesis alone.
+4. **UNCERTAINTY + PROVENANCE** — always present, reports both branches together.
 
-## 6. Handling BR-015 as the reference `DISPUTED` case
+There is no `TASK CAPACITY` stage in Strength V2 (§4 of the remediation brief) and no gate BRANCH node
+(there is nothing left to branch on).
 
-Chart 乙酉乙酉乙酉甲申: 沈孝瞻 (子平真詮) reads it as 棄命從煞 (day master 乙 rootless against an all-metal
-officer-star field — a following pattern); 萬民英 (三命通會) reads the identical chart as a 胞胎格
-(self-seated-絶地 "fetal origin" construct, treated like an 印格 analogue, fearing 財 rather than needing an
-officer-following release). No documented scope split (different question, different time layer) separates
-these two readings — both describe the SAME chart's SAME structural situation. This is exactly the
-`DISPUTED` case the special-structure screen must be able to output rather than silently picking a side.
-Deokbuni's operational policy: when two `CANONICAL`-tier sources disagree on the *kind* of non-ordinary
-structure with no scope justification, output `SPECIAL_PATTERN_DISPUTED` and both candidate readings as
-named alternatives — never collapse to one silently, and never average into a third invented category.
+## 6. BR-015 — research evidence only, not a runtime state
 
-## 7. Kernel alignment note
+See P11 in §2. `BR-015` remains fully documented in `CROSS_LINEAGE_BRIDGE_CASES.md` as a genuine, verified
+cross-lineage conflict (沈孝瞻 vs 萬民英, same chart, incompatible non-ordinary readings). It is **not**
+wired into `judgment-graph-v2.json` in any form — no node checks a chart's identity against BR-015 or any
+other case ID. A future GEJU module that can independently generate a second candidate structural reading
+(not by chart-ID lookup, but by actually computing an alternative classification from its own rules) is the
+only thing that could make a `DISPUTED`-shaped runtime output honest, and that module does not exist yet.
+
+## 7. Missing-hour policy (P1-01, newly explicit)
+
+One consistent contract, applied everywhere: **use every fact derivable from year/month/day; only the
+specific position-dependent facts that need the hour pillar become unavailable.** Concretely:
+
+- `AX01_fact` (root existence) is `TRUE` if a root is found in ANY available position, `FALSE` only if
+  checked against ALL available positions including a known hour, and `UNKNOWN` if a root would only be
+  confirmed or excluded by an unknown hour branch.
+- `SYNTH-01` treats `ROOT_EXISTS_UNKNOWN` as routing to `UNRESOLVED` — because the classification
+  materially depends on it — rather than blocking the whole chart.
+- The chart is never discarded outright for a missing hour; only the specific downstream conclusion that
+  needed the missing fact is downgraded to `UNRESOLVED`/`INSUFFICIENT`.
+
+This matches `NatalPillarContext`'s own type contract (`hour` is optional) and
+`calculateSameElementRooting`'s existing graceful 3-branch degrade — no new behavior was invented, the
+graph's OWN handling was simply made consistent with what the frozen fact layer already does.
+
+## 8. Kernel alignment note (unchanged)
 
 `src/features/divination/myungriStrength.ts` already implements a live, frozen "structural evidence,
-verdict withheld" pattern for exactly this domain, under its own inline-versioned documentation (`CONSTITUTION
-V2 §8`, `V3 §11–§13` — confirmed this batch to be versioned section labels inside `contracts.ts` /
-`myungriNatal.ts` / `myungriStrength.ts` themselves, not a separate standalone document; consistent with the
-V4A–V4D revision-wave convention already used across `src/features/divination`). Its F1–F4 factors
-(월령/통근/득지/구성) map directly onto this policy's AX-02/AX-01/AX-01/AX-09. This V2 research program's
-axis and graph design is deliberately built to be **composable with**, not a replacement for, that kernel
-contract — see `S2_STRUCTURAL_AXES_FREEZE.md` §Kernel Alignment and `S3_OPERATIONAL_JUDGMENT_GRAPH.md` §54.
+verdict withheld" pattern for exactly this domain. Its F1–F4 factors map onto AX-02/AX-01/AX-01/AX-09. This
+V2 program's reduced axis and graph design remains composable with, not a replacement for, that kernel
+contract.
 
-## 8. Conceptual kernel-integration shapes (draft only, no runtime code)
+## 9. Conceptual kernel-integration shape (draft only, no runtime code — updated)
 
 ```
 MYUNGRI_FACT_BUNDLE (existing, frozen: src/features/myungri/services/strengthFactBundle.ts)
         ↓
 MYUNGRI_STRUCTURAL_JUDGE_RESULT {
-  structuralState: StructuralSynthesisState        // §4 of S2_STRUCTURAL_AXES_FREEZE.md
+  structuralState: 'ANCHORED'|'UNANCHORED'|'MIXED_STRUCTURE'|'UNRESOLVED'
   strengthView: {
-    classification: 'WEAK_LEANING'|'BALANCED_OR_MIXED'|'STRONG_LEANING'|'UNRESOLVED'
-                    |'EXTREME_WEAK_LEANING_CANDIDATE'|'EXTREME_STRONG_LEANING_CANDIDATE'
-                    |'NOT_APPLICABLE_SPECIAL_STRUCTURE'
-    confidenceClass: 'HIGH'|'MODERATE'|'LOW'|'SCHOOL_SENSITIVE'|'INSUFFICIENT'   // no numeric confidence, ever
-    evidenceFor: JudgmentEvidence[]
-    evidenceAgainst: JudgmentEvidence[]
+    classification: 'WEAK_LEANING'|'STRONG_LEANING'|'MIXED_EVIDENCE'|'UNRESOLVED'
+    confidenceClass: 'HIGH'|'MODERATE'|'LOW'
+    evidence: JudgmentEvidence[]
     doesNotImply: string[]
-    reasoningNodeIds: string[]
   }
   specialStructureStatus: {
-    status: 'NONE_DETECTED'|'CANDIDATE'|'HIGH_CONFIDENCE'|'DISPUTED'|'INSUFFICIENT'
-    candidateReadings: { label: string; sourceAuthority: string; supportingNodeIds: string[] }[]
+    status: 'NONE_DETECTED'|'CANDIDATE'|'INSUFFICIENT'
+    evidence: JudgmentEvidence[]
   }
-  taskCapacities: { domain: 'WEALTH_LOAD'|'CONTROL_LOAD'|'OUTPUT_LOAD'
-                     state: 'SUPPORTED'|'NOT_SUPPORTED'|'MIXED'|'INSUFFICIENT'
-                     evidence: JudgmentEvidence[] }[]
-  evidence: JudgmentEvidence[]
-  inferences: { nodeId: string; premises: string[]; conclusion: string }[]
-  uncertainty: { class: string; reason: string }[]
-  schoolSensitiveFlags: { pointId: string; reason: string }[]     // references §2 table rows
+  taskCapacities: 'NOT_EVALUATED'   // reserved field, populated by a FUTURE domain-level judge, never here
+  numerousnessEvidence: { supportCount: number; drainCount: number; incompleteCount: boolean }  // descriptive only
+  confidenceClass: 'HIGH'|'MODERATE'|'LOW'
   sourceProvenance: { nodeId: string; caseIds: string[]; sourceIds: string[] }[]
 }
         ↓ (future work, not this batch)
 kernel evidence/inference/verdict system (src/features/divination) — StrengthInput / DayMasterStrengthJudgment
 ```
 
-`JudgmentEvidence` reuses the EXISTING kernel shape (`src/features/divination/contracts.ts`:
-`{fact, meaning, domain, temporalScope, directness}`) rather than inventing a parallel one, so a future
-wiring pass has no type to reconcile.
+`JudgmentEvidence` still reuses the existing kernel shape from `src/features/divination/contracts.ts`.
 
-## 9. Freeze status of this document
+## 10. Freeze status
 
-This policy is frozen for the S2/S3 audit alongside the axis freeze and judgment graph. It is a **product
-selection**, revisable by a later owner decision — it is not a claim of historical settlement on any of the
-CF-0xx conflicts, which remain open in the scholarly record.
+Frozen for the P0 re-audit alongside the axis freeze and judgment graph. This is a **product selection**
+at a deliberately reduced scope — narrower than the prior version, and explicitly not claiming to have
+solved the historical questions that made the wider version unexecutable.

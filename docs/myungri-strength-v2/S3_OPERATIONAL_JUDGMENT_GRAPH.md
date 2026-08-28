@@ -1,165 +1,121 @@
-# S3 — OPERATIONAL JUDGMENT GRAPH
+# S3 — OPERATIONAL JUDGMENT GRAPH (P0 REMEDIATION, v3.0.0)
 
 Machine-readable graph: [`../../data/myungri-strength-v2/judgment-graph-v2.json`](../../data/myungri-strength-v2/judgment-graph-v2.json).
 **Research artifact. Not imported into `src/`. No production code references this file.**
 
-23 nodes, all 8 required `NODE_TYPE`s represented, one entry node (`FACT-01`), three terminal
-`UNCERTAINTY_EXIT` nodes. Every node carries the full field set the brief requires
-(`NODE_ID`/`NODE_TYPE`/`QUESTION`/`INPUT_FACTS`/`REQUIRED_INFERENCES`/`POSITIVE_CONDITIONS`/
-`COUNTEREVIDENCE`/`SCHOOL_SCOPE`/`SUPPORTING_SOURCE_PROPOSITIONS`/`SUPPORTING_CASE_IDS`/
-`COUNTEREXAMPLE_CASE_IDS`/`OUTPUT`/`UNCERTAINTY_EXIT`/`NEXT_NODES`/`DOES_NOT_IMPLY`) — this document
-explains the shape; the JSON is the authority for exact field values.
+**Rebuilt smaller for the P0 remediation batch** (Codex audit 2026-08-28, `C. NOT_READY_FOR_IMPLEMENTATION`,
+7 P0s). 12 nodes, down from 23 in the prior version. 6 node types used (`FACT_CHECK`, `INFERENCE`,
+`SPECIAL_SCREEN`, `STRUCTURAL_SYNTHESIS`, `STRENGTH_VIEW`, `UNCERTAINTY_EXIT`) — `BRANCH` and
+`TASK_CAPACITY` are gone because nothing in this version needs a gate to branch on, or a capacity verdict
+to compute. This is a deliberate reduction, not an oversight: see `S2_S3_FREEZE_GATE_REPORT.md` for the
+full P0-by-P0 accounting of what was removed and why.
 
 ## 1. Shape
 
 ```
-FACT-01..06 (FACT_CHECK ×6)
-        ↓
-SPECIAL-01,02,03 (INFERENCE ×3) → SPECIAL-04 (SPECIAL_SCREEN)
-        ↓ (only if not DISPUTED/INSUFFICIENT)
-   ┌─── HIGH_CONFIDENCE ──────────────────→ UNC-FINAL (strength view gated off, special result stands alone)
-   │
-   └─── NONE_DETECTED/CANDIDATE-ruled-out
-        ↓
-ORD-01,02,03 (INFERENCE ×3)
-        ↓
-SYNTH-01 (STRUCTURAL_SYNTHESIS)
-        ↓
-   ┌─────────────────┬──────────────────┐
-CAP-01 (BRANCH)   SV-01 (BRANCH)
-   ↓                  ↓
-CAP-02/03/04       SV-02 (STRENGTH_VIEW)
-(TASK_CAPACITY ×3)     ↓
-   └──────────────────┴──────────────→ UNC-FINAL (UNCERTAINTY_EXIT)
+FACT-01 (chart completeness, missing-hour-tolerant)
+  → FACT-02 (day master identity)
+    → FACT-03 (AX-01 root existence)      ┐
+    → FACT-04 (AX-02 season role)         ├→ SPECIAL-01 (evidence-only screen: NONE_DETECTED/CANDIDATE/INSUFFICIENT)
+    → FACT-05 (AX-03 relation existence)  │     ↓ (never gates anything downstream)
+    → FACT-06 (AX-09 numerousness) ───────┘   UNC-FINAL
+                                           TRANSFORM-01 (transformation EVIDENCE, not a verdict)
+FACT-03 + FACT-04 ─────────────────────→ SYNTH-01 (root × season lookup: ANCHORED/UNANCHORED/MIXED_STRUCTURE/UNRESOLVED)
+                                             ↓
+                                          SV-01 (1:1 map to WEAK_LEANING/STRONG_LEANING/MIXED_EVIDENCE/UNRESOLVED)
+                                             ↓
+                                          UNC-FINAL (aggregates BOTH branches — special status AND strength — together)
 
-Any node's UNCERTAINTY_EXIT.condition → UNC-EXIT-INSUFFICIENT (UNCERTAINTY_EXIT)
-SPECIAL-04 = DISPUTED → UNC-EXIT-DISPUTED (UNCERTAINTY_EXIT)
+Any node's UNCERTAINTY_EXIT.condition → UNC-EXIT-INSUFFICIENT
 ```
 
-`LLM_VERDICT_NODES = 0`. No node in the graph is an LLM call or references one — every node is a
-deterministic lookup/aggregation over frozen-engine facts and the compound tests defined in
-`DEOKBUNI_CANONICAL_OPERATION_POLICY.md`. An LLM downstream of this graph may only explain a
-`finalReport`/`strengthClassification`/`specialStructureStatus`/`taskCapacities` it already received —
-per the existing kernel's own rule (`contracts.ts`: "PROSE layer may explain but never reverse/weaken the
-verdict").
+`LLM_VERDICT_NODES = 0`. No node is an LLM call.
 
-## 2. Real multi-premise inference, not paraphrase
+## 2. What changed from v2.0.1, node by node
 
-The brief requires genuine Premise-A + Premise-B + Premise-C → Inference structure, not fact restatement.
-The clearest example is `SPECIAL-04` (the special-structure screen), which is a compound test over three
-independently-computed prior inferences, none of which alone determines the output:
-
-```
-Premise 1 (SPECIAL-01): extreme seasonal opposition AND extreme numerousness imbalance — TRUE
-Premise 2 (SPECIAL-02): outnumbered party's governing-position root survives clash — FALSE (no surviving root)
-Premise 3 (SPECIAL-03): a transformation glyph is present and genuinely activates — N/A (not a transformation case)
-        ↓ compound rule (policy P2), not a weighted sum, not a vote
-SPECIAL_PATTERN_STATUS = HIGH_CONFIDENCE
-```
-
-Changing any ONE premise changes the output through a different named path, not a different number:
-DTS-CONGXIANG-01 has Premise 1 = TRUE and Premise 2 = TRUE (root survives at 월지) yet still resolves to a
-following pattern, because SPECIAL-02's own counterevidence note is that root survival alone is not
-sufficient — the compound rule additionally requires an outlet/protector for that root to actually oppose
-the surrounding party, and none exists in that chart. This is the R11 refutation encoded structurally,
-not as a `ROOT_PRESENT ⇒ NOT_FOLLOWING` shortcut (forbidden, required-zero gate item).
-
-## 3. Three worked traces
-
-**DTS-JINGSHEN-01 (ordinary, `ANCHORED_WITH_SEASONAL_SUPPORT`)** — 甲 day master, 坐戌通根 (root),
-寅戌拱之 (seasonal support), 官生印印生身 (an active, non-broken support chain). FACT-01→06 resolve
-cleanly. SPECIAL-01: numerousness/seasonal imbalance not extreme (roles are supportive, not one-sided) →
-`oneSidednessDetected = false` → SPECIAL-04 = `NONE_DETECTED` → SV-01 gate passes. ORD-01 = `ROOTED`
-(戌, a 월/일지-class position). ORD-02 = `LOAD_BEARING` (no override found). SYNTH-01 =
-`ANCHORED_WITH_SEASONAL_SUPPORT`. SV-02 = `STRONG_LEANING`. Matches source's own `官來能挡` capacity
-language via CAP-03 (`CONTROL_LOAD = SUPPORTED`, the 官生印 chain is live) rather than folding that
-capacity-adjacent phrase into the global strength read (policy discipline: capacity language stays scoped
-to CAP nodes, never smuggled into SV-02).
-
-**DTS-CONGXIANG-01 (special-structure, gated)** — 乙木 with 蟠根在未 (root) and 四柱皆財 (extreme
-numerousness against it). SPECIAL-01 = `true` (extreme imbalance). SPECIAL-02: root exists at 월지-class
-未, survives (no clash) — BUT the compound rule at SPECIAL-04 also asks whether an outlet/protector exists
-for that root to actually resist 財; none does (no 比劫 reinforcement, no 印 to convert). SPECIAL-04 =
-`HIGH_CONFIDENCE` (following). SV-01 gate: `strengthViewApplicable = false`. SV-02 is **not reached** — the
-chart's strength-view field reports `NOT_APPLICABLE_SPECIAL_STRUCTURE`, not `EXTREME_WEAK_LEANING`. This is
-the direct enforcement of the hard rule and the reason DTS-CONGXIANG-01 is the flagship counterexample cited
-at SPECIAL-02.
-
-**BR-015 (cross-lineage, `DISPUTED`)** — 乙酉乙酉乙酉甲申. SPECIAL-01 = `true` (all-metal officer-star
-field against a rootless 乙). SPECIAL-02: no surviving root for 乙 anywhere (all four branches are 酉/申
-metal) → root counterevidence absent. Under 沈孝瞻's reading this is exactly `HIGH_CONFIDENCE` 棄命從煞.
-But 萬民英's 三命通會 entry for the identical chart classifies it under a structurally different construct
-(胞胎格, a self-seated-絶地 "fetal origin" pattern treated like an 印格 analogue) with no documented scope
-split from 沈孝瞻's reading — same chart, same apparent premises, two named `CANONICAL`-tier authorities,
-incompatible structural classification. Per policy §6, SPECIAL-04 = `DISPUTED`, routing to
-`UNC-EXIT-DISPUTED` with both candidate readings reported by name rather than the graph silently picking
-沈孝瞻 (the numerically "more following-like" reading) over 萬民英.
-
-## 4. What each `NODE_TYPE` is for in this graph
-
-| NODE_TYPE | Count | Nodes |
+| Removed | Why | P0 |
 |---|---|---|
-| FACT_CHECK | 6 | FACT-01..06 |
-| INFERENCE | 6 | SPECIAL-01, SPECIAL-02, SPECIAL-03, ORD-01, ORD-02, ORD-03 |
-| BRANCH | 2 | CAP-01, SV-01 |
-| SPECIAL_SCREEN | 1 | SPECIAL-04 |
-| TASK_CAPACITY | 3 | CAP-02, CAP-03, CAP-04 |
-| STRUCTURAL_SYNTHESIS | 1 | SYNTH-01 |
-| STRENGTH_VIEW | 1 | SV-02 |
-| UNCERTAINTY_EXIT | 3 | UNC-EXIT-INSUFFICIENT, UNC-EXIT-DISPUTED, UNC-FINAL |
-| **Total** | **23** | |
+| `SPECIAL-02` (root/protector counterevidence test) | Its own general rule (root absence required for `HIGH_CONFIDENCE`) contradicted the case it was built to explain (`DTS-CONGXIANG-01` has a surviving root) — the audit's core P0-01 finding | P0-01 |
+| `SPECIAL-04` (special-structure aggregation, `HIGH_CONFIDENCE`/`DISPUTED` outputs) | Replaced by `SPECIAL-01`, a single node with a CANDIDATE ceiling only | P0-01, P0-06 |
+| `ORD-01`/`ORD-02`/`ORD-03` (rooting/seasonal/relation INFERENCE nodes) | Rooting and season are now FACT-only (existence/raw role); relation "activation" is not claimed at all except narrowly in `TRANSFORM-01` | P0-03 |
+| `SV-01` (the old BRANCH gate: "may a strength view be computed at all?") | Nothing produces `HIGH_CONFIDENCE` anymore, so there is nothing to gate against — the gate is structurally unnecessary, not merely simplified | P0-02 |
+| `CAP-01`/`CAP-02`/`CAP-03`/`CAP-04` (task-capacity BRANCH + 3× TASK_CAPACITY nodes) | Moved out of Strength V2 entirely — `taskCapacities` is now a reserved `'NOT_EVALUATED'` field, not computed here | P0-04 |
+| `UNC-EXIT-DISPUTED` | `DISPUTED` does not exist as a reachable state | P0-06 |
+| The undefined `"CANDIDATE-ruled-out"` pseudo-state (was never a real enum value, only prose) | Deleted along with the gate it used to feed | P0-02 |
+
+| Kept / added | Why |
+|---|---|
+| `TRANSFORM-01` (new name for the old `SPECIAL-03`) | The transparent-root + seasonal-support test IS genuinely executable as a fact-check — it is its promotion to a `HIGH_CONFIDENCE` VERDICT that was the problem, not the fact-check itself. Demoted to an evidence boolean (`transformationEvidencePresent`), with `DTS-GUANSHA-12` recorded as the exact counterexample to treating it as sufficient |
+| `SPECIAL-01` (new, replaces the whole `SPECIAL-01..04` chain) | A single node, two executable disjuncts, `CANDIDATE`-ceiling only |
+| `SYNTH-01` | Narrowed to a pure 2-input (root × season) lookup; relation-context is now an ANNOTATION only (Option B of the remediation brief's §16 — "if not [executable]: remove relation-effect dependence from synthesis and treat relation as contextual evidence") |
+| `SV-01` (new — a thin 1:1 mapping node, replaces the old gate node of the same name) | Kept as a distinct node from `SYNTH-01` only to preserve the architectural seam ("strength is a subordinate, separately-named view"), even though the mapping is currently trivial |
+
+## 3. Real inference, still present despite the reduction
+
+`SYNTH-01` is still a genuine two-premise inference, not fact paraphrase:
+
+```
+Premise 1 (FACT-03): AX01_fact = ROOT_EXISTS_TRUE
+Premise 2 (FACT-04): AX02_fact = OPPOSED
+        ↓ named lookup, not a score
+structuralState = MIXED_STRUCTURE   (root and season genuinely disagree; no rule in this graph resolves it)
+```
+
+Changing either premise changes the output through a different NAMED cell, never a different number.
+`MIXED_STRUCTURE` is a real, reachable, non-default output — not a leftover catch-all (P0-... "MIXED_EVIDENCE
+must be reachable" was an explicit remediation requirement, §17).
+
+## 4. Three worked traces (updated for v3.0.0)
+
+**DTS-JINGSHEN-01** — root exists (坐戌通根), season is not `OPPOSED` (the text describes support, not
+opposition). `SPECIAL-01`: neither disjunct fires → `NONE_DETECTED`. `SYNTH-01`: `ROOT_EXISTS_TRUE` +
+season in `{IN_COMMAND, SUPPORTED}`-ish → `ANCHORED` → `SV-01` → `STRONG_LEANING`. The source's own
+"harmonious flow" (氣貫流通) nuance is not separately captured — this graph does not claim more precision
+than its two-input lookup actually has (§4 of the policy). Reported as-is, not force-fit to a bespoke
+`BALANCED`.
+
+**DTS-CONGXIANG-01** — root exists at 未 (a governing-ish position) → `AX01_fact = ROOT_EXISTS_TRUE`.
+`SPECIAL-01`'s following-disjunct requires `ROOT_EXISTS_FALSE` — it does NOT fire, regardless of the
+source's own 從財 conclusion → `specialStructureStatus = NONE_DETECTED`. This is the corrected behavior:
+v2.0.1 asserted `HIGH_CONFIDENCE` for this exact chart via a rule that formally required root absence,
+which was the specific contradiction P0-01 caught. v3.0.0 makes no following-pattern claim for this chart at
+all — an honest absence of evidence, not a false verdict in either direction. `SYNTH-01` still runs
+independently: root exists + season presumably supportive → `ANCHORED` → `STRONG_LEANING`, reported
+alongside `specialStructureStatus: NONE_DETECTED` as two separate, non-contradictory fields.
+
+**DTS-GUANSHA-12** — combination glyph present (戊癸), transparent root for the resulting fire (day stem
+丙) present, month in-command for fire (午) — `TRANSFORM-01` computes `transformationEvidencePresent =
+true`. `SPECIAL-01`'s transformation disjunct fires → `CANDIDATE`. The graph does NOT claim
+`HIGH_CONFIDENCE`/`TRUE_TRANSFORMATION` — the source's own `不化反喜其合` (does not transform, and that is
+actually beneficial) is exactly the reason this test was demoted to evidence-only. `CANDIDATE` here is the
+textually honest ceiling.
 
 ## 5. No arbitrary defaults
 
-Every branch point has an explicit named output for every input combination it can receive — there is no
-"if ambiguous, default to BALANCED" anywhere in the JSON. Contradictory structural evidence at `SYNTH-01`
-routes to the named state `MIXED_STRUCTURE`, which `SV-02` maps to the named classification `UNRESOLVED` —
-never silently to `BALANCED_OR_MIXED` (a different state: `BALANCED_OR_MIXED` means the axes genuinely
-point to a middle reading, e.g. `ANCHORED_WITHOUT_SEASONAL_SUPPORT`; `UNRESOLVED` means the axes
-*contradict* each other). This distinction is why `MIXED_STRUCTURE` and `BALANCED_OR_MIXED` are kept as two
-different named states rather than merged — contradiction ≠ neutral (preserved kernel doctrine, §2 of
-`contracts.ts`: "`MIXED` is deliberately NOT a stance").
+Every enum value is asserted by at least one node's `REQUIRED_INFERENCES` — checked by the strengthened
+validator (`node scripts/research/validate-judgment-graph.mjs`, "dead output enum" check, §7 below).
+`MIXED_STRUCTURE` and `UNRESOLVED` are two different, deliberately-distinct default-free outputs
+(contradiction ≠ missing data).
 
-## 6. Fact-foundation gap classification
+## 6. Fact-foundation gap classification (updated)
 
 | Graph input | Class | Notes |
 |---|---|---|
-| AX01_fact (rooting), AX02_fact (seasonal role), AX03_fact (relations), AX09_fact (numerousness) | `FACT_READY` | Direct frozen-service outputs (`sameElementRooting.ts`, `generalSeasonalPhase.ts`, `relationParticipants.ts`/`natalRelations.ts`, `tenGodFacts.ts`) |
-| ORD-01 clash-survival check, ORD-02 override check, SPECIAL-03 transformation-activation check | `DERIVABLE_INFERENCE` | Computable from existing frozen facts with no new fact provider; this is exactly what a future reasoner does with the existing `future.rootFunction`/`relationEffect` seam in `strengthFactBundle.ts` |
-| CAP-02/03/04 outlet-chain / 관인상생-chain facts | `V2_FACT_EXTENSION_REQUIRED` | No existing frozen service directly names "is there a live conversion chain from X to Y" — see `V2_FACT_EXTENSION_CANDIDATES.md` |
-| A full load-domain taxonomy beyond WEALTH/CONTROL/OUTPUT | `NOT_CURRENTLY_EXECUTABLE` | No corpus evidence supports a 4th load family this batch; left out rather than guessed |
+| `AX01_fact`, `AX02_fact`, `AX03_fact` (existence + context only), `AX09_fact` | `FACT_READY` | Direct frozen-service outputs |
+| `TRANSFORM-01`'s transparent-root + seasonal-support check | `DERIVABLE_INFERENCE` | Composable from existing facts, kept as evidence-only |
+| Anything task-capacity related | **Out of scope entirely for Strength V2** (P0-04) | Moved to `FUTURE_DOMAIN_JUDGES` — not tracked here as a fact-extension candidate any more, see `V2_FACT_EXTENSION_CANDIDATES.md` |
+| A genuinely complete branch-alliance fact (that could someday unlock a real `HIGH_CONFIDENCE` special-structure route) | `V2_FACT_EXTENSION_REQUIRED`, unbuilt | See `V2_FACT_EXTENSION_CANDIDATES.md` — `NEW_FACT_PROVIDERS_REQUIRED` is reported honestly, not padded to look smaller |
 
-## 7. Kernel-integration contract (§54, draft only)
+## 7. Validator
 
-See `DEOKBUNI_CANONICAL_OPERATION_POLICY.md` §7–§8 for the full conceptual result shape and the alignment
-table against `src/features/divination/myungriStrength.ts`'s F1–F4 factors. This graph's `finalReport` at
-`UNC-FINAL` is the direct analogue of that kernel's `ambiguities[]`/`confidence`/`classificationBlocker`
-triple — the graph fills in exactly the gap that module's own comment names as missing ("월령-vs-통근
-priority weighting... band boundaries").
+`scripts/research/validate-judgment-graph.mjs`, strengthened this batch: unique node IDs, edge resolution,
+orphan detection, dead-output-enum best-effort check, a deny-list for threshold/vote/majority/"meaningful"
+language inside decision-bearing fields, an LLM-authority pattern check, a case-ID-in-condition pattern
+check (case-memorization guard), a universal-root-gate pattern check, and cross-reference of every
+`SOURCE_IDS`/`SUPPORTING_CASE_IDS`/`COUNTEREXAMPLE_CASE_IDS` entry against the real corpus files
+(`discovery-cases.json`, `bridge-cases.json`, `sources.json`) so a stale or invented reference fails loudly.
+`SUPPORTING_SOURCE_PROPOSITIONS` (the old composite `SRC-001:DTS-...` field) is now explicitly rejected if
+present — replaced by separate `SOURCE_IDS`/`PROPOSITION_IDS` namespaces (P1-04). Run:
+`node scripts/research/validate-judgment-graph.mjs`.
 
-## 8. Repair history
-
-**Repair Pass 1** (`v2.0.0` → `v2.0.1`, applied during case replay): the original `SPECIAL-04` compound
-test used only "extreme one-sidedness + root absence" to grant `HIGH_CONFIDENCE`. Replaying the ordinary
-`SHUAIWANG` chapter cases (DTS-SHUAIWANG-04/06/08/09/10/12/13/14) and the `GANGROU` cases (旺之極矣, no
-stated capitulation) showed this over-triggers: those charts are rootless AND extreme by season+numerousness,
-yet the corpus tags them `ORDINARY_STRENGTH`, not `SPECIAL_PATTERN` — none states a surrender/following
-relation, they are managed via ordinary 用神 selection instead. The compound test now additionally requires
-either a genuinely complete branch alliance leaving zero elemental presence for the outnumbered party
-(including hidden stems), or a confirmed `TRUE_TRANSFORMATION` from `SPECIAL-03` — extreme season+numerousness
-alone resolves to `CANDIDATE`, which `SV-01` rules out (ordinary strength computation proceeds) absent that
-further conjunct. Full before/after case accounting: `S3_CASE_REPLAY_REPORT.md` §Repair Pass 1. This was the
-only structural repair applied; no second pass was needed (cap was 2).
-
-## 9. Validator
-
-`scripts/research/validate-judgment-graph.mjs` (research-tooling-only, not imported by production code)
-checks: unique `NODE_ID`s, every `NEXT_NODES` entry resolves to a real node ID or a documented external
-label, no orphan nodes (every non-entry node reachable from `FACT-01`), every `UNCERTAINTY_EXIT.routeTo`
-(when non-null) resolves to an `UNCERTAINTY_EXIT`-type node, every node has all 14 required fields
-non-missing, `NODE_TYPE` is one of the 8 allowed values, and the JSON contains none of the `PROHIBITED_FIELDS`
-named at the top of the graph file (`numericScore`, `weight`, `confidenceScore`, `strengthScore`,
-`voteCount`, `supportTally`) anywhere in the tree. Exits non-zero on any violation. Run: `node
-scripts/research/validate-judgment-graph.mjs`.
-
-`S3_GRAPH = FROZEN_FOR_AUDIT` (see `S2_S3_FREEZE_GATE_REPORT.md` for the full gate accounting).
+`S3_GRAPH = FROZEN_FOR_AUDIT` at this reduced scope.

@@ -1,124 +1,97 @@
-# S2/S3 FREEZE GATE REPORT
+# S2/S3 FREEZE GATE REPORT (P0 REMEDIATION)
 
-Base HEAD: `57b08284c6af2f008a1cf27390b73fcbd8649063`. Batch: S2 STRUCTURAL AXES FREEZE + S3 OPERATIONAL
-JUDGMENT GRAPH. Research phase closed for this batch — no new source hunting, no new corpus collection.
-All work below is productization of existing research.
+Base HEAD: `8ba674ae9ddb8aa7b6ba600f4502d56608e87728`. Batch: P0 remediation of the independent Codex audit's
+7 P0 findings against the prior S2/S3 freeze (`C. NOT_READY_FOR_IMPLEMENTATION`). No new research, no new
+cases, no corpus expansion, no bridge hunt — productization/executable-spec repair only.
 
-## 1. Documents produced
+## 1. P0 closure accounting
 
-| Document | Status |
-|---|---|
-| `DEOKBUNI_CANONICAL_OPERATION_POLICY.md` | Complete |
-| `S2_STRUCTURAL_AXES_FREEZE.md` | Complete — 7 axes frozen, 3 deferred |
-| `S3_OPERATIONAL_JUDGMENT_GRAPH.md` + `data/myungri-strength-v2/judgment-graph-v2.json` | Complete — 23 nodes, `v2.0.1` after 1 repair pass |
-| `S3_CASE_REPLAY_REPORT.md` | Complete — 41 cases replayed |
-| `V2_FACT_EXTENSION_CANDIDATES.md` | Complete — 4 candidates, all node-justified, none implemented |
-| `scripts/research/validate-judgment-graph.mjs` | Complete, passing |
-| `S2_S3_FREEZE_GATE_REPORT.md` | This document |
+| P0 | Finding | Fix applied | Status |
+|---|---|---|---|
+| P0-01 | `SPECIAL-04` high-confidence rule contradicts flagship cases (`DTS-CONGXIANG-01`, `DTS-TIYONG-01/02`, `DTS-CONGXIANG-06`) | Removed `HIGH_CONFIDENCE` entirely from the special-structure enum. `SPECIAL-01` (replacing the whole `SPECIAL-01..04` chain) has a `CANDIDATE` ceiling only, with two disjuncts (root-absence+season-opposed; transformation evidence) that were checked against all 4 flagged cases plus `DTS-GUANSHA-12` and found to have NO surviving false-certainty claim, because there is no certainty claim above `CANDIDATE` left to be false | **CLOSED** |
+| P0-02 | Undefined `CANDIDATE-ruled-out` state; missing actual `NOT_APPLICABLE_SPECIAL_STRUCTURE` output | Deleted the pseudo-state. `specialStructureStatus` and `strengthClassification` are now two independent, always-both-present fields — there is no gate, so there is nothing to rule anything out of, and `NOT_APPLICABLE_SPECIAL_STRUCTURE` is removed as a strength-view value (nothing produces `HIGH_CONFIDENCE` to gate against) | **CLOSED** |
+| P0-03 | Ordinary structural predicates underdefined (root survival, seasonal override, relation activation/ordering, contradiction handling) | Root and season narrowed to FACT-only (existence / raw role); "functional root survival" and "seasonal override" removed entirely; relation effect claims removed except the narrowly-scoped `TRANSFORM-01` evidence check; contradiction (`MIXED_STRUCTURE`) is now a real, reachable, non-default `SYNTH-01` output | **CLOSED** |
+| P0-04 | Capacity state tables incomplete; some proposed facts were doctrine inferences | `CAP-01..04` removed entirely from Strength V2. `taskCapacities` is a reserved `'NOT_EVALUATED'` field. `WEALTH_OUTLET_CHAIN_FACT`/`OFFICER_RESOURCE_CHAIN_FACT` reclassified NOT-A-FACT, moved to future domain-level inference (`V2_FACT_EXTENSION_CANDIDATES.md`) | **CLOSED** |
+| P0-05 | Hidden numeric authority (3+ vs 0, threshold semantics, all-three-axis extreme inference) | `EXTREME_*` strength states removed (the "all three axes one-sided" rule was the flagged AND-vote). `AX09_fact` (numerousness) is now graph-topology-enforced fact-only — no edge from `FACT-06` reaches any decision-bearing node, checkable directly in `judgment-graph-v2.json`. Validator's deny-list scans every decision-bearing field for `3+`/`threshold`/`majority`/`vote` language | **CLOSED** |
+| P0-06 | `DISPUTED` cannot be produced deterministically (GEJU alternative recognition deferred) | `DISPUTED` removed from the runtime graph entirely. `BR-015` preserved as `KNOWN_SCHOOL_CONFLICT` in research documentation only — no node checks a chart's identity against it or any other case ID (validator's case-ID-in-condition pattern check enforces this) | **CLOSED** |
+| P0-07 | `natalStrength.ts` remains an exported callable seven-band verdict authority | Removed `natalStrength.ts`/`currentStrength.ts` exports from `src/features/myungri/index.ts` (the public barrel). Both service files marked `NON_AUTHORITY / REFERENCE_ONLY` in their headers. Their own consistency tests (`natalStrength.test.ts`, `currentStrength.test.ts`) updated to import directly from the service files instead of the barrel — kept alive, not deleted. New enforcing guard test: `src/features/myungri/__tests__/publicSurfaceQuarantine.test.ts`, asserting the barrel does not export `evaluateNatalStrength`/`DEOKBUNAI_MYUNGRI_STRENGTH_V1_RULE`/`STRENGTH_LABEL_KO`/`buildCurrentStrengthContext`/`luckInfluence`. Investigated actual consumers first (`currentStrength.ts` was the only internal consumer; it and everything downstream of it has zero real product consumers — confirmed by grepping every barrel import site in `chat`/`compatibility`/`monthly`/`today`/`divination`) | **CLOSED** |
 
-## 2. Axis freeze accounting
+**`P0_REMAINING = 0`.**
 
-7 axes frozen (AX-01, AX-02, AX-03, AX-05, AX-06, AX-09, AX-10) of 10 candidates. 3 deferred: AX-04 (folded
-into AX-06, not promoted), AX-07 climate (separate module forever), AX-08 GEJU (separate/higher module).
-Every frozen axis has FACT/INFERENCE layers explicitly separated except AX-09 (fact-only by design) and
-AX-10 (aggregation-only by design). `S2_AXES = FROZEN_FOR_AUDIT`.
+## 2. P1 closure accounting
 
-## 3. Graph freeze accounting
+| P1 | Fix | Status |
+|---|---|---|
+| P1-01 missing hour | One consistent contract: use every fact derivable from year/month/day; only hour-dependent facts become `UNKNOWN`/unavailable, routing the SPECIFIC downstream conclusion to `UNRESOLVED`/`INSUFFICIENT` rather than discarding the chart. Matches `NatalPillarContext`'s own optional `hour` field and `calculateSameElementRooting`'s existing graceful degrade | **CLOSED** |
+| P1-02 rooting transparency input | Verified `rootingTransparency.ts`/`sameElementRooting.ts` exports are real (re-grepped this batch); no nonexistent bundle input is cited anywhere in the rewritten docs | **CLOSED** |
+| P1-03 uncertainty/confidence | Numeric confidence removed; `HIGH`/`MODERATE`/`LOW` redefined via two checkable conditions (missing fact, relation-context caveat), `LOW` implied by `MIXED_EVIDENCE`/`UNRESOLVED` rather than separately computed | **CLOSED** |
+| P1-04 traceability | `SUPPORTING_SOURCE_PROPOSITIONS` (composite `SRC-001:DTS-...` strings) replaced by separate `SOURCE_IDS`/`PROPOSITION_IDS`/`SUPPORTING_CASE_IDS`/`COUNTEREXAMPLE_CASE_IDS` fields; validator cross-references each against the real corpus and rejects the legacy composite field if it reappears | **CLOSED** |
+| P1-05 balanced/harmonious cases | No case-specific exception added. `DTS-JINGSHEN-01`/`DTS-BAGE-04` route to whatever cell the root×season lookup honestly produces (`MIXED_EVIDENCE` and `STRONG_LEANING` respectively, re-derived this batch — see `S3_CASE_REPLAY_REPORT.md`'s method note for the DM-identity correction found while doing this) | **CLOSED** |
 
-23 nodes: 6 `FACT_CHECK`, 6 `INFERENCE`, 2 `BRANCH`, 1 `SPECIAL_SCREEN`, 3 `TASK_CAPACITY`,
-1 `STRUCTURAL_SYNTHESIS`, 1 `STRENGTH_VIEW`, 3 `UNCERTAINTY_EXIT`. All 8 required node types represented.
-`node scripts/research/validate-judgment-graph.mjs` passes: unique IDs, all edges resolve, zero orphans,
-all `UNCERTAINTY_EXIT.routeTo` targets are `UNCERTAINTY_EXIT`-type nodes, zero prohibited numeric-score
-fields anywhere in the tree. `S3_GRAPH = FROZEN_FOR_AUDIT`.
+## 3. Reduction accounting
 
-## 4. Case replay accounting
+| Metric | Before (v2.0.1) | After (v3.0.0) |
+|---|---|---|
+| Graph nodes | 23 | **12** |
+| Node types used | 8 | **6** (`BRANCH`, `TASK_CAPACITY` removed) |
+| Special-structure states | 5 (incl. `HIGH_CONFIDENCE`, `DISPUTED`) | **3** (`NONE_DETECTED`/`CANDIDATE`/`INSUFFICIENT`) |
+| Strength-view states | 7 (incl. 2× `EXTREME_*`, `NOT_APPLICABLE_SPECIAL_STRUCTURE`) | **4** (`WEAK_LEANING`/`STRONG_LEANING`/`MIXED_EVIDENCE`/`UNRESOLVED`) |
+| Frozen axes | 7 | **6**, one (`AX-05`) deferred out of scope entirely |
+| Task-capacity nodes | 4 (`CAP-01..04`) | **0** — moved to `FUTURE_DOMAIN_JUDGES` |
 
-41 cases (target ≥40). `EXACT_STRUCTURAL_MATCH` 23, `COMPATIBLE_DIFFERENT_TERMINOLOGY` 10, `PARTIAL_MATCH`
-5, `GRAPH_MISMATCH` 1 (argued non-critical), `SOURCE_SCHOOL_DIFFERENCE` 1, `GRAPH_UNCERTAIN_CORRECTLY` 1.
-**`CRITICAL_MISMATCHES = 0`.** One repair pass applied (of a 2-pass cap), verified structurally (not
-per-case hand-tuning) against the full pool before being accepted. Full accounting:
-`S3_CASE_REPLAY_REPORT.md`.
+`EXTREME_STATES_REMOVED = YES`. `CAPACITY_RUNTIME_REMOVED = YES`. `RUNTIME_DISPUTED_REMOVED = YES`.
+`RAW_COUNT_SPECIAL_RULE_REMOVED = YES`.
 
-## 5. Required-zero gate
+## 4. Required-zero gate (updated set, per remediation §51)
 
 | Item | Status | Evidence |
 |---|---|---|
-| `CRITICAL_LOGIC_SHORTCUTS` | **0** | No node short-circuits; SPECIAL-04's compound test always runs all conjuncts |
-| `UNJUSTIFIED_NUMERIC_THRESHOLDS` | **0** | No numeric threshold anywhere in `judgment-graph-v2.json`; validator checks `PROHIBITED_FIELDS` presence and passes |
-| `RAW_VOTE_VERDICTS` | **0** | AX-09 numerousness is fact-only by design (`S2_STRUCTURAL_AXES_FREEZE.md` AX-09), never a sole decision input; DTS-FANGJU-09 replay confirms |
-| `FOLLOWING_EQUALS_EXTREME_WEAK_RULES` | **0** | `SV-01` gate structurally prevents this; 6/6 following/transformation replay cases route to `NOT_APPLICABLE_SPECIAL_STRUCTURE` |
-| `ROOT_PRESENT_ALWAYS_BREAKS_FOLLOWING` | **0** | R11 encoded `SCHOOL_DEPENDENT` (policy P8); DTS-CONGXIANG-01 replay directly disproves the shortcut |
-| `LLM_VERDICT_NODES` | **0** | Zero LLM calls in the 23-node graph; confirmed by inspection (`S3_OPERATIONAL_JUDGMENT_GRAPH.md` §1) |
+| `UNDEFINED_DECISION_PREDICATES` | **0** | Every `POSITIVE_CONDITIONS`/`REQUIRED_INFERENCES` value is a named enum comparison; validator's deny-list scan finds zero occurrences of `meaningful`/`sufficient`/`strong enough`/`dominant`/`earlier relation`/`live chain` in decision-bearing fields |
+| `BROKEN_SEMANTIC_EDGES` | **0** | Validator: 12/12 nodes reachable, all `NEXT_NODES`/`UNCERTAINTY_EXIT.routeTo` resolve to real nodes |
+| `HIDDEN_NUMERIC_AUTHORITY` | **0** | Validator's `PROHIBITED_FIELDS` scan (numericScore/weight/confidenceScore/strengthScore/voteCount/supportTally) finds zero hits; deny-list scan for `3+`/`threshold`/`majority`/`vote` finds zero hits in decision-bearing fields |
+| `RAW_VOTE_AUTHORITY` | **0** | `AX09_fact` has zero outgoing edges to any decision-bearing node (graph-topology fact, not just a claim) |
+| `CASE_MEMORIZATION` | **0** | Validator's case-ID-in-condition pattern check finds zero hits; no node's `REQUIRED_INFERENCES`/`POSITIVE_CONDITIONS` references a specific chart's identity |
+| `LLM_VERDICT_AUTHORITY` | **0** | Zero LLM calls in the 12-node graph; validator's LLM-authority pattern check finds zero hits |
+| `SECOND_VERDICT_AUTHORITY` | **0** | `natalStrength.ts`/`currentStrength.ts` quarantined from the public barrel (P0-07); `publicSurfaceQuarantine.test.ts` enforces it; `src/features/divination/myungriStrength.ts` remains evidence-only (still returns `UNDETERMINED`) |
+| `FOLLOWING_EQUALS_EXTREME_WEAK` | **0** | `EXTREME_*` states removed entirely — there is nothing left for FOLLOWING to be equated with |
+| `ROOT_ALWAYS_BREAKS_FOLLOWING` | **0** | Root existence is one of two disjuncts in a `CANDIDATE` test, never a universal gate; validator's universal-gate pattern check finds zero hits |
+| `DOC_GRAPH_MISMATCHES` | **0** | `S2_STRUCTURAL_AXES_FREEZE.md`, `DEOKBUNI_CANONICAL_OPERATION_POLICY.md`, and `S3_OPERATIONAL_JUDGMENT_GRAPH.md` were rewritten this batch to describe exactly `judgment-graph-v2.json` v3.0.0's actual node set — no node, state, or field described in prose does not exist in the JSON, and vice versa (spot-checked by re-reading all three against the JSON after every edit) |
 
-**All six required-zero items verified at 0.**
+**All ten required-zero items verified at 0.**
 
-## 6. Logic-safety checklist (§ success standard)
+## 5. Legacy authority (P0-07 detail)
 
-- [x] No catastrophic shortcut (blind root⇒exit, blind no-root⇒following) — `SPECIAL-04` is a compound test
-- [x] No score/tally has verdict authority — `AX-09` is fact-only; validator enforces no prohibited fields
-- [x] Key counterexamples handled — R11 (DTS-CONGXIANG-01), R6 (DTS-JINGSHEN-03/DTS-JIAHUA-02), CF-005
-      (DTS-FANGJU-09) all replay correctly
-- [x] Special patterns never collapse into strength — `SV-01` gate, verified across 6 special-structure
-      replay cases
-- [x] School conflicts have scope/uncertainty handling — `DISPUTED` (BR-015), `CANDIDATE`-with-both-readings
-      (DTS-SHUAIWANG-02/10)
-- [x] Ordinary cases produce meaningful output — 15/15 ordinary-structure replay cases resolve to a named
-      classification, none defaulted
-- [x] Task-specific capacity is possible — `CAP-02/03/04` differentiate DTS-XINGXIANG-17/18 (AC-08) and
-      DTS-BAGE-04/05 (AC-03) where a single strength band would not
-- [x] Graph is implementable consistently by two independent engineers — every node's `POSITIVE_CONDITIONS`
-      and `REQUIRED_INFERENCES` are named lookups/compound tests, not prose judgment calls; the one node
-      that started under-specified (`SPECIAL-04`) was tightened by Repair Pass 1 rather than left vague
-- [x] Remaining disagreement is documented, not hidden — `S3_CASE_REPLAY_REPORT.md` §"What remains open"
-- [x] No unstructured "expert judgment" / "overall balance" terminal node — every terminal is a named
-      enum (`strengthClassification`, `specialStructureStatus`, `taskCapacities[].state`) or an
-      `UNCERTAINTY_EXIT`
+`NATAL_STRENGTH_PUBLIC_VERDICT_AUTHORITY = QUARANTINED` (not deleted — historical implementation and its
+own consistency tests preserved, per instruction not to delete what tests/research still need).
+`CURRENT_PRODUCTION_CONSUMERS_FOUND = 0` (verified by grepping every barrel-import site across
+`chat`/`compatibility`/`monthly`/`today`/`divination` for the specific quarantined symbol names — none
+found; `currentStrength.ts` was the only INTERNAL consumer, and it has zero consumers of its own beyond the
+now-pruned barrel export). `SECOND_COMPETING_VERDICT_AUTHORITY = 0`.
 
-## 7. Fact-foundation gap classification
+## 6. No unauthorized change
 
-`FACT_READY`: AX-01/02/03/09 fact layers (direct frozen-service outputs).
-`DERIVABLE_INFERENCE`: `ORD-01/02`, `SPECIAL-03` (composable from existing services, no new provider).
-`V2_FACT_EXTENSION_REQUIRED`: 3 candidates in `V2_FACT_EXTENSION_CANDIDATES.md` (outlet/chain facts for
-`CAP-02/03/04`), all node-justified. `NOT_CURRENTLY_EXECUTABLE`: a load-domain taxonomy beyond
-WEALTH/CONTROL/OUTPUT. Frozen V1 fact foundation (`src/features/myungri/services/`) **not modified** —
-verified via `git status --porcelain -- src/` staying empty throughout (§9).
+`FROZEN_KERNEL_CHANGED = NO` (`src/features/divination/` untouched). `FROZEN_FACT_FOUNDATION_CHANGED = NO`
+(`src/features/myungri/services/*.ts` fact-computation files untouched — only `index.ts`'s export list and
+two file HEADER COMMENTS were edited, plus two existing test files' import paths and one new test file
+added, all authorized narrowly by P0-07). `V2_RUNTIME_GRAPH_IMPLEMENTED = NO`. `YONGSHIN_IMPLEMENTED = NO`.
+`TODAY_MONTHLY_CHANGED = NO`.
 
-## 8. Kernel alignment
+## 7. Validation
 
-`DEOKBUNI_CANONICAL_OPERATION_POLICY.md` §7–§8 documents the conceptual
-`MYUNGRI_FACT_BUNDLE → MYUNGRI_STRUCTURAL_JUDGE_RESULT → kernel` interface, reusing the EXISTING
-`JudgmentEvidence` shape from `src/features/divination/contracts.ts` rather than inventing a parallel one.
-No runtime file under `src/features/divination` or `src/features/myungri` was read-write touched — read-only
-inspection confirmed the existing `myungriStrength.ts` F1–F4 factors, `strengthFactBundle.ts`'s `future.*`
-extension seam, and the absence of a separate "Constitution" document (its `V2`/`V3 §n` references are
-versioned inline documentation within `contracts.ts`/`myungriNatal.ts`/`myungriStrength.ts` themselves,
-consistent with the `V4A`–`V4D` revision-wave convention already used across the kernel).
+See final report §VALIDATION for actual command outputs (tsc, jest — including the P0-07-affected suites,
+graph validator, corpus validator, preflight, release-preflight, secret scan).
 
-## 9. No runtime change
+## 8. Git
 
-`git status --porcelain -- src/` returned empty before this batch and after every write in it (checked
-before staging, §11). Nothing under `src/` was created, edited, or deleted this batch.
+One remediation commit, covering: the 6 rewritten `docs/myungri-strength-v2/*.md` files, the rewritten
+`data/myungri-strength-v2/judgment-graph-v2.json`, the strengthened `scripts/research/validate-judgment-graph.mjs`,
+and the P0-07 code change (`src/features/myungri/index.ts`, two service-file header comments, two test-file
+import-path fixes, one new guard test). Owner WIP untouched. No push, no deploy, no merge, no APK build.
 
-## 10. Validation run
+## 9. Freeze declarations
 
-See final report §VALIDATION for the actual command outputs (tsc, jest, preflight, secret scan, corpus +
-bridge + graph validators). All research-only; zero runtime behavior change.
+`S2_AXES = FROZEN_FOR_AUDIT` (reduced scope). `S3_GRAPH = FROZEN_FOR_AUDIT` (reduced scope).
+`MYUNGRI_STRUCTURAL_DOCTRINE_V2 = READY_FOR_ONE_SHORT_CODEX_P0_CLOSURE_REAUDIT`.
 
-## 11. Git
-
-Exactly one commit intended for this batch, covering only `DEOKBUNI_CANONICAL_OPERATION_POLICY.md`,
-`S2_STRUCTURAL_AXES_FREEZE.md`, `S3_OPERATIONAL_JUDGMENT_GRAPH.md`, `S3_CASE_REPLAY_REPORT.md`,
-`V2_FACT_EXTENSION_CANDIDATES.md`, `S2_S3_FREEZE_GATE_REPORT.md`,
-`data/myungri-strength-v2/judgment-graph-v2.json`, `scripts/research/validate-judgment-graph.mjs`, and a
-minimal `README.md` pointer update. Owner WIP (`app.json`, `docs/MYUNGRI_100_ADOPTION_ANALYSIS.md`,
-`docs/DEOKBUNI_AUTONOMOUS_BATCH_*.md`) untouched and unstaged. No push, no deploy, no merge, no APK build.
-
-## 12. Freeze declarations
-
-`S2_AXES = FROZEN_FOR_AUDIT`
-`S3_GRAPH = FROZEN_FOR_AUDIT`
-`MYUNGRI_STRUCTURAL_DOCTRINE_V2 = READY_FOR_INDEPENDENT_FREEZE_AUDIT`
-
-This is a readiness-for-audit declaration, **not** a production-readiness declaration. No runtime code
-exists for any of this; wiring into `src/` is explicitly out of scope until after an independent Codex
-audit (not run this session, per instruction).
+Still explicitly NOT production-readiness. If the re-audit passes, runtime implementation begins against
+this reduced, smaller graph — not the prior wider one.

@@ -1,5 +1,10 @@
 // 현재 운의 영향 (current luck influence) — 대운/세운이 원국에 주는 보강/약화 방향.
 //
+// NON_AUTHORITY / REFERENCE_ONLY (P0-07, Codex audit 2026-08-28). This composes `natalStrength.ts`'s
+// quarantined seven-band candidate with luck influence; it inherits the same quarantine and is NOT
+// exported from the public `src/features/myungri/index.ts` barrel. Kept only for its own consistency
+// tests (`__tests__/currentStrength.test.ts`) — do not add a new caller.
+//
 // CRITICAL SEPARATION (§5,§6,§25): this NEVER changes the 원국(natal) label. `natalStrength` is the immutable
 // baseline (computed from `natal` alone); daewoon/sewoon influence is a SEPARATE directional layer laid on top.
 // A supportive 세운 does NOT turn a 중화신약 원국 into 신강 — it says "지금은 지원이 들어온다". Deterministic,

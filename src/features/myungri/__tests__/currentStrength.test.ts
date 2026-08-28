@@ -1,5 +1,8 @@
 // 현재 운의 영향 — 원국 baseline과 대운/세운 영향의 분리 검증 (§41). 핵심: 운이 바뀌어도 원국 label은 불변.
-import { buildCurrentStrengthContext, type NatalPillarContext } from '../index';
+// Imports directly from the service file, NOT the public barrel — currentStrength.ts is quarantined
+// (P0-07, NON_AUTHORITY / REFERENCE_ONLY) and no longer exported from '../index'.
+import { buildCurrentStrengthContext } from '../services/currentStrength';
+import type { NatalPillarContext } from '../index';
 import type { PillarTenGodProfile } from '../domain/contracts';
 
 // 원국: 실령·무근·타군 → EXTREMELY_WEAK (natal test C2와 동일 구조).

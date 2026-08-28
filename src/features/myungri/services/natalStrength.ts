@@ -1,5 +1,12 @@
 // 원국 신강/신약 (natal day-master strength) — V1 deterministic HIERARCHICAL classifier.
 //
+// NON_AUTHORITY / REFERENCE_ONLY (P0-07, Codex audit 2026-08-28). This is the previously-rejected
+// candidate `myungriStrength.ts`'s own header already warns against reproducing (18-cell lookup table,
+// lexicographic month>rooting>composition priority). It is NOT exported from the public
+// `src/features/myungri/index.ts` barrel and MUST NOT be reactivated as a verdict source — enforced by
+// `src/features/myungri/__tests__/publicSurfaceQuarantine.test.ts`. Kept only because its own consistency
+// tests (`__tests__/natalStrength.test.ts`) still exercise the rule table as a research candidate.
+//
 // NOT a numeric-weight model. There is NO score, NO 40/30/15, NO 0.7/0.5/0.3, NO threshold 1.2 (§7).
 // The verdict comes from an explicit ordered RULE TABLE over factor STATES, priority month > rooting >
 // composition (§9-11,§18). Every factor STATE is read from an existing FROZEN deterministic result — the
