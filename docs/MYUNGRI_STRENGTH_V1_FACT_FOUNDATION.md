@@ -1,5 +1,17 @@
 # MYUNGRI_STRENGTH_V1 — Deterministic Fact Foundation
 
+> **✅ STATUS UPDATE (V2 reset).** The fact layer this document describes is now **independently audited
+> and FROZEN** (`A. FACT_FOUNDATION_FROZEN`). This document remains **accurate and useful** as the detailed
+> technical description of that layer — it is *not* superseded in substance.
+>
+> For **authoritative status** (what is frozen, what is explicitly not a fact, and what may not be
+> modified), read `MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md`. Where the two disagree on status, the
+> freeze document wins.
+>
+> One correction to the header below: the doctrine is no longer merely "not yet frozen" — the V1 strength
+> **classifier is WITHDRAWN entirely** (`MYUNGRI_STRENGTH_V1_CLOSURE.md`). The fact layer stands; the
+> judgment layer above it does not exist and will be rebuilt as V2.
+
 > **STATUS: FACT LAYER ONLY.** Doctrine (`docs/MYUNGRI_STRENGTH_V1_CANONICAL_DOCTRINE.md`) is not yet
 > frozen and awaits independent re-audit. This document describes deterministic fact infrastructure
 > only. **No strength judgment, no special-pattern judgment, no relation-effect/transformation

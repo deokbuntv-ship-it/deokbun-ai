@@ -1,5 +1,27 @@
 # MYUNGRI_STRENGTH_V1.4 — Implementation Gap Register + DOCTRINE↔FACT MATRIX
 
+> # ⛔ SUPERSEDED_BY_V2_RESET — STATUS CLAIMS VOID
+>
+> **Historical record. Its gap classifications no longer describe the project.**
+>
+> This register's headline claim — **`P0_DOCTRINE_GAPS = NONE`** — is **VOID**. It was true only of V1.4's
+> deliberately narrowed scope, and that scope is itself now withdrawn: the independent audit found the
+> narrowed doctrine `NOT_READY` and the resulting product scope `NOT_PROFESSIONALLY_MEANINGFUL`. A gap
+> register that reports "no doctrine gaps" for a doctrine that produces no usable verdict is measuring the
+> wrong thing.
+>
+> Likewise void: every `DOCTRINE_CONTRACT_READY` status, section D's build order, and the
+> `P0_INFERENCE_GAPS` list — they describe implementing V1.4, which is forbidden.
+>
+> **Still accurate:** section A's verified state of the working tree (which facts exist, which do not), and
+> section F's quarantine of the legacy classifier.
+>
+> **Read instead:** `MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md` (frozen scope) ·
+> `MYUNGRI_STRENGTH_V1_CLOSURE.md` (what is withdrawn) ·
+> `MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md` §18 (the real gate sequence).
+
+---
+
 > **Supersedes V1.3 of this file.** The fact foundation is now **independently FROZEN**
 > (`FACT_FOUNDATION_CLASSIFICATION = A`) — no fact-layer code, test, fact id, root linkage, ten-god mapping,
 > relation-participant logic, or type firewall may be modified. This register therefore tracks **doctrine

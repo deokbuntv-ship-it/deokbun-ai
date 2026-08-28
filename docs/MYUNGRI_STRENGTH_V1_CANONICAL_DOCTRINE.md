@@ -1,5 +1,31 @@
 # MYUNGRI_STRENGTH_V1.4 — Canonical Doctrine Specification (Bounded Remediation)
 
+> # ⛔ SUPERSEDED_BY_V2_RESET — NO IMPLEMENTATION AUTHORITY
+>
+> **This document is a historical record and a preserved source-research archive. It is not a live
+> contract, and nothing in it may be implemented.**
+>
+> An independent audit at `7f660da` returned `C. NARROWED_DOCTRINE_NOT_READY` and
+> `C. NOT_PROFESSIONALLY_MEANINGFUL`. V1 is closed as **foundation only**. Every judgment contract below —
+> `BEARING_CAPACITY`, all special-pattern candidate contracts, WEAK/BALANCED/STRONG, the seven bands — is
+> **WITHDRAWN**.
+>
+> **Specifically withdrawn as an invalid inference:** §7.3.4's `CANNOT_BEAR ← NO_ROOT`. The source
+> (任鐵樵 「只要四柱有根，便能受…」) establishes ROOT → CAN_BEAR, a **sufficient** condition. Concluding
+> ¬ROOT → ¬CAN_BEAR is denying the antecedent, and no source states it. `NO_AFFIRMATIVE_EVIDENCE` is not
+> `CANNOT_BEAR`.
+>
+> **Read instead:**
+> - `MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md` — what is actually frozen and implemented
+> - `MYUNGRI_STRENGTH_V1_CLOSURE.md` — why V1 closed; **§D preserves the verified source material**
+> - `MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md` — what happens next
+>
+> **What remains valuable here:** the verified source passages, their layer attributions, the named school
+> conflicts, and the record of which readings failed and why. That is why this file is kept rather than
+> deleted. Treat every predicate, state model, decision table, and status claim below as **withdrawn**.
+
+---
+
 > **STATUS: DOCTRINE PHASE ONLY.** No runtime strength code is implemented or approved by this document.
 > No Yongshin logic is implemented or approved. The frozen deterministic reasoning kernel and the frozen
 > Myungri calculation layer are **untouched** by this document.
@@ -50,7 +76,7 @@ Base commits: `abc8b28` (V1.1) · `4d98ec1` (V1.2) · `ed903aa` (V1.3) · V1.4 a
 > is a smaller engine than V1.3 advertised. It is the one the sources actually support.
 >
 > `STRENGTH_REASONER_IMPLEMENTATION_ALLOWED` remains **NO** until this revision passes independent
-> re-audit. The contracts here are written to be implementable next, not to authorize implementation now.
+> re-audit. ~~The contracts here are written to be implementable next.~~ **[V2 RESET: that re-audit returned NOT_READY. The contracts below were never authorized and are now WITHDRAWN — see the banner at the top of this file.]**
 
 **This is a structural revision of V1, not a defense of it.** An independent audit classified V1 as
 `MYUNGRI_STRENGTH_V1_DOCTRINE_NOT_READY` and found seven doctrine blockers: an over-broad universal

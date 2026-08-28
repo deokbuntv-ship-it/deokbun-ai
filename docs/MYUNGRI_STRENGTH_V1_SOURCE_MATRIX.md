@@ -1,5 +1,22 @@
 # MYUNGRI_STRENGTH_V1.4 — Source Matrix (Bounded Remediation)
 
+> # ⛔ SUPERSEDED_BY_V2_RESET — NO IMPLEMENTATION AUTHORITY
+>
+> **Historical record and preserved source archive. Not a live contract.**
+>
+> V1 is closed as foundation only (`MYUNGRI_STRENGTH_V1_CLOSURE.md`). Every `RUNTIME_AUTHORITY` value in
+> this matrix is **void**: no rule here carries implementation authority, and the `G-*` special-pattern rows
+> confer neither confirmation nor candidate-detection authority.
+>
+> **Still valuable, and the reason this file is kept:** the source-layer attributions
+> (`ORIGINAL_TEXT` / `原注` / `NAMED_COMMENTARY` / `NAMED_SCHOOL` / `MODERN_SYSTEMATIZATION` /
+> `DEOKBUNI_OPERATIONALIZATION` / `SOURCE_NOT_VERIFIABLE`), the verified verbatim passages, the named
+> lineage conflicts, and the `NOT RETRIEVED` records. These are direct inputs to V2's §2 evidence tiers.
+>
+> V2 will build its own rule register under `MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md` §8.
+
+---
+
 > Companion to `MYUNGRI_STRENGTH_V1_CANONICAL_DOCTRINE.md`. **Re-reconciled in V1.4.** V1.3 closed the
 > V1.2 contradictions and added the citation-layer column; an independent audit then found this file still
 > carried **material incorrect claims** — chiefly that 任鐵樵 is silent on 專旺's season (he is not), and a
