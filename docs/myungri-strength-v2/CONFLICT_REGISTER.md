@@ -242,12 +242,220 @@ suggests it is not: 強弱, 眾寡, 旺極, 剛柔, 實虛, 健, 權在一人, �
 them by what he is trying to decide. A classifier emitting one band per chart is
 answering a question the source does not ask.
 
-**RESOLUTION: OPEN — and this one is load-bearing.** It should be resolved before
-S2 selects axes, because it determines whether "the strength axis" is even the
-right object to look for.
+**RESOLUTION (S1.5): CLOSED — `TASK_RELATIVE_COMPATIBLE`.**
 
-**Corpus handling:** the 形象 record is `COMMENTARY_VARIANT` so the chart counts
-once; both records carry `CONFLICT_CASE`.
+Full analysis: [`TASK_RELATIVE_JUDGMENT_ANALYSIS.md`](TASK_RELATIVE_JUDGMENT_ANALYSIS.md) Part 1.
+
+The S1 entry above was written before either chapter's *framing question* was
+retrieved. With that framing in hand the case resolves, and the resolution
+partly reverses the S1 reading.
+
+衰旺 asks 「能知衰旺之真機」 with 原注 「旺則宜洩宜傷，衰則喜幫喜助」 — a
+**treatment-selection** question. 形象 verse 3 asks 「獨象喜行化地，而化神要昌」 —
+a **form-identification and luck-direction** question. Different questions.
+
+And the two readings **agree on every operative point**: dominant force (extreme
+Metal), element needed (Water — 旺極者*似水* vs 惜*無水*, 局*無食傷*之故耳), and
+danger (寅運 in both; 戊子運 favourable in A, absence of Water the stated cause of
+ruin in B). They prescribe the same thing in different vocabularies.
+
+**So the S1 claim that "a chart has no single classification" was too strong.**
+The accurate statement is that a chart has no single classification *vocabulary*,
+while the underlying structural situation is stable across vocabularies. That is
+a materially less alarming finding, and it is the one the evidence supports.
+
+**Corpus handling:** the 形象 record stays `COMMENTARY_VARIANT` so the chart counts
+once. Both records remain tagged for cross-reference but are no longer conflict
+cases on structural grounds.
+
+**Carved out as CF-010:** the two chapters' *biographical narratives* remain
+irreconcilable. That is a separate defect and stays open.
+
+---
+
+## CF-010 — Irreconcilable biographies for one chart (carved out of CF-009)
+
+**Chart:** 庚申 乙酉 庚戌 庚辰
+**Type:** `SCOPE_CONFLICT` (transmission/record integrity, not doctrine)
+
+衰旺第十八 records: 納房, 名利皆遂, 犯事落職, 至卯不祿.
+形象第十一 records: 行伍出身, 官至參將, 一交寅運陣亡.
+
+These do not describe one life. Either the eight characters were recorded for two
+different people, or one narrative is a transmission error.
+
+**Why it is separated from CF-009:** the *structural* readings agree completely
+(see CF-009). Only the biography diverges. Keeping them merged made a
+record-integrity defect look like a doctrinal one.
+
+**Why it matters anyway:** the source validates its structural readings *by
+outcome*. If outcomes attached to a chart are unreliable, then outcome-based
+corroboration is weaker than it appears — which bears on how much any single
+case can certify.
+
+**RESOLUTION: OPEN.** Blocked on a second independently typeset edition, the same
+dependency as CF-002.
+
+---
+
+## CF-011 — Root and following: two lineages take opposite positions (S1.5)
+
+**Type:** `ONTOLOGY_CONFLICT` + `VERDICT_CONFLICT`
+**This is the first genuine cross-lineage conflict in the corpus.**
+
+**淵海子平 (SRC-003), 卷二 外十八格 棄命從財格 眉批** — verified verbatim by direct
+retrieval:
+
+> 日主有根則不可棄，主貧。無根棄之則富。
+
+And 棄命從殺格:
+
+> 忌日主有根及比肩之地。
+
+And 神趣八法·從象 (卷三):
+
+> 或天干有甲乙字者不吉，**或有根者不吉**。
+
+Three independent statements in one book. The rule is a **two-state switch**:
+root present ⇒ following is void ⇒ poverty. Root absent ⇒ following ⇒ wealth. No
+gradient, no weighing of the root's quality, position or function.
+
+**滴天髓闡微 (SRC-001)** — six charts where a root, 餘氣, 祿 or 比劫 is *named* and
+the following pattern *still holds* (`CF-008`), plus two explicit refusals of the
+weak-body reading:
+
+> 從兒不論身強弱，**非身弱論也** (`DTS-SHUNJU-05` — DM has 祿 and 比肩)
+> 格取從官，**非身衰論也** (`DTS-JIACONG-03` — DM sits on its own element)
+
+### What this does to R11
+
+S1 recorded **R11 (any root breaks 從格) as REFUTED**, on six charts.
+
+That verdict was **lineage-scoped and did not say so**. Corrected status:
+
+| Lineage | R11 | Basis |
+|---|---|---|
+| 滴天髓 / 任鐵樵 | **REFUTED** | 6 worked charts + 2 explicit doctrinal refusals |
+| 淵海子平 | **ASSERTED AS DOCTRINE** | 3 independent statements, binary form |
+
+`R11_STATUS = SCHOOL_DEPENDENT`. It is neither universally true nor universally
+false, and any V2 rule touching it must declare which lineage it follows.
+
+**This is the correction S1.5 was created to catch.** With one source, a
+lineage-specific doctrine is indistinguishable from a universal one.
+
+### Is it a real disagreement or a terminology difference?
+
+Real, on the evidence available — but with an unresolved component.
+
+The two books are not describing the same object with different words. 淵海子平's
+following patterns (棄命從財, 棄命從殺, 從象) are **admission-gated categories**
+with binary entry tests. 滴天髓's are **whole-chart 氣勢 readings** where a root's
+significance depends on whether it functions. Those are different machines, and
+they genuinely disagree about the same charts.
+
+What is **not** resolved: whether 任鐵樵 would accept 淵海子平's cases as 從格 at
+all, or would reclassify them. Testing that needs a chart adjudicated by both,
+and no such chart is yet in the corpus.
+
+**RESOLUTION: OPEN — school-dependent, load-bearing for any special-pattern axis.**
+
+---
+
+## CF-012 — Sequencing: which question is asked first? (S1.5)
+
+**Type:** `SEQUENCING_CONFLICT` — the category S1 predicted would appear once a
+second lineage was examined.
+
+**淵海子平, 神趣八法 總釋 眉批** — verified verbatim:
+
+> 看八字**先明從化爲本**，化不成方論財官，財官無取方論格局
+
+An explicit three-stage order: **從化 → 財官 → 格局**. Special structure is
+screened *first*; ordinary analysis runs only if the screen fails.
+
+Strength does not appear in that order at all. It enters as a **gate condition on
+admission** (main body, same chapter):
+
+> 類屬要身旺，而**從化要衰也**
+
+**滴天髓闡微** places no comparable ordering statement. Its 衰旺 chapter reasons
+about degree without a prior structural screen, and `DTS-BAGE-06` shows an
+extreme composition being *refused* special-pattern status on structural grounds
+discovered during ordinary analysis — the opposite order.
+
+**Bearing on the §38 hypotheses:**
+
+| Hypothesis | 淵海子平 | 滴天髓 |
+|---|---|---|
+| H1 facts → ordinary strength → special pattern | contradicted | partially supported |
+| H2 facts → special screen → ordinary only if ordinary | **supported** | not stated |
+| H4 facts → 格局 structure → strength as secondary | partially (格局 is *last* here) | not stated |
+
+**RESOLUTION: OPEN.** Two lineages appear to sequence differently. This must be
+settled before any V2 pipeline order is frozen, because H1 and H2 produce
+different answers on exactly the borderline charts that matter.
+
+---
+
+## CF-013 — Climate prescribes what 扶抑 forbids (S1.5)
+
+**Type:** `ONTOLOGY_CONFLICT` — two systems select the favourable element by
+incompatible criteria and reach opposite answers on the same charts.
+
+**窮通寶鑑, 五月庚金** (base text, verbatim):
+
+> 五月庚金，丁火旺烈，**庚金敗地**，專用壬水，癸又次之。壬透癸藏，支見庚辛，必然科甲，
+> **切忌戊己透干制水、則否。**
+
+⚠️ **Partial verification.** I confirmed 五月庚金，丁火旺烈，庚金敗地，專用壬水
+verbatim against Wikisource myself. The clause **切忌戊己透干制水 is agent-reported
+only** — when I queried it directly the retrieval layer returned unrelated 五月甲木
+text instead of an absence answer, so it is not independently confirmed. The
+argument below leans on the *prescription* (壬水 to a Day Master in its 敗地), which
+is verified; the *explicit ban* on the resource strengthens it but is not yet
+load-bearing.
+
+The text itself says the Day Master is in its 敗地. A 扶抑 reading prescribes 印
+(戊己) and 比劫 (庚辛). The book instead prescribes 壬水 — the **食傷 that drains
+an already-weak 庚** — and then **explicitly bans the resource**: 切忌戊己透干制水.
+The stated reason is thermal: Earth would dam the Water that cools 丁火旺烈.
+
+**窮通寶鑑, 十一月丙火** (base text, verbatim):
+
+> 十一月丙火，**冬至一陽生，弱中復強**，壬水為最，戊土佐之。
+
+丙火 in 子月 is the canonical weakest Fire. 扶抑 demands 木火. The book demands
+**壬水 — the 七殺 that directly attacks 丙** — as first choice. And the stated
+justification is **calendrical-astronomical**, not a chart tally: *at winter
+solstice the single yang is born, so within weakness strength returns*.
+
+**十月丙火** gives the book's own selection rule, and it is a counter-the-excess
+rule in which the Day Master's strength plays no part:
+
+> 總之十月丙火，**木旺宜庚，水旺宜戊，火旺用壬**，隨宜酌用可也。
+
+### Is this a real conflict or two compatible layers?
+
+**Real at the level of prescription; possibly complementary at the level of
+practice.** The two systems disagree about *which element to favour on specific
+charts* — that is not a terminology difference. But the base text also shows the
+frame is not absolute: 五月庚金 readmits 戊己 as a fallback when the climatic agent
+is absent (「無壬癸制火者，又宜戊己出干補金洩火」), and 「補金洩火」 is the one place a
+quasi-strength rationale surfaces.
+
+So the honest reading is: **窮通寶鑑 has a climatic primary criterion with a
+strength-flavoured fallback**, not a pure system with no strength content
+whatsoever. That is still incompatible with a design in which strength is primary
+and climate is a modifier — which is exactly 徐樂吾's 於扶抑之外 framing (`OBS-18`).
+
+**RESOLUTION: OPEN.** Two lineages select the favourable element by different
+primary criteria and disagree on real charts.
+
+**Direct consequence for V2:** `STRENGTH != CLIMATE != YONGSHIN`. These must
+remain separate modules. A V2 Strength engine that emits a favourable element is
+silently answering 窮通寶鑑's question with 滴天髓's method — and `CF-013` shows
+those give different answers.
 
 ---
 
@@ -263,9 +471,21 @@ once; both records carry `CONFLICT_CASE`.
 | CF-006 | 絕無一毫 scope | OPEN |
 | CF-007 | root identity is contextual | OPEN |
 | CF-008 | root present, still follows | R11 REFUTED; replacement OPEN |
-| CF-009 | classification depends on the question asked | **OPEN — load-bearing for S2** |
+| CF-009 | classification depends on the question asked | **CLOSED — TASK_RELATIVE_COMPATIBLE** (S1.5) |
+| CF-010 | irreconcilable biographies for one chart | OPEN — needs 2nd edition |
+| CF-011 | root vs following — lineages take opposite positions | **OPEN — school-dependent** |
+| CF-012 | sequencing: special screen first, or ordinary first? | **OPEN — blocks pipeline order** |
+| CF-013 | climate prescribes what 扶抑 forbids | **OPEN — forces module separation** |
 
-**7 open, 1 partially closed, 1 closed.**
+**10 open, 1 partially closed, 2 closed.**
+
+Conflict types present: `ONTOLOGY` (CF-001, CF-007, CF-011, CF-013), `VERDICT`
+(CF-004, CF-008, CF-011), `TERMINOLOGY` (CF-003, CF-005), `QUANTIFIER` (CF-006),
+`SCOPE` (CF-002, CF-010), `SEQUENCING` (CF-012).
+
+**CF-011 and CF-012 are the first cross-lineage conflicts.** Both were invisible
+while the corpus had one source, and both change conclusions S1 had recorded as
+settled. That is the S1.5 diversification working as intended.
 
 An open conflict blocks any V2 rule that would depend on it. That is the point
 of the register.

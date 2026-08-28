@@ -31,6 +31,26 @@ const RECORD_ROLES = ['PRIMARY_CASE', 'DERIVED_REPRINT', 'COMMENTARY_VARIANT'];
 const PROVENANCE = ['HIGH', 'MEDIUM', 'LOW'];
 const NORMALIZATION_PROVENANCE = ['LLM_ASSISTED_UNREVIEWED', 'MAIN_SESSION_REVIEWED', 'FOUNDER_REVIEWED'];
 
+// ── S1.5 schema v2 ──────────────────────────────────────────────────────────
+const CORPUS_SCHEMA_VERSION = 2;
+const SOURCE_FAMILIES = [
+  'DITIANSHUI', 'ZIPINGZHENQUAN', 'YUANHAIZIPING', 'SANMINGTONGHUI',
+  'QIONGTONGBAOJIAN', 'XULEWU', 'OTHER',
+];
+// PROVISIONAL — derived from the corpus, not frozen. See S2_AXIS_CANDIDATES.md.
+const REASONING_FRAMES = [
+  'WANGSHUAI', 'GEJU', 'YONGSHEN_FRAME', 'SEASONAL_CLIMATE',
+  'SPECIAL_STRUCTURE', 'TASK_CAPACITY', 'MULTI_FRAME', 'OTHER',
+];
+const QUESTION_DOMAINS = [
+  'GLOBAL_WANGSHUAI', 'ROOTING', 'SEASON', 'WEALTH_CAPACITY',
+  'OFFICER_KILLING_CAPACITY', 'OUTPUT_CAPACITY', 'RESOURCE_CAPACITY',
+  'FOLLOWING_STRUCTURE', 'SPECIAL_STRUCTURE', 'GEJU',
+  'YONGSHIN_SELECTION_REFERENCE_ONLY', 'LUCK_RESPONSE',
+  'MULTI_DOMAIN', 'UNSPECIFIED', 'UNKNOWN',
+];
+const DATA_COMPLETENESS = ['COMPLETE', 'PARTIAL', 'CHART_ABSENT', 'INCOMPLETE'];
+
 const errors = [];
 const warnings = [];
 const err = (id, m) => errors.push(`[${id}] ${m}`);
@@ -116,7 +136,31 @@ for (const c of cases) {
     warn(id, 'still EXTRACTED — S1 target is at least SOURCE_VERIFIED + CHART_VERIFIED');
   }
 
-  // duplicate chart detection
+  // ── S1.5 schema v2 fields ────────────────────────────────────────────────
+  if (c.CORPUS_SCHEMA_VERSION !== CORPUS_SCHEMA_VERSION) {
+    err(id, `CORPUS_SCHEMA_VERSION must be ${CORPUS_SCHEMA_VERSION}, got ${c.CORPUS_SCHEMA_VERSION}`);
+  }
+  if (!SOURCE_FAMILIES.includes(c.SOURCE_FAMILY)) err(id, `SOURCE_FAMILY invalid: ${c.SOURCE_FAMILY}`);
+  if (!REASONING_FRAMES.includes(c.REASONING_FRAME)) err(id, `REASONING_FRAME invalid: ${c.REASONING_FRAME}`);
+  if (!QUESTION_DOMAINS.includes(c.QUESTION_DOMAIN)) err(id, `QUESTION_DOMAIN invalid: ${c.QUESTION_DOMAIN}`);
+  if (!c.INTERPRETATION_ID) err(id, 'missing INTERPRETATION_ID');
+  if (c.DATA_COMPLETENESS && !DATA_COMPLETENESS.includes(c.DATA_COMPLETENESS)) {
+    err(id, `DATA_COMPLETENESS invalid: ${c.DATA_COMPLETENESS}`);
+  }
+  // a modern systematization layer may never be gold
+  if (c.SOURCE_TEXT_LAYER === 'MODERN_SYSTEMATIZATION' && c.GOLD_LABEL_STATUS === 'GOLD_ELIGIBLE') {
+    err(id, 'MODERN_SYSTEMATIZATION may not be GOLD_ELIGIBLE — it is documented, not authoritative');
+  }
+
+  // duplicate chart detection — a doctrine record carries no chart, so it is
+  // not a chart and must not collide with other chartless records
+  const chartless = c.CHART_YEAR === null && c.CHART_MONTH === null && c.CHART_DAY === null && c.CHART_HOUR === null;
+  if (chartless) {
+    if (c.DATA_COMPLETENESS !== 'CHART_ABSENT') {
+      err(id, 'all four pillars are null but DATA_COMPLETENESS is not CHART_ABSENT');
+    }
+    continue;
+  }
   const fp = [c.CHART_YEAR, c.CHART_MONTH, c.CHART_DAY, c.CHART_HOUR].join('');
   if (!chartIndex.has(fp)) chartIndex.set(fp, []);
   chartIndex.get(fp).push(c.CASE_ID);
@@ -136,11 +180,19 @@ const primary = cases.filter((c) => c.RECORD_ROLE === 'PRIMARY_CASE');
 const uniqueCharts = new Set(cases.map((c) => [c.CHART_YEAR, c.CHART_MONTH, c.CHART_DAY, c.CHART_HOUR].join('')));
 const by = (f) => cases.reduce((a, c) => ((a[c[f]] = (a[c[f]] ?? 0) + 1), a), {});
 
-console.log('=== V2 DISCOVERY CORPUS VALIDATION ===');
+const byFamily = cases.reduce((a, c) => ((a[c.SOURCE_FAMILY] = (a[c.SOURCE_FAMILY] ?? 0) + 1), a), {});
+const nonDts = cases.filter((c) => c.SOURCE_FAMILY !== 'DITIANSHUI').length;
+const topShare = Math.max(...Object.values(byFamily)) / cases.length;
+
+console.log('=== V2 DISCOVERY CORPUS VALIDATION (schema v2) ===');
 console.log(`records            : ${cases.length}`);
 console.log(`PRIMARY_CASE       : ${primary.length}`);
 console.log(`unique charts      : ${uniqueCharts.size}`);
 console.log(`sources registered : ${sources.length}`);
+console.log(`source families    : ${JSON.stringify(byFamily)}`);
+console.log(`non-DITIANSHUI     : ${nonDts}`);
+console.log(`top family share   : ${(topShare * 100).toFixed(1)}%  → DIVERSITY_RISK = ${topShare > 0.8 ? 'HIGH' : topShare > 0.6 ? 'MODERATE' : 'LOW'}`);
+console.log(`reasoning frame    : ${JSON.stringify(cases.reduce((a, c) => ((a[c.REASONING_FRAME] = (a[c.REASONING_FRAME] ?? 0) + 1), a), {}))}`);
 console.log(`grade              : ${JSON.stringify(by('GRADE'))}`);
 console.log(`gold status        : ${JSON.stringify(by('GOLD_LABEL_STATUS'))}`);
 console.log(`source tier        : ${JSON.stringify(by('SOURCE_TIER'))}`);

@@ -7,7 +7,11 @@
     "ERA": "base text Song (attributed); commentary c. 1848 (清 道光)",
     "SOURCE_TIER_VERSE": "A",
     "SOURCE_TIER_COMMENTARY": "B",
-    "TEXT_LAYERS_PRESENT": ["ORIGINAL_TEXT", "YUANZHU", "NAMED_COMMENTARY"],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT",
+      "YUANZHU",
+      "NAMED_COMMENTARY"
+    ],
     "ACCESS_LOCATION": "https://www.guwendao.net/guwen/book_74c064ea85bf.aspx (64-entry index: 序第一 + 上篇 34 + 下篇 29); per-chapter bookv_<hash>.aspx",
     "ACCESS_NOTE": "Host oss.guwendao.net returns HTTP 404; use www.guwendao.net or m.guwendao.net with identical paths. gushiwen.cn book-index returns 500 but its per-chapter pages resolve. NOTE: guwendao.net and gushiwen.cn serve the SAME backend text (footer string differs only), so a cross-fetch proves non-truncation but is NOT an independent edition witness.",
     "CHAPTER_NUMBERING_CORRECTION": "This edition's numbering differs from the numbering assumed during V1. Verified against the served index: 形象第十一, 方局第十二, 八格第十三, 官杀第二十二, 伤官第二十三, 剛柔第二十八, 顺逆第二十九 (all 上篇); 反局第五十二 (下篇). The 第四十四/第四十五 slots are 奋郁 and 恩怨, NOT 形象/方局. All SOURCE_LOCATION fields in discovery-cases.json use the numbering AS SERVED.",
@@ -19,64 +23,316 @@
     "QUOTE_VERIFICATION_STATUS": "CHAPTER_LEVEL_VERIFIED_BY_DIRECT_RETRIEVAL",
     "MACHINE_READABLE_ALLOWED": true,
     "CHAPTERS_SURVEYED_S1": [
-      { "chapter": "体用第十四", "charts": 2 },
-      { "chapter": "精神第十五", "charts": 3 },
-      { "chapter": "月令第十六", "charts": 2 },
-      { "chapter": "生时第十七", "charts": 0 },
-      { "chapter": "衰旺第十八", "charts": 20 },
-      { "chapter": "中和第十九", "charts": 2 },
-      { "chapter": "众寡第三十三", "charts": 3 },
-      { "chapter": "从象第四十七", "charts": 10 },
-      { "chapter": "化象第四十八", "charts": 5 },
-      { "chapter": "假从第四十九", "charts": 5 },
-      { "chapter": "假化第五十", "charts": 5 },
-      { "chapter": "形象第十一", "charts": 20, "extracted": 10 },
-      { "chapter": "方局第十二", "charts": 11, "extracted": 6 },
-      { "chapter": "八格第十三", "charts": 9, "extracted": 9 },
-      { "chapter": "官杀第二十二", "charts": 29, "extracted": 16 },
-      { "chapter": "伤官第二十三", "charts": 28, "extracted": 8 },
-      { "chapter": "刚柔第二十八", "charts": 4, "extracted": 4 },
-      { "chapter": "顺逆第二十九", "charts": 3, "extracted": 3 },
-      { "chapter": "反局第五十二", "charts": 17, "extracted": 9 }
+      {
+        "chapter": "体用第十四",
+        "charts": 2
+      },
+      {
+        "chapter": "精神第十五",
+        "charts": 3
+      },
+      {
+        "chapter": "月令第十六",
+        "charts": 2
+      },
+      {
+        "chapter": "生时第十七",
+        "charts": 0
+      },
+      {
+        "chapter": "衰旺第十八",
+        "charts": 20
+      },
+      {
+        "chapter": "中和第十九",
+        "charts": 2
+      },
+      {
+        "chapter": "众寡第三十三",
+        "charts": 3
+      },
+      {
+        "chapter": "从象第四十七",
+        "charts": 10
+      },
+      {
+        "chapter": "化象第四十八",
+        "charts": 5
+      },
+      {
+        "chapter": "假从第四十九",
+        "charts": 5
+      },
+      {
+        "chapter": "假化第五十",
+        "charts": 5
+      },
+      {
+        "chapter": "形象第十一",
+        "charts": 20,
+        "extracted": 10
+      },
+      {
+        "chapter": "方局第十二",
+        "charts": 11,
+        "extracted": 6
+      },
+      {
+        "chapter": "八格第十三",
+        "charts": 9,
+        "extracted": 9
+      },
+      {
+        "chapter": "官杀第二十二",
+        "charts": 29,
+        "extracted": 16
+      },
+      {
+        "chapter": "伤官第二十三",
+        "charts": 28,
+        "extracted": 8
+      },
+      {
+        "chapter": "刚柔第二十八",
+        "charts": 4,
+        "extracted": 4
+      },
+      {
+        "chapter": "顺逆第二十九",
+        "charts": 3,
+        "extracted": 3
+      },
+      {
+        "chapter": "反局第五十二",
+        "charts": 17,
+        "extracted": 9
+      }
     ],
     "SURVEY_VS_EXTRACTION_NOTE": "22 chapters surveyed; 226 worked charts located; 131 records extracted into the corpus. Where `extracted` < `charts`, the shortfall is DELIBERATE SELECTION under §5's 'quality beats count', not a retrieval failure: priority went to charts carrying explicit strength/capacity vocabulary, all matched pairs, all counterexamples, and every 從/假從/從兒 case. The unextracted remainder is available for S2 at the URLs recorded here and was not discarded."
   },
   {
     "SOURCE_ID": "SRC-002",
-    "TITLE": "子平真詮 / 子平真詮評註",
+    "TITLE": "子平真詮 — 沈孝瞻 BASE LAYER ONLY (47 篇)",
     "BASE_TEXT_AUTHOR": "沈孝瞻 (Qing)",
-    "COMMENTATOR": "徐樂吾 (Republican era)",
+    "COMMENTATOR": "NONE — 徐樂吾 評註 is a SEPARATE authority, see SRC-006",
     "SOURCE_TIER_VERSE": "A",
     "SOURCE_TIER_COMMENTARY": "B",
-    "ACCESS_LOCATION": "東里書齋 秘本子平真詮 卷四 (論雜格 verified during V1); Wikisource",
-    "COPYRIGHT": "Base text public domain; 徐樂吾 commentary — edition status to verify before bulk quotation",
-    "RELIABILITY_NOTES": "V1-verified passages: ch.6 論十干得時不旺失時不弱; 論雜格's three sentences on 外格 and 財根深.",
+    "ACCESS_LOCATION": "https://www.donglishuzhai.net/books/63.html (TOC); chapters /chapter/3719 (ch.6), /3721 (ch.8 論用神), /3746 (ch.33 論財), /3761 (附集原書命例)",
+    "COPYRIGHT": "PUBLIC_DOMAIN",
+    "RELIABILITY_NOTES": "Text is unstable across editions even for 沈. 8bei8 vs donglishuzhai in ch.6: 晃富 for 不富, 明根 for 有根, 甲逢亥子寅卯 for 甲逢亥寅卯. In 論財 8bei8 DROPS 不 from 然財印不宜相並 (reversing the meaning) and drops the 己亥 pillar from 趙侍郎命.",
     "KNOWN_SCHOOL_BIAS": "格局派 — structure-first; treats mono-element forms as 雜格 rather than named 從/專旺 categories.",
     "CASES_EXTRACTED_S1": 0,
-    "STATUS": "PRIORITY_TARGET_FOR_S1_CONTINUATION",
-    "MACHINE_READABLE_ALLOWED": true
+    "STATUS": "EXAMINED — DOCTRINE/RULE role confirmed; WEAK as a worked-case source",
+    "MACHINE_READABLE_ALLOWED": true,
+    "ERA": "Qing",
+    "SOURCE_FUNCTION": [
+      "DOCTRINE_SOURCE",
+      "RULE_SOURCE",
+      "TERMINOLOGY_SOURCE"
+    ],
+    "SOURCE_FUNCTION_WEAK": [
+      "WORKED_CASE_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT"
+    ],
+    "EDITION": "東里書齋 donglishuzhai.net collated edition, traditional characters, with visible 【校】 apparatus citing 中州本. THIS IS THE AUTHORITY FOR THE 沈孝瞻 LAYER.",
+    "ACCESS_NOTE": "ctext.org CAPTCHA-walled. NOT on zh.wikisource (API returns missing for both 子平真詮 and 子平真詮評註). donglishuzhai rate-limits to roughly 1 request per 30-60s; parallel fetches fail.",
+    "CRITICAL_EDITION_WARNING": "⚠️ 8bei8 (太極書館), the most common online edition, has INVERTED LAYER TAGS in at least two chapters — it labels 徐樂吾 material as 原文 and 沈孝瞻 material as 徐注. Verified against the 東里書齋 collated original. Its page 52, advertised as an UNANNOTATED original, is CONTAMINATED with 徐樂吾 material. DO NOT use 8bei8 as a layer baseline.",
+    "ADDITIONAL_EDITORIAL_LAYERS_PRESENT_ONLINE": [
+      "林注: — a 20th/21st-c. web annotator surnamed 林, inside 8bei8 text. NOT 徐樂吾, NOT 沈孝瞻.",
+      "東里山人按: — the modern electronic-edition editor on donglishuzhai"
+    ],
+    "CHAPTER_STRUCTURE": "47 篇 + appendices. Chapters 1-30 doctrinal (illustrate with ABSTRACT configurations, e.g. 甲用酉官，透丁逢壬 — essentially zero nativities). Chapters 31-47 are 格局 taxonomy + 取運 rules and carry the charts.",
+    "CASE_DENSITY": "BIMODAL — ch.1-30 ~0 charts; ch.31-47 ~4.8/chapter (81 in the appendix, 論財 alone has 13). Book-wide average ~1.7 is misleading; quote the bimodal figure.",
+    "REASONING_DENSITY": "VERY HIGH per word but ABOUT RULES, NOT ABOUT CHARTS. Analysis per chart is typically 8-25 characters. Inverted from a casebook: dense generative doctrine, thin per-case argument.",
+    "STRENGTH_TERMINOLOGY": "MEASURED over a superset of the 沈 original: 用神 56, 月令 51, 格局 24, 身旺 23 (almost all inside 取運 formulas), 身強 16 (ALWAYS a precondition clause inside a 格局 definition, never a standalone verdict), 相神 4, 身弱 4. ZERO: 得地, 得勢, 得令, 失令, 任財, 任官, 足以, 不足以, 財官承載, 財多身弱, 身旺任財.",
+    "KNOWN_LINEAGE": "格局派 — 月令 → 格局 → 用神 → 相神",
+    "OCR_RISK": "MODERATE — corruptions observed in the appendix: 乙己 (invalid pillar, likely 乙巳), 命煞存財 for 合煞存財, 棄使從煞 for 棄命從煞",
+    "CHARTS_LOCATED": 82,
+    "CASES_EXTRACTED_S1_5": 0,
+    "SEX_MARKERS": "NOT_STATED for every chart. No 乾造/坤造 anywhere. 蔡貴妃命 carries an imperial-consort title but the text does not state sex.",
+    "LUCK_CYCLES": "NOT_STATED for every chart",
+    "KEY_FINDINGS": [
+      "PRIMARY FRAME CONFIRMED: 八字用神，專求月令，以日干配月令地支 … 不向月令求用神，而妄取用神者，執假失真也 (VERIFIED verbatim). Day-Master strength is NOT part of the first-order procedure.",
+      "沈 RANKS 用神 ABOVE THE DAY MASTER: 傷用神甚於傷身 (論相神緊要) — ATTRIBUTION NOT INDEPENDENTLY VERIFIED, retrieved via 8bei8 whose tags are unreliable",
+      "ALL 16 身強 occurrences are qualifying clauses inside 格局 definitions (身强而不透傷官 / 透官身弱，則格壞矣), never standalone verdicts",
+      "沈 DOES support P-002: 得時而不旺 / 失時不弱 — his ch.6 is genuinely his, VERIFIED verbatim",
+      "THE 扶抑/病藥/調候/專旺/通關 FIVE-METHOD TAXONOMY IS **NOT** 沈: 扶抑, 調候 and 專旺 all VERIFIED ABSENT from his own 論用神 chapter — the exact place they would live if his",
+      "THE 得時為旺/失時為衰/黨眾為強/助寡為弱 FOUR-WAY GRID IS **NOT** 沈: 旺衰強弱四字 and 黨眾為強 VERIFIED ABSENT from his collated ch.6. It is 徐樂吾. → OBS-19"
+    ]
   },
   {
     "SOURCE_ID": "SRC-003",
     "TITLE": "淵海子平",
-    "BASE_TEXT_AUTHOR": "attributed 徐大升 (Song), compiled later",
+    "BASE_TEXT_AUTHOR": "attributed 徐大升 (Song); compiled/expanded later",
     "SOURCE_TIER_VERSE": "A",
-    "ACCESS_LOCATION": "LOCATION_UNRESOLVED for a machine-readable full text; V1 located individual passages only",
-    "RELIABILITY_NOTES": "V1 located its 曲直格 passage. The 稼穡 couplet 戊己生居四季中，辰戌丑未要全逢 belongs to its 外十八格 眉批 (張真人 chart), NOT to 三命通會 as once misattributed.",
+    "ACCESS_LOCATION": "http://sajumania.com/ebook/to01-06/to01-06-index.htm (TOC); per-chapter to01-06-<juan>-<n>.htm",
+    "RELIABILITY_NOTES": "sajumania pages are clean typed traditional characters, not scanned — no OCR corruption observed. The 外十八格 heading says eighteen but lists 23 entries; the label is nominal, not a count.",
     "KNOWN_SCHOOL_BIAS": "Older 格局/神煞-inclusive stratum; presence-based disqualifiers (見庚辛即官殺，非此格也).",
     "CASES_EXTRACTED_S1": 0,
-    "STATUS": "KNOWN_GAP_FLAGGED_NOT_RETRIEVED_IN_V1",
-    "MACHINE_READABLE_ALLOWED": true
+    "STATUS": "EXAMINED — DOCTRINE/TERMINOLOGY role confirmed; deliberately NOT used as a worked-case source",
+    "MACHINE_READABLE_ALLOWED": true,
+    "COMMENTATOR": "眉批 (marginal verse) — compiler unattributed",
+    "ERA": "Song attribution; received recension later",
+    "SOURCE_FUNCTION": [
+      "DOCTRINE_SOURCE",
+      "TERMINOLOGY_SOURCE",
+      "RULE_SOURCE"
+    ],
+    "SOURCE_FUNCTION_NOT": [
+      "WORKED_CASE_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT",
+      "NAMED_SCHOOL"
+    ],
+    "EDITION": "sajumania 黃文塗堪輿研究中心 7-volume traditional-character e-text (304 chapters). The Wikisource copy is an ABRIDGED edition MISSING 外十八格, 雜格 and 神趣八法 entirely.",
+    "ACCESS_NOTE": "ctext.org is CAPTCHA-gated. guwendao/gushiwen do not carry this work. WIKISOURCE IS A FALSE-NEGATIVE TRAP: testing special-pattern doctrine against it alone returns nothing, because the whole 外十八格 layer is absent there.",
+    "CHAPTER_STRUCTURE": "7 juan / 304 chapters. Charts occur ONLY in 卷二 外十八格 and 卷三 神趣八法; roughly 280 chapters are verse, 賦 and rule-lists with zero charts.",
+    "CASE_DENSITY": "LOW — 13 charts in a 7-volume work",
+    "REASONING_DENSITY": "VERY LOW — analyses run 1-3 sentences and restate the entry rule as applied. No case weighs competing readings or explains a borderline.",
+    "STRENGTH_TERMINOLOGY": "身旺 / 身弱 / 無根 / 有根 / 無氣. Strength is SUBORDINATE — an admission gate on pattern entry (類屬要身旺，而從化要衰也), not the object of analysis.",
+    "SPECIAL_PATTERN_TERMINOLOGY": "曲直格 炎上格 稼穡格 從革格 潤下格 (five separate 格 under 外十八格); 棄命從財格 棄命從殺格; 神趣八法 類象/屬象/從象/化. NO 從勢 and NO 從兒 as named categories. 專旺 ABSENT.",
+    "KNOWN_LINEAGE": "older 格局 + 神煞-inclusive stratum",
+    "KNOWN_EDITORIAL_LAYER": "眉批 are mnemonic verse, NOT analytic commentary",
+    "OCR_RISK": "LOW",
+    "COPYRIGHT": "PUBLIC_DOMAIN",
+    "CHARTS_LOCATED": 13,
+    "CASES_EXTRACTED_S1_5": 0,
+    "PROPOSITIONS_EXTRACTED": 0,
+    "KEY_FINDINGS": [
+      "專旺 ABSENT — full-text scan plus a sitewide insource search that DID return 三命通會, which makes the negative meaningful rather than a search artefact",
+      "Binary glyph-presence disqualifiers: 要不見庚辛之氣，見庚辛即官殺，非此格也 — categorically unlike 滴天髓 balance-of-forces reasoning",
+      "ROOT BLOCKS FOLLOWING, stated 3x independently: 日主有根則不可棄，主貧。無根棄之則富 / 忌日主有根及比肩之地 / 或有根者不吉 → CF-011, makes R11 SCHOOL_DEPENDENT",
+      "EXPLICIT SEQUENCING: 看八字先明從化爲本，化不成方論財官，財官無取方論格局 → CF-012",
+      "Strength as an admission gate: 類屬要身旺，而從化要衰也",
+      "甲乙日得亥卯未局… is in 三命通會 卷六, NOT here — prior attribution corrected"
+    ]
   },
   {
     "SOURCE_ID": "SRC-004",
     "TITLE": "三命通會",
-    "BASE_TEXT_AUTHOR": "萬民英 (Ming)",
+    "BASE_TEXT_AUTHOR": "萬民英 (Ming, 1578)",
     "SOURCE_TIER_VERSE": "A",
-    "ACCESS_LOCATION": "LOCATION_UNRESOLVED for a machine-readable full text",
-    "RELIABILITY_NOTES": "V1 located 甲乙日得亥卯未局，柱中須有亥字帶印為入格 and 戊己忻逢四季，乃為稼穡之名. Groups the five mono-element forms as one section.",
+    "ACCESS_LOCATION": "https://zh.wikisource.org/zh-hant/三命通會_(四庫全書本)/全覽",
+    "RELIABILITY_NOTES": "四庫 text systematically writes 巳 for 己 (戊巳 = 戊己, 巳土 = 己土, and 己酉丑 printed for 巳酉丑 in 從革) — pervasive, not meaningful. Variant glyphs throughout (尅/剋, 湏/須, 逄/逢, 夘/卯, 刄/刃). EDITION DIVERGENCE: 四庫 懷金氣 vs 8bei8 坏(壞)金氣 — a real semantic split; 懷 is likely correct. BOTH editions print 戊己生逄四月中 where sense demands 四季 — an inherited error, not OCR.",
     "CASES_EXTRACTED_S1": 0,
-    "STATUS": "KNOWN_GAP_FLAGGED_NOT_RETRIEVED_IN_V1",
+    "STATUS": "EXAMINED — 卷七 identified as the best worked-case material; 卷八-九 excluded as interpolated",
+    "MACHINE_READABLE_ALLOWED": true,
+    "COMMENTATOR": "萬民英 own interlinear commentary in 〈…〉 on reprinted earlier 賦/歌 (卷十一-十二)",
+    "ERA": "Ming 1578",
+    "SOURCE_FUNCTION": [
+      "RULE_SOURCE",
+      "WORKED_CASE_SOURCE",
+      "TERMINOLOGY_SOURCE",
+      "COMMENTARY_SOURCE"
+    ],
+    "SOURCE_FUNCTION_WEAK": [
+      "DOCTRINE_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT",
+      "NAMED_COMMENTARY"
+    ],
+    "EDITION": "四庫全書本 via zh.wikisource 全覽 — entire 12 卷 on one page, 478,094 chars, traditional, unpunctuated, 四庫 orthography. Cross-collated against 8bei8 modern punctuated edition.",
+    "CHAPTER_STRUCTURE": "12 卷. 卷一-二 definitional (納音, 十二宮, 旺相休囚死). 卷三 神煞. 卷四 day-stem x month. 卷五-六 格局 catalogue (~90 named). 卷七 論女命. 卷八-九 a 60 day-pillar x 12 hour lookup table (~720 rubrics, ~22% of the book). 卷十 㸔命口訣 — the ONLY sustained statement of method. 卷十一-十二 earlier 賦/歌 with 萬 commentary.",
+    "CASE_DENSITY": "HIGH but BIMODAL. Narrated cases with reasoning ~60-90 in 478k chars (LOW for the size). Tabulated cases (name + year + month only, no reasoning) number in the hundreds and dominate 卷八-九.",
+    "REASONING_DENSITY": "LOW-TO-MODERATE and highly uneven. Median chart gets 15-40 chars (合格大貴 / 殺豬屠戶). EXCEPTION: 卷七 論女命 routinely gives 60-120 chars of connected 十神 reasoning — the best material in the book.",
+    "STRENGTH_TERMINOLOGY": "MEASURED over 478,094 chars: 身旺 463, 納音 223, 身弱 202, 日主 217, 用神 173, 月令 165, 神煞 86, 格局 83, 得令 27, 通根 5. READ HONESTLY: 身旺 is very high but functions as an ALREADY-KNOWN LOCAL FACT (身旺逢官 / 行身旺運), while 通根 at 5 shows the work has almost NO vocabulary for ESTABLISHING strength by root.",
+    "SPECIAL_PATTERN_TERMINOLOGY": "曲直 炎上 從革 潤下 稼穡 as five CONSECUTIVE but UNGROUPED and COLLECTIVELY UNNAMED sections in 卷六, keyed to day-stem pair + 三合局. 從煞 28x, 從財 9x, filed among 十神 sections not with the mono-element forms. 專旺 9x but ALWAYS ADJECTIVAL — there is NO 專旺格.",
+    "KNOWN_LINEAGE": "Ming encyclopedic compendium; 納音 is a live first-class channel (223 occurrences, more than 月令 or 格局)",
+    "KNOWN_EDITORIAL_LAYER": "⚠️ 卷八-九 official rosters are PARTLY LATER COMMERCIAL-PRINT INTERPOLATION. The 四庫 editors flagged it in 1779 (中間所載仕宦八字往往及明季之人葢後來坊刻所攙入亦己非原本之舊) and one entry names the 天啓 era (1621-27), decades after 萬民英 died. DO NOT treat 卷八-九 as his own case files.",
+    "OCR_RISK": "HIGH",
+    "COPYRIGHT": "PUBLIC_DOMAIN",
+    "CHARTS_LOCATED": "60+ narrated (lower bound, scanned only for the 一命 marker); hundreds tabulated",
+    "CASES_EXTRACTED_S1_5": 0,
+    "SEX_MARKERS": "乾造 0 occurrences; 坤造 1 and NOT a chart marker (乾坤造化各主禍福). This work has NO 乾造/坤造 notation. All charts NOT_STATED, EXCEPT that everything in 卷七 falls under 論女命 and is female BY SECTION CONTEXT — recorded as such, never inferred from pillars.",
+    "LUCK_CYCLES": "No chart carries a printed 大運 sequence. A minority mention a single luck pillar inline (運行壬午, 一交丁巳運).",
+    "KEY_FINDINGS": [
+      "旺相休囚死 IS EXPLICITLY NOT AN EVALUATIVE SCALE: 見生旺者未必便作吉論見休囚死絶未必便作凶言 — then re-purposed as a corrective trigger: 生旺太過宜乎制伏死絶不及宜乎生扶 → OBS-20",
+      "PRIMARY FRAME: 凡㸔命專以日干為主取提綱所用之物為命 … 曰官曰印曰財曰煞曰食神曰傷官以此六法消息之. Relation-to-relation rules (逢官㸔財逢煞㸔印), not strength computation.",
+      "專旺 present 9x but NEVER as a 格 name — always adjectival. The 卷四 hit groups the forms under 類象: 若成趨乾曲直類象等格 → completes the 專旺 provenance chain",
+      "曲直 entry gated on a 十神 RELATION not an element count: 甲乙日得亥卯未局柱中湏有亥字帶印為入格 (VERIFIED, both editions)",
+      "稼穡 passage is a QUOTATION: 〈賦雲〉戊巳忻逄四季乃為稼穡之名 — 萬民英 is citing an earlier 賦, not authoring it. Attribution corrected.",
+      "四庫 editors 1779 named the organizing axes as 官印財祿食傷之名義 / 用神之輕重 / 諸神煞所係之吉凶 — and conspicuously did NOT name day-master strength"
+    ]
+  },
+  {
+    "SOURCE_ID": "SRC-005",
+    "TITLE": "窮通寶鑑 (欄江網 / 造化元鑰)",
+    "BASE_TEXT_AUTHOR": "anonymous; 余春臺 recension",
+    "COMMENTATOR": "徐樂吾 評註 (1937) — SEPARATE LAYER, registered as SRC-006",
+    "ERA": "base text Qing or earlier; 徐樂吾 commentary 1937",
+    "SOURCE_TIER_VERSE": "A",
+    "SOURCE_FUNCTION": [
+      "DOCTRINE_SOURCE",
+      "RULE_SOURCE",
+      "TERMINOLOGY_SOURCE"
+    ],
+    "SOURCE_FUNCTION_NOT": [
+      "WORKED_CASE_SOURCE",
+      "COMMENTARY_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "ORIGINAL_TEXT"
+    ],
+    "EDITION": "zh.wikisource 窮通寶鑑, base text only, 34140 chars, PD banner. Corroborated by 8bei8, sajumania, guwendao and suanzhun — ALL are base-text-only witnesses.",
+    "ACCESS_LOCATION": "https://zh.wikisource.org/zh-hant/窮通寶鑑",
+    "ACCESS_NOTE": "徐樂吾 評註 is NOT obtainable online as text. The authoritative 1937 千頃堂 edition exists as a National Library of China scan on Wikimedia Commons (NLC416-12jh004238-48608) but is image-only JBIG2 with no text layer.",
+    "CHAPTER_STRUCTURE": "五行總論 → 十干分論 → 論木/火/土/金/水 → per-stem → 三春/三夏/三秋/三冬 → per-month entries (正月甲木 etc). The primary key of the entire work is STEM x MONTH. There is no chapter on 格局, none on 用神取法, and none on strength assessment.",
+    "CASE_DENSITY": "HIGH by count (183 chart headers 時日月年 across 72 tables, ~1 per 190 chars) but NEAR-ZERO analysed — labels are 2-6 chars (狀元/按察/詞林/進士) and most charts carry no label at all",
+    "REASONING_DENSITY": "HIGH in doctrinal prose (explicit condition → element → outcome chains); NEAR-ZERO in the case layer",
+    "STRENGTH_TERMINOLOGY": "MEASURED over the full text: 身強 0, 扶抑 0, 旺衰 0, 得勢 0, 黨眾 0, 助寡 0, 調候 0. 身弱 10 and 身輕 7 occur ONLY inside frozen idioms (財多身弱, 殺重身輕) or quoted 口訣/歌訣, governed by 名/名曰 — pattern NAMES, not derivations.",
+    "CLIMATE_TERMINOLOGY": "寒 75, 旺 87 (mostly of ELEMENTS, not the self), 暖 25, 凍 22, 燥 17, 焚 6, 濕 3. Named conditions: 寒木向陽, 金弱沉寒, 解凍, 愈寒愈凍, 燥渴相加, 太陽失令, 冬至一陽生弱中復強.",
+    "SPECIAL_PATTERN_TERMINOLOGY": "棄命從殺 appears (十一月丙火); no systematic special-pattern taxonomy",
+    "KNOWN_LINEAGE": "climatic / seasonal lineage — though the base text NEVER uses the word 調候",
+    "KNOWN_EDITORIAL_LAYER": "the circulating digital text is the bare 余春臺 recension; the 徐樂吾 layer is absent from every located witness",
+    "RELIABILITY_NOTES": "Textual variant flagged: 五月庚金 reads 又見戊己透者則吉 on Wikisource and 則否 on 8bei8. 則否 is consistent with the preceding 切忌戊己透干制水、則否; 則吉 reverses the sense. UNRESOLVED — do not rely on that clause.",
+    "OCR_RISK": "LOW for the base text",
+    "COPYRIGHT": "base text PUBLIC_DOMAIN (Wikisource PD banner)",
+    "CHARTS_LOCATED": 183,
+    "CASES_EXTRACTED_S1_5": 0,
+    "SEX_MARKERS": "NOT_STATED throughout, with exactly ONE exception: the 十二月庚金 chart 癸庚己庚 / 未戌丑辰 is labelled 女命. Never inferred anywhere.",
+    "LUCK_CYCLES": "NOT_STATED for every chart",
+    "STATUS": "EXAMINED — DOCTRINE/TERMINOLOGY role confirmed; deliberately NOT used as a worked-case source",
+    "KEY_FINDINGS": [
+      "A COMPLETE CLASSICAL SYSTEM WITH NO STRENGTH AXIS: 身強 / 扶抑 / 旺衰 / 得勢 / 黨眾 / 助寡 all measure ZERO → OBS-17",
+      "調候 appears ZERO times in the book the term names → OBS-18",
+      "Climate prescribes what 扶抑 forbids: 五月庚金 is 庚金敗地 yet 專用壬水 with 切忌戊己透干制水; 十一月丙火 is the weakest Fire yet 壬水為最, justified calendrically by 冬至一陽生，弱中復強 → CF-013",
+      "Its own selection rule ignores the self: 木旺宜庚，水旺宜戊，火旺用壬",
+      "FALSE FRIEND: 得時 here means seasonally-timed (水火二物，要得時相濟為美), NOT the strength sense",
+      "FALSE FRIEND: 金弱沉寒 — 弱 inside a CLIMATIC pattern name, remedied by 丙火照暖 rather than by reinforcement"
+    ],
+    "MACHINE_READABLE_ALLOWED": true
+  },
+  {
+    "SOURCE_ID": "SRC-006",
+    "TITLE": "子平真詮評註 — 徐樂吾 commentary layer ONLY",
+    "BASE_TEXT_AUTHOR": "沈孝瞻 (base text is SRC-002, a different authority)",
+    "COMMENTATOR": "徐樂吾",
+    "ERA": "1936",
+    "SOURCE_TIER_VERSE": "C",
+    "SOURCE_TIER_COMMENTARY": "C",
+    "SOURCE_FUNCTION": [
+      "COMMENTARY_SOURCE",
+      "TERMINOLOGY_SOURCE"
+    ],
+    "TEXT_LAYERS_PRESENT": [
+      "MODERN_SYSTEMATIZATION"
+    ],
+    "WHY_SEPARATE_SOURCE_ID": "This layer must never be conflated with 沈孝瞻. It is the earliest located locus of the 扶抑-baseline + 調候-supplement framing that modern standard doctrine inherits. Registering it separately is what makes that inheritance visible instead of invisible.",
+    "ACCESS_LOCATION": "https://www.suanzhun.net/book/326.html — 論用神配氣候得失, layers explicitly labelled 原文: / 徐注:",
+    "STRENGTH_TERMINOLOGY": "On ch.14 alone: 調候 13, 中和 4, 身弱 2, 扶抑 1. Compare the base 窮通寶鑑: 調候 0, 扶抑 0. Uses 身弱 as a LIVE DIAGNOSIS DRIVING A SELECTION (更有調候雖得其宜而身弱者…須以酉金扶身為用) — a grammar absent from both classical texts measured.",
+    "KEY_FINDINGS": [
+      "THE SYSTEMATIZATION SENTENCE, verified verbatim with layer attribution: 故取用神，於扶抑之外，必須參合氣候，即調候之法也。 — it names 調候, installs 扶抑 as the baseline, and subordinates climate to it",
+      "凡八字必以中和為貴，偏旺一方，而無調劑之神，雖成格成局，亦不為美 — a QUANTITATIVE balance doctrine, where 窮通寶鑑 uses 中和 to mean THERMALLY TEMPERATE",
+      "Supplies analysed cases with named subjects that the base texts lack (e.g. 彭玉麟 造 丙子/辛丑/戊子/癸丑)"
+    ],
+    "COPYRIGHT": "徐樂吾 d.1948 — likely PD under life+70, but modern typeset editions may carry their own claim. SHORT EXCERPTS ONLY.",
+    "RELIABILITY_NOTES": "GAP: 徐樂吾 own 窮通寶鑑評註 (1937) could not be read — the NLC scan is image-only JBIG2. The evidence here is from his 子平真詮評註 (1936). The inference that he applies the same framing in the 窮通寶鑑 commentary is STRONG BUT NOT DIRECTLY MEASURED.",
+    "CASES_EXTRACTED_S1_5": 0,
+    "STATUS": "EXAMINED — commentary-layer systematization documented",
     "MACHINE_READABLE_ALLOWED": true
   },
   {

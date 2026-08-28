@@ -195,6 +195,103 @@
 
 ---
 
+## OBS-15 — 無根 is a **disqualification device for other parties**, not a Day-Master verdict (S1.5)
+
+| Field | Value |
+|---|---|
+| **Observation** | Measured across all 131 records. 無根 occurs **18 times**. In **17 of 18** it is predicated of something *other than the Day Master* — an officer, a resource, a wealth star, or an element arriving in a luck period. Only **1** (`DTS-CONGXIANG-09`, 日主休囚無根) predicates it of the Day Master. The positive form 通根 shows the same skew: 14 clearly non-Day-Master vs 3 clearly Day-Master (5 ambiguous, mostly 通根身庫 constructions that do concern the Day Master). |
+| **Measurement** | Programmatic scan of `ORIGINAL_JUDGMENT_TEXT`, resolving the element named immediately before each occurrence against the record's actual day stem. Reproducible; not an impression. |
+| **The decisive collocation** | Three records pair rootlessness with an explicit instruction to **disregard** the element: 天干枯木無根，**置之不論** (`DTS-SHUNNI-02`) · 土金無根，**置之不用** (`DTS-SHANGGUAN-16`) · 丙火克絕，**置之不論** (`DTS-SHUNNI-03`). |
+| **A second asymmetry** | 有根 appears **0 times** in the entire corpus. The source has no symmetric 有根/無根 pair. Its positive vocabulary is 通根 (20), 餘氣 (11), 得地 (6), plus qualified forms 庫根 · 微根 · 盤根 · 根深 · 根固 · 根重. |
+| **Confidence** | **HIGH** — exhaustive count over the corpus, single lineage |
+| **Why it matters, and this is a correction to how V1 read its own sources** | V1's R3 (有根 ⇒ 身強) and R4 (無根 ⇒ 身弱) were framed as a symmetric predicate pair applied to the Day Master. The corpus shows (a) one half of that pair, 有根, **is not a term this source uses at all**, and (b) the half it does use is, 94% of the time, **about a different party entirely**. V1 did not merely over-generalise a rule — it misidentified the grammatical subject of the construction. The source's operative question when it says 無根 is *"is this element a real player, or may I strike it from the reckoning?"* — a **functional-participation test on a party**, not a strength meter on the Day Master. |
+| **How it fits OBS-11** | The two findings are the same shape seen from two sides. OBS-11: capacity is asserted of *a party, against a load*. OBS-15: rooting is assessed for *a party, to decide whether it counts*. Both point away from "the chart has a strength" and toward "the chart is a set of parties, each of which may or may not be able to act." |
+| `READY_FOR_RULE?` | **NO** — single lineage, and cross-lineage testing is exactly what S1.5 exists for. But it is a hard constraint: any V2 rooting axis must carry **which party** it is about, or it will repeat V1's error. |
+
+---
+
+## OBS-16 — The season vocabulary V1 built on is largely absent (S1.5)
+
+| Field | Value |
+|---|---|
+| **Observation** | Measured across all 131 records: 得令 **0** · 失令 **2** · 得時 **1** · 失時 **0**. The source's actual seasonal vocabulary is 當令 (**13**), 乘權 (**5**), 秉令 (**4**), 休囚 (**3**), 當權. |
+| **Confidence** | **HIGH** — exhaustive count |
+| **Why it matters** | R1 (得令 ⇒ 身強) and R2 (失令 ⇒ 身弱) were built on a 得令/失令 pair that this corpus effectively does not use. The abstract refutation of R1/R2 from 子平真詮 ch.6 (論十干得時不旺失時不弱) is in *that* book's vocabulary; 滴天髓's worked cases mostly do not phrase the question that way at all. |
+| **Nuance — do not overread this** | Absence of the *term* is not absence of the *concept*. 當令 does the same work, and the seasonal reversals in both directions are real (`DTS-GUANSHA-01` 弱中變旺 · `DTS-GUANSHA-14` 雖坐旺刃，究竟休囚 · `DTS-XINGXIANG-19` 建祿 yet 弱). The finding is about **which vocabulary carries the concept**, which matters for extraction and for cross-source term mapping — not a claim that season is unimportant. |
+| `READY_FOR_RULE?` | **NO** — a terminology and corpus-design finding |
+
+---
+
+## OBS-17 — A complete rival doctrine exists with **no strength axis at all** (S1.5)
+
+| Field | Value |
+|---|---|
+| **Observation** | 窮通寶鑑 (base text, 余春臺 recension, ~34,140 chars) organises its entire doctrine as *stem × month → needed element*. Deterministic substring counts over the full Wikisource text: **身強 0 · 扶抑 0 · 旺衰 0 · 得勢 0 · 黨眾 0 · 助寡 0**. Against: 寒 75 · 旺 87 · 暖 25 · 凍 22 · 燥 17 · 焚 6 · 濕 3. |
+| **The residual strength tokens are not derivations** | 身弱 occurs 10×, 身輕 7× — and every occurrence is a **frozen idiom** (財多身弱 ×7, 殺重身輕 ×6) or sits inside an explicitly quoted 口訣/歌訣. The governing verb is 名 / 名曰 — *"this is called"*. e.g. 「若柱中多金，**名曰**殺重身輕，先富後貧」. These are **pattern names assigned to configurations**, exactly like 寒木向陽 or 金弱沉寒 — not the output of a strength computation. |
+| **Confidence** | **HIGH** — counts derived by deterministic string matching over the live DOM, not by a summarizing model |
+| **Why it matters** | This is the first source family in the corpus that reasons about charts **without a strength axis in any form**. It answers a question S1 could not: is a global Day-Master strength scale *necessary* to professional judgment? Demonstrably not — an entire classical system operates without one. |
+| `READY_FOR_RULE?` | **NO** — but it constrains §59 heavily. A standalone Strength engine cannot be justified as "what Myungri does", because one major lineage does not do it |
+
+---
+
+## OBS-18 — 調候 is **absent from the book it names**, and arrives already subordinated (S1.5)
+
+| Field | Value |
+|---|---|
+| **Observation** | The term **調候 appears ZERO times** in the base 窮通寶鑑. The book never names its own method. The name is supplied by the 20th-century commentary layer — and arrives already folded under a strength-first taxonomy. |
+| **The sentence** | 徐樂吾, 子平真詮評註 ch.14 論用神配氣候得失 (1936), verified verbatim by direct retrieval with layer attribution: <br>「用神須得時乘氣，譬如夏葛冬裘，得時則貴。然亦有用神雖乘旺氣而不貴者，則受氣候之影響。故取用神，**於扶抑之外，必須參合氣候，即調候之法也**。」 |
+| **What that sentence does, in three moves** | ① **names** the method 調候 — a word the base text never uses; ② installs 扶抑 as the **default baseline** and climate as a supplement applied 「於扶抑之外」 (*beyond* 扶抑); ③ thereby converts an autonomous, self-sufficient doctrine into a sub-branch of strength-based 用神 selection. The base text has no 扶抑 baseline for anything to be "beyond". |
+| **Corroborating layer contrast** | On the same page, 徐樂吾 uses 身弱 as a **live diagnosis driving a selection** — 「更有調候雖得其宜而身弱者…須以酉金扶身為用」 — a grammar of reasoning that occurs nowhere in 窮通寶鑑, where 身弱 only ever appears as a frozen tag. Term counts on the 徐注 page: 調候 13 · 中和 4 · 身弱 2 · 扶抑 1. In the whole base 窮通寶鑑: 調候 0 · 扶抑 0. |
+| **中和 shifts meaning across the layers too** | 中和 appears 8× in the base text meaning *thermally temperate* (「若得壬水，方配得中和」). 徐樂吾 uses it as a *quantitative balance* doctrine: 「凡八字必以中和為貴，偏旺一方，而無調劑之神，雖成格成局，亦不為美」. Same characters, different concept. |
+| **Confidence** | **HIGH** for the base-text absence (deterministic count) and for the 徐樂吾 sentence (verified verbatim, layers labelled on the source page) |
+| **One honest gap** | 徐樂吾's *own* 窮通寶鑑評註 (1937) could not be read — the National Library of China scan on Wikimedia Commons is image-only JBIG2 with no text layer. The evidence above is from his 子平真詮評註 (1936), one year earlier. The inference that he applies the same framing in the 窮通寶鑑 commentary is **strong but not directly measured**. |
+| **Why it matters, and this is the S1.5 finding with the longest reach** | §23 asked whether "modern standard strength doctrine" is partly commentary-layer systematization. **Here it is, dated, attributed, and caught in the act of happening.** Any V2 design that treats 調候 as a sub-branch of strength-based 用神 selection is inheriting 徐樂吾's 1936 framing while believing it inherited a classical one. |
+| `READY_FOR_RULE?` | **NO** — a provenance finding. Its force is prohibitive: it tells V2 what *not* to assume it inherited |
+
+---
+
+## OBS-19 — The 得時/失時/黨眾/助寡 grid is **徐樂吾's, not 沈孝瞻's** (S1.5)
+
+| Field | Value |
+|---|---|
+| **Observation** | The four-way strength grid universally quoted as 子平真詮 doctrine — 得時為旺，失時為衰；黨眾為強，助寡為弱 — is **absent from 沈孝瞻's collated original**. So is the 扶抑/病藥/調候/專旺/通關 five-method 用神 taxonomy. Both are 徐樂吾's 1936 commentary. |
+| **Verification** | I checked this myself against the 東里書齋 collated edition (which carries a visible 【校】 apparatus citing 中州本). In ch.6 論十干得時不旺失時不弱: 旺衰強弱四字 **ABSENT** · 黨眾為強 **ABSENT** · 只要四柱有根，便能受財官食神，而當傷官七煞 **PRESENT**. In ch.8 論用神: 八字用神，專求月令 **PRESENT** · 扶抑 **ABSENT** · 調候 **ABSENT** · 專旺 **ABSENT** — and ch.8 is the exact chapter where a 用神-selection taxonomy would live if it were his. |
+| **What 沈 actually says** | Only the looser claim his chapter title states: 得時 does not entail 旺, 失時 does not entail 弱. Plus the root passage: 只要四柱有根，便能受財官食神，而當傷官七煞。長生祿旺，根之重者也；墓庫餘氣，根之輕者也。 Note it **enumerates its loads with two verbs** (受 / 當) and **grades root quality** — consistent with OBS-11, not with a scalar. |
+| **An edition trap that makes this easy to get wrong** | 8bei8 (太極書館), the most common online edition, has **INVERTED LAYER TAGS** in at least two chapters — labelling 徐樂吾 material 原文 and 沈孝瞻 material 徐注. Its page advertised as an *unannotated original* is contaminated with 徐樂吾 material. Two further layers circulate online (林注:, a modern web annotator; 東里山人按:, the electronic editor). Anyone reading 子平真詮 through 8bei8 will attribute the grid to 沈. |
+| **Confidence** | **HIGH** — absence verified by me directly against a collated critical edition, on two chapters |
+| **Why it matters** | 得時/得地/得勢 was one of V1's cited foundations, attributed to 子平真詮. Two of those three (得地, 得勢) occur **zero** times in 沈's text, and the grid that organises them is a 20th-century overlay. Combined with `OBS-18`, a consistent picture: **the unifying "classical strength doctrine" is substantially 徐樂吾, 1936.** Not fringe, not wrong to use — but it is a **named modern systematization**, and citing it as classical is a provenance error. |
+| **A detail that cuts against Day-Master-centrism even in the commentary** | 徐樂吾's own closing clause on the grid: 「**不特日主如此，喜用忌神皆同此論**」 — strength applies to *any* element, not just the Day Master. Even the systematizer does not treat it as a property of the self. |
+| `READY_FOR_RULE?` | **NO** — a provenance finding. Its force is prohibitive: it tells V2 what it did *not* inherit |
+
+---
+
+## OBS-20 — 旺相休囚死 is a seasonal role assignment that the source **explicitly denies** is evaluative (S1.5)
+
+| Field | Value |
+|---|---|
+| **Observation** | 三命通會 卷二 論五行旺相休囚死 derives the five states kinship-wise from the season's ruling element (子乗父業 → 相; 生我者當知退 → 休; 被火尅制 → 囚; 財為隠藏之物 → 死) — assigning a role to **all five elements simultaneously**, not scoring one. |
+| **The denial, verbatim** | 凡推造化**見生旺者未必便作吉論，見休囚死絶未必便作凶言**。如生旺太過宜乎制伏，死絶不及宜乎生扶，妙在識其通變。 |
+| **What it becomes instead** | A **corrective-action trigger**: 生旺太過 → 制伏; 死絕不及 → 生扶. Descriptor first, remedy rule second, evaluative scale expressly refused. |
+| **Corroborating counts** | Over 478,094 chars: 身旺 463, 身弱 202 — but **通根 only 5** and 得令 27. The work is saturated with strength *talk* while having almost no vocabulary for **establishing** strength by root or season. 身旺 functions as an already-known local fact (身旺逢官, 行身旺運), not as a conclusion argued for. |
+| **Independent corroboration** | The 四庫 editors, having read the whole work in 1779, named its organizing axes as 官印財祿食傷之名義 / 用神之輕重 / 諸神煞所係之吉凶 — and **did not name day-master strength**. |
+| **Confidence** | **HIGH** — the denial is explicit; counts are deterministic |
+| **Why it matters** | 旺相休囚死 is routinely presented in modern practice as a strength scale. The Ming source that defines it most fully **says it is not one**, in the same paragraph. A V2 axis mapping 旺相休囚死 onto a strength ladder would contradict its own cited authority. |
+| `READY_FOR_RULE?` | **NO** — but it is a constraint: seasonal state is a role assignment plus a remedy trigger, not a score |
+
+---
+
+## OBS-21 — 專旺格 as a named pattern is **20th-century systematization** (S1.5)
+
+| Field | Value |
+|---|---|
+| **The provenance chain, measured across four classical sources** | **滴天髓闡微**: ABSENT — uses 獨象 and 從強. **淵海子平**: ABSENT — full-text scan plus a sitewide search that *did* return 三命通會, making the negative meaningful; uses 類象/屬象 and five separately-named 格. **三命通會**: 專旺 occurs **9 times but always adjectivally** ("solely prosperous"), and there is **no 專旺格**; its 卷四 groups the forms under 類象 — 若成趨乾曲直類象等格. **子平真詮 (沈孝瞻)**: ABSENT from 論用神, verified by me. **徐樂吾 (1936)**: **PRESENT as a named category** — one of the five 用神 methods 扶抑/病藥/調候/專旺/通關. |
+| **Confidence** | **HIGH** — four independent classical sources checked; the one that has the *characters* does not use them as a pattern name |
+| **Why it matters** | V1 treated 專旺 as a named classical pattern with entry conditions and built doctrine on it. It is a modern taxonomic label. The classical sources name the same five mono-element objects — but as 獨象, 類象/屬象, or five ungrouped 格 — and **none of them unites them under 專旺**. |
+| **What is still open** | Whether 專旺格 originates with 徐樂吾 or an intermediate Republican-era systematizer. Not determined. |
+| `READY_FOR_RULE?` | **NO** — a terminology-provenance finding. If V2 uses 專旺 at all it must be labelled `MODERN_SYSTEMATIZATION` |
+
+---
+
 ## What S1 has **not** found
 
 - **No numeric threshold anywhere.** Not one quantifier (皆/全/滿局/重重/疊疊/一毫/眾/寡/多/深) is given a

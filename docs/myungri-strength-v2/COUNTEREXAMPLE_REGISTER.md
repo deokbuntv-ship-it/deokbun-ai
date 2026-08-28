@@ -4,6 +4,16 @@
 > already known to be false; they are kept precisely so the corpus accumulates the evidence that refutes
 > them, in a form a later gate can cite.
 
+> **⚠️ S1.5 SCOPE WARNING — added after the second lineage was examined.**
+> Every status below marked REFUTED at S1 was established on **one lineage**
+> (滴天髓闡微 / 任鐵樵). The first cross-lineage check immediately overturned one
+> of them: **R11 is refuted in 滴天髓 and asserted as doctrine in 淵海子平**
+> (`CF-011`). Until each rule has been checked against a second source family,
+> read every verdict here as *"refuted **in this lineage**"*, not *"refuted"*.
+> A lineage-specific doctrine is indistinguishable from a universal one when you
+> only have one lineage — that is precisely what S1.5 exists to correct, and it
+> is already producing corrections.
+
 ## Failure classification (§31 of the governing plan)
 
 A counterexample does **not** automatically make a rule universally false. Every hit is classified:
@@ -27,7 +37,7 @@ A counterexample does **not** automatically make a rule universally false. Every
 | **R8** | NO_ROOT ⇒ cannot bear | **REFUTED AS AN INFERENCE** | Not by a chart, but by logic: it is the invalid inverse of P-001. This is the error that closed V1 |
 | **R9** | ROOT ⇒ full strength conclusion | **REFUTED** | P-001 licenses bearing capacity only; `DTS-TIYONG-02` shows a root that is uprooted |
 | **R10** | raw support count > opposition count ⇒ strong | **REFUTED BY PRIMARY TEXT** | 眾寡 Ex.3 uses 強寡 and states 官星雖寡，得財星扶則強 — few *and* strong. 眾/寡 and 強/弱 are independent axes (`CF-005`, `OBS-02`). A count cannot be a verdict |
-| **R11** | any root breaks 從格 | **REFUTED — 6 charts** | `CF-008` tabulates six charts across four chapters where the source names a root, 餘氣, 祿 or 比劫 and still concludes a following pattern. `CE-006` is the strongest |
+| **R11** | any root breaks 從格 | ⚠️ **SCHOOL_DEPENDENT** (S1.5 correction) | **REFUTED in 滴天髓/任鐵樵** — `CF-008`, six charts, `CE-006` strongest. **ASSERTED AS DOCTRINE in 淵海子平** — 日主有根則不可棄，主貧。無根棄之則富 · 忌日主有根及比肩之地 · 或有根者不吉. See `CF-011`. The S1 "REFUTED" verdict was lineage-scoped and did not say so |
 | **R12** | 沖 root ⇒ root destroyed | **CONTESTED** | `DTS-TIYONG-02` has 二申冲去一寅 with 根已拔 — a *positive* instance. But 滴天髓 elsewhere treats 沖 contextually (衰神沖旺旺神發). The honest reading: sometimes, not always — which is exactly why V1 could not make it a rule |
 
 ---
