@@ -18,10 +18,9 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **MYUNGRI_JUDGMENT**
 - stance: **INSUFFICIENT_EVIDENCE** (확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -89,8 +88,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 현실 조언(보조): 지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다.
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
-- [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
+- [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -130,10 +128,9 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **MYUNGRI_JUDGMENT**
 - stance: **INSUFFICIENT_EVIDENCE** (확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -194,8 +191,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 현실 조언(보조): 지금 흐름을 그대로 밀고 가셔도 됩니다.
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
-- [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
+- [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 천이은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
 - [ZIWEI] 부처(삼합궁)에 태양 화록 — 삼합궁에 흐름이 열리고 들어오는 힘이 들어옵니다.
@@ -231,10 +227,9 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **MYUNGRI_JUDGMENT**
 - stance: **INSUFFICIENT_EVIDENCE** (확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -288,8 +283,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 현실 조언(보조): 규모를 줄이고, 되돌릴 수 있는 형태로만 움직이십시오.
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
-- [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
+- [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -322,10 +316,9 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **MYUNGRI_JUDGMENT**
 - stance: **INSUFFICIENT_EVIDENCE** (확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -379,8 +372,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 현실 조언(보조): 지금 흐름을 그대로 밀고 가셔도 됩니다.
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
-- [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
+- [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 전택은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
 - [ZIWEI] 자녀(대궁)에 무곡 화권 — 대궁에 주도권을 쥐고 밀어붙이는 힘이 들어옵니다.
@@ -416,7 +408,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 질문 축 DECISION → 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
@@ -482,7 +473,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
 - [MYUNGRI] 질문 축 DECISION — 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
@@ -525,7 +515,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 지금의 큰 흐름 재물 → 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 올해 흐름 재물 → 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 이 시기 흐름 활동·표현 → 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 질문 축 RELATION_BOND → 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
@@ -588,7 +577,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 지금의 큰 흐름 재물 — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 올해 흐름 재물 — 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 이 시기 흐름 활동·표현 — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
 - [MYUNGRI] 질문 축 RELATION_BOND — 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 부처에 화록이 들어와, 이 부분은 실제로 들어오는 자리라 진행하셔도 좋습니다.
@@ -639,7 +627,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 올해 흐름 → 원국 일주 충 → 올해 흐름이 원국 일주 충를 정면으로 흔든다.
     - 지금의 큰 흐름 → 원국 일주 천간합 → 지금의 큰 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - 이 시기 흐름 → 원국 일주 충 → 이 시기 흐름이 원국 일주 충를 정면으로 흔든다.
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -725,7 +712,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 올해 흐름 → 원국 일주 충 — 올해 흐름이 원국 일주 충를 정면으로 흔든다.
 - [MYUNGRI] 지금의 큰 흐름 → 원국 일주 천간합 — 지금의 큰 흐름이 원국 일주 천간합와 맞물려 풀린다.
 - [MYUNGRI] 이 시기 흐름 → 원국 일주 충 — 이 시기 흐름이 원국 일주 충를 정면으로 흔든다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 부처에 화록이 들어와 있어 들어오는 몫은 있으나, 끌고 가는 힘까지는 아니라 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 부처(본궁)에 태양 화록 — 이 자리에 흐름이 열리고 들어오는 힘이 들어옵니다.
@@ -774,10 +760,9 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **MYUNGRI_JUDGMENT**
 - stance: **INSUFFICIENT_EVIDENCE** (확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -838,8 +823,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 현실 조언(보조): 지금 흐름을 그대로 밀고 가셔도 됩니다.
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
-- [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
+- [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 천이은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
 - [ZIWEI] 부처(삼합궁)에 태양 화록 — 삼합궁에 흐름이 열리고 들어오는 힘이 들어옵니다.
@@ -881,7 +865,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 지금의 큰 흐름 재물 → 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 올해 흐름 재물 → 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 이 시기 흐름 활동·표현 → 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -939,7 +922,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 지금의 큰 흐름 재물 — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 올해 흐름 재물 — 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 이 시기 흐름 활동·표현 — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -972,10 +954,9 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 
 **MYUNGRI_JUDGMENT**
 - stance: **INSUFFICIENT_EVIDENCE** (확신 LOW · 직접성 GENERAL · 자료 REDUCED)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - 중심 근거: 해당 축 근거 없음
 - 근거:
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1007,8 +988,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 현실 조언(보조): 지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다.
 
 **왜 이렇게 보나요? (사용자 노출 근거)**
-- [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
+- [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 
 **LLM에 전달되는 구속 지시(발췌)**
@@ -1039,7 +1019,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 지금의 큰 흐름 재물 → 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 올해 흐름 경쟁·동료 → 올해 흐름에 경쟁·동료 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 이 시기 흐름 지원·배움 → 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1092,7 +1071,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 지금의 큰 흐름 재물 — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 올해 흐름 경쟁·동료 — 올해 흐름에 경쟁·동료 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 이 시기 흐름 지원·배움 — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 명궁 무주성 · 대궁 천이의 태양·천량을 빌려 봄 — 이 자리는 스스로 끌고 가기보다 맞은편 자리의 성향을 따라갑니다.
@@ -1131,7 +1109,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 지금의 큰 흐름 → 원국 월주 파 → 지금의 큰 흐름이 원국 월주 파에 마찰을 일으킨다.
     - 올해 흐름 → 원국 월주 반합 → 올해 흐름이 원국 월주 반합와 맞물려 풀린다.
     - 이 시기 흐름 → 원국 월주 반합 → 이 시기 흐름이 원국 월주 반합와 맞물려 풀린다.
-    - 억부용신: 판정 보류(범위 밖) → 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1194,7 +1171,6 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 지금의 큰 흐름 → 원국 월주 파 — 지금의 큰 흐름이 원국 월주 파에 마찰을 일으킨다.
 - [MYUNGRI] 올해 흐름 → 원국 월주 반합 — 올해 흐름이 원국 월주 반합와 맞물려 풀린다.
 - [MYUNGRI] 이 시기 흐름 → 원국 월주 반합 — 이 시기 흐름이 원국 월주 반합와 맞물려 풀린다.
-- [MYUNGRI] 억부용신: 판정 보류(범위 밖) — 억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
 - [ZIWEI] 관록 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 복덕(대궁)에 태음 화권 — 대궁에 주도권을 쥐고 밀어붙이는 힘이 들어옵니다.

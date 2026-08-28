@@ -62,7 +62,7 @@ describe('§44 — the verdict survives the REAL serialize → parse → restore
     expect(v.evidenceReferences.length).toBeGreaterThan(0);
     const myungri = v.disciplineJudgments.find((j) => j.discipline === 'MYUNGRI')!;
     expect(myungri.domainSubJudgments.length).toBeGreaterThan(0);
-    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약(구조)', '억부용신(판정 보류)']));
+    expect(myungri.factGroupsUsed).toEqual(expect.arrayContaining(['일간 강약(구조)', '억부용신(구조)']));
   });
 
   it('temporal anchors survive, so a follow-up keeps the ORIGINAL evaluation reference', async () => {

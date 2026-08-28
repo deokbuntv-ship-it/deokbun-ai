@@ -82,7 +82,7 @@ const DISCIPLINE = new Set<string>(['MYUNGRI', 'ZIWEI', 'QIMEN']);
 const SEAT = new Set(['DAY', 'HOUR', 'MONTH', 'YEAR']);
 const FAMILY = new Set(['WEALTH', 'OFFICER', 'OUTPUT', 'PEER', 'RESOURCE']);
 const SCOPE = new Set(['NATAL', 'DAEWOON', 'SEWOON', 'WOLWOON', 'PRESENT_MOMENT', 'UNSCOPED']);
-const FOOTING = new Set(['SEASON', 'ROOT', 'STRENGTH']);
+const FOOTING = new Set(['SEASON', 'ROOT', 'STRENGTH', 'YONGSHIN']);
 /**
  * V4D §10 — THE MATTER THE QUESTION NAMED.
  *

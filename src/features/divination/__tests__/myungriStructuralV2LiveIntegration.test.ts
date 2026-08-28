@@ -102,7 +102,7 @@ describe('A/B/C — live myungriReasoner consumes Structural V2, no permanent BL
     expect(weakText).toMatch(/힘을 받지 못하는 구조/);
   });
 
-  it('Yongshin remains explicitly withheld even when strength is live', () => {
+  it('Yongshin honestly withholds when this sparse fixture has no branch relations and no ten-god diversity to ground a candidate in (Myungri Yongshin V1 is live, not disabled — see myungriYongshin.test.ts for real SELECTED/MULTI_CANDIDATE cases)', () => {
     const { judgment } = judge(NATAL.STRONG);
     expect(judgment.factGroupsUsed).toContain('억부용신(판정 보류)');
   });

@@ -24,8 +24,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -92,7 +92,7 @@
 ### MYUNGRI
 - PRIMARY = **CONDITIONAL_AGAINST** (근거강도 STRONG · 확신 HIGH · 직접성 DIRECT · 자료 EXACT)
 - 결론: 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -157,8 +157,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -219,8 +219,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -287,7 +287,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = AGAINST (NATAL/DIRECT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -359,8 +359,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -432,7 +432,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 몸·기운에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -497,7 +497,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -572,7 +572,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -646,8 +646,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -721,8 +721,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 REDUCED)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -774,7 +774,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -850,7 +850,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 전반에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -916,8 +916,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -982,7 +982,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 전반에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1043,7 +1043,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 끌리는 힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1105,8 +1105,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1176,8 +1176,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/DIRECT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1244,7 +1244,7 @@
 ### MYUNGRI
 - PRIMARY = **CONDITIONAL_AGAINST** (근거강도 WEAK · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1309,8 +1309,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(판정 보류)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.

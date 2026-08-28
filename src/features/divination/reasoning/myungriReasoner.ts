@@ -14,7 +14,9 @@ import { agreedHeadline, unresolvedHeadline } from './headlineProse';
 import { analyzeLayer, type LayerAnalysis } from '../myungriLayer';
 import { readNatalBaseline } from '../myungriNatal';
 import type { MyungriJudgeInput } from '../myungriJudge';
+import { tenGodFamily } from '../myungriJudge';
 import { judgeMyungriStructuralV2FromStrengthInputs, type MyungriStructuralV2Result } from '../myungriStructuralV2';
+import { judgeMyungriYongshin, type MyungriYongshinResult } from '../myungriYongshin';
 import { buildMyungriPremises } from './myungriPremises';
 import { MYUNGRI_RULES, primitivePropositions } from './myungriRules';
 import {
@@ -139,10 +141,25 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
       })
     : null;
 
+  // Myungri Yongshin V1 — computed ONCE here, from the structural V2 result above plus exactly the
+  // natal-relation and ten-god facts `NatalStructureInput` already carries; passed down as a finished
+  // RESULT so `myungriPremises.ts` only has to report it, never recompute it (same seam as Structural
+  // V2). `null` only when Structural V2 itself never ran (no chart at all) — an INSUFFICIENT
+  // Structural V2 result still reaches judgeMyungriYongshin, which reports that honestly as UNRESOLVED.
+  const yongshin: MyungriYongshinResult | null = structuralV2
+    ? judgeMyungriYongshin({
+        structuralV2,
+        branchClashes: (input.natal?.natalRelations?.branch ?? [])
+          .filter((r) => r.relation.kind === 'BRANCH_CLASH')
+          .map((r) => ({ branches: r.relation.branches })),
+        familyExists: (family) => (input.natal?.positionedTenGods ?? []).some((p) => tenGodFamily(p.tenGod) === family),
+      })
+    : null;
+
   // ── 1. PREMISES (no stance exists yet, and nothing here can see one) ────────────────────────────
   const premises = buildMyungriPremises({
     subject, questionIntent: intent, askedAxis: asked, baseline, layers, reliability,
-    structuralV2,
+    structuralV2, yongshin,
   });
 
   // ── 2/3. PROPOSITIONS + DERIVATIONS to a fixed point ───────────────────────────────────────────
@@ -204,9 +221,12 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     ...(used.has('궁위 + 합충형파해 (frozen relations to natal)') ? ['원국×운 관계(종류·위치)'] : []),
     // Reported as USED (a real classification was computed), not withheld — Myungri Structural V2.
     ...(structural.length > 0 ? ['일간 강약(구조)'] : []),
-    // Genuinely withheld — either strength inputs were unavailable, or (always, this batch) Yongshin.
+    // Genuinely withheld — strength inputs were unavailable.
     ...(used.has('BLOCKED: 일간 강약 판정에 필요한 입력 부족') ? ['일간 강약(판정 보류)'] : []),
-    ...(used.has('BLOCKED: 억부용신 범위 밖 → 판정 보류') ? ['억부용신(판정 보류)'] : []),
+    // Reported as USED (a real treatment direction was computed), not withheld — Myungri Yongshin V1.
+    ...(premises.some((p) => p.doctrineReference.startsWith('YONGSHIN_V1:')) ? ['억부용신(구조)'] : []),
+    // Genuinely withheld — no deterministic candidate from current facts, or Structural V2 never ran.
+    ...(used.has('BLOCKED: 억부용신 판정에 필요한 근거 부족') ? ['억부용신(판정 보류)'] : []),
   ];
 
   const judgment: DivinationJudgment = {

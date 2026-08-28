@@ -73,6 +73,7 @@ export type PremiseConcept =
   | 'LAYER_SILENT'      // 시기 층이 원국과 관계를 맺지 않음
   | 'DOCTRINE_BLOCK'    // 채택 학파가 없어 판정을 보류한 지점
   | 'DAY_MASTER_STRENGTH' // 일간 구조적 강약 (Myungri Structural V2, frozen judgment graph)
+  | 'DAY_MASTER_YONGSHIN' // 억부·통관·병약 구조 치료 방향 (Myungri Yongshin V1)
   | 'ADAPTED';          // 아직 전제 그래프로 이관되지 않은 학문의 출력
 
 /**

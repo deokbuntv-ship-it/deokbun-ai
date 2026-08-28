@@ -20,6 +20,8 @@ import { domainFamily, type NatalBaseline } from '../myungriNatal';
 import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
 import type { MyungriStructuralV2Result } from '../myungriStructuralV2';
+import type { MyungriYongshinResult, TreatmentRationale } from '../myungriYongshin';
+import type { FiveElement } from '@/features/interpretation';
 import {
   natalSeatPairTarget, natalSeatTarget, nextId, target, type DivinationPremise,
 } from './kernel';
@@ -54,6 +56,12 @@ export type MyungriPremiseInput = {
    * is itself a real (not blocked) result and is reported as one below.
    */
   structuralV2?: MyungriStructuralV2Result | null;
+  /**
+   * Myungri Yongshin V1's result (`../myungriYongshin.ts`), computed by the caller
+   * (`reasoning/myungriReasoner.ts`) from the SAME `structuralV2` result above plus natal-relation and
+   * ten-god facts — never recomputed here. `null` only when Structural V2 itself never ran.
+   */
+  yongshin?: MyungriYongshinResult | null;
 };
 
 const STRENGTH_CLASSIFICATION_LABEL: Record<string, string> = {
@@ -61,6 +69,13 @@ const STRENGTH_CLASSIFICATION_LABEL: Record<string, string> = {
   WEAK_LEANING: '일간이 계절과 뿌리 양쪽에서 힘을 받지 못하는 구조입니다.',
   MIXED_EVIDENCE: '일간의 계절과 뿌리가 서로 다른 방향을 가리켜, 구조적 방향을 하나로 단정하지 않습니다.',
   UNRESOLVED: '시주 등 필요한 정보가 확정되지 않아 일간의 구조적 방향을 판단하지 않습니다.',
+};
+
+const ELEMENT_LABEL: Record<FiveElement, string> = {
+  WOOD: '목(木)', FIRE: '화(火)', EARTH: '토(土)', METAL: '금(金)', WATER: '수(水)',
+};
+const RATIONALE_LABEL: Record<TreatmentRationale, string> = {
+  EOKBU: '억부', JOHOO: '조후', TONGGWAN: '통관', BYEONGYAK: '병약', SPECIAL_STRUCTURE_CONSTRAINT: '특수구조 제약',
 };
 
 export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPremise[] {
@@ -268,8 +283,8 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
   // user via the SAME `directEvidence`/`factGroupsUsed` mechanism `myungriReasoner.ts` already used
   // for the withheld marker (see that file's `STRUCTURAL_V2:`-prefixed `doctrineReference` handling).
   //
-  // 용신(Yongshin) remains OUT OF SCOPE and stays reported as withheld, unchanged — Structural V2 only
-  // supplies 강약(strength), never 용신.
+  // 용신(Yongshin) is reported separately below, from Myungri Yongshin V1's own result — Structural V2
+  // itself still supplies only 강약(strength), never 용신.
   if (input.structuralV2) {
     const r = input.structuralV2;
     if (r.capability === 'AVAILABLE') {
@@ -312,19 +327,66 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
         doctrineReference: 'BLOCKED: 일간 강약 판정에 필요한 입력 부족',
       }));
     }
-    // 용신 is never supplied by Structural V2 (out of scope) — stays reported as withheld.
-    out.push(base({
-      sourceFactIds: ['억부용신: 판정 보류(범위 밖)'],
-      target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '억부용신'),
-      concept: 'DOCTRINE_BLOCK',
-      questionAxis: 'GENERAL',
-      temporalScope: 'NATAL',
-      semanticRelation: 'ABSENT',
-      assertion: '억부용신은 이번 배치의 범위 밖이라 판정하지 않는다.',
-      role: 'DESCRIBES',
-      applicability: 'BACKGROUND',
-      doctrineReference: 'BLOCKED: 억부용신 범위 밖 → 판정 보류',
-    }));
+    // ── 억부용신 (Myungri Yongshin V1 — ../myungriYongshin.ts) ─────────────────────────────────
+    //
+    // Was a permanent DOCTRINE_BLOCK premise (Yongshin declared out of scope) until Yongshin V1 was
+    // frozen and implemented on top of Structural V2. Same non-competing shape as the strength premise
+    // above: `role: 'QUALIFIES'`/`'DESCRIBES'` (never 'ASSERTS') means this premise never enters
+    // `primitivePropositions`/`runDerivations` — it is reported to the user via `directEvidence`/
+    // `factGroupsUsed`, never treated as a derivation-eligible claim.
+    const y = input.yongshin;
+    if (y && (y.status === 'SELECTED' || y.status === 'MULTI_CANDIDATE')) {
+      const primaryText = y.primaryCandidate
+        ? `1차 치료 방향은 ${ELEMENT_LABEL[y.primaryCandidate]}입니다.`
+        : '서로 다른 방향이 함께 성립해 1차 치료 방향을 하나로 단정하지 않습니다.';
+      const supportingText = y.supportingCandidates.length > 0
+        ? ` 함께 쓸 수 있는 방향은 ${y.supportingCandidates.map((e) => ELEMENT_LABEL[e]).join(', ')}입니다.`
+        : '';
+      const contraindicatedText = y.contraindicatedCandidates.length > 0
+        ? ` ${y.contraindicatedCandidates.map((e) => ELEMENT_LABEL[e]).join(', ')} 방향은 구조를 더 흔들 수 있어 피합니다.`
+        : '';
+      const rationaleText = ` (근거: ${y.treatmentRationalesFired.map((r) => RATIONALE_LABEL[r]).join('·')})`;
+      out.push(base({
+        sourceFactIds: [`억부용신: ${y.status} (Myungri Yongshin V1)`],
+        target: target('DAY_MASTER_FOOTING', 'YONGSHIN', '일간의 구조 치료 방향'),
+        concept: 'DAY_MASTER_YONGSHIN',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: y.status === 'SELECTED' ? 'ENABLES' : 'ABSENT',
+        assertion: `${primaryText}${supportingText}${contraindicatedText}${rationaleText}`,
+        role: y.status === 'SELECTED' ? 'QUALIFIES' : 'DESCRIBES',
+        applicability: y.status === 'SELECTED' ? 'CONTEXTUAL' : 'BACKGROUND',
+        doctrineReference: `YONGSHIN_V1: 억부용신(구조) — ${y.ruleVersion}`,
+      }));
+    } else if (y && y.status === 'NOT_APPLICABLE_SPECIAL_CONFLICT') {
+      out.push(base({
+        sourceFactIds: ['억부용신: 특수구조 후보로 판정 보류'],
+        target: target('DAY_MASTER_FOOTING', 'YONGSHIN', '일간의 구조 치료 방향'),
+        concept: 'DAY_MASTER_YONGSHIN',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'ABSENT',
+        assertion: '이 배치는 특수구조 후보 조건을 보여, 일반 억부용신 방향을 판정하지 않습니다.',
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: `YONGSHIN_V1: 억부용신(구조) — ${y.ruleVersion}`,
+      }));
+    } else {
+      // Genuinely UNRESOLVED (no deterministic candidate from current facts) or Structural V2 itself
+      // never ran — honestly reported as withheld, never a fabricated primary.
+      out.push(base({
+        sourceFactIds: ['억부용신: 판정 보류'],
+        target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '억부용신'),
+        concept: 'DOCTRINE_BLOCK',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'ABSENT',
+        assertion: y?.uncertaintyReasons.join(' ') || '억부용신을 판정할 만한 근거가 이번 배치에서 확인되지 않는다.',
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: 'BLOCKED: 억부용신 판정에 필요한 근거 부족',
+      }));
+    }
   }
 
   // ── ASKED-AXIS DOCTRINE COVERAGE (§13 honesty, not a conclusion) ────────────────────────────────
