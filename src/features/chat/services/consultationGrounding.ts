@@ -63,6 +63,7 @@ import {
   judgeQimen,
   judgeZiwei,
   judgeAllZiweiConsultationDomains,
+  judgeAllQimenConsultationDomains,
   routeConsultationJudgeDomain,
   type CrossDivinationVerdict,
   type JudgmentDomain,
@@ -573,13 +574,26 @@ export async function buildConsultationGrounding(
     const ziweiConsultationJudgment = ziweiRoutedDomain && ziweiParts.chart
       ? judgeAllZiweiConsultationDomains({ chart: ziweiParts.chart, activeDecadal: ziweiParts.activeDecadal })[ziweiRoutedDomain]
       : null;
+    // Qimen Consultation Judge V1 (§8-§27) — INDEPENDENT of Myungri/Ziwei: computed from the Qimen
+    // board alone. Reuses the SAME routing for the 6 topic domains; falls back to EVENT_SUCCESS
+    // (Qimen's own closest existing question, "will this proceed") when no topic routed but Qimen is
+    // active — its own eligibility gate (qimenActivation.ts) already means the question is decision-
+    // shaped, so EVENT_SUCCESS is always meaningful there. Folded into `judgeQimen` as ADDITIONAL
+    // evidence only — its own R1-R5 stance stays unmodified authority (§26/§27: no cross-judge merge).
+    const qimenRoutedDomain = routeConsultationJudgeDomain(askedTarget, questionDomain) ?? (qimenParts.board ? 'EVENT_SUCCESS' : null);
+    const qimenConsultationJudgment = qimenRoutedDomain
+      ? judgeAllQimenConsultationDomains(qimenParts.board)[qimenRoutedDomain]
+      : null;
     const judgments = [
       myungriReasoning.judgment,
       judgeZiwei({
         question: q, questionDomain, chart: ziweiParts.chart, availability: ziweiParts.availability,
         consultationJudgment: ziweiConsultationJudgment,
       }),
-      judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
+      judgeQimen({
+        question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability,
+        consultationJudgment: qimenConsultationJudgment,
+      }),
     ];
     divinationVerdict = judgeCross({
       question: q, questionDomain, subject: canonicalSubject,

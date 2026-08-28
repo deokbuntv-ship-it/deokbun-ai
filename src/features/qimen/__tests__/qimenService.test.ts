@@ -1,6 +1,6 @@
 // Qimen engine tests (directive §24). HONESTY (§24): STRUCTURAL + DETERMINISM +
 // ELIGIBILITY assertions; the fixed-input block is a CHARACTERIZATION LOCK on
-// qimen-dunjia@2.1.0 output (NOT independent divination correctness — verified
+// qimen-dunjia@3.1.0 output (NOT independent divination correctness — verified
 // fixtures need independent references, Owner/Codex). No value here was
 // hand-derived by Claude as ground truth.
 import { computeQimenBoard } from '../services/qimenService';
@@ -61,7 +61,7 @@ describe('computeQimenBoard — structural correctness', () => {
   it('tracks library + rule-set (拆補法) versions', () => {
     const b = r.board!;
     expect(b.library).toBe('qimen-dunjia');
-    expect(b.libraryVersion).toBe('2.1.0');
+    expect(b.libraryVersion).toBe('3.1.0');
     expect(b.ruleSetVersion).toContain('chaibu');
   });
 });
@@ -72,7 +72,7 @@ describe('computeQimenBoard — DETERMINISM', () => {
   });
 });
 
-describe('CHARACTERIZATION LOCK — qimen-dunjia@2.1.0 output for a fixed query time', () => {
+describe('CHARACTERIZATION LOCK — qimen-dunjia@3.1.0 output for a fixed query time', () => {
   const b = computeQimenBoard(timing()).board!; // 2024-01-15 10시
   it('음양둔/국수/節氣/값부/값사 are stable', () => {
     expect(b.dunType).toBe('yang'); // 陽

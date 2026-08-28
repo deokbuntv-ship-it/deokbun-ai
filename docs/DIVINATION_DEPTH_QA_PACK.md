@@ -325,7 +325,7 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -396,7 +396,7 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CAREER)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -534,7 +534,7 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -605,11 +605,13 @@
 ### QIMEN
 - PRIMARY = **AGAINST_FOR_NOW** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일을 이끄는 문도 막혀 있고 판의 기운도 같은 방향이라, 지금 시점은 아닙니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = AGAINST_FOR_NOW (PRESENT_MOMENT/DIRECT) — 지금 당장의 시점은 아닙니다.
 - COUNTER_EVIDENCE:
     - 값사 驚門 (乾궁) — 지금 이 일을 이끄는 자리는 놀라고 시끄러워지는 문입니다.
+    - 값부 天柱 (坤궁) — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값사문(驚門) — 이 일을 이끄는 자리가 막혀 있습니다.
     - 값부 天柱 — 판을 이끄는 기운이 껄끄럽습니다.
 
 ### CROSS
@@ -680,12 +682,13 @@
 ### QIMEN
 - PRIMARY = **AGAINST_FOR_NOW** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일을 이끄는 문도 막혀 있고 판의 기운도 같은 방향이라, 지금 시점은 아닙니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = AGAINST_FOR_NOW (PRESENT_MOMENT/DIRECT) — 지금 당장의 시점은 아닙니다.
 - COUNTER_EVIDENCE:
     - 값사 驚門 (乾궁) — 지금 이 일을 이끄는 자리는 놀라고 시끄러워지는 문입니다.
-    - 값부 天柱 — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값부 天柱 (坤궁) — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값사문(驚門) — 사안을 이끄는 자리가 막혀 있습니다.
 
 ### CROSS
 - SAME_PROPOSITION_CONFLICT = 자리·직업에서 서로 다른 신호가 함께 잡힙니다. / 잡았을 때 남는 쪽에서 서로 다른 신호가 함께 잡힙니다. / 전반에서 서로 다른 신호가 함께 잡힙니다. / 전반에서 서로 다른 신호가 함께 잡힙니다.
@@ -699,7 +702,7 @@
 - NEW_INFERENCE = 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 월주 천간합 / 올해 흐름 → 원국 시주 천간합 / 이 시기 흐름 → 원국 시주 천간합
-- COUNTER_EVIDENCE_REF = (없음)
+- COUNTER_EVIDENCE_REF = 乾궁 九地
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI+QIMEN
 - TEMPORAL_SCOPE = NATAL/PRESENT_MOMENT
 - TRACEABLE = YES
@@ -808,7 +811,7 @@
 ### QIMEN
 - PRIMARY = **CONDITIONAL_FOR** (근거강도 MODERATE · 확신 LOW · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일 자체는 중립이지만 판이 도와주어, 조용히 진행할 만합니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = CONDITIONAL_FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1136,7 +1139,7 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1203,7 +1206,7 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1335,7 +1338,7 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CHANGE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)

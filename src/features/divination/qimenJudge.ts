@@ -17,6 +17,7 @@
 // NOT AVAILABLE AT RUNTIME → never claimed: 方位(direction) is dropped at the adapter boundary, so this judge
 // NEVER recommends a direction. Scope is strictly PRESENT_MOMENT — it never speaks to natal structure.
 import type { QimenBoard } from '@/features/qimen/domain/qimenTypes';
+import { findPalaceByTrigram } from '@/features/qimen/services/qimenPalaceGeometry';
 
 import {
   type DivinationJudgment,
@@ -57,6 +58,10 @@ const classify = (table: Record<string, DoorClass>, value: string | undefined): 
   return key ? table[key] : null;
 };
 export const doorClass = (door: string | undefined): DoorClass | null => classify(DOOR_CLASS, door);
+/** Exported so a domain-specific consultation judge (`qimenConsultationJudge.ts`) can classify a star
+ *  or deity string without reimplementing R3/R4's own tables. */
+export const starClass = (star: string | undefined): DoorClass | null => classify(STAR_CLASS, star);
+export const godClass = (god: string | undefined): DoorClass | null => classify(GOD_CLASS, god);
 const doorMeaning = (door: string): string =>
   DOOR_MEANING[Object.keys(DOOR_MEANING).find((d) => door.includes(d)) ?? ''] ?? '기록된 문';
 
@@ -65,6 +70,13 @@ export type QimenJudgeInput = {
   questionDomain: JudgmentDomain;
   board: QimenBoard | null;
   availability: 'available' | 'not_applicable' | 'missing_question_time' | 'unsupported_case' | 'calculation_failed';
+  /**
+   * Qimen Consultation Judge V1's result (`./qimenConsultationJudge.ts`, computed by the caller from
+   * the SAME `board`) — surfaced as ADDITIONAL evidence below, never overriding this function's own
+   * R1-R5 stance/dominantConclusion. `null`/absent when no domain routed or the consultation-judge
+   * layer was not computed.
+   */
+  consultationJudgment?: { domain: string; supportingEvidence: JudgmentEvidence[]; counterEvidence: JudgmentEvidence[] } | null;
 };
 
 function inapplicable(reason: string, domain: JudgmentDomain): DivinationJudgment {
@@ -96,9 +108,12 @@ export function judgeQimen(input: QimenJudgeInput): DivinationJudgment {
   const dutyDoorClass = doorClass(dutyDoor);
   if (!dutyDoorClass) return inapplicable('질문 시점의 값사문을 판별할 수 없습니다.', asked);
 
-  // The palace the acting door sits in, and what shares it.
-  const dutyPalace = board.palaces.find((p) => p.palaceLabel.includes(board.zhishiPalace)) ?? null;
-  const commanderPalace = board.palaces.find((p) => p.palaceLabel.includes(board.zhifuPalace)) ?? null;
+  // The palace the acting door sits in, and what shares it. `palaceLabel` (e.g. "九紫右弼") is the
+  // CURRENT star/color rotating through a palace, never the trigram itself, so it can never be matched
+  // against `zhifuPalace`/`zhishiPalace` — resolved instead via the library's own fixed trigram→index
+  // geometry (`qimenPalaceGeometry.ts`), verified against real boards.
+  const dutyPalace = findPalaceByTrigram(board, board.zhishiPalace);
+  const commanderPalace = findPalaceByTrigram(board, board.zhifuPalace);
   const starCls = classify(STAR_CLASS, board.zhifu);
   const godCls = classify(GOD_CLASS, dutyPalace?.god);
   const sameSeat = board.zhishiPalace === board.zhifuPalace; // R5
@@ -207,6 +222,13 @@ export function judgeQimen(input: QimenJudgeInput): DivinationJudgment {
   if (sameSeat) configuration += ' · 값부값사 동궁으로 신호가 뚜렷';
   const mixed = evidence.length > 0 && counterEvidence.length > 0;
 
+  // Qimen Consultation Judge V1 — surfaced the SAME way Myungri's/Ziwei's own consultation judges are:
+  // as ADDITIONAL evidence, never touching `stance`/`dominantConclusion` above (those stay the R1-R5
+  // structural judge's own, unmodified authority).
+  const cj = input.consultationJudgment;
+  const factGroupsUsed = ['값사문', '값부 구성', '팔신', '값사·값부 착궁', '천반·지반'];
+  if (cj) factGroupsUsed.push(`상담판정(${cj.domain})`);
+
   return {
     discipline: 'QIMEN',
     applicable: true,
@@ -216,8 +238,8 @@ export function judgeQimen(input: QimenJudgeInput): DivinationJudgment {
     stance,
     dominantConclusion,
     dominantFactor: `값사 ${dutyDoor}${starCls ? ` · 값부 ${board.zhifu}` : ''}${dutyPalace?.god ? ` · ${dutyPalace.god}` : ''}`,
-    directEvidence: evidence,
-    counterEvidence,
+    directEvidence: [...evidence, ...(cj?.supportingEvidence ?? [])],
+    counterEvidence: [...counterEvidence, ...(cj?.counterEvidence ?? [])],
     internalContradictions: mixed ? ['지금 판 안에서도 돕는 기운과 막는 기운이 섞여 있습니다.'] : [],
     timingSignals: [...evidence, ...counterEvidence].filter((e) => e.directness === 'DIRECT'),
     domainSubJudgments: [
@@ -232,6 +254,6 @@ export function judgeQimen(input: QimenJudgeInput): DivinationJudgment {
     confidence: evidenceStrength === 'STRONG' ? 'MEDIUM' : 'LOW',
     questionDirectness: 'DIRECT',
     evidenceStrength,
-    factGroupsUsed: ['값사문', '값부 구성', '팔신', '값사·값부 착궁', '천반·지반'],
+    factGroupsUsed,
   };
 }

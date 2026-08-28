@@ -1,4 +1,4 @@
-// LEVEL 3 — INDEPENDENT GOLDEN VALIDATION for 기문둔갑 (qimen-dunjia-chaibu@2.1.0, 時家 + 拆補法).
+// LEVEL 3 — INDEPENDENT GOLDEN VALIDATION for 기문둔갑 (qimen-dunjia-chaibu@3.1.0, 時家 + 拆補法).
 //
 // INDEPENDENT ORACLE: `lunar-javascript@1.7.7` (MIT) for the governing 節氣 + its solar date +
 // the query 干支, THEN the UNIVERSAL, non-school-dependent 時家 rules applied here:

@@ -54,7 +54,11 @@ export {
   type MyungriConsultationJudgeInput,
 } from './myungriConsultationJudge';
 export { judgeAllZiweiConsultationDomains, type ZiweiConsultationJudgeInput } from './ziweiConsultationJudge';
-export { judgeQimen, doorClass, type QimenJudgeInput } from './qimenJudge';
+export { judgeQimen, doorClass, starClass, godClass, type QimenJudgeInput } from './qimenJudge';
+export {
+  judgeAllQimenConsultationDomains,
+  type QimenConsultationDomain, type QimenDomainJudgeResult, type QimenTargetRef,
+} from './qimenConsultationJudge';
 export { judgeCross, judgeCrossReasoned, type CrossJudgeInput } from './crossJudge';
 export { extendGraph, refinementFailure } from './reasoning/graphExtension';
 export { judgePairMyungri, judgePairZiwei, type PairMyungriJudgeInput } from './compatibilityJudge';

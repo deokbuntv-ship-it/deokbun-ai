@@ -687,8 +687,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CAREER)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -800,8 +800,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1233,8 +1233,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1352,8 +1352,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1836,8 +1836,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -1947,12 +1947,14 @@
 ### QIMEN
 - PRIMARY = **AGAINST_FOR_NOW** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일을 이끄는 문도 막혀 있고 판의 기운도 같은 방향이라, 지금 시점은 아닙니다.
-- 결정 요인(구조): 값사 驚門 · 값부 天柱
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 驚門 · 값부 天柱 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = AGAINST_FOR_NOW (PRESENT_MOMENT/DIRECT) — 지금 당장의 시점은 아닙니다.
 - COUNTER_EVIDENCE:
     - 값사 驚門 (乾궁) — 지금 이 일을 이끄는 자리는 놀라고 시끄러워지는 문입니다.
+    - 값부 天柱 (坤궁) — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값사문(驚門) — 이 일을 이끄는 자리가 막혀 있습니다.
     - 값부 天柱 — 판을 이끄는 기운이 껄끄럽습니다.
 
 ### REASONING
@@ -2000,7 +2002,7 @@
     - [PRIMITIVE] (ZIWEI) 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
         ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [PRIMITIVE] (QIMEN) 지금 당장의 시점은 아닙니다.
-        ← 값사 驚門 (乾궁)
+        ← 값사 驚門 (乾궁) / 乾궁 九地
     - [CROSS_STANDOFF] (CROSS) 원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 일주 천간충 / 이 시기 흐름 → 원국 일주 반합
 - CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
@@ -2061,8 +2063,8 @@
 ### QIMEN
 - PRIMARY = **CONDITIONAL_FOR** (근거강도 MODERATE · 확신 LOW · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일 자체는 중립이지만 판이 도와주어, 조용히 진행할 만합니다.
-- 결정 요인(구조): 값사 杜門 · 값부 天輔
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 杜門 · 값부 天輔 · 勾陳
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = CONDITIONAL_FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -2369,8 +2371,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CHANGE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -2468,8 +2470,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CHANGE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -2577,13 +2579,14 @@
 ### QIMEN
 - PRIMARY = **AGAINST_FOR_NOW** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일을 이끄는 문도 막혀 있고 판의 기운도 같은 방향이라, 지금 시점은 아닙니다.
-- 결정 요인(구조): 값사 驚門 · 값부 天柱
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 驚門 · 값부 天柱 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = AGAINST_FOR_NOW (PRESENT_MOMENT/DIRECT) — 지금 당장의 시점은 아닙니다.
 - COUNTER_EVIDENCE:
     - 값사 驚門 (乾궁) — 지금 이 일을 이끄는 자리는 놀라고 시끄러워지는 문입니다.
-    - 값부 天柱 — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값부 天柱 (坤궁) — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값사문(驚門) — 사안을 이끄는 자리가 막혀 있습니다.
 
 ### REASONING
 - **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
@@ -2638,7 +2641,7 @@
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 자미·천상
     - [PRIMITIVE] (QIMEN) 지금 당장의 시점은 아닙니다.
-        ← 값사 驚門 (乾궁)
+        ← 값사 驚門 (乾궁) / 乾궁 九地
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
@@ -2698,8 +2701,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(MONEY)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -2802,12 +2805,14 @@
 ### QIMEN
 - PRIMARY = **AGAINST_FOR_NOW** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 일을 이끄는 문도 막혀 있고 판의 기운도 같은 방향이라, 지금 시점은 아닙니다.
-- 결정 요인(구조): 값사 驚門 · 값부 天柱
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 驚門 · 값부 天柱 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = AGAINST_FOR_NOW (PRESENT_MOMENT/DIRECT) — 지금 당장의 시점은 아닙니다.
 - COUNTER_EVIDENCE:
     - 값사 驚門 (乾궁) — 지금 이 일을 이끄는 자리는 놀라고 시끄러워지는 문입니다.
+    - 값부 天柱 (坤궁) — 판을 이끄는 기운이 껄끄럽습니다.
+    - 값사문(驚門) — 이 일을 이끄는 자리가 막혀 있습니다.
     - 값부 天柱 — 판을 이끄는 기운이 껄끄럽습니다.
 
 ### REASONING
@@ -2859,7 +2864,7 @@
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 태양·거문
     - [PRIMITIVE] (QIMEN) 지금 당장의 시점은 아닙니다.
-        ← 값사 驚門 (乾궁)
+        ← 값사 驚門 (乾궁) / 乾궁 九地
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
@@ -2906,8 +2911,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -2982,8 +2987,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -3073,8 +3078,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -3184,8 +3189,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(BUSINESS)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
@@ -3679,8 +3684,8 @@
 ### QIMEN
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
-- 결정 요인(구조): 값사 開門 · 값부 天心
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반
+- 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
