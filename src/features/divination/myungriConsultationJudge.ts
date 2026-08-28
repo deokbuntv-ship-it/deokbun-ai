@@ -1,12 +1,14 @@
 // MYUNGRI CORE CONSULTATION JUDGES V1 — turns Structural V2 + Yongshin V1 + natal baseline + temporal
 // layers into 7 domain-specific consultation conclusions: BUSINESS, MONEY, CAREER, LOVE, REUNION,
 // CHANGE, TIMING. This is the layer that makes a consultation actually about THIS chart's structure
-// rather than a generic reading — see module header of `myungriConsultationTypes.ts` for the contract.
+// rather than a generic reading — see module header of `consultationJudgeTypes.ts` for the shared
+// contract (also used by `ziweiConsultationJudge.ts`) and `consultationJudgeCore.ts` for the shared
+// combination mechanics (`combineStatus`/`finalize`).
 //
-// ARCHITECTURE (§21 of the implementation brief): ONE shared combination core (`combineStatus`,
-// `finalize`) + 7 domain-specific RULE FUNCTIONS that each read real existing facts and push typed
-// `DomainRule`s. No domain is a duplicated engine — the differences between domains live entirely in
-// WHICH facts each rule function reads and WHY, never in the combination mechanics.
+// ARCHITECTURE (§21 of the implementation brief): the SHARED combination core (`consultationJudgeCore.ts`)
+// + 7 domain-specific RULE FUNCTIONS that each read real existing facts and push typed `DomainRule`s. No
+// domain is a duplicated engine — the differences between domains live entirely in WHICH facts each
+// rule function reads and WHY, never in the combination mechanics.
 //
 // NO VOTING, NO SCORING (§5). `combineStatus` is a 4-way categorical gate over two BOOLEANS (does a
 // grounded opportunity exist / does a grounded risk exist), never a count, weight, or percentage — the
@@ -19,19 +21,21 @@
 // signal on top of natal+temporal facts that already exist — removing it never flips a domain's status
 // from FAVORABLE to UNRESOLVED (verified by `myungriConsultationJudge.test.ts`).
 import type { FiveElement } from '@/features/interpretation';
-import type { JudgmentDomain, JudgmentEvidence } from './contracts';
+import type { JudgmentEvidence } from './contracts';
 import type { NatalBaseline } from './myungriNatal';
 import type { LayerAnalysis } from './myungriLayer';
 import { axisPressure } from './myungriLayer';
 import type { TenGodFamily } from './myungriJudge';
 import type { MyungriStructuralV2Result } from './myungriStructuralV2';
 import { familyOf, type MyungriYongshinResult } from './myungriYongshin';
-import {
-  MYUNGRI_CONSULTATION_JUDGE_V1_METHOD,
-  type ConsultationJudgeDomain, type DomainJudgeResult, type DomainJudgeStatus, type SyntheticInference,
-} from './myungriConsultationTypes';
+import type {
+  ConsultationJudgeDomain, DomainJudgeResult, DomainJudgeStatus, SyntheticInference,
+} from './consultationJudgeTypes';
+import { combineStatus, finalize, type DomainRule } from './consultationJudgeCore';
 
-export type { ConsultationJudgeDomain, DomainJudgeResult, DomainJudgeStatus, SyntheticInference } from './myungriConsultationTypes';
+export type { ConsultationJudgeDomain, DomainJudgeResult, DomainJudgeStatus, SyntheticInference } from './consultationJudgeTypes';
+
+export const MYUNGRI_CONSULTATION_JUDGE_V1_METHOD = 'deokbunai.myungri-consultation-judge.v1' as const;
 
 export type MyungriConsultationJudgeInput = {
   dayMasterElement: FiveElement;
@@ -41,9 +45,6 @@ export type MyungriConsultationJudgeInput = {
   layers: LayerAnalysis[];
 };
 
-const DOMAIN_LABEL: Record<ConsultationJudgeDomain, string> = {
-  BUSINESS: '사업', MONEY: '재물', CAREER: '직업', LOVE: '연애', REUNION: '재회', CHANGE: '변화', TIMING: '시기',
-};
 const FAMILY_LABEL: Record<TenGodFamily, string> = {
   WEALTH: '재성', OFFICER: '관성', OUTPUT: '식상', PEER: '비겁', RESOURCE: '인성',
 };
@@ -51,62 +52,6 @@ const FAMILY_LABEL: Record<TenGodFamily, string> = {
 const ev = (fact: string, meaning: string, domain: JudgmentEvidence['domain'], scope: JudgmentEvidence['temporalScope']): JudgmentEvidence => ({
   fact, meaning, domain, temporalScope: scope, directness: 'ADJACENT',
 });
-
-// ── shared, domain-agnostic combination core (§5/§6/§21) ───────────────────────────────────────────
-type DomainRule = {
-  kind: 'OPPORTUNITY' | 'RISK';
-  reasoning: string;
-  evidence: JudgmentEvidence[];
-  structuralDriver?: string;
-  yongshinNote?: string;
-  temporalNote?: string;
-};
-
-/** Two grounded booleans → one of 4 categorical labels. Never a count, weight, or percentage (§5). */
-function combineStatus(hasOpportunity: boolean, hasRisk: boolean): DomainJudgeStatus {
-  if (hasOpportunity && hasRisk) return 'MIXED';
-  if (hasOpportunity) return 'FAVORABLE';
-  if (hasRisk) return 'CAUTION';
-  return 'UNRESOLVED';
-}
-
-function buildConclusion(domain: ConsultationJudgeDomain, status: DomainJudgeStatus, opportunities: DomainRule[], risks: DomainRule[]): string {
-  const opp = opportunities.map((r) => r.reasoning).join(' ');
-  const risk = risks.map((r) => r.reasoning).join(' ');
-  switch (status) {
-    case 'FAVORABLE': return opp;
-    case 'CAUTION': return risk;
-    case 'MIXED': return `${opp} 다만, ${risk}`;
-    case 'UNRESOLVED': return `${DOMAIN_LABEL[domain]}을(를) 구조적으로 판단할 근거가 이번 배치에서 충분하지 않습니다.`;
-  }
-}
-
-function finalize(
-  domain: ConsultationJudgeDomain, rules: DomainRule[], syntheticInferences: SyntheticInference[],
-  unresolvedReasons: string[], reasoningRuleIds: string[],
-): DomainJudgeResult {
-  const opportunities = rules.filter((r) => r.kind === 'OPPORTUNITY');
-  const risks = rules.filter((r) => r.kind === 'RISK');
-  const status = combineStatus(opportunities.length > 0, risks.length > 0);
-  const dedupe = (xs: (string | undefined)[]) => [...new Set(xs.filter((x): x is string => !!x))];
-  return {
-    domain, status,
-    conclusion: buildConclusion(domain, status, opportunities, risks),
-    supportingEvidence: opportunities.flatMap((r) => r.evidence),
-    counterEvidence: risks.flatMap((r) => r.evidence),
-    // §15 — every non-UNRESOLVED verdict carries at least one real multi-premise inference; UNRESOLVED
-    // has nothing to synthesize by definition.
-    syntheticInferences: status === 'UNRESOLVED' ? [] : syntheticInferences,
-    structuralDrivers: dedupe(rules.map((r) => r.structuralDriver)),
-    yongshinRelevance: dedupe(rules.map((r) => r.yongshinNote)),
-    temporalDrivers: dedupe(rules.map((r) => r.temporalNote)),
-    risks: risks.map((r) => r.reasoning),
-    opportunities: opportunities.map((r) => r.reasoning),
-    uncertaintyReasons: status === 'UNRESOLVED' ? unresolvedReasons : [],
-    reasoningRuleIds,
-    provenance: [MYUNGRI_CONSULTATION_JUDGE_V1_METHOD],
-  };
-}
 
 // ── shared fact-reading helpers (existing facts only — §19, NEW_FACT_PROVIDERS = 0 — §20) ──────────
 const hasFamily = (baseline: NatalBaseline | null, family: TenGodFamily): boolean =>
@@ -178,7 +123,7 @@ function judgeBusiness(input: MyungriConsultationJudgeInput): DomainJudgeResult 
         kind: 'OPPORTUNITY',
         reasoning: '억부용신 방향이 활동·재물 계열과 맞아, 사업 실행을 구조적으로 뒷받침합니다.',
         evidence: [],
-        yongshinNote: `yongshin candidate ${supportElement} supports OUTPUT/WEALTH`,
+        disciplineNote: `yongshin candidate ${supportElement} supports OUTPUT/WEALTH`,
       });
       syn.push({
         premises: [`억부용신 후보=${supportElement}`, `해당 오행의 십신 계열=${familyOf(dayMasterElement, supportElement)}`],
@@ -191,14 +136,14 @@ function judgeBusiness(input: MyungriConsultationJudgeInput): DomainJudgeResult 
         kind: 'RISK',
         reasoning: '억부용신이 피해야 할 방향이 활동·재물 계열과 겹쳐, 무리한 확장은 구조를 해칠 수 있습니다.',
         evidence: [],
-        yongshinNote: `yongshin contraindicated ${warnElement} overlaps OUTPUT/WEALTH`,
+        disciplineNote: `yongshin contraindicated ${warnElement} overlaps OUTPUT/WEALTH`,
       });
     }
   }
 
   return finalize('BUSINESS', rules, syn,
     ['사업을 뒷받침할 활동·재물 구조가 원국과 현재 흐름 어디에서도 확인되지 않습니다.'],
-    ['BUSINESS-01:output_wealth_route', 'BUSINESS-02:control_burden', 'BUSINESS-03:yongshin_relevance']);
+    ['BUSINESS-01:output_wealth_route', 'BUSINESS-02:control_burden', 'BUSINESS-03:yongshin_relevance'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 
 // ══ MONEY (§8, §17) ═════════════════════════════════════════════════════════════════════════════
@@ -251,7 +196,7 @@ function judgeMoney(input: MyungriConsultationJudgeInput): DomainJudgeResult {
     if (support) {
       rules.push({
         kind: 'OPPORTUNITY', reasoning: '억부용신 방향이 재물 계열과 맞아, 재물 흐름을 구조적으로 뒷받침합니다.',
-        evidence: [], yongshinNote: `yongshin candidate ${support} supports WEALTH`,
+        evidence: [], disciplineNote: `yongshin candidate ${support} supports WEALTH`,
       });
       if (syn.length === 0) {
         syn.push({
@@ -264,14 +209,14 @@ function judgeMoney(input: MyungriConsultationJudgeInput): DomainJudgeResult {
     if (warn) {
       rules.push({
         kind: 'RISK', reasoning: '억부용신이 피해야 할 방향이 재물 계열과 겹쳐, 무리한 재물 확장은 조심해야 합니다.',
-        evidence: [], yongshinNote: `yongshin contraindicated ${warn} overlaps WEALTH`,
+        evidence: [], disciplineNote: `yongshin contraindicated ${warn} overlaps WEALTH`,
       });
     }
   }
 
   return finalize('MONEY', rules, syn,
     ['재물의 유입·보유를 판단할 구조적 근거가 원국과 현재 흐름 어디에서도 확인되지 않습니다.'],
-    ['MONEY-01:inflow', 'MONEY-02:retention', 'MONEY-03:yongshin_relevance']);
+    ['MONEY-01:inflow', 'MONEY-02:retention', 'MONEY-03:yongshin_relevance'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 
 // ══ CAREER (§9) ═════════════════════════════════════════════════════════════════════════════════
@@ -340,14 +285,14 @@ function judgeCareer(input: MyungriConsultationJudgeInput): DomainJudgeResult {
     if (support) {
       rules.push({
         kind: 'OPPORTUNITY', reasoning: '억부용신 방향이 조직·자리 계열과 맞아, 지금 자리를 지키거나 승진 방향을 구조적으로 뒷받침합니다.',
-        evidence: [], yongshinNote: `yongshin candidate ${support} supports OFFICER`,
+        evidence: [], disciplineNote: `yongshin candidate ${support} supports OFFICER`,
       });
     }
   }
 
   return finalize('CAREER', rules, syn,
     ['직업의 안정·변동을 판단할 구조적 근거가 원국과 현재 흐름 어디에서도 확인되지 않습니다.'],
-    ['CAREER-01:officer_presence', 'CAREER-02:month_seat_pressure', 'CAREER-03:independent_leaning', 'CAREER-04:yongshin_relevance']);
+    ['CAREER-01:officer_presence', 'CAREER-02:month_seat_pressure', 'CAREER-03:independent_leaning', 'CAREER-04:yongshin_relevance'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 
 // ══ LOVE (§10) ══════════════════════════════════════════════════════════════════════════════════
@@ -392,7 +337,7 @@ function judgeLove(input: MyungriConsultationJudgeInput): DomainJudgeResult {
 
   return finalize('LOVE', rules, syn,
     ['연애·관계를 판단할 구조적 근거(배우자 자리 접촉)가 원국과 현재 흐름 어디에서도 확인되지 않습니다.'],
-    ['LOVE-01:spouse_seat_strain', 'LOVE-02:day_seat_temporal_contact']);
+    ['LOVE-01:spouse_seat_strain', 'LOVE-02:day_seat_temporal_contact'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 
 // ══ REUNION (§11, §18) — separate from LOVE, never aliased ═══════════════════════════════════════
@@ -441,7 +386,7 @@ function judgeReunion(input: MyungriConsultationJudgeInput): DomainJudgeResult {
 
   return finalize('REUNION', rules, syn,
     ['재회 가능성을 판단할 구조적 근거(배우자 자리에 대한 지금 흐름의 접촉)가 확인되지 않습니다.'],
-    ['REUNION-01:day_seat_opening', 'REUNION-02:stability_concern']);
+    ['REUNION-01:day_seat_opening', 'REUNION-02:stability_concern'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 
 // ══ CHANGE / MOVEMENT (§12) ════════════════════════════════════════════════════════════════════
@@ -479,7 +424,7 @@ function judgeChange(input: MyungriConsultationJudgeInput): DomainJudgeResult {
     if (supportsAction) {
       rules.push({
         kind: 'OPPORTUNITY', reasoning: '억부용신 방향이 활동·전환 계열과 맞아, 새로운 시도를 시작하기에 구조적으로 유리한 방향입니다.',
-        evidence: [], yongshinNote: `yongshin candidate ${supportsAction} supports OUTPUT (action/transition)`,
+        evidence: [], disciplineNote: `yongshin candidate ${supportsAction} supports OUTPUT (action/transition)`,
       });
     }
   }
@@ -497,7 +442,7 @@ function judgeChange(input: MyungriConsultationJudgeInput): DomainJudgeResult {
 
   return finalize('CHANGE', rules, syn,
     ['변화·이동 압력을 판단할 구조적 근거가 현재 흐름 어디에서도 확인되지 않습니다.'],
-    ['CHANGE-01:heavy_structural_pressure', 'CHANGE-02:harmony_support', 'CHANGE-03:yongshin_relevance']);
+    ['CHANGE-01:heavy_structural_pressure', 'CHANGE-02:harmony_support', 'CHANGE-03:yongshin_relevance'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 
 // ══ TIMING (§13, §14) — supporting judgment, never a fabricated exact date ════════════════════════
@@ -509,7 +454,7 @@ function judgeTiming(input: MyungriConsultationJudgeInput): DomainJudgeResult {
   if (!anyLayerActive(layers)) {
     return finalize('TIMING', [], [],
       ['현재 시점에 활성화된 대운/세운/월운 흐름 정보가 없어 시기를 판단하지 않습니다.'],
-      ['TIMING-01:no_active_layer']);
+      ['TIMING-01:no_active_layer'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
   }
 
   for (const layer of layers) {
@@ -548,7 +493,7 @@ function judgeTiming(input: MyungriConsultationJudgeInput): DomainJudgeResult {
 
   return finalize('TIMING', rules, syn,
     ['현재 시점에 활성화된 대운/세운/월운 흐름 정보가 없어 시기를 판단하지 않습니다.'],
-    ['TIMING-02:per_layer_valence']);
+    ['TIMING-02:per_layer_valence'], MYUNGRI_CONSULTATION_JUDGE_V1_METHOD);
 }
 const SCOPE_NOTE: Record<LayerAnalysis['scope'], string> = {
   NATAL: '타고난 바탕이', DAEWOON: '지금의 큰 흐름이', SEWOON: '올해 흐름이',
@@ -578,32 +523,4 @@ export function judgeAllMyungriConsultationDomains(
   return out;
 }
 
-// ── question routing (§22) — reuses the SAME classification the live pipeline already resolves
-// (`resolveAskedTarget`/`resolveJudgmentDomain` in `chat/services/consultationGrounding.ts`); no new
-// Korean keyword, no new doctrine. TIMING is deliberately excluded here — it is a SUPPORTING judgment
-// (§13), never the primary "asked matter" a question routes to. ──────────────────────────────────
-const ASKED_MATTER_TO_DOMAIN: Partial<Record<string, ConsultationJudgeDomain>> = {
-  BUSINESS: 'BUSINESS', STARTUP: 'BUSINESS', MONEY: 'MONEY',
-  JOB_CHANGE: 'CAREER', OCCUPATION: 'CAREER',
-  MARRIAGE: 'LOVE', ROMANCE: 'LOVE', REUNION: 'REUNION',
-  RELOCATION: 'CHANGE',
-};
-const AXIS_TO_DOMAIN: Partial<Record<JudgmentDomain, ConsultationJudgeDomain>> = {
-  OPPORTUNITY: 'BUSINESS', MONEY_INFLOW: 'MONEY', MONEY_RETENTION: 'MONEY', CAREER: 'CAREER',
-  RELATION_BOND: 'LOVE', RELATION_STABILITY: 'LOVE', MOVEMENT: 'CHANGE',
-};
-
-/**
- * Which of the 7 domains a question's already-resolved routing (`askedTarget`/`questionDomain`) names
- * as its PRIMARY matter, or `null` when the question names none of them (e.g. HEALTH_ENERGY/CONFLICT/
- * DECISION/GENERAL — genuinely outside this V1's 7 domains, not silently forced into one).
- */
-export function routeConsultationJudgeDomain(
-  askedTarget: { key: string } | null | undefined, questionDomain: JudgmentDomain,
-): ConsultationJudgeDomain | null {
-  if (askedTarget?.key.startsWith('ASKED_MATTER:')) {
-    const mapped = ASKED_MATTER_TO_DOMAIN[askedTarget.key.slice('ASKED_MATTER:'.length)];
-    if (mapped) return mapped;
-  }
-  return AXIS_TO_DOMAIN[questionDomain] ?? null;
-}
+export { routeConsultationJudgeDomain } from './consultationJudgeCore';

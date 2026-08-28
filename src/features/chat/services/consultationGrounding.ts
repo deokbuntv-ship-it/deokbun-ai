@@ -47,7 +47,9 @@ import { epochForSajuMonth, epochForSajuYear, resolveQuestionYears } from '@/fea
 import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
 import {
   ZIWEI_RULESET_VERSION,
+  activeDecadalPalace,
   computeZiweiChartMemoized,
+  currentAgeAt,
   toZiweiBirthInput,
   toZiweiEvidence,
 } from '@/features/ziwei';
@@ -60,6 +62,8 @@ import {
   reasonMyungri,
   judgeQimen,
   judgeZiwei,
+  judgeAllZiweiConsultationDomains,
+  routeConsultationJudgeDomain,
   type CrossDivinationVerdict,
   type JudgmentDomain,
   type NatalStructureInput,
@@ -104,17 +108,24 @@ export function buildZiweiEvidence(birthInfo: BirthInfoDraft): EngineEvidence {
  * DIVINATION_ENGINE_V1 — the Ziwei chart is needed TWICE: flattened into prompt evidence (as before) AND
  * intact for the independent Ziwei judge. The evidence adapter destroys the palace/四化 structure a judge
  * needs, so the raw chart is kept here rather than recomputed.
+ *
+ * Ziwei Consultation Judge V1 (§14/§28) — `activeDecadal` is this person's CURRENT 大限 palace
+ * (`ziweiDecadal.ts`, computed from `nowEpochSeconds`, never guessed/defaulted); `null` whenever no
+ * chart is available OR the computed age falls outside every palace's real range.
  */
-export function buildZiweiParts(birthInfo: BirthInfoDraft): {
+export function buildZiweiParts(birthInfo: BirthInfoDraft, nowEpochSeconds?: number): {
   evidence: EngineEvidence;
   chart: ZiweiChart | null;
   availability: ZiweiResult['availability'] | 'calculation_failed';
+  activeDecadal: ReturnType<typeof activeDecadalPalace>;
 } {
   try {
     const result = computeZiweiChartMemoized(toZiweiBirthInput(birthInfo));
-    return { evidence: toZiweiEvidence(result), chart: result.chart, availability: result.availability };
+    const now = nowEpochSeconds ?? Math.floor(Date.now() / 1000);
+    const activeDecadal = result.chart ? activeDecadalPalace(result.chart, currentAgeAt(result.chart, now)) : null;
+    return { evidence: toZiweiEvidence(result), chart: result.chart, availability: result.availability, activeDecadal };
   } catch {
-    return { evidence: MYUNGRI_UNAVAILABLE, chart: null, availability: 'calculation_failed' };
+    return { evidence: MYUNGRI_UNAVAILABLE, chart: null, availability: 'calculation_failed', activeDecadal: null };
   }
 }
 
@@ -510,7 +521,7 @@ export async function buildConsultationGrounding(
 
   // Ziwei is computed independently (wider iztro span → enables Ziwei-only degraded mode). The CHART is kept
   // (not just the flattened evidence) so the independent Ziwei judge can read palaces + 四化.
-  const ziweiParts = buildZiweiParts(withBirth.birthInfo);
+  const ziweiParts = buildZiweiParts(withBirth.birthInfo, now);
   const ziwei = ziweiParts.evidence;
   const { evidence: myungri, engineVersion: myungriVersion, targetPolarities, referenceYear, referenceMonth, judgeFacts } = await buildMyungriEvidence(
     withBirth,
@@ -554,9 +565,20 @@ export async function buildConsultationGrounding(
       asksTiming,
       askedTarget,
     });
+    // Ziwei Consultation Judge V1 (§15/§28/§30) — INDEPENDENT of Myungri: computed from the Ziwei
+    // chart alone, routed via the SAME `askedTarget`/`questionDomain` classification Myungri's own
+    // routing reuses. Only the routed domain (never all 7) is folded into `judgeZiwei`'s evidence, and
+    // only as ADDITIONAL evidence — it never overrides `judgeZiwei`'s own R1-R4 stance.
+    const ziweiRoutedDomain = routeConsultationJudgeDomain(askedTarget, questionDomain);
+    const ziweiConsultationJudgment = ziweiRoutedDomain && ziweiParts.chart
+      ? judgeAllZiweiConsultationDomains({ chart: ziweiParts.chart, activeDecadal: ziweiParts.activeDecadal })[ziweiRoutedDomain]
+      : null;
     const judgments = [
       myungriReasoning.judgment,
-      judgeZiwei({ question: q, questionDomain, chart: ziweiParts.chart, availability: ziweiParts.availability }),
+      judgeZiwei({
+        question: q, questionDomain, chart: ziweiParts.chart, availability: ziweiParts.availability,
+        consultationJudgment: ziweiConsultationJudgment,
+      }),
       judgeQimen({ question: q, questionDomain, board: qimenParts.board, availability: qimenParts.availability }),
     ];
     divinationVerdict = judgeCross({

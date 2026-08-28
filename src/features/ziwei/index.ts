@@ -6,6 +6,7 @@ export { toZiweiEvidence } from './adapters/ziweiEvidenceAdapter';
 export { resolveZiweiInput, type ZiweiBirthInput } from './adapters/ziweiInputAdapter';
 export { toZiweiBirthInput, type ZiweiBirthSource } from './adapters/ziweiBirthMapper';
 export { validateZiweiChart, type ZiweiValidationResult } from './validation/ziweiValidation';
+export { currentAgeAt, activeDecadalPalace } from './services/ziweiDecadal';
 export { timeIndexFromHour } from './domain/ziweiTypes';
 export {
   IZTRO_VERSION,

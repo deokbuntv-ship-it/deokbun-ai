@@ -48,6 +48,12 @@ export { claimKind, sameClaimKind, type ClaimKind } from './claimOntology';
 export { readNatalBaseline, domainFamily, type NatalBaseline, type NatalStructureInput, type PositionedTenGod } from './myungriNatal';
 export { analyzeLayer, axisPressure, type LayerAnalysis, type PositionedHit } from './myungriLayer';
 export { judgeZiwei, palaceForDomain, sihuaKind, type ZiweiJudgeInput } from './ziweiJudge';
+export {
+  judgeAllMyungriConsultationDomains, routeConsultationJudgeDomain,
+  type ConsultationJudgeDomain, type DomainJudgeResult, type DomainJudgeStatus, type SyntheticInference,
+  type MyungriConsultationJudgeInput,
+} from './myungriConsultationJudge';
+export { judgeAllZiweiConsultationDomains, type ZiweiConsultationJudgeInput } from './ziweiConsultationJudge';
 export { judgeQimen, doorClass, type QimenJudgeInput } from './qimenJudge';
 export { judgeCross, judgeCrossReasoned, type CrossJudgeInput } from './crossJudge';
 export { extendGraph, refinementFailure } from './reasoning/graphExtension';

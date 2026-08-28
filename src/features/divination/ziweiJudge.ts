@@ -19,6 +19,7 @@
 // NOT AVAILABLE AT RUNTIME → never claimed: 유년/流年 (annual) is not computed, so no year-level claim; star
 // brightness is emitted as numeric codes under ko-KR, so it is deliberately unused rather than guessed.
 import type { ZiweiChart, ZiweiPalace } from '@/features/ziwei/domain/ziweiTypes';
+import type { DomainJudgeResult } from './consultationJudgeTypes';
 
 import {
   NO_SIGNAL,
@@ -95,6 +96,19 @@ export type ZiweiJudgeInput = {
   questionDomain: JudgmentDomain;
   chart: ZiweiChart | null;
   availability: 'available' | 'partial' | 'missing_birth_time' | 'unsupported_case' | 'calculation_failed';
+  /**
+   * Ziwei Consultation Judge V1's result for whichever of the 7 domains this turn's question routed to
+   * (`./ziweiConsultationJudge.ts`, computed by the caller from the SAME `chart`) — surfaced as
+   * ADDITIONAL evidence below, never overriding this function's own R1-R4 stance/dominantConclusion.
+   * `null`/absent when no domain routed (e.g. a HEALTH/CONFLICT/DECISION/GENERAL question) or the
+   * consultation-judge layer was not computed.
+   */
+  consultationJudgment?: DomainJudgeResult | null;
+};
+
+const dedupeByFact = (evidence: JudgmentEvidence[]): JudgmentEvidence[] => {
+  const seen = new Set<string>();
+  return evidence.filter((e) => (seen.has(e.fact) ? false : (seen.add(e.fact), true)));
 };
 
 function notApplicable(reason: string, reliability: DataReliability, domain: JudgmentDomain): DivinationJudgment {
@@ -108,17 +122,19 @@ function notApplicable(reason: string, reliability: DataReliability, domain: Jud
   };
 }
 
-const findPalace = (chart: ZiweiChart, name: string): ZiweiPalace | null =>
+/** Exported so a domain-specific consultation judge (e.g. `ziweiConsultationJudge.ts`) can look up a
+ *  palace by its canonical name without reimplementing this lookup. */
+export const findPalace = (chart: ZiweiChart, name: string): ZiweiPalace | null =>
   chart.palaces.find((p) => p.name.includes(name)) ?? null;
 
-/** R3 — the 삼방사정 set for a palace: itself, its 대궁(+6), and the two 삼합궁(+4, +8). */
-function triadOf(chart: ZiweiChart, palace: ZiweiPalace): { opposite: ZiweiPalace | null; triangles: ZiweiPalace[] } {
+/** R3 — the 삼방사정 set for a palace: itself, its 대궁(+6), and the two 삼합궁(+4, +8). Exported for reuse. */
+export function triadOf(chart: ZiweiChart, palace: ZiweiPalace): { opposite: ZiweiPalace | null; triangles: ZiweiPalace[] } {
   const at = (offset: number) =>
     chart.palaces.find((p) => p.index === (palace.index + offset) % 12) ?? null;
   return { opposite: at(6), triangles: [at(4), at(8)].filter((p): p is ZiweiPalace => p !== null) };
 }
 
-type PalaceRead = {
+export type PalaceRead = {
   palace: ZiweiPalace;
   role: '본궁' | '대궁' | '삼합궁';
   sihua: { kind: SihuaKind; star: string }[];
@@ -139,8 +155,13 @@ function readPalace(chart: ZiweiChart, palace: ZiweiPalace, role: PalaceRead['ro
   };
 }
 
-/** Judge one palace-domain axis from its full 삼방사정 set. Returns null when the chart says nothing. */
-function judgePalaceAxis(
+/**
+ * Judge one palace-domain axis from its full 삼방사정 set. Returns null when the chart says nothing.
+ * Exported so a domain-specific consultation judge can reuse the SAME 사화-role reasoning (R2′) rather
+ * than reimplementing it — this is the one place that already correctly distinguishes 록/권/과's
+ * different roles and never counts them.
+ */
+export function judgePalaceAxis(
   chart: ZiweiChart,
   domain: JudgmentDomain,
   asked: JudgmentDomain,
@@ -335,6 +356,11 @@ export function judgeZiwei(input: ZiweiJudgeInput): DivinationJudgment {
   const factGroupsUsed = ['12궁 궁위', '사화(四化)', '삼방사정(대궁·삼합궁)', '주성 배치'];
   if (bodyPalace) factGroupsUsed.push('신궁');
   if (chart.fiveElementsClass) factGroupsUsed.push('오행국·명주');
+  // Ziwei Consultation Judge V1 — surfaced the SAME way Myungri's own consultation judge is: as
+  // ADDITIONAL evidence, never touching `stance`/`dominantConclusion` above (those stay the R1-R4
+  // structural judge's own, unmodified authority).
+  const cj = input.consultationJudgment;
+  if (cj) factGroupsUsed.push(`상담판정(${cj.domain})`);
 
   return {
     discipline: 'ZIWEI',
@@ -346,8 +372,11 @@ export function judgeZiwei(input: ZiweiJudgeInput): DivinationJudgment {
     dominantConclusion: primary.conclusion,
     dominantFactor:
       primary.counterEvidence[0]?.fact ?? primary.evidence[0]?.fact ?? `${palaceForDomain(primary.domain)} 신호 없음`,
-    directEvidence: [...subs.flatMap((s) => s.evidence), ...contextEvidence],
-    counterEvidence: subs.flatMap((s) => s.counterEvidence),
+    // The consultation judge often reads the SAME palace axis the R1-R4 judge above already read (e.g.
+    // MONEY reads MONEY_INFLOW too), so its evidence is deduped by `fact` against what `subs` already
+    // contributed — never a second citation of the identical underlying claim.
+    directEvidence: dedupeByFact([...subs.flatMap((s) => s.evidence), ...contextEvidence, ...(cj?.supportingEvidence ?? [])]),
+    counterEvidence: dedupeByFact([...subs.flatMap((s) => s.counterEvidence), ...(cj?.counterEvidence ?? [])]),
     internalContradictions,
     timingSignals: [], // 유년 미계산 — never a year claim
     domainSubJudgments: subs,
