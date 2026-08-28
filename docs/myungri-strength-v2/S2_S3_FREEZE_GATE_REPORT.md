@@ -14,6 +14,21 @@ executable-spec repair only.
 
 `NEW_P0_REMAINING = 0`.
 
+## -1. Runtime implementation (separate batch, after both P0 patches above)
+
+`MYUNGRI_STRUCTURAL_V2_RUNTIME = IMPLEMENTED`. The frozen 11-node graph (v3.1.0) is now a literal
+TypeScript translation: `src/features/divination/myungriStructuralV2.ts` +
+`src/features/divination/__tests__/myungriStructuralV2.test.ts` (37 tests). Scope: ordinary
+structural strength view (`WEAK_LEANING`/`STRONG_LEANING`/`MIXED_EVIDENCE`/`UNRESOLVED`) and the
+special-structure screen (`NONE_DETECTED`/`CANDIDATE`/`INSUFFICIENT`) only — explicitly NOT
+implemented: seven-band consumer labels, `EXTREME_*`, `BALANCED`, task capacity, transformation
+judgment, GEJU, climate, Yongshin. This is the sole canonical structural-strength verdict authority
+going forward (the quarantined `natalStrength.ts` stays quarantined, P0-07; the evidence-only
+`myungriStrength.ts` stays untouched and still returns `UNDETERMINED`). **Not yet wired into the live
+consultation reasoning pipeline** (`reasoning/myungriReasoner.ts`) — that would require editing frozen
+kernel files, out of scope for an additive runtime-implementation batch; see the module's own handoff
+note. Full accounting in the runtime-implementation final report (this session).
+
 ## 1. P0 closure accounting
 
 | P0 | Finding | Fix applied | Status |

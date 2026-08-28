@@ -7,6 +7,15 @@ Governing plan: [`../MYUNGRI_STRENGTH_V2_RESEARCH_PLAN.md`](../MYUNGRI_STRENGTH_
 Why V1 was closed: [`../MYUNGRI_STRENGTH_V1_CLOSURE.md`](../MYUNGRI_STRENGTH_V1_CLOSURE.md).
 What the frozen input layer is: [`../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md`](../MYUNGRI_STRENGTH_FACT_FOUNDATION_V1_FREEZE.md).
 
+## Runtime status: **`MYUNGRI_STRUCTURAL_V2_RUNTIME = IMPLEMENTED`**
+
+The frozen graph below (`data/myungri-strength-v2/judgment-graph-v2.json`, v3.1.0) is now a literal
+runtime translation: [`src/features/divination/myungriStructuralV2.ts`](../../src/features/divination/myungriStructuralV2.ts)
++ its test suite. This `docs/`/`data/` directory remains the SPECIFICATION and research record — the
+runtime code is authoritative in production, this JSON/these docs are what it was built from and is
+checked against. Scope, deferrals, and non-wiring-into-the-live-pipeline note: see that file's own
+header and `S2_S3_FREEZE_GATE_REPORT.md` §"Runtime implementation".
+
 ## Current gate: **S2/S3 P0 REMEDIATION (v3.1.0, closed)** — `READY_FOR_ONE_FINAL_MINIMAL_CODEX_CLOSURE_CHECK`
 
 An independent Codex audit of the first S2/S3 freeze found 7 P0 executable-spec defects
