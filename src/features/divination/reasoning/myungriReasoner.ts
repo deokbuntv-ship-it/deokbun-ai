@@ -17,6 +17,10 @@ import type { MyungriJudgeInput } from '../myungriJudge';
 import { tenGodFamily } from '../myungriJudge';
 import { judgeMyungriStructuralV2FromStrengthInputs, type MyungriStructuralV2Result } from '../myungriStructuralV2';
 import { judgeMyungriYongshin, type MyungriYongshinResult } from '../myungriYongshin';
+import {
+  judgeAllMyungriConsultationDomains, routeConsultationJudgeDomain,
+  type ConsultationJudgeDomain, type DomainJudgeResult,
+} from '../myungriConsultationJudge';
 import { buildMyungriPremises } from './myungriPremises';
 import { MYUNGRI_RULES, primitivePropositions } from './myungriRules';
 import {
@@ -30,6 +34,15 @@ export type MyungriReasoning = {
   /** The graph leaves — what nothing else supersedes. Synthesis reads these. */
   standing: ReasonedProposition[];
   judgment: DivinationJudgment;
+  /**
+   * Myungri Consultation Judge V1's full 7-domain result set (`../myungriConsultationJudge.ts`) — all 7
+   * always computed (cheap, pure), `null` only when Structural V2 itself never ran (no chart at all).
+   * The domain matching this turn's ROUTED question (if any) is ALSO folded into `judgment.directEvidence`/
+   * `factGroupsUsed` below via a premise, exactly like Structural V2/Yongshin V1 — this full record is
+   * for direct consumers/tests/traceability that need more than one domain or the routed domain's full
+   * `structuralDrivers`/`yongshinRelevance`/`temporalDrivers` breakdown.
+   */
+  consultationJudgments: Record<ConsultationJudgeDomain, DomainJudgeResult> | null;
 };
 
 /**
@@ -156,10 +169,30 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
       })
     : null;
 
+  // Myungri Consultation Judge V1 (../myungriConsultationJudge.ts) — computed ONCE here, from the
+  // Structural V2 + Yongshin V1 results above plus the SAME `baseline`/`layers` already computed for
+  // the premises below (§26 of that brief: "integrate through the existing Myungri reasoning path").
+  // `null` only when Structural V2 itself never ran or `dayMasterElement` is unavailable — the two
+  // facts every one of the 7 domain judges needs regardless of which is asked.
+  const dayMasterElement = input.natal?.strengthInputs?.dayMasterElement ?? null;
+  const consultationJudgments: Record<ConsultationJudgeDomain, DomainJudgeResult> | null =
+    structuralV2 && yongshin && dayMasterElement
+      ? judgeAllMyungriConsultationDomains({ dayMasterElement, structuralV2, yongshin, baseline, layers })
+      : null;
+  // Which of the 7 results is this turn actually ABOUT — the routed "asked matter" (never the primary
+  // verdict authority; only which domain's result surfaces as evidence), plus TIMING whenever the
+  // question is explicitly asking about timing (§13 — TIMING is a SUPPORTING judgment, never the
+  // primary route).
+  const routedDomain = routeConsultationJudgeDomain(input.askedTarget, asked);
+  const surfacedConsultationDomains: ConsultationJudgeDomain[] = consultationJudgments
+    ? [...(routedDomain ? [routedDomain] : []), ...(input.asksTiming && routedDomain !== 'TIMING' ? ['TIMING' as const] : [])]
+    : [];
+
   // ── 1. PREMISES (no stance exists yet, and nothing here can see one) ────────────────────────────
   const premises = buildMyungriPremises({
     subject, questionIntent: intent, askedAxis: asked, baseline, layers, reliability,
     structuralV2, yongshin,
+    consultationJudgments: surfacedConsultationDomains.map((d) => consultationJudgments![d]),
   });
 
   // ── 2/3. PROPOSITIONS + DERIVATIONS to a fixed point ───────────────────────────────────────────
@@ -206,6 +239,9 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
   // Structural V2 premise is reported here as genuine evidence, the same visibility mechanism the
   // withheld marker used, just not filed under 'BLOCKED'.
   const structural = premises.filter((p) => p.doctrineReference.startsWith('STRUCTURAL_V2'));
+  // Myungri Consultation Judge V1's own conclusion — reported the same visible way, so the routed
+  // domain's actual reasoning (not just a label) reaches "왜 이렇게 보나요?" (§24 of that brief).
+  const consultationJudgePremises = premises.filter((p) => p.doctrineReference.startsWith('CONSULTATION_JUDGE_V1:'));
 
   // `factGroupsUsed` is the user-facing depth-utilization report ("이 판단에 무엇을 실제로 썼는가"), so it keeps
   // the product's own vocabulary rather than the internal doctrine-reference strings.
@@ -227,6 +263,8 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     ...(premises.some((p) => p.doctrineReference.startsWith('YONGSHIN_V1:')) ? ['억부용신(구조)'] : []),
     // Genuinely withheld — no deterministic candidate from current facts, or Structural V2 never ran.
     ...(used.has('BLOCKED: 억부용신 판정에 필요한 근거 부족') ? ['억부용신(판정 보류)'] : []),
+    // Myungri Consultation Judge V1 — one entry per routed domain actually surfaced this turn.
+    ...consultationJudgePremises.map((p) => `상담판정(${p.target.label})`),
   ];
 
   const judgment: DivinationJudgment = {
@@ -268,6 +306,7 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
       ...evidenceOf(premises, answering(resolution).flatMap((p) => p.supportingPremiseIds), asked, asked),
       ...evidenceOf(premises, blocked.map((b) => b.id), 'GENERAL', asked),
       ...evidenceOf(premises, structural.map((s) => s.id), 'GENERAL', asked),
+      ...evidenceOf(premises, consultationJudgePremises.map((s) => s.id), 'GENERAL', asked),
     ],
     counterEvidence: evidenceOf(premises, answering(resolution).flatMap((p) => p.opposingPremiseIds), asked, asked),
     internalContradictions,
@@ -291,7 +330,7 @@ export function reasonMyungri(input: MyungriJudgeInput): MyungriReasoning {
     factGroupsUsed,
   };
 
-  return { premises, propositions, standing, judgment };
+  return { premises, propositions, standing, judgment, consultationJudgments };
 }
 
 /** Convenience for tests and the QA pack: the synthesis census of one reasoning run. */

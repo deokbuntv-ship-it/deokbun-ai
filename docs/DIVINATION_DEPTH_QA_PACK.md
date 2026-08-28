@@ -25,7 +25,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(재물 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -92,7 +92,7 @@
 ### MYUNGRI
 - PRIMARY = **CONDITIONAL_AGAINST** (근거강도 STRONG · 확신 HIGH · 직접성 DIRECT · 자료 EXACT)
 - 결론: 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(재물 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -158,7 +158,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(재물 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -220,7 +220,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(재물 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -287,7 +287,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(연애 판정), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = AGAINST (NATAL/DIRECT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -360,7 +360,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(직업 판정), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -497,7 +497,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -572,7 +572,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -647,7 +647,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(사업 판정), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -722,7 +722,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 REDUCED)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(사업 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -774,7 +774,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -916,8 +916,8 @@
 
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
-- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- 결론: 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(재회 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -941,13 +941,15 @@
 
 ### ZIWEI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 DIRECT · 자료 EXACT)
-- 결론: 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
+- 결론: 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
 - MAJOR_FACTS_USED: 12궁 궁위, 사화(四化), 삼방사정(대궁·삼합궁), 주성 배치, 신궁, 오행국·명주
 - SUBJUDGMENTS:
-    - GENERAL = INSUFFICIENT_EVIDENCE (NATAL/DIRECT) — 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
-    - CAREER = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
+    - RELATION_BOND = INSUFFICIENT_EVIDENCE (NATAL/DIRECT) — 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - RELATION_STABILITY = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
-- COUNTER_EVIDENCE: (없음)
+    - GENERAL = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
+    - CONFLICT = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 형제은 힘도 실리지만 화기로 걸리는 지점이 함께 있어, 조건을 정리하지 않으면 쉽지 않습니다.
+- COUNTER_EVIDENCE:
+    - 형제(본궁)에 거문 화기 — 이 자리에 막히거나 얽혀서 애를 먹는 힘이 걸립니다.
 
 ### QIMEN
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
@@ -956,19 +958,19 @@
 - SAME_PROPOSITION_CONFLICT = 자리·직업에서 서로 다른 신호가 함께 잡힙니다. / 잡았을 때 남는 쪽에서 서로 다른 신호가 함께 잡힙니다.
 - DOMAIN_DECOMPOSITION = 없음
 - TEMPORAL_DECOMPOSITION = 없음
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · RELATION_BOND:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOMINANT_EVIDENCE = 해당 축 근거 없음
 - LOSING_EVIDENCE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
 - RESOLUTION = 명리에 이 축을 직접 보는 자리가 정의되어 있지 않습니다(엔진 커버리지 공백).
 - **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
-- NEW_INFERENCE = 전반에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
+- NEW_INFERENCE = 끌리는 힘에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 월주 천간합 / 올해 흐름 → 원국 시주 천간합 / 이 시기 흐름 → 원국 일주 천간합
-- COUNTER_EVIDENCE_REF = (없음)
+- COUNTER_EVIDENCE_REF = 형제(본궁)에 천기 화과
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = NATAL
 - TRACEABLE = YES
-- 결론: 전반에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
+- 결론: 끌리는 힘에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=미적용
 
@@ -1043,7 +1045,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 끌리는 힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(연애 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1106,7 +1108,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(사업 판정), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1177,7 +1179,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(사업 판정), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/DIRECT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1244,7 +1246,7 @@
 ### MYUNGRI
 - PRIMARY = **CONDITIONAL_AGAINST** (근거강도 WEAK · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(재물 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -1310,7 +1312,7 @@
 ### MYUNGRI
 - PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 EXACT)
 - 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
-- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조)
+- MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 대운, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(변화 판정), 상담판정(시기 판정)
 - 일간 강약: STRONG_LEANING (Myungri Structural V2)
 - SUBJUDGMENTS:
     - OPPORTUNITY = STRUCTURAL_ANSWER (DAEWOON/ADJACENT) — 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.

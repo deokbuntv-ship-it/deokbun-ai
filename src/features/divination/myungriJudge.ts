@@ -17,6 +17,7 @@ import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
 import type { JudgmentDomain, QuestionIntent, TemporalScope } from './contracts';
 import type { NatalStructureInput } from './myungriNatal';
 import type { FiveElement } from '@/features/interpretation';
+import type { SemanticTarget } from './reasoning/targets';
 
 // ── 십신 semantics (canonical identities, mirrored from the shipped monthly/today mapping) ────────────
 export type TenGodFamily = 'WEALTH' | 'OFFICER' | 'OUTPUT' | 'PEER' | 'RESOURCE';
@@ -82,6 +83,14 @@ export type MyungriJudgeInput = {
   questionIntent?: QuestionIntent;
   /** Whose chart this is, for premise attribution. */
   subject?: string;
+  /**
+   * The literal matter the question named (`resolveAskedTarget`, `../chat/services/consultationGrounding.ts`)
+   * — the SAME value already computed there for `judgeCross`, passed through rather than re-derived, so
+   * `myungriReasoner.ts` can route to the matching Myungri Consultation Judge V1 domain (§22 of that
+   * brief: "if current pipeline already has question classification/intents, reuse it"). Absent/null →
+   * routing falls back to `questionDomain` alone.
+   */
+  askedTarget?: SemanticTarget | null;
 };
 /**
  * REMOVED IN V4B — the legacy `judgeMyungri` / `judgeAxis` / `axesFor` judge.

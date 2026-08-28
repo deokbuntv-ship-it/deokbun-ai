@@ -3,7 +3,7 @@
 // domain server-side instead of inferring it from free-form prose. Not a ranking, not astrology — just a
 // stable topic label. '전반' = no specific domain resolved.
 export type ConsultationDomain =
-  | '사업' | '창업' | '이직' | '직업' | '재물' | '결혼' | '연애' | '관계' | '건강' | '시험' | '이사' | '계약' | '전반';
+  | '사업' | '창업' | '이직' | '직업' | '재물' | '결혼' | '연애' | '재회' | '관계' | '건강' | '시험' | '이사' | '계약' | '전반';
 
 export function classifyConsultationDomain(question: string): ConsultationDomain {
   const q = question ?? '';
@@ -13,6 +13,9 @@ export function classifyConsultationDomain(question: string): ConsultationDomain
   if (/직업|직장|취업|커리어|일자리|진로/.test(q)) return '직업';
   if (/재물|재정|돈|투자|자산|수입|금전|씀씀이/.test(q)) return '재물';
   if (/결혼|혼인|약혼/.test(q)) return '결혼';
+  // 재회 must outrank 연애: "헤어진 사람과 다시 만날 수 있을까요" mentions 연애-adjacent context but asks
+  // reconnection specifically, a structurally distinct question (see myungriConsultationJudge.ts REUNION).
+  if (/재회|다시\s*만나|재결합|다시\s*연락|헤어진.*(다시|재회)|전\s*(남자|여자)\s*친구/.test(q)) return '재회';
   if (/연애|사랑|썸|이성|애인|인연/.test(q)) return '연애';
   if (/인간관계|대인|관계운|사람\s*관계/.test(q)) return '관계';
   if (/건강|질병|몸|체력|컨디션/.test(q)) return '건강';

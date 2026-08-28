@@ -78,7 +78,7 @@ export function buildConsultationDecisionMeta(
 }
 
 const POLARITY_TIERS = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
-const DOMAINS = ['사업', '창업', '이직', '직업', '재물', '결혼', '연애', '관계', '건강', '시험', '이사', '계약', '전반'];
+const DOMAINS = ['사업', '창업', '이직', '직업', '재물', '결혼', '연애', '재회', '관계', '건강', '시험', '이사', '계약', '전반'];
 const PILLAR_POSITIONS = ['YEAR', 'MONTH', 'DAY', 'HOUR'];
 const STEM_RELATION_KINDS = ['STEM_COMBINATION', 'STEM_CLASH'];
 const BRANCH_RELATION_KINDS = [
@@ -166,7 +166,8 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   ]);
   const CONCEPTS = new Set([
     'NATAL_FAMILY', 'SEASONAL_FOOTING', 'ROOTING', 'NATAL_SEAT_STRAIN', 'LAYER_ACTIVATION', 'RIVAL_CLAIM',
-    'SEAT_CONTACT', 'LAYER_SILENT', 'DOCTRINE_BLOCK', 'DAY_MASTER_STRENGTH', 'DAY_MASTER_YONGSHIN', 'ADAPTED',
+    'SEAT_CONTACT', 'LAYER_SILENT', 'DOCTRINE_BLOCK', 'DAY_MASTER_STRENGTH', 'DAY_MASTER_YONGSHIN',
+    'CONSULTATION_JUDGMENT', 'ADAPTED',
   ]);
   const ROLES = new Set(['ASSERTS', 'QUALIFIES', 'DESCRIBES']);
   const APPLICABILITIES = new Set(['DIRECT', 'CONTEXTUAL', 'BACKGROUND']);

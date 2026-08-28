@@ -74,6 +74,7 @@ export type PremiseConcept =
   | 'DOCTRINE_BLOCK'    // 채택 학파가 없어 판정을 보류한 지점
   | 'DAY_MASTER_STRENGTH' // 일간 구조적 강약 (Myungri Structural V2, frozen judgment graph)
   | 'DAY_MASTER_YONGSHIN' // 억부·통관·병약 구조 치료 방향 (Myungri Yongshin V1)
+  | 'CONSULTATION_JUDGMENT' // 사업/재물/직업/연애/재회/변화/시기 상담 도메인 판정 (Myungri Consultation Judge V1)
   | 'ADAPTED';          // 아직 전제 그래프로 이관되지 않은 학문의 출력
 
 /**
@@ -91,6 +92,7 @@ export type PremiseConcept =
 // reworded sentence could stop a target matching itself.
 export {
   sameTarget, target, isCanonicalTarget, ziweiPalaceTarget, qimenBoardTarget, natalSeatPairTarget, natalSeatTarget, askedMatterTarget,
+  consultationJudgeTarget,
   adaptedReadingTarget,
   adaptedContextTarget,
   compositeTarget,

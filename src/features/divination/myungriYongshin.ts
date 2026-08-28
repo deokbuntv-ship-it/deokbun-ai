@@ -84,8 +84,13 @@ const ELEMENT_YANG_STEM: Readonly<Record<FiveElement, HeavenlyStem>> = {
 };
 const ALL_ELEMENTS: readonly FiveElement[] = ['WOOD', 'FIRE', 'EARTH', 'METAL', 'WATER'];
 
-/** `candidate`'s ten-god FAMILY relative to `reference` (e.g. familyOf(WOOD, EARTH) === 'WEALTH', wood controls earth). */
-function familyOf(reference: FiveElement, candidate: FiveElement): TenGodFamily {
+/**
+ * `candidate`'s ten-god FAMILY relative to `reference` (e.g. familyOf(WOOD, EARTH) === 'WEALTH', wood
+ * controls earth). Exported so a downstream domain judge (e.g. the consultation-domain layer) can ask
+ * "is this Yongshin candidate element USEFUL/HARMFUL for the axis I'm reasoning about" without
+ * reimplementing the same five-element-cycle derivation a second time.
+ */
+export function familyOf(reference: FiveElement, candidate: FiveElement): TenGodFamily {
   const tg = calculateTenGod(ELEMENT_YANG_STEM[reference], ELEMENT_YANG_STEM[candidate]);
   // calculateTenGod never fails for two valid FiveElement-derived yang stems — both are always
   // registered stems, so this branch cannot be reached with real FiveElement inputs. A safe

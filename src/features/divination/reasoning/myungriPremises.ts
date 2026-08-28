@@ -21,9 +21,10 @@ import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
 import type { MyungriStructuralV2Result } from '../myungriStructuralV2';
 import type { MyungriYongshinResult, TreatmentRationale } from '../myungriYongshin';
+import type { ConsultationJudgeDomain, DomainJudgeResult } from '../myungriConsultationJudge';
 import type { FiveElement } from '@/features/interpretation';
 import {
-  natalSeatPairTarget, natalSeatTarget, nextId, target, type DivinationPremise,
+  natalSeatPairTarget, natalSeatTarget, nextId, target, consultationJudgeTarget, type DivinationPremise,
 } from './kernel';
 
 const FAMILY_LABEL: Record<TenGodFamily, string> = {
@@ -62,6 +63,19 @@ export type MyungriPremiseInput = {
    * ten-god facts — never recomputed here. `null` only when Structural V2 itself never ran.
    */
   yongshin?: MyungriYongshinResult | null;
+  /**
+   * Myungri Consultation Judge V1 results (`../myungriConsultationJudge.ts`) to surface as premises —
+   * ONLY the domain(s) this turn actually routed to (the asked matter, plus TIMING when the question
+   * asks about timing), never all 7 unconditionally; computed by the caller. Empty when no domain
+   * routed (e.g. HEALTH_ENERGY/CONFLICT/DECISION/GENERAL questions, outside this V1's 7 domains) or
+   * Structural V2 never ran.
+   */
+  consultationJudgments?: DomainJudgeResult[];
+};
+
+const CONSULTATION_DOMAIN_AXIS: Record<ConsultationJudgeDomain, JudgmentDomain> = {
+  BUSINESS: 'OPPORTUNITY', MONEY: 'MONEY_INFLOW', CAREER: 'CAREER', LOVE: 'RELATION_BOND',
+  REUNION: 'RELATION_STABILITY', CHANGE: 'MOVEMENT', TIMING: 'TIMING',
 };
 
 const STRENGTH_CLASSIFICATION_LABEL: Record<string, string> = {
@@ -387,6 +401,27 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
         doctrineReference: 'BLOCKED: 억부용신 판정에 필요한 근거 부족',
       }));
     }
+  }
+
+  // ── Myungri Consultation Judge V1 (../myungriConsultationJudge.ts) — one premise per domain the
+  // caller already decided routed this turn (never all 7 unconditionally; see `MyungriPremiseInput`'s
+  // own doc comment). Same non-competing shape as Structural V2/Yongshin above: `role: 'QUALIFIES'`
+  // for a directional (FAVORABLE/CAUTION/MIXED) result, `'DESCRIBES'` for UNRESOLVED — never 'ASSERTS',
+  // so this never competes with or duplicates the kernel's own derivation rules. ────────────────────
+  for (const cj of input.consultationJudgments ?? []) {
+    const directional = cj.status !== 'UNRESOLVED';
+    out.push(base({
+      sourceFactIds: [`상담판정 ${cj.domain}: ${cj.status} (Myungri Consultation Judge V1)`],
+      target: consultationJudgeTarget(cj.domain),
+      concept: 'CONSULTATION_JUDGMENT',
+      questionAxis: CONSULTATION_DOMAIN_AXIS[cj.domain],
+      temporalScope: 'NATAL',
+      semanticRelation: cj.status === 'FAVORABLE' ? 'ENABLES' : cj.status === 'CAUTION' ? 'OPPOSES' : cj.status === 'MIXED' ? 'CONSTRAINS' : 'ABSENT',
+      assertion: cj.conclusion,
+      role: directional ? 'QUALIFIES' : 'DESCRIBES',
+      applicability: directional ? 'DIRECT' : 'BACKGROUND',
+      doctrineReference: `CONSULTATION_JUDGE_V1: ${cj.domain} — ${cj.provenance[0]}`,
+    }));
   }
 
   // ── ASKED-AXIS DOCTRINE COVERAGE (§13 honesty, not a conclusion) ────────────────────────────────

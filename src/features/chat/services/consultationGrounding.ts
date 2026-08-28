@@ -155,6 +155,7 @@ const DOMAIN_MAP: Record<ConsultationDomain, JudgmentDomain> = {
   재물: 'MONEY_INFLOW',
   결혼: 'RELATION_STABILITY',
   연애: 'RELATION_BOND',
+  재회: 'RELATION_BOND',
   관계: 'CONFLICT',
   건강: 'HEALTH_ENERGY',
   시험: 'CAREER',
@@ -204,7 +205,7 @@ const MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현�
  */
 const ASKED_MATTER_ID: Record<ConsultationDomain, string | null> = {
   사업: 'BUSINESS', 창업: 'STARTUP', 이직: 'JOB_CHANGE', 직업: 'OCCUPATION', 재물: 'MONEY',
-  결혼: 'MARRIAGE', 연애: 'ROMANCE', 관계: 'RELATIONSHIP', 건강: 'HEALTH', 시험: 'EXAM',
+  결혼: 'MARRIAGE', 연애: 'ROMANCE', 재회: 'REUNION', 관계: 'RELATIONSHIP', 건강: 'HEALTH', 시험: 'EXAM',
   이사: 'RELOCATION', 계약: 'CONTRACT', 전반: null,
 };
 
@@ -537,6 +538,7 @@ export async function buildConsultationGrounding(
     const questionDomain = resolveJudgmentDomain(q);
     const asksTiming = classifyTimingQuestion(q);
     const questionIntent = resolveQuestionIntent(q);
+    const askedTarget = resolveAskedTarget(q);
     // V4A §28 — the PAID path runs the premise→proposition→derivation kernel. The judgment below is a
     // projection of that graph, so production and the QA pack exercise the same reasoning.
     const myungriReasoning = reasonMyungri({
@@ -550,6 +552,7 @@ export async function buildConsultationGrounding(
       sewoon: judgeFacts?.sewoon ?? null,
       wolwoon: judgeFacts?.wolwoon ?? null,
       asksTiming,
+      askedTarget,
     });
     const judgments = [
       myungriReasoning.judgment,
@@ -558,7 +561,7 @@ export async function buildConsultationGrounding(
     ];
     divinationVerdict = judgeCross({
       question: q, questionDomain, subject: canonicalSubject,
-      askedTarget: resolveAskedTarget(q), judgments, asksTiming, questionIntent,
+      askedTarget, judgments, asksTiming, questionIntent,
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
       myungriPropositions: myungriReasoning.standing,

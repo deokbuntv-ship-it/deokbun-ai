@@ -29,6 +29,7 @@ export type TargetKind =
   | 'DOCTRINE_GAP'        // 채택 학파가 없어 판정을 보류한 지점
   | 'ADAPTED_READING'     // 전제 그래프가 없는 학문이 내놓은 "이 축에 대한 판단" 자체
   | 'ASKED_MATTER'        // 질문이 지목한 사안 그 자체 (자리·궁·판이 아니라 "무엇을 물었는가")
+  | 'CONSULTATION_JUDGE'  // 명리 상담 도메인 판정 (사업/재물/직업/연애/재회/변화/시기) 그 자체
   | 'COMPOSITE';          // 서로 다른 대상 사이의 관계를 다루는 복합 결론
 
 // ── canonical ids for the two disciplines that are NOT on the premise graph ──────────────────────
@@ -94,9 +95,11 @@ const FOOTING = new Set(['SEASON', 'ROOT', 'STRENGTH', 'YONGSHIN']);
  */
 const ASKED_MATTER = new Set([
   'BUSINESS', 'STARTUP', 'JOB_CHANGE', 'OCCUPATION', 'MONEY', 'MARRIAGE', 'ROMANCE',
-  'RELATIONSHIP', 'HEALTH', 'EXAM', 'RELOCATION', 'CONTRACT',
+  'RELATIONSHIP', 'HEALTH', 'EXAM', 'RELOCATION', 'CONTRACT', 'REUNION',
 ]);
 const PALACE_KEYS = new Set(Object.keys(PALACE_LABEL));
+/** The 7 Myungri consultation-domain judges (`myungriConsultationJudge.ts`) — a closed, fixed set. */
+const CONSULTATION_JUDGE_DOMAIN = new Set(['BUSINESS', 'MONEY', 'CAREER', 'LOVE', 'REUNION', 'CHANGE', 'TIMING']);
 
 /** §25 — the class of an adapted reading that names no structure at all. */
 const ADAPTED_CONTEXT = 'CONTEXT';
@@ -216,6 +219,7 @@ const VALIDATE: Record<TargetKind, IdValidator> = {
     return DISCIPLINE.has(id.slice(0, at)) && (AXIS.has(rest) || rest === ADAPTED_CONTEXT);
   },
   ASKED_MATTER: oneOf(ASKED_MATTER),
+  CONSULTATION_JUDGE: oneOf(CONSULTATION_JUDGE_DOMAIN),
   COMPOSITE: validComposite,
 };
 
@@ -317,8 +321,18 @@ export function qimenBoardTarget(): SemanticTarget {
 const ASKED_MATTER_LABEL: Record<string, string> = {
   BUSINESS: '사업', STARTUP: '창업', JOB_CHANGE: '이직', OCCUPATION: '직업', MONEY: '재물',
   MARRIAGE: '결혼', ROMANCE: '연애', RELATIONSHIP: '인간관계', HEALTH: '건강', EXAM: '시험',
-  RELOCATION: '이사', CONTRACT: '계약',
+  RELOCATION: '이사', CONTRACT: '계약', REUNION: '재회',
 };
+
+const CONSULTATION_JUDGE_LABEL: Record<string, string> = {
+  BUSINESS: '사업 판정', MONEY: '재물 판정', CAREER: '직업 판정', LOVE: '연애 판정',
+  REUNION: '재회 판정', CHANGE: '변화 판정', TIMING: '시기 판정',
+};
+
+/** The identity of one Myungri consultation-domain judge's finished result (`myungriConsultationJudge.ts`). */
+export function consultationJudgeTarget(domain: string): SemanticTarget {
+  return target('CONSULTATION_JUDGE', domain, CONSULTATION_JUDGE_LABEL[domain] ?? domain);
+}
 
 /**
  * The matter the question named, or null for UNKNOWN.

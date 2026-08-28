@@ -22,6 +22,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 중심 근거: 해당 축 근거 없음
 - 근거:
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 BUSINESS: FAVORABLE (Myungri Consultation Judge V1) → 활동·표현으로 만든 결과가 재물로 이어질 수 있는 구조적 통로가 있습니다. 억부용신 방향이 활동·재물 계열과 맞아, 사업 실행을 구조적으로 뒷받침합니다.
+    - 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) → 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -90,6 +92,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 BUSINESS: FAVORABLE (Myungri Consultation Judge V1) — 활동·표현으로 만든 결과가 재물로 이어질 수 있는 구조적 통로가 있습니다. 억부용신 방향이 활동·재물 계열과 맞아, 사업 실행을 구조적으로 뒷받침합니다.
+- [MYUNGRI] 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) — 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - [ZIWEI] 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
 - [ZIWEI] 관록(본궁)에 태음 화과 — 이 자리에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -132,6 +136,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 중심 근거: 해당 축 근거 없음
 - 근거:
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 CAREER: MIXED (Myungri Consultation Judge V1) → 원국에 조직·자리를 받쳐 주는 구조가 있어, 소속 안에서 자리를 잡기 유리합니다. 다만, 지금 흐름이 직업·자리 자리에 마찰을 일으켜, 자잘한 변동 압력이 있습니다.
+    - 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) → 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -193,6 +199,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 CAREER: MIXED (Myungri Consultation Judge V1) — 원국에 조직·자리를 받쳐 주는 구조가 있어, 소속 안에서 자리를 잡기 유리합니다. 다만, 지금 흐름이 직업·자리 자리에 마찰을 일으켜, 자잘한 변동 압력이 있습니다.
+- [MYUNGRI] 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) — 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - [ZIWEI] 천이은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
 - [ZIWEI] 부처(삼합궁)에 태양 화록 — 삼합궁에 흐름이 열리고 들어오는 힘이 들어옵니다.
 - [ZIWEI] 관록(본궁)에 태음 화과 — 이 자리에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -231,6 +239,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 중심 근거: 해당 축 근거 없음
 - 근거:
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 MONEY: FAVORABLE (Myungri Consultation Judge V1) → 재물이 들어올 수 있는 통로가 원국 또는 현재 흐름에 실제로 있습니다. 일간의 뿌리가 단단해, 들어온 재물을 지키는 힘이 있습니다. 억부용신 방향이 재물 계열과 맞아, 재물 흐름을 구조적으로 뒷받침합니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -285,6 +294,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 MONEY: FAVORABLE (Myungri Consultation Judge V1) — 재물이 들어올 수 있는 통로가 원국 또는 현재 흐름에 실제로 있습니다. 일간의 뿌리가 단단해, 들어온 재물을 지키는 힘이 있습니다. 억부용신 방향이 재물 계열과 맞아, 재물 흐름을 구조적으로 뒷받침합니다.
 - [ZIWEI] 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
 - [ZIWEI] 자녀(대궁)에 무곡 화권 — 대궁에 주도권을 쥐고 밀어붙이는 힘이 들어옵니다.
@@ -320,6 +330,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 중심 근거: 해당 축 근거 없음
 - 근거:
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 MONEY: FAVORABLE (Myungri Consultation Judge V1) → 재물이 들어올 수 있는 통로가 원국 또는 현재 흐름에 실제로 있습니다. 일간의 뿌리가 단단해, 들어온 재물을 지키는 힘이 있습니다. 억부용신 방향이 재물 계열과 맞아, 재물 흐름을 구조적으로 뒷받침합니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -374,6 +385,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 MONEY: FAVORABLE (Myungri Consultation Judge V1) — 재물이 들어올 수 있는 통로가 원국 또는 현재 흐름에 실제로 있습니다. 일간의 뿌리가 단단해, 들어온 재물을 지키는 힘이 있습니다. 억부용신 방향이 재물 계열과 맞아, 재물 흐름을 구조적으로 뒷받침합니다.
 - [ZIWEI] 전택은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
 - [ZIWEI] 자녀(대궁)에 무곡 화권 — 대궁에 주도권을 쥐고 밀어붙이는 힘이 들어옵니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -410,6 +422,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 근거:
     - 질문 축 DECISION → 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) → 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -475,6 +488,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.
 - [MYUNGRI] 질문 축 DECISION — 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) — 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - [ZIWEI] 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 관록(삼합궁)에 태음 화과 — 삼합궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
 - [ZIWEI] 관록(본궁)에 태음 화과 — 이 자리에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -515,8 +529,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 지금의 큰 흐름 재물 → 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 올해 흐름 재물 → 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - 이 시기 흐름 활동·표현 → 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
-    - 질문 축 RELATION_BOND → 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 LOVE: MIXED (Myungri Consultation Judge V1) → 지금 흐름이 배우자 자리와 맞물려 풀려, 관계가 자연스럽게 이어지기 좋은 시기입니다. 다만, 타고난 배우자 자리 자체가 흔들리는 구조라, 관계는 유지보다 조율에 힘이 듭니다. 지금 흐름이 배우자 자리를 직접 흔들어, 지금은 관계에 마찰이 생기기 쉬운 시기입니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -577,8 +591,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 지금의 큰 흐름 재물 — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 올해 흐름 재물 — 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
 - [MYUNGRI] 이 시기 흐름 활동·표현 — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
-- [MYUNGRI] 질문 축 RELATION_BOND — 명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 LOVE: MIXED (Myungri Consultation Judge V1) — 지금 흐름이 배우자 자리와 맞물려 풀려, 관계가 자연스럽게 이어지기 좋은 시기입니다. 다만, 타고난 배우자 자리 자체가 흔들리는 구조라, 관계는 유지보다 조율에 힘이 듭니다. 지금 흐름이 배우자 자리를 직접 흔들어, 지금은 관계에 마찰이 생기기 쉬운 시기입니다.
 - [ZIWEI] 부처에 화록이 들어와, 이 부분은 실제로 들어오는 자리라 진행하셔도 좋습니다.
 - [ZIWEI] 부처(본궁)에 태양 화록 — 이 자리에 흐름이 열리고 들어오는 힘이 들어옵니다.
 - [ZIWEI] 관록(대궁)에 태음 화과 — 대궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -628,6 +642,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 지금의 큰 흐름 → 원국 일주 천간합 → 지금의 큰 흐름이 원국 일주 천간합와 맞물려 풀린다.
     - 이 시기 흐름 → 원국 일주 충 → 이 시기 흐름이 원국 일주 충를 정면으로 흔든다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 LOVE: MIXED (Myungri Consultation Judge V1) → 지금 흐름이 배우자 자리와 맞물려 풀려, 관계가 자연스럽게 이어지기 좋은 시기입니다. 다만, 타고난 배우자 자리 자체가 흔들리는 구조라, 관계는 유지보다 조율에 힘이 듭니다. 지금 흐름이 배우자 자리를 직접 흔들어, 지금은 관계에 마찰이 생기기 쉬운 시기입니다.
+    - 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) → 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - 영역별:
     - RELATION_STABILITY: AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -713,6 +729,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 지금의 큰 흐름 → 원국 일주 천간합 — 지금의 큰 흐름이 원국 일주 천간합와 맞물려 풀린다.
 - [MYUNGRI] 이 시기 흐름 → 원국 일주 충 — 이 시기 흐름이 원국 일주 충를 정면으로 흔든다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 LOVE: MIXED (Myungri Consultation Judge V1) — 지금 흐름이 배우자 자리와 맞물려 풀려, 관계가 자연스럽게 이어지기 좋은 시기입니다. 다만, 타고난 배우자 자리 자체가 흔들리는 구조라, 관계는 유지보다 조율에 힘이 듭니다. 지금 흐름이 배우자 자리를 직접 흔들어, 지금은 관계에 마찰이 생기기 쉬운 시기입니다.
+- [MYUNGRI] 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) — 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - [ZIWEI] 부처에 화록이 들어와 있어 들어오는 몫은 있으나, 끌고 가는 힘까지는 아니라 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 부처(본궁)에 태양 화록 — 이 자리에 흐름이 열리고 들어오는 힘이 들어옵니다.
 - [ZIWEI] 관록(대궁)에 태음 화과 — 대궁에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -764,6 +782,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 중심 근거: 해당 축 근거 없음
 - 근거:
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 CHANGE: MIXED (Myungri Consultation Judge V1) → 지금 흐름이 원국과 맞물려 풀리는 자리가 있어, 변화를 만들어도 구조가 뒷받침해 줄 수 있는 시기입니다. 억부용신 방향이 활동·전환 계열과 맞아, 새로운 시도를 시작하기에 구조적으로 유리한 방향입니다. 다만, 지금 흐름이 원국의 자리를 정면으로 흔드는 구조가 있어, 변화 쪽으로 떠밀릴 수 있는 압력이 있습니다. 다만 이것이 반드시 이동·이직을 뜻하지는 않습니다.
+    - 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) → 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -825,6 +845,8 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 CHANGE: MIXED (Myungri Consultation Judge V1) — 지금 흐름이 원국과 맞물려 풀리는 자리가 있어, 변화를 만들어도 구조가 뒷받침해 줄 수 있는 시기입니다. 억부용신 방향이 활동·전환 계열과 맞아, 새로운 시도를 시작하기에 구조적으로 유리한 방향입니다. 다만, 지금 흐름이 원국의 자리를 정면으로 흔드는 구조가 있어, 변화 쪽으로 떠밀릴 수 있는 압력이 있습니다. 다만 이것이 반드시 이동·이직을 뜻하지는 않습니다.
+- [MYUNGRI] 상담판정 TIMING: MIXED (Myungri Consultation Judge V1) — 지금의 큰 흐름이 조화와 마찰이 함께 있는 흐름입니다. 올해 흐름이 조화와 마찰이 함께 있는 흐름입니다. 이 시기 흐름이 조화와 마찰이 함께 있는 흐름입니다. 다만, 지금의 큰 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 올해 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다. 이 시기 흐름이 조화만큼의 마찰도 함께 있어, 좋은 흐름 안에서도 걸리는 지점이 있습니다.
 - [ZIWEI] 천이은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
 - [ZIWEI] 부처(삼합궁)에 태양 화록 — 삼합궁에 흐름이 열리고 들어오는 힘이 들어옵니다.
 - [ZIWEI] 관록(본궁)에 태음 화과 — 이 자리에 이름·평판·문서가 따라오는 힘이 들어옵니다.
@@ -958,6 +980,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - 중심 근거: 해당 축 근거 없음
 - 근거:
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 BUSINESS: FAVORABLE (Myungri Consultation Judge V1) → 활동·표현으로 만든 결과가 재물로 이어질 수 있는 구조적 통로가 있습니다. 억부용신 방향이 활동·재물 계열과 맞아, 사업 실행을 구조적으로 뒷받침합니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -990,6 +1013,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 **왜 이렇게 보나요? (사용자 노출 근거)**
 - [MYUNGRI] 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 BUSINESS: FAVORABLE (Myungri Consultation Judge V1) — 활동·표현으로 만든 결과가 재물로 이어질 수 있는 구조적 통로가 있습니다. 억부용신 방향이 활동·재물 계열과 맞아, 사업 실행을 구조적으로 뒷받침합니다.
 
 **LLM에 전달되는 구속 지시(발췌)**
 ```
@@ -1110,6 +1134,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
     - 올해 흐름 → 원국 월주 반합 → 올해 흐름이 원국 월주 반합와 맞물려 풀린다.
     - 이 시기 흐름 → 원국 월주 반합 → 이 시기 흐름이 원국 월주 반합와 맞물려 풀린다.
     - 일간 강약: STRONG_LEANING (Myungri Structural V2) → 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+    - 상담판정 CAREER: MIXED (Myungri Consultation Judge V1) → 원국에 조직·자리를 받쳐 주는 구조가 있어, 소속 안에서 자리를 잡기 유리합니다. 지금 흐름이 직업·자리 자리와 맞물려 풀려, 안정적으로 자리를 지킬 수 있는 흐름입니다. 다만, 지금 흐름이 직업·자리 자리에 마찰을 일으켜, 자잘한 변동 압력이 있습니다.
 - 영역별:
     - RELATION_STABILITY: CONDITIONAL_AGAINST — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW: STRUCTURAL_ANSWER — 지금의 큰 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
@@ -1172,6 +1197,7 @@ at a fixed evaluation instant (2026-06-15 12:00 KST) so the pack is reproducible
 - [MYUNGRI] 올해 흐름 → 원국 월주 반합 — 올해 흐름이 원국 월주 반합와 맞물려 풀린다.
 - [MYUNGRI] 이 시기 흐름 → 원국 월주 반합 — 이 시기 흐름이 원국 월주 반합와 맞물려 풀린다.
 - [MYUNGRI] 일간 강약: STRONG_LEANING (Myungri Structural V2) — 일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.
+- [MYUNGRI] 상담판정 CAREER: MIXED (Myungri Consultation Judge V1) — 원국에 조직·자리를 받쳐 주는 구조가 있어, 소속 안에서 자리를 잡기 유리합니다. 지금 흐름이 직업·자리 자리와 맞물려 풀려, 안정적으로 자리를 지킬 수 있는 흐름입니다. 다만, 지금 흐름이 직업·자리 자리에 마찰을 일으켜, 자잘한 변동 압력이 있습니다.
 - [ZIWEI] 관록 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
 - [ZIWEI] 복덕(대궁)에 태음 화권 — 대궁에 주도권을 쥐고 밀어붙이는 힘이 들어옵니다.
 - [ZIWEI] 복덕(삼합궁)에 태음 화권 — 삼합궁에 주도권을 쥐고 밀어붙이는 힘이 들어옵니다.
