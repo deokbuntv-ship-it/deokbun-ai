@@ -42,7 +42,7 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
-import { extendGraph, refinementFailure, renderVerdictDirective } from '@/features/divination';
+import { extendGraph, refinementFailure, renderVerdictDirective, NO_SIGNAL } from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -455,11 +455,19 @@ export async function buildServerConsultation(
   //    guarantee/event-certainty (or, once the kernel activates it, missing-mitigation) violation, exactly
   //    ONE constrained regeneration is allowed; a second violation → SEMANTIC_REJECTED (safe fallback).
   //    SEMANTIC_REJECTED raw text is never returned.
+  // DOMAIN_TEMPORAL_WINNER_GUARD — a DOMAIN (non-temporal) comparison/ranking MAY use softer recommend/lean
+  // language when the ALREADY-COMPUTED Cross verdict independently found a real direction for this exact
+  // question (never inferred from the LLM's own prose, never a new fortune calculation). TEMPORAL
+  // comparisons (plan.comparisonKind === 'TEMPORAL') and questions with no Cross verdict at all
+  // (UNRESOLVED-equivalent) keep the full, unconditionally strict behavior — fail-closed default.
+  const verdictForGuard = effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
+  const domainComparisonAllowed = plan.comparisonKind === 'DOMAIN' && verdictForGuard !== null && verdictForGuard.direction !== NO_SIGNAL;
   const guard = await classifyWithGuards({
     raw,
     grounding: effectiveGrounding,
     requireMitigation: followUpIntent === 'WHY' ? false : plan.requireMitigation,
     forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
+    domainComparisonAllowed,
     forbidChecklistTone: true, // §13 — behavioral direction, never a productivity/service checklist
     polarity: followUpIntent === 'WHY' ? previousDecision?.polarity : plan.polarity,
     regenerate: async () => {

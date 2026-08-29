@@ -40,6 +40,9 @@ export type AnswerPlan = {
   // never "choose the better one".
   comparisonSupported: boolean;
   rankingSupported: boolean;
+  // DOMAIN_TEMPORAL_WINNER_GUARD — see the computation site below. NONE when no comparison/ranking was
+  // recognized at all.
+  comparisonKind: 'TEMPORAL' | 'DOMAIN' | 'NONE';
   forbidEventCertainty: boolean;
   // DECIDED_OUTPUT: a cautionary conclusion must carry ≥1 practical direction (Sprint A §10). Now ACTIVATED
   // deterministically from the server-owned polarity (Sprint C §7): CAUTION ⇒ true.
@@ -58,7 +61,7 @@ export type AnswerPlan = {
 // Decision-affecting versions. Bumped when the SERVER's decision changes — distinct from the
 // verbalization-only CONSULTATION_PROMPT_VERSION. Sprint C.1: polarity is now TARGET-SCOPED (was global),
 // the month reference is fixed, and the Option-B/polarity output guards are active — all decision changes.
-export const ANSWER_PLAN_VERSION = 'answer-plan@1.3.1';
+export const ANSWER_PLAN_VERSION = 'answer-plan@1.3.2';
 export const DECISION_POLICY_VERSION = 'decision-policy@1.3.0';
 
 // CERTAINTY_GUARD_REPAIR — a BARE, single occurrence of "나아"/"낫" (no "보다"/"vs"/"대비"/"중", no "뭐가/
@@ -226,6 +229,19 @@ export function deriveAnswerPlan(
       ? groundedMonthKeys
       : groundedYearKeys
     : [];
+  // DOMAIN_TEMPORAL_WINNER_GUARD — WHICH kind of comparison/ranking was recognized (§2 of the guard
+  // stabilization brief). TEMPORAL when the question actually NAMED specific months/years (regardless of
+  // whether they ended up grounded — V1 genuinely has no month/year winner authority either way, matching
+  // the existing 42-case implicitWinnerCorpus.test.ts, all of which are month comparisons). DOMAIN when a
+  // comparison/ranking was recognized via COMPARE_CUE/RANK_CUE with NO named period at all ("직장 vs 사업",
+  // "동업보다 혼자") — where real Cross-verdict evidence CAN exist. Server-owned: derived purely from the
+  // question's own resolved month/year requests, never from LLM prose.
+  const comparisonKind: 'TEMPORAL' | 'DOMAIN' | 'NONE' =
+    !isCompare && !isRanking
+      ? 'NONE'
+      : requestedMonthKeys.length > 0 || requestedYears.length > 0
+        ? 'TEMPORAL'
+        : 'DOMAIN';
 
   // Assertiveness follows the evidence, not the model's mood (§10/§29). A DIRECT answer is STRONG — it is
   // NEVER escalated to VERY_STRONG by comparison/ranking permission, because V1 authorizes NO winner/order
@@ -251,6 +267,7 @@ export function deriveAnswerPlan(
     assertiveness,
     comparisonSupported,
     rankingSupported,
+    comparisonKind,
     forbidEventCertainty: intents.includes('EVENT_PREDICTION'),
     requireMitigation: polarity === 'CAUTION',
     ...(polarity ? { polarity } : {}),

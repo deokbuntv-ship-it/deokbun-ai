@@ -104,6 +104,19 @@ export function containsWinnerClaim(text: string): boolean {
   }
   return false;
 }
+// DOMAIN_TEMPORAL_WINNER_GUARD — WINNER_CLAIM only (explicit "A보다 B가 낫다"/"이쪽/저쪽"/"가장/제일"/"1순위"
+// candidate-vs-candidate declarations). Used ONLY for a DOMAIN comparison the server has separately found
+// genuine Cross-verdict support for (see `domainComparisonAllowed` below) — even then, an explicit ranked
+// declaration in this rigid shape stays forbidden, matching this session's own Cross Divination Judge V1
+// design ("NO majority vote, no system universally superior" — it never produces a strict binary winner
+// either). IMPLICIT_WINNER's softer recommend/lean/weight family is what becomes conditionally allowed.
+function containsHardWinnerClaim(text: string): boolean {
+  if (typeof text !== 'string' || text.length === 0) return false;
+  for (const s of splitSentences(text)) {
+    if (WINNER_CLAIM.test(s) && !WINNER_HEDGE.test(s)) return true;
+  }
+  return false;
+}
 
 // Structural guard (§C): the LLM output JSON must carry NO winner/ranking field. Even if the prose is neutral,
 // a field like winner/recommendedCandidate/rank/score/best/preference asserts a selection the server never made.
@@ -209,6 +222,14 @@ function highSalienceText(outcome: ConsultationOutcome): string | null {
 type GuardOpts = {
   requireMitigation: boolean;
   forbidWinner: boolean;
+  // DOMAIN_TEMPORAL_WINNER_GUARD — set ONLY for a DOMAIN (non-temporal) comparison the server has
+  // independently found genuine Cross-verdict support for (see the classifyWithGuards call site — never
+  // inferred from the LLM's own prose). When true, the softer IMPLICIT_WINNER recommend/lean/weight
+  // language is allowed; the harder, explicit WINNER_CLAIM candidate-vs-candidate declarations stay
+  // forbidden regardless. Fail-closed default false — an unset/unknown comparison kind keeps the current,
+  // fully strict behavior (the 42-case implicitWinnerCorpus.test.ts, all TEMPORAL comparisons, is
+  // unaffected either way since a real product call site never sets this true for them).
+  domainComparisonAllowed?: boolean;
   polarity?: PolarityTier;
   forbidCompatibilityHarm?: boolean; // §D5 — 궁합 relationship-safety
   requireConstructive?: boolean; // §D6 — negative-tier 궁합 must carry a management direction
@@ -220,7 +241,10 @@ function outcomeViolates(outcome: ConsultationOutcome, opts: GuardOpts, rawJson?
   const text = renderableText(outcome);
   if (text === null) return false;
   if (containsForbiddenCertainty(text)) return true;
-  if (opts.forbidWinner && containsWinnerClaim(text)) return true;
+  if (opts.forbidWinner) {
+    const winnerViolation = opts.domainComparisonAllowed ? containsHardWinnerClaim(text) : containsWinnerClaim(text);
+    if (winnerViolation) return true;
+  }
   if (opts.forbidCompatibilityHarm && containsCompatibilityHarm(text)) return true;
   if (opts.requireMitigation && lacksMitigation(outcome)) return true;
   if (opts.requireConstructive && !hasConstructiveDirection(text)) return true;
@@ -250,6 +274,8 @@ export async function classifyWithGuards(args: {
   requireMitigation: boolean;
   // Option B (Sprint C.1 §11): set for comparison/ranking questions — reject an LLM-invented winner/rank.
   forbidWinner?: boolean;
+  // DOMAIN_TEMPORAL_WINNER_GUARD — see GuardOpts above. Fail-closed default false/undefined.
+  domainComparisonAllowed?: boolean;
   // Server-owned target polarity (§14): reject a prose conclusion that clearly contradicts it.
   polarity?: PolarityTier;
   // 궁합 relationship-safety (§D5) + negative-tier constructive-direction requirement (§D6).
@@ -262,6 +288,7 @@ export async function classifyWithGuards(args: {
   const opts: GuardOpts = {
     requireMitigation: args.requireMitigation,
     forbidWinner: args.forbidWinner ?? false,
+    domainComparisonAllowed: args.domainComparisonAllowed ?? false,
     polarity: args.polarity,
     forbidCompatibilityHarm: args.forbidCompatibilityHarm ?? false,
     requireConstructive: args.requireConstructive ?? false,
