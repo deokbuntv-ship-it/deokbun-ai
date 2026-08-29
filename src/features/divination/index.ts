@@ -67,7 +67,7 @@ export {
 } from './crossConsultationJudge';
 export { extendGraph, refinementFailure } from './reasoning/graphExtension';
 export { judgePairMyungri, judgePairZiwei, type PairMyungriJudgeInput } from './compatibilityJudge';
-export { renderVerdictDirective, verdictEvidenceLines, verdictIsDirectional } from './verdictDirective';
+export { renderVerdictDirective, renderEvidenceDirective, verdictEvidenceLines, verdictIsDirectional } from './verdictDirective';
 export {
   isPaidReadingAcceptable,
   validatePaidReading,

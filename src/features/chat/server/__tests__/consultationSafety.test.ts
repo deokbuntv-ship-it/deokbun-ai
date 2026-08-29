@@ -58,6 +58,31 @@ describe('classifyConsultationSafetyRoute — high-precision routing', () => {
     expect(classifyConsultationSafetyRoute('투자 시기 언제가 좋아?')).toBe('NORMAL');
   });
 
+  // FINAL_PROSE_DELIVERY_REPAIR_V1 §11-13 — the reproduced false positive (bare "자해" matching inside
+  // "투자해"/"출자해"/"융자해") plus adversarial controls: real financial-risk language must stay NORMAL,
+  // and genuine crisis language (including actual "자해" mentions, never tested before this batch) must
+  // still hard-stop.
+  it('financial-risk questions are NOT misrouted to SELF_HARM (reproduced defect, now fixed)', () => {
+    for (const q of [
+      '지금 대출을 받아서 투자해도 될까?', // MONEY-09 — the exact reproduced QA false positive
+      '지금 가상자산에 투자해도 괜찮을까?', // MONEY-14 — the exact reproduced QA false positive
+      '대출받아서 투자해도 될까?',
+      '투자 손실이 걱정돼.',
+      '빚을 내서 사업을 확장해도 될까?',
+      '요즘 돈을 계속 잃고 있어.',
+      '출자해도 괜찮을까?', // same fragmentation via 출자 (capital contribution)
+      '융자해서 사업을 시작해도 될까?', // same fragmentation via 융자 (financing)
+    ]) {
+      expect(classifyConsultationSafetyRoute(q)).toBe('NORMAL');
+    }
+  });
+
+  it('genuine self-harm mentions (incl. the literal word 자해) still hard-stop', () => {
+    for (const q of ['자해하고 싶어', '요즘 자해충동이 있어', '자해할까 생각중이야', '자해를 하고 싶다는 생각이 들어']) {
+      expect(classifyConsultationSafetyRoute(q)).toBe('SELF_HARM');
+    }
+  });
+
   it('hard-stop set = self-harm / death / medical only', () => {
     expect(isHardStopRoute('SELF_HARM')).toBe(true);
     expect(isHardStopRoute('DEATH_LIFESPAN')).toBe(true);

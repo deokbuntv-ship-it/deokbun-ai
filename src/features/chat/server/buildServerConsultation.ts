@@ -42,7 +42,9 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
-import { extendGraph, refinementFailure, renderVerdictDirective, NO_SIGNAL } from '@/features/divination';
+import {
+  extendGraph, refinementFailure, renderVerdictDirective, renderEvidenceDirective, NO_SIGNAL,
+} from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -416,8 +418,13 @@ export async function buildServerConsultation(
     // the most specific instruction; absent when no discipline could speak (behavior then unchanged).
     const verdict =
       effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
+    // FINAL_PROSE_DELIVERY_REPAIR_V1 §3-6 — the evidence directive rides the SAME verdict, appended last so
+    // it is the most specific, final shaping instruction (mirrors how the plan/verdict directives already
+    // layer). Empty string (no evidence lines) when the verdict carries none — filtered out below.
     const planDirective = verdict
-      ? `${renderAnswerPlanDirective(plan, questionDomain)}\n${renderVerdictDirective(verdict)}`
+      ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderEvidenceDirective(verdict)]
+          .filter(Boolean)
+          .join('\n')
       : renderAnswerPlanDirective(plan, questionDomain);
     const base = followUpDirective ? `${planDirective}\n${followUpDirective}` : planDirective;
     return buildPrompt({
@@ -460,6 +467,20 @@ export async function buildServerConsultation(
   // question (never inferred from the LLM's own prose, never a new fortune calculation). TEMPORAL
   // comparisons (plan.comparisonKind === 'TEMPORAL') and questions with no Cross verdict at all
   // (UNRESOLVED-equivalent) keep the full, unconditionally strict behavior — fail-closed default.
+  //
+  // FINAL_PROSE_DELIVERY_REPAIR_V1 §7-10 — a "verdict fidelity" mechanism (widening the guard to also forbid
+  // decisive HEADLINE language whenever the verdict itself was INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE,
+  // regardless of comparison intent, via a `verdictDeclinedToDecide` opt) was implemented, unit-tested, and
+  // then MEASURED via the real 100-case rerun this same batch — and REVERTED after the data showed it
+  // net-harmful: SEMANTIC_REJECTED fallback cases jumped from ~4-5 to 11 of 100 (nearly all non-comparison
+  // questions, e.g. "내가 대표 자리에 어울리는 사람일까?", "공무원 시험을 준비해도 될까?"), because the
+  // single-retry regeneration (CERTAINTY_REGEN_DIRECTIVE is framed around candidate comparisons) does not
+  // reliably produce a properly-hedged headline within one attempt for a non-comparison "verdict declined"
+  // question — a case that would have shipped with a mildly overconfident but substantive answer instead
+  // hard-fails to the canned message, a worse outcome for the metric. The underlying verdict-fidelity gap
+  // (CAREER-11/TIMING-02) is real and still open — see the root-cause report — but this specific mechanism
+  // is not the fix; left at the pre-batch, verified-safe behavior (domainComparisonAllowed only, unchanged
+  // since the Domain/Temporal Winner Guard batch).
   const verdictForGuard = effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
   const domainComparisonAllowed = plan.comparisonKind === 'DOMAIN' && verdictForGuard !== null && verdictForGuard.direction !== NO_SIGNAL;
   const guard = await classifyWithGuards({

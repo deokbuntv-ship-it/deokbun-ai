@@ -99,6 +99,22 @@ export function verdictEvidenceLines(v: CrossDivinationVerdict): string[] {
   return v.evidenceReferences.flatMap((ref) => ref.lines.map((line) => `[${label(ref.discipline)}] ${line}`));
 }
 
+// FINAL_PROSE_DELIVERY_REPAIR_V1 §3-6 — `verdictEvidenceLines` above was computed for exactly this purpose
+// (§22's "왜 이렇게 보나요?" layer) but was never actually appended to the prompt anywhere in the real
+// pipeline — root-caused via the prose-loss QA analysis: the final answer routinely verbalized at a
+// structural/generic level ("원국과 흐름이 충돌합니다") instead of naming the concrete 간지/궁/성/화/문 facts
+// that were ALREADY sitting in this list. This renders that same list as a bounded instruction: cite 1–3 of
+// THESE exact lines (never invent/recompute — the list IS the fact boundary), in plain language first.
+export function renderEvidenceDirective(v: CrossDivinationVerdict): string {
+  const lines = verdictEvidenceLines(v);
+  if (lines.length === 0) return '';
+  return [
+    '[실제 근거 문장 — 아래 목록에 있는 사실만 사용하고, 새로 만들지 마십시오]',
+    ...lines.map((l) => `· ${l}`),
+    '· 위 근거 중 이번 질문과 가장 관련 있는 1~3개를 답변에서 구체적으로 언급하십시오(전부 나열하지 마십시오). 먼저 쉬운 말로 결론과 이유를 설명한 뒤, 그 다음에 위 근거를 자연스럽게 붙여 구체적인 이유로 삼으십시오. "원국과 흐름이 충돌합니다"처럼 뭉뚱그리지 말고, 위 목록의 실제 표현(간지·궁·성·화·문 등)을 살려 설명하되, 용어를 나열만 하지 말고 일반 사용자가 이해할 수 있게 풀어서 설명하십시오.',
+  ].join('\n');
+}
+
 /** Convenience for guards/tests: does this verdict assert a direction the prose must carry? */
 export function verdictIsDirectional(v: CrossDivinationVerdict): boolean {
   return FOR_STANCES.includes(v.direction) || AGAINST_STANCES.includes(v.direction);

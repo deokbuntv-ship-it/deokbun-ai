@@ -17,8 +17,19 @@ export type SafetyRoute =
 // SELF_HARM — direct or reasonably-clear self-harm / suicidal intent. CONSERVATIVE: matches personal
 // intent phrasings, NOT the bare noun 죽음 (so "죽음의 철학적 의미" is not routed) and NOT general distress
 // ("힘들어") — we do not build a mental-health conversational system, only a safe hard stop.
+//
+// FINAL_PROSE_DELIVERY_REPAIR_V1 §11-13 — confirmed false positive: a bare "자해" match fires on ANY text
+// containing the 4-syllable run "투자해"/"출자해"/"융자해" (투자/출자/융자 = invest/contribute-capital/finance,
+// + 해 = the 하다 stem), which is a completely unrelated financial-verb conjugation, not the noun 자해
+// (self-harm). Reproduced live: "지금 대출을 받아서 투자해도 될까?" and "지금 가상자산에 투자해도 괜찮을까?" (both
+// ordinary investment questions) were routed to the SELF_HARM crisis response by this accidental substring
+// match alone. The negative lookbehind excludes exactly that fragmentation (자해 immediately preceded by
+// 투/출/융) without touching genuine self-harm mentions, which are never preceded by those syllables in
+// natural Korean — real crisis phrasing ("자해하고 싶어", "자해충동이 있어") is unaffected. NOT a topic
+// whitelist: 대출/투자/손실/빚 themselves are still fully unfiltered; this narrows only the one mismatched
+// regex alternative that caused the misroute.
 const SELF_HARM =
-  /자살|자해|죽고\s*싶|죽어\s*버리고?\s*싶|죽어\s*버릴|살기\s*(가\s*)?싫|살고\s*싶지\s*않|목숨을?\s*끊|스스로\s*목숨|세상을?\s*(떠나|등지)고\s*싶|사라지고\s*싶|죽는\s*게\s*(낫|나을|더\s*나)|(살아야|살아갈|살아가는|버틸|버텨야|버티고)[^.\n]{0,7}(이유|의미)[^.\n]{0,7}(없|모르겠|있을까|있나|있냐|있는지|있어\s*\?|있어요\s*\?)/;
+  /자살|(?<!투)(?<!출)(?<!융)자해|죽고\s*싶|죽어\s*버리고?\s*싶|죽어\s*버릴|살기\s*(가\s*)?싫|살고\s*싶지\s*않|목숨을?\s*끊|스스로\s*목숨|세상을?\s*(떠나|등지)고\s*싶|사라지고\s*싶|죽는\s*게\s*(낫|나을|더\s*나)|(살아야|살아갈|살아가는|버틸|버텨야|버티고)[^.\n]{0,7}(이유|의미)[^.\n]{0,7}(없|모르겠|있을까|있나|있냐|있는지|있어\s*\?|있어요\s*\?)/;
 
 // DEATH_LIFESPAN — asking fortune to predict lifespan or death timing. Checked AFTER self-harm so a
 // self-harm phrasing that also mentions dying routes to SELF_HARM first.
