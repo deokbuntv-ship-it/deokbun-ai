@@ -59,6 +59,18 @@ export function containsForbiddenCertainty(text: string): boolean {
 const WINNER_CLAIM =
   /보다\s*(더\s*)?(좋|낫|유리|나은)|(이쪽|저쪽|한쪽|이\s*편|그\s*편)\s*(이|가)?\s*더\s*(좋|낫|유리)|더\s*나은\s*(쪽|편|시기|달|해)|가장\s*(좋|나은|유리|나쁜|안\s*좋)|제일\s*(좋|나은|유리)|최고의\s*(시기|해|달|때)|최악의\s*(시기|해|달)|1\s*순위|우선\s*추천|먼저\s*추천/;
 // IMPLICIT winner: recommendation / selection / direction / weighting / comparative-preference / avoidance.
+//
+// SEMANTIC_GUARD_STABILIZATION — QA found this rejecting legitimate hedged domain-comparison answers
+// ("현재는 독립보다 기존 직장을 유지하는 편이 낫습니다"). Attempted gating the soft comparative-adjective
+// alternatives (더 유리/적합/맞다, 쪽이 낫다, 피하세요 등) behind an absolute-certainty marker, but reverted:
+// the EXISTING `implicitWinnerCorpus.test.ts` adversarial corpus (Sprint F.1 §B/§C/§E, 42 cases) requires
+// several of those SAME soft patterns to stay unconditionally forbidden for TEMPORAL/month comparisons
+// ("2월보다는 5월이 낫습니다") — where the server has literally zero comparison evidence ("V1 has NO
+// server-decided temporal/comparison winner"), unlike a domain comparison (career/business/money) where
+// real Cross-verdict evidence can exist. A safe fix needs the caller to tell this function WHICH kind of
+// comparison it is (new plumbing from answerPlan's temporal-vs-domain classification through
+// classifyWithGuards) — bigger than a bounded regex correction, so left for a dedicated follow-up rather
+// than risk weakening the existing temporal-comparison protection to fit this batch's evidence.
 const IMPLICIT_WINNER = new RegExp(
   [
     // recommend / advise one side

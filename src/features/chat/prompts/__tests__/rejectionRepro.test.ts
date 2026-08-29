@@ -168,3 +168,58 @@ describe('multi-year range grounding — "앞으로 N년" (Temporal Sprint §8/�
     expect(firstStructuredRejectionReason(answer(core), G5)).toBe('TIMING_CLAIM_MISMATCH');
   });
 });
+
+// SEMANTIC_GUARD_STABILIZATION — reproduces + fixes two false positives found while root-causing the
+// FINAL DIVINATION CONSULTATION QA's remaining rejections (both confirmed via a real OpenAI call, not
+// inferred from aggregate numbers):
+//  1. CONSENSUS_CLAIM_MISMATCH fired on the ordinary word "합치다" (combine/synthesize) used in an honest
+//     multi-discipline SUMMARY sentence ("세 학문을 합치면…"), not an actual "all three agree" claim.
+//  2. TIMING_CLAIM_MISMATCH fired on the mere token "올해" even when the sentence explicitly DECLINED to
+//     give a specific-period judgment for it ("올해 하반기 근거는 제공되지 않아 평가가 어렵습니다").
+describe('CONSENSUS_CLAIM_MISMATCH false positive — "합치다" (combine) is not "일치" (agree)', () => {
+  let G: Awaited<ReturnType<typeof buildConsultationGrounding>>;
+  beforeAll(async () => {
+    clearZiweiCache(); clearQimenCache();
+    G = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '내 성격의 장단점을 알려줘');
+  });
+
+  it('an honest multi-discipline synthesis sentence ("세 학문을 합치면…") is ACCEPTED, not flagged as fabricated consensus', () => {
+    const core = `${CLEAN} 명리 관점과 자미두수 관점, 기문둔갑 관점을 각각 살펴보았습니다. 세 학문을 합치면, 지금은 범위를 좁혀 안정적으로 움직이는 편이 유리하다는 결론입니다.`;
+    expect(classifyConsultationOutput(answer(core), G).kind).toBe('ACCEPTED');
+    expect(firstStructuredRejectionReason(answer(core), G)).toBe('NONE');
+  });
+
+  it('REGRESSION — a genuine fabricated 3-engine consensus ("완전히 일치") is still rejected', () => {
+    expect(classifyConsultationOutput(answer(THREE), G).kind).toBe('SEMANTIC_REJECTED');
+    expect(firstStructuredRejectionReason(answer(THREE), G)).toBe('CONSENSUS_CLAIM_MISMATCH');
+  });
+
+  it('REGRESSION — the two-engine "완전히 일치/합치" consensus guard is untouched and still rejects', () => {
+    expect(firstStructuredRejectionReason(answer(CROSS), G)).toBe('CROSS_ENGINE_CONSENSUS');
+  });
+});
+
+describe('TIMING_CLAIM_MISMATCH false positive — a hedged/declined relative-year mention is not a claim', () => {
+  let G: Awaited<ReturnType<typeof buildConsultationGrounding>>;
+  beforeAll(async () => {
+    clearZiweiCache(); clearQimenCache();
+    // A non-timing question — the current civil year is NOT among the grounded timing anchors.
+    G = await buildConsultationGrounding(draft, { digestProvider, nowEpochSeconds: NOW }, '내 성격의 장단점을 알려줘');
+  });
+
+  it('an ungrounded "올해" mention that explicitly declines a specific-period judgment is ACCEPTED', () => {
+    const core = `${CLEAN} 다만 구체적인 올해 하반기 시기 근거는 제공되지 않아 정확한 시점 평가는 어렵습니다.`;
+    expect(classifyConsultationOutput(answer(core), G).kind).toBe('ACCEPTED');
+    expect(firstStructuredRejectionReason(answer(core), G)).toBe('NONE');
+  });
+
+  it('REGRESSION — an UNHEDGED, asserted "올해" claim with no grounded current year is still rejected', () => {
+    const core = `${CLEAN} 올해 하반기에는 큰 변화가 찾아옵니다.`;
+    expect(firstStructuredRejectionReason(answer(core), G)).toBe('TIMING_CLAIM_MISMATCH');
+  });
+
+  it('REGRESSION — explicit-year (YYYY년) fabrication outside any hedge is still rejected (this check is untouched)', () => {
+    const core = '2035년에는 반드시 큰 성공과 큰돈이 따라오는 해가 될 것입니다.';
+    expect(firstStructuredRejectionReason(answer(core), G)).toBe('TIMING_CLAIM_MISMATCH');
+  });
+});

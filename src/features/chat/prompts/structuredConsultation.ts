@@ -234,7 +234,12 @@ const QIMEN_USE = /기문(둔갑)?\s*(에서|에는|으로\s*보|으로\s*분석
 // strong "all-agree" claim is never grounded. Bounded by concept, not one exact phrase: a consensus
 // PREDICATE co-occurring with a three-engine reference (a "세 학문/엔진/관점" count OR the three names
 // enumerated). Separate sourced perspectives (no agreement predicate) are NOT matched (§B5).
-const CONSENSUS_PRED = /(완전히\s*)?(일치|합치|동일|같은\s*결론|같은\s*결과|공통\s*(결론|점)|모두\s*(같|동일|확정|일치)|전부\s*(같|동일)|한목소리|100\s*%?\s*(동일|일치))/;
+// SEMANTIC_GUARD_STABILIZATION — "합치" dropped from this list (Codex PART B4 originally included it as a
+// synonym of "일치"). It is ALSO the ordinary stem of "합치다" (to combine/synthesize), which a genuine
+// multi-discipline SUMMARY sentence uses constantly and benignly ("세 학문을 합치면…", "합쳐 보면…") — with
+// no proximity requirement to the engine-triple mention, that made an honest synthesis transition read as a
+// fabricated "all three agree" claim. "일치" alone already covers the actual forbidden claim precisely.
+const CONSENSUS_PRED = /(완전히\s*)?(일치|동일|같은\s*결론|같은\s*결과|공통\s*(결론|점)|모두\s*(같|동일|확정|일치)|전부\s*(같|동일)|한목소리|100\s*%?\s*(동일|일치))/;
 const ENGINE_TRIPLE = /(세\s*(가지\s*)?(학문|역학|엔진|관점)|3\s*(개|가지)\s*(학문|엔진|관점)|세\s*엔진)/;
 const THREE_ENGINE_NAMES = /(명리|사주)[^\n]{0,24}자미(두수)?[^\n]{0,24}기문(둔갑)?|기문(둔갑)?[^\n]{0,24}자미(두수)?[^\n]{0,24}(명리|사주)/;
 function hasMultiEngineConsensus(text: string): boolean {
@@ -315,6 +320,18 @@ const RELATIVE_YEAR: readonly [RegExp, number][] = [
 // offsets ("3년 뒤/후"); relative months (이번 달/다음 달) via monthly-evidence presence; and ages/decades/
 // life-stages via the Daewoon age span. VAGUE, non-specific language (향후 몇 년, 앞으로, 조만간, 언젠가)
 // carries no resolvable period and is intentionally NOT flagged (§2).
+// SEMANTIC_GUARD_STABILIZATION — "올해 하반기에 대한 근거는 제공되지 않아 특정 시점 평가는 어렵습니다" is an
+// honest DECLINE, not a claim, but the RELATIVE_YEAR check below previously flagged it purely for containing
+// the token "올해" — no hedge-awareness at all, unlike `containsForbiddenCertainty`'s own HEDGE bypass in
+// certaintyGuard.ts. Scoped to a SENTENCE (not the whole text, and not the other checks in this function,
+// which have no reproduced false-positive evidence): a sentence that both mentions the relative year AND
+// explicitly declines/hedges is not an assertion.
+const TIMING_DECLINE_HEDGE =
+  /근거(가|는|를)?\s*(제공되지\s*않|없|부족)|확정(하기|적으로)?\s*(어렵|힘들)|평가(는|하기)?\s*(어렵|할\s*수\s*없)|단정(하기|할\s*수)?\s*(어렵|없)|말씀드리기\s*어렵/;
+function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?。\n])/).map((s) => s.trim()).filter((s) => s.length > 0);
+}
+
 function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
   const yearOK = (y: number): boolean => anchors.years.has(y);
 
@@ -329,9 +346,12 @@ function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
     const mm = Number(m[2]);
     if (mm >= 1 && mm <= 12 && !anchors.months.has(Number(m[1]) * 100 + mm)) return true;
   }
-  // relative-definite year (올해/내년/내후년)
+  // relative-definite year (올해/내년/내후년) — an ungrounded mention is only a real violation when SOME
+  // sentence actually asserts it; a sentence that hedges/declines in the same breath is not a claim.
   for (const [re, off] of RELATIVE_YEAR) {
-    if (re.test(text) && (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off))) return true;
+    if (!re.test(text)) continue;
+    if (anchors.referenceYear !== null && yearOK(anchors.referenceYear + off)) continue; // grounded → fine
+    if (splitSentences(text).some((s) => re.test(s) && !TIMING_DECLINE_HEDGE.test(s))) return true;
   }
   // numeric relative offset "N년 뒤/후" (specific). Vague "몇 년/여러 해" has no digit → not matched.
   for (const m of text.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) {
