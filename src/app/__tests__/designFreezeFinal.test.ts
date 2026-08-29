@@ -137,6 +137,41 @@ describe('the remaining-question count is derived from the SERVER, never counted
   });
 });
 
+describe('an exhausted session cannot be resumed for a silent new charge (session-boundary consent gate)', () => {
+  // A follow-up chip (onSelectFollowUp) shares the exact same send path as the composer, but — unlike
+  // the composer — is not unmounted by the exhausted card. Without an explicit guard early in that shared
+  // path, tapping a chip on the final turn's answer would silently reserve + charge a new session with no
+  // confirmation. The guard must appear BEFORE the network/service call, not merely exist somewhere.
+  const chat = code('app/chat.tsx');
+  const compat = code('app/compatibility-chat.tsx');
+
+  it('chat: submitQuestion (composer + follow-up chips) bails out on showExhausted before sending', () => {
+    const fn = chat.slice(chat.indexOf('const submitQuestion ='), chat.indexOf('const handleSend ='));
+    expect(fn).toMatch(/if \(showExhausted\)\s*\{\s*return;/);
+    expect(fn.indexOf('if (showExhausted)')).toBeLessThan(fn.indexOf('executeConversationBoundSend'));
+  });
+
+  it('chat: the follow-up chip handler has no separate send path around the guard', () => {
+    const fn = chat.slice(chat.indexOf('const handleSelectFollowUp ='), chat.indexOf('const handleRetry ='));
+    expect(fn).toMatch(/submitQuestion\(question\)/);
+  });
+
+  it('compatibility-chat: send (composer + follow-up chips) bails out on compatExhausted before sending', () => {
+    const body = compat.slice(compat.indexOf('const send = async'));
+    expect(body).toMatch(/if \(compatExhausted\) return;/);
+    expect(body.indexOf('if (compatExhausted) return;')).toBeLessThan(body.indexOf('serviceRef.current.sendMessage'));
+  });
+
+  it('compatibility-chat: the follow-up chip handler has no separate send path around the guard', () => {
+    expect(compat).toMatch(/onSelectFollowUp=\{\(q\) => \{[\s\S]{0,400}void send\(q\);/);
+  });
+
+  it('both exhausted cards show the exact Duk cost before any confirmation tap', () => {
+    expect(chat).toMatch(/새 상담 시작하기\s+🍀 \$\{dukLabel\(DUK_PRICES\.general\)\}/);
+    expect(compat).toMatch(/새 궁합 상담 시작하기\s+🍀 \$\{dukLabel\(DUK_PRICES\.compatibility\)\}/);
+  });
+});
+
 describe('덕 부족 is an in-flow block, never an Alert (freeze C07)', () => {
   it.each(['app/chat.tsx', 'app/compatibility-chat.tsx', 'app/(tabs)/consult.tsx', 'app/(tabs)/compatibility.tsx'])(
     '%s renders <InsufficientDuk/> and calls no Alert',

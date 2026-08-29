@@ -193,6 +193,10 @@ export default function CompatibilityChatScreen() {
     // §K — synchronous re-entrancy lock (before any await/state update) so a same-frame double-tap
     // cannot start two sends (the `sending` state updates a tick later).
     if (!self || !target || sending || sendingRef.current) return;
+    // A follow-up chip (onSelectFollowUp) calls this same function and, unlike the composer, is not
+    // unmounted by compatExhausted — without this guard it would silently start (and charge for) a
+    // new session. The visible exhausted consent card is the required explicit confirmation.
+    if (compatExhausted) return;
     const q = question.trim();
     if (q.length === 0) return;
     sendingRef.current = true;

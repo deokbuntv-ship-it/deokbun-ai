@@ -474,6 +474,12 @@ export default function ChatScreen() {
     if (isSendingRef.current) {
       return;
     }
+    // A follow-up chip (handleSelectFollowUp) calls this same function and, unlike the composer,
+    // is not unmounted by showExhausted — without this guard it would silently start (and charge for)
+    // a new session. The visible exhausted card below is the required explicit confirmation.
+    if (showExhausted) {
+      return;
+    }
 
     const trimmed = rawText.trim();
 
