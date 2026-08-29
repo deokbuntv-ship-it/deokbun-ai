@@ -58,10 +58,23 @@ export type AnswerPlan = {
 // Decision-affecting versions. Bumped when the SERVER's decision changes — distinct from the
 // verbalization-only CONSULTATION_PROMPT_VERSION. Sprint C.1: polarity is now TARGET-SCOPED (was global),
 // the month reference is fixed, and the Option-B/polarity output guards are active — all decision changes.
-export const ANSWER_PLAN_VERSION = 'answer-plan@1.3.0';
+export const ANSWER_PLAN_VERSION = 'answer-plan@1.3.1';
 export const DECISION_POLICY_VERSION = 'decision-policy@1.3.0';
 
-const COMPARE_CUE = /나아|낫|더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)/;
+// CERTAINTY_GUARD_REPAIR — a BARE, single occurrence of "나아"/"낫" (no "보다"/"vs"/"대비"/"중", no "뭐가/
+// 어느가", not repeated) misclassified a plain single-option decision question ("지금 직장에서 버티는 게
+// 나아?" — one course of action, no second named candidate) as an A-vs-B COMPARISON, which then forced the
+// Option-B "never pick a winner" guard onto an answer that never named two candidates to choose between —
+// QA found this rejected legitimate, grounded directional judgments. A genuine comparison in this
+// codebase's own question style always does ONE of: pairs the comparative word with "보다"/"vs"/"대비"/the
+// existing "A, B 중" phrasing (unchanged below); asks "뭐가/어느가 나아?" (implying candidates already
+// named); or REPEATS the comparative predicate across two clauses ("A가 나아, B가 나아?") — the two new
+// checks below cover exactly those, so real two-candidate comparisons (incl. existing golden cases F2-F4/
+// L1, which use bare repeated 나아/낫 with no 보다) stay correctly recognized.
+const COMPARE_CUE = /더\s*좋|vs|대비|보다|중\s*(?:에서|엔)?\s*(?:뭐|어느|언제|누가)|(?:뭐|어느)\s*(?:가|게|를)?\s*(?:더\s*)?(?:나아|낫|좋)/;
+// A bare comparative predicate ("나아"/"낫") repeated across the question is the OTHER real comparison
+// shape ("지금 집 유지가 나아, 이사가 나아?") — a single occurrence is just a decisive single-option question.
+const REPEATED_COMPARE_WORD = /(나아|낫)[\s\S]*\1/;
 const RANK_CUE = /가장|제일|최고|1순위|첫\s*번째|베스트|best|순서대로|언제\s*가장/;
 const EVENT_CUE = /하게\s*(?:돼|되|될까|되나|됩니까)|이사하게|성공하게|합격하게|이뤄지|일어(?:나|날)/;
 // GUARANTEE-seeking: "무조건 성공해?", "반드시 붙나요?", "100% 부자 될까요?" — a demand for a CERTAIN
@@ -148,7 +161,7 @@ export function deriveAnswerPlan(
   // asked us to choose, so we must engage the comparison — but `comparisonSupported` below still requires
   // ≥2 GROUNDED temporal candidates, so a domain choice is weighed honestly without fabricating a timing
   // "winner" (§12/§29).
-  const isCompare = monthPlan.intent === 'COMPARE_MONTHS' || COMPARE_CUE.test(q);
+  const isCompare = monthPlan.intent === 'COMPARE_MONTHS' || COMPARE_CUE.test(q) || REPEATED_COMPARE_WORD.test(q);
   // A best/range ask over a candidate set is a ranking.
   const isRanking =
     monthPlan.intent === 'BEST_MONTH' ||

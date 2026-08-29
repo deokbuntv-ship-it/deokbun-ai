@@ -84,6 +84,54 @@ describe('deriveAnswerPlan — the server owns the decision', () => {
   });
 });
 
+describe('CERTAINTY_GUARD_REPAIR — bare 나아/낫 no longer misclassifies a single-option question as COMPARISON', () => {
+  it('a single-option "게 나아?" question (no second candidate) is NOT a comparison', () => {
+    const p = deriveAnswerPlan('지금 직장에서 버티는 게 나아?', g([2026]));
+    expect(p.intents).not.toContain('COMPARISON');
+  });
+
+  it('a single-option "낫나요?" question (no second candidate) is NOT a comparison', () => {
+    const p = deriveAnswerPlan('지금 이 일을 계속하는 게 낫나요?', g([2026]));
+    expect(p.intents).not.toContain('COMPARISON');
+  });
+
+  it('REGRESSION — "보다" comparison is still recognized', () => {
+    const p = deriveAnswerPlan('동업보다 혼자 하는 게 나아?', g([2026]));
+    expect(p.intents).toContain('COMPARISON');
+  });
+
+  it('REGRESSION — "vs" comparison is still recognized', () => {
+    const p = deriveAnswerPlan('직장 vs 사업 뭐가 더 좋아?', g([2026]));
+    expect(p.intents).toContain('COMPARISON');
+  });
+
+  it('REGRESSION — "중에 뭐가" comparison is still recognized', () => {
+    const p = deriveAnswerPlan('직장 다니는 것과 사업하는 것 중에 뭐가 더 좋을까?', g([2026]));
+    expect(p.intents).toContain('COMPARISON');
+  });
+
+  it('REGRESSION — "뭐가 나아?" (candidates implied by context) is still recognized', () => {
+    const p = deriveAnswerPlan('취업할까 창업할까 고민이야, 뭐가 나아?', g([2026]));
+    expect(p.intents).toContain('COMPARISON');
+  });
+
+  it('REGRESSION — a repeated comparative predicate ("A가 나아, B가 나아?") is still recognized', () => {
+    const p = deriveAnswerPlan('지금 집 유지가 나아, 이사가 나아?', g([2026]));
+    expect(p.intents).toContain('COMPARISON');
+  });
+
+  it('REGRESSION — a repeated 낫 predicate is still recognized', () => {
+    const p = deriveAnswerPlan('지금 사람이랑 계속 만나는 게 낫나, 헤어지는 게 낫나?', g([2026]));
+    expect(p.intents).toContain('COMPARISON');
+  });
+
+  it('determinism — the same question+grounding always classifies the same way', () => {
+    const a = deriveAnswerPlan('지금 직장에서 버티는 게 나아?', g([2026]));
+    const b = deriveAnswerPlan('지금 직장에서 버티는 게 나아?', g([2026]));
+    expect(a.intents).toEqual(b.intents);
+  });
+});
+
 describe('renderAnswerPlanDirective — server decision → prompt (no field names leak to the user)', () => {
   it('supported comparison → tells the model to DISCUSS each candidate, NOT pick a winner (Option B)', () => {
     const d = renderAnswerPlanDirective(deriveAnswerPlan('2027년 2월이 좋아 5월이 좋아?', g([2027], [202702, 202705])));
