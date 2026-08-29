@@ -47,4 +47,45 @@ describe('§5/§6 Edge Duk billing wiring (flag-gated, correct order, release-on
     expect(shared).toContain("reserve_global_paid_generation_idem");
     expect(shared).toContain("reserve_global_paid_generation'"); // legacy path preserved
   });
+
+  // Product-integration-readiness audit (2026-08-29) — BUG-1: a SEMANTIC_REJECTED output (no real answer,
+  // just the canned retry message) is a real HTTP 200 and was falling through to the SAME commit path as an
+  // ACCEPTED answer, because `p_decision_meta is null` is ALSO the legitimate shape of a normal compatibility
+  // completion. Locks the fix: a rejected non-answer must release its reservation, never commit it.
+  it('a SEMANTIC_REJECTED first-turn output releases the reservation instead of committing it', () => {
+    expect(edge).toContain("result.diagnostics?.outputClassification === 'SEMANTIC_REJECTED'");
+    const gateAt = edge.indexOf('if (dukBillingEnabled && isRejectedNonAnswer && dukReservation)');
+    expect(gateAt).toBeGreaterThan(-1);
+    const releaseAt = edge.indexOf('await releaseDukIfHeld();', gateAt);
+    const commitAt = edge.indexOf('completeConsultationWithBilling(', gateAt);
+    // release happens BEFORE the completion call in this branch, and with a null reservation/decision.
+    expect(releaseAt).toBeGreaterThan(gateAt);
+    expect(commitAt).toBeGreaterThan(releaseAt);
+    expect(edge.slice(commitAt, commitAt + 200)).toMatch(/verifiedConversationId,\s*null,\s*null,\s*dukFollowupSessionId/);
+  });
+
+  it('an ACCEPTED (or any non-rejected) first-turn output still commits normally (no regression)', () => {
+    const elseAt = edge.indexOf('} else if (dukBillingEnabled && (dukReservation || dukFollowupSessionId)) {');
+    expect(elseAt).toBeGreaterThan(-1);
+    expect(edge.slice(elseAt, elseAt + 300)).toContain(
+      'completeConsultationWithBilling(\n            paid.context, response, verifiedConversationId, acceptedDecision, dukReservation, dukFollowupSessionId,',
+    );
+  });
+});
+
+// Product-integration-readiness audit — BUG (not billing-specific, but the same "verified by source
+// assertion" pattern this file establishes): the solo-consultation branch was missing `conversationSummary`
+// even though it's parsed from the body and the compatibility branch right above it already includes it —
+// every solo consultation silently lost the client's compressed long-conversation memory.
+describe('solo consultation forwards conversationSummary (was silently dropped)', () => {
+  it('both the compatibility and solo buildServerConsultation calls pass conversationSummary', () => {
+    const compatAt = edge.indexOf('await buildCompatibilityConsultation(');
+    const soloAt = edge.indexOf('await buildServerConsultation(');
+    expect(compatAt).toBeGreaterThan(-1);
+    expect(soloAt).toBeGreaterThan(compatAt);
+    const compatBlock = edge.slice(compatAt, soloAt);
+    const soloBlock = edge.slice(soloAt, soloAt + 900);
+    expect(compatBlock).toMatch(/\bconversationSummary,/);
+    expect(soloBlock).toMatch(/\bconversationSummary,/);
+  });
 });

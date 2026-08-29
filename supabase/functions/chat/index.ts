@@ -1306,6 +1306,11 @@ export default {
                    subjectLabel: authority.subjectLabel,
                   question: body.question,
                   conversationContext,
+                  // BUG FIX (product-integration-readiness audit): this was missing here while the
+                  // compatibility branch above already passes it — every solo consultation's
+                  // conversationSummary silently never reached the LLM, so a conversation past
+                  // chatConfig.maxRecentMessages lost all earlier context with no error.
+                  conversationSummary,
                   requestMetadata: {
                     clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
                     requestId,
@@ -1404,12 +1409,27 @@ export default {
           verifiedConversationId
             ? result.structuredResult.decisionMeta as Record<string, unknown>
             : null;
+        // BILLING INTEGRATION FIX (product-integration-readiness audit, BUG-1): a SEMANTIC_REJECTED output
+        // (the guard's canned "잠시 후 다시 시도해 주세요" — no real answer, `result.text === SEMANTIC_REJECTION_MESSAGE`)
+        // is a real HTTP 200 (`result.ok`), so it fell through to the same commit path as an ACCEPTED answer —
+        // `p_decision_meta is null` there is ALSO the legitimate shape of a normal, successful compatibility
+        // completion (which never has decisionMeta), so the completion RPC could not distinguish "nothing to
+        // persist" from "nothing to charge for." A first-turn reservation must never commit for a rejected
+        // non-answer — treat it exactly like the LLM_FAILED/INVALID_INPUT paths above (release, no charge).
+        // Pairs with migration 20260846000000 (BUG-2: a released reservation must not be freely resumable) —
+        // deploy both together; this alone, without that migration applied, would only widen BUG-2's window.
+        const isRejectedNonAnswer = result.diagnostics?.outputClassification === 'SEMANTIC_REJECTED';
         // Accepted authoritative decisions are committed atomically with paid-request completion. Any RPC /
         // insert failure is fail-closed (503); it is never logged-and-ignored as if follow-up state existed.
         // §21: when Duk billing is active, the Duk COMMIT rides the SAME atomic completion (decision + charge,
         // or paid-complete + charge for compatibility). A non-completed result releases the reserve (0 charged).
         let completed: Record<string, unknown> | null;
-        if (dukBillingEnabled && (dukReservation || dukFollowupSessionId)) {
+        if (dukBillingEnabled && isRejectedNonAnswer && dukReservation) {
+          await releaseDukIfHeld();
+          completed = await completeConsultationWithBilling(
+            paid.context, response, verifiedConversationId, null, null, dukFollowupSessionId,
+          );
+        } else if (dukBillingEnabled && (dukReservation || dukFollowupSessionId)) {
           completed = await completeConsultationWithBilling(
             paid.context, response, verifiedConversationId, acceptedDecision, dukReservation, dukFollowupSessionId,
           );

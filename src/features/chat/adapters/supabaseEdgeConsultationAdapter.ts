@@ -1,4 +1,5 @@
 import { isAuthTransportError, parseInsufficientDuk } from '@/features/chat/adapters/llmError';
+import { chatConfig } from '@/features/chat/config/chatConfig';
 import type {
   ConsultationTransport,
   ConsultationTransportResult,
@@ -14,7 +15,12 @@ import { getSupabaseClient } from '@/services/supabase';
 export const supabaseEdgeConsultationAdapter: ConsultationTransport = {
   async requestConsultation(request): Promise<ConsultationTransportResult> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.functions.invoke('chat', { body: request });
+    // BUG FIX (product-integration-readiness audit): there was no client-side bound on this call at all — a
+    // genuinely stuck request left the composer spinning with no cancel. `chatConfig.requestTimeoutMs` already
+    // existed for exactly this but was never wired to anything. A client-side abort is SAFE to add here: the
+    // Edge's own idempotency (same request_id) either replays the answer if the server finished anyway, or
+    // lets a real retry proceed — never a double charge.
+    const { data, error } = await supabase.functions.invoke('chat', { body: request, timeout: chatConfig.requestTimeoutMs });
 
     if (error) {
       // 402 → authoritative INSUFFICIENT_DUK: surface the server's balance/required/shortfall so the client can
