@@ -42,11 +42,42 @@ const DIRECTION_INSTRUCTION: Record<Stance, string> = {
 /**
  * Render the verdict as the system-side reading contract. Never shown to the user verbatim.
  */
+// FINAL_VERDICT_FIDELITY_MICRO_FIX — the recurring, cross-batch-confirmed defect (LOVE-06, TIMING-02):
+// when the verdict genuinely declined to decide, the prose obeyed the headline instruction ("don't manufacture
+// 좋다/나쁘다") but then quietly re-introduced a direction inside the PRACTICAL-ADVICE sentence instead
+// ("기다리는 편이 안전합니다", "유지하는 쪽이 낫습니다") — a hidden verdict wearing the shape of advice. Root
+// cause: `v.actionableInterpretation`'s own fallback for a declined verdict is ITSELF directionally phrased
+// ("지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다.") and this renderer handed it to
+// the model unconditionally as authoritative "실용적 조언". Cross Judge's data is unchanged (still correct,
+// still not touched here) — only how THIS renderer chooses to present that one field for the two genuinely
+// undecided stances (INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE — not STRUCTURAL_ANSWER/NOT_APPLICABLE, which
+// are a different "never a decision question" case where ordinary advice is fine).
+export function isDeclinedToDecide(v: CrossDivinationVerdict): boolean {
+  return v.direction === 'INSUFFICIENT_DATA' || v.direction === 'INSUFFICIENT_EVIDENCE';
+}
+
+// FINAL_VERDICT_AUTHORITY_CLAMP — the deterministic backstop the advisory instruction above could not
+// fully replace. Proven stochastic across 3 prior QA batches: the prompt-only instruction reduced but did
+// not eliminate the LLM occasionally smuggling a direction back into `coreSummary` — the ONE field whose
+// own schema purpose already IS "결론... 그래서 어떤 방향이 유리한지" (the conclusion + the favorable lean,
+// i.e. final decision authority — see STRUCTURED_OUTPUT_INSTRUCTION in structuredConsultation.ts). This
+// server-authored sentence REPLACES that field outright for a declined verdict — never a rejection, never
+// a regeneration, applied only to an already-valid ACCEPTED answer (see buildServerConsultation.ts's call
+// site). Every other field (reasoning, evidence, counterevidence, cautions) is the LLM's own untouched prose.
+export const DECLINED_TO_DECIDE_SUMMARY =
+  '현재 확인된 근거만으로는 한쪽을 확정하기 어렵습니다. 큰 결정을 바로 확정하기보다, 되돌릴 수 있는 범위에서 준비·확인·검증하세요.';
+
 export function renderVerdictDirective(v: CrossDivinationVerdict): string {
   const lines: string[] = ['[점사 판정 — 서버가 확정한 결론(그대로 노출하지 말 것)]'];
+  const declined = isDeclinedToDecide(v);
 
   lines.push(`· 결론: ${v.primaryConclusion}`);
   lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  if (declined) {
+    lines.push(
+      '· 방향을 정하지 않았다는 판정을, 뒤에 붙는 조언에서 슬쩍 한쪽으로 되돌리지 마십시오. "그래도 A가 낫습니다 / B가 안전합니다 / 기다리는 편이 좋습니다"처럼 들리는 문장은 그 자체로 다시 방향을 고른 것입니다 — 판단을 유보한 상태를 조언에서도 그대로 유지하십시오.',
+    );
+  }
   lines.push(`· 이 결론을 뒤집거나 "경우에 따라 다릅니다 / 반반입니다"로 흐리지 마십시오. 설명·정리·쉬운 표현은 자유입니다.`);
   lines.push(`· 중심 근거: ${v.dominantBasis}`);
 
@@ -85,7 +116,15 @@ export function renderVerdictDirective(v: CrossDivinationVerdict): string {
   if (v.riskFactors.length) {
     lines.push(`· 조심할 지점: ${v.riskFactors.map((e) => e.meaning).join(' / ')}`);
   }
-  lines.push(`· 현실적인 움직임(결론 뒤에 붙이는 보조): ${v.actionableInterpretation}`);
+  // The declined case gets its OWN risk-limiting instruction instead of the raw `actionableInterpretation`
+  // string, which is itself directionally phrased for this exact stance (see isDeclinedToDecide above).
+  if (declined) {
+    lines.push(
+      '· 현실적인 움직임(결론 뒤에 붙이는 보조): 한쪽을 권하지 말고, 어느 쪽으로 결론이 나든 위험을 줄이는 조언만 주십시오 — 예: 되돌릴 수 있는 범위에서만 준비·검증하기, 큰 비용이나 약속은 아직 확정하지 않기, 무엇이 더 확인되면 판단할 수 있는지 말하기. "A가 낫다/B가 안전하다/기다리는 게 좋다"처럼 들리는 문장은 그 자체로 결론이므로 쓰지 마십시오.',
+    );
+  } else {
+    lines.push(`· 현실적인 움직임(결론 뒤에 붙이는 보조): ${v.actionableInterpretation}`);
+  }
   lines.push(
     '· 순서: ① 점사 결론 → ② 왜 그렇게 보는지(학문별 핵심) → ③ 세 학문을 합치면 → ④ 시기(근거 있을 때만) → ⑤ 조심할 점 → ⑥ 현실적으로 어떻게 움직일지. 조언이 결론을 대신하지 않게 하십시오.',
   );

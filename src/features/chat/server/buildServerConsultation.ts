@@ -20,6 +20,8 @@ import {
   composeConsultationText,
   firstStructuredRejectionReason,
   SEMANTIC_REJECTION_MESSAGE,
+  type ConsultationOutcome,
+  type ParsedStructuredConsultation,
 } from '@/features/chat/prompts/structuredConsultation';
 import { selectConsultationContext } from '@/features/chat/selectors/contextSelector';
 import {
@@ -44,6 +46,7 @@ import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
 import {
   extendGraph, refinementFailure, renderVerdictDirective, renderEvidenceDirective, NO_SIGNAL,
+  isDeclinedToDecide, DECLINED_TO_DECIDE_SUMMARY, type CrossDivinationVerdict,
 } from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -125,6 +128,27 @@ function metaFrom(grounding: ConsultationGrounding, mode: string): ServerGroundi
     mode,
     questionTimeSource: 'SERVER_RECEIPT_TIME',
   };
+}
+
+/**
+ * FINAL_VERDICT_AUTHORITY_CLAMP — deterministic presentation-layer backstop, exposed as a PURE function so
+ * it is directly testable (mirrors `evaluateConsultationSafetyStop`'s pattern below). NOT a rejection, NOT
+ * a regeneration: applied only to an already-ACCEPTED outcome, after a valid substantive answer already
+ * exists. For a declined verdict (INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE), `coreSummary` — the one field
+ * whose own schema purpose is "결론... 그래서 어떤 방향이 유리한지" (final decision authority) — is replaced
+ * with a server-authored, non-directional sentence. Every other field (reasoning, evidence, counterevidence,
+ * cautions) is returned exactly as the LLM produced it. Returns null for a non-ACCEPTED outcome (nothing to
+ * clamp) and the ORIGINAL result object unchanged (same reference) for a directional/decided verdict, a
+ * STRUCTURAL_ANSWER/NOT_APPLICABLE verdict, or no verdict at all — so FAVORABLE/CAUTION/MIXED rendering is
+ * untouched by construction, not by a second condition someone could later drift out of sync.
+ */
+export function applyVerdictAuthorityClamp(
+  outcome: ConsultationOutcome,
+  verdict: CrossDivinationVerdict | null,
+): ParsedStructuredConsultation | null {
+  if (outcome.kind !== 'ACCEPTED') return null;
+  if (verdict === null || !isDeclinedToDecide(verdict)) return outcome.result;
+  return { ...outcome.result, coreSummary: DECLINED_TO_DECIDE_SUMMARY };
 }
 
 /**
@@ -500,6 +524,9 @@ export async function buildServerConsultation(
     },
   });
   const outcome = guard.outcome;
+  // Both downstream derivations (structuredResult, text) read from this SAME clamped value, so the
+  // delivered card and the plain-text mirror never disagree.
+  const acceptedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard);
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
   // §22 — the SAME instant the verdict was evaluated at. See `evaluationInstant` above.
@@ -543,20 +570,18 @@ export async function buildServerConsultation(
       graphRevision, priorHistoryUnavailable,
     );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
-  const structuredResult =
-    outcome.kind === 'ACCEPTED'
-      ? {
-          ...buildStructuredConsultationResult(outcome.result, effectiveGrounding),
-          ...(conclusionPolarity ? { conclusionPolarity } : {}),
-          decisionMeta,
-        }
-      : undefined;
-  const text =
-    outcome.kind === 'ACCEPTED'
-      ? composeConsultationText(outcome.result)
-      : outcome.kind === 'STRUCTURAL_FALLBACK'
-        ? outcome.text
-        : SEMANTIC_REJECTION_MESSAGE;
+  const structuredResult = acceptedResult
+    ? {
+        ...buildStructuredConsultationResult(acceptedResult, effectiveGrounding),
+        ...(conclusionPolarity ? { conclusionPolarity } : {}),
+        decisionMeta,
+      }
+    : undefined;
+  const text = acceptedResult
+    ? composeConsultationText(acceptedResult)
+    : outcome.kind === 'STRUCTURAL_FALLBACK'
+      ? outcome.text
+      : SEMANTIC_REJECTION_MESSAGE;
 
   // Safe diagnostics (no content): how the model output was classified and — when NOT rendered as a card
   // — the exact reason. Surfaced to the Edge for [chat.diag]; NOT returned to the client.
