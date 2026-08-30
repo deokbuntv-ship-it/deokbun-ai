@@ -44,8 +44,9 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
+import { buildConsultationContentPlan, renderContentPlanDirective } from './consultationContentPlan';
 import {
-  extendGraph, refinementFailure, renderVerdictDirective, renderEvidenceDirective, NO_SIGNAL,
+  extendGraph, refinementFailure, renderVerdictDirective, NO_SIGNAL,
   isDeclinedToDecide, DECLINED_TO_DECIDE_SUMMARY, type CrossDivinationVerdict,
 } from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
@@ -442,11 +443,13 @@ export async function buildServerConsultation(
     // the most specific instruction; absent when no discipline could speak (behavior then unchanged).
     const verdict =
       effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
-    // FINAL_PROSE_DELIVERY_REPAIR_V1 §3-6 — the evidence directive rides the SAME verdict, appended last so
-    // it is the most specific, final shaping instruction (mirrors how the plan/verdict directives already
-    // layer). Empty string (no evidence lines) when the verdict carries none — filtered out below.
+    // CONSULTATION_EXPRESSION_ARCHITECTURE_V1 — the evidence directive rides the SAME verdict, appended last
+    // so it is the most specific, final shaping instruction (mirrors how the plan/verdict directives already
+    // layer). Replaces the old dump-every-evidence-line directive with a deterministic Content Plan: a
+    // bounded, question-relevant evidence selection + domain facets to prioritize. The plan only selects
+    // from `verdict`'s own evidence pools — it cannot add a fact or change the verdict itself.
     const planDirective = verdict
-      ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderEvidenceDirective(verdict)]
+      ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderContentPlanDirective(buildConsultationContentPlan(verdict))]
           .filter(Boolean)
           .join('\n')
       : renderAnswerPlanDirective(plan, questionDomain);
