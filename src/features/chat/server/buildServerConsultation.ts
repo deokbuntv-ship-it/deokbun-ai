@@ -648,13 +648,17 @@ export async function buildServerConsultation(
   // sections are materialized from the SAME claim catalog and shown ahead of the citations, so every
   // factual block in the answer body is either server-rendered here or LLM language that passed the
   // grounded gate above.
+  // V4 — a section the delivered answer body already carries under the same heading is not repeated here.
+  // The grounded fallback now renders the cross-synthesis into `domainInterpretation` (so it reaches the
+  // reader, not only the citation blocks), and one section is the product, not two.
+  const deliveredSectionTitles = new Set((acceptedResult?.domainInterpretation ?? []).map((d) => d.title));
   const authoritativeSections = [
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
     // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
     // section is the product, not two.
     ...(groundedPlan
       ? renderGroundedSections(groundedPlan).filter(
-        (s) => !(s.title === '앞으로의 흐름' && !!acceptedResult?.futureFlow),
+        (s) => !(s.title === '앞으로의 흐름' && !!acceptedResult?.futureFlow) && !deliveredSectionTitles.has(s.title),
       )
       : []),
     ...(contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0

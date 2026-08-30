@@ -7850,7 +7850,7 @@ function readNatalBaseline(input) {
   const rooted = input.rootedCount ?? null;
   const transparent = input.transparentCount ?? null;
   const rootPositions = input.strengthInputs?.dayMasterRootPositions ?? null;
-  const anchored = rootPositions === null ? rooted === null ? "UNKNOWN" : rooted > 0 ? "PARTLY_ROOTED" : "FLOATING" : rootPositions.length === 0 ? "FLOATING" : rootPositions.includes("MONTH") || rootPositions.includes("DAY") ? "ROOTED" : "PARTLY_ROOTED";
+  const anchored2 = rootPositions === null ? rooted === null ? "UNKNOWN" : rooted > 0 ? "PARTLY_ROOTED" : "FLOATING" : rootPositions.length === 0 ? "FLOATING" : rootPositions.includes("MONTH") || rootPositions.includes("DAY") ? "ROOTED" : "PARTLY_ROOTED";
   const evidence = [];
   for (const f of Object.keys(familyPresence).filter((x) => familyPresence[x] > 0)) {
     evidence.push({
@@ -7888,10 +7888,10 @@ function readNatalBaseline(input) {
       directness: "ADJACENT"
     });
   }
-  if (anchored !== "UNKNOWN") {
+  if (anchored2 !== "UNKNOWN") {
     evidence.push({
       fact: `통근 ${rooted}자리${transparent !== null ? ` · 투간 ${transparent}` : ""}`,
-      meaning: anchored === "ROOTED" ? "뿌리가 단단해 한번 잡은 것은 오래 끌고 갑니다." : anchored === "PARTLY_ROOTED" ? "뿌리가 일부만 있어, 받쳐 주는 자리에서만 오래 갑니다." : "뿌리가 약해 벌인 일이 오래 남기 어렵습니다.",
+      meaning: anchored2 === "ROOTED" ? "뿌리가 단단해 한번 잡은 것은 오래 끌고 갑니다." : anchored2 === "PARTLY_ROOTED" ? "뿌리가 일부만 있어, 받쳐 주는 자리에서만 오래 갑니다." : "뿌리가 약해 벌인 일이 오래 남기 어렵습니다.",
       domain: "MONEY_RETENTION",
       temporalScope: "NATAL",
       directness: "ADJACENT"
@@ -7904,7 +7904,7 @@ function readNatalBaseline(input) {
     natalHarmonyPositions,
     spouseSeatStrained,
     inCommand: input.monthCommandInCommand,
-    anchored,
+    anchored: anchored2,
     evidence
   };
 }
@@ -15421,6 +15421,78 @@ function isDecisionVersionMismatch(persisted, current) {
   return false;
 }
 
+// src/features/chat/server/koreanRealization.ts
+var HANGUL_BASE = 44032;
+var HANGUL_LAST = 55203;
+var JONG_COUNT = 28;
+var JONG_NIEUN = 4;
+var JONG_BIEUP = 17;
+function jongseong(ch) {
+  const c = ch.charCodeAt(0);
+  if (c < HANGUL_BASE || c > HANGUL_LAST) return null;
+  return (c - HANGUL_BASE) % JONG_COUNT;
+}
+var endsWithConsonant = (ch) => (jongseong(ch) ?? 0) !== 0;
+function withJongseong(ch, jong) {
+  const c = ch.charCodeAt(0);
+  return String.fromCharCode(c - (c - HANGUL_BASE) % JONG_COUNT + jong);
+}
+var ANCHOR_TAIL_PARTICLE = /(천간합|천간충|지지합|지지충|반합|육합|삼합|방합|암합|원진|귀문|합|충|형|파|해|명궁|신궁|형제|부처|자녀|재백|질액|천이|노복|교우|관록|전택|복덕|부모)(를|을|와|과|이|가|은|는)(?=[\s.,)\]·]|$)/g;
+var PARTICLE_PAIR = {
+  // particle → [after a vowel-final syllable, after a consonant-final syllable]
+  를: ["를", "을"],
+  을: ["를", "을"],
+  와: ["와", "과"],
+  과: ["와", "과"],
+  이: ["가", "이"],
+  가: ["가", "이"],
+  은: ["는", "은"],
+  는: ["는", "은"]
+};
+var PLACEHOLDER_PARTICLE = /([가-힣])(은|는|이|가|을|를|와|과)\((은|는|이|가|을|를|와|과)\)/g;
+var agreeing = (precedingSyllable, particle) => {
+  const pair = PARTICLE_PAIR[particle];
+  return pair ? pair[endsWithConsonant(precedingSyllable) ? 1 : 0] : particle;
+};
+function realizeParticles(text) {
+  return text.replace(PLACEHOLDER_PARTICLE, (_m, prev, first) => `${prev}${agreeing(prev, first)}`).replace(ANCHOR_TAIL_PARTICLE, (_m, anchor, particle) => `${anchor}${agreeing(anchor[anchor.length - 1], particle)}`);
+}
+var HAERA_EXACT = [
+  [/아니다(?=[.!?…]|$)/gm, "아닙니다"],
+  [/있다(?=[.!?…]|$)/gm, "있습니다"],
+  [/없다(?=[.!?…]|$)/gm, "없습니다"],
+  [/않다(?=[.!?…]|$)/gm, "않습니다"],
+  [/([가-힣])\s*구조다(?=[.!?…]|$)/gm, "$1 구조입니다"],
+  [/자리다(?=[.!?…]|$)/gm, "자리입니다"]
+];
+var HAERA_NIEUN = /([가-힣])다(?=[.!?…]|$)/gm;
+function realizePoliteEndings(text) {
+  let out = text;
+  for (const [re, to] of HAERA_EXACT) out = out.replace(re, to);
+  return out.replace(HAERA_NIEUN, (m, syllable) => jongseong(syllable) === JONG_NIEUN ? `${withJongseong(syllable, JONG_BIEUP)}니다` : m);
+}
+function tidyPunctuation(text) {
+  return text.replace(/[ \t]{2,}/g, " ").replace(/\s+([.,!?)])/g, "$1").replace(/([(])\s+/g, "$1").trim();
+}
+var sentenceKey = (s) => s.replace(/\s+/g, "");
+function joinDistinctSentences(parts, seen = /* @__PURE__ */ new Set()) {
+  const kept = [];
+  for (const part of parts) {
+    for (const sentence of part.split(/(?<=[.!?…])\s+/)) {
+      const s = sentence.trim();
+      if (s.length === 0) continue;
+      const key2 = sentenceKey(s);
+      if (seen.has(key2)) continue;
+      seen.add(key2);
+      kept.push(/[.!?…]["'」』]?$/.test(s) ? s : `${s}.`);
+    }
+  }
+  return kept.join(" ");
+}
+function realize(text) {
+  return tidyPunctuation(realizePoliteEndings(realizeParticles(text)));
+}
+
 // src/features/chat/server/consultationContentPlan.ts
 var DOMAIN_FACETS = {
   BUSINESS: [
@@ -15607,7 +15679,7 @@ function renderContentPlanDirective(plan) {
 function renderVerifiedEvidenceSection(catalog) {
   return catalog.map((e) => ({
     title: `전문근거 · ${DISCIPLINE_LABEL3[e.discipline]} (${e.id})`,
-    body: `${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`
+    body: realize(`${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`)
   }));
 }
 
@@ -15620,6 +15692,8 @@ function narrativeIntentOf(intent, isComparison) {
   return "DECISION";
 }
 var byId = (claims, role2) => claims.filter((c) => c.role === role2).map((c) => c.id);
+var DISCIPLINE_LABEL4 = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
+var disciplineLabel = (d) => DISCIPLINE_LABEL4[d];
 function evidencePolarity(e) {
   return e.evidenceRole === "COUNTER" ? "LIMIT" : "SUPPORT";
 }
@@ -15701,6 +15775,19 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
       provenance: "CROSS:contradictionResolutions"
     }, "S");
   }
+  const appliedDisciplines = verdict.contributions.filter((c) => c.applied).map((c) => c.discipline);
+  const unappliedDisciplines = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
+  if (appliedDisciplines.length > 0 && unappliedDisciplines.length > 0) {
+    add({
+      discipline: "CROSS",
+      domain: verdict.questionDomain,
+      scope: "UNSCOPED",
+      polarity: "NEUTRAL",
+      role: "SYNTHESIS",
+      authoritativeMeaning: `${appliedDisciplines.map(disciplineLabel).join("·")} 쪽에 이 질문을 직접 보는 자리가 있어 그 근거로 판단했고, ${unappliedDisciplines.map(disciplineLabel).join("·")}에는 이 축을 직접 다루는 자리가 없어 판단에 넣지 않았습니다.`,
+      provenance: "CROSS:contributions"
+    }, "S");
+  }
   if (verdict.timingConclusion) {
     add({
       discipline: "CROSS",
@@ -15725,6 +15812,17 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
       provenance: e.provenance
     });
   }
+  if (verdict.actionableInterpretation) {
+    add({
+      discipline: "CROSS",
+      domain: verdict.questionDomain,
+      scope: "UNSCOPED",
+      polarity: "NEUTRAL",
+      role: "IMPLICATION",
+      authoritativeMeaning: verdict.actionableInterpretation,
+      provenance: "CROSS:actionableInterpretation"
+    }, "C");
+  }
   const coverageGaps = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
   const SCOPE_TOKEN = {
     NATAL: "원국",
@@ -15744,21 +15842,39 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
     ...verdict.evidenceReferences.flatMap((r) => r.lines),
     ...claims.flatMap((c) => [c.authoritativeMeaning, c.technicalAnchor ?? ""])
   ].filter((s) => typeof s === "string" && s.length > 0).join("\n");
+  const distinct = dedupeClaims(claims);
   return {
     verdictState: declined ? "DECLINED" : "DIRECTIONAL",
     intent,
     directConclusion: verdict.primaryConclusion,
-    claims,
-    coreReasons: byId(claims, "CORE_REASON"),
-    positiveClaims: byId(claims, "POSITIVE"),
-    cautionClaims: byId(claims, "CAUTION"),
-    contradictionClaims: [...byId(claims, "SYNTHESIS"), ...byId(claims, "CONTRADICTION")],
-    timingClaims: byId(claims, "TIMING"),
+    claims: distinct,
+    coreReasons: byId(distinct, "CORE_REASON"),
+    positiveClaims: byId(distinct, "POSITIVE"),
+    cautionClaims: byId(distinct, "CAUTION"),
+    contradictionClaims: [...byId(distinct, "SYNTHESIS"), ...byId(distinct, "CONTRADICTION")],
+    timingClaims: byId(distinct, "TIMING"),
+    implicationClaims: byId(distinct, "IMPLICATION"),
     actionBoundary: contentPlan.actionBoundary,
     coverageGaps,
+    coveredBy: appliedDisciplines,
     groundedCorpus,
     provenance: ["deokbunai.grounded-narrative-plan.v2"]
   };
+}
+function dedupeClaims(claims) {
+  const kept = [];
+  const seen = /* @__PURE__ */ new Map();
+  for (const c of claims) {
+    const key2 = c.authoritativeMeaning.replace(/\s+/g, "");
+    const at = seen.get(key2);
+    if (at === void 0) {
+      seen.set(key2, kept.length);
+      kept.push(c);
+      continue;
+    }
+    if (!kept[at].technicalAnchor && c.technicalAnchor) kept[at] = { ...kept[at], technicalAnchor: c.technicalAnchor };
+  }
+  return kept;
 }
 var TECHNICAL_LEXICON = [
   // Ziwei — palaces (bare 명궁/신궁 are jargon; the rest only with the 궁 suffix, since 형제/자녀/부모 are
@@ -15800,6 +15916,16 @@ function untraceableFacts(text, plan) {
   for (const r of ageRangesIn(text)) if (!groundedRanges.has(r)) found.add(`${r}세`);
   if (CALCULATION_FAILED_CLAIM.test(text)) found.add("NOT_COVERED_AS_FAILURE");
   return [...found];
+}
+var TEMPORAL_VIOLATION = /^(대운|세운|월운|일운|원국|대한궁)$|세$/;
+function classifyGroundedViolations(violations) {
+  const out = /* @__PURE__ */ new Set();
+  for (const v of violations) {
+    if (v === "NOT_COVERED_AS_FAILURE") out.add("COVERAGE_GAP_AS_FAILURE");
+    else if (TEMPORAL_VIOLATION.test(v)) out.add("UNSUPPORTED_TEMPORAL_CLAIM");
+    else out.add("UNSUPPORTED_TECHNICAL_ENTITY");
+  }
+  return [...out];
 }
 function stripScaffold(text) {
   return text.replace(SCAFFOLD_LEAK, "").replace(/[ \t]{2,}/g, " ").replace(/\s+([.,!?])/g, "$1").trim();
@@ -15845,38 +15971,137 @@ function gateAgainstGroundedNarrative(parsed, plan) {
     violations
   };
 }
-var meaningsOf = (plan, ids) => ids.map((id) => plan.claims.find((c) => c.id === id)?.authoritativeMeaning).filter((s) => !!s);
+var claimsOf = (plan, ids) => ids.map((id) => plan.claims.find((c) => c.id === id)).filter((c) => !!c);
+var meaningsOf = (plan, ids) => claimsOf(plan, ids).map((c) => c.authoritativeMeaning);
+var SYNTHESIS_SECTION_TITLE = "왜 이렇게 보나요";
 function renderGroundedSections(plan) {
   const out = [];
   const synthesis = meaningsOf(plan, plan.contradictionClaims);
-  if (synthesis.length > 0) out.push({ title: "왜 이렇게 보나요", body: synthesis.join(" ") });
+  if (synthesis.length > 0) out.push({ title: SYNTHESIS_SECTION_TITLE, body: realize(joinDistinctSentences(synthesis)) });
   const timing = meaningsOf(plan, plan.timingClaims);
-  if (timing.length > 0) out.push({ title: "앞으로의 흐름", body: timing.join(" ") });
+  if (timing.length > 0) out.push({ title: "앞으로의 흐름", body: realize(joinDistinctSentences(timing)) });
   return out;
 }
-var ACTION_BOUNDARY_TEXT = {
-  GUIDED: "지금 확인된 근거 안에서 움직이시고, 근거가 닿지 않는 부분까지 한 번에 확정하지는 마십시오.",
-  CAUTIOUS: "되돌릴 수 있는 범위에서 준비·확인하시고, 큰 비용이나 되돌리기 어려운 약속은 아직 확정하지 마십시오."
+var ACTION_SECTION = {
+  DECISION: {
+    GUIDED: { title: "이렇게 움직이시면 됩니다", body: "지금 확인된 근거 안에서 움직이시고, 근거가 닿지 않는 부분까지 한 번에 확정하지는 마십시오." },
+    CAUTIOUS: { title: "이렇게 움직이시면 됩니다", body: "되돌릴 수 있는 범위에서 준비·확인하시고, 큰 비용이나 되돌리기 어려운 약속은 아직 확정하지 마십시오." }
+  },
+  COMPARISON: {
+    GUIDED: { title: "어느 쪽을 먼저 보시면 됩니다", body: "위에서 확인된 근거가 더 두껍게 붙는 쪽을 먼저 보시고, 근거가 닿지 않는 쪽까지 한 번에 정하지는 마십시오." },
+    CAUTIOUS: { title: "어느 쪽을 먼저 보시면 됩니다", body: "두 쪽 모두 되돌릴 수 있는 범위에서만 시험해 보시고, 지금 한쪽으로 완전히 몰아두지는 마십시오." }
+  },
+  TIMING: {
+    GUIDED: { title: "시점을 이렇게 보시면 됩니다", body: "위에 확인된 시기 근거가 닿는 범위까지만 계획을 잡으시고, 그보다 먼 시점은 아직 고정하지 마십시오." },
+    CAUTIOUS: { title: "시점을 이렇게 보시면 됩니다", body: "지금은 되돌릴 수 있는 준비까지만 진행하시고, 시점을 확정해야 하는 약속은 근거가 닿는 범위 안에서만 잡으십시오." }
+  },
+  EXPLANATION: {
+    GUIDED: { title: "이렇게 이해하시면 됩니다", body: "위 구조가 지금 이 일이 그렇게 흘러가는 이유입니다. 사람이나 상황 하나를 원인으로 지목하기보다, 이 구조가 반복해서 건드려지는 자리라는 점을 기준으로 두십시오." },
+    CAUTIOUS: { title: "이렇게 이해하시면 됩니다", body: "위 구조가 지금 이 일이 그렇게 흘러가는 이유입니다. 다만 확인된 근거가 닿는 데까지가 설명의 범위이고, 그 밖의 원인까지 여기서 단정하지는 않습니다." }
+  },
+  TRAIT: {
+    GUIDED: { title: "이 결을 이렇게 쓰시면 됩니다", body: "위에서 확인된 결이 실제로 힘을 받는 자리에 시간을 쓰시고, 근거가 닿지 않는 영역까지 같은 결이라고 넓혀 보지는 마십시오." },
+    CAUTIOUS: { title: "이 결을 이렇게 쓰시면 됩니다", body: "위에서 확인된 결은 되돌릴 수 있는 범위에서 먼저 시험해 보시고, 그것을 근거로 큰 결정까지 한 번에 옮기지는 마십시오." }
+  }
 };
+var FOLLOW_UPS = {
+  DECISION: ["이 판단에서 가장 크게 걸리는 근거 하나만 더 자세히 봐주세요.", "지금 조건이 달라지면 결론도 달라지나요?"],
+  COMPARISON: ["두 쪽의 근거 차이를 조금 더 자세히 짚어주세요.", "어느 쪽이 먼저 풀리는 구조인가요?"],
+  TIMING: ["이 시기 판단의 근거를 조금 더 자세히 설명해주세요.", "이 시점 앞뒤로 흐름이 어떻게 달라지나요?"],
+  EXPLANATION: ["이 구조가 왜 반복되는지 조금 더 풀어서 설명해주세요.", "이 구조에서 제가 바꿀 수 있는 부분은 어디인가요?"],
+  TRAIT: ["이 결이 실제로 잘 드러나는 자리는 어디인가요?", "이 결과 잘 맞지 않는 자리는 어디인가요?"]
+};
+var CONTRAST = "다만";
+var THEREFORE = "그래서";
+var SIDE_SUPPORT = "한쪽으로는";
+var SIDE_LIMIT = "다른 쪽으로는";
+var INTENT_OPENER = {
+  DECISION: "",
+  COMPARISON: "",
+  TIMING: "시점만 놓고 보면 이렇습니다.",
+  EXPLANATION: "왜 그런지부터 보겠습니다.",
+  TRAIT: "타고난 결부터 보겠습니다."
+};
+function anchored(c) {
+  return c.technicalAnchor ? `${c.authoritativeMeaning} (근거: ${c.technicalAnchor})` : c.authoritativeMeaning;
+}
+var CAP = 3;
+function bulletsFrom(pool, spent, said) {
+  return joinDistinctSentences(pool.filter((c) => !spent.has(c.id)).map((c) => c.authoritativeMeaning), said).split(/(?<=[.!?…])\s+/).map((s) => realize(s)).filter((s) => s.length > 0).slice(0, CAP);
+}
 function composeGroundedFallback(plan) {
-  const reasons = meaningsOf(plan, plan.coreReasons);
-  const positives = meaningsOf(plan, plan.positiveClaims);
-  const cautions = meaningsOf(plan, plan.cautionClaims);
+  const declined = plan.verdictState === "DECLINED";
   const evidence = plan.claims.filter((c) => c.role === "EVIDENCE");
-  const support = evidence.filter((c) => c.polarity === "SUPPORT").map((c) => c.authoritativeMeaning);
-  const limits = evidence.filter((c) => c.polarity === "LIMIT").map((c) => c.authoritativeMeaning);
-  const core = reasons.length > 0 ? reasons.join(" ") : plan.directConclusion;
+  const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === "SUPPORT")];
+  const limits = [...claimsOf(plan, plan.cautionClaims), ...evidence.filter((c) => c.polarity === "LIMIT")];
+  const reasons = claimsOf(plan, plan.coreReasons);
+  const synthesis = claimsOf(plan, plan.contradictionClaims);
+  const natal = [...reasons, ...supports, ...limits].filter((c) => c.scope === "NATAL");
+  const implication = meaningsOf(plan, plan.implicationClaims)[0];
+  const leadIsLimit = limits.length >= supports.length;
+  const dominant = leadIsLimit ? limits : supports;
+  const other = leadIsLimit ? supports : limits;
+  const used = /* @__PURE__ */ new Set();
+  const pick = (pools) => {
+    for (const pool of pools) {
+      const free = pool.filter((c) => !used.has(c.id));
+      const chosen = free.find((c) => !!c.technicalAnchor) ?? free[0];
+      if (chosen) {
+        used.add(chosen.id);
+        return chosen;
+      }
+    }
+    return void 0;
+  };
+  const nonDirectional = (pool) => pool.filter((c) => c.polarity === "NEUTRAL" || c.polarity === "MIXED");
+  const leadPools = declined ? [nonDirectional(synthesis), nonDirectional(reasons)] : plan.intent === "TIMING" ? [reasons, dominant, other, synthesis] : plan.intent === "EXPLANATION" ? [reasons, dominant, synthesis, other] : plan.intent === "TRAIT" ? [natal, reasons, dominant, other] : plan.intent === "COMPARISON" ? [synthesis, dominant, other, reasons] : [dominant, other, reasons, synthesis];
+  const said = /* @__PURE__ */ new Set();
+  joinDistinctSentences([plan.directConclusion], said);
+  const chain = [];
+  const emit = (text, connective = "") => {
+    if (!text) return;
+    const fresh = joinDistinctSentences([text], said);
+    if (fresh.length > 0) chain.push(connective ? `${connective} ${fresh}` : fresh);
+  };
+  if (INTENT_OPENER[plan.intent]) chain.push(INTENT_OPENER[plan.intent]);
+  const lead = pick(leadPools);
+  if (lead) emit(anchored(lead));
+  if (declined) {
+    const pro = pick([supports]);
+    const con = pick([limits]);
+    if (pro) emit(pro.authoritativeMeaning, SIDE_SUPPORT);
+    if (con) emit(con.authoritativeMeaning, SIDE_LIMIT);
+  } else {
+    const counter2 = pick([other]);
+    if (counter2) emit(counter2.authoritativeMeaning, CONTRAST);
+    emit(pick([reasons])?.authoritativeMeaning);
+  }
+  emit(implication, THEREFORE);
+  const core = chain.length > 0 ? realize(chain.join(" ")) : realize(plan.directConclusion);
+  const base = ACTION_SECTION[plan.intent][plan.actionBoundary];
+  const why = pick(plan.actionBoundary === "CAUTIOUS" ? [limits, reasons, supports] : [supports, reasons, limits]);
+  const whyText = why ? joinDistinctSentences([why.authoritativeMeaning], said) : "";
+  const bridge = plan.intent === "EXPLANATION" || plan.intent === "TRAIT" ? "" : `${THEREFORE} `;
+  const actionSection = whyText.length > 0 ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) } : base;
+  const synthesisBody = realize(joinDistinctSentences(
+    synthesis.filter((c) => !used.has(c.id)).map((c) => c.authoritativeMeaning),
+    said
+  ));
+  const strengths = bulletsFrom(supports, used, said);
+  const cautions = bulletsFrom(limits, used, said);
   const timing = meaningsOf(plan, plan.timingClaims);
-  const domainInterpretation = [
-    { title: "이렇게 움직이시면 됩니다", body: ACTION_BOUNDARY_TEXT[plan.actionBoundary] }
-  ];
   return {
-    coreSummary: plan.directConclusion,
+    coreSummary: realize(plan.directConclusion),
     coreInterpretation: core,
-    strengths: [...positives, ...support].slice(0, 3),
-    cautions: [...cautions, ...limits].slice(0, 3),
-    domainInterpretation,
-    futureFlow: timing.length > 0 ? timing.join(" ") : void 0
+    // §4 — never force an empty section.
+    strengths: strengths.length > 0 ? strengths : void 0,
+    cautions: cautions.length > 0 ? cautions : void 0,
+    domainInterpretation: [
+      actionSection,
+      ...synthesisBody.length > 0 ? [{ title: SYNTHESIS_SECTION_TITLE, body: synthesisBody }] : []
+    ],
+    futureFlow: timing.length > 0 ? realize(joinDistinctSentences(timing)) : void 0,
+    followUps: [...FOLLOW_UPS[plan.intent]]
   };
 }
 
@@ -16376,8 +16601,15 @@ ${extraDirective}` : base
   const clampedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard, narrativeIntent);
   const groundedPlan = verdictForGuard && contentPlanHolder.current ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent) : null;
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
-  const groundedFallbackUsed = gated?.fatal === true;
-  const acceptedResult = gated ? gated.fatal ? composeGroundedFallback(groundedPlan) : gated.result : clampedResult;
+  const rejectedButGrounded = clampedResult === null && groundedPlan !== null && (outcome.kind === "SEMANTIC_REJECTED" || outcome.kind === "STRUCTURAL_FALLBACK" && untraceableFacts(outcome.text, groundedPlan).length > 0);
+  const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
+  const groundedFallbackResult = () => applyVerdictAuthorityClamp(
+    { kind: "ACCEPTED", result: composeGroundedFallback(groundedPlan) },
+    verdictForGuard,
+    narrativeIntent
+  );
+  const acceptedResult = gated ? gated.fatal ? groundedFallbackResult() : gated.result : rejectedButGrounded ? groundedFallbackResult() : clampedResult;
+  const groundedViolations = gated?.fatal ? classifyGroundedViolations(gated.violations) : rejectedButGrounded ? ["LLM_OUTPUT_REJECTED"] : [];
   const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
   const graphRevision = storedInstant === null ? void 0 : continuation === "REFINE_EXISTING" && graphExtended ? {
     schemaVersion: "graph-revision@1.0.0",
@@ -16405,12 +16637,13 @@ ${extraDirective}` : base
     priorHistoryUnavailable
   );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
+  const deliveredSectionTitles = new Set((acceptedResult?.domainInterpretation ?? []).map((d) => d.title));
   const authoritativeSections = [
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
     // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
     // section is the product, not two.
     ...groundedPlan ? renderGroundedSections(groundedPlan).filter(
-      (s) => !(s.title === "앞으로의 흐름" && !!acceptedResult?.futureFlow)
+      (s) => !(s.title === "앞으로의 흐름" && !!acceptedResult?.futureFlow) && !deliveredSectionTitles.has(s.title)
     ) : [],
     ...contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0 ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence) : []
   ];
@@ -16426,6 +16659,7 @@ ${extraDirective}` : base
     outputClassification: outcome.kind,
     ...guard.regenerated ? { regenerated: true } : {},
     ...groundedFallbackUsed ? { groundedFallback: true } : {},
+    ...groundedViolations.length > 0 ? { groundedViolations } : {},
     ...safetyRoute !== "NORMAL" ? { safetyRoute } : {},
     ...followUpIntent !== "NONE" ? { followUp: followUpIntent } : {},
     ...followUpVersionMismatch ? { versionMismatch: true } : {},

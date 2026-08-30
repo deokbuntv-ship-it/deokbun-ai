@@ -304,14 +304,17 @@ describe('K — a failed stylistic rendering falls back to grounded composition,
     expect((fallback.followUps ?? []).length).toBeGreaterThan(0);
   });
 
-  it('never repeats the headline as the body, and never repeats a section the caller already renders', () => {
+  // V4 — the cross-synthesis now reaches the reader through the answer BODY (domainInterpretation), not only
+  // through the citation blocks, so an overlap with the server-rendered section titles is expected here and
+  // is resolved by the CALLER, which drops any grounded section the delivered body already carries.
+  it('never repeats the headline as the body, and the caller drops any section the body already carries', () => {
     const { grounded } = planFor(mkVerdict());
     const fallback = composeGroundedFallback(grounded);
     expect(fallback.coreInterpretation).not.toBe(fallback.coreSummary);
     expect(fallback.coreInterpretation).not.toContain(fallback.coreSummary as string);
-    const titles = (fallback.domainInterpretation ?? []).map((d) => d.title);
-    const serverTitles = renderGroundedSections(grounded).map((s) => s.title);
-    expect(titles.filter((t) => serverTitles.includes(t))).toEqual([]);
+    const titles = new Set((fallback.domainInterpretation ?? []).map((d) => d.title));
+    const delivered = renderGroundedSections(grounded).filter((s) => !titles.has(s.title));
+    expect(delivered.map((s) => s.title).filter((t) => titles.has(t))).toEqual([]);
   });
 
   // V3 — THE defect this batch existed to fix. Production Cross never populates natalBaseline/currentFlow,

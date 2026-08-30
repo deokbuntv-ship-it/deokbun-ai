@@ -31,7 +31,7 @@ import {
 import type { ConsultationContentPlan, VerifiedEvidenceCatalogItem } from './consultationContentPlan';
 import { joinDistinctSentences, realize } from './koreanRealization';
 
-export const GROUNDED_NARRATIVE_VERSION = 'grounded-narrative@3.0.0';
+export const GROUNDED_NARRATIVE_VERSION = 'grounded-narrative@4.0.0';
 
 // ── 1. GROUNDED CLAIM CATALOG ────────────────────────────────────────────────────────────────────────
 /** The authoritative stance a claim carries. Never rewritten into its opposite (§6). */
@@ -82,6 +82,8 @@ export type GroundedNarrativePlan = {
   actionBoundary: 'GUIDED' | 'CAUTIOUS';
   /** Disciplines that did not cover this question. NOT_COVERED — never a calculation failure (§15). */
   coverageGaps: readonly Discipline[];
+  /** Disciplines that DID carry this question — the other half of the V4 scope-separation claim. */
+  coveredBy: readonly Discipline[];
   /** The union of every authoritative string above — the fact boundary the LLM's language is checked against. */
   groundedCorpus: string;
   provenance: readonly ['deokbunai.grounded-narrative-plan.v2'];
@@ -89,6 +91,9 @@ export type GroundedNarrativePlan = {
 
 const byId = (claims: readonly GroundedClaim[], role: ClaimRole): string[] =>
   claims.filter((c) => c.role === role).map((c) => c.id);
+
+const DISCIPLINE_LABEL: Record<Discipline, string> = { MYUNGRI: '명리', ZIWEI: '자미두수', QIMEN: '기문둔갑' };
+const disciplineLabel = (d: Discipline): string => DISCIPLINE_LABEL[d];
 
 function evidencePolarity(e: VerifiedEvidenceCatalogItem): ClaimPolarity {
   return e.evidenceRole === 'COUNTER' ? 'LIMIT' : 'SUPPORT';
@@ -156,6 +161,22 @@ export function buildGroundedNarrativePlan(
       provenance: 'CROSS:contradictionResolutions',
     }, 'S');
   }
+  // V4 §3 SCOPE SEPARATION — WHY this particular set of systems produced this conclusion. Straight from
+  // `verdict.contributions[].applied`, which the Cross Judge already decided: the sentence names COVERAGE and
+  // nothing else, so it can never become a calculation-failure claim (§15) nor a new metaphysical inference.
+  // Carried as a SYNTHESIS claim so it reaches the reader through the same path as every other Cross
+  // synthesis, and joins the grounded corpus like any other authoritative string.
+  const appliedDisciplines = verdict.contributions.filter((c) => c.applied).map((c) => c.discipline);
+  const unappliedDisciplines = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
+  if (appliedDisciplines.length > 0 && unappliedDisciplines.length > 0) {
+    add({
+      discipline: 'CROSS', domain: verdict.questionDomain, scope: 'UNSCOPED', polarity: 'NEUTRAL',
+      role: 'SYNTHESIS',
+      authoritativeMeaning: `${appliedDisciplines.map(disciplineLabel).join('·')} 쪽에 이 질문을 직접 보는 자리가 있어 그 근거로 판단했고, `
+        + `${unappliedDisciplines.map(disciplineLabel).join('·')}에는 이 축을 직접 다루는 자리가 없어 판단에 넣지 않았습니다.`,
+      provenance: 'CROSS:contributions',
+    }, 'S');
+  }
   // TEMPORAL (§3) — the ONLY authority for anything the answer says about the future.
   if (verdict.timingConclusion) {
     add({
@@ -218,6 +239,7 @@ export function buildGroundedNarrativePlan(
     implicationClaims: byId(distinct, 'IMPLICATION'),
     actionBoundary: contentPlan.actionBoundary,
     coverageGaps,
+    coveredBy: appliedDisciplines,
     groundedCorpus,
     provenance: ['deokbunai.grounded-narrative-plan.v2'],
   };
@@ -418,6 +440,10 @@ const claimsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): Grounded
 const meaningsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): string[] =>
   claimsOf(plan, ids).map((c) => c.authoritativeMeaning);
 
+/** The cross-synthesis heading. Shared, because the grounded fallback now renders this section into the
+ *  answer body and the caller drops the duplicate rendered here. */
+export const SYNTHESIS_SECTION_TITLE = '왜 이렇게 보나요';
+
 /**
  * §8/§9 — the SERVER-OWNED narrative sections, rendered directly from the claim catalog with NO LLM step:
  * the cross-system synthesis ("왜 이렇게 보나요") and the temporal flow ("앞으로의 흐름", present only when a
@@ -430,7 +456,7 @@ const meaningsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): string
 export function renderGroundedSections(plan: GroundedNarrativePlan): { title: string; body: string }[] {
   const out: { title: string; body: string }[] = [];
   const synthesis = meaningsOf(plan, plan.contradictionClaims);
-  if (synthesis.length > 0) out.push({ title: '왜 이렇게 보나요', body: realize(joinDistinctSentences(synthesis)) });
+  if (synthesis.length > 0) out.push({ title: SYNTHESIS_SECTION_TITLE, body: realize(joinDistinctSentences(synthesis)) });
   const timing = meaningsOf(plan, plan.timingClaims);
   if (timing.length > 0) out.push({ title: '앞으로의 흐름', body: realize(joinDistinctSentences(timing)) });
   return out;
@@ -481,6 +507,12 @@ const FOLLOW_UPS: Record<NarrativeIntent, readonly string[]> = {
 const CONTRAST = '다만';
 const THEREFORE = '그래서';
 
+// V4 §Fix1 — the COMPETING-EVIDENCE labels. Under a DECLINED verdict a directional claim may still be shown,
+// but only as ONE SIDE of a pair that the answer explicitly does not resolve. Like 다만/그래서 these are fixed
+// connectives: they assert no direction of their own, and they never alter the claim they introduce.
+const SIDE_SUPPORT = '한쪽으로는';
+const SIDE_LIMIT = '다른 쪽으로는';
+
 const INTENT_OPENER: Record<NarrativeIntent, string> = {
   DECISION: '',
   COMPARISON: '',
@@ -528,29 +560,64 @@ function bulletsFrom(pool: readonly GroundedClaim[], spent: ReadonlySet<string>,
  * Presentation only — billing/charge-release semantics are untouched.
  */
 export function composeGroundedFallback(plan: GroundedNarrativePlan): ParsedStructuredConsultation {
+  const declined = plan.verdictState === 'DECLINED';
   const evidence = plan.claims.filter((c) => c.role === 'EVIDENCE');
   const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === 'SUPPORT')];
   const limits = [...claimsOf(plan, plan.cautionClaims), ...evidence.filter((c) => c.polarity === 'LIMIT')];
   const reasons = claimsOf(plan, plan.coreReasons);
+  const synthesis = claimsOf(plan, plan.contradictionClaims);
+  const natal = [...reasons, ...supports, ...limits].filter((c) => c.scope === 'NATAL');
   const implication = meaningsOf(plan, plan.implicationClaims)[0];
 
-  // §7 — an ANCHORED claim first. Axis conclusions carry no technical anchor and are often a near-restatement
-  // of the headline for a neighbouring axis, so taking the pool head produced a body that said the headline
-  // again in different words and cited nothing. Preferring the claim that stands on a named technical fact
-  // fixes both at once, and falls back to the pool head when nothing in it is anchored.
-  const firstAnchored = (pool: readonly GroundedClaim[]): GroundedClaim | undefined =>
-    pool.find((c) => !!c.technicalAnchor) ?? pool[0];
   // §8 — SUPPORT + LIMIT is the compound truth the verdict already carries. Leading with the side that
-  // actually carries more claims keeps the body consistent with the headline instead of arguing against it.
+  // actually carries more claims keeps a DIRECTIONAL body consistent with its headline.
   const leadIsLimit = limits.length >= supports.length;
-  const lead = firstAnchored(leadIsLimit ? limits : supports) ?? reasons[0] ?? supports[0] ?? limits[0];
-  const counterCandidate = firstAnchored(leadIsLimit ? supports : limits);
-  const counter = counterCandidate && counterCandidate.id !== lead?.id ? counterCandidate : undefined;
+  const dominant = leadIsLimit ? limits : supports;
+  const other = leadIsLimit ? supports : limits;
 
-  // ONE ledger for the whole answer: the headline, then the causal body, then the bullets. Nothing already
-  // said is said again (§6/§10). The connective is applied AFTER the ledger, so a contrast whose claim was
-  // already stated is dropped outright rather than reappearing as "다만 <the same sentence>" — the exact
-  // repetition a naive prefix-then-dedupe produces, because the prefix changes the text.
+  // Claims already placed. One id is delivered in exactly one position (§6/§10).
+  const used = new Set<string>();
+  // §7 — an ANCHORED claim first WITHIN a pool. Axis conclusions carry no technical anchor and are often a
+  // near-restatement of the headline for a neighbouring axis, so taking the pool head produced a body that
+  // said the headline again in different words and cited nothing.
+  const pick = (pools: readonly (readonly GroundedClaim[])[]): GroundedClaim | undefined => {
+    for (const pool of pools) {
+      const free = pool.filter((c) => !used.has(c.id));
+      const chosen = free.find((c) => !!c.technicalAnchor) ?? free[0];
+      if (chosen) {
+        used.add(chosen.id);
+        return chosen;
+      }
+    }
+    return undefined;
+  };
+
+  // V4 §Fix1 / §"QUESTION-INTENT-SPECIFIC FALLBACK" — WHICH claim is allowed to be the authoritative lead.
+  //
+  // DECLINED: never a directional support/counter claim. A neutral headline followed by a directional body
+  // lead is the measured verdict-fidelity contradiction; only insufficiency, contradiction, scope separation
+  // and neutral factual context may open. (Every pool listed here is NEUTRAL/MIXED by construction —
+  // SYNTHESIS/CONTRADICTION/CORE_REASON/TIMING — and is re-filtered so a future role can never leak in.)
+  //
+  // DIRECTIONAL: the question shape decides what comes first — never raw array order (§"CLAIM PRIORITY").
+  const nonDirectional = (pool: readonly GroundedClaim[]) =>
+    pool.filter((c) => c.polarity === 'NEUTRAL' || c.polarity === 'MIXED');
+  //
+  // Timing is deliberately absent from every pool: an authoritative temporal claim is delivered by the
+  // `futureFlow` section (and framed by the TIMING opener/heading), so leading with it too would say the same
+  // sentence twice.
+  const leadPools: readonly (readonly GroundedClaim[])[] = declined
+    ? [nonDirectional(synthesis), nonDirectional(reasons)]
+    : plan.intent === 'TIMING' ? [reasons, dominant, other, synthesis]
+      : plan.intent === 'EXPLANATION' ? [reasons, dominant, synthesis, other]
+        : plan.intent === 'TRAIT' ? [natal, reasons, dominant, other]
+          : plan.intent === 'COMPARISON' ? [synthesis, dominant, other, reasons]
+            : [dominant, other, reasons, synthesis];
+
+  // ONE ledger for the whole answer: the headline, then the causal body, then the action section, then the
+  // bullets. Nothing already said is said again (§6/§10). The connective is applied AFTER the ledger, so a
+  // contrast whose claim was already stated is dropped outright rather than reappearing as
+  // "다만 <the same sentence>" — the exact repetition a naive prefix-then-dedupe produces.
   const said = new Set<string>();
   joinDistinctSentences([plan.directConclusion], said);
   const chain: string[] = [];
@@ -561,17 +628,49 @@ export function composeGroundedFallback(plan: GroundedNarrativePlan): ParsedStru
   };
 
   if (INTENT_OPENER[plan.intent]) chain.push(INTENT_OPENER[plan.intent]);
+  const lead = pick(leadPools);
   if (lead) emit(anchored(lead));
-  if (counter) emit(counter.authoritativeMeaning, CONTRAST);
-  // A further reason only when it is genuinely a different claim — never padding for length (§10).
-  emit(reasons.find((r) => r.id !== lead?.id && r.id !== counter?.id)?.authoritativeMeaning);
+  if (declined) {
+    // §Fix1 — the two directions are shown side by side as COMPETING evidence. Neither is presented as the
+    // product's chosen direction, and the labels carry no verdict of their own.
+    const pro = pick([supports]);
+    const con = pick([limits]);
+    if (pro) emit(pro.authoritativeMeaning, SIDE_SUPPORT);
+    if (con) emit(con.authoritativeMeaning, SIDE_LIMIT);
+  } else {
+    const counter = pick([other]);
+    if (counter) emit(counter.authoritativeMeaning, CONTRAST);
+    // A further reason only when it is genuinely a different claim — never padding for length (§10).
+    emit(pick([reasons])?.authoritativeMeaning);
+  }
   emit(implication, THEREFORE);
   const core = chain.length > 0 ? realize(chain.join(' ')) : realize(plan.directConclusion);
 
-  // Claims already spent on the causal body are not repeated as bullets (§6/§10).
-  const spent = new Set([lead, counter].filter((c): c is GroundedClaim => !!c).map((c) => c.id));
-  const strengths = bulletsFrom(supports, spent, said);
-  const cautions = bulletsFrom(limits, spent, said);
+  // V4 §5 USEFUL IMPLICATION — a boundary sentence with no grounded reason attached is exactly the generic
+  // advice the brief forbids. The reason is an authoritative claim not yet spent anywhere else, chosen by
+  // what the boundary actually follows from: a CAUTIOUS boundary follows from a limitation, a GUIDED one
+  // from the support that earned it. When nothing is left, the boundary stands alone rather than repeat.
+  const base = ACTION_SECTION[plan.intent][plan.actionBoundary];
+  const why = pick(plan.actionBoundary === 'CAUTIOUS'
+    ? [limits, reasons, supports]
+    : [supports, reasons, limits]);
+  const whyText = why ? joinDistinctSentences([why.authoritativeMeaning], said) : '';
+  // EXPLANATION/TRAIT boundaries are already causal sentences of their own ("… 이유입니다"), so a 그래서 in
+  // front of them would double the connective.
+  const bridge = plan.intent === 'EXPLANATION' || plan.intent === 'TRAIT' ? '' : `${THEREFORE} `;
+  const actionSection = whyText.length > 0
+    ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) }
+    : base;
+
+  // V4 §3 CROSS SYNTHESIS — rendered into the answer BODY, not only into the citation blocks, so the reader
+  // actually learns why several systems produce this conclusion. Anything already spent above is skipped.
+  const synthesisBody = realize(joinDistinctSentences(
+    synthesis.filter((c) => !used.has(c.id)).map((c) => c.authoritativeMeaning), said,
+  ));
+
+  // Claims already spent above are not repeated as bullets (§6/§10).
+  const strengths = bulletsFrom(supports, used, said);
+  const cautions = bulletsFrom(limits, used, said);
   const timing = meaningsOf(plan, plan.timingClaims);
 
   return {
@@ -580,7 +679,10 @@ export function composeGroundedFallback(plan: GroundedNarrativePlan): ParsedStru
     // §4 — never force an empty section.
     strengths: strengths.length > 0 ? strengths : undefined,
     cautions: cautions.length > 0 ? cautions : undefined,
-    domainInterpretation: [ACTION_SECTION[plan.intent][plan.actionBoundary]],
+    domainInterpretation: [
+      actionSection,
+      ...(synthesisBody.length > 0 ? [{ title: SYNTHESIS_SECTION_TITLE, body: synthesisBody }] : []),
+    ],
     futureFlow: timing.length > 0 ? realize(joinDistinctSentences(timing)) : undefined,
     followUps: [...FOLLOW_UPS[plan.intent]],
   };
