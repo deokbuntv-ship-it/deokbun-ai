@@ -41,6 +41,11 @@ export type StructuredConsultationViewModel = {
   domainInterpretation?: { title: string; body: string }[];
   // 5e — future flow / 앞으로의 흐름 (long-form; expanded)
   futureFlow?: string;
+  // 5f — AUDIT-DRIVEN REMEDIATION V1: the ACTUAL "전문근거" technical evidence, server-materialized from the
+  // VerifiedEvidenceCatalog (never LLM-authored — buildServerConsultation attaches this directly from the
+  // Content Plan). Distinct from domainInterpretation (still the LLM's own plain-language synthesis, kept
+  // free): this is the deterministic technical citation list the LLM cannot alter or invent.
+  verifiedEvidence?: { title: string; body: string }[];
   // 6 — Explainability source (evidence/methodology — the ONLY collapsible layer)
   grounding: ConsultationGrounding;
   // 7 — recommended follow-up questions (helpers only; arise from a rich answer)

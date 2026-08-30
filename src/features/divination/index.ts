@@ -70,6 +70,7 @@ export { judgePairMyungri, judgePairZiwei, type PairMyungriJudgeInput } from './
 export {
   renderVerdictDirective, renderEvidenceDirective, verdictEvidenceLines, verdictIsDirectional,
   isDeclinedToDecide, DECLINED_TO_DECIDE_SUMMARY,
+  buildDeclinedSummary, declinedReasonCategory, type DeclinedReasonCategory,
 } from './verdictDirective';
 export {
   isPaidReadingAcceptable,

@@ -1,24 +1,22 @@
-// CONSULTATION EXPRESSION ARCHITECTURE V1 (+ QUALITY-94 DEVELOPMENT REPAIR) — a pure, deterministic
-// presentation layer between the already-computed Cross Judge verdict and the LLM prompt. It is NOT a new
-// divination authority: it may only select, prioritize, order, group, and label material `CrossDivinationVerdict`
-// already carries. It never computes a new fact, never changes `verdict.direction`, never invents a date, and
-// never turns an INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE verdict into certainty (that guarantee stays with
-// `applyVerdictAuthorityClamp`, downstream and untouched).
+// CONSULTATION EXPRESSION ARCHITECTURE V1 (+ QUALITY-94 REPAIR + AUDIT-DRIVEN REMEDIATION V1) — a pure,
+// deterministic presentation layer between the already-computed Cross Judge verdict and the LLM prompt/final
+// answer. It is NOT a new divination authority: it may only select, prioritize, order, group, and label
+// material `CrossDivinationVerdict` already carries. It never computes a new fact, never changes
+// `verdict.direction`, never invents a date, and never turns an INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE
+// verdict into certainty.
 //
-// REPAIR NOTE (dev verification round 1, 25 cases): the original selector allowed up to 4 supporting + 4
-// counter = 8 items — a confirmed budget-contract violation (design intent was 2–4 TOTAL). Fixed here to a
-// hard cap of 4 TOTAL, of which at most 1 is counter-evidence, never forced when none is materially relevant.
-// Also: evidence was ranked by a coarse NATAL-vs-not binary; replaced with an explicit NATAL/PERIOD/CURRENT
-// role so a baseline question ("체질이 있나?") and a current-execution question ("지금 해도 되나?") on the
-// SAME chart genuinely rank different evidence first. Selected items are now reshaped into a compact,
-// presentation-ready `ContentPlanEvidenceItem` (role/domain/temporalRole/anchor/meaning) rather than passing
-// the raw engine-shaped `JudgmentEvidence` straight through, so the renderer never has to guess which raw
-// fields matter. A `synthesis` field surfaces the verdict's OWN agreement/scope-separation material so the
-// renderer can express what the systems jointly imply, instead of a flat per-system list. The directive text
-// itself was shortened and re-framed (direct-answer-first, facets as optional reference not a checklist) to
-// reduce prompt bulk/competing instructions — investigated as a plausible contributor to SEMANTIC_REJECTED.
+// AUDIT-DRIVEN REMEDIATION V1 (independent 30-case holdout, root cause 1): the LLM was free to author the
+// final "전문근거" (technical evidence) prose from scratch, so even with a correctly-curated evidence
+// DIRECTIVE it could still invent/substitute palace·star identities (phantom 관록/화기, 부처→명궁 swaps).
+// A prompt instruction ("do not fabricate") cannot structurally prevent this. Fixed here by introducing a
+// VerifiedEvidenceCatalog — server-materialized, discipline-attributed evidence with stable IDs (E1..E4) —
+// and a deterministic renderer (`renderVerifiedEvidenceSection`) that produces the ACTUAL technical evidence
+// shown to the user directly from this catalog, with no LLM step in between. The LLM still writes the
+// plain-language synthesis prose (coreInterpretation/domainInterpretation) exactly as before; it simply no
+// longer has authority over which technical entity relationships reach the user.
 import {
   type CrossDivinationVerdict, type JudgmentEvidence, type TemporalScope, type JudgmentDomain,
+  type Discipline, type DivinationJudgment,
   routeConsultationJudgeDomain, type ConsultationJudgeDomain,
   isDeclinedToDecide,
 } from '@/features/divination';
@@ -94,15 +92,21 @@ function roleOf(scope: TemporalScope): EvidenceRole {
   return 'NATAL'; // NATAL, UNSCOPED
 }
 
-/** Compact, presentation-ready evidence — reshaped from the raw engine-vocabulary JudgmentEvidence so the
- *  renderer works from a small, labeled structure instead of guessing which raw fields to use (§3). Every
- *  field traces to an existing JudgmentEvidence atom; nothing here is computed or inferred. */
-export type ContentPlanEvidenceItem = {
-  role: 'SUPPORTING' | 'COUNTER';
+const DISCIPLINE_LABEL: Record<Discipline, string> = { MYUNGRI: '명리', ZIWEI: '자미두수', QIMEN: '기문둔갑' };
+
+/** VerifiedEvidenceCatalog item (§ Primary Architectural Change) — server-materialized, discipline-attributed
+ *  evidence with a stable local id. Every field traces to an existing JudgmentEvidence atom plus the
+ *  DivinationJudgment it came from; nothing here is computed, inferred, or LLM-authored. */
+export type VerifiedEvidenceCatalogItem = {
+  id: string; // E1, E2, E3, E4 — stable within one plan, in final selected order
+  discipline: Discipline;
   domain: JudgmentDomain;
-  temporalRole: EvidenceRole;
-  anchor: string; // JudgmentEvidence.fact — engine-traceable, short
-  meaning: string; // JudgmentEvidence.meaning — plain Korean
+  temporalScope: TemporalScope;
+  temporalRole: EvidenceRole; // derived convenience over temporalScope, used for ranking/tests
+  evidenceRole: 'SUPPORTING' | 'COUNTER';
+  provenance: string; // e.g. "MYUNGRI:directEvidence" — which discipline judgment array this came from
+  canonicalTechnicalAnchor: string; // JudgmentEvidence.fact, engine vocabulary, verbatim
+  canonicalMeaning: string; // JudgmentEvidence.meaning, plain Korean, verbatim and NEVER truncated
 };
 
 export type ConsultationContentPlan = {
@@ -115,10 +119,11 @@ export type ConsultationContentPlan = {
   periodContext: string | null;
   timingConclusion: string | null;
   /** What the Cross verdict's own agreement/scope-separation material says — raw material for the renderer
-   *  to actually synthesize from (§6), never a new conclusion. Both fields are direct verdict passthroughs. */
-  synthesis: { agreement: string | null; scopeSeparation: { conflict: string; resolution: string } | null } | null;
+   *  to actually synthesize from (§6), never a new conclusion. ALL agreement points and ALL contradiction
+   *  resolutions are carried (not just the first) so a material stance is never silently dropped (§9). */
+  synthesis: { agreements: readonly string[]; scopeSeparations: readonly { conflict: string; resolution: string }[] } | null;
   facets: readonly DomainFacet[];
-  selectedEvidence: readonly ContentPlanEvidenceItem[];
+  selectedEvidence: readonly VerifiedEvidenceCatalogItem[];
   mustNotClaim: readonly string[];
   actionBoundary: 'GUIDED' | 'CAUTIOUS';
   provenance: readonly ['deokbunai.consultation-content-plan.v1'];
@@ -135,9 +140,9 @@ const DIRECTNESS_RANK: Record<JudgmentEvidence['directness'], number> = { DIRECT
 
 // Structural precedence, not a score: three ordinal category comparisons in a fixed priority order
 // (directness, then domain match, then role-relevance to THIS question). No weights, no arithmetic, no
-// voting — ties are broken by the next category, never summed. Role-relevance is the §2/§9 fix: a
-// timing-flavored question (asksTiming) ranks CURRENT then PERIOD ahead of NATAL; a baseline/fitness
-// question ranks NATAL first — so "체질이 있나" and "지금 해도 되나" on the same chart genuinely differ.
+// voting — ties are broken by the next category, never summed. Role-relevance: a timing-flavored question
+// (asksTiming) ranks CURRENT then PERIOD ahead of NATAL; a baseline/fitness question ranks NATAL first — so
+// "체질이 있나" and "지금 해도 되나" on the same chart genuinely select different evidence first.
 const ROLE_PRIORITY_WHEN_ASKING_TIMING: Record<EvidenceRole, number> = { CURRENT: 0, PERIOD: 1, NATAL: 2 };
 const ROLE_PRIORITY_WHEN_BASELINE: Record<EvidenceRole, number> = { NATAL: 0, PERIOD: 1, CURRENT: 2 };
 
@@ -151,32 +156,62 @@ function compareRank(a: readonly [number, number, number], b: readonly [number, 
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
 }
 
-function toItem(e: JudgmentEvidence, role: 'SUPPORTING' | 'COUNTER'): ContentPlanEvidenceItem {
-  return { role, domain: e.domain, temporalRole: roleOf(e.temporalScope), anchor: e.fact, meaning: e.meaning };
+type PooledEvidence = { evidence: JudgmentEvidence; discipline: Discipline; provenance: string };
+
+// SERVER OWNS TECHNICAL FACT IDENTITY (§1/§2) — the pool is drawn from each APPLICABLE discipline's OWN
+// judgment (`disciplineJudgments[].directEvidence/counterEvidence/timingSignals`), never from a
+// discipline-less flattened list, so every catalog item is attributable to the exact discipline that
+// computed it. This is a straight relabeling/regrouping of existing DivinationJudgment output — no new fact,
+// no new Judge.
+function pooledEvidence(verdict: CrossDivinationVerdict): { supporting: PooledEvidence[]; counter: PooledEvidence[] } {
+  const supporting: PooledEvidence[] = [];
+  const counter: PooledEvidence[] = [];
+  for (const j of verdict.disciplineJudgments as DivinationJudgment[]) {
+    if (!j.applicable) continue;
+    for (const e of j.directEvidence) supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:directEvidence` });
+    if (verdict.asksTiming) {
+      for (const e of j.timingSignals) supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:timingSignals` });
+    }
+    for (const e of j.counterEvidence) counter.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:counterEvidence` });
+  }
+  return { supporting, counter };
 }
 
-// §1 REPAIR — the confirmed budget-contract defect: TOTAL selected evidence must never exceed 4, and
-// counter-evidence is included ONLY when the risk pool is non-empty (never forced), capped at 1 of the 4 so
-// it is preserved (§7's "must not hide disagreement") without ever crowding out the direct answer.
+// §1 REPAIR (quality-94 batch) — TOTAL selected evidence must never exceed 4, and counter-evidence is
+// included ONLY when the risk pool is non-empty (never forced), capped at 1 of the 4 so it is preserved
+// (must not hide disagreement) without ever crowding out the direct answer.
 const MAX_TOTAL_EVIDENCE = 4;
 const MAX_COUNTER_EVIDENCE = 1;
 
-/** Deterministically ranks and slices the verdict's OWN evidence pools — selects, never invents. Total
- *  output is always <= MAX_TOTAL_EVIDENCE, with at most MAX_COUNTER_EVIDENCE counter items. */
-export function selectEvidence(verdict: CrossDivinationVerdict, domain: ContentDomain): ContentPlanEvidenceItem[] {
-  const rankOf = (e: JudgmentEvidence) => evidenceRank(e, domain, verdict.asksTiming);
-  const bySelectorRank = (a: JudgmentEvidence, b: JudgmentEvidence) => compareRank(rankOf(a), rankOf(b));
-  const counter = [...verdict.riskFactors].sort(bySelectorRank).slice(0, MAX_COUNTER_EVIDENCE);
-  const supportBudget = MAX_TOTAL_EVIDENCE - counter.length;
-  const supporting = [...verdict.favorableFactors].sort(bySelectorRank).slice(0, supportBudget);
-  return [...supporting.map((e) => toItem(e, 'SUPPORTING')), ...counter.map((e) => toItem(e, 'COUNTER'))];
+/** Deterministically ranks and slices the verdict's OWN per-discipline evidence into a VerifiedEvidenceCatalog
+ *  — selects and attributes, never invents. Total output is always <= MAX_TOTAL_EVIDENCE, with at most
+ *  MAX_COUNTER_EVIDENCE counter items, each carrying a stable id (E1..E4) in final selected order. */
+export function selectEvidence(verdict: CrossDivinationVerdict, domain: ContentDomain): VerifiedEvidenceCatalogItem[] {
+  const { supporting, counter } = pooledEvidence(verdict);
+  const rankOf = (p: PooledEvidence) => evidenceRank(p.evidence, domain, verdict.asksTiming);
+  const byRank = (a: PooledEvidence, b: PooledEvidence) => compareRank(rankOf(a), rankOf(b));
+  const counterPicked = [...counter].sort(byRank).slice(0, MAX_COUNTER_EVIDENCE);
+  const supportBudget = MAX_TOTAL_EVIDENCE - counterPicked.length;
+  const supportPicked = [...supporting].sort(byRank).slice(0, supportBudget);
+  const toCatalogItem = (p: PooledEvidence, evidenceRoleTag: 'SUPPORTING' | 'COUNTER', index: number): VerifiedEvidenceCatalogItem => ({
+    id: `E${index + 1}`,
+    discipline: p.discipline,
+    domain: p.evidence.domain,
+    temporalScope: p.evidence.temporalScope,
+    temporalRole: roleOf(p.evidence.temporalScope),
+    evidenceRole: evidenceRoleTag,
+    provenance: p.provenance,
+    canonicalTechnicalAnchor: p.evidence.fact,
+    canonicalMeaning: p.evidence.meaning,
+  });
+  const ordered = [...supportPicked.map((p) => ({ p, tag: 'SUPPORTING' as const })), ...counterPicked.map((p) => ({ p, tag: 'COUNTER' as const }))];
+  return ordered.map(({ p, tag }, i) => toCatalogItem(p, tag, i));
 }
 
 function buildSynthesis(verdict: CrossDivinationVerdict): ConsultationContentPlan['synthesis'] {
-  const agreement = verdict.agreementPoints[0] ?? null;
-  const resolution = verdict.contradictionResolutions[0];
-  const scopeSeparation = resolution ? { conflict: resolution.conflict, resolution: resolution.resolution } : null;
-  return agreement || scopeSeparation ? { agreement, scopeSeparation } : null;
+  const agreements = verdict.agreementPoints;
+  const scopeSeparations = verdict.contradictionResolutions.map((r) => ({ conflict: r.conflict, resolution: r.resolution }));
+  return agreements.length > 0 || scopeSeparations.length > 0 ? { agreements, scopeSeparations } : null;
 }
 
 /** Pure: builds the plan from the verdict alone. Same verdict in ⇒ same plan out, every time. */
@@ -184,11 +219,16 @@ export function buildConsultationContentPlan(verdict: CrossDivinationVerdict): C
   const domain: ContentDomain = routeConsultationJudgeDomain(undefined, verdict.questionDomain) ?? 'GENERAL';
   const declined = isDeclinedToDecide(verdict);
   const selectedEvidence = selectEvidence(verdict, domain);
-  const hasCounter = selectedEvidence.some((e) => e.role === 'COUNTER');
+  const hasCounter = selectedEvidence.some((e) => e.evidenceRole === 'COUNTER');
 
   const mustNotClaim: string[] = [];
   if (declined) mustNotClaim.push('방향이 정해지지 않은 판정을 확정된 결론처럼 말하지 말 것');
-  if (!verdict.timingConclusion) mustNotClaim.push('근거 없는 정확한 날짜·시점을 새로 만들지 말 것');
+  if (verdict.timingConclusion) {
+    // §10 TIMING FIDELITY — a timing conclusion WAS supplied; the renderer must not claim there is none.
+    mustNotClaim.push('이미 제공된 시기 근거가 있으므로 "시기 근거가 없다"고 말하지 말 것');
+  } else {
+    mustNotClaim.push('근거 없는 정확한 날짜·시점을 새로 만들지 말 것');
+  }
   if (verdict.confidence === 'LOW') mustNotClaim.push('낮은 확신을 과장된 확신으로 바꾸지 말 것');
   if (hasCounter) mustNotClaim.push('반대·주의 근거를 숨기거나 결론에 유리하게 지우지 말 것');
 
@@ -210,10 +250,13 @@ export function buildConsultationContentPlan(verdict: CrossDivinationVerdict): C
   };
 }
 
-/** Renders the plan as the CONTROLLED RENDERER's directive text. Shortened from round 1: direct-answer-first
- *  framing up top, facets capped to 3 and phrased as optional reference (never a checklist that could crowd
- *  out a direct answer, §4), a bounded evidence list (<=4 total, §1), and an explicit cross-synthesis
- *  instruction built only from the verdict's own agreement/scope-separation material (§6). */
+/** Renders the plan as the CONTROLLED RENDERER's PROMPT directive text (what the LLM sees while composing
+ *  its plain-language synthesis). This is advisory context for the LLM's prose — the AUTHORITATIVE technical
+ *  evidence the user actually sees comes from `renderVerifiedEvidenceSection` below, not from anything the
+ *  LLM does with this directive. Direct-answer-first framing up top, facets capped to 3 and phrased as
+ *  optional reference (never a checklist that could crowd out a direct answer), a bounded evidence list
+ *  (<=4 total), and an explicit, COMPLETE cross-synthesis instruction (all agreement/scope-separation
+ *  material, never truncated to one item so a material discipline contribution is never silently erased). */
 export function renderContentPlanDirective(plan: ConsultationContentPlan): string {
   const lines: string[] = [
     '[콘텐츠 계획 — 서버가 이미 선별한 초점. 무엇보다 먼저 사용자의 질문에 직접 답하십시오.]',
@@ -222,21 +265,19 @@ export function renderContentPlanDirective(plan: ConsultationContentPlan): strin
   lines.push(`· 질문 영역: ${plan.domain}. 관련이 있는 만큼만 참고하십시오 — ${topFacets}`);
 
   if (plan.selectedEvidence.length > 0) {
-    lines.push('· 구체적으로 반영할 근거 (아래 목록 안에서만, 새로 만들지 마십시오):');
+    lines.push('· 참고할 근거 (자연스러운 설명을 위한 참고용 — 정확한 기술 근거는 서버가 별도로 표시합니다):');
     for (const e of plan.selectedEvidence) {
-      const tag = e.role === 'COUNTER' ? '반대/주의' : '뒷받침';
-      lines.push(`  - [${tag}] ${e.meaning} (근거: ${e.anchor})`);
+      const tag = e.evidenceRole === 'COUNTER' ? '반대/주의' : '뒷받침';
+      lines.push(`  - [${tag}] ${e.canonicalMeaning}`);
     }
   }
 
   if (plan.synthesis) {
     const parts: string[] = [];
-    if (plan.synthesis.agreement) parts.push(`일치: ${plan.synthesis.agreement}`);
-    if (plan.synthesis.scopeSeparation) {
-      parts.push(`영역 분리: ${plan.synthesis.scopeSeparation.conflict} → ${plan.synthesis.scopeSeparation.resolution}`);
-    }
+    if (plan.synthesis.agreements.length > 0) parts.push(`일치: ${plan.synthesis.agreements.join(' / ')}`);
+    for (const s of plan.synthesis.scopeSeparations) parts.push(`영역 분리: ${s.conflict} → ${s.resolution}`);
     lines.push(
-      `· 체계를 합쳐서 실제로 무엇을 뜻하는지 종합하십시오 (${parts.join(' / ')}). "명리는 A, 자미는 B"처럼 나열만 하지 마십시오.`,
+      `· 체계를 합쳐서 실제로 무엇을 뜻하는지 전부 반영해 종합하십시오 (${parts.join(' / ')}). 일부만 골라 쓰지 말고, "명리는 A, 자미는 B"처럼 나열만 하지도 마십시오.`,
     );
   }
 
@@ -244,4 +285,16 @@ export function renderContentPlanDirective(plan: ConsultationContentPlan): strin
     lines.push(`· 하지 말아야 할 것: ${plan.mustNotClaim.join(' / ')}`);
   }
   return lines.join('\n');
+}
+
+/** SERVER-MATERIALIZED "전문근거" (§1/§2/§3) — the ACTUAL technical evidence shown to the user, built
+ *  directly from the VerifiedEvidenceCatalog with NO LLM step. Each item's meaning is rendered whole, never
+ *  split (§8 atomic stance — a two-clause meaning like "가능성은 있지만 지금은 아닙니다" survives intact). The
+ *  LLM cannot alter, recombine, or invent a technical entity relationship here: this function is the only
+ *  thing that writes it, and it only ever echoes `canonicalMeaning`/`canonicalTechnicalAnchor` verbatim. */
+export function renderVerifiedEvidenceSection(catalog: readonly VerifiedEvidenceCatalogItem[]): { title: string; body: string }[] {
+  return catalog.map((e) => ({
+    title: `전문근거 · ${DISCIPLINE_LABEL[e.discipline]} (${e.id})`,
+    body: `${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`,
+  }));
 }

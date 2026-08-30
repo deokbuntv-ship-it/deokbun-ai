@@ -97,6 +97,14 @@ export function toConsultationPresentation(
   if (vm.futureFlow?.trim()) {
     detailSections.push({ title: '앞으로의 흐름', body: vm.futureFlow.trim() });
   }
+  // AUDIT-DRIVEN REMEDIATION V1 §1 — the server-materialized VerifiedEvidenceCatalog citations. Appended
+  // last, always shown (never capped/deduped against the LLM's own prose above — these are authoritative
+  // technical citations, not paraphraseable content, and the Content Plan already bounds them to <=4).
+  for (const e of vm.verifiedEvidence ?? []) {
+    const title = (e.title ?? '').trim();
+    const body = (e.body ?? '').trim();
+    if (title && body) detailSections.push({ title, body });
+  }
 
   return {
     headline,

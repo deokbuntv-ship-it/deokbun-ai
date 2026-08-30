@@ -2,8 +2,13 @@
 // backstop: a declined verdict (INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE) can NEVER reach the user as a
 // decisive headline, regardless of what the LLM actually wrote — with zero rejection, zero regeneration,
 // and every other field left exactly as the LLM produced it.
+//
+// AUDIT-DRIVEN REMEDIATION V1 §5 — the replacement sentence is now QUESTION-AWARE (buildDeclinedSummary)
+// instead of one byte-identical generic sentence for every question. The safety property under test here is
+// unchanged: whatever the exact wording, it can never assert a direction or contain the LLM's decisive
+// headline.
 import { applyVerdictAuthorityClamp } from '@/features/chat/server/buildServerConsultation';
-import { DECLINED_TO_DECIDE_SUMMARY } from '@/features/divination/verdictDirective';
+import { buildDeclinedSummary } from '@/features/divination/verdictDirective';
 import type { ConsultationOutcome, ParsedStructuredConsultation } from '@/features/chat/prompts/structuredConsultation';
 import type { CrossDivinationVerdict, Stance } from '@/features/divination/contracts';
 
@@ -53,9 +58,10 @@ const richResult: ParsedStructuredConsultation = {
 const accepted = (result: ParsedStructuredConsultation): ConsultationOutcome => ({ kind: 'ACCEPTED', result });
 
 describe('A — Cross UNRESOLVED + decisive LLM headline → delivered headline is neutral', () => {
-  it.each<Stance>(['INSUFFICIENT_DATA', 'INSUFFICIENT_EVIDENCE'])('direction=%s: coreSummary becomes the deterministic neutral sentence', (direction) => {
-    const out = applyVerdictAuthorityClamp(accepted(richResult), mkVerdict(direction));
-    expect(out?.coreSummary).toBe(DECLINED_TO_DECIDE_SUMMARY);
+  it.each<Stance>(['INSUFFICIENT_DATA', 'INSUFFICIENT_EVIDENCE'])('direction=%s: coreSummary becomes the deterministic, question-aware neutral sentence', (direction) => {
+    const verdict = mkVerdict(direction);
+    const out = applyVerdictAuthorityClamp(accepted(richResult), verdict);
+    expect(out?.coreSummary).toBe(buildDeclinedSummary(verdict));
     expect(out?.coreSummary).not.toContain('안전합니다');
     expect(out?.coreSummary).toMatch(/확정하기 어렵습니다/);
   });

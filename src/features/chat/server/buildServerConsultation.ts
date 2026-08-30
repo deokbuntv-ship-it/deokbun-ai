@@ -44,10 +44,13 @@ import {
 } from './consultationSafety';
 import { buildConsultationDecisionMeta } from './decisionMeta';
 import { classifyConsultationDomain } from './consultationDomain';
-import { buildConsultationContentPlan, renderContentPlanDirective } from './consultationContentPlan';
+import {
+  buildConsultationContentPlan, renderContentPlanDirective, renderVerifiedEvidenceSection,
+  type ConsultationContentPlan,
+} from './consultationContentPlan';
 import {
   extendGraph, refinementFailure, renderVerdictDirective, NO_SIGNAL,
-  isDeclinedToDecide, DECLINED_TO_DECIDE_SUMMARY, type CrossDivinationVerdict,
+  isDeclinedToDecide, buildDeclinedSummary, type CrossDivinationVerdict,
 } from '@/features/divination';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -137,11 +140,15 @@ function metaFrom(grounding: ConsultationGrounding, mode: string): ServerGroundi
  * a regeneration: applied only to an already-ACCEPTED outcome, after a valid substantive answer already
  * exists. For a declined verdict (INSUFFICIENT_DATA/INSUFFICIENT_EVIDENCE), `coreSummary` — the one field
  * whose own schema purpose is "결론... 그래서 어떤 방향이 유리한지" (final decision authority) — is replaced
- * with a server-authored, non-directional sentence. Every other field (reasoning, evidence, counterevidence,
- * cautions) is returned exactly as the LLM produced it. Returns null for a non-ACCEPTED outcome (nothing to
- * clamp) and the ORIGINAL result object unchanged (same reference) for a directional/decided verdict, a
- * STRUCTURAL_ANSWER/NOT_APPLICABLE verdict, or no verdict at all — so FAVORABLE/CAUTION/MIXED rendering is
- * untouched by construction, not by a second condition someone could later drift out of sync.
+ * with a server-authored, QUESTION-AWARE, non-directional sentence (`buildDeclinedSummary` — audit-driven
+ * remediation §5: the previous byte-identical generic sentence protected direction but discarded question
+ * specificity too; the new sentence still cannot assert a direction, invent a fact, or invent timing — it is
+ * a fixed template with only a bounded scope phrase and one of 3 deterministic reason categories varying).
+ * Every other field (reasoning, evidence, counterevidence, cautions) is returned exactly as the LLM produced
+ * it. Returns null for a non-ACCEPTED outcome (nothing to clamp) and the ORIGINAL result object unchanged
+ * (same reference) for a directional/decided verdict, a STRUCTURAL_ANSWER/NOT_APPLICABLE verdict, or no
+ * verdict at all — so FAVORABLE/CAUTION/MIXED rendering is untouched by construction, not by a second
+ * condition someone could later drift out of sync.
  */
 export function applyVerdictAuthorityClamp(
   outcome: ConsultationOutcome,
@@ -149,7 +156,7 @@ export function applyVerdictAuthorityClamp(
 ): ParsedStructuredConsultation | null {
   if (outcome.kind !== 'ACCEPTED') return null;
   if (verdict === null || !isDeclinedToDecide(verdict)) return outcome.result;
-  return { ...outcome.result, coreSummary: DECLINED_TO_DECIDE_SUMMARY };
+  return { ...outcome.result, coreSummary: buildDeclinedSummary(verdict) };
 }
 
 /**
@@ -435,6 +442,13 @@ export async function buildServerConsultation(
   // permissions. Reads only deterministic anchors; never authorizes an ungrounded claim.
   let effectiveGrounding = grounding;
   let plan = deriveAnswerPlan(question, effectiveGrounding);
+  // AUDIT-DRIVEN REMEDIATION V1 §1 — the Content Plan computed for whichever buildMessages() call actually
+  // succeeds (initial or the single regen) is captured here so its VerifiedEvidenceCatalog can be
+  // server-materialized into the final "전문근거" section AFTER the LLM call, not just used transiently for
+  // the prompt directive. Re-derived fresh on every call (never stale) since it closes over `effectiveGrounding`.
+  // An object holder (not a bare `let`) so TS does not over-narrow the closure-mutated value to `null` at
+  // the later read site.
+  const contentPlanHolder: { current: ConsultationContentPlan | null } = { current: null };
   // One message builder reused for the first attempt AND the single constrained regeneration (§9); the
   // follow-up directive (when present) rides the exact same server-authored prompt.
   const buildMessages = (extraDirective?: string) => {
@@ -448,8 +462,10 @@ export async function buildServerConsultation(
     // layer). Replaces the old dump-every-evidence-line directive with a deterministic Content Plan: a
     // bounded, question-relevant evidence selection + domain facets to prioritize. The plan only selects
     // from `verdict`'s own evidence pools — it cannot add a fact or change the verdict itself.
-    const planDirective = verdict
-      ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderContentPlanDirective(buildConsultationContentPlan(verdict))]
+    const contentPlan = verdict ? buildConsultationContentPlan(verdict) : null;
+    contentPlanHolder.current = contentPlan;
+    const planDirective = verdict && contentPlan
+      ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderContentPlanDirective(contentPlan)]
           .filter(Boolean)
           .join('\n')
       : renderAnswerPlanDirective(plan, questionDomain);
@@ -573,10 +589,18 @@ export async function buildServerConsultation(
       graphRevision, priorHistoryUnavailable,
     );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
+  // AUDIT-DRIVEN REMEDIATION V1 §1/§2 — the ACTUAL "전문근거" technical evidence, server-materialized from
+  // the VerifiedEvidenceCatalog with no LLM step. `lastContentPlan` reflects whichever buildMessages() call
+  // actually produced the accepted answer (initial or the single regen), so this is never stale relative to
+  // what the model was shown.
+  const verifiedEvidence = contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0
+    ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence)
+    : undefined;
   const structuredResult = acceptedResult
     ? {
         ...buildStructuredConsultationResult(acceptedResult, effectiveGrounding),
         ...(conclusionPolarity ? { conclusionPolarity } : {}),
+        ...(verifiedEvidence ? { verifiedEvidence } : {}),
         decisionMeta,
       }
     : undefined;

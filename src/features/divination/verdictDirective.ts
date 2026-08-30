@@ -12,6 +12,7 @@ import {
   type Discipline,
   type Stance,
 } from './contracts';
+import { routeConsultationJudgeDomain } from './consultationJudgeCore';
 
 const DISCIPLINE_LABEL: Record<Discipline, string> = {
   MYUNGRI: '명리',
@@ -67,6 +68,51 @@ export function isDeclinedToDecide(v: CrossDivinationVerdict): boolean {
 export const DECLINED_TO_DECIDE_SUMMARY =
   '현재 확인된 근거만으로는 한쪽을 확정하기 어렵습니다. 큰 결정을 바로 확정하기보다, 되돌릴 수 있는 범위에서 준비·확인·검증하세요.';
 
+// AUDIT-DRIVEN REMEDIATION V1 — root cause 2: the clamp above (see applyVerdictAuthorityClamp) used to
+// replace EVERY declined verdict's coreSummary with the exact same DECLINED_TO_DECIDE_SUMMARY sentence
+// (16/16 in the independent review), which protects direction but throws away question specificity too. This
+// builds a QUESTION-AWARE declined headline instead — a short scope label plus one of 3 deterministic reason
+// categories — while remaining structurally incapable of asserting a direction: the sentence is a fixed
+// template with exactly 2 bounded variable slots (a scope phrase, a reason clause), never free text from the
+// LLM, never a new fact, never a date.
+export type DeclinedReasonCategory = 'DIRECT_EVIDENCE_INSUFFICIENT' | 'CROSS_SCOPE_CONFLICT' | 'PARTIAL_COVERAGE';
+
+const SCOPE_LABEL: Record<string, string> = {
+  BUSINESS: '사업', MONEY: '재물', CAREER: '직업', LOVE: '연애', REUNION: '재회', CHANGE: '변화', TIMING: '시기',
+};
+
+// §6 — a deterministic PRESENTATION mapping of existing statuses only (never a new metaphysical status).
+// CROSS_SCOPE_CONFLICT: disciplines genuinely disagreed. PARTIAL_COVERAGE: at least one discipline could not
+// speak to this question at all. DIRECT_EVIDENCE_INSUFFICIENT: the default — applicable disciplines simply
+// lacked enough direct signal.
+export function declinedReasonCategory(v: CrossDivinationVerdict): DeclinedReasonCategory {
+  if (v.contradictionPoints.length > 0) return 'CROSS_SCOPE_CONFLICT';
+  if (v.disciplineJudgments.some((j) => !j.applicable)) return 'PARTIAL_COVERAGE';
+  return 'DIRECT_EVIDENCE_INSUFFICIENT';
+}
+
+const REASON_PHRASE: Record<DeclinedReasonCategory, string> = {
+  DIRECT_EVIDENCE_INSUFFICIENT: '직접적인 근거가 아직 충분하지 않아',
+  CROSS_SCOPE_CONFLICT: '체계 간에 서로 다른 신호가 겹쳐 있어',
+  PARTIAL_COVERAGE: '일부 영역만 직접 판단할 수 있어',
+};
+
+// A short, quotable echo of the actual question when it's reasonably short (most consumer questions are);
+// otherwise the domain scope label alone. Never longer than a bounded, sanitized snippet — this feeds a
+// server-authoritative sentence, not a free-text field.
+function scopePhrase(v: CrossDivinationVerdict): string {
+  const q = (v.question ?? '').trim().replace(/\s+/g, ' ');
+  if (q.length > 0 && q.length <= 40) return `"${q}"`;
+  const domain = routeConsultationJudgeDomain(undefined, v.questionDomain);
+  return domain ? `${SCOPE_LABEL[domain]} 관련 질문` : '이 질문';
+}
+
+export function buildDeclinedSummary(v: CrossDivinationVerdict): string {
+  const scope = scopePhrase(v);
+  const reason = REASON_PHRASE[declinedReasonCategory(v)];
+  return `${scope}에 대해서는 ${reason} 현재 근거만으로 한쪽 방향을 확정하기 어렵습니다. 큰 결정을 바로 확정하기보다, 되돌릴 수 있는 범위에서 준비·확인·검증하세요.`;
+}
+
 export function renderVerdictDirective(v: CrossDivinationVerdict): string {
   const lines: string[] = ['[점사 판정 — 서버가 확정한 결론(그대로 노출하지 말 것)]'];
   const declined = isDeclinedToDecide(v);
@@ -83,7 +129,11 @@ export function renderVerdictDirective(v: CrossDivinationVerdict): string {
 
   for (const c of v.contributions) {
     if (!c.applied) {
-      lines.push(`· ${DISCIPLINE_LABEL[c.discipline]}: 이번 질문에는 적용하지 않았습니다 — ${c.contribution} (썼다고 말하지 마십시오.)`);
+      // §7 — a coverage gap is NOT a calculation failure. Forbid the specific wording that implies engine
+      // malfunction; only "적용되지 않음/직접 다루지 않음" framing is correct here.
+      lines.push(
+        `· ${DISCIPLINE_LABEL[c.discipline]}: 이번 질문에는 적용하지 않았습니다 — ${c.contribution} (썼다고 말하지 마십시오. "계산 실패"·"오류"·"계산이 안 됨"이라고 표현하지 말고, "이 축을 직접 다루는 판단 경로가 없습니다"처럼 적용 범위 밖이라는 뜻으로만 말하십시오.)`,
+      );
       continue;
     }
     lines.push(

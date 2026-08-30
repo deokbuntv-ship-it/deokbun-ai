@@ -49,3 +49,24 @@ export function stripEngineLabels(text: string): string {
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
 }
+
+// AUDIT-DRIVEN REMEDIATION V1 §11 — a bounded, targeted hygiene check for KNOWN prompt-scaffolding artifacts
+// the independent review actually observed leaking into user-facing prose ("올해(예시로 제시된 해)",
+// stray English connectors like "also"). Deliberately narrow: this is defense-in-depth for a small, named
+// list of patterns, not a language-cleanup subsystem — the prompt itself is the primary defense.
+const SCAFFOLDING_PATTERNS: readonly RegExp[] = [
+  /\s*[（(]\s*예시로\s*제시된\s*해\s*[）)]/g, // "(예시로 제시된 해)"
+  /\s*[（(]\s*example\s*year\s*[）)]/gi,
+  /\balso\b/gi, // a stray leaked English connector
+];
+
+export function containsPromptScaffolding(text: string): boolean {
+  const t = text ?? '';
+  return SCAFFOLDING_PATTERNS.some((re) => new RegExp(re.source, re.flags.replace('g', '')).test(t));
+}
+
+export function stripPromptScaffolding(text: string): string {
+  let out = text ?? '';
+  for (const re of SCAFFOLDING_PATTERNS) out = out.replace(re, '');
+  return out.replace(/[ \t]{2,}/g, ' ').trim();
+}

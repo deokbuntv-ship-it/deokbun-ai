@@ -1,21 +1,36 @@
-// CONSULTATION EXPRESSION ARCHITECTURE V1 + QUALITY-94 DEVELOPMENT REPAIR — determinism, evidence-budget,
-// role-awareness, and no-new-authority tests. The Content Plan is a pure presentation layer: it may select/
-// prioritize/order/group information the Cross verdict already carries, and must never invent a fact, change
-// the verdict, or turn uncertainty into certainty.
+// CONSULTATION EXPRESSION ARCHITECTURE V1 + QUALITY-94 REPAIR + AUDIT-DRIVEN REMEDIATION V1 — determinism,
+// evidence-budget, discipline attribution, and no-new-authority tests. The Content Plan is a pure
+// presentation layer: it may select/prioritize/order/group/attribute information the Cross verdict already
+// carries, and must never invent a fact, change the verdict, or turn uncertainty into certainty.
 import * as fs from 'fs';
 import * as path from 'path';
 
 import {
-  buildConsultationContentPlan, renderContentPlanDirective, type ContentDomain,
+  buildConsultationContentPlan, renderContentPlanDirective, renderVerifiedEvidenceSection, type ContentDomain,
 } from '@/features/chat/server/consultationContentPlan';
 import { applyVerdictAuthorityClamp } from '@/features/chat/server/buildServerConsultation';
-import { DECLINED_TO_DECIDE_SUMMARY } from '@/features/divination/verdictDirective';
+import { renderVerdictDirective, buildDeclinedSummary, declinedReasonCategory } from '@/features/divination/verdictDirective';
 import type { ConsultationOutcome, ParsedStructuredConsultation } from '@/features/chat/prompts/structuredConsultation';
-import type { CrossDivinationVerdict, JudgmentDomain, JudgmentEvidence, Stance } from '@/features/divination/contracts';
+import type {
+  CrossDivinationVerdict, DivinationJudgment, DisciplineContribution, JudgmentDomain, JudgmentEvidence, Stance,
+} from '@/features/divination/contracts';
 
 function ev(overrides: Partial<JudgmentEvidence>): JudgmentEvidence {
   return {
     fact: '일지 육합', meaning: '테스트 근거 의미', domain: 'GENERAL', temporalScope: 'NATAL', directness: 'GENERAL',
+    ...overrides,
+  };
+}
+
+function mkJudgment(overrides: Partial<DivinationJudgment>): DivinationJudgment {
+  return {
+    discipline: 'MYUNGRI', applicable: true, dataReliability: 'EXACT',
+    questionDomain: 'OPPORTUNITY', temporalScope: 'NATAL', stance: 'FOR',
+    dominantConclusion: '테스트 결론', dominantFactor: '테스트 근거',
+    directEvidence: [], counterEvidence: [], internalContradictions: [],
+    timingSignals: [], domainSubJudgments: [],
+    confidence: 'MEDIUM', questionDirectness: 'DIRECT', evidenceStrength: 'STRONG',
+    factGroupsUsed: [],
     ...overrides,
   };
 }
@@ -32,8 +47,32 @@ function mkVerdict(overrides: Partial<CrossDivinationVerdict>): CrossDivinationV
     headlinePropositionIds: [],
     direction: 'FOR',
     dominantBasis: '명리',
-    disciplineJudgments: [],
-    contributions: [],
+    disciplineJudgments: [
+      mkJudgment({
+        discipline: 'MYUNGRI',
+        directEvidence: [
+          ev({ fact: '재성 통근', meaning: '재물이 들어오는 통로가 열려 있습니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'NATAL' }),
+          ev({ fact: '식상생재', meaning: '실행력이 결과로 이어지는 구조입니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'DAEWOON' }),
+        ],
+        counterEvidence: [
+          ev({ fact: '편관 혼잡', meaning: '경쟁이나 외부 압박이 함께 옵니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'NATAL' }),
+        ],
+      }),
+      mkJudgment({
+        discipline: 'ZIWEI',
+        directEvidence: [
+          ev({ fact: '일지 육합', meaning: '협력 관계가 유리하게 작동합니다', domain: 'RELATION_BOND', directness: 'ADJACENT', temporalScope: 'SEWOON' }),
+          ev({ fact: '월지 형', meaning: '초반에 마찰이 있을 수 있습니다', domain: 'CONFLICT', directness: 'GENERAL', temporalScope: 'NATAL' }),
+        ],
+      }),
+      mkJudgment({
+        discipline: 'QIMEN',
+        directEvidence: [
+          ev({ fact: '세운 재성', meaning: '올해 재물운이 함께 들어옵니다', domain: 'MONEY_INFLOW', directness: 'ADJACENT', temporalScope: 'SEWOON' }),
+        ],
+      }),
+    ],
+    contributions: [] as DisciplineContribution[],
     axisVerdicts: [],
     propositions: [],
     agreementPoints: ['두 체계 모두 같은 방향을 가리킵니다'],
@@ -42,16 +81,8 @@ function mkVerdict(overrides: Partial<CrossDivinationVerdict>): CrossDivinationV
     natalBaseline: '원국에 사업 확장의 바탕이 있습니다',
     currentFlow: '올해 흐름이 그 바탕을 지지합니다',
     timingConclusion: null,
-    favorableFactors: [
-      ev({ fact: '재성 통근', meaning: '재물이 들어오는 통로가 열려 있습니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'NATAL' }),
-      ev({ fact: '일지 육합', meaning: '협력 관계가 유리하게 작동합니다', domain: 'RELATION_BOND', directness: 'ADJACENT', temporalScope: 'SEWOON' }),
-      ev({ fact: '식상생재', meaning: '실행력이 결과로 이어지는 구조입니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'DAEWOON' }),
-      ev({ fact: '월지 형', meaning: '초반에 마찰이 있을 수 있습니다', domain: 'CONFLICT', directness: 'GENERAL', temporalScope: 'NATAL' }),
-      ev({ fact: '세운 재성', meaning: '올해 재물운이 함께 들어옵니다', domain: 'MONEY_INFLOW', directness: 'ADJACENT', temporalScope: 'SEWOON' }),
-    ],
-    riskFactors: [
-      ev({ fact: '편관 혼잡', meaning: '경쟁이나 외부 압박이 함께 옵니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'NATAL' }),
-    ],
+    favorableFactors: [], // no longer the selection source (Root Cause 1 fix) — deliberately unused
+    riskFactors: [],
     actionableInterpretation: '단계적으로 확장하며 검증하십시오',
     confidence: 'MEDIUM',
     confidenceReason: '테스트',
@@ -61,27 +92,33 @@ function mkVerdict(overrides: Partial<CrossDivinationVerdict>): CrossDivinationV
   };
 }
 
-describe('§1/§11.1 — evidence budget: never more than 4 items TOTAL', () => {
-  it('a rich pool (5 favorable + 1 risk) still yields <= 4 selected items', () => {
+/** Build a verdict whose single applicable discipline directly supplies the given evidence pool — for tests
+ *  that want precise control over what's available without redefining the whole default fixture. */
+function verdictWithPool(pool: JudgmentEvidence[], overrides: Partial<CrossDivinationVerdict> = {}): CrossDivinationVerdict {
+  return mkVerdict({ disciplineJudgments: [mkJudgment({ directEvidence: pool })], ...overrides });
+}
+
+describe('§1 — evidence budget: never more than 4 items TOTAL', () => {
+  it('the default fixture (5 supporting across 3 disciplines + 1 counter) still yields <= 4 selected items', () => {
     const plan = buildConsultationContentPlan(mkVerdict({}));
     expect(plan.selectedEvidence.length).toBeLessThanOrEqual(4);
   });
 
-  it('an even richer pool (10 favorable + 5 risk) still yields <= 4 selected items', () => {
-    const bigFavorable = Array.from({ length: 10 }, (_, i) => ev({ fact: `fact-${i}`, meaning: `meaning-${i}`, directness: 'DIRECT' }));
-    const bigRisk = Array.from({ length: 5 }, (_, i) => ev({ fact: `risk-${i}`, meaning: `risk-meaning-${i}`, directness: 'DIRECT' }));
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: bigFavorable, riskFactors: bigRisk }));
+  it('an even richer pool (10 supporting + 5 counter) still yields <= 4 selected items', () => {
+    const bigSupport = Array.from({ length: 10 }, (_, i) => ev({ fact: `fact-${i}`, meaning: `meaning-${i}`, directness: 'DIRECT' }));
+    const bigCounter = Array.from({ length: 5 }, (_, i) => ev({ fact: `risk-${i}`, meaning: `risk-meaning-${i}`, directness: 'DIRECT' }));
+    const plan = buildConsultationContentPlan(mkVerdict({ disciplineJudgments: [mkJudgment({ directEvidence: bigSupport, counterEvidence: bigCounter })] }));
     expect(plan.selectedEvidence.length).toBeLessThanOrEqual(4);
   });
 });
 
 describe('§11.2 — selected evidence always derives from the supplied verdict', () => {
-  it('every selected anchor/meaning pair traces back to favorableFactors or riskFactors', () => {
+  it('every selected item traces back to some applicable discipline\'s directEvidence/counterEvidence', () => {
     const verdict = mkVerdict({});
     const plan = buildConsultationContentPlan(verdict);
-    const pool = [...verdict.favorableFactors, ...verdict.riskFactors];
+    const pool = verdict.disciplineJudgments.flatMap((j) => [...j.directEvidence, ...j.counterEvidence]);
     for (const item of plan.selectedEvidence) {
-      expect(pool.some((e) => e.fact === item.anchor && e.meaning === item.meaning)).toBe(true);
+      expect(pool.some((e) => e.fact === item.canonicalTechnicalAnchor && e.meaning === item.canonicalMeaning)).toBe(true);
     }
   });
 
@@ -97,42 +134,44 @@ describe('§11.2 — selected evidence always derives from the supplied verdict'
 });
 
 describe('§11.3/§11.4 — counter-evidence: preserved within budget, never forced', () => {
-  it('a verdict with riskFactors always includes exactly one COUNTER item within the 4-item budget', () => {
+  it('a verdict with counterEvidence always includes exactly one COUNTER item within the 4-item budget', () => {
     const plan = buildConsultationContentPlan(mkVerdict({}));
-    const counters = plan.selectedEvidence.filter((e) => e.role === 'COUNTER');
+    const counters = plan.selectedEvidence.filter((e) => e.evidenceRole === 'COUNTER');
     expect(counters.length).toBe(1);
     expect(plan.selectedEvidence.length).toBeLessThanOrEqual(4);
   });
 
-  it('a verdict with NO riskFactors selects zero counter items — never fabricated', () => {
-    const plan = buildConsultationContentPlan(mkVerdict({ riskFactors: [] }));
-    expect(plan.selectedEvidence.some((e) => e.role === 'COUNTER')).toBe(false);
+  it('a verdict with NO counterEvidence anywhere selects zero counter items — never fabricated', () => {
+    const noCounter = mkVerdict({
+      disciplineJudgments: [mkJudgment({ directEvidence: [ev({ fact: 'x', meaning: 'y' })], counterEvidence: [] })],
+    });
+    const plan = buildConsultationContentPlan(noCounter);
+    expect(plan.selectedEvidence.some((e) => e.evidenceRole === 'COUNTER')).toBe(false);
   });
 
   it('mustNotClaim only warns against hiding counter-evidence when one was actually selected', () => {
     const withRisk = buildConsultationContentPlan(mkVerdict({}));
-    const withoutRisk = buildConsultationContentPlan(mkVerdict({ riskFactors: [] }));
+    const withoutRisk = buildConsultationContentPlan(mkVerdict({
+      disciplineJudgments: [mkJudgment({ directEvidence: [ev({ fact: 'x', meaning: 'y' })], counterEvidence: [] })],
+    }));
     expect(withRisk.mustNotClaim.some((s) => /반대·주의 근거/.test(s))).toBe(true);
     expect(withoutRisk.mustNotClaim.some((s) => /반대·주의 근거/.test(s))).toBe(false);
   });
 });
 
 describe('§2/§11.5 — question relevance: business-fit vs current-business-timing on the SAME chart', () => {
-  // Same evidence pool — a NATAL/structural item and a CURRENT/period item both exist. Only the question's
-  // OWN asksTiming signal differs, exactly like "나는 사업 체질인가?" (fit) vs "지금 이 사업 시작해도 되나?"
-  // (execution timing).
   const pool: JudgmentEvidence[] = [
     ev({ fact: '재성 통근', meaning: '구조적으로 사업 체질이 맞습니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'NATAL' }),
     ev({ fact: '질문시 국세', meaning: '지금 이 순간 실행하기 좋은 기운입니다', domain: 'OPPORTUNITY', directness: 'DIRECT', temporalScope: 'PRESENT_MOMENT' }),
   ];
 
   it('a fit-style question (asksTiming=false) ranks the NATAL item first', () => {
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool, asksTiming: false }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: false }));
     expect(plan.selectedEvidence[0].temporalRole).toBe('NATAL');
   });
 
   it('a current-timing question (asksTiming=true) ranks the CURRENT item first', () => {
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool, asksTiming: true }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: true }));
     expect(plan.selectedEvidence[0].temporalRole).toBe('CURRENT');
   });
 });
@@ -144,19 +183,19 @@ describe('§9/§11.6 — question relevance: wealth-capacity vs current-investme
   ];
 
   it('"재물 그릇이 큰가" (asksTiming=false) leads with the NATAL capacity fact', () => {
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool, asksTiming: false, question: '재물 그릇이 큰가?' }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: false, question: '재물 그릇이 큰가?' }));
     expect(plan.selectedEvidence[0].temporalRole).toBe('NATAL');
   });
 
   it('"올해 투자해도 되나" (asksTiming=true) leads with the PERIOD/current fact', () => {
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool, asksTiming: true, question: '올해 투자해도 되나?' }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: true, question: '올해 투자해도 되나?' }));
     expect(plan.selectedEvidence[0].temporalRole).not.toBe('NATAL');
   });
 
   it('the underlying facts are identical either way — only ranking changed, nothing invented', () => {
-    const a = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool, asksTiming: false }));
-    const b = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool, asksTiming: true }));
-    const anchorsOf = (items: typeof a.selectedEvidence) => [...items.map((e) => e.anchor)].sort();
+    const a = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: false }));
+    const b = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: true }));
+    const anchorsOf = (items: typeof a.selectedEvidence) => [...items.map((e) => e.canonicalTechnicalAnchor)].sort();
     expect(anchorsOf(a.selectedEvidence)).toEqual(anchorsOf(b.selectedEvidence));
   });
 });
@@ -177,9 +216,9 @@ describe('§11.7 — natal / period / current-situation roles are not silently c
       ev({ fact: 'b', meaning: 'b-meaning', temporalScope: 'DAEWOON', directness: 'DIRECT' }),
       ev({ fact: 'c', meaning: 'c-meaning', temporalScope: 'PRESENT_MOMENT', directness: 'DIRECT' }),
     ];
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: pool }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
     const roles = new Set(plan.selectedEvidence.map((e) => e.temporalRole));
-    expect(roles.size).toBeGreaterThan(1); // distinct roles survive as distinct roles
+    expect(roles.size).toBeGreaterThan(1);
   });
 });
 
@@ -201,6 +240,20 @@ describe('§11.8 — unresolved remains unresolved', () => {
   });
 });
 
+describe('§G/§10 — timing fidelity: a supplied timing conclusion is never disclaimed away', () => {
+  it('when timingConclusion exists, mustNotClaim explicitly forbids saying "no timing basis"', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({ timingConclusion: '이번 하반기가 실행 적기입니다' }));
+    expect(plan.mustNotClaim.some((s) => /시기 근거가 없다/.test(s))).toBe(true);
+    expect(plan.mustNotClaim.some((s) => /날짜·시점을 새로 만들지/.test(s))).toBe(false);
+  });
+
+  it('when no timingConclusion exists, mustNotClaim forbids inventing one instead', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({ timingConclusion: null }));
+    expect(plan.mustNotClaim.some((s) => /날짜·시점을 새로 만들지/.test(s))).toBe(true);
+    expect(plan.mustNotClaim.some((s) => /시기 근거가 없다/.test(s))).toBe(false);
+  });
+});
+
 describe('§11.9 — the plan can never change the Cross verdict', () => {
   it('the verdict object is byte-for-byte untouched after building a plan from it', () => {
     const verdict = mkVerdict({});
@@ -214,10 +267,10 @@ describe('§11.9 — the plan can never change the Cross verdict', () => {
   });
 });
 
-describe('§11.10 — the renderer directive is bounded and never dumps every fact', () => {
+describe('§11.10 — the PROMPT directive is bounded and never dumps every fact', () => {
   it('the directive never renders more than 4 evidence bullet lines', () => {
     const bigFavorable = Array.from({ length: 12 }, (_, i) => ev({ fact: `fact-${i}`, meaning: `meaning-${i}`, directness: 'DIRECT' }));
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: bigFavorable }));
+    const plan = buildConsultationContentPlan(verdictWithPool(bigFavorable));
     const text = renderContentPlanDirective(plan);
     const bulletLines = text.split('\n').filter((l) => /^\s*- \[(뒷받침|반대\/주의)\]/.test(l));
     expect(bulletLines.length).toBeLessThanOrEqual(4);
@@ -237,14 +290,16 @@ describe('§11.10 — the renderer directive is bounded and never dumps every fa
   });
 
   it('an empty-evidence plan still renders a valid, non-crashing directive', () => {
-    const plan = buildConsultationContentPlan(mkVerdict({ favorableFactors: [], riskFactors: [] }));
+    const plan = buildConsultationContentPlan(mkVerdict({
+      disciplineJudgments: [mkJudgment({ directEvidence: [], counterEvidence: [] })],
+    }));
     const text = renderContentPlanDirective(plan);
     expect(text).toContain(plan.domain);
     expect(text.length).toBeGreaterThan(0);
   });
 });
 
-describe('§11.11 — Verdict Authority Clamp remains downstream and final, untouched by this repair', () => {
+describe('§H/§11.11 — Verdict Authority Clamp remains downstream and final', () => {
   const richResult: ParsedStructuredConsultation = {
     coreSummary: 'B가 안전합니다.',
     coreInterpretation: '기다리는 편이 낫습니다.',
@@ -252,11 +307,13 @@ describe('§11.11 — Verdict Authority Clamp remains downstream and final, unto
   };
   const accepted = (result: ParsedStructuredConsultation): ConsultationOutcome => ({ kind: 'ACCEPTED', result });
 
-  it('a declined verdict still clamps coreSummary to the deterministic neutral sentence, regardless of any Content Plan content', () => {
+  it('a declined verdict clamps coreSummary to a question-aware, non-directional sentence, regardless of any Content Plan content', () => {
     const verdict = mkVerdict({ direction: 'INSUFFICIENT_EVIDENCE' });
     buildConsultationContentPlan(verdict); // the plan runs; the clamp is a SEPARATE, later step and cannot see it
     const out = applyVerdictAuthorityClamp(accepted(richResult), verdict);
-    expect(out?.coreSummary).toBe(DECLINED_TO_DECIDE_SUMMARY);
+    expect(out?.coreSummary).toBe(buildDeclinedSummary(verdict));
+    expect(out?.coreSummary).toMatch(/확정하기 어렵습니다/);
+    expect(out?.coreSummary).not.toContain('안전합니다');
   });
 
   it('applyVerdictAuthorityClamp is still a pure, 2-argument, synchronous function (no new dependency on the Content Plan)', () => {
@@ -276,19 +333,25 @@ describe('no numeric vote/scoring logic was introduced', () => {
   });
 });
 
-describe('cross-synthesis material is surfaced only from the verdict\'s own fields', () => {
-  it('synthesis.agreement is a verbatim passthrough of agreementPoints[0]', () => {
-    const verdict = mkVerdict({ agreementPoints: ['명리와 자미두수가 같은 결론을 가리킵니다'] });
-    expect(buildConsultationContentPlan(verdict).synthesis?.agreement).toBe(verdict.agreementPoints[0]);
+describe('§9 — cross-synthesis material is COMPLETE and surfaced only from the verdict\'s own fields', () => {
+  it('synthesis.agreements carries ALL agreementPoints, not just the first', () => {
+    const verdict = mkVerdict({ agreementPoints: ['첫 번째 일치', '두 번째 일치'] });
+    expect(buildConsultationContentPlan(verdict).synthesis?.agreements).toEqual(['첫 번째 일치', '두 번째 일치']);
   });
 
-  it('synthesis.scopeSeparation is a verbatim passthrough of the first contradictionResolution', () => {
+  it('synthesis.scopeSeparations carries ALL contradictionResolutions, not just the first', () => {
     const verdict = mkVerdict({
       agreementPoints: [],
-      contradictionResolutions: [{ conflict: '명리는 유리, 기문은 불리', resolution: '원국은 유리하나 상황판은 지금 불리합니다', dominant: 'QIMEN' }],
+      contradictionResolutions: [
+        { conflict: '명리는 유리, 기문은 불리', resolution: '원국은 유리하나 상황판은 지금 불리합니다', dominant: 'QIMEN', kind: 'DIFFERENT_TIMESCALE', between: ['MYUNGRI', 'QIMEN'], whyOtherDidNotDominate: '시점 축이 아니어서' },
+        { conflict: '자미는 유리, 명리는 불리', resolution: '명궁은 유리하나 원국은 걸림', dominant: 'ZIWEI', kind: 'DIFFERENT_DOMAIN', between: ['MYUNGRI', 'ZIWEI'], whyOtherDidNotDominate: '축이 달라서' },
+      ],
     });
     const plan = buildConsultationContentPlan(verdict);
-    expect(plan.synthesis?.scopeSeparation).toEqual({ conflict: '명리는 유리, 기문은 불리', resolution: '원국은 유리하나 상황판은 지금 불리합니다' });
+    expect(plan.synthesis?.scopeSeparations).toEqual([
+      { conflict: '명리는 유리, 기문은 불리', resolution: '원국은 유리하나 상황판은 지금 불리합니다' },
+      { conflict: '자미는 유리, 명리는 불리', resolution: '명궁은 유리하나 원국은 걸림' },
+    ]);
   });
 
   it('no agreement and no contradiction resolution ⇒ synthesis is null, never fabricated', () => {
@@ -296,9 +359,10 @@ describe('cross-synthesis material is surfaced only from the verdict\'s own fiel
     expect(plan.synthesis).toBeNull();
   });
 
-  it('the directive never renders a flat "명리는 A, 자미는 B" list in place of synthesis instruction', () => {
+  it('the directive requires ALL synthesis material be reflected, not cherry-picked, and never a flat per-system list', () => {
     const text = renderContentPlanDirective(buildConsultationContentPlan(mkVerdict({})));
     expect(text).toMatch(/종합하십시오/);
+    expect(text).toMatch(/일부만 골라 쓰지 말고/);
   });
 });
 
@@ -316,8 +380,171 @@ describe('domain differentiation — same verdict shape, different domain ⇒ di
 });
 
 describe('provenance — the plan identifies itself, and only itself, as its own source', () => {
-  it('provenance is the fixed content-plan tag, never a divination engine tag', () => {
+  it('plan.provenance is the fixed content-plan tag, never a divination engine tag', () => {
     expect(buildConsultationContentPlan(mkVerdict({})).provenance).toEqual(['deokbunai.consultation-content-plan.v1']);
+  });
+
+  it('each catalog item carries the discipline + evidence-array it was pooled from', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({}));
+    for (const item of plan.selectedEvidence) {
+      expect(item.provenance).toMatch(/^(MYUNGRI|ZIWEI|QIMEN):(directEvidence|counterEvidence|timingSignals)$/);
+      expect(item.provenance.startsWith(item.discipline)).toBe(true);
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// §14 — AUDIT-DRIVEN REMEDIATION V1 required tests (A-I)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe('§14.A — Ziwei technical identity: no cross-palace/star substitution or invention', () => {
+  it('부처 evidence cannot become 명궁 in the rendered verified evidence — only supplied facts appear', () => {
+    const pool: JudgmentEvidence[] = [ev({ fact: '부처궁 태양 화록', meaning: '배우자 궁에 유리한 기운이 있습니다', directness: 'DIRECT' })];
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    expect(rendered.some((r) => r.body.includes('부처궁'))).toBe(true);
+    expect(rendered.some((r) => r.body.includes('명궁'))).toBe(false);
+  });
+
+  it('명궁 evidence cannot become 부처 in the rendered verified evidence', () => {
+    const pool: JudgmentEvidence[] = [ev({ fact: '명궁 자미 화권', meaning: '본인 자리에 주도권이 들어옵니다', directness: 'DIRECT' })];
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    expect(rendered.some((r) => r.body.includes('명궁'))).toBe(true);
+    expect(rendered.some((r) => r.body.includes('부처'))).toBe(false);
+  });
+
+  it('no 관록 fact appears in verified evidence unless one was actually supplied', () => {
+    const pool: JudgmentEvidence[] = [ev({ fact: '재백궁 무곡', meaning: '재물 자리에 안정적인 힘이 있습니다', directness: 'DIRECT' })];
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    expect(rendered.some((r) => r.body.includes('관록'))).toBe(false);
+  });
+
+  it('no 화기 fact appears in verified evidence unless one was actually supplied', () => {
+    const pool: JudgmentEvidence[] = [ev({ fact: '명궁 자미 화권', meaning: '본인 자리에 주도권이 들어옵니다', directness: 'DIRECT' })];
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    expect(rendered.some((r) => r.body.includes('화기'))).toBe(false);
+  });
+});
+
+describe('§14.B — technical relationship integrity: no cross-item recombination', () => {
+  it('each rendered verified-evidence body contains exactly one item\'s own anchor, never a blend of two', () => {
+    const pool: JudgmentEvidence[] = [
+      ev({ fact: '재성 통근', meaning: '재물 통로가 열려 있습니다', directness: 'DIRECT' }),
+      ev({ fact: '식상생재', meaning: '실행력이 결과로 이어집니다', directness: 'DIRECT' }),
+    ];
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    for (const r of rendered) {
+      const anchorsMentioned = ['재성 통근', '식상생재'].filter((a) => r.body.includes(a));
+      expect(anchorsMentioned.length).toBe(1); // never both in the same line
+    }
+  });
+});
+
+describe('§14.C — "전문근거" is built from the supplied VerifiedEvidenceCatalog, deterministically', () => {
+  it('one rendered section per catalog item, each containing that item\'s exact anchor+meaning', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({}));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    expect(rendered.length).toBe(plan.selectedEvidence.length);
+    plan.selectedEvidence.forEach((item, i) => {
+      expect(rendered[i].body).toBe(`${item.canonicalMeaning} (근거: ${item.canonicalTechnicalAnchor})`);
+      expect(rendered[i].title).toContain(item.id);
+    });
+  });
+
+  it('each item carries a stable local id (E1, E2, …) in final selected order', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({}));
+    expect(plan.selectedEvidence.map((e) => e.id)).toEqual(plan.selectedEvidence.map((_, i) => `E${i + 1}`));
+  });
+
+  it('calling the renderer twice on the same catalog produces byte-identical output — no LLM, no randomness', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({}));
+    expect(renderVerifiedEvidenceSection(plan.selectedEvidence)).toEqual(renderVerifiedEvidenceSection(plan.selectedEvidence));
+  });
+});
+
+describe('§14.D — declined headline: question-specific, still non-directional', () => {
+  it('two different questions produce two different declined headlines', () => {
+    const a = buildDeclinedSummary(mkVerdict({ question: '올해 하반기 재물운은 어때?', direction: 'INSUFFICIENT_EVIDENCE' }));
+    const b = buildDeclinedSummary(mkVerdict({ question: '지금 이 사람과 결혼해도 괜찮을까?', direction: 'INSUFFICIENT_EVIDENCE' }));
+    expect(a).not.toBe(b);
+  });
+
+  it('the headline never contains a directional word regardless of verdict content', () => {
+    const DIRECTIONAL_WORDS = /좋습니다|나쁩니다|추천합니다|하십시오|하세요\b|해야 합니다|낫습니다|안전합니다|권합니다/;
+    for (const direction of ['INSUFFICIENT_DATA', 'INSUFFICIENT_EVIDENCE'] as Stance[]) {
+      for (const question of ['올해 이직해도 될까?', '전 애인과 다시 만날 수 있을까?', '사업을 접어야 할까?']) {
+        const summary = buildDeclinedSummary(mkVerdict({ question, direction }));
+        expect(summary).not.toMatch(DIRECTIONAL_WORDS);
+        expect(summary).toMatch(/확정하기 어렵습니다/);
+      }
+    }
+  });
+
+  it('declinedReasonCategory is a deterministic mapping of existing verdict fields, never a new status', () => {
+    expect(declinedReasonCategory(mkVerdict({ contradictionPoints: ['상충'] }))).toBe('CROSS_SCOPE_CONFLICT');
+    expect(declinedReasonCategory(mkVerdict({
+      contradictionPoints: [],
+      disciplineJudgments: [mkJudgment({ applicable: false })],
+    }))).toBe('PARTIAL_COVERAGE');
+    expect(declinedReasonCategory(mkVerdict({ contradictionPoints: [], disciplineJudgments: [mkJudgment({ applicable: true })] })))
+      .toBe('DIRECT_EVIDENCE_INSUFFICIENT');
+  });
+});
+
+describe('§14.E — coverage gap != calculation failure', () => {
+  it('the non-applied-discipline directive line forbids "실패"/"오류" wording and states applicability-only framing', () => {
+    const verdict = mkVerdict({
+      contributions: [{ discipline: 'QIMEN', applied: false, stance: 'NOT_APPLICABLE', contribution: '이번 질문에는 적용 범위 밖입니다' }],
+    });
+    const text = renderVerdictDirective(verdict);
+    expect(text).toContain('계산 실패');
+    expect(text).toContain('오류');
+    expect(text).toMatch(/판단 경로가 없습니다/);
+    // the forbidding instruction names the words to avoid; it must not itself read as an engine-malfunction claim
+    expect(text).not.toMatch(/기문둔갑\s*계산\s*(은|이)\s*실패로 제공되지/);
+  });
+});
+
+describe('§14.F — atomic stance: two-clause meanings survive whole, never split', () => {
+  it('a supporting+limiting two-clause meaning is rendered verbatim, both halves present', () => {
+    const twoSided = '연락 가능성은 있지만 지금은 밀어붙일 때가 아닙니다';
+    const pool: JudgmentEvidence[] = [ev({ fact: '재회 궁 형충', meaning: twoSided, directness: 'DIRECT' })];
+    const plan = buildConsultationContentPlan(verdictWithPool(pool));
+    const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
+    expect(rendered[0].body).toContain(twoSided); // whole string, not truncated at "있지만"
+  });
+});
+
+describe('§14.G — supplied timing conclusion is never rendered as absent', () => {
+  it('renderVerdictDirective includes the actual timingConclusion text when one exists, not a "no basis" line', () => {
+    const verdict = mkVerdict({ timingConclusion: '이번 대운 동안은 실행에 유리합니다' });
+    const text = renderVerdictDirective(verdict);
+    expect(text).toContain('이번 대운 동안은 실행에 유리합니다');
+    expect(text).not.toContain('시기 근거는 없습니다');
+  });
+});
+
+describe('§14.H — Cross verdict authority: unchanged by any presentation-layer step', () => {
+  it('building a content plan does not touch disciplineJudgments/contributions/direction', () => {
+    const verdict = mkVerdict({});
+    const before = JSON.parse(JSON.stringify(verdict));
+    buildConsultationContentPlan(verdict);
+    renderVerifiedEvidenceSection(buildConsultationContentPlan(verdict).selectedEvidence);
+    expect(verdict).toEqual(before);
+  });
+});
+
+describe('§14.I — fabricated technical facts are structurally impossible through the normal render path', () => {
+  it('renderVerifiedEvidenceSection takes no free-text/LLM parameter — its only input is the catalog itself', () => {
+    expect(renderVerifiedEvidenceSection.length).toBe(1);
+  });
+
+  it('an empty catalog renders an empty section list, never a placeholder fact', () => {
+    expect(renderVerifiedEvidenceSection([])).toEqual([]);
   });
 });
 
