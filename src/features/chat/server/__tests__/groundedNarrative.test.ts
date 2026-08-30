@@ -194,7 +194,12 @@ describe('G — the authoritative stance survives into the rendered claim', () =
     const { grounded } = planFor(mkVerdict());
     const limit = grounded.claims.find((c) => c.role === 'EVIDENCE' && c.polarity === 'LIMIT');
     expect(limit?.authoritativeMeaning).toBe('외부 압박이 함께 옵니다');
-    expect(composeGroundedFallback(grounded).cautions).toContain('외부 압박이 함께 옵니다');
+    // V3 — the claim may be spent on the causal body OR listed as a caution, but wherever it lands it is
+    // rendered verbatim and never flipped into a favourable reading.
+    const fallback = composeGroundedFallback(grounded);
+    const delivered = [fallback.coreInterpretation ?? '', ...(fallback.cautions ?? [])].join('\n');
+    expect(delivered).toContain('외부 압박이 함께 옵니다');
+    expect(fallback.strengths ?? []).not.toContain('외부 압박이 함께 옵니다');
   });
 
   it('a compound meaning stays atomic — never split into only its favorable half', () => {
@@ -289,9 +294,14 @@ describe('K — a failed stylistic rendering falls back to grounded composition,
     const fallback = composeGroundedFallback(grounded);
     expect(fallback.coreSummary).toBe('지금 시작하시는 쪽이 맞습니다.');
     expect(fallback.coreInterpretation).toContain('타고난 바탕에 확장의 힘이 있습니다');
-    expect(fallback.coreInterpretation).toContain('지금 흐름이 그 바탕을 지지합니다');
-    expect(fallback.futureFlow).toBe('올해 후반부터 흐름이 열립니다');
+    // V3 §8 — the body is a CAUSAL chain, not a dump of every core reason: a LIMIT and a SUPPORT claim are
+    // joined by the fixed contrast connective and closed by the verdict's own implication sentence.
+    expect(fallback.coreInterpretation).toContain('다만');
+    expect(fallback.coreInterpretation).toContain('그래서');
+    expect(fallback.futureFlow).toBe('올해 후반부터 흐름이 열립니다.');
     expect((fallback.domainInterpretation ?? []).length).toBeGreaterThan(0);
+    // §9 — a follow-up offer is always present and never promises a fact.
+    expect((fallback.followUps ?? []).length).toBeGreaterThan(0);
   });
 
   it('never repeats the headline as the body, and never repeats a section the caller already renders', () => {
@@ -304,9 +314,17 @@ describe('K — a failed stylistic rendering falls back to grounded composition,
     expect(titles.filter((t) => serverTitles.includes(t))).toEqual([]);
   });
 
-  it('falls back to the conclusion as the body only when no baseline/flow was supplied', () => {
+  // V3 — THE defect this batch existed to fix. Production Cross never populates natalBaseline/currentFlow,
+  // so V2's "lead with the reasons, else repeat the conclusion" always took the else branch and every single
+  // fallback answer said its own headline twice. With no CORE_REASON at all the body must still be built
+  // from the claims that DO exist, and must never be the headline again.
+  it('builds a substantive body from other claims when no baseline/flow was supplied', () => {
     const { grounded } = planFor(mkVerdict({ natalBaseline: null, currentFlow: null }));
-    expect(composeGroundedFallback(grounded).coreInterpretation).toBe('지금 시작하시는 쪽이 맞습니다.');
+    expect(grounded.coreReasons).toEqual([]);
+    const body = composeGroundedFallback(grounded).coreInterpretation ?? '';
+    expect(body).not.toBe('지금 시작하시는 쪽이 맞습니다.');
+    expect(body).not.toContain('지금 시작하시는 쪽이 맞습니다');
+    expect(body.length).toBeGreaterThan(30);
   });
 
   it('every sentence of the composition traces back to a grounded claim', () => {

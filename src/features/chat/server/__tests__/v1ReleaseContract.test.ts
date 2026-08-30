@@ -68,12 +68,18 @@ describe('§D13 V1 release contract (integrated)', () => {
     expect(sent.length).toBeGreaterThan(0);
   });
 
-  it('OPTION B: a comparison answer that invents a winner is rejected → safe fallback', async () => {
+  // V3 §11 — "rejected" still means the model's answer is discarded in full; the delivered card is the
+  // server's own grounded composition, which cannot name a winner because no LLM text reaches it.
+  it('OPTION B: a comparison answer that invents a winner is rejected → grounded composition, no winner', async () => {
     // A grounded month-comparison; the model returns a winner claim on both attempts → guard rejects.
     const winner = JSON.stringify({ coreSummary: '5월이 더 좋습니다.', coreInterpretation: '5월이 2월보다 더 좋습니다. 사주로 보면 일간을 중심으로 흐름이 이어지고 월지의 기운이 이를 뒷받침하여 꾸준히 준비하면 도움이 됩니다.', strengths: ['추진력'] });
     const r = await buildServerConsultation(req('2026년 2월이 좋아 5월이 좋아?'), harness(winner).deps);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.structuredResult).toBeUndefined(); // not accepted as a card
+    expect(r.diagnostics?.groundedFallback).toBe(true);
+    expect(r.text).not.toContain('5월이 2월보다');
+    expect(r.text).not.toMatch(/5월이 더 좋습니다/);
+    // The server's own declined headline quotes the question (so "5월" appears) but never picks a side.
+    expect(r.structuredResult?.coreSummary).toMatch(/한쪽을 지금 고르기보다|확정하기 어렵습니다/);
   });
 });

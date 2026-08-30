@@ -102,6 +102,9 @@ type CaseRecord = {
   caseId: string; isControl: boolean; domain: string; question: string;
   ok: boolean; failureNote: string | null;
   outputClassification: string | null; rejectionReason: string | null; groundedFallback: boolean;
+  // V3 §2 — WHY the deterministic composition was delivered, as bounded categories. The consumed run could
+  // not be attributed at all because nothing recorded it; this is the same fallback decision, now labelled.
+  groundedViolations: string[];
   systemsApplicable: string[];
   crossJudgeSummary: string;
   answer: AnswerFields;
@@ -181,6 +184,7 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
     outputClassification: diagnostics?.outputClassification ?? null,
     rejectionReason: diagnostics?.rejectionReason ?? null,
     groundedFallback: diagnostics?.groundedFallback === true,
+    groundedViolations: diagnostics?.groundedViolations ?? [],
     systemsApplicable: crossInfo.systems, crossJudgeSummary: crossInfo.summary, answer, composedText,
     llmMeta: { model: m.model, reasoningEffort: m.reasoningEffort, maxOutputTokens: m.maxOutputTokens, failureCode: m.failureCode, latencyMs: m.latencyMs },
     judge, genericPhraseHits: genericPhraseHits(composedText),
@@ -234,6 +238,23 @@ describe('GROUNDED CONSULTATION NARRATIVE V2 — 40-case consumed regression', (
       semanticRejectedCaseIds: records.filter((r) => r.outputClassification === 'SEMANTIC_REJECTED').map((r) => r.caseId),
       groundedFallbackCount: records.filter((r) => r.groundedFallback).length,
       groundedFallbackCaseIds: records.filter((r) => r.groundedFallback).map((r) => r.caseId),
+      // V3 §2 — fallback attribution by bounded category.
+      fallbackReasonCounts: records.flatMap((r) => r.groundedViolations)
+        .reduce<Record<string, number>>((acc, k) => ({ ...acc, [k]: (acc[k] ?? 0) + 1 }), {}),
+      // V3 §12 — the deterministic answer is judged as a PRODUCT on its own, not written off as a rare miss.
+      fallbackScoredCount: scored.filter((r) => r.groundedFallback).length,
+      fallbackPaidUserValueRate: (() => {
+        const f = scored.filter((r) => r.groundedFallback);
+        return f.length ? Math.round((f.filter((r) => r.judge.paidUserValue === 'YES').length / f.length) * 10000) / 100 : null;
+      })(),
+      fallbackSpecificEvidenceRate: (() => {
+        const f = scored.filter((r) => r.groundedFallback);
+        return f.length ? Math.round((f.filter((r) => !r.judge.personalizationFail).length / f.length) * 10000) / 100 : null;
+      })(),
+      fallbackAverageScore: (() => {
+        const f = scored.filter((r) => r.groundedFallback);
+        return f.length ? Math.round((f.reduce((a, r) => a + r.judge.totalScore, 0) / f.length) * 100) / 100 : null;
+      })(),
       fabricatedFactCount: reasonHits(/조작|없는 사실|허위|지어|invent|fabricat/i).length,
       fabricatedTechnicalRelationCount: reasonHits(/궁|성계|화기|화록|간지|관계.*잘못|잘못.*관계/i).length,
       wrongPersonFactCount: reasonHits(/다른 사람|잘못된 인물|wrong.?person/i).length,

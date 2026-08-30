@@ -91,7 +91,12 @@ describe('§6/§14 "둘 중에는?" — describe candidates, never a winner', ()
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(systemText(h.sent)).toContain('승자/1순위로 고르거나');
-    expect(r.structuredResult).toBeUndefined(); // winner rejected
+    // V3 §11 — the invented winner is still fully rejected: none of the model's prose survives. The user is
+    // handed the server's own grounded composition instead of the canned message, and that composition —
+    // being server text — never names a winner either.
+    expect(r.diagnostics?.groundedFallback).toBe(true);
+    expect(r.text).not.toContain('5월이 2월보다');
+    expect(r.text).not.toMatch(/5월이 더 좋습니다/);
   });
 });
 

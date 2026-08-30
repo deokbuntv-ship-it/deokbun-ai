@@ -7,6 +7,7 @@ import { GROUNDING_UNAVAILABLE } from '@/features/chat/prompts/grounding';
 import {
   classifyConsultationOutput,
   firstStructuredRejectionReason,
+  SEMANTIC_REJECTION_MESSAGE,
 } from '@/features/chat/prompts/structuredConsultation';
 import { buildServerConsultation } from '@/features/chat/server';
 import type { ServerConsultationDeps } from '@/features/chat/server';
@@ -96,14 +97,21 @@ describe('buildServerConsultation surfaces safe diagnostics (log-only)', () => {
       expect(r.structuredResult).toBeDefined();
     }
   });
-  it('신강 answer → SEMANTIC_REJECTED classification + FORBIDDEN_THEORY reason, safe message, no structuredResult', async () => {
+  // DELIVERY QUALITY V3 §11 — the rejection is unchanged (classification, reason, and the total discard of
+  // the model's prose); what changed is what the user is handed INSTEAD. A rejected answer for which the
+  // server holds a grounded plan now delivers the deterministic grounded composition rather than the canned
+  // retry message, so a paid request never returns a zero-value error card.
+  it('신강 answer → SEMANTIC_REJECTED classification + FORBIDDEN_THEORY reason, unsafe prose discarded, grounded composition delivered', async () => {
     const r = await buildServerConsultation({ birthInput: birth, question: '내 성격의 장단점을 알려줘' }, deps(answer(SIN_GANG)));
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.diagnostics?.outputClassification).toBe('SEMANTIC_REJECTED');
       expect(r.diagnostics?.rejectionReason).toBe('FORBIDDEN_THEORY');
-      expect(r.structuredResult).toBeUndefined();
-      expect(r.text).not.toMatch(/신강/); // raw unsafe text discarded → safe message
+      expect(r.diagnostics?.groundedFallback).toBe(true);
+      expect(r.diagnostics?.groundedViolations).toEqual(['LLM_OUTPUT_REJECTED']);
+      expect(r.text).not.toMatch(/신강/); // raw unsafe text discarded — the whole answer, not a redaction
+      expect(r.text).not.toBe(SEMANTIC_REJECTION_MESSAGE);
+      expect(r.structuredResult).toBeDefined();
     }
   });
 });

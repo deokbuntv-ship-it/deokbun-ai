@@ -216,6 +216,8 @@ export type ServerConsultationDiagnostics = {
   // fact and the deterministic grounded composition was delivered instead. Presentation only; billing
   // semantics are unchanged.
   groundedFallback?: boolean;
+  /** V3 §2 — WHY the deterministic composition was delivered. Bounded categories, never answer content. */
+  groundedViolations?: string[];
   // Live follow-up (Sprint E): the classified follow-up intent + whether the stored decision was under a
   // different decision version than current (so a "왜?" explained the OLD decision without recomputing).
   followUp?: string; // WHY | NEXT_YEAR | BETWEEN_CANDIDATES | WHEN

@@ -53,8 +53,9 @@ import {
   isDeclinedToDecide, buildDeclinedSummary, type CrossDivinationVerdict,
 } from '@/features/divination';
 import {
-  buildGroundedNarrativePlan, composeGroundedFallback, gateAgainstGroundedNarrative,
-  narrativeIntentOf, renderGroundedSections, type NarrativeIntent,
+  buildGroundedNarrativePlan, classifyGroundedViolations, composeGroundedFallback, gateAgainstGroundedNarrative,
+  narrativeIntentOf, renderGroundedSections, untraceableFacts,
+  type GroundedViolationCategory, type NarrativeIntent,
 } from './groundedNarrative';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -568,10 +569,34 @@ export async function buildServerConsultation(
   // the same grounded claims rather than fabricated prose. ONE pass, never a regeneration loop, and never a
   // billing change: this is presentation only.
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
-  const groundedFallbackUsed = gated?.fatal === true;
+  // DELIVERY QUALITY V3 §11 — THE GENERALIZABLE CONTRACT DEFECT behind the recurring CAREER-11 hard fail.
+  // When the LLM's own output is discarded (SEMANTIC_REJECTED, or a STRUCTURAL_FALLBACK whose salvaged prose
+  // would itself smuggle an ungrounded technical fact), the pipeline still returned the canned retry message
+  // — a paid, zero-value answer — even though the SERVER already holds a complete, fully grounded answer in
+  // `groundedPlan`. The rejection is not weakened in any way: every byte of the model's prose is still
+  // thrown away, no regeneration is attempted, and the delivered text is the deterministic composition of
+  // authoritative claims only. This is not a CAREER-11 special case and does not look at the question: it
+  // applies to every rejected answer for which a grounded plan exists. The canned message survives only for
+  // the genuinely answer-less case (no verdict ⇒ no plan), and safety hard-stops return long before here.
+  const rejectedButGrounded = clampedResult === null
+    && groundedPlan !== null
+    && (outcome.kind === 'SEMANTIC_REJECTED'
+      || (outcome.kind === 'STRUCTURAL_FALLBACK' && untraceableFacts(outcome.text, groundedPlan).length > 0));
+  const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
+  // The composition is run back through the SAME verdict-authority clamp the accepted path uses, so a
+  // declined verdict speaks in its declined, question-shaped headline on both paths rather than in the raw
+  // `primaryConclusion` — one headline contract, one place that decides it.
+  const groundedFallbackResult = (): ParsedStructuredConsultation => applyVerdictAuthorityClamp(
+    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!) }, verdictForGuard, narrativeIntent,
+  )!;
   const acceptedResult = gated
-    ? (gated.fatal ? composeGroundedFallback(groundedPlan!) : gated.result)
-    : clampedResult;
+    ? (gated.fatal ? groundedFallbackResult() : gated.result)
+    : rejectedButGrounded
+      ? groundedFallbackResult()
+      : clampedResult;
+  const groundedViolations: GroundedViolationCategory[] = gated?.fatal
+    ? classifyGroundedViolations(gated.violations)
+    : rejectedButGrounded ? ['LLM_OUTPUT_REJECTED'] : [];
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
   // §22 — the SAME instant the verdict was evaluated at. See `evaluationInstant` above.
@@ -657,6 +682,7 @@ export async function buildServerConsultation(
     outputClassification: outcome.kind,
     ...(guard.regenerated ? { regenerated: true } : {}),
     ...(groundedFallbackUsed ? { groundedFallback: true } : {}),
+    ...(groundedViolations.length > 0 ? { groundedViolations } : {}),
     ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
     ...(followUpIntent !== 'NONE' ? { followUp: followUpIntent } : {}),
     ...(followUpVersionMismatch ? { versionMismatch: true } : {}),

@@ -29,14 +29,18 @@ import {
 } from '@/features/divination';
 
 import type { ConsultationContentPlan, VerifiedEvidenceCatalogItem } from './consultationContentPlan';
+import { joinDistinctSentences, realize } from './koreanRealization';
 
-export const GROUNDED_NARRATIVE_VERSION = 'grounded-narrative@2.0.0';
+export const GROUNDED_NARRATIVE_VERSION = 'grounded-narrative@3.0.0';
 
 // ── 1. GROUNDED CLAIM CATALOG ────────────────────────────────────────────────────────────────────────
 /** The authoritative stance a claim carries. Never rewritten into its opposite (§6). */
 export type ClaimPolarity = 'SUPPORT' | 'LIMIT' | 'MIXED' | 'NEUTRAL';
 export type ClaimRole =
-  | 'CONCLUSION' | 'CORE_REASON' | 'POSITIVE' | 'CAUTION' | 'CONTRADICTION' | 'TIMING' | 'SYNTHESIS' | 'EVIDENCE';
+  | 'CONCLUSION' | 'CORE_REASON' | 'POSITIVE' | 'CAUTION' | 'CONTRADICTION' | 'TIMING' | 'SYNTHESIS' | 'EVIDENCE'
+  // V3 §8 — the verdict's OWN implication sentence, carried as a claim so the deterministic composition can
+  // close a causal chain with authoritative text instead of a generic sentence of its own.
+  | 'IMPLICATION';
 
 export type GroundedClaim = {
   id: string; // C1.., S1.., T1.., E1.. — stable within one plan
@@ -74,6 +78,7 @@ export type GroundedNarrativePlan = {
   cautionClaims: readonly string[];
   contradictionClaims: readonly string[];
   timingClaims: readonly string[];
+  implicationClaims: readonly string[];
   actionBoundary: 'GUIDED' | 'CAUTIOUS';
   /** Disciplines that did not cover this question. NOT_COVERED — never a calculation failure (§15). */
   coverageGaps: readonly Discipline[];
@@ -167,6 +172,15 @@ export function buildGroundedNarrativePlan(
       provenance: e.provenance,
     });
   }
+  // V3 §8 — the verdict's own "so what" sentence. Verbatim Cross output, exactly like every claim above;
+  // carried LAST so it never displaces a substantive reason in any selection that takes the first N.
+  if (verdict.actionableInterpretation) {
+    add({
+      discipline: 'CROSS', domain: verdict.questionDomain, scope: 'UNSCOPED', polarity: 'NEUTRAL',
+      role: 'IMPLICATION', authoritativeMeaning: verdict.actionableInterpretation,
+      provenance: 'CROSS:actionableInterpretation',
+    }, 'C');
+  }
 
   const coverageGaps = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
   // A time LAYER is grounded when a claim actually stands on it. Cross's own prose does not always spell the
@@ -186,22 +200,53 @@ export function buildGroundedNarrativePlan(
     ...verdict.evidenceReferences.flatMap((r) => r.lines),
     ...claims.flatMap((c) => [c.authoritativeMeaning, c.technicalAnchor ?? '']),
   ].filter((s) => typeof s === 'string' && s.length > 0).join('\n');
+  // CRITICAL ORDERING — the corpus is built from the FULL claim list ABOVE, deduplication happens BELOW.
+  // Deduplication is a presentation concern; letting it shrink the corpus would tighten the fact gate and
+  // push MORE answers into fallback for text the server itself supplied.
+  const distinct = dedupeClaims(claims);
 
   return {
     verdictState: declined ? 'DECLINED' : 'DIRECTIONAL',
     intent,
     directConclusion: verdict.primaryConclusion,
-    claims,
-    coreReasons: byId(claims, 'CORE_REASON'),
-    positiveClaims: byId(claims, 'POSITIVE'),
-    cautionClaims: byId(claims, 'CAUTION'),
-    contradictionClaims: [...byId(claims, 'SYNTHESIS'), ...byId(claims, 'CONTRADICTION')],
-    timingClaims: byId(claims, 'TIMING'),
+    claims: distinct,
+    coreReasons: byId(distinct, 'CORE_REASON'),
+    positiveClaims: byId(distinct, 'POSITIVE'),
+    cautionClaims: byId(distinct, 'CAUTION'),
+    contradictionClaims: [...byId(distinct, 'SYNTHESIS'), ...byId(distinct, 'CONTRADICTION')],
+    timingClaims: byId(distinct, 'TIMING'),
+    implicationClaims: byId(distinct, 'IMPLICATION'),
     actionBoundary: contentPlan.actionBoundary,
     coverageGaps,
     groundedCorpus,
     provenance: ['deokbunai.grounded-narrative-plan.v2'],
   };
+}
+
+/**
+ * §6 — one authoritative claim, one appearance. The engines emit the SAME sentence through several arrays
+ * (a 재백 axis conclusion is also a favorableFactor meaning, and one 화기 meaning is attached to every axis
+ * it touches), so the raw catalog carried up to seven ids for one sentence and the answer said it as many
+ * times. Identity is EXACT normalized authoritative text — provenance-stable, never fuzzy similarity, so a
+ * genuinely different fact with similar wording is always kept. First occurrence wins, which is build order
+ * (core → axis → risk → synthesis → timing → evidence → implication); when the survivor carried no
+ * technical anchor and a later copy does, the anchor is adopted so §7's concrete evidence is never the thing
+ * that gets dropped.
+ */
+function dedupeClaims(claims: readonly GroundedClaim[]): GroundedClaim[] {
+  const kept: GroundedClaim[] = [];
+  const seen = new Map<string, number>();
+  for (const c of claims) {
+    const key = c.authoritativeMeaning.replace(/\s+/g, '');
+    const at = seen.get(key);
+    if (at === undefined) {
+      seen.set(key, kept.length);
+      kept.push(c);
+      continue;
+    }
+    if (!kept[at].technicalAnchor && c.technicalAnchor) kept[at] = { ...kept[at], technicalAnchor: c.technicalAnchor };
+  }
+  return kept;
 }
 
 // ── 2. TECHNICAL / TEMPORAL FACT GATE ────────────────────────────────────────────────────────────────
@@ -269,6 +314,29 @@ export function untraceableFacts(text: string, plan: GroundedNarrativePlan): str
   for (const r of ageRangesIn(text)) if (!groundedRanges.has(r)) found.add(`${r}세`);
   if (CALCULATION_FAILED_CLAIM.test(text)) found.add('NOT_COVERED_AS_FAILURE');
   return [...found];
+}
+
+// V3 §2 — WHY the fallback fired, as a bounded category rather than the raw token. Recorded in the server
+// diagnostics so the fallback rate can be attributed without ever logging answer content.
+export type GroundedViolationCategory =
+  | 'UNSUPPORTED_TEMPORAL_CLAIM'
+  | 'UNSUPPORTED_TECHNICAL_ENTITY'
+  | 'COVERAGE_GAP_AS_FAILURE'
+  // The LLM's whole answer was discarded (semantic rejection / unrenderable output); the delivered answer is
+  // the server's own grounded composition. Not a grounded-corpus miss — recorded separately so the two very
+  // different causes of a deterministic answer are never conflated in the fallback rate.
+  | 'LLM_OUTPUT_REJECTED';
+
+const TEMPORAL_VIOLATION = /^(대운|세운|월운|일운|원국|대한궁)$|세$/;
+
+export function classifyGroundedViolations(violations: readonly string[]): GroundedViolationCategory[] {
+  const out = new Set<GroundedViolationCategory>();
+  for (const v of violations) {
+    if (v === 'NOT_COVERED_AS_FAILURE') out.add('COVERAGE_GAP_AS_FAILURE');
+    else if (TEMPORAL_VIOLATION.test(v)) out.add('UNSUPPORTED_TEMPORAL_CLAIM');
+    else out.add('UNSUPPORTED_TECHNICAL_ENTITY');
+  }
+  return [...out];
 }
 
 /** §16 — bounded output hygiene. Removes scaffold artifacts without touching product content. */
@@ -344,60 +412,176 @@ export function gateAgainstGroundedNarrative(
 }
 
 // ── 3. SERVER-MATERIALIZED SECTIONS + DETERMINISTIC FALLBACK ─────────────────────────────────────────
+const claimsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): GroundedClaim[] =>
+  ids.map((id) => plan.claims.find((c) => c.id === id)).filter((c): c is GroundedClaim => !!c);
+
 const meaningsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): string[] =>
-  ids.map((id) => plan.claims.find((c) => c.id === id)?.authoritativeMeaning).filter((s): s is string => !!s);
+  claimsOf(plan, ids).map((c) => c.authoritativeMeaning);
 
 /**
  * §8/§9 — the SERVER-OWNED narrative sections, rendered directly from the claim catalog with NO LLM step:
  * the cross-system synthesis ("왜 이렇게 보나요") and the temporal flow ("앞으로의 흐름", present only when a
  * grounded temporal claim exists). These sit alongside the existing VerifiedEvidence citations and, like
  * them, the LLM can neither alter nor invent their content.
+ *
+ * V3 §5/§6 — the join is sentence-deduplicating and surface-realized. Contradiction resolutions share their
+ * closing sentence across axes, so a plain join printed the same closing sentence once per axis.
  */
 export function renderGroundedSections(plan: GroundedNarrativePlan): { title: string; body: string }[] {
   const out: { title: string; body: string }[] = [];
   const synthesis = meaningsOf(plan, plan.contradictionClaims);
-  if (synthesis.length > 0) out.push({ title: '왜 이렇게 보나요', body: synthesis.join(' ') });
+  if (synthesis.length > 0) out.push({ title: '왜 이렇게 보나요', body: realize(joinDistinctSentences(synthesis)) });
   const timing = meaningsOf(plan, plan.timingClaims);
-  if (timing.length > 0) out.push({ title: '앞으로의 흐름', body: timing.join(' ') });
+  if (timing.length > 0) out.push({ title: '앞으로의 흐름', body: realize(joinDistinctSentences(timing)) });
   return out;
 }
 
-const ACTION_BOUNDARY_TEXT: Record<GroundedNarrativePlan['actionBoundary'], string> = {
-  GUIDED: '지금 확인된 근거 안에서 움직이시고, 근거가 닿지 않는 부분까지 한 번에 확정하지는 마십시오.',
-  CAUTIOUS: '되돌릴 수 있는 범위에서 준비·확인하시고, 큰 비용이나 되돌리기 어려운 약속은 아직 확정하지 마십시오.',
+// §9/§14 — the question shape decides the ACTION section heading and boundary sentence. A "왜 이런가"
+// question must not be answered with "큰 결정을 확정하지 마세요", and a "나는 어떤 사람인가" question must not
+// read as a yes/no prompt. Every boundary below says the same thing about how far the evidence reaches; they
+// differ only in what the reader was actually asking for.
+const ACTION_SECTION: Record<
+  NarrativeIntent,
+  Record<GroundedNarrativePlan['actionBoundary'], { title: string; body: string }>
+> = {
+  DECISION: {
+    GUIDED: { title: '이렇게 움직이시면 됩니다', body: '지금 확인된 근거 안에서 움직이시고, 근거가 닿지 않는 부분까지 한 번에 확정하지는 마십시오.' },
+    CAUTIOUS: { title: '이렇게 움직이시면 됩니다', body: '되돌릴 수 있는 범위에서 준비·확인하시고, 큰 비용이나 되돌리기 어려운 약속은 아직 확정하지 마십시오.' },
+  },
+  COMPARISON: {
+    GUIDED: { title: '어느 쪽을 먼저 보시면 됩니다', body: '위에서 확인된 근거가 더 두껍게 붙는 쪽을 먼저 보시고, 근거가 닿지 않는 쪽까지 한 번에 정하지는 마십시오.' },
+    CAUTIOUS: { title: '어느 쪽을 먼저 보시면 됩니다', body: '두 쪽 모두 되돌릴 수 있는 범위에서만 시험해 보시고, 지금 한쪽으로 완전히 몰아두지는 마십시오.' },
+  },
+  TIMING: {
+    GUIDED: { title: '시점을 이렇게 보시면 됩니다', body: '위에 확인된 시기 근거가 닿는 범위까지만 계획을 잡으시고, 그보다 먼 시점은 아직 고정하지 마십시오.' },
+    CAUTIOUS: { title: '시점을 이렇게 보시면 됩니다', body: '지금은 되돌릴 수 있는 준비까지만 진행하시고, 시점을 확정해야 하는 약속은 근거가 닿는 범위 안에서만 잡으십시오.' },
+  },
+  EXPLANATION: {
+    GUIDED: { title: '이렇게 이해하시면 됩니다', body: '위 구조가 지금 이 일이 그렇게 흘러가는 이유입니다. 사람이나 상황 하나를 원인으로 지목하기보다, 이 구조가 반복해서 건드려지는 자리라는 점을 기준으로 두십시오.' },
+    CAUTIOUS: { title: '이렇게 이해하시면 됩니다', body: '위 구조가 지금 이 일이 그렇게 흘러가는 이유입니다. 다만 확인된 근거가 닿는 데까지가 설명의 범위이고, 그 밖의 원인까지 여기서 단정하지는 않습니다.' },
+  },
+  TRAIT: {
+    GUIDED: { title: '이 결을 이렇게 쓰시면 됩니다', body: '위에서 확인된 결이 실제로 힘을 받는 자리에 시간을 쓰시고, 근거가 닿지 않는 영역까지 같은 결이라고 넓혀 보지는 마십시오.' },
+    CAUTIOUS: { title: '이 결을 이렇게 쓰시면 됩니다', body: '위에서 확인된 결은 되돌릴 수 있는 범위에서 먼저 시험해 보시고, 그것을 근거로 큰 결정까지 한 번에 옮기지는 마십시오.' },
+  },
 };
 
+// §9 — the follow-up offer, shaped by what was asked. Deterministic and fact-free: each one only offers to
+// go deeper on material the answer ALREADY stands on, so it can never promise a fact the server lacks.
+const FOLLOW_UPS: Record<NarrativeIntent, readonly string[]> = {
+  DECISION: ['이 판단에서 가장 크게 걸리는 근거 하나만 더 자세히 봐주세요.', '지금 조건이 달라지면 결론도 달라지나요?'],
+  COMPARISON: ['두 쪽의 근거 차이를 조금 더 자세히 짚어주세요.', '어느 쪽이 먼저 풀리는 구조인가요?'],
+  TIMING: ['이 시기 판단의 근거를 조금 더 자세히 설명해주세요.', '이 시점 앞뒤로 흐름이 어떻게 달라지나요?'],
+  EXPLANATION: ['이 구조가 왜 반복되는지 조금 더 풀어서 설명해주세요.', '이 구조에서 제가 바꿀 수 있는 부분은 어디인가요?'],
+  TRAIT: ['이 결이 실제로 잘 드러나는 자리는 어디인가요?', '이 결과 잘 맞지 않는 자리는 어디인가요?'],
+};
+
+// §8 — the CAUSAL connectives. The composer may place these BETWEEN two claims; it may never alter either
+// claim, and it never asserts a relation the claims' own polarities do not already carry.
+const CONTRAST = '다만';
+const THEREFORE = '그래서';
+
+const INTENT_OPENER: Record<NarrativeIntent, string> = {
+  DECISION: '',
+  COMPARISON: '',
+  TIMING: '시점만 놓고 보면 이렇습니다.',
+  EXPLANATION: '왜 그런지부터 보겠습니다.',
+  TRAIT: '타고난 결부터 보겠습니다.',
+};
+
+/** §7 — an anchored restatement: the claim, plus the technical fact it stands on, when it has one. */
+function anchored(c: GroundedClaim): string {
+  return c.technicalAnchor ? `${c.authoritativeMeaning} (근거: ${c.technicalAnchor})` : c.authoritativeMeaning;
+}
+
+const CAP = 3;
+
 /**
- * §12 — the deterministic grounded composition. NOT another judge: it only renders claims that are already
- * authoritative, in the narrative plan's own section order. Used when the LLM's stylistic rendering fails the
- * grounded contract, so the user still receives a grounded answer instead of fabricated prose. Presentation
- * only — billing/charge-release semantics are untouched.
+ * Sentence-split a joined body back into bullet lines, realized and capped. `said` is the SHARED sentence
+ * ledger: a sentence already delivered in the causal body or in 강점 can never reappear as a 주의할 점, which
+ * a per-section dedupe misses because the repetition comes from two DIFFERENT claims (a two-sentence
+ * riskFactor meaning that happens to contain a one-sentence evidence meaning verbatim).
+ */
+function bulletsFrom(pool: readonly GroundedClaim[], spent: ReadonlySet<string>, said: Set<string>): string[] {
+  return joinDistinctSentences(pool.filter((c) => !spent.has(c.id)).map((c) => c.authoritativeMeaning), said)
+    .split(/(?<=[.!?…])\s+/)
+    .map((s) => realize(s))
+    .filter((s) => s.length > 0)
+    .slice(0, CAP);
+}
+
+/**
+ * §4/§8/§12 — the deterministic grounded composition. NOT another judge: every sentence it renders is either
+ * an authoritative claim verbatim or one of the fixed connectives/boundaries above.
+ *
+ * V2 shipped this as a claim DUMP whose body was `plan.directConclusion` — the SAME string as the headline —
+ * because `coreReasons` is fed from `verdict.natalBaseline`/`verdict.currentFlow`, which the production Cross
+ * Judge never populates (both are optional pass-throughs on the reasoner input that no caller supplies). Every
+ * fallback answer therefore opened by saying its own headline twice and then listed bullets with no reasoning
+ * between them. V3 keeps the exact same fact boundary and instead:
+ *
+ *   - builds the body as a CAUSAL chain (lead → contrast → implication) from claims that DO exist,
+ *   - anchors the lead in a technical fact so the answer is visibly about THIS chart (§7),
+ *   - frames the action section and the follow-ups by the question that was asked (§9),
+ *   - realizes 조사 agreement and speech level so engine strings read as product prose (§5).
+ *
+ * Presentation only — billing/charge-release semantics are untouched.
  */
 export function composeGroundedFallback(plan: GroundedNarrativePlan): ParsedStructuredConsultation {
-  const reasons = meaningsOf(plan, plan.coreReasons);
-  const positives = meaningsOf(plan, plan.positiveClaims);
-  const cautions = meaningsOf(plan, plan.cautionClaims);
   const evidence = plan.claims.filter((c) => c.role === 'EVIDENCE');
-  const support = evidence.filter((c) => c.polarity === 'SUPPORT').map((c) => c.authoritativeMeaning);
-  const limits = evidence.filter((c) => c.polarity === 'LIMIT').map((c) => c.authoritativeMeaning);
-  // The headline is already `directConclusion`; repeating it verbatim as the body was the first thing this
-  // composition got wrong in practice. Lead with the REASONS and fall back to the conclusion only when the
-  // verdict supplied no baseline/flow of its own.
-  const core = reasons.length > 0 ? reasons.join(' ') : plan.directConclusion;
+  const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === 'SUPPORT')];
+  const limits = [...claimsOf(plan, plan.cautionClaims), ...evidence.filter((c) => c.polarity === 'LIMIT')];
+  const reasons = claimsOf(plan, plan.coreReasons);
+  const implication = meaningsOf(plan, plan.implicationClaims)[0];
+
+  // §7 — an ANCHORED claim first. Axis conclusions carry no technical anchor and are often a near-restatement
+  // of the headline for a neighbouring axis, so taking the pool head produced a body that said the headline
+  // again in different words and cited nothing. Preferring the claim that stands on a named technical fact
+  // fixes both at once, and falls back to the pool head when nothing in it is anchored.
+  const firstAnchored = (pool: readonly GroundedClaim[]): GroundedClaim | undefined =>
+    pool.find((c) => !!c.technicalAnchor) ?? pool[0];
+  // §8 — SUPPORT + LIMIT is the compound truth the verdict already carries. Leading with the side that
+  // actually carries more claims keeps the body consistent with the headline instead of arguing against it.
+  const leadIsLimit = limits.length >= supports.length;
+  const lead = firstAnchored(leadIsLimit ? limits : supports) ?? reasons[0] ?? supports[0] ?? limits[0];
+  const counterCandidate = firstAnchored(leadIsLimit ? supports : limits);
+  const counter = counterCandidate && counterCandidate.id !== lead?.id ? counterCandidate : undefined;
+
+  // ONE ledger for the whole answer: the headline, then the causal body, then the bullets. Nothing already
+  // said is said again (§6/§10). The connective is applied AFTER the ledger, so a contrast whose claim was
+  // already stated is dropped outright rather than reappearing as "다만 <the same sentence>" — the exact
+  // repetition a naive prefix-then-dedupe produces, because the prefix changes the text.
+  const said = new Set<string>();
+  joinDistinctSentences([plan.directConclusion], said);
+  const chain: string[] = [];
+  const emit = (text: string | undefined, connective = ''): void => {
+    if (!text) return;
+    const fresh = joinDistinctSentences([text], said);
+    if (fresh.length > 0) chain.push(connective ? `${connective} ${fresh}` : fresh);
+  };
+
+  if (INTENT_OPENER[plan.intent]) chain.push(INTENT_OPENER[plan.intent]);
+  if (lead) emit(anchored(lead));
+  if (counter) emit(counter.authoritativeMeaning, CONTRAST);
+  // A further reason only when it is genuinely a different claim — never padding for length (§10).
+  emit(reasons.find((r) => r.id !== lead?.id && r.id !== counter?.id)?.authoritativeMeaning);
+  emit(implication, THEREFORE);
+  const core = chain.length > 0 ? realize(chain.join(' ')) : realize(plan.directConclusion);
+
+  // Claims already spent on the causal body are not repeated as bullets (§6/§10).
+  const spent = new Set([lead, counter].filter((c): c is GroundedClaim => !!c).map((c) => c.id));
+  const strengths = bulletsFrom(supports, spent, said);
+  const cautions = bulletsFrom(limits, spent, said);
   const timing = meaningsOf(plan, plan.timingClaims);
 
-  // The synthesis and temporal blocks are appended separately by the caller from `renderGroundedSections`,
-  // so this section carries only the action boundary — the same claim is never shown twice.
-  const domainInterpretation = [
-    { title: '이렇게 움직이시면 됩니다', body: ACTION_BOUNDARY_TEXT[plan.actionBoundary] },
-  ];
-
   return {
-    coreSummary: plan.directConclusion,
+    coreSummary: realize(plan.directConclusion),
     coreInterpretation: core,
-    strengths: [...positives, ...support].slice(0, 3),
-    cautions: [...cautions, ...limits].slice(0, 3),
-    domainInterpretation,
-    futureFlow: timing.length > 0 ? timing.join(' ') : undefined,
+    // §4 — never force an empty section.
+    strengths: strengths.length > 0 ? strengths : undefined,
+    cautions: cautions.length > 0 ? cautions : undefined,
+    domainInterpretation: [ACTION_SECTION[plan.intent][plan.actionBoundary]],
+    futureFlow: timing.length > 0 ? realize(joinDistinctSentences(timing)) : undefined,
+    followUps: [...FOLLOW_UPS[plan.intent]],
   };
 }

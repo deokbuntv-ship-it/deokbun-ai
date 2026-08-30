@@ -21,6 +21,8 @@ import {
   isDeclinedToDecide,
 } from '@/features/divination';
 
+import { realize } from './koreanRealization';
+
 export type ContentDomain = ConsultationJudgeDomain | 'GENERAL';
 
 export type DomainFacet = { key: string; label: string };
@@ -304,8 +306,13 @@ export function renderContentPlanDirective(plan: ConsultationContentPlan): strin
  *  LLM cannot alter, recombine, or invent a technical entity relationship here: this function is the only
  *  thing that writes it, and it only ever echoes `canonicalMeaning`/`canonicalTechnicalAnchor` verbatim. */
 export function renderVerifiedEvidenceSection(catalog: readonly VerifiedEvidenceCatalogItem[]): { title: string; body: string }[] {
+  // DELIVERY QUALITY V3 §5 — the catalog carries engine strings verbatim, which is the point; but the engines
+  // assemble them with a fixed 조사 and a plain (해라체) ending ("… 원국 년주 천간충를 정면으로 흔든다"), so the
+  // one section the server renders WORD FOR WORD was also the one most visibly ungrammatical. `realize` is
+  // orthography and speech level only — no word is added, removed, or exchanged, so the catalog stays the
+  // authority for every technical entity it names.
   return catalog.map((e) => ({
     title: `전문근거 · ${DISCIPLINE_LABEL[e.discipline]} (${e.id})`,
-    body: `${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`,
+    body: realize(`${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`),
   }));
 }
