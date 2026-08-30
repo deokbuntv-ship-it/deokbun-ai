@@ -212,6 +212,10 @@ export type ServerConsultationDiagnostics = {
   safetyRoute?: string; // SELF_HARM | DEATH_LIFESPAN | MEDICAL | FINANCIAL_GUARANTEE
   // True when the certainty/mitigation guard forced exactly one constrained regeneration (§9).
   regenerated?: boolean;
+  // GROUNDED_NARRATIVE_V2 §12 — true when the LLM's core prose introduced an ungrounded technical/temporal
+  // fact and the deterministic grounded composition was delivered instead. Presentation only; billing
+  // semantics are unchanged.
+  groundedFallback?: boolean;
   // Live follow-up (Sprint E): the classified follow-up intent + whether the stored decision was under a
   // different decision version than current (so a "왜?" explained the OLD decision without recomputing).
   followUp?: string; // WHY | NEXT_YEAR | BETWEEN_CANDIDATES | WHEN

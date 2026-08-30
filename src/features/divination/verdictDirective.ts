@@ -107,10 +107,28 @@ function scopePhrase(v: CrossDivinationVerdict): string {
   return domain ? `${SCOPE_LABEL[domain]} 관련 질문` : '이 질문';
 }
 
-export function buildDeclinedSummary(v: CrossDivinationVerdict): string {
+// GROUNDED_NARRATIVE_V2 §14 — the declined sentence's CLOSING clause used to assume a decision question in
+// every case ("큰 결정을 바로 확정하기보다…"), which is the wrong language for "왜 연애에서 상처받나?" or
+// "어떤 스타일과 잘 맞나?". These variants keep the SAME non-directionality (none of them recommends a side)
+// and only change the shape of the ask. Selected from the ALREADY-COMPUTED question intent — no new
+// classifier, no LLM, no new fact.
+export type DeclinedNarrativeIntent = 'DECISION' | 'TIMING' | 'EXPLANATION' | 'TRAIT' | 'COMPARISON';
+
+const DECLINED_CLOSING: Record<DeclinedNarrativeIntent, string> = {
+  DECISION: '큰 결정을 바로 확정하기보다, 되돌릴 수 있는 범위에서 준비·확인·검증하세요.',
+  TIMING: '특정 시점을 지금 못박기보다, 근거가 더 모이는 지점을 기준으로 다시 보시는 편이 좋습니다.',
+  EXPLANATION: '원인을 한 가지로 단정하기보다, 지금 보이는 부분과 아직 보이지 않는 부분을 나눠서 보시는 편이 좋습니다.',
+  TRAIT: '한 가지 성향으로 규정하기보다, 지금 확인되는 부분만 그대로 보시는 편이 좋습니다.',
+  COMPARISON: '한쪽을 지금 고르기보다, 각 후보의 근거를 나란히 두고 비교해 보시는 편이 좋습니다.',
+};
+
+export function buildDeclinedSummary(
+  v: CrossDivinationVerdict,
+  intent: DeclinedNarrativeIntent = 'DECISION',
+): string {
   const scope = scopePhrase(v);
   const reason = REASON_PHRASE[declinedReasonCategory(v)];
-  return `${scope}에 대해서는 ${reason} 현재 근거만으로 한쪽 방향을 확정하기 어렵습니다. 큰 결정을 바로 확정하기보다, 되돌릴 수 있는 범위에서 준비·확인·검증하세요.`;
+  return `${scope}에 대해서는 ${reason} 현재 근거만으로 한쪽 방향을 확정하기 어렵습니다. ${DECLINED_CLOSING[intent]}`;
 }
 
 export function renderVerdictDirective(v: CrossDivinationVerdict): string {

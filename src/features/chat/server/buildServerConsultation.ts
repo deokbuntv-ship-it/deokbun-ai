@@ -52,6 +52,10 @@ import {
   extendGraph, refinementFailure, renderVerdictDirective, NO_SIGNAL,
   isDeclinedToDecide, buildDeclinedSummary, type CrossDivinationVerdict,
 } from '@/features/divination';
+import {
+  buildGroundedNarrativePlan, composeGroundedFallback, gateAgainstGroundedNarrative,
+  narrativeIntentOf, renderGroundedSections, type NarrativeIntent,
+} from './groundedNarrative';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -153,10 +157,14 @@ function metaFrom(grounding: ConsultationGrounding, mode: string): ServerGroundi
 export function applyVerdictAuthorityClamp(
   outcome: ConsultationOutcome,
   verdict: CrossDivinationVerdict | null,
+  // GROUNDED_NARRATIVE_V2 §14 — the declined sentence now speaks in the shape of the question that was
+  // actually asked (설명/성향/시기/비교), resolved from the verdict's own already-computed questionIntent.
+  // Default 'DECISION' preserves the previous wording for every existing caller/test.
+  intent: NarrativeIntent = 'DECISION',
 ): ParsedStructuredConsultation | null {
   if (outcome.kind !== 'ACCEPTED') return null;
   if (verdict === null || !isDeclinedToDecide(verdict)) return outcome.result;
-  return { ...outcome.result, coreSummary: buildDeclinedSummary(verdict) };
+  return { ...outcome.result, coreSummary: buildDeclinedSummary(verdict, intent) };
 }
 
 /**
@@ -545,7 +553,25 @@ export async function buildServerConsultation(
   const outcome = guard.outcome;
   // Both downstream derivations (structuredResult, text) read from this SAME clamped value, so the
   // delivered card and the plain-text mirror never disagree.
-  const acceptedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard);
+  const narrativeIntent: NarrativeIntent = verdictForGuard
+    ? narrativeIntentOf(verdictForGuard.questionIntent, plan.comparisonContext.isComparison)
+    : 'DECISION';
+  const clampedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard, narrativeIntent);
+  // GROUNDED CONSULTATION NARRATIVE V2 — the whole answer body (not just 전문근거) is now bound to the
+  // authoritative claim catalog. The plan is built from the SAME content plan the accepted answer was
+  // composed against, so the fact boundary is never stale relative to what the model was shown.
+  const groundedPlan = verdictForGuard && contentPlanHolder.current
+    ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent)
+    : null;
+  // §11/§12 — a technical/temporal fact the grounded material never supplied is stripped from list-shaped
+  // fields; in the CORE prose it cannot be excised, so the user receives the deterministic composition of
+  // the same grounded claims rather than fabricated prose. ONE pass, never a regeneration loop, and never a
+  // billing change: this is presentation only.
+  const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
+  const groundedFallbackUsed = gated?.fatal === true;
+  const acceptedResult = gated
+    ? (gated.fatal ? composeGroundedFallback(groundedPlan!) : gated.result)
+    : clampedResult;
   // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
   // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
   // §22 — the SAME instant the verdict was evaluated at. See `evaluationInstant` above.
@@ -593,9 +619,24 @@ export async function buildServerConsultation(
   // the VerifiedEvidenceCatalog with no LLM step. `lastContentPlan` reflects whichever buildMessages() call
   // actually produced the accepted answer (initial or the single regen), so this is never stale relative to
   // what the model was shown.
-  const verifiedEvidence = contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0
-    ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence)
-    : undefined;
+  // GROUNDED_NARRATIVE_V2 §8/§9 — the server-owned cross-synthesis ("왜 이렇게 보나요") and temporal flow
+  // sections are materialized from the SAME claim catalog and shown ahead of the citations, so every
+  // factual block in the answer body is either server-rendered here or LLM language that passed the
+  // grounded gate above.
+  const authoritativeSections = [
+    // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
+    // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
+    // section is the product, not two.
+    ...(groundedPlan
+      ? renderGroundedSections(groundedPlan).filter(
+        (s) => !(s.title === '앞으로의 흐름' && !!acceptedResult?.futureFlow),
+      )
+      : []),
+    ...(contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0
+      ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence)
+      : []),
+  ];
+  const verifiedEvidence = authoritativeSections.length > 0 ? authoritativeSections : undefined;
   const structuredResult = acceptedResult
     ? {
         ...buildStructuredConsultationResult(acceptedResult, effectiveGrounding),
@@ -615,6 +656,7 @@ export async function buildServerConsultation(
   const diagnostics: ServerConsultationDiagnostics = {
     outputClassification: outcome.kind,
     ...(guard.regenerated ? { regenerated: true } : {}),
+    ...(groundedFallbackUsed ? { groundedFallback: true } : {}),
     ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
     ...(followUpIntent !== 'NONE' ? { followUp: followUpIntent } : {}),
     ...(followUpVersionMismatch ? { versionMismatch: true } : {}),

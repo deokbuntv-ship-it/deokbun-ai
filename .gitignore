@@ -47,3 +47,5 @@ example
 
 # supabase CLI local state
 supabase/.temp/
+# QA regression run outputs (contains full consultation text — never committed)
+.qa-out/

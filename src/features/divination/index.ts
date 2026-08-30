@@ -71,6 +71,7 @@ export {
   renderVerdictDirective, renderEvidenceDirective, verdictEvidenceLines, verdictIsDirectional,
   isDeclinedToDecide, DECLINED_TO_DECIDE_SUMMARY,
   buildDeclinedSummary, declinedReasonCategory, type DeclinedReasonCategory,
+  type DeclinedNarrativeIntent,
 } from './verdictDirective';
 export {
   isPaidReadingAcceptable,

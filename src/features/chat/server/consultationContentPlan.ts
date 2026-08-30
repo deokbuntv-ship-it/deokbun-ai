@@ -284,6 +284,17 @@ export function renderContentPlanDirective(plan: ConsultationContentPlan): strin
   if (plan.mustNotClaim.length > 0) {
     lines.push(`· 하지 말아야 할 것: ${plan.mustNotClaim.join(' / ')}`);
   }
+  // GROUNDED_NARRATIVE_V2 §4/§10 — the LANGUAGE is yours; the technical/시기 FACTS are not. The server gate
+  // enforces this deterministically after the fact, so stating it here is what keeps a compliant answer
+  // from being rewritten into the deterministic composition unnecessarily.
+  lines.push(
+    '· 위·아래에 제공된 근거에 실제로 나온 표현이 아니면, 전문 용어(궁·성·화·문·신·십신·간지·원국/대운/세운/월운 같은 시기 층)를 새로 만들어 쓰지 마십시오. 정확한 기술 근거는 서버가 따로 붙입니다 — 당신은 그 뜻을 쉬운 말로 풀어 주면 됩니다.',
+  );
+  lines.push(
+    plan.timingConclusion
+      ? '· 앞으로의 흐름은 위에 주어진 시기 근거 안에서만 쓰고, "28~37세" 같은 나이 구간은 근거에 그대로 나온 것만 쓰십시오.'
+      : '· 시기 근거가 없으므로 "앞으로의 흐름"은 비워 두십시오. 나이 구간·연도·대운 구간을 만들어 채우지 마십시오.',
+  );
   return lines.join('\n');
 }
 
