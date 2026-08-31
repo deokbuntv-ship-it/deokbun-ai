@@ -126,11 +126,17 @@ describe('§22.7–9 server-owned profile binding fails closed', () => {
     expect(r.ok).toBe(true); // decoy's impossible 2000-02-31 was ignored; server profile is valid
     if (r.ok) expect(r.groundingMeta.grounded).toBe(true);
   });
-  it('a malformed stored profile fails closed (grounding unavailable), never crashes', async () => {
+  // V6 ROOT CAUSE 5 — still fail-closed with no fabricated chart, and now a TYPED non-success rather than a
+  // generic answer sold as a reading. A first-turn consultation whose engines all fail-closed has no
+  // divination basis at all; the caller releases the reservation and charges nothing.
+  it('a malformed stored profile fails closed (GROUNDING_UNAVAILABLE), never crashes', async () => {
     const malformed = { ...birth, birthYear: 'not-a-year', birthMonth: '99', birthDay: '99' };
     const r = await buildServerConsultation(req({ subjectProfileId: 'mine' }), resolver({ status: 'RESOLVED', birthInfo: malformed }));
-    expect(r.ok).toBe(true); // consultation still returns (fail-closed, no fabricated chart)
-    if (r.ok) expect(r.groundingMeta.grounded).toBe(false);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toBe('GROUNDING_UNAVAILABLE');
+      expect(r.message).toBeTruthy(); // consumer-safe explanation, never a fabricated reading
+    }
   });
 });
 

@@ -59,7 +59,12 @@ import {
 } from './groundedNarrative';
 import {
   buildGroundedActionPlan, formatGroundedActionLine, renderGroundedActionLines, renderGroundedActionSection,
+  GROUNDED_ACTION_TITLE,
 } from './groundedActionPlan';
+import {
+  buildTemporalSurfacePlan, temporalAuthorityFrom, TEMPORAL_SECTION_TITLE,
+} from './consultationSurfacePlan';
+import { joinDistinctSentences, realizeForConsumer } from './koreanRealization';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -89,6 +94,107 @@ import type {
 // prompt budget nor smuggle huge payloads. Keeps the most recent turns.
 const MAX_CONTEXT_TURNS = 12;
 const MAX_TURN_CHARS = 4000;
+
+/**
+ * V6 ROOT CAUSE 5 — the consumer-safe explanation for a reading that has NO divination basis at all. Fixed
+ * text: it states what is missing and what would fix it, asserts nothing about the chart (there is none),
+ * and offers no coaching in place of the reading that could not run.
+ */
+export const GROUNDING_UNAVAILABLE_MESSAGE =
+  '지금 등록된 출생 정보로는 사주·자미두수·기문둔갑 어느 쪽도 실제로 세울 수 없었습니다. '
+  + '태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹쳐, 월주를 어느 쪽으로 볼지 확정할 수 없기 때문입니다. '
+  + '없는 근거로 풀이를 지어내지는 않겠습니다. 태어난 시각(또는 대략적인 시간대)을 입력해 주시면 바로 다시 봐 드리겠습니다.';
+
+/**
+ * V6 §DEDUP CONTRACT — ONE sentence ledger across the WHOLE delivered answer, in delivery order.
+ *
+ * Every block already dedupes internally, but each owns a separate ledger, so a claim rendered as a caution
+ * bullet and again inside the action contract and again under the cross-synthesis was three "first"
+ * appearances — 63 of 82 Blind-84 answers repeated a whole sentence for exactly this reason. Identity is the
+ * same exact-normalized-sentence rule `joinDistinctSentences` uses; near-identical wording is never treated
+ * as the same fact.
+ *
+ * PROTECTED blocks (결론, the causal body, the action contract, the temporal surface, the citations) run
+ * through the ledger to REGISTER what they said, but never lose a sentence to it — thinning an instruction,
+ * a conclusion or a citation is worse than a repeat. Everything else is explanatory and loses only what the
+ * reader has already been told, which by construction is never that claim's only appearance.
+ */
+export function applyConsumerDeliveryContract(
+  result: ParsedStructuredConsultation | null,
+  authoritative: readonly { title: string; body: string }[],
+): { result: ParsedStructuredConsultation | null; authoritative: { title: string; body: string }[] } {
+  if (!result) return { result: null, authoritative: authoritative.map(consumerSection) };
+  const said = new Set<string>();
+  const register = (s: string | undefined): void => { if (s) joinDistinctSentences([s], said); };
+  // Explanatory text: what survives the ledger, or the original when nothing does.
+  const thin = (s: string | undefined): string | undefined => {
+    if (!s) return s;
+    const fresh = joinDistinctSentences([s], said);
+    return realizeForConsumer(fresh.length > 0 ? fresh : s);
+  };
+  const thinList = (a: readonly string[] | undefined): string[] | undefined => {
+    if (!a || a.length === 0) return undefined;
+    const kept = a.map((x) => joinDistinctSentences([x], said)).filter((x) => x.length > 0).map(realizeForConsumer);
+    return kept.length > 0 ? kept : undefined;
+  };
+  // DELIVERY ORDER (see userVisibleAnswer): 결론 → 기본 성향 → 쉬운 설명 → 좋은 흐름 → 조심할 점 → the
+  // authoritative tail → 앞으로의 흐름 → 전문근거. The ledger walks it in exactly that order.
+  register(result.coreSummary);
+  register(result.coreInterpretation);
+  const coreSummary = result.coreSummary ? realizeForConsumer(result.coreSummary) : result.coreSummary;
+  const coreInterpretation = result.coreInterpretation ? realizeForConsumer(result.coreInterpretation) : result.coreInterpretation;
+  const disposition = thin(result.disposition);
+  const strengths = thinList(result.strengths);
+  const cautions = thinList(result.cautions);
+  // The composition's own domainInterpretation carries the action contract on the fallback path, so it is
+  // registered rather than thinned — the same protection the labelled tail section gets below.
+  const domainInterpretation = result.domainInterpretation?.map((d) => {
+    register(d.body);
+    return { title: realizeForConsumer(d.title), body: realizeForConsumer(d.body) };
+  });
+  // An explanatory section whose every sentence was already delivered above adds nothing but length, so it
+  // is DROPPED whole rather than restored. That is not "deleting the only relevant claim" — by construction
+  // each of its sentences already reached the reader in an earlier section; the claim survives, the second
+  // printing of it does not.
+  const authoritativeOut = authoritative.flatMap((s) => {
+    if (PROTECTED_SECTION(s.title)) {
+      register(s.body);
+      return [consumerSection(s)];
+    }
+    const fresh = joinDistinctSentences([s.body], said);
+    if (fresh.length === 0) return [];
+    // Dropping a sentence out of the MIDDLE of a block can strand an opening bracket whose closing half
+    // lived in the removed sentence — the engines write multi-sentence parentheticals. When that happens the
+    // block is kept whole: a redundant sentence is a smaller cost than a broken one.
+    return [consumerSection({ title: s.title, body: balanced(fresh) ? fresh : s.body })];
+  });
+  const futureFlow = thin(result.futureFlow);
+  return {
+    result: {
+      ...result,
+      coreSummary, coreInterpretation, disposition, strengths, cautions, domainInterpretation, futureFlow,
+      followUps: result.followUps?.map(realizeForConsumer),
+    },
+    authoritative: authoritativeOut,
+  };
+}
+
+const consumerSection = (s: { title: string; body: string }) =>
+  ({ title: realizeForConsumer(s.title), body: realizeForConsumer(s.body) });
+
+/** Every bracket the text opens, it also closes. Counting is enough — the engines never nest unevenly. */
+const balanced = (text: string): boolean =>
+  (text.match(/\(/g)?.length ?? 0) === (text.match(/\)/g)?.length ?? 0);
+
+// The action contract, the closing line and the temporal surface are INSTRUCTIONS and CONCLUSIONS, not
+// explanation: they keep every sentence they were built with. `renderVerifiedEvidenceSection`'s citations
+// are protected for the same reason the presentation VM never dedupes them — a citation whose meaning was
+// paraphrased in the body still has to show the 근거 it stands on.
+const PROTECTED_TITLES: readonly string[] = [
+  ...Object.values(GROUNDED_ACTION_TITLE), '한마디', TEMPORAL_SECTION_TITLE,
+];
+const PROTECTED_SECTION = (title: string): boolean =>
+  PROTECTED_TITLES.includes(title) || title.startsWith('전문근거');
 
 // Untrusted turns → the ChatMessage[] buildPrompt expects. CRITICAL (§8/§20): only user/assistant roles
 // survive — any injected `system` (or unknown role) is DROPPED, so a client can never author an
@@ -502,16 +608,57 @@ export async function buildServerConsultation(
     messages = buildMessages();
   }
 
+  // V6 ROOT CAUSE 5 — grounded=false + ZERO ENGINES IS NOT A PAID CONSULTATION.
+  //
+  // One profile in the final blind run produced 7 consultations with every engine unavailable, and every one
+  // of them was delivered as a normal, successful, charged answer whose own prose admitted no divination
+  // basis had been used. The root cause of the UNAVAILABILITY is legitimate — the Saju engine returns
+  // YEAR_MONTH_ATTRIBUTION_FAILED / AMBIGUOUS_UNKNOWN_TIME_ON_BOUNDARY_DATE for an unknown birth time on a
+  // 절기 boundary date, where the 월주 genuinely cannot be attributed and fabricating one would be worse —
+  // and it is NOT changed here. What changes is what the product does with it: a typed non-success instead
+  // of general-purpose coaching sold as a reading.
+  //
+  // Scoped to the PRIMARY reading, which is what a paid consultation actually sells. A conversational turn
+  // that legitimately runs without fresh grounding is untouched, and each is excluded by a different one of
+  // the three conditions: an explicit follow-up ("왜?", "그럼 내년은?", "둘 중에는?") by `followUpIntent`, a
+  // dependent continuation over unrestorable history by `continuation`, and both of the controlled
+  // can't-restore notices by `followUpDirective`. Those turns already answer honestly about what they cannot
+  // reach, and turning them into a hard failure would break the follow-up contract without protecting anyone.
+  //
+  // `buildConsultationGrounding` already succeeds on PARTIAL availability — a chart with no birth hour keeps
+  // 명리 and 기문 and reports 자미 as missing_birth_time, which is how 3 of the 12 Blind-84 subjects were read
+  // — so this fires only when NOTHING could be computed, never as a shortcut around a degraded reading.
+  if (
+    effectiveGrounding.status !== 'available'
+    && followUpDirective === null
+    && followUpIntent === 'NONE'
+    && continuation === 'NEW_QUESTION'
+  ) {
+    return { ok: false, reason: 'GROUNDING_UNAVAILABLE', message: GROUNDING_UNAVAILABLE_MESSAGE };
+  }
+
   // 4) The single outbound trust exit (first attempt).
-  let raw: string;
+  //
+  // V6 ROOT CAUSE 6 — THE LANGUAGE MODEL IS NOT A DELIVERY SINGLE POINT OF FAILURE.
+  //
+  // Since RED-TEAM BLOCKER 1 the delivered answer is materialized from the claim catalog whenever a verdict
+  // exists; the model's prose is not the product, it is decoration on top of it. Yet an LLM fault still
+  // returned LLM_FAILED here and the reader got nothing — which is how two Blind-84 cases hit the platform
+  // timeout and then sat at REQUEST_IN_PROGRESS with no response at all. When the authoritative material is
+  // already in hand, an LLM fault is now recorded and the deterministic grounded composition is delivered;
+  // LLM_FAILED survives only for the genuinely answer-less case (no verdict ⇒ no claim catalog).
+  let raw = '';
+  let llmUnavailable = false;
   try {
     raw = await deps.callLLM(messages);
   } catch {
-    return { ok: false, reason: 'LLM_FAILED' };
+    llmUnavailable = true;
   }
-  if (typeof raw !== 'string' || raw.trim().length === 0) {
-    return { ok: false, reason: 'LLM_FAILED' };
-  }
+  if (typeof raw !== 'string' || raw.trim().length === 0) llmUnavailable = true;
+  const hasAuthoritativeMaterial =
+    (effectiveGrounding.status === 'available' && effectiveGrounding.divinationVerdict != null)
+    && contentPlanHolder.current !== null;
+  if (llmUnavailable && !hasAuthoritativeMaterial) return { ok: false, reason: 'LLM_FAILED' };
 
   // 5) SERVER-authoritative output validation (§16) + certainty/mitigation guard (Sprint A §8-§10). On a
   //    guarantee/event-certainty (or, once the kernel activates it, missing-mitigation) violation, exactly
@@ -538,22 +685,30 @@ export async function buildServerConsultation(
   // since the Domain/Temporal Winner Guard batch).
   const verdictForGuard = effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
   const domainComparisonAllowed = plan.comparisonKind === 'DOMAIN' && verdictForGuard !== null && verdictForGuard.direction !== NO_SIGNAL;
-  const guard = await classifyWithGuards({
-    raw,
-    grounding: effectiveGrounding,
-    requireMitigation: followUpIntent === 'WHY' ? false : plan.requireMitigation,
-    forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
-    domainComparisonAllowed,
-    forbidChecklistTone: true, // §13 — behavioral direction, never a productivity/service checklist
-    polarity: followUpIntent === 'WHY' ? previousDecision?.polarity : plan.polarity,
-    regenerate: async () => {
-      try {
-        return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
-      } catch {
-        return null;
-      }
-    },
-  });
+  // V6 §DELIVERY INVARIANT — with no model output there is nothing to classify, and no regeneration is
+  // attempted: a second provider call after a timeout is exactly the wrong move when a deadline has already
+  // been missed. SEMANTIC_REJECTED is the honest classification (every byte of model prose is discarded), and
+  // it is also the state the existing `rejectedButGrounded` path already routes to the deterministic grounded
+  // composition — so the delivery contract below is reached through machinery that is already proven, not a
+  // second parallel path.
+  const guard = llmUnavailable
+    ? { outcome: { kind: 'SEMANTIC_REJECTED', reason: 'LLM_UNAVAILABLE' } as ConsultationOutcome, regenerated: false, guardRejected: false }
+    : await classifyWithGuards({
+      raw,
+      grounding: effectiveGrounding,
+      requireMitigation: followUpIntent === 'WHY' ? false : plan.requireMitigation,
+      forbidWinner: plan.intents.includes('COMPARISON') || plan.intents.includes('RANKING'),
+      domainComparisonAllowed,
+      forbidChecklistTone: true, // §13 — behavioral direction, never a productivity/service checklist
+      polarity: followUpIntent === 'WHY' ? previousDecision?.polarity : plan.polarity,
+      regenerate: async () => {
+        try {
+          return await deps.callLLM(buildMessages(CERTAINTY_REGEN_DIRECTIVE));
+        } catch {
+          return null;
+        }
+      },
+    });
   const outcome = guard.outcome;
   // Both downstream derivations (structuredResult, text) read from this SAME clamped value, so the
   // delivered card and the plain-text mirror never disagree.
@@ -706,12 +861,33 @@ export async function buildServerConsultation(
     ...(acceptedResult?.domainInterpretation ?? []).flatMap((d) => [d.title, d.body]),
     acceptedResult?.futureFlow,
   ].filter((x): x is string => typeof x === 'string').join('\n').replace(/\s+/g, '');
-  const closingLine = verdictForGuard?.actionableInterpretation ?? null;
+  // V6 ROOT CAUSE 1 — the closing line comes from the ONE conclusion surface, not from the raw verdict field.
+  // `buildConclusionSurfacePlan` has already decided whether `actionableInterpretation`'s own direction is
+  // one this asked-axis verdict authorizes, and substituted a non-directional close when it is not. The
+  // 한마디 section and the grounded body's causal close therefore read the SAME value — which is what makes
+  // "the final sentence is not an independent decision generator" structural rather than advisory.
+  const closingLine = groundedPlan?.conclusionSurface.closing ?? null;
   const closingSection = closingLine && !deliveredBody.includes(closingLine.replace(/\s+/g, ''))
     ? { title: '한마디', body: closingLine }
     : null;
+  // V6 ROOT CAUSE 4 — THE TEMPORAL SURFACE. 26 TIMING_QUESTION-mode and 12 TIMING-domain Blind-84 cases
+  // delivered ZERO years, months, ages or dates, while the grounding carried 세운 years, 월운 months, a civil
+  // reference clock and a 대운 age span throughout. Nothing is invented: `buildTemporalSurfacePlan` reads only
+  // those already-computed anchors, and when there are none it SAYS the timing cannot be narrowed instead of
+  // silently answering a different question. Rendered only for a question that actually asked about time, so
+  // a non-timing answer gains no period noise.
+  const temporalSection = groundedPlan && (narrativeIntent === 'TIMING' || verdictForGuard?.asksTiming === true)
+    ? {
+      title: TEMPORAL_SECTION_TITLE,
+      body: buildTemporalSurfacePlan(
+        temporalAuthorityFrom(effectiveGrounding, resolvedTemporalContext, verdictForGuard),
+        (groundedActionPlan?.sourceClaimIds.length ?? 0) > 0,
+      ).text,
+    }
+    : null;
   const authoritativeSections = [
     ...(groundedActionSection ? [groundedActionSection] : []),
+    ...(temporalSection ? [temporalSection] : []),
     ...(closingSection ? [closingSection] : []),
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
     // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
@@ -726,19 +902,37 @@ export async function buildServerConsultation(
       ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence)
       : [],
   );
-  const verifiedEvidence = authoritativeSections.length > 0 ? authoritativeSections : undefined;
-  const structuredResult = acceptedResult
+  // V6 §CONSUMER OUTPUT SANITY CONTRACT — the ONE delivery seam.
+  //
+  // Two contracts are applied here, together, over the COMPLETE answer, because both are properties of the
+  // whole page rather than of any one section that produced a piece of it:
+  //
+  //   INTERNAL IDENTIFIERS — mapped to consumer Korean by `realizeForConsumer` (see koreanRealization). The
+  //     leak channel is `JudgmentEvidence.fact`, a machine-readable source-fact id the reasoning layer builds
+  //     for provenance and the citation renderer printed verbatim; 37 of 82 Blind-84 answers exposed one.
+  //     Doing it once, here, is what the brief means by "one consumer mapping layer" rather than scattered
+  //     string replacements — and the reasoning layer's ids stay exactly as they are for the audit trail.
+  //
+  //   CROSS-SECTION REPETITION — 63 of 82 answers repeated a whole sentence, because each block owns its own
+  //     `joinDistinctSentences` ledger and no ledger spans blocks. `dedupeAcrossSections` runs one ledger in
+  //     DELIVERY ORDER, so the FIRST place a sentence appears keeps it. The protected blocks are exempt from
+  //     losing content (a conclusion or an action instruction must never be thinned by a later repetition),
+  //     and any block that would be emptied entirely is kept whole — deleting the only claim a section
+  //     stands on is worse than saying it twice.
+  const deliveredSections = applyConsumerDeliveryContract(acceptedResult, authoritativeSections);
+  const verifiedEvidence = deliveredSections.authoritative.length > 0 ? deliveredSections.authoritative : undefined;
+  const structuredResult = deliveredSections.result
     ? {
-        ...buildStructuredConsultationResult(acceptedResult, effectiveGrounding),
+        ...buildStructuredConsultationResult(deliveredSections.result, effectiveGrounding),
         ...(conclusionPolarity ? { conclusionPolarity } : {}),
         ...(verifiedEvidence ? { verifiedEvidence } : {}),
         decisionMeta,
       }
     : undefined;
-  const text = acceptedResult
-    ? composeConsultationText(acceptedResult)
+  const text = deliveredSections.result
+    ? composeConsultationText(deliveredSections.result)
     : outcome.kind === 'STRUCTURAL_FALLBACK'
-      ? outcome.text
+      ? realizeForConsumer(outcome.text)
       : SEMANTIC_REJECTION_MESSAGE;
 
   // Safe diagnostics (no content): how the model output was classified and — when NOT rendered as a card
@@ -751,6 +945,7 @@ export async function buildServerConsultation(
     ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
     ...(followUpIntent !== 'NONE' ? { followUp: followUpIntent } : {}),
     ...(followUpVersionMismatch ? { versionMismatch: true } : {}),
+    ...(llmUnavailable ? { llmUnavailable: true } : {}),
     ...(outcome.kind === 'ACCEPTED'
       ? {}
       : {

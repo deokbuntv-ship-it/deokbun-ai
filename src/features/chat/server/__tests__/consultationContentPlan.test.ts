@@ -182,19 +182,25 @@ describe('§9/§11.6 — question relevance: wealth-capacity vs current-investme
     ev({ fact: '세운 재성 도달', meaning: '올해 투자처가 실제로 열립니다', domain: 'MONEY_INFLOW', directness: 'DIRECT', temporalScope: 'SEWOON' }),
   ];
 
+  // V6: the asked axis is now stated on the verdict, matching the money questions this block asks. It used
+  // to be left at the fixture default (OPPORTUNITY) while the pool carried MONEY_INFLOW — harmless while
+  // ranking ignored relevance, but the V6 surface filter drops evidence about a proposition the question did
+  // not ask about, so the fixture has to say which proposition that is.
+  const asked = { questionDomain: 'MONEY_INFLOW' } as const;
+
   it('"재물 그릇이 큰가" (asksTiming=false) leads with the NATAL capacity fact', () => {
-    const plan = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: false, question: '재물 그릇이 큰가?' }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool, { ...asked, asksTiming: false, question: '재물 그릇이 큰가?' }));
     expect(plan.selectedEvidence[0].temporalRole).toBe('NATAL');
   });
 
   it('"올해 투자해도 되나" (asksTiming=true) leads with the PERIOD/current fact', () => {
-    const plan = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: true, question: '올해 투자해도 되나?' }));
+    const plan = buildConsultationContentPlan(verdictWithPool(pool, { ...asked, asksTiming: true, question: '올해 투자해도 되나?' }));
     expect(plan.selectedEvidence[0].temporalRole).not.toBe('NATAL');
   });
 
   it('the underlying facts are identical either way — only ranking changed, nothing invented', () => {
-    const a = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: false }));
-    const b = buildConsultationContentPlan(verdictWithPool(pool, { asksTiming: true }));
+    const a = buildConsultationContentPlan(verdictWithPool(pool, { ...asked, asksTiming: false }));
+    const b = buildConsultationContentPlan(verdictWithPool(pool, { ...asked, asksTiming: true }));
     const anchorsOf = (items: typeof a.selectedEvidence) => [...items.map((e) => e.canonicalTechnicalAnchor)].sort();
     expect(anchorsOf(a.selectedEvidence)).toEqual(anchorsOf(b.selectedEvidence));
   });
@@ -437,22 +443,28 @@ describe('§14.B — technical relationship integrity: no cross-item recombinati
     ];
     const plan = buildConsultationContentPlan(verdictWithPool(pool));
     const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
-    for (const r of rendered) {
-      const anchorsMentioned = ['재성 통근', '식상생재'].filter((a) => r.body.includes(a));
-      expect(anchorsMentioned.length).toBe(1); // never both in the same line
+    // V6 groups the citations by DISCIPLINE (the per-item "(E1)" heading put an internal id in front of the
+    // reader), so two items from one system now share a section — as separate LINES. The property under test
+    // is unchanged and still exact: an anchor never blends into another item's sentence.
+    for (const line of rendered.flatMap((r) => r.body.split('\n'))) {
+      const anchorsMentioned = ['재성 통근', '식상생재'].filter((a) => line.includes(a));
+      expect(anchorsMentioned.length).toBe(1);
     }
   });
 });
 
 describe('§14.C — "전문근거" is built from the supplied VerifiedEvidenceCatalog, deterministically', () => {
-  it('one rendered section per catalog item, each containing that item\'s exact anchor+meaning', () => {
+  // V6 §INTERNAL TOKEN BAN — one section per DISCIPLINE, and the catalog id never reaches a heading. Every
+  // item still renders its own exact anchor+meaning line, which is what "built from the catalog" meant.
+  it('every catalog item renders its exact anchor+meaning, grouped under its discipline and with no id', () => {
     const plan = buildConsultationContentPlan(mkVerdict({}));
     const rendered = renderVerifiedEvidenceSection(plan.selectedEvidence);
-    expect(rendered.length).toBe(plan.selectedEvidence.length);
-    plan.selectedEvidence.forEach((item, i) => {
-      expect(rendered[i].body).toBe(`${item.canonicalMeaning} (근거: ${item.canonicalTechnicalAnchor})`);
-      expect(rendered[i].title).toContain(item.id);
-    });
+    const lines = rendered.flatMap((r) => r.body.split('\n'));
+    expect(rendered.length).toBe(new Set(plan.selectedEvidence.map((e) => e.discipline)).size);
+    for (const item of plan.selectedEvidence) {
+      expect(lines).toContain(`${item.canonicalMeaning} (근거: ${item.canonicalTechnicalAnchor})`);
+      for (const r of rendered) expect(r.title).not.toContain(item.id);
+    }
   });
 
   it('each item carries a stable local id (E1, E2, …) in final selected order', () => {

@@ -1,4 +1,4 @@
-import { isAuthTransportError, parseInsufficientDuk } from '@/features/chat/adapters/llmError';
+import { isAuthTransportError, parseGroundingUnavailable, parseInsufficientDuk } from '@/features/chat/adapters/llmError';
 import { chatConfig } from '@/features/chat/config/chatConfig';
 import type {
   ConsultationTransport,
@@ -29,6 +29,10 @@ export const supabaseEdgeConsultationAdapter: ConsultationTransport = {
       if (insufficient) {
         return { ok: false, error: 'INSUFFICIENT_DUK', balance: insufficient.balance, required: insufficient.required, shortfall: insufficient.shortfall };
       }
+      // 422 → the reading could not be built from the birth information on file (V6 ROOT CAUSE 5). Nothing
+      // was charged and a retry cannot help, so it must NOT collapse into the retryable generic failure.
+      const ungrounded = await parseGroundingUnavailable(error);
+      if (ungrounded) return { ok: false, error: 'GROUNDING_UNAVAILABLE', message: ungrounded.message };
       // 401 → session expired/invalid: surface as auth so the client routes to login+resume (§15).
       return { ok: false, error: isAuthTransportError(error) ? 'AUTH_REQUIRED' : 'REQUEST_FAILED' };
     }

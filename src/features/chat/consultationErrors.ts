@@ -9,7 +9,8 @@ export type ConsultationErrorCode =
   | 'NOT_CONFIGURED'
   | 'INVALID_INPUT'
   | 'REQUEST_FAILED'
-  | 'INSUFFICIENT_DUK';
+  | 'INSUFFICIENT_DUK'
+  | 'GROUNDING_UNAVAILABLE';
 
 export type ConsultationErrorKind = 'auth' | 'recoverable' | 'blocked' | 'input' | 'insufficient';
 
@@ -19,7 +20,13 @@ export type ConsultationErrorView = {
   canRetry: boolean;
 };
 
-export function mapConsultationError(code: ConsultationErrorCode): ConsultationErrorView {
+export function mapConsultationError(
+  code: ConsultationErrorCode,
+  // V6 — the SERVER's own consumer-safe explanation, when it supplied one. Only GROUNDING_UNAVAILABLE
+  // carries it, and only the server can know which input is missing, so it is preferred over the fixed
+  // string below rather than appended to it.
+  detail?: string,
+): ConsultationErrorView {
   switch (code) {
     case 'AUTH_REQUIRED':
       return {
@@ -45,6 +52,16 @@ export function mapConsultationError(code: ConsultationErrorCode): ConsultationE
       return {
         kind: 'input',
         message: '메시지를 다시 확인해 주세요.',
+        canRetry: false,
+      };
+    case 'GROUNDING_UNAVAILABLE':
+      // The reading could not be performed at all, so nothing was charged. Retrying the SAME question with
+      // the SAME birth information must fail identically — the user has to correct the input first, which is
+      // what the server's message tells them.
+      return {
+        kind: 'input',
+        message: detail
+          ?? '지금 등록된 출생 정보로는 사주를 세울 수 없어 상담을 진행하지 못했어요.\n덕은 차감되지 않았습니다. 태어난 시각(또는 대략적인 시간대)을 입력한 뒤 다시 물어봐 주세요.',
         canRetry: false,
       };
     case 'INSUFFICIENT_DUK':

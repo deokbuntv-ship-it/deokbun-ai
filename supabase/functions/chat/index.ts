@@ -137,15 +137,39 @@ type OpenAiCall = {
   responseStatus: string | null;
   incompleteReason: string | null;
 };
+// V6 ROOT CAUSE 6 — THE INTERNAL UPSTREAM DEADLINE.
+//
+// The provider fetch carried no timeout at all, so a slow completion ran until the Edge PLATFORM killed the
+// worker: 2 of 84 Blind-84 cases returned 546/504 with no answer, and their `paid_request_idempotency` row
+// was then stuck at PROCESSING with a null `response_json` — every retry on the same request id answered 409
+// REQUEST_IN_PROGRESS until the lease expired. Nothing downstream could recover, because the worker that
+// owned the lease no longer existed.
+//
+// The deadline is a TOTAL budget for the LLM stage, not a per-call one: the certainty guard may spend a
+// second call, and two independent per-call timeouts would sum past the platform limit again. It is set
+// comfortably below that limit so the deterministic grounded composition, the decision persist and the Duk
+// commit all still have room to run and PERSIST — which is what turns a dead request into a normal,
+// idempotently replayable answer.
+const LLM_DEADLINE_MS = (() => {
+  const v = Number(Deno.env.get('LLM_DEADLINE_MS')?.trim());
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 90_000;
+})();
+
 async function callOpenAI(
   messages: LLMMessage[],
   cfg: { apiKey: string; model: string; maxOutputTokens: number; responseFormat?: unknown; reasoningEffort?: string },
+  deadlineAtMs?: number,
 ): Promise<OpenAiCall> {
   const base: OpenAiCall = { ok: false, statusCode: 0, text: '', usage: {}, responseStatus: null, incompleteReason: null };
+  // Budget already spent ⇒ do not open another connection. Reported as a transport fault (statusCode 0),
+  // which is exactly what it is from the caller's point of view.
+  const remainingMs = deadlineAtMs === undefined ? undefined : deadlineAtMs - Date.now();
+  if (remainingMs !== undefined && remainingMs <= 0) return base;
   let providerResponse: Response;
   try {
     providerResponse = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
+      ...(remainingMs === undefined ? {} : { signal: AbortSignal.timeout(remainingMs) }),
       headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: cfg.model,
@@ -691,6 +715,9 @@ const REASON_STATUS: Record<string, number> = {
   SUBJECT_FORBIDDEN: 403,
   SUBJECT_NOT_FOUND: 404,
   LLM_FAILED: 502,
+  // V6 — the reading could not be performed from the information on file. A client-correctable input state,
+  // not a server fault: 422 so the app can prompt for the missing birth time instead of offering a retry.
+  GROUNDING_UNAVAILABLE: 422,
   CONSENT_REQUIRED: 403,
   PROFILE_REQUIRED: 403,
   GENERATION_IN_PROGRESS: 409,
@@ -706,6 +733,18 @@ export default {
       const startedAt = Date.now();
       const userId = userIdFromRequest(req);
       const admin = adminClient();
+      // V6 §IDEMPOTENCY STATE CLEANUP — the one reachable path that left a request PROCESSING forever.
+      //
+      // Every ordinary outcome (answer, LLM fault, invalid input, no grounding, rejected non-answer) already
+      // reaches a terminal state via complete_paid_request or release_paid_request. An UNHANDLED EXCEPTION
+      // did not: the catch below logged and rethrew while `paid` was still block-scoped inside the try, so
+      // the idempotency row kept `status='PROCESSING'` with a null `response_json` and every retry on the
+      // same request id answered 409 REQUEST_IN_PROGRESS until the 300s lease expired. Holding the context
+      // out here lets the catch record the terminal state before the exception propagates.
+      //
+      // Double-release is safe by construction: `release_paid_request` deletes only a row that is still
+      // PROCESSING and still holds this lease token, so a COMPLETED response can never be undone by it.
+      let heldPaidRequest: PaidRequestContext | null = null;
 
       try {
         if (req.method !== 'POST') {
@@ -1159,6 +1198,7 @@ export default {
           { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
         ); }
         if (paid.status !== 'acquired') { await releaseDukIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+        heldPaidRequest = paid.context; // §IDEMPOTENCY STATE CLEANUP — reachable by the unhandled-exception catch.
         if (apiKey.length === 0) {
           await releasePaidRequest(paid.context);
           await releaseDukIfHeld();
@@ -1208,16 +1248,21 @@ export default {
         let capturedUsage: Record<string, unknown> = {};
         let llmErrorCode: string | null = null;
         let capturedOutcome: OpenAiCall | null = null;
+        // V6 ROOT CAUSE 6 — the LLM stage's TOTAL budget, anchored to the server receipt time so a second
+        // (regeneration) call cannot push past the platform limit. An exhausted or aborted call returns ''
+        // exactly like any other provider fault, and the orchestrator then delivers the deterministic
+        // grounded composition instead of failing the request.
+        const llmDeadlineAt = startedAt + LLM_DEADLINE_MS;
         const callLLM = async (messages: LLMMessage[]): Promise<string> => {
           stage = 'openai_request';
-          const r = await callOpenAI(messages, consultationCfg);
+          const r = await callOpenAI(messages, consultationCfg, llmDeadlineAt);
           capturedUsage = r.usage;
           capturedOutcome = r;
           stage = 'response_parse';
           const code = openAiFailureCode(r);
           if (code === 'OK') return r.text;
           llmErrorCode = code;
-          return ''; // empty → buildServerConsultation maps to LLM_FAILED (diagnostics logged at the branch)
+          return ''; // empty → deterministic grounded delivery when a verdict exists; LLM_FAILED otherwise
         };
 
         stage = 'server_consultation';
@@ -1353,6 +1398,20 @@ export default {
             await releaseDukIfHeld(); // first-turn failure → 0 charged (§7)
             return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
           }
+          // V6 ROOT CAUSE 5 — NO DIVINATION BASIS. Every engine fail-closed for this birth, so there is no
+          // chart to read and no verdict to answer from. Released and NOT charged, exactly like the
+          // rejected-non-answer path below: a paid divination product must never bill for a reading it could
+          // not perform, and must not fill the gap with general coaching. The consumer-safe explanation says
+          // what input would let it run.
+          if (result.reason === 'GROUNDING_UNAVAILABLE') {
+            logDiag(requestId, 'GROUNDING', 'GROUNDING_UNAVAILABLE', { path: 'consultation' });
+            await releasePaidRequest(paid.context);
+            await releaseDukIfHeld();
+            return Response.json(
+              { error: 'GROUNDING_UNAVAILABLE', message: result.message ?? null },
+              { status: REASON_STATUS.GROUNDING_UNAVAILABLE },
+            );
+          }
           // SUBJECT_FORBIDDEN(403) / SUBJECT_NOT_FOUND(404) / INVALID_INPUT(400) — attribute the stage.
           logDiag(requestId, result.reason === 'INVALID_INPUT' ? 'INPUT' : 'PROFILE_RESOLUTION', result.reason, { path: 'consultation' });
           await releasePaidRequest(paid.context);
@@ -1451,6 +1510,10 @@ export default {
             message: (error as Error)?.message ?? String(error),
           }),
         );
+        // Record the terminal state BEFORE the exception propagates, so the request id is retry-safe instead
+        // of stuck at PROCESSING with nothing behind it. Best-effort: a failure here must not mask the
+        // original error, which is what the caller actually needs to see.
+        if (heldPaidRequest) await releasePaidRequest(heldPaidRequest).catch(() => {});
         throw error;
       }
     },

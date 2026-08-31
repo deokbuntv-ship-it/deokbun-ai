@@ -463,14 +463,20 @@ describe('V5.2 — action direction comes from a stance, never from polarity alo
     expect(lineFor(plan, LABELS.verify)?.text).toContain('사회·직업 자리');
     expect(lineFor(plan, LABELS.verify)?.text).not.toContain('배우자');
   });
-  it('F — when nothing matches the asked axis, no on-axis claim is invented', () => {
+  // V6 ROOT CAUSE 2 — this case USED to fall back to the off-axis claim, and that is the defect the final
+  // Blind-84 run measured: a 배우자 claim became "확인할 것" on 18 of 82 answers, including career, margin and
+  // inheritance-timing questions. Nothing is invented to fill the axis — and nothing unrelated is
+  // substituted for it either. The section is simply absent, which is the honest answer to "what should I
+  // check about my career" when the chart said nothing about careers.
+  it('F — when nothing matches the asked axis, the bucket is empty, not filled with an unrelated axis', () => {
     const plan = planFor('DECISION', mkVerdict({
       questionDomain: 'CAREER',
       riskFactors: [ev({ domain: 'RELATION_STABILITY', fact: '일지 충', meaning: '타고난 배우자 자리가 흔들립니다' })],
     }));
-    // The off-axis claim is used as it stands; nothing is fabricated to fill the axis.
-    expect(lineFor(plan, LABELS.verify)?.text).toContain('배우자');
-    expect(untraceableFacts(renderGroundedActionSection(buildGroundedActionPlan(plan))!.body, plan)).toEqual([]);
+    expect(lineFor(plan, LABELS.verify)?.text ?? '').not.toContain('배우자');
+    const section = renderGroundedActionSection(buildGroundedActionPlan(plan));
+    expect(section?.body ?? '').not.toContain('배우자');
+    if (section) expect(untraceableFacts(section.body, plan)).toEqual([]);
   });
   it('G/H — a raw CONTRADICTION claim and its engine scaffold never render as action', () => {
     const plan = planFor('DECISION', mkVerdict({

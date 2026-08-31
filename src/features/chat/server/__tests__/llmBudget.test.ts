@@ -75,12 +75,18 @@ describe('safety preserved: incomplete still fails closed; completed still succe
     );
   });
 
-  it('incomplete → empty output → LLM_FAILED; no raw/partial text leaks in the result', async () => {
+  // V6 ROOT CAUSE 6 — an incomplete/empty completion no longer costs the reader the answer. The server
+  // already owns every fact; the model's prose was decoration, and its absence is recorded (llmUnavailable)
+  // while the deterministic grounded composition is delivered. The safety property is unchanged and still
+  // asserted: not one byte of model output reaches the result, because there was none and none is invented.
+  it('incomplete → empty output → deterministic grounded delivery, never partial model text', async () => {
     const r = await buildServerConsultation({ birthInput: birth, question: '제 성격은?' }, deps('')); // '' = incomplete/no visible text
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe('LLM_FAILED');
-    expect(r).not.toHaveProperty('text'); // failure result carries no text
-    expect(r).not.toHaveProperty('structuredResult');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.diagnostics?.llmUnavailable).toBe(true);
+    expect(r.diagnostics?.groundedFallback).toBe(true);
+    expect(r.structuredResult).toBeDefined();
+    expect(r.text.length).toBeGreaterThan(0);
   });
 
   it('completed → a full structured answer is accepted (raise does not change validation)', async () => {

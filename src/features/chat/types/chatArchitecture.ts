@@ -119,9 +119,15 @@ export type ChatServiceResult =
         | 'INVALID_INPUT'
         | 'REQUEST_FAILED'
         | 'AUTH_REQUIRED'
-        | 'INSUFFICIENT_DUK';
+        | 'INSUFFICIENT_DUK'
+        // V6 — no chart could be built from the birth information on file. Nothing was charged, and a retry
+        // of the same question cannot succeed until the input is corrected.
+        | 'GROUNDING_UNAVAILABLE';
       requestId?: string;
       // Authoritative server balance snapshot — present ONLY for errorCode 'INSUFFICIENT_DUK'. The UI uses
       // these for a top-up/paywall prompt; they are NEVER computed client-side.
       insufficientDuk?: { balance: number; required: number; shortfall: number };
+      // The SERVER's own consumer-safe explanation, present ONLY for 'GROUNDING_UNAVAILABLE'. It names the
+      // input to correct, which a fixed client string cannot.
+      errorDetail?: string;
     };

@@ -29,6 +29,10 @@ import {
 } from '@/features/divination';
 
 import type { ConsultationContentPlan, VerifiedEvidenceCatalogItem } from './consultationContentPlan';
+import {
+  buildConclusionSurfacePlan, crossMaterialCorpus, isSurfaceable, surfaceRelevanceOf,
+  CROSS_QUALIFIER_FRAME, type ConclusionSurfacePlan, type SurfaceRelevance,
+} from './consultationSurfacePlan';
 import { joinDistinctSentences, realize } from './koreanRealization';
 
 export const GROUNDED_NARRATIVE_VERSION = 'grounded-narrative@4.0.0';
@@ -53,6 +57,13 @@ export type GroundedClaim = {
   authoritativeMeaning: string;
   technicalAnchor?: string;
   provenance: string;
+  /**
+   * V6 ROOT CAUSE 2 — what this claim may be USED FOR in THIS answer. Assigned at catalog build (see
+   * `surfaceRelevanceOf`) and read by every user-visible selection below. It is a PRESENTATION property, not
+   * a judgment: the claim stays in the catalog and in the grounded corpus either way, so narrowing what
+   * reaches the reader can never tighten the fact gate or change what the answer is allowed to stand on.
+   */
+  relevance: SurfaceRelevance;
 };
 
 /** §14 — the question shape a DECLINED answer must speak in. Derived from the ALREADY-COMPUTED
@@ -101,6 +112,12 @@ export type GroundedNarrativePlan = {
   synthesisMode: 'COMBINED' | 'SINGLE_SYSTEM' | 'NONE';
   /** The axis the question actually asked, carried so presentation can prefer an on-axis claim (§V5.2). */
   askedAxis: JudgmentDomain;
+  /**
+   * V6 ROOT CAUSE 1 — the ONE authoritative asked-proposition direction, and the only sentence allowed to
+   * close the answer. Every directional surface (headline framing, causal close, the 한마디 section, the
+   * proceed/hold action labels) derives from this and nothing else.
+   */
+  conclusionSurface: ConclusionSurfacePlan;
   /** The union of every authoritative string above — the fact boundary the LLM's language is checked against. */
   groundedCorpus: string;
   provenance: readonly ['deokbunai.grounded-narrative-plan.v2'];
@@ -160,9 +177,16 @@ export function buildGroundedNarrativePlan(
   const declined = isDeclinedToDecide(verdict);
   const claims: GroundedClaim[] = [];
   let n = 0;
-  const add = (c: Omit<GroundedClaim, 'id'>, prefix: string) => {
+  // V6 ROOT CAUSE 2 — relevance is stamped at ADD time, from Cross's own cross-axis material, so every claim
+  // in the catalog carries it and no consumer has to re-derive (or forget) the axis question.
+  const materialCorpus = crossMaterialCorpus(verdict);
+  const add = (c: Omit<GroundedClaim, 'id' | 'relevance'>, prefix: string) => {
     n += 1;
-    claims.push({ ...c, id: `${prefix}${n}` });
+    claims.push({
+      ...c,
+      id: `${prefix}${n}`,
+      relevance: surfaceRelevanceOf(c, verdict.questionDomain, materialCorpus),
+    });
   };
 
   // CORE REASONS — the structural baseline and the active period, exactly as Cross stated them.
@@ -260,6 +284,9 @@ export function buildGroundedNarrativePlan(
       polarity: evidencePolarity(e), role: 'EVIDENCE',
       authoritativeMeaning: e.canonicalMeaning, technicalAnchor: e.canonicalTechnicalAnchor,
       provenance: e.provenance,
+      relevance: surfaceRelevanceOf(
+        { domain: e.domain, authoritativeMeaning: e.canonicalMeaning }, verdict.questionDomain, materialCorpus,
+      ),
     });
   }
   // V3 §8 — the verdict's own "so what" sentence. Verbatim Cross output, exactly like every claim above;
@@ -308,6 +335,7 @@ export function buildGroundedNarrativePlan(
     implicationClaims: byId(distinct, 'IMPLICATION'),
     actionBoundary: contentPlan.actionBoundary,
     askedAxis: verdict.questionDomain,
+    conclusionSurface: buildConclusionSurfacePlan(verdict),
     coverageGaps,
     coveredBy: appliedDisciplines,
     materialContributors: appliedDisciplines,
@@ -666,13 +694,18 @@ export function composeGroundedFallback(
   sharedAction?: SharedActionSection | null,
 ): ParsedStructuredConsultation {
   const declined = plan.verdictState === 'DECLINED';
-  const evidence = plan.claims.filter((c) => c.role === 'EVIDENCE');
-  const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === 'SUPPORT')];
-  const limits = [...claimsOf(plan, plan.cautionClaims), ...evidence.filter((c) => c.polarity === 'LIMIT')];
-  const reasons = claimsOf(plan, plan.coreReasons);
-  const synthesis = claimsOf(plan, plan.contradictionClaims);
+  // V6 ROOT CAUSE 2 — EVERY user-visible pool below is drawn from SURFACEABLE claims only. A claim about a
+  // different proposition that Cross never tied to this one is still in the catalog, still in the grounded
+  // corpus, and still audit-visible; it simply may not be the reason this answer gives, the caution it
+  // raises, or the thing it tells the reader to check. Grounded is not the same as relevant.
+  const surfaceable = plan.claims.filter((c) => isSurfaceable(c.relevance));
+  const on = (ids: readonly string[]): GroundedClaim[] => claimsOf(plan, ids).filter((c) => isSurfaceable(c.relevance));
+  const evidence = surfaceable.filter((c) => c.role === 'EVIDENCE');
+  const supports = [...on(plan.positiveClaims), ...evidence.filter((c) => c.polarity === 'SUPPORT')];
+  const limits = [...on(plan.cautionClaims), ...evidence.filter((c) => c.polarity === 'LIMIT')];
+  const reasons = on(plan.coreReasons);
+  const synthesis = on(plan.contradictionClaims);
   const natal = [...reasons, ...supports, ...limits].filter((c) => c.scope === 'NATAL');
-  const implication = meaningsOf(plan, plan.implicationClaims)[0];
 
   // §8 — SUPPORT + LIMIT is the compound truth the verdict already carries. Leading with the side that
   // actually carries more claims keeps a DIRECTIONAL body consistent with its headline.
@@ -752,24 +785,37 @@ export function composeGroundedFallback(
     const fresh = joinDistinctSentences([text], said);
     if (fresh.length > 0) chain.push(connective ? `${connective} ${fresh}` : fresh);
   };
+  // V6 CROSS EXCEPTION — a second axis may stand in the body, but never as an unexplained unrelated fact.
+  // The frame states the ONE thing Cross already decided about it (that it bears on this proposition) and
+  // asserts nothing further; an asked-axis claim is emitted bare, exactly as before.
+  const emitClaim = (c: GroundedClaim | undefined, connective = '', text?: string): void => {
+    if (!c) return;
+    const body = text ?? c.authoritativeMeaning;
+    emit(c.relevance === 'CROSS_MATERIAL_QUALIFIER' ? `${CROSS_QUALIFIER_FRAME}: ${body}` : body, connective);
+  };
 
   if (INTENT_OPENER[plan.intent]) chain.push(INTENT_OPENER[plan.intent]);
   const lead = pick(leadPools);
-  if (lead) emit(anchored(lead));
+  if (lead) emitClaim(lead, '', anchored(lead));
   if (declined) {
     // §Fix1 — the two directions are shown side by side as COMPETING evidence. Neither is presented as the
     // product's chosen direction, and the labels carry no verdict of their own.
-    const pro = pick([supports]);
-    const con = pick([limits]);
-    if (pro) emit(pro.authoritativeMeaning, SIDE_SUPPORT);
-    if (con) emit(con.authoritativeMeaning, SIDE_LIMIT);
+    emitClaim(pick([supports]), SIDE_SUPPORT);
+    emitClaim(pick([limits]), SIDE_LIMIT);
   } else {
-    const counter = pick([other]);
-    if (counter) emit(counter.authoritativeMeaning, CONTRAST);
+    emitClaim(pick([other]), CONTRAST);
     // A further reason only when it is genuinely a different claim — never padding for length (§10).
-    emit(pick([reasons])?.authoritativeMeaning);
+    emitClaim(pick([reasons]));
   }
-  emit(implication, THEREFORE);
+  // V6 ROOT CAUSE 1 — THE CLOSE IS NOT AN INDEPENDENT DECISION.
+  //
+  // This used to emit `verdict.actionableInterpretation` unconditionally, and that field's own no-single-
+  // conclusion fallback is directionally phrased ("… 이미 하고 있는 일을 유지하시는 편이 낫습니다"), so 64 of 82
+  // Blind-84 answers closed on a hold recommendation the asked-axis verdict had not made — 12 of them
+  // contradicting the headline printed above, 2 as outright polarity reversals. `conclusionSurface` is the
+  // one authority that decides whether that sentence's direction is justified here; when it is not, the
+  // surface supplies a non-directional close instead. The claim itself is untouched either way.
+  emit(plan.conclusionSurface.closing ?? undefined, THEREFORE);
   const core = chain.length > 0 ? realize(chain.join(' ')) : realize(plan.directConclusion);
 
   // V4 §5 USEFUL IMPLICATION — a boundary sentence with no grounded reason attached is exactly the generic

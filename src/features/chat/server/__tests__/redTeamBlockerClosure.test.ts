@@ -21,7 +21,7 @@ import {
   buildGroundedActionPlan, formatGroundedActionLine, renderGroundedActionLines, renderGroundedActionSection,
 } from '@/features/chat/server/groundedActionPlan';
 import { buildConsultationContentPlan } from '@/features/chat/server/consultationContentPlan';
-import { applyVerdictAuthorityClamp } from '@/features/chat/server/buildServerConsultation';
+import { applyConsumerDeliveryContract, applyVerdictAuthorityClamp } from '@/features/chat/server/buildServerConsultation';
 import { realize } from '@/features/chat/server/koreanRealization';
 import { buildDeclinedSummary } from '@/features/divination';
 import type {
@@ -237,13 +237,17 @@ describe('BLOCKER 1 — every user-visible factual proposition is SERVER-owned',
     const composed = applyVerdictAuthorityClamp(
       { kind: 'ACCEPTED', result: composeGroundedFallback(plan, sharedAction(plan)) }, verdict!, intent,
     )!;
+    // V6: the delivered answer additionally passes the deterministic consumer contract (internal-identifier
+    // mapping + one sentence ledger across the whole page). It is pure and takes no model input, so the
+    // reproduction runs it too — the property under test is unchanged.
+    const delivered = applyConsumerDeliveryContract(composed, [])!.result!;
     const s = r.structuredResult;
-    expect(s.coreSummary).toBe(composed.coreSummary);
-    expect(s.coreInterpretation).toBe(composed.coreInterpretation);
-    expect(s.strengths).toEqual(composed.strengths);
-    expect(s.cautions).toEqual(composed.cautions);
-    expect(s.futureFlow).toBe(composed.futureFlow);
-    expect(s.domainInterpretation).toEqual(composed.domainInterpretation);
+    expect(s.coreSummary).toBe(delivered.coreSummary);
+    expect(s.coreInterpretation).toBe(delivered.coreInterpretation);
+    expect(s.strengths).toEqual(delivered.strengths);
+    expect(s.cautions).toEqual(delivered.cautions);
+    expect(s.futureFlow).toBe(delivered.futureFlow);
+    expect(s.domainInterpretation).toEqual(delivered.domainInterpretation);
     // Non-vacuous: the answer really did carry supporting factual material.
     expect((s.strengths?.length ?? 0) + (s.cautions?.length ?? 0)).toBeGreaterThan(0);
   });
@@ -305,24 +309,34 @@ describe('BLOCKER 2 — proceed/hold is authorized ONLY by an asked-axis directi
     const plan = planFor('DECISION', mkVerdict({
       questionDomain: 'CAREER',
       axisVerdicts: [axis({ domain: 'RELATION_STABILITY', stance: 'FOR', conclusion: '배우자 자리는 지금 열려 있습니다' })],
+      // V6: an ON-AXIS observational claim, so "the answer is not left empty" still measures what it meant.
+      // Before V6 that assertion passed on the OFF-AXIS claim above — which is the defect, not the property:
+      // 확인할 것 is an instruction, and an unrelated axis must not become one (see ROOT CAUSE 2).
+      riskFactors: [ev({ domain: 'CAREER', fact: '관록 화기', meaning: '사회·직업 자리가 이 흐름에 직접 흔들립니다' })],
     }));
     const labels = linesFor(plan).map((l) => l.label);
     expect(labels).not.toContain(LABELS.proceed);
     expect(labels).not.toContain(LABELS.hold);
-    // The answer is not left empty: observational guidance still stands.
+    // The answer is not left empty: observational guidance still stands — on the asked axis.
     expect(labels).toContain(LABELS.verify);
+    expect(labelFor(plan, LABELS.verify)?.text).toContain('사회·직업 자리');
+    expect(labelFor(plan, LABELS.verify)?.text).not.toContain('배우자');
     const action = buildGroundedActionPlan(plan);
     expect(action.proceedCondition).toBeUndefined();
     expect(action.holdCondition).toBeUndefined();
   });
 
-  it('K — off-axis material stays VISIBLE as Cross qualification; it just carries no direction', () => {
+  // V6 §CROSS EXCEPTION — the fixture now quotes the off-axis assertion into the contradiction the way the
+  // Cross reasoner actually builds one (crossReasoner's `conflict` interpolates both assertions verbatim).
+  // That is what "Cross explicitly uses it as material" means, and it is the ONLY way an off-axis claim
+  // reaches the reader: shown, framed with why it bears on this proposition, and still carrying no direction.
+  it('K — off-axis material Cross tied in stays VISIBLE as qualification; it just carries no direction', () => {
     const plan = planFor('DECISION', mkVerdict({
       questionDomain: 'CAREER',
       axisVerdicts: [axis({ domain: 'RELATION_STABILITY', stance: 'FOR', conclusion: '배우자 자리는 지금 열려 있습니다' })],
       contradictionResolutions: [{
         kind: 'DIFFERENT_DOMAIN', between: ['MYUNGRI', 'ZIWEI'],
-        conflict: '직업 축과 관계 축이 서로 다른 방향을 가리킵니다',
+        conflict: '명리는 "직업 축이 흔들립니다", 자미두수는 "배우자 자리는 지금 열려 있습니다"',
         resolution: '직업 쪽 판단은 관계 쪽 신호에 좌우되지 않습니다',
         dominant: 'MYUNGRI', whyOtherDidNotDominate: '테스트',
       }] as CrossDivinationVerdict['contradictionResolutions'],

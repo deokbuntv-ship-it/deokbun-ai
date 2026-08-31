@@ -87,6 +87,43 @@ export function realizePoliteEndings(text: string): string {
     jongseong(syllable) === JONG_NIEUN ? `${withJongseong(syllable, JONG_BIEUP)}니다` : m);
 }
 
+// V6 §KOREAN REALIZATION — the two remaining DETERMINISTIC morphology defects the Blind-84 run surfaced in
+// 10 of 82 answers ("주의가 필요이나", "우호적로 나타나"). Both come from engine templates that join a LABEL to
+// a particle with a fixed spelling, so the wrong form is produced whenever the label's final syllable does
+// not match the one the template assumed. Like every rule in this file they are total functions of the
+// characters present, and each one can only ever change a form that is already ungrammatical.
+
+// 하다-nouns used PREDICATIVELY by the status labels ("주의가 필요", "…가 함께 존재"). Such a noun takes 하-
+// before a connective or adnominal ending; the templates attach the NOUN particle instead, which is what
+// produced "필요이나" and "존재로". Deliberately a closed list — applying this to every noun would wreck
+// ordinary Korean, and these are the forms the engine labels actually end in.
+//
+// The adnominal split is real morphology, not a stylistic choice: 필요하다/부재하다 are ADJECTIVAL and take
+// -한, while 존재하다/공존하다 are VERBAL and take -하는. "필요하는 것으로" is simply wrong Korean.
+const HADA_ADJECTIVAL = '(필요|부재)';
+const HADA_VERBAL = '(존재|공존)';
+const HADA_CONCESSIVE = new RegExp(`(필요|부재|존재|공존)이나(?=[\\s.,)\\]·]|$)`, 'g');
+const HADA_ADJ_ADVERBIAL = new RegExp(`${HADA_ADJECTIVAL}로(?=[\\s.,)\\]·]|$)`, 'g');
+const HADA_VERB_ADVERBIAL = new RegExp(`${HADA_VERBAL}로(?=[\\s.,)\\]·]|$)`, 'g');
+
+// (으)로 agreement. A consonant-final syllable other than ㄹ takes 으로; ㄹ-final and vowel-final take 로.
+// A bare 로 after any other final consonant is ungrammatical in Korean, so this rule only ever repairs a
+// defect — it is applied at a token boundary so a word that merely CONTAINS the syllable is untouched.
+const JONG_RIEUL = 8;
+const BARE_RO = /([가-힣])로(?=[\s.,)\]·]|$)/g;
+
+/** §5 — (으)로 agreement and the predicative 하- the engine label templates drop. Orthography only. */
+export function realizeAdverbials(text: string): string {
+  return text
+    .replace(HADA_CONCESSIVE, '$1하나')
+    .replace(HADA_ADJ_ADVERBIAL, '$1한 것으로')
+    .replace(HADA_VERB_ADVERBIAL, '$1하는 것으로')
+    .replace(BARE_RO, (m, prev: string) => {
+      const jong = jongseong(prev);
+      return jong === null || jong === 0 || jong === JONG_RIEUL ? m : `${prev}으로`;
+    });
+}
+
 /** Collapses runs of whitespace and the space a stripped fragment leaves in front of punctuation. */
 export function tidyPunctuation(text: string): string {
   return text.replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,!?)])/g, '$1').replace(/([(])\s+/g, '$1').trim();
@@ -123,5 +160,96 @@ export function joinDistinctSentences(parts: readonly string[], seen: Set<string
 
 /** The full server-composed realization pass: agreement, speech level, punctuation. */
 export function realize(text: string): string {
-  return tidyPunctuation(realizePoliteEndings(realizeParticles(text)));
+  return tidyPunctuation(realizeAdverbials(realizePoliteEndings(realizeParticles(text))));
+}
+
+// ── V6 §INTERNAL TOKEN BAN — THE ONE CONSUMER MAPPING LAYER ──────────────────────────────────────────
+//
+// The Blind-84 run measured ~20 internal tokens per delivered answer and 37 of 82 answers exposing a raw
+// identifier. They all arrive through ONE channel: `JudgmentEvidence.fact`, which the reasoning layer builds
+// as a machine-readable source-fact id ("일간 강약: STRONG_LEANING (Myungri Structural V2)",
+// "상담판정 CAREER: MIXED (Myungri Consultation Judge V1)") and the presentation layer renders verbatim as
+// "(근거: …)". That id is exactly right as provenance and exactly wrong as product text.
+//
+// The repair is a MAPPING, not a strip: each identifier has a consumer-readable Korean equivalent, so the
+// reader still sees which system said it and on what basis — in words. It lives here, in one place, rather
+// than as scattered string replacements, and the reasoning layer's own ids are untouched (they remain the
+// audit trail in decisionMeta and the grounded corpus).
+
+// Internal judge/version parentheticals → the discipline, in Korean. Matched as a whole parenthetical so a
+// future version bump needs no new entry.
+const JUDGE_PARENTHETICAL = /\((?:Myungri|Ziwei|Qimen|Cross)\b[^)]*\)/g;
+const JUDGE_LABEL: readonly (readonly [RegExp, string])[] = [
+  [/^\(Myungri/, '(명리 판단)'],
+  [/^\(Ziwei/, '(자미두수 판단)'],
+  [/^\(Qimen/, '(기문둔갑 판단)'],
+  [/^\(Cross/, '(교차 판정)'],
+];
+
+// The enum VALUES that reach a `(근거: …)` anchor, each mapped to what it actually means for the reader.
+// Ordered longest-first at build time so STRONG_LEANING is never matched as LEANING's prefix.
+const ENUM_LABEL: Record<string, string> = {
+  STRONG_LEANING: '일간이 힘을 받는 쪽',
+  WEAK_LEANING: '일간이 힘이 달리는 쪽',
+  MIXED_EVIDENCE: '근거가 엇갈리는 쪽',
+  MULTI_CANDIDATE: '후보가 여럿이라 하나로 좁히지 못함',
+  NONE_DETECTED: '해당 신호 없음',
+  NOT_APPLICABLE: '이 질문에는 해당하지 않음',
+  INSUFFICIENT_EVIDENCE: '방향을 정할 신호가 없음',
+  INSUFFICIENT_DATA: '판단에 필요한 정보가 모자람',
+  STRUCTURAL_ANSWER: '구조 설명',
+  UNRESOLVED: '아직 한 방향으로 단정하기 어려움',
+  SELECTED: '확정',
+  DEFERRED: '판정 보류',
+  CANDIDATE: '후보',
+  FAVORABLE: '우호적',
+  CAUTION: '주의가 필요',
+  MIXED: '기회와 리스크가 함께',
+  BUSINESS: '사업',
+  MONEY: '재물',
+  CAREER: '직업',
+  LOVE: '연애',
+  REUNION: '재회',
+  CHANGE: '변화',
+  TIMING: '시기',
+};
+const ENUM_TOKEN = new RegExp(
+  `\\b(?:${Object.keys(ENUM_LABEL).sort((a, b) => b.length - a.length).join('|')})\\b`, 'g',
+);
+
+// The last-resort sweep. Only SCREAMING_SNAKE shapes are removed — an underscore makes a token an identifier
+// beyond doubt, whereas a bare uppercase run can legitimately be a consumer acronym (ETF, MBTI), and every
+// bare enum the engines actually emit is mapped by name above rather than guessed at here.
+const RESIDUAL_IDENTIFIER = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+
+// The graph's internal derivation arrow — authoring notation that reached readers inside 쉬운 설명 and
+// 왜 이렇게 보나요. It carries TWO different meanings depending on where it was written: "this conflict
+// resolves to" between two clauses, and "this layer acts on that position" inside a technical anchor
+// ("올해 흐름 → 원국 년주 자형"). A word that reads correctly in one reads as nonsense in the other, so it
+// becomes ordinary typographic separation rather than a paraphrase that would assert a relation the source
+// did not — which is the same reason the fixed connectives elsewhere are never rewritten.
+const DERIVATION_ARROW = /\s*→\s*/g;
+const ARROW_REPLACEMENT = ' — ';
+
+/**
+ * Map every internal identifier in one user-visible string to consumer Korean. Idempotent and total: a
+ * string carrying none is returned unchanged, and nothing here alters a product claim's wording.
+ */
+export function toConsumerIdentifiers(text: string): string {
+  return text
+    .replace(JUDGE_PARENTHETICAL, (m) => JUDGE_LABEL.find(([re]) => re.test(m))?.[1] ?? m)
+    .replace(ENUM_TOKEN, (m) => ENUM_LABEL[m] ?? m)
+    .replace(RESIDUAL_IDENTIFIER, '')
+    .replace(DERIVATION_ARROW, ARROW_REPLACEMENT);
+}
+
+/**
+ * THE CONSUMER DELIVERY PASS — the last thing every user-visible string goes through.
+ *
+ * Identifier mapping first (so a mapped Korean label is then subject to the same 조사/speech-level rules as
+ * any other engine string), then the ordinary realization pass. Applied once, at the delivery seam, so no
+ * caller has to remember to do it and no second copy of the mapping can drift.
+ */
+export function realizeForConsumer(text: string): string {
+  return realize(toConsumerIdentifiers(text));
 }

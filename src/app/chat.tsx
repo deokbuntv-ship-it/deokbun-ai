@@ -448,7 +448,9 @@ export default function ChatScreen() {
         void refreshWallet().catch(() => {});
         void refreshSession();
       } else {
-        const view = mapConsultationError(result.errorCode);
+        // V6 — GROUNDING_UNAVAILABLE carries the SERVER's own explanation of which birth input is missing;
+        // only the server knows that, so it is preferred over the fixed client copy.
+        const view = mapConsultationError(result.errorCode, result.errorDetail);
         if (result.errorCode === 'AUTH_REQUIRED') {
           // Preserve the question + resume route so login returns here, not Home (§9/§28).
           setPendingConsultationIntent({ question: text, returnTo: '/chat' });

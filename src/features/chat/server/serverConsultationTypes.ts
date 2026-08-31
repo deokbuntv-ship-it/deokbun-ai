@@ -222,6 +222,13 @@ export type ServerConsultationDiagnostics = {
   // different decision version than current (so a "왜?" explained the OLD decision without recomputing).
   followUp?: string; // WHY | NEXT_YEAR | BETWEEN_CANDIDATES | WHEN
   versionMismatch?: boolean;
+  /**
+   * V6 ROOT CAUSE 6 — the optional language model produced nothing usable (timeout, transport fault, empty
+   * output) and the deterministic grounded composition was delivered instead. NOT a failure of the
+   * consultation: the authoritative material was already server-owned, so language realization is decoration
+   * and its absence must never cost the reader the answer.
+   */
+  llmUnavailable?: boolean;
 };
 
 // Deterministic 궁합 verdict (SERVER-owned tier — never an LLM/ fabricated score). Carried alongside the
@@ -256,5 +263,15 @@ export type ServerConsultationResult =
         | 'INVALID_INPUT'
         | 'SUBJECT_FORBIDDEN'
         | 'SUBJECT_NOT_FOUND'
-        | 'LLM_FAILED';
+        | 'LLM_FAILED'
+        // V6 ROOT CAUSE 5 — NO DIVINATION BASIS AT ALL. Every engine fail-closed for this birth (e.g. an
+        // unknown birth time on a 절기 boundary date, where the 월주 is genuinely ambiguous and the engine
+        // correctly refuses to invent one), so there is no chart, no judgment and no verdict to answer from.
+        // The previous behaviour was to hand the question to the LLM under a "do not fabricate" prompt and
+        // deliver the resulting general-purpose coaching as a completed, charged consultation — which is not
+        // a divination product. This is a typed NON-SUCCESS: the caller releases the reservation, charges
+        // nothing, and tells the reader what input would let the reading actually run.
+        | 'GROUNDING_UNAVAILABLE';
+      /** Present for GROUNDING_UNAVAILABLE — the consumer-safe explanation, server-authored and fact-free. */
+      message?: string;
     };

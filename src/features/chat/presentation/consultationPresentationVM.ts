@@ -34,6 +34,10 @@ const TAIL_ORDER: readonly string[] = [
   '시점을 이렇게 보시면 됩니다',
   '이렇게 이해하시면 됩니다',
   '이 결을 이렇게 쓰시면 됩니다',
+  // V6 ROOT CAUSE 4 — the temporal surface (consultationSurfacePlan.TEMPORAL_SECTION_TITLE). Sits directly
+  // after the action contract because a timing question's answer IS a period, and before 한마디 so the
+  // closing line still closes.
+  '시기',
   '한마디',
   '왜 이렇게 보나요',
   '앞으로의 흐름',

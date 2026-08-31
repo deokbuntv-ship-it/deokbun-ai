@@ -18,6 +18,7 @@ import {
   ACTION_LABEL_SEPARATOR, actionDirectionOf, technicalTokensIn,
   type GroundedClaim, type GroundedNarrativePlan, type NarrativeIntent,
 } from './groundedNarrative';
+import { CROSS_QUALIFIER_FRAME, isSurfaceable } from './consultationSurfacePlan';
 import { joinDistinctSentences, realize } from './koreanRealization';
 
 export const GROUNDED_ACTION_PLAN_VERSION = 'grounded-action-plan@1.0.0';
@@ -93,8 +94,18 @@ const claimsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): Grounded
 // they are simply not usable as action.
 const ENGINE_SCAFFOLD = /→|은\(는\)|이\(가\)|을\(를\)|와\(과\)|로\(으로\)/;
 
+// V6 ROOT CAUSE 2 / §ACTION RELEVANCE — an OFF_AXIS_NON_MATERIAL claim can never become an action item.
+//
+// The measured failure: a spouse-position claim reached 확인할 것 in 18 of 82 answers, on margin, promotion,
+// inheritance-timing and business questions. V5.2 already refused to let an off-axis claim authorize
+// 진행/보류 (`actionDirectionOf` returns null for it), which is why it landed in the OBSERVATIONAL pool — but
+// "확인할 것" is still an instruction, and telling someone asking about their lease to go check their
+// marriage position is not a weaker answer to their question, it is an answer to a different one. Cross may
+// still make a second axis material (`CROSS_MATERIAL_QUALIFIER` survives this filter); what cannot survive
+// is an axis Cross never connected to the asked proposition.
 const usableAsAction = (c: GroundedClaim): boolean =>
-  c.role !== 'SYNTHESIS' && c.role !== 'CONTRADICTION' && !ENGINE_SCAFFOLD.test(c.authoritativeMeaning);
+  isSurfaceable(c.relevance)
+  && c.role !== 'SYNTHESIS' && c.role !== 'CONTRADICTION' && !ENGINE_SCAFFOLD.test(c.authoritativeMeaning);
 
 /**
  * V5.2 §2 — QUESTION-AXIS RELEVANCE first, then readability. Both are presentation preferences over
@@ -164,7 +175,11 @@ export function buildGroundedActionPlan(plan: GroundedNarrativePlan): GroundedAc
   };
   const item = (c: GroundedClaim, frame: string): GroundedActionItem => ({
     // The claim VERBATIM, then a fixed frame. Realization is orthography/speech level only.
-    text: realize(`${c.authoritativeMeaning} ${frame}`),
+    // V6 CROSS EXCEPTION — a surviving second axis is prefixed with the fixed frame that says WHY it is on
+    // the page, so it can never read as an unexplained unrelated instruction.
+    text: realize(c.relevance === 'CROSS_MATERIAL_QUALIFIER'
+      ? `${CROSS_QUALIFIER_FRAME}: ${c.authoritativeMeaning} ${frame}`
+      : `${c.authoritativeMeaning} ${frame}`),
     sourceClaimIds: [c.id],
   });
   const items = (pool: readonly GroundedClaim[], frame: string, n = MAX_PER_BUCKET): GroundedActionItem[] =>

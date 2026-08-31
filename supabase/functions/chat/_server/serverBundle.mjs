@@ -15435,6 +15435,135 @@ function isDecisionVersionMismatch(persisted, current) {
   return false;
 }
 
+// src/features/chat/server/consultationSurfacePlan.ts
+var PROCEED_LEXICON = /밀고\s*가|그대로\s*가|진행하(?:셔도|시면|십시오)|계속\s*하(?:셔도|시면)|움직이(?:셔도|시면|십시오)|해도\s*됩니다|시작하(?:셔도|시면)/;
+var HOLD_LEXICON = /유지하시는|유지하십시오|방향을\s*틀기보다|미루십시오|미루시는|늦추십시오|줄이(?:고|십시오|시는)|확정하지\s*(?:마|않)|크게\s*벌리지|하지\s*마십시오|보류/;
+function closingDirectionOf(text) {
+  if (HOLD_LEXICON.test(text)) return "HOLD";
+  return PROCEED_LEXICON.test(text) ? "PROCEED" : "NEUTRAL";
+}
+var NON_DIRECTIONAL_CLOSING = "지금 확인된 근거는 여기까지입니다. 한쪽으로 미리 정해 두지 마시고, 되돌릴 수 있는 범위에서 확인해 보십시오.";
+var MIXED_CLOSING = "이 두 조건은 함께 걸려 있습니다. 한쪽만 떼어 놓고 보시면 결론이 달라지니, 두 가지를 같이 두고 판단하십시오.";
+var FOR_DIRECTIONS = ["STRONGLY_FOR", "FOR"];
+var CONDITIONAL_DIRECTIONS = ["CONDITIONAL_FOR", "FOR_BUT_LATER", "AGAINST_FOR_NOW", "CONDITIONAL_AGAINST"];
+var AGAINST_DIRECTIONS = ["AGAINST", "STRONGLY_AGAINST"];
+function conclusionStateOf(verdict) {
+  const d = verdict.direction;
+  if (d === "INSUFFICIENT_DATA") return "INSUFFICIENT";
+  if (d === "INSUFFICIENT_EVIDENCE") return "UNRESOLVED";
+  if (FOR_DIRECTIONS.includes(d)) return "OPEN";
+  if (AGAINST_DIRECTIONS.includes(d)) return "BLOCKED";
+  if (CONDITIONAL_DIRECTIONS.includes(d)) return "MIXED";
+  return "UNRESOLVED";
+}
+function buildConclusionSurfacePlan(verdict) {
+  const state = conclusionStateOf(verdict);
+  const supplied = (verdict.actionableInterpretation ?? "").trim();
+  const directional = state === "OPEN" || state === "BLOCKED";
+  const suppliedIsNeutral = supplied.length > 0 && closingDirectionOf(supplied) === "NEUTRAL";
+  if (state === "UNRESOLVED" || state === "INSUFFICIENT") {
+    return { state, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
+  }
+  if (state === "MIXED") {
+    return { state, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
+  }
+  if (supplied.length === 0) return { state, closing: null, directional };
+  const asserted = closingDirectionOf(supplied);
+  const consistent = asserted === "NEUTRAL" || (state === "OPEN" ? asserted === "PROCEED" : asserted === "HOLD");
+  return { state, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
+}
+var CROSS_QUALIFIER_FRAME = "이 판단에 함께 걸리는 다른 축입니다";
+var contentDomainOf = (d) => routeConsultationJudgeDomain(void 0, d);
+var squash = (s) => s.replace(/\s+/g, "");
+function crossMaterialCorpus(verdict) {
+  return squash([
+    ...verdict.agreementPoints,
+    ...verdict.contradictionResolutions.flatMap((r) => [r.conflict, r.resolution]),
+    ...verdict.contradictionPoints
+  ].join("\n"));
+}
+function surfaceRelevanceOf(claim, askedAxis, materialCorpus) {
+  if (claim.domain === null) return "SUPPORTING_CONTEXT";
+  const asked = contentDomainOf(askedAxis);
+  const own = contentDomainOf(claim.domain);
+  if (asked === null || own === null) return "SUPPORTING_CONTEXT";
+  if (own === asked) return "ASKED_AXIS_PRIMARY";
+  return materialCorpus.includes(squash(claim.authoritativeMeaning)) ? "CROSS_MATERIAL_QUALIFIER" : "OFF_AXIS_NON_MATERIAL";
+}
+var isSurfaceable = (r) => r !== "OFF_AXIS_NON_MATERIAL";
+var monthKeyText = (key2) => `${Math.trunc(key2 / 100)}년 ${key2 % 100}월`;
+var BROAD_LIMIT = "그보다 좁은 시점은 지금 근거로는 나누기 어렵습니다.";
+var NO_AUTHORITY = "지금 확인된 근거로는 시점을 좁혀 말씀드릴 수 없습니다. 없는 시기를 만들어 드리지는 않겠습니다.";
+var NO_AUTHORITY_CHECKPOINT = "아래 조건이 실제로 바뀌는 지점을 시점 대신 기준으로 삼으십시오.";
+var MAX_LISTED_PERIODS = 3;
+var PAST_YEAR_WINDOW = 1;
+var FUTURE_YEAR_WINDOW = 10;
+function buildTemporalSurfacePlan(authority, hasCheckpoint) {
+  const hasTimingProse = (authority.timingConclusion ?? "").trim().length > 0;
+  const ref = authority.referenceYear;
+  const nowKey = ref !== null && authority.referenceMonth !== null ? ref * 100 + authority.referenceMonth : null;
+  const allMonths = [...authority.months].filter(Number.isInteger).sort((a, b) => a - b);
+  const forward = nowKey === null ? allMonths : allMonths.filter((m) => m >= nowKey);
+  const months = forward.length > 0 ? forward : allMonths;
+  const years = [...authority.years].filter((y) => Number.isFinite(y) && (ref === null || y >= ref - PAST_YEAR_WINDOW && y <= ref + FUTURE_YEAR_WINDOW)).sort((a, b) => a - b);
+  if (months.length > 0) {
+    return {
+      precision: "NARROW",
+      text: `근거가 실제로 잡히는 시점은 ${months.slice(0, MAX_LISTED_PERIODS).map(monthKeyText).join(", ")}입니다.`
+    };
+  }
+  if (years.length > 0) {
+    return {
+      precision: "NARROW",
+      text: `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(", ")}입니다.`
+    };
+  }
+  if (ref !== null) {
+    const month = authority.referenceMonth !== null ? ` ${authority.referenceMonth}월` : "";
+    return { precision: "NARROW", text: `이 판단은 ${ref}년${month} 흐름을 기준으로 본 것입니다.` };
+  }
+  if (authority.ageMin !== null && authority.ageMax !== null) {
+    return {
+      precision: "BROAD",
+      text: `지금 보고 있는 큰 흐름은 ${authority.ageMin}~${authority.ageMax}세 구간입니다. ${BROAD_LIMIT}`
+    };
+  }
+  if (hasTimingProse) return { precision: "BROAD", text: BROAD_LIMIT };
+  return { precision: "NONE", text: hasCheckpoint ? `${NO_AUTHORITY} ${NO_AUTHORITY_CHECKPOINT}` : NO_AUTHORITY };
+}
+var TEMPORAL_SECTION_TITLE = "시기";
+function temporalAuthorityFrom(grounding, temporalContext, verdict) {
+  const years = /* @__PURE__ */ new Set();
+  const months = /* @__PURE__ */ new Set();
+  let ageMin = null;
+  let ageMax = null;
+  if (grounding.status === "available") {
+    for (const ev6 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+      const ta = ev6.timingAnchors;
+      if (!ta) continue;
+      for (const y of ta.years ?? []) if (Number.isFinite(y)) years.add(y);
+      for (const m of ta.months ?? []) if (Number.isInteger(m)) months.add(m);
+      if (ta.daewoonAgeSpan) {
+        ageMin = ageMin === null ? ta.daewoonAgeSpan.min : Math.min(ageMin, ta.daewoonAgeSpan.min);
+        ageMax = ageMax === null ? ta.daewoonAgeSpan.max : Math.max(ageMax, ta.daewoonAgeSpan.max);
+      }
+    }
+  }
+  for (const t of temporalContext.resolvedTargets) {
+    if (t >= 1e5) months.add(t);
+    else if (Number.isInteger(t)) years.add(t);
+  }
+  return {
+    years: [...years],
+    months: [...months],
+    referenceYear: temporalContext.referenceYear ?? null,
+    referenceMonth: temporalContext.referenceMonth ?? null,
+    ageMin,
+    ageMax,
+    timingConclusion: verdict?.timingConclusion ?? null
+  };
+}
+
 // src/features/chat/server/koreanRealization.ts
 var HANGUL_BASE = 44032;
 var HANGUL_LAST = 55203;
@@ -15485,6 +15614,19 @@ function realizePoliteEndings(text) {
   for (const [re, to] of HAERA_EXACT) out = out.replace(re, to);
   return out.replace(HAERA_NIEUN, (m, syllable) => jongseong(syllable) === JONG_NIEUN ? `${withJongseong(syllable, JONG_BIEUP)}니다` : m);
 }
+var HADA_ADJECTIVAL = "(필요|부재)";
+var HADA_VERBAL = "(존재|공존)";
+var HADA_CONCESSIVE = new RegExp(`(필요|부재|존재|공존)이나(?=[\\s.,)\\]·]|$)`, "g");
+var HADA_ADJ_ADVERBIAL = new RegExp(`${HADA_ADJECTIVAL}로(?=[\\s.,)\\]·]|$)`, "g");
+var HADA_VERB_ADVERBIAL = new RegExp(`${HADA_VERBAL}로(?=[\\s.,)\\]·]|$)`, "g");
+var JONG_RIEUL = 8;
+var BARE_RO = /([가-힣])로(?=[\s.,)\]·]|$)/g;
+function realizeAdverbials(text) {
+  return text.replace(HADA_CONCESSIVE, "$1하나").replace(HADA_ADJ_ADVERBIAL, "$1한 것으로").replace(HADA_VERB_ADVERBIAL, "$1하는 것으로").replace(BARE_RO, (m, prev) => {
+    const jong = jongseong(prev);
+    return jong === null || jong === 0 || jong === JONG_RIEUL ? m : `${prev}으로`;
+  });
+}
 function tidyPunctuation(text) {
   return text.replace(/[ \t]{2,}/g, " ").replace(/\s+([.,!?)])/g, "$1").replace(/([(])\s+/g, "$1").trim();
 }
@@ -15504,7 +15646,52 @@ function joinDistinctSentences(parts, seen = /* @__PURE__ */ new Set()) {
   return kept.join(" ");
 }
 function realize(text) {
-  return tidyPunctuation(realizePoliteEndings(realizeParticles(text)));
+  return tidyPunctuation(realizeAdverbials(realizePoliteEndings(realizeParticles(text))));
+}
+var JUDGE_PARENTHETICAL = /\((?:Myungri|Ziwei|Qimen|Cross)\b[^)]*\)/g;
+var JUDGE_LABEL = [
+  [/^\(Myungri/, "(명리 판단)"],
+  [/^\(Ziwei/, "(자미두수 판단)"],
+  [/^\(Qimen/, "(기문둔갑 판단)"],
+  [/^\(Cross/, "(교차 판정)"]
+];
+var ENUM_LABEL = {
+  STRONG_LEANING: "일간이 힘을 받는 쪽",
+  WEAK_LEANING: "일간이 힘이 달리는 쪽",
+  MIXED_EVIDENCE: "근거가 엇갈리는 쪽",
+  MULTI_CANDIDATE: "후보가 여럿이라 하나로 좁히지 못함",
+  NONE_DETECTED: "해당 신호 없음",
+  NOT_APPLICABLE: "이 질문에는 해당하지 않음",
+  INSUFFICIENT_EVIDENCE: "방향을 정할 신호가 없음",
+  INSUFFICIENT_DATA: "판단에 필요한 정보가 모자람",
+  STRUCTURAL_ANSWER: "구조 설명",
+  UNRESOLVED: "아직 한 방향으로 단정하기 어려움",
+  SELECTED: "확정",
+  DEFERRED: "판정 보류",
+  CANDIDATE: "후보",
+  FAVORABLE: "우호적",
+  CAUTION: "주의가 필요",
+  MIXED: "기회와 리스크가 함께",
+  BUSINESS: "사업",
+  MONEY: "재물",
+  CAREER: "직업",
+  LOVE: "연애",
+  REUNION: "재회",
+  CHANGE: "변화",
+  TIMING: "시기"
+};
+var ENUM_TOKEN = new RegExp(
+  `\\b(?:${Object.keys(ENUM_LABEL).sort((a, b) => b.length - a.length).join("|")})\\b`,
+  "g"
+);
+var RESIDUAL_IDENTIFIER = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+var DERIVATION_ARROW = /\s*→\s*/g;
+var ARROW_REPLACEMENT = " — ";
+function toConsumerIdentifiers(text) {
+  return text.replace(JUDGE_PARENTHETICAL, (m) => JUDGE_LABEL.find(([re]) => re.test(m))?.[1] ?? m).replace(ENUM_TOKEN, (m) => ENUM_LABEL[m] ?? m).replace(RESIDUAL_IDENTIFIER, "").replace(DERIVATION_ARROW, ARROW_REPLACEMENT);
+}
+function realizeForConsumer(text) {
+  return realize(toConsumerIdentifiers(text));
 }
 
 // src/features/chat/server/consultationContentPlan.ts
@@ -15581,7 +15768,7 @@ var ROLE_PRIORITY_WHEN_BASELINE = { NATAL: 0, PERIOD: 1, CURRENT: 2 };
 function evidenceRank(e, domain, asksTiming) {
   const domainMatch = JUDGMENT_TO_CONTENT_DOMAIN[e.domain] === domain ? 0 : 1;
   const roleRank = (asksTiming ? ROLE_PRIORITY_WHEN_ASKING_TIMING : ROLE_PRIORITY_WHEN_BASELINE)[roleOf(e.temporalScope)];
-  return [DIRECTNESS_RANK[e.directness], domainMatch, roleRank];
+  return [domainMatch, DIRECTNESS_RANK[e.directness], roleRank];
 }
 function compareRank(a, b) {
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
@@ -15605,7 +15792,15 @@ function pooledEvidence(verdict) {
 var MAX_TOTAL_EVIDENCE = 4;
 var MAX_COUNTER_EVIDENCE = 1;
 function selectEvidence(verdict, domain) {
-  const { supporting, counter: counter2 } = pooledEvidence(verdict);
+  const pooled = pooledEvidence(verdict);
+  const materialCorpus = crossMaterialCorpus(verdict);
+  const relevant = (p) => isSurfaceable(surfaceRelevanceOf(
+    { domain: p.evidence.domain, authoritativeMeaning: p.evidence.meaning },
+    verdict.questionDomain,
+    materialCorpus
+  ));
+  const supporting = pooled.supporting.filter(relevant);
+  const counter2 = pooled.counter.filter(relevant);
   const rankOf = (p) => evidenceRank(p.evidence, domain, verdict.asksTiming);
   const byRank = (a, b) => compareRank(rankOf(a), rankOf(b));
   const counterPicked = [...counter2].sort(byRank).slice(0, MAX_COUNTER_EVIDENCE);
@@ -15623,7 +15818,14 @@ function selectEvidence(verdict, domain) {
     canonicalMeaning: p.evidence.meaning
   });
   const ordered = [...supportPicked.map((p) => ({ p, tag: "SUPPORTING" })), ...counterPicked.map((p) => ({ p, tag: "COUNTER" }))];
-  return ordered.map(({ p, tag }, i) => toCatalogItem(p, tag, i));
+  const seen = /* @__PURE__ */ new Set();
+  const distinct = ordered.filter(({ p }) => {
+    const key2 = `${p.evidence.fact}\0${p.evidence.meaning}`.replace(/\s+/g, "");
+    if (seen.has(key2)) return false;
+    seen.add(key2);
+    return true;
+  });
+  return distinct.map(({ p, tag }, i) => toCatalogItem(p, tag, i));
 }
 function buildSynthesis(verdict) {
   const agreements = verdict.agreementPoints;
@@ -15694,9 +15896,15 @@ function renderContentPlanDirective(plan) {
   return lines.join("\n");
 }
 function renderVerifiedEvidenceSection(catalog) {
-  return catalog.map((e) => ({
-    title: `전문근거 · ${DISCIPLINE_LABEL3[e.discipline]} (${e.id})`,
-    body: realize(`${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`)
+  const byDiscipline = /* @__PURE__ */ new Map();
+  for (const e of catalog) {
+    const lines = byDiscipline.get(e.discipline) ?? [];
+    lines.push(realize(`${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`));
+    byDiscipline.set(e.discipline, lines);
+  }
+  return [...byDiscipline].map(([discipline, lines]) => ({
+    title: `전문근거 · ${DISCIPLINE_LABEL3[discipline]}`,
+    body: lines.join("\n")
   }));
 }
 
@@ -15724,9 +15932,14 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
   const declined = isDeclinedToDecide(verdict);
   const claims = [];
   let n = 0;
+  const materialCorpus = crossMaterialCorpus(verdict);
   const add = (c, prefix) => {
     n += 1;
-    claims.push({ ...c, id: `${prefix}${n}` });
+    claims.push({
+      ...c,
+      id: `${prefix}${n}`,
+      relevance: surfaceRelevanceOf(c, verdict.questionDomain, materialCorpus)
+    });
   };
   if (verdict.natalBaseline) {
     add({
@@ -15834,7 +16047,12 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
       role: "EVIDENCE",
       authoritativeMeaning: e.canonicalMeaning,
       technicalAnchor: e.canonicalTechnicalAnchor,
-      provenance: e.provenance
+      provenance: e.provenance,
+      relevance: surfaceRelevanceOf(
+        { domain: e.domain, authoritativeMeaning: e.canonicalMeaning },
+        verdict.questionDomain,
+        materialCorpus
+      )
     });
   }
   if (verdict.actionableInterpretation) {
@@ -15881,6 +16099,7 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
     implicationClaims: byId(distinct, "IMPLICATION"),
     actionBoundary: contentPlan.actionBoundary,
     askedAxis: verdict.questionDomain,
+    conclusionSurface: buildConclusionSurfacePlan(verdict),
     coverageGaps,
     coveredBy: appliedDisciplines,
     materialContributors: appliedDisciplines,
@@ -16065,13 +16284,14 @@ function bulletsFrom(pool, spent, said) {
 }
 function composeGroundedFallback(plan, sharedAction) {
   const declined = plan.verdictState === "DECLINED";
-  const evidence = plan.claims.filter((c) => c.role === "EVIDENCE");
-  const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === "SUPPORT")];
-  const limits = [...claimsOf(plan, plan.cautionClaims), ...evidence.filter((c) => c.polarity === "LIMIT")];
-  const reasons = claimsOf(plan, plan.coreReasons);
-  const synthesis = claimsOf(plan, plan.contradictionClaims);
+  const surfaceable = plan.claims.filter((c) => isSurfaceable(c.relevance));
+  const on = (ids) => claimsOf(plan, ids).filter((c) => isSurfaceable(c.relevance));
+  const evidence = surfaceable.filter((c) => c.role === "EVIDENCE");
+  const supports = [...on(plan.positiveClaims), ...evidence.filter((c) => c.polarity === "SUPPORT")];
+  const limits = [...on(plan.cautionClaims), ...evidence.filter((c) => c.polarity === "LIMIT")];
+  const reasons = on(plan.coreReasons);
+  const synthesis = on(plan.contradictionClaims);
   const natal = [...reasons, ...supports, ...limits].filter((c) => c.scope === "NATAL");
-  const implication = meaningsOf(plan, plan.implicationClaims)[0];
   const leadIsLimit = limits.length >= supports.length;
   const dominant = leadIsLimit ? limits : supports;
   const other = leadIsLimit ? supports : limits;
@@ -16102,20 +16322,22 @@ function composeGroundedFallback(plan, sharedAction) {
     const fresh = joinDistinctSentences([text], said);
     if (fresh.length > 0) chain.push(connective ? `${connective} ${fresh}` : fresh);
   };
+  const emitClaim = (c, connective = "", text) => {
+    if (!c) return;
+    const body = text ?? c.authoritativeMeaning;
+    emit(c.relevance === "CROSS_MATERIAL_QUALIFIER" ? `${CROSS_QUALIFIER_FRAME}: ${body}` : body, connective);
+  };
   if (INTENT_OPENER[plan.intent]) chain.push(INTENT_OPENER[plan.intent]);
   const lead = pick(leadPools);
-  if (lead) emit(anchored(lead));
+  if (lead) emitClaim(lead, "", anchored(lead));
   if (declined) {
-    const pro = pick([supports]);
-    const con = pick([limits]);
-    if (pro) emit(pro.authoritativeMeaning, SIDE_SUPPORT);
-    if (con) emit(con.authoritativeMeaning, SIDE_LIMIT);
+    emitClaim(pick([supports]), SIDE_SUPPORT);
+    emitClaim(pick([limits]), SIDE_LIMIT);
   } else {
-    const counter2 = pick([other]);
-    if (counter2) emit(counter2.authoritativeMeaning, CONTRAST);
-    emit(pick([reasons])?.authoritativeMeaning);
+    emitClaim(pick([other]), CONTRAST);
+    emitClaim(pick([reasons]));
   }
-  emit(implication, THEREFORE);
+  emit(plan.conclusionSurface.closing ?? void 0, THEREFORE);
   const core = chain.length > 0 ? realize(chain.join(" ")) : realize(plan.directConclusion);
   const base = ACTION_SECTION[plan.intent][plan.actionBoundary];
   const why = pick(plan.actionBoundary === "CAUTIOUS" ? [limits, reasons, supports] : [supports, reasons, limits]);
@@ -16172,7 +16394,7 @@ var ACTION_TITLE = {
 };
 var claimsOf2 = (plan, ids) => ids.map((id) => plan.claims.find((c) => c.id === id)).filter((c) => !!c);
 var ENGINE_SCAFFOLD = /→|은\(는\)|이\(가\)|을\(를\)|와\(과\)|로\(으로\)/;
-var usableAsAction = (c) => c.role !== "SYNTHESIS" && c.role !== "CONTRADICTION" && !ENGINE_SCAFFOLD.test(c.authoritativeMeaning);
+var usableAsAction = (c) => isSurfaceable(c.relevance) && c.role !== "SYNTHESIS" && c.role !== "CONTRADICTION" && !ENGINE_SCAFFOLD.test(c.authoritativeMeaning);
 function preferenceOrder(claims, plan) {
   const onAxis = (c) => c.domain === plan.askedAxis ? 0 : 1;
   return claims.map((c, i) => ({ c, i, axis: onAxis(c), jargon: technicalTokensIn(c.authoritativeMeaning).length })).sort((a, b) => a.axis - b.axis || a.jargon - b.jargon || a.i - b.i).map((x) => x.c);
@@ -16207,7 +16429,9 @@ function buildGroundedActionPlan(plan) {
   };
   const item = (c, frame) => ({
     // The claim VERBATIM, then a fixed frame. Realization is orthography/speech level only.
-    text: realize(`${c.authoritativeMeaning} ${frame}`),
+    // V6 CROSS EXCEPTION — a surviving second axis is prefixed with the fixed frame that says WHY it is on
+    // the page, so it can never read as an unexplained unrelated instruction.
+    text: realize(c.relevance === "CROSS_MATERIAL_QUALIFIER" ? `${CROSS_QUALIFIER_FRAME}: ${c.authoritativeMeaning} ${frame}` : `${c.authoritativeMeaning} ${frame}`),
     sourceClaimIds: [c.id]
   });
   const items = (pool, frame, n = MAX_PER_BUCKET) => take(pool, n).map((c) => item(c, frame));
@@ -16600,6 +16824,67 @@ function classifyContinuationIntent(question, hasPriorDecision) {
 // src/features/chat/server/buildServerConsultation.ts
 var MAX_CONTEXT_TURNS = 12;
 var MAX_TURN_CHARS = 4e3;
+var GROUNDING_UNAVAILABLE_MESSAGE = "지금 등록된 출생 정보로는 사주·자미두수·기문둔갑 어느 쪽도 실제로 세울 수 없었습니다. 태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹쳐, 월주를 어느 쪽으로 볼지 확정할 수 없기 때문입니다. 없는 근거로 풀이를 지어내지는 않겠습니다. 태어난 시각(또는 대략적인 시간대)을 입력해 주시면 바로 다시 봐 드리겠습니다.";
+function applyConsumerDeliveryContract(result, authoritative) {
+  if (!result) return { result: null, authoritative: authoritative.map(consumerSection) };
+  const said = /* @__PURE__ */ new Set();
+  const register = (s) => {
+    if (s) joinDistinctSentences([s], said);
+  };
+  const thin = (s) => {
+    if (!s) return s;
+    const fresh = joinDistinctSentences([s], said);
+    return realizeForConsumer(fresh.length > 0 ? fresh : s);
+  };
+  const thinList = (a) => {
+    if (!a || a.length === 0) return void 0;
+    const kept = a.map((x) => joinDistinctSentences([x], said)).filter((x) => x.length > 0).map(realizeForConsumer);
+    return kept.length > 0 ? kept : void 0;
+  };
+  register(result.coreSummary);
+  register(result.coreInterpretation);
+  const coreSummary = result.coreSummary ? realizeForConsumer(result.coreSummary) : result.coreSummary;
+  const coreInterpretation = result.coreInterpretation ? realizeForConsumer(result.coreInterpretation) : result.coreInterpretation;
+  const disposition = thin(result.disposition);
+  const strengths = thinList(result.strengths);
+  const cautions = thinList(result.cautions);
+  const domainInterpretation = result.domainInterpretation?.map((d) => {
+    register(d.body);
+    return { title: realizeForConsumer(d.title), body: realizeForConsumer(d.body) };
+  });
+  const authoritativeOut = authoritative.flatMap((s) => {
+    if (PROTECTED_SECTION(s.title)) {
+      register(s.body);
+      return [consumerSection(s)];
+    }
+    const fresh = joinDistinctSentences([s.body], said);
+    if (fresh.length === 0) return [];
+    return [consumerSection({ title: s.title, body: balanced(fresh) ? fresh : s.body })];
+  });
+  const futureFlow = thin(result.futureFlow);
+  return {
+    result: {
+      ...result,
+      coreSummary,
+      coreInterpretation,
+      disposition,
+      strengths,
+      cautions,
+      domainInterpretation,
+      futureFlow,
+      followUps: result.followUps?.map(realizeForConsumer)
+    },
+    authoritative: authoritativeOut
+  };
+}
+var consumerSection = (s) => ({ title: realizeForConsumer(s.title), body: realizeForConsumer(s.body) });
+var balanced = (text) => (text.match(/\(/g)?.length ?? 0) === (text.match(/\)/g)?.length ?? 0);
+var PROTECTED_TITLES = [
+  ...Object.values(ACTION_TITLE),
+  "한마디",
+  TEMPORAL_SECTION_TITLE
+];
+var PROTECTED_SECTION = (title) => PROTECTED_TITLES.includes(title) || title.startsWith("전문근거");
 function sanitizeConversation(turns) {
   if (!Array.isArray(turns)) return [];
   const safe = [];
@@ -16803,18 +17088,22 @@ ${extraDirective}` : base
     plan = deriveAnswerPlan(question, effectiveGrounding);
     messages = buildMessages();
   }
-  let raw;
+  if (effectiveGrounding.status !== "available" && followUpDirective === null && followUpIntent === "NONE" && continuation === "NEW_QUESTION") {
+    return { ok: false, reason: "GROUNDING_UNAVAILABLE", message: GROUNDING_UNAVAILABLE_MESSAGE };
+  }
+  let raw = "";
+  let llmUnavailable = false;
   try {
     raw = await deps.callLLM(messages);
   } catch {
-    return { ok: false, reason: "LLM_FAILED" };
+    llmUnavailable = true;
   }
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    return { ok: false, reason: "LLM_FAILED" };
-  }
+  if (typeof raw !== "string" || raw.trim().length === 0) llmUnavailable = true;
+  const hasAuthoritativeMaterial = effectiveGrounding.status === "available" && effectiveGrounding.divinationVerdict != null && contentPlanHolder.current !== null;
+  if (llmUnavailable && !hasAuthoritativeMaterial) return { ok: false, reason: "LLM_FAILED" };
   const verdictForGuard = effectiveGrounding.status === "available" ? effectiveGrounding.divinationVerdict ?? null : null;
   const domainComparisonAllowed = plan.comparisonKind === "DOMAIN" && verdictForGuard !== null && verdictForGuard.direction !== NO_SIGNAL;
-  const guard = await classifyWithGuards({
+  const guard = llmUnavailable ? { outcome: { kind: "SEMANTIC_REJECTED", reason: "LLM_UNAVAILABLE" }, regenerated: false, guardRejected: false } : await classifyWithGuards({
     raw,
     grounding: effectiveGrounding,
     requireMitigation: followUpIntent === "WHY" ? false : plan.requireMitigation,
@@ -16889,10 +17178,18 @@ ${extraDirective}` : base
     ...(acceptedResult?.domainInterpretation ?? []).flatMap((d) => [d.title, d.body]),
     acceptedResult?.futureFlow
   ].filter((x) => typeof x === "string").join("\n").replace(/\s+/g, "");
-  const closingLine = verdictForGuard?.actionableInterpretation ?? null;
+  const closingLine = groundedPlan?.conclusionSurface.closing ?? null;
   const closingSection = closingLine && !deliveredBody.includes(closingLine.replace(/\s+/g, "")) ? { title: "한마디", body: closingLine } : null;
+  const temporalSection = groundedPlan && (narrativeIntent === "TIMING" || verdictForGuard?.asksTiming === true) ? {
+    title: TEMPORAL_SECTION_TITLE,
+    body: buildTemporalSurfacePlan(
+      temporalAuthorityFrom(effectiveGrounding, resolvedTemporalContext, verdictForGuard),
+      (groundedActionPlan?.sourceClaimIds.length ?? 0) > 0
+    ).text
+  } : null;
   const authoritativeSections = [
     ...groundedActionSection ? [groundedActionSection] : [],
+    ...temporalSection ? [temporalSection] : [],
     ...closingSection ? [closingSection] : [],
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
     // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
@@ -16903,14 +17200,15 @@ ${extraDirective}` : base
   ].filter((s) => !deliveredSectionTitles.has(s.title)).concat(
     contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0 ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence) : []
   );
-  const verifiedEvidence = authoritativeSections.length > 0 ? authoritativeSections : void 0;
-  const structuredResult = acceptedResult ? {
-    ...buildStructuredConsultationResult(acceptedResult, effectiveGrounding),
+  const deliveredSections = applyConsumerDeliveryContract(acceptedResult, authoritativeSections);
+  const verifiedEvidence = deliveredSections.authoritative.length > 0 ? deliveredSections.authoritative : void 0;
+  const structuredResult = deliveredSections.result ? {
+    ...buildStructuredConsultationResult(deliveredSections.result, effectiveGrounding),
     ...conclusionPolarity ? { conclusionPolarity } : {},
     ...verifiedEvidence ? { verifiedEvidence } : {},
     decisionMeta
   } : void 0;
-  const text = acceptedResult ? composeConsultationText(acceptedResult) : outcome.kind === "STRUCTURAL_FALLBACK" ? outcome.text : SEMANTIC_REJECTION_MESSAGE;
+  const text = deliveredSections.result ? composeConsultationText(deliveredSections.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? realizeForConsumer(outcome.text) : SEMANTIC_REJECTION_MESSAGE;
   const diagnostics = {
     outputClassification: outcome.kind,
     ...guard.regenerated ? { regenerated: true } : {},
@@ -16919,6 +17217,7 @@ ${extraDirective}` : base
     ...safetyRoute !== "NORMAL" ? { safetyRoute } : {},
     ...followUpIntent !== "NONE" ? { followUp: followUpIntent } : {},
     ...followUpVersionMismatch ? { versionMismatch: true } : {},
+    ...llmUnavailable ? { llmUnavailable: true } : {},
     ...outcome.kind === "ACCEPTED" ? {} : {
       rejectionReason: guard.guardRejected ? "GUARD_CERTAINTY_MITIGATION" : firstStructuredRejectionReason(raw, effectiveGrounding)
     }

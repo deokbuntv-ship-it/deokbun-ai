@@ -94,6 +94,17 @@ export function createServerConsultationService(
         if (result.error === 'INVALID_INPUT') {
           return { success: false, errorCode: 'INVALID_INPUT', requestId };
         }
+        if (result.error === 'GROUNDING_UNAVAILABLE') {
+          // Not a transport failure and not retryable: the engines could not build a chart from the birth
+          // information on file, and the server already released the reservation. Surfaced distinctly so the
+          // UI can ask for the missing input instead of inviting a retry that must fail again.
+          return {
+            success: false,
+            errorCode: 'GROUNDING_UNAVAILABLE',
+            ...(result.message ? { errorDetail: result.message } : {}),
+            requestId,
+          };
+        }
         if (result.error === 'INSUFFICIENT_DUK') {
           // Authoritative server balance — surface distinctly (not a generic failure) for a top-up prompt.
           return {

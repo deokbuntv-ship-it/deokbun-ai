@@ -19,7 +19,11 @@ export type ConsultationTransportResult =
     }
   | { ok: false; error: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' }
   // Authoritative HTTP 402 from the Edge — the server's balance/required/shortfall (never client-calculated).
-  | { ok: false; error: 'INSUFFICIENT_DUK'; balance: number; required: number; shortfall: number };
+  | { ok: false; error: 'INSUFFICIENT_DUK'; balance: number; required: number; shortfall: number }
+  // V6 — authoritative HTTP 422: no chart could be built from the birth information on file, so nothing was
+  // charged and retrying the same question cannot help. `message` is the server's own explanation of which
+  // input to correct; the client must not substitute a generic failure string for it.
+  | { ok: false; error: 'GROUNDING_UNAVAILABLE'; message: string | null };
 
 export type ConsultationTransport = {
   requestConsultation(request: ServerConsultationRequest): Promise<ConsultationTransportResult>;

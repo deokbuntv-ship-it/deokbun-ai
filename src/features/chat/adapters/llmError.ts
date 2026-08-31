@@ -24,6 +24,23 @@ export function isAuthLLMError(error: unknown): boolean {
   return error instanceof LLMRequestError && error.authError;
 }
 
+// V6 ROOT CAUSE 5 — a functions.invoke 422 carries the authoritative GROUNDING_UNAVAILABLE payload: the
+// reading could not be built from the birth information on file (every engine fail-closed), so retrying the
+// same question can never succeed. Same shape as the 402 reader below: status first, body only for that
+// status, and the server's own consumer-safe explanation is carried through verbatim rather than replaced by
+// a generic client string — it is the one thing that tells the user WHAT to fix.
+export async function parseGroundingUnavailable(error: unknown): Promise<{ message: string | null } | null> {
+  const ctx = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx || ctx.status !== 422 || typeof ctx.json !== 'function') return null;
+  try {
+    const body = (await ctx.json()) as { error?: unknown; message?: unknown };
+    if (!body || body.error !== 'GROUNDING_UNAVAILABLE') return null;
+    return { message: typeof body.message === 'string' && body.message.length > 0 ? body.message : null };
+  } catch {
+    return null;
+  }
+}
+
 // A functions.invoke 402 carries the authoritative INSUFFICIENT_DUK payload on the Response body
 // (`error.context`). Returns the server's {balance,required,shortfall} — NEVER client-calculated — or null
 // when the error is not an insufficient-Duk 402. Reads the body only for a 402 (status is checked first).

@@ -84,12 +84,20 @@ describe('buildServerConsultation — server owns the deterministic grounding', 
     if (!r.ok) expect(r.reason).toBe('INVALID_INPUT');
   });
 
-  it('LLM throw / empty → LLM_FAILED (no partial trusted output)', async () => {
+  // V6 ROOT CAUSE 6 — the language model is not a delivery single point of failure. With authoritative
+  // material in hand, a throw or an empty completion is recorded and the deterministic grounded composition
+  // is delivered; only a question with NO verdict (nothing to compose from) still fails as LLM_FAILED.
+  it('LLM throw / empty → deterministic grounded delivery, marked llmUnavailable', async () => {
     const thrower: Partial<ServerConsultationDeps> = { async callLLM() { throw new Error('network'); } };
     const r1 = await buildServerConsultation(baseRequest(), capturingDeps(GOOD_ANSWER, thrower).deps);
-    expect(r1.ok).toBe(false);
+    expect(r1.ok).toBe(true);
+    if (r1.ok) {
+      expect(r1.diagnostics?.llmUnavailable).toBe(true);
+      expect(r1.structuredResult).toBeDefined();
+    }
     const empty = await buildServerConsultation(baseRequest(), capturingDeps('   ').deps);
-    expect(empty.ok).toBe(false);
+    expect(empty.ok).toBe(true);
+    if (empty.ok) expect(empty.diagnostics?.llmUnavailable).toBe(true);
   });
 });
 

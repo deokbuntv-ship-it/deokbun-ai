@@ -21,6 +21,7 @@ import {
   isDeclinedToDecide, contributedNothing,
 } from '@/features/divination';
 
+import { crossMaterialCorpus, isSurfaceable, surfaceRelevanceOf } from './consultationSurfacePlan';
 import { realize } from './koreanRealization';
 
 export type ContentDomain = ConsultationJudgeDomain | 'GENERAL';
@@ -148,10 +149,17 @@ const DIRECTNESS_RANK: Record<JudgmentEvidence['directness'], number> = { DIRECT
 const ROLE_PRIORITY_WHEN_ASKING_TIMING: Record<EvidenceRole, number> = { CURRENT: 0, PERIOD: 1, NATAL: 2 };
 const ROLE_PRIORITY_WHEN_BASELINE: Record<EvidenceRole, number> = { NATAL: 0, PERIOD: 1, CURRENT: 2 };
 
+// V6 ROOT CAUSE 2 — DOMAIN MATCH NOW OUTRANKS DIRECTNESS.
+//
+// `directness` says how directly a fact bears on the axis IT belongs to; it says nothing about whether that
+// axis is the one the reader asked about. Ranking it first meant a DIRECT spouse-position fact outranked an
+// ADJACENT career fact on a career question, which is how off-axis evidence became E1 — the first thing the
+// reader sees under 전문근거 — in the Blind-84 run. Relevance to the asked proposition comes first now;
+// directness and time-layer role decide the order WITHIN that.
 function evidenceRank(e: JudgmentEvidence, domain: ContentDomain, asksTiming: boolean): readonly [number, number, number] {
   const domainMatch = JUDGMENT_TO_CONTENT_DOMAIN[e.domain] === domain ? 0 : 1;
   const roleRank = (asksTiming ? ROLE_PRIORITY_WHEN_ASKING_TIMING : ROLE_PRIORITY_WHEN_BASELINE)[roleOf(e.temporalScope)];
-  return [DIRECTNESS_RANK[e.directness], domainMatch, roleRank];
+  return [domainMatch, DIRECTNESS_RANK[e.directness], roleRank];
 }
 
 function compareRank(a: readonly [number, number, number], b: readonly [number, number, number]): number {
@@ -195,7 +203,19 @@ const MAX_COUNTER_EVIDENCE = 1;
  *  — selects and attributes, never invents. Total output is always <= MAX_TOTAL_EVIDENCE, with at most
  *  MAX_COUNTER_EVIDENCE counter items, each carrying a stable id (E1..E4) in final selected order. */
 export function selectEvidence(verdict: CrossDivinationVerdict, domain: ContentDomain): VerifiedEvidenceCatalogItem[] {
-  const { supporting, counter } = pooledEvidence(verdict);
+  const pooled = pooledEvidence(verdict);
+  // V6 ROOT CAUSE 2 — the VISIBLE EVIDENCE SHORTLIST is question-scoped, not chart-scoped. An evidence atom
+  // about a proposition the reader did not ask about, which the Cross judge did not tie to the one they did,
+  // is dropped here rather than shown as if it were part of the answer. Nothing is recomputed: the atom
+  // stays in the verdict, in `evidenceReferences`, and in the grounded corpus. When NOTHING survives, the
+  // section is simply absent — the same "never force an empty section" rule the rest of the layer follows.
+  const materialCorpus = crossMaterialCorpus(verdict);
+  const relevant = (p: PooledEvidence) => isSurfaceable(surfaceRelevanceOf(
+    { domain: p.evidence.domain, authoritativeMeaning: p.evidence.meaning },
+    verdict.questionDomain, materialCorpus,
+  ));
+  const supporting = pooled.supporting.filter(relevant);
+  const counter = pooled.counter.filter(relevant);
   const rankOf = (p: PooledEvidence) => evidenceRank(p.evidence, domain, verdict.asksTiming);
   const byRank = (a: PooledEvidence, b: PooledEvidence) => compareRank(rankOf(a), rankOf(b));
   const counterPicked = [...counter].sort(byRank).slice(0, MAX_COUNTER_EVIDENCE);
@@ -213,7 +233,18 @@ export function selectEvidence(verdict: CrossDivinationVerdict, domain: ContentD
     canonicalMeaning: p.evidence.meaning,
   });
   const ordered = [...supportPicked.map((p) => ({ p, tag: 'SUPPORTING' as const })), ...counterPicked.map((p) => ({ p, tag: 'COUNTER' as const }))];
-  return ordered.map(({ p, tag }, i) => toCatalogItem(p, tag, i));
+  // V6 §DEDUP — the SAME atom reaches the pool through more than one provenance (a Qimen 값사 fact is both a
+  // direct-evidence item and a timing signal), and the citation block then printed it twice under one
+  // heading. Identity is the exact (anchor, meaning) pair, so a genuinely different fact is always kept;
+  // deduping here rather than at render keeps the E-ids contiguous and the catalog the single source.
+  const seen = new Set<string>();
+  const distinct = ordered.filter(({ p }) => {
+    const key = `${p.evidence.fact} ${p.evidence.meaning}`.replace(/\s+/g, '');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return distinct.map(({ p, tag }, i) => toCatalogItem(p, tag, i));
 }
 
 function buildSynthesis(verdict: CrossDivinationVerdict): ConsultationContentPlan['synthesis'] {
@@ -317,8 +348,20 @@ export function renderVerifiedEvidenceSection(catalog: readonly VerifiedEvidence
   // one section the server renders WORD FOR WORD was also the one most visibly ungrammatical. `realize` is
   // orthography and speech level only — no word is added, removed, or exchanged, so the catalog stays the
   // authority for every technical entity it names.
-  return catalog.map((e) => ({
-    title: `전문근거 · ${DISCIPLINE_LABEL[e.discipline]} (${e.id})`,
-    body: realize(`${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`),
+  //
+  // V6 §INTERNAL TOKEN BAN — GROUPED BY DISCIPLINE, and the catalog id is gone from the heading. "전문근거 ·
+  // 명리 (E1)" put an internal citation key in front of the reader in 75 of 82 Blind-84 answers; the id is
+  // the plan's own join key (claims reuse it), not a consumer label, and there is nothing on the page that
+  // ever cites it. Grouping also collapses what used to be up to four near-identical headings into one
+  // block per system, which is what a reader is actually looking for.
+  const byDiscipline = new Map<Discipline, string[]>();
+  for (const e of catalog) {
+    const lines = byDiscipline.get(e.discipline) ?? [];
+    lines.push(realize(`${e.canonicalMeaning} (근거: ${e.canonicalTechnicalAnchor})`));
+    byDiscipline.set(e.discipline, lines);
+  }
+  return [...byDiscipline].map(([discipline, lines]) => ({
+    title: `전문근거 · ${DISCIPLINE_LABEL[discipline]}`,
+    body: lines.join('\n'),
   }));
 }
