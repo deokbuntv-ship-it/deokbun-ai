@@ -23,9 +23,9 @@
 // over which technical entity, relationship, or period reaches the user.
 import type { ParsedStructuredConsultation } from '@/features/chat/prompts/structuredConsultation';
 import {
-  type CrossDivinationVerdict, type Discipline, type JudgmentDomain, type TemporalScope,
-  type QuestionIntent,
-  isDeclinedToDecide, stanceValence,
+  type CrossDivinationVerdict, type Discipline, type DivinationJudgment, type JudgmentDomain,
+  type TemporalScope, type QuestionIntent,
+  contributedNothing, isDeclinedToDecide, stanceValence,
 } from '@/features/divination';
 
 import type { ConsultationContentPlan, VerifiedEvidenceCatalogItem } from './consultationContentPlan';
@@ -84,6 +84,21 @@ export type GroundedNarrativePlan = {
   coverageGaps: readonly Discipline[];
   /** Disciplines that DID carry this question — the other half of the V4 scope-separation claim. */
   coveredBy: readonly Discipline[];
+  /**
+   * V5 §2 — the disciplines that MATERIALLY contributed: applied, and carrying at least one real finding
+   * rather than only a coverage-gap notice (`contributedNothing`). `coveredBy` is an alias of this list;
+   * it is named separately because the synthesis mode is decided by its SIZE, not by applicability.
+   */
+  materialContributors: readonly Discipline[];
+  /**
+   * COMBINED  ⇒ two or more systems really spoke, so the answer must lead with the combined Cross meaning
+   *             (reinforcement / contradiction / scope or temporal separation) that Cross already authorized.
+   * SINGLE_SYSTEM ⇒ exactly one system spoke. There is nothing to combine; inventing a three-system
+   *             synthesis here is the fabrication the V4 rescore measured. The answer states the usable
+   *             stance and the coverage limitation honestly instead.
+   * NONE ⇒ no system carried a finding.
+   */
+  synthesisMode: 'COMBINED' | 'SINGLE_SYSTEM' | 'NONE';
   /** The union of every authoritative string above — the fact boundary the LLM's language is checked against. */
   groundedCorpus: string;
   provenance: readonly ['deokbunai.grounded-narrative-plan.v2'];
@@ -166,8 +181,15 @@ export function buildGroundedNarrativePlan(
   // nothing else, so it can never become a calculation-failure claim (§15) nor a new metaphysical inference.
   // Carried as a SYNTHESIS claim so it reaches the reader through the same path as every other Cross
   // synthesis, and joins the grounded corpus like any other authoritative string.
-  const appliedDisciplines = verdict.contributions.filter((c) => c.applied).map((c) => c.discipline);
-  const unappliedDisciplines = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
+  // V5 §2 — MATERIAL contribution, not mere applicability. A discipline that was computed but reported only
+  // a coverage gap used to land on the "applied" side of this sentence, so the answer told the reader a
+  // system had carried the question when it had said nothing.
+  const judgments = verdict.disciplineJudgments as DivinationJudgment[];
+  const appliedDisciplines = judgments.filter((j) => !contributedNothing(j))
+    .filter((j) => verdict.contributions.find((c) => c.discipline === j.discipline)?.applied !== false)
+    .map((j) => j.discipline);
+  const unappliedDisciplines = verdict.contributions.map((c) => c.discipline)
+    .filter((d) => !appliedDisciplines.includes(d));
   if (appliedDisciplines.length > 0 && unappliedDisciplines.length > 0) {
     add({
       discipline: 'CROSS', domain: verdict.questionDomain, scope: 'UNSCOPED', polarity: 'NEUTRAL',
@@ -203,7 +225,7 @@ export function buildGroundedNarrativePlan(
     }, 'C');
   }
 
-  const coverageGaps = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
+  const coverageGaps = unappliedDisciplines;
   // A time LAYER is grounded when a claim actually stands on it. Cross's own prose does not always spell the
   // layer name out ("지금 흐름이 …" rather than "대운이 …"), so naming a layer that genuinely carries a claim
   // must not read as fabrication — what §3 forbids is a CHARACTERIZATION of a layer that supplied nothing,
@@ -240,6 +262,9 @@ export function buildGroundedNarrativePlan(
     actionBoundary: contentPlan.actionBoundary,
     coverageGaps,
     coveredBy: appliedDisciplines,
+    materialContributors: appliedDisciplines,
+    synthesisMode: appliedDisciplines.length >= 2 ? 'COMBINED'
+      : appliedDisciplines.length === 1 ? 'SINGLE_SYSTEM' : 'NONE',
     groundedCorpus,
     provenance: ['deokbunai.grounded-narrative-plan.v2'],
   };

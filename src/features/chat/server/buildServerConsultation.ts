@@ -57,6 +57,7 @@ import {
   narrativeIntentOf, renderGroundedSections, untraceableFacts,
   type GroundedViolationCategory, type NarrativeIntent,
 } from './groundedNarrative';
+import { buildGroundedActionPlan, renderGroundedActionSection } from './groundedActionPlan';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -652,19 +653,42 @@ export async function buildServerConsultation(
   // The grounded fallback now renders the cross-synthesis into `domainInterpretation` (so it reaches the
   // reader, not only the citation blocks), and one section is the product, not two.
   const deliveredSectionTitles = new Set((acceptedResult?.domainInterpretation ?? []).map((d) => d.title));
+  // V5 ROOT CAUSE 2 — the GROUNDED ACTION SOURCE. Server-materialized like every other authoritative block:
+  // built from the claim catalog, never asked of the model. It leads the authoritative tail, so the delivered
+  // order is 행동 → 한마디 → 왜 이렇게 보나요 → 앞으로의 흐름 → 전문근거. The grounded FALLBACK already renders
+  // its own action section into domainInterpretation under the same heading, and the deliveredSectionTitles
+  // filter below is what keeps that from becoming two copies of the same section.
+  const groundedActionSection = groundedPlan
+    ? renderGroundedActionSection(buildGroundedActionPlan(groundedPlan))
+    : null;
+  // "한마디" — the verdict's own closing implication, shown ONLY when the delivered body does not already
+  // carry it (the fallback composition ends its causal chain with this exact sentence).
+  const deliveredBody = [
+    acceptedResult?.coreSummary, acceptedResult?.coreInterpretation, acceptedResult?.disposition,
+    ...(acceptedResult?.strengths ?? []), ...(acceptedResult?.cautions ?? []),
+    ...(acceptedResult?.domainInterpretation ?? []).flatMap((d) => [d.title, d.body]),
+    acceptedResult?.futureFlow,
+  ].filter((x): x is string => typeof x === 'string').join('\n').replace(/\s+/g, '');
+  const closingLine = verdictForGuard?.actionableInterpretation ?? null;
+  const closingSection = closingLine && !deliveredBody.includes(closingLine.replace(/\s+/g, ''))
+    ? { title: '한마디', body: closingLine }
+    : null;
   const authoritativeSections = [
+    ...(groundedActionSection ? [groundedActionSection] : []),
+    ...(closingSection ? [closingSection] : []),
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
     // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
     // section is the product, not two.
     ...(groundedPlan
       ? renderGroundedSections(groundedPlan).filter(
-        (s) => !(s.title === '앞으로의 흐름' && !!acceptedResult?.futureFlow) && !deliveredSectionTitles.has(s.title),
+        (s) => !(s.title === '앞으로의 흐름' && !!acceptedResult?.futureFlow),
       )
       : []),
-    ...(contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0
+  ].filter((s) => !deliveredSectionTitles.has(s.title)).concat(
+    contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0
       ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence)
-      : []),
-  ];
+      : [],
+  );
   const verifiedEvidence = authoritativeSections.length > 0 ? authoritativeSections : undefined;
   const structuredResult = acceptedResult
     ? {

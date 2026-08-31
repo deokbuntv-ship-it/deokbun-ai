@@ -1,8 +1,22 @@
-// FINAL DIVINATION CONSULTATION QA V1 — LLM-as-judge scoring against the brief's §6 rubric + §7 hard-fail
+// FINAL DIVINATION CONSULTATION QA — LLM-as-judge scoring against the brief's §6 rubric + §7 hard-fail
 // list + §8 personalization gate + §9 new-insight gate + §10 cross-system quality + §22 advice-secondary
 // check. A SEPARATE OpenAI call from generation (judgeCallLLM in openaiCallLLM.ts) — self-grading-bias is
 // mitigated by (a) an explicit "harsh, skeptical grader" instruction and (b) a human (Claude) spot-check of
 // the best/worst 5 per §33 rather than trusting these numbers blindly.
+//
+// V5 COMPLETE-PRODUCT CONTRACT. The V4 rescore measured the wrong artifact twice over:
+//
+//   1. USER_VISIBLE_ANSWER was a handful of raw schema fields. The server-materialized blocks the reader
+//      actually receives — 전문근거, 왜 이렇게 보나요, and (V5) 행동/한마디 — were never shown to the judge, so
+//      visible content was scored as missing when it had in fact been delivered.
+//   2. The engine's internal grounded facts WERE shown, unlabelled, alongside the answer. Internal reference
+//      must never earn visible-content quality points; it exists only so the judge can tell prose that
+//      correctly reflects this chart from prose that would fit anyone.
+//
+// The two are now separate inputs with separate rules, and the answer comes from ONE definition shared with
+// the product: `buildUserVisibleAnswer` in src/features/chat/presentation/userVisibleAnswer.ts.
+import type { UserVisibleAnswer } from '@/features/chat/presentation/userVisibleAnswer';
+
 import { judgeCallLLM } from './openaiCallLLM';
 
 export type QaScoreBreakdown = {
@@ -36,27 +50,46 @@ const JUDGE_SYSTEM_PROMPT = `당신은 한국어 명리/자미두수/기문둔�
 관대하게 채점하지 마십시오. 답변이 이 사람의 실제 명식 데이터 없이도 쓸 수 있는 일반적인 내용이라면 personalization 점수를 낮게 주십시오.
 질문에 직접 답하지 않으면 conclusionClarity를 낮게 주십시오. Cross Judge 결론(제공된 경우)과 최종 답변이 모순되면 hardFail=true 로 표시하십시오.
 
+[채점 대상 — 매우 중요]
+"사용자에게 실제로 보이는 답변" 블록만 채점하십시오. 그 안의 [전문근거 · …] 항목도 사용자에게 그대로 보이는 제품 내용이므로
+채점 대상에 포함됩니다. [행동]·[한마디]·[왜 이렇게 보나요]·[앞으로의 흐름] 블록도 마찬가지로 보이는 내용입니다.
+"엔진 내부 참고 자료"는 사용자에게 보이지 않습니다. 그것은 오직 (a) 답변이 이 사람의 실제 계산 결과와 맞는지,
+(b) 답변이 사실을 지어냈는지 판단하는 용도로만 쓰십시오. 내부 참고 자료에 좋은 내용이 있다는 이유로 점수를 올리지 마십시오 —
+사용자는 그것을 보지 못합니다.
+
 다음 루브릭으로 채점하십시오 (총 100점):
-- personalization (0-20): "실제 근거 사실"(제공됨, 아래 참고)에 나온 구체적 사실(간지·궁·문·성 등)과 답변 내용을
-  비교해서 판단하십시오. 답변이 그 사실들과 실제로 연결되는 결론을 내렸다면 personalization 높은 점수를 주십시오.
-  반대로 실제 근거 사실이 있는데도 답변이 그것을 전혀 반영하지 않고 두루뭉술하면 낮은 점수. 실제 근거 사실 목록 자체에
-  없는 세부(정확한 간지 나열 등)를 답변이 다시 언급하지 않았다는 이유만으로 감점하지 마십시오 — 소비자용 답변은 원래
-  전문용어를 풀어서 설명해야 하는 제품입니다.
+- personalization (0-20): "엔진 내부 참고 자료"에 나온 구체적 사실(간지·궁·문·성 등)과 보이는 답변을 비교해서 판단하십시오.
+  답변이 그 사실들과 실제로 연결되는 결론을 내렸다면 높은 점수. 반대로 근거 사실이 있는데도 답변이 그것을 전혀 반영하지 않고
+  두루뭉술하면 낮은 점수. 내부 자료에만 있는 세부(정확한 간지 나열 등)를 답변이 다시 언급하지 않았다는 이유만으로 감점하지 마십시오
+  — 소비자용 답변은 원래 전문용어를 풀어서 설명해야 하는 제품입니다.
 - conclusionClarity (0-15): 사용자의 실제 질문에 명확히 답했는가.
 - divinationDepth (0-15): 상징 나열이 아니라 실제 추론인가.
-- crossSystemSynthesis (0-15): 2개 이상 체계가 적용될 때 새로운 결합 추론이 있는가 (단순 "명리는 X, 자미는 Y, 기문은 Z" 나열은 0점).
+- crossSystemSynthesis (0-15): 아래 [교차 종합 채점 규칙]을 그대로 따르십시오.
 - contradictionHandling (0-10): 상반된 근거가 있을 때 억지로 하나로 뭉개지 않고 지적으로 보존했는가.
 - timingQuality (0-10): 장기 바탕과 현재 시점/기간이 구분되는가, 가짜 정밀 날짜를 지어내지 않았는가.
-- actionUsefulness (0-5): 행동 제안이 구체적이고 근거에 기반하는가.
+- actionUsefulness (0-5): 행동 제안이 구체적이고, 답변 안의 실제 근거에 묶여 있는가. 근거와 무관한 일반론("전문가와 상의하세요",
+  "신중하게 결정하세요")은 낮은 점수. 무엇을 먼저 확인해야 하는지, 어떤 조건이면 진행/보류인지가 근거와 함께 제시되면 높은 점수.
 - readability (0-5): 명리/자미/기문 훈련이 없는 일반 사용자가 이해할 수 있는가.
 - professionalTrust (0-5): 별자리 운세 생성기가 아니라 전문 상담처럼 느껴지는가.
 
+[교차 종합 채점 규칙 — crossSystemSynthesis, 15점]
+"실제로 근거를 낸 체계"(materialContributors)의 수로 판단하십시오. 적용 여부가 아니라 실제 기여 여부입니다.
+- 2개 이상이 실제로 근거를 냈을 때: 평소대로 채점하십시오. 진짜 결합 추론(서로 보강 / 상반 / 영역 분리 / 시간 분리 / 복합 진실)이
+  있으면 높은 점수. 단순히 "명리는 X, 자미는 Y, 기문은 Z"로 나열만 했으면 0에 가깝게 주십시오.
+- 정확히 1개만 실제로 근거를 냈고 나머지가 정당하게 미적용/미커버(NOT_COVERED)일 때: 기계적으로 0점을 주지 마십시오.
+  이 경우에는 다음을 평가하십시오 — (a) 적용 범위를 정직하게 처리했는가, (b) 없는 결합을 지어내지 않았는가,
+  (c) 쓸 수 있는 체계의 결론을 제대로 설명했는가, (d) 커버되지 않은 부분을 관련 있게 밝혔는가.
+  네 가지를 모두 잘했다면 높은 점수를 줄 수 있습니다. 반대로 실제로는 한 체계뿐인데 여러 체계가 맞물린 것처럼 말했다면
+  그것은 조작이므로 0점이며 hardFail 후보입니다.
+- 점수를 부풀리지 마십시오. 정직함에 대한 점수이지, 정직하다는 이유만으로 만점을 주라는 뜻이 아닙니다.
+
 hardFail=true 로 표시해야 하는 경우: 잘못된 사람의 명식 사실 사용, 제공된 명리/자미/기문 엔진 데이터와 모순, 결정론적 판정을 LLM이 뒤집음,
-숨겨진 목표 대상 혼동, 시간 축 혼동, 근거 없는 확신, 조작된 정확한 날짜, 최종 답변이 Cross Judge 결론과 모순, 거의 모든 사람에게
-해당될 수 있는 일반적 답변, 실제로 질문에 답하지 않음.
+숨겨진 목표 대상 혼동, 시간 축 혼동, 근거 없는 확신, 조작된 정확한 날짜, 최종 답변이 Cross Judge 결론과 모순, 실제로 근거를 내지 않은
+체계가 근거를 낸 것처럼 서술, 거의 모든 사람에게 해당될 수 있는 일반적 답변, 실제로 질문에 답하지 않음.
 
 personalizationFail=true: "이 답변이 이 사람의 실제 명식 데이터를 보지 않고도 쓸 수 있었는가?"에 YES라면 true.
-crossSynthesisPresent: 2개 이상 체계가 적용 가능할 때만 평가하고, 진짜 새로운 결합 추론이 있으면 true.
+crossSynthesisPresent: 실제로 근거를 낸 체계가 2개 이상일 때만 평가하고, 진짜 새로운 결합 추론이 있으면 true.
+  1개뿐이면 false로 두되, 그것만으로 감점하지 마십시오(위 규칙 참조).
 newInsightPresent: 단순 사실 재진술이 아닌 유용한 추론이 최소 하나 있으면 true.
 paidUserValue: "유료 사용자가 이 시스템이 자신의 실제 상황을 이해하고 유용한 판단을 줬다고 느낄 것인가?" YES/BORDERLINE/NO.
 
@@ -71,45 +104,34 @@ export type QaJudgeInput = {
   domain: string;
   question: string;
   profileLabel: string;
-  systemsApplicable: string[]; // e.g. ['MYUNGRI','ZIWEI','QIMEN']
+  /** V5 — systems that MATERIALLY contributed a finding, not merely systems that were applicable. */
+  materialContributors: string[];
+  /** Systems legitimately NOT_COVERED / NOT_APPLICABLE / NO_DIRECT_JUDGMENT for this question. */
+  notCoveredSystems: string[];
   crossJudgeSummary: string; // primaryConclusion + a few agreement/contradiction lines, or '없음'
-  // The ACTUAL engine-computed facts available to the model for this chart (a sample of
-  // evidenceReferences lines per discipline) — WITHOUT this the judge has no way to tell "generic prose"
-  // from "prose that correctly reflects real chart-specific facts", and defaults to penalizing personalization
-  // for not re-stating detail it was never shown either (found + fixed after the first QA run inflated
-  // personalizationFailRate to 89% this way).
-  groundedFacts: string[];
-  answer: {
-    coreSummary: string | null;
-    disposition: string | null;
-    coreInterpretation: string | null;
-    strengths: string[];
-    cautions: string[];
-    domainInterpretation: { title: string; body: string }[];
-    futureFlow: string | null;
-  };
+  /**
+   * AUTHORITATIVE_REFERENCE — internal, NOT user-visible. The engine-computed facts for this chart, used only
+   * to check whether the visible answer reflects them and invents nothing. Never scored as delivered content
+   * (that conflation is exactly what the V4 contract got wrong).
+   */
+  authoritativeReference: string[];
+  /** USER_VISIBLE_ANSWER — the complete product, in delivery order, from `buildUserVisibleAnswer`. */
+  userVisibleAnswer: UserVisibleAnswer;
 };
 
 function userPrompt(input: QaJudgeInput): string {
-  const a = input.answer;
-  const answerText = [
-    a.coreSummary, a.disposition ? `[기본 성향] ${a.disposition}` : null, a.coreInterpretation,
-    a.strengths.length ? `[강점] ${a.strengths.join(' / ')}` : null,
-    a.cautions.length ? `[주의] ${a.cautions.join(' / ')}` : null,
-    ...a.domainInterpretation.map((d) => `[${d.title}] ${d.body}`),
-    a.futureFlow ? `[앞으로 흐름] ${a.futureFlow}` : null,
-  ].filter(Boolean).join('\n');
   return `도메인: ${input.domain}
 사용자 질문: ${input.question}
 프로필: ${input.profileLabel}
-적용 가능한 체계: ${input.systemsApplicable.join(', ') || '없음'}
+실제로 근거를 낸 체계(materialContributors): ${input.materialContributors.join(', ') || '없음'}
+이 질문을 커버하지 않는 체계(정당한 미적용): ${input.notCoveredSystems.join(', ') || '없음'}
 Cross Judge 참고 (결정론적, 답변이 이것과 모순되면 hardFail): ${input.crossJudgeSummary}
 
-=== 이 사람에 대해 엔진이 실제로 계산한 근거 사실 (일부, personalization 판단용) ===
-${input.groundedFacts.length ? input.groundedFacts.map((f) => `- ${f}`).join('\n') : '(근거 사실 없음)'}
+=== 엔진 내부 참고 자료 (사용자에게 보이지 않음 — 사실 검증 전용, 점수 근거로 쓰지 말 것) ===
+${input.authoritativeReference.length ? input.authoritativeReference.map((f) => `- ${f}`).join('\n') : '(근거 사실 없음)'}
 
-=== 실제 답변 ===
-${answerText || '(빈 답변)'}`;
+=== 사용자에게 실제로 보이는 답변 (채점 대상) ===
+${input.userVisibleAnswer.text || '(빈 답변)'}`;
 }
 
 export async function judgeQaCase(apiKey: string, input: QaJudgeInput): Promise<QaJudgeVerdict> {

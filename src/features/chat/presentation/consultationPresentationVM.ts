@@ -23,6 +23,39 @@ export type ConsultationPresentationVM = {
   followUps: string[]; // exactly up to 3
 };
 
+// V5 — DELIVERY ORDER for the server-materialized blocks, applied here so the app and any scorer read the
+// same order. Anything not listed (the model's own domain sections) keeps its position ahead of them; the
+// technical citations always close.
+export const VERIFIED_EVIDENCE_TITLE_PREFIX = '전문근거';
+const TAIL_ORDER: readonly string[] = [
+  // 행동 — one heading per question shape (see groundedActionPlan.ACTION_TITLE).
+  '이렇게 움직이시면 됩니다',
+  '어느 쪽을 먼저 보시면 됩니다',
+  '시점을 이렇게 보시면 됩니다',
+  '이렇게 이해하시면 됩니다',
+  '이 결을 이렇게 쓰시면 됩니다',
+  '한마디',
+  '왜 이렇게 보나요',
+  '앞으로의 흐름',
+];
+const RANK_UNLISTED = 10;
+const RANK_LISTED = 20;
+const RANK_EVIDENCE = 100;
+
+function rankOf(title: string): number {
+  if (title.startsWith(VERIFIED_EVIDENCE_TITLE_PREFIX)) return RANK_EVIDENCE;
+  const i = TAIL_ORDER.indexOf(title);
+  return i >= 0 ? RANK_LISTED + i : RANK_UNLISTED;
+}
+
+/** Stable sort into delivery order — sections sharing a rank keep the order they were built in. */
+export function orderDetailSections(sections: readonly PresentationDetailSection[]): PresentationDetailSection[] {
+  return sections
+    .map((s, i) => ({ s, i, r: rankOf(s.title) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map((x) => x.s);
+}
+
 const MAX_POINTS = 3;
 const MAX_DETAIL_SECTIONS = 5; // §13/§25 — a long-range answer must not become a wall of many sections
 const JACCARD_REDUNDANT = 0.8; // near-duplicate threshold (high → conservative, keeps distinct advice)
@@ -112,7 +145,7 @@ export function toConsultationPresentation(
     summary,
     keyPoints,
     cautions,
-    detailSections,
+    detailSections: orderDetailSections(detailSections),
     // §16 — drop any out-of-scope offer (계약서 검토 / 진단 / 종목 추천 …) before dedup/cap, so a suggested
     // follow-up never implies Deokbuni performs legal/medical/investment professional services.
     followUps: dedupe(filterFollowUpsToScope(vm.followUps)).slice(0, MAX_POINTS),

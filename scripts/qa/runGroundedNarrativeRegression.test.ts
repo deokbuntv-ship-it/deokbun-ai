@@ -22,6 +22,7 @@ import type { DigestProvider } from '@/features/interpretation';
 
 import { QA_PROFILES, QA_CASES, type QaCase } from './consultationQaFixtures';
 import { buildRealCallLLM } from './openaiCallLLM';
+import { completeProductView } from './qaCompleteProduct';
 import { judgeQaCase, type QaJudgeVerdict } from './qaJudge';
 import { genericPhraseHits } from './qaTextChecks';
 
@@ -31,31 +32,10 @@ const OUT_DIR = path.resolve(__dirname, '..', '..', '.qa-out');
 const JSONL_PATH = path.join(OUT_DIR, 'groundedNarrativeRegression.jsonl');
 const SUMMARY_PATH = path.join(OUT_DIR, 'groundedNarrativeRegression.summary.json');
 
-const CASE_TARGET = 40;
+// The consumed set now lives in its own module so every runner measures the SAME 40 cases.
+import { CASE_TARGET, CONTROL_IDS, PRIOR_HARD_FAIL_IDS, selectRegressionCases } from './regressionCases';
 
-// Previously reported hard fails + the established controls — kept so the same cases that failed before are
-// re-measured, not quietly replaced.
-const PRIOR_HARD_FAIL_IDS = [
-  'BUSINESS-06', 'BUSINESS-10', 'BUSINESS-17', 'MONEY-04', 'CAREER-02', 'CAREER-04',
-  'LOVE-02', 'LOVE-09', 'LOVE-13', 'REUNION-05', 'CHANGE-07', 'TIMING-05',
-];
-const CONTROL_IDS = ['BUSINESS-13', 'MONEY-02', 'CAREER-11', 'LOVE-04', 'CHANGE-02', 'TIMING-03'];
-
-export function selectRegressionCases(): QaCase[] {
-  const seeded = [...PRIOR_HARD_FAIL_IDS, ...CONTROL_IDS];
-  const picked = new Map<string, QaCase>();
-  for (const id of seeded) {
-    const c = QA_CASES.find((x) => x.caseId === id);
-    if (!c) throw new Error(`regression case id not found in QA_CASES: ${id}`);
-    picked.set(id, c);
-  }
-  const rest = QA_CASES.filter((c) => !picked.has(c.caseId));
-  const need = CASE_TARGET - picked.size;
-  const stride = rest.length / need;
-  for (let i = 0; i < need; i += 1) picked.set(rest[Math.floor(i * stride)].caseId, rest[Math.floor(i * stride)]);
-  // Fixture order, so the report reads by domain.
-  return QA_CASES.filter((c) => picked.has(c.caseId));
-}
+export { selectRegressionCases };
 
 function loadApiKey(): string {
   const p = path.resolve(__dirname, '..', '..', '.env.qa.local');
@@ -157,6 +137,7 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
   let failureNote: string | null = null;
   let answer: AnswerFields = { coreSummary: null, disposition: null, coreInterpretation: null, strengths: [], cautions: [], domainInterpretation: [], futureFlow: null, verifiedEvidenceCount: 0 };
   let crossInfo = { summary: '없음', systems: [] as string[], groundedFacts: [] as string[] };
+  let product = completeProductView(undefined, '');
   let diagnostics: ServerConsultationDiagnostics | undefined;
   try {
     const r = await buildServerConsultation({ birthInput: profile.birth, question: c.question }, deps);
@@ -165,6 +146,7 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
       composedText = r.text;
       answer = extractAnswer(r.structuredResult, r.text);
       crossInfo = crossJudgeSummaryOf(r.structuredResult?.decisionMeta);
+      product = completeProductView(r.structuredResult as never, r.text);
       diagnostics = r.diagnostics;
     } else {
       failureNote = `NOT_OK:${r.reason}`;
@@ -176,7 +158,11 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
   const judge = ok
     ? await judgeQaCase(apiKey, {
         domain: c.domain, question: c.question, profileLabel: profile.label,
-        systemsApplicable: crossInfo.systems, crossJudgeSummary: crossInfo.summary, groundedFacts: crossInfo.groundedFacts, answer,
+        // V5 COMPLETE-PRODUCT CONTRACT — the judge scores the delivered answer; internal facts stay reference-only.
+        materialContributors: product.materialContributors, notCoveredSystems: product.notCoveredSystems,
+        crossJudgeSummary: product.crossJudgeSummary,
+        authoritativeReference: product.authoritativeReference,
+        userVisibleAnswer: product.userVisibleAnswer,
       })
     : null;
   return {

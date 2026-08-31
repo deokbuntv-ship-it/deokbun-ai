@@ -17,6 +17,7 @@ import type { LLMMessage } from '@/features/chat/types/chatArchitecture';
 
 import { QA_PROFILES, QA_CASES, QA_CHAINS, QA_DISTRIBUTION, type QaProfile, type QaCase, type QaChain } from './consultationQaFixtures';
 import { buildRealCallLLM } from './openaiCallLLM';
+import { completeProductView } from './qaCompleteProduct';
 import { judgeQaCase, type QaJudgeVerdict } from './qaJudge';
 import { genericPhraseHits, findDuplicates } from './qaTextChecks';
 
@@ -126,6 +127,7 @@ async function runSingleCase(apiKey: string, c: QaCase, nowEpochSeconds: number)
   let failureNote: string | null = null;
   let answer: AnswerFields = { coreSummary: null, disposition: null, coreInterpretation: null, strengths: [], cautions: [], domainInterpretation: [], futureFlow: null };
   let crossInfo = { summary: '없음', systems: [] as string[], groundedFacts: [] as string[] };
+  let product = completeProductView(undefined, '');
   try {
     const r = await buildServerConsultation({ birthInput: profile.birth, question: c.question }, deps);
     if (r.ok) {
@@ -133,6 +135,7 @@ async function runSingleCase(apiKey: string, c: QaCase, nowEpochSeconds: number)
       composedText = r.text;
       answer = extractAnswer(r.structuredResult, r.text);
       crossInfo = crossJudgeSummaryOf(r.structuredResult?.decisionMeta);
+      product = completeProductView(r.structuredResult as never, r.text);
     } else {
       failureNote = `NOT_OK:${r.reason}`;
     }
@@ -143,7 +146,11 @@ async function runSingleCase(apiKey: string, c: QaCase, nowEpochSeconds: number)
   const judge = ok
     ? await judgeQaCase(apiKey, {
         domain: c.domain, question: c.question, profileLabel: profile.label,
-        systemsApplicable: crossInfo.systems, crossJudgeSummary: crossInfo.summary, groundedFacts: crossInfo.groundedFacts, answer,
+        // V5 COMPLETE-PRODUCT CONTRACT — the judge scores the delivered answer; internal facts stay reference-only.
+        materialContributors: product.materialContributors, notCoveredSystems: product.notCoveredSystems,
+        crossJudgeSummary: product.crossJudgeSummary,
+        authoritativeReference: product.authoritativeReference,
+        userVisibleAnswer: product.userVisibleAnswer,
       })
     : null;
   return {
@@ -190,6 +197,7 @@ async function runChain(apiKey: string, chain: QaChain, nowEpochSeconds: number)
     let ok = false; let failureNote: string | null = null; let composedText = '';
     let answer: AnswerFields = { coreSummary: null, disposition: null, coreInterpretation: null, strengths: [], cautions: [], domainInterpretation: [], futureFlow: null };
     let crossInfo = { summary: '없음', systems: [] as string[], groundedFacts: [] as string[] };
+    let product = completeProductView(undefined, '');
     let followUpIntent: string | null = null;
     try {
       const r = await buildServerConsultation(
@@ -200,6 +208,7 @@ async function runChain(apiKey: string, chain: QaChain, nowEpochSeconds: number)
         ok = true; composedText = r.text;
         answer = extractAnswer(r.structuredResult, r.text);
         crossInfo = crossJudgeSummaryOf(r.structuredResult?.decisionMeta);
+        product = completeProductView(r.structuredResult as never, r.text);
         followUpIntent = r.diagnostics?.followUp ?? null;
         if (i > 0 && followUpIntent && RECOGNIZED_FOLLOW_UP_INTENTS.has(followUpIntent) && loadCalls === 0) {
           continuityOk = false;

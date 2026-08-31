@@ -16,6 +16,7 @@ import type { DigestProvider } from '@/features/interpretation';
 
 import { QA_PROFILES, QA_CASES, type QaCase } from './consultationQaFixtures';
 import { buildRealCallLLM } from './openaiCallLLM';
+import { completeProductView } from './qaCompleteProduct';
 import { judgeQaCase, type QaJudgeVerdict } from './qaJudge';
 import { genericPhraseHits } from './qaTextChecks';
 
@@ -133,6 +134,7 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
   let failureNote: string | null = null;
   let answer: AnswerFields = { coreSummary: null, disposition: null, coreInterpretation: null, strengths: [], cautions: [], domainInterpretation: [], futureFlow: null, verifiedEvidenceCount: 0 };
   let crossInfo = { summary: '없음', systems: [] as string[], groundedFacts: [] as string[] };
+  let product = completeProductView(undefined, '');
   let diagnostics: ServerConsultationDiagnostics | undefined;
   try {
     const r = await buildServerConsultation({ birthInput: profile.birth, question: c.question }, deps);
@@ -141,6 +143,7 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
       composedText = r.text;
       answer = extractAnswer(r.structuredResult, r.text);
       crossInfo = crossJudgeSummaryOf(r.structuredResult?.decisionMeta);
+      product = completeProductView(r.structuredResult as never, r.text);
       diagnostics = r.diagnostics;
     } else {
       failureNote = `NOT_OK:${r.reason}`;
@@ -152,7 +155,11 @@ async function runSingleCase(apiKey: string, c: QaCase): Promise<CaseRecord> {
   const judge = ok
     ? await judgeQaCase(apiKey, {
         domain: c.domain, question: c.question, profileLabel: profile.label,
-        systemsApplicable: crossInfo.systems, crossJudgeSummary: crossInfo.summary, groundedFacts: crossInfo.groundedFacts, answer,
+        // V5 COMPLETE-PRODUCT CONTRACT — the judge scores the delivered answer; internal facts stay reference-only.
+        materialContributors: product.materialContributors, notCoveredSystems: product.notCoveredSystems,
+        crossJudgeSummary: product.crossJudgeSummary,
+        authoritativeReference: product.authoritativeReference,
+        userVisibleAnswer: product.userVisibleAnswer,
       })
     : null;
   return {

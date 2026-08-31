@@ -17,6 +17,7 @@ import type { DigestProvider } from '@/features/interpretation';
 
 import { QA_PROFILES, type QaCase, type QaDomain } from './consultationQaFixtures';
 import { buildRealCallLLM } from './openaiCallLLM';
+import { completeProductView } from './qaCompleteProduct';
 import { judgeQaCase, type QaJudgeVerdict } from './qaJudge';
 import { genericPhraseHits } from './qaTextChecks';
 
@@ -164,6 +165,7 @@ async function runSingleCase(apiKey: string, c: VerificationCase): Promise<CaseR
   let failureNote: string | null = null;
   let answer: AnswerFields = { coreSummary: null, disposition: null, coreInterpretation: null, strengths: [], cautions: [], domainInterpretation: [], futureFlow: null };
   let crossInfo = { summary: '없음', systems: [] as string[], groundedFacts: [] as string[], direction: null as string | null };
+  let product = completeProductView(undefined, '');
   try {
     const r = await buildServerConsultation({ birthInput: profile.birth, question: c.question }, deps);
     if (r.ok) {
@@ -171,6 +173,7 @@ async function runSingleCase(apiKey: string, c: VerificationCase): Promise<CaseR
       composedText = r.text;
       answer = extractAnswer(r.structuredResult, r.text);
       crossInfo = crossJudgeSummaryOf(r.structuredResult?.decisionMeta);
+      product = completeProductView(r.structuredResult as never, r.text);
     } else {
       failureNote = `NOT_OK:${r.reason}`;
     }
@@ -181,7 +184,11 @@ async function runSingleCase(apiKey: string, c: VerificationCase): Promise<CaseR
   const judge = ok
     ? await judgeQaCase(apiKey, {
         domain: c.domain, question: c.question, profileLabel: profile.label,
-        systemsApplicable: crossInfo.systems, crossJudgeSummary: crossInfo.summary, groundedFacts: crossInfo.groundedFacts, answer,
+        // V5 COMPLETE-PRODUCT CONTRACT — the judge scores the delivered answer; internal facts stay reference-only.
+        materialContributors: product.materialContributors, notCoveredSystems: product.notCoveredSystems,
+        crossJudgeSummary: product.crossJudgeSummary,
+        authoritativeReference: product.authoritativeReference,
+        userVisibleAnswer: product.userVisibleAnswer,
       })
     : null;
   return {

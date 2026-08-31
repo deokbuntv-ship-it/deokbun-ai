@@ -161,6 +161,17 @@ export function renderVerdictDirective(v: CrossDivinationVerdict): string {
     );
   }
 
+  // V5 §2 — MULTI-SYSTEM SYNTHESIS, decided by MATERIAL contribution rather than applicability. Two or more
+  // systems that actually said something is the only case where a combined reading exists; with one, the honest
+  // answer is the usable stance plus the coverage limitation, and a manufactured "three systems agree" is the
+  // fabrication the V4 rescore measured.
+  const nulls = nullContributors(v);
+  const materialCount = (v.disciplineJudgments as DivinationJudgment[])
+    .filter((j) => j.applicable && !nulls.has(j.discipline)).length;
+  lines.push(materialCount >= 2
+    ? '· 실제로 근거를 낸 체계가 둘 이상입니다. 위의 일치·엇갈림·영역 분리·시간 분리를 합친 뜻을 먼저 말씀하십시오. "명리는 A, 자미는 B, 기문은 C"처럼 나열만 하면 종합이 아닙니다.'
+    : '· 이번 질문에 실제로 근거를 낸 체계는 하나뿐입니다. 여러 체계가 같은 결론을 가리킨다거나 서로 맞물렸다고 말하지 마십시오. 쓸 수 있는 근거로 결론을 분명히 설명하고, 나머지는 이 축을 직접 보는 자리가 없어 넣지 않았다고만 말씀하십시오.');
+
   // §13 COMPOUND TRUTH — the multi-axis result must survive into the prose, not be averaged into one ±.
   const otherAxes = v.axisVerdicts.filter((a) => a.domain !== v.questionDomain && a.stance !== 'INSUFFICIENT_EVIDENCE');
   if (otherAxes.length) {

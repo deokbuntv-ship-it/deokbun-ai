@@ -153,3 +153,62 @@ describe('buildServerConsultation — §24 server E2E degraded modes', () => {
     expect(q3.groundingMeta.engines.qimen).toBe('not_applicable'); // back to natal, no stale activation leak
   });
 });
+
+// V5 ROOT CAUSE 2 — the grounded ACTION source must actually reach the reader through the real path, not
+// only exist as a module. Before this, procedure appeared only when the model volunteered it in prose.
+//
+// The section can be composed by either path: the grounded FALLBACK renders its own into domainInterpretation,
+// and an ACCEPTED answer gets the server-materialized GroundedActionPlan. What the product guarantees is that
+// the delivered answer carries EXACTLY ONE of them — never none, never two.
+describe('V5 — the delivered answer carries exactly one action section', () => {
+  const ACTION_TITLES = [
+    '이렇게 움직이시면 됩니다', '어느 쪽을 먼저 보시면 됩니다', '시점을 이렇게 보시면 됩니다',
+    '이렇게 이해하시면 됩니다', '이 결을 이렇게 쓰시면 됩니다',
+  ];
+
+  // No technical vocabulary, so the grounded gate accepts it and the ACCEPTED path composes the answer.
+  const PLAIN_ANSWER = JSON.stringify({
+    coreSummary: '차분한 흐름입니다.',
+    coreInterpretation: '차분함과 추진력이 함께 있는 결이라, 한번 잡은 일을 오래 끌고 가는 쪽에서 결과가 붙습니다. '
+      + '다만 조급하게 서두르면 흐름이 흐트러지기 쉬우니, 속도를 조절하면서 되돌릴 수 있는 범위부터 차근히 넓혀 가시는 편이 좋습니다. '
+      + '지금은 크게 방향을 틀기보다 지금 하고 계신 일을 유지하시는 쪽이 안정적입니다.',
+    strengths: ['한번 잡은 일을 오래 끌고 갑니다.'],
+    cautions: ['조급하게 서두르기보다 속도를 조절하는 편이 좋습니다.'],
+    followUps: ['어떤 방식이 맞을까요?'],
+  });
+
+  const deliveredSections = async (answer: string) => {
+    const { deps } = capturingDeps(answer);
+    const r = await buildServerConsultation(baseRequest(), deps);
+    expect(r.ok).toBe(true);
+    if (!r.ok || !r.structuredResult) throw new Error('no result');
+    const { buildUserVisibleAnswer } = await import('@/features/chat/presentation/userVisibleAnswer');
+    return { visible: buildUserVisibleAnswer(r.structuredResult), fallback: r.diagnostics.groundedFallback === true };
+  };
+
+  it('an ACCEPTED answer receives the server-materialized grounded action section', async () => {
+    const { visible, fallback } = await deliveredSections(PLAIN_ANSWER);
+    expect(fallback).toBe(false);
+    const action = visible.sections.filter((s) => ACTION_TITLES.includes(s.title));
+    expect(action).toHaveLength(1);
+    // Reason-bound, never a bare boundary line.
+    expect(action[0].body.length).toBeGreaterThan(30);
+  });
+
+  it('a grounded-FALLBACK answer still carries one action section, not two', async () => {
+    const { visible, fallback } = await deliveredSections(GOOD_ANSWER);
+    expect(fallback).toBe(true);
+    expect(visible.sections.filter((s) => ACTION_TITLES.includes(s.title))).toHaveLength(1);
+  });
+
+  it('delivers the complete product in order: 결론 first, 전문근거 after the action section', async () => {
+    const { visible } = await deliveredSections(PLAIN_ANSWER);
+    expect(visible.sections[0].title).toBe('결론');
+    expect(visible.text).toContain('[결론]');
+    const evidenceAt = visible.sections.findIndex((s) => s.title.startsWith('전문근거'));
+    const actionAt = visible.sections.findIndex((s) => ACTION_TITLES.includes(s.title));
+    expect(evidenceAt).toBeGreaterThan(-1);
+    expect(actionAt).toBeGreaterThan(-1);
+    expect(actionAt).toBeLessThan(evidenceAt);
+  });
+});
