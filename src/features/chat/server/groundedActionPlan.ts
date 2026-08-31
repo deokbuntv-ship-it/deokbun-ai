@@ -14,8 +14,11 @@
 // about the chart — the same construction the grounded fallback already uses for its boundary sentence. Each
 // item carries the claim ids it stands on, so every action reason is traceable, and `untraceableFacts` over
 // any rendered item is empty by construction.
-import { technicalTokensIn, type GroundedClaim, type GroundedNarrativePlan, type NarrativeIntent } from './groundedNarrative';
-import { realize } from './koreanRealization';
+import {
+  actionDirectionOf, technicalTokensIn,
+  type GroundedClaim, type GroundedNarrativePlan, type NarrativeIntent,
+} from './groundedNarrative';
+import { joinDistinctSentences, realize } from './koreanRealization';
 
 export const GROUNDED_ACTION_PLAN_VERSION = 'grounded-action-plan@1.0.0';
 
@@ -66,6 +69,9 @@ const FRAME = {
   DECISIVE: '여기가 두 쪽을 가르는 지점입니다.',
 } as const;
 
+/** The fixed frames, as a list — used to split a rendered item back into claim + instruction. */
+const FRAMES: readonly string[] = Object.values(FRAME);
+
 const MAX_PER_BUCKET = 2;
 
 /** Section headings, by what the reader actually asked. Fixed text — see the frames note above. */
@@ -80,18 +86,51 @@ const ACTION_TITLE: Record<NarrativeIntent, string> = {
 const claimsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): GroundedClaim[] =>
   ids.map((id) => plan.claims.find((c) => c.id === id)).filter((c): c is GroundedClaim => !!c);
 
+// V5.2 §3 — engine scaffolding that must never become an instruction. The internal derivation arrow and the
+// unresolved 조사 templates are authoring artifacts of the graph's own prose, not product sentences; in the
+// V5.1 run a CONTRADICTION claim carrying "…서로 다른 신호가 함께 잡힙니다. → 원국 일지(배우자·자기 자리)은(는)…"
+// reached a reader AS an action instruction. Those claims stay available to explanation and Cross synthesis;
+// they are simply not usable as action.
+const ENGINE_SCAFFOLD = /→|은\(는\)|이\(가\)|을\(를\)|와\(과\)|로\(으로\)/;
+
+const usableAsAction = (c: GroundedClaim): boolean =>
+  c.role !== 'SYNTHESIS' && c.role !== 'CONTRADICTION' && !ENGINE_SCAFFOLD.test(c.authoritativeMeaning);
+
 /**
- * Pools, built from the plan's OWN role/polarity assignments. Nothing here re-decides what a claim means:
- * SUPPORT/LIMIT is the polarity the Cross verdict already stamped on it.
+ * V5.2 §2 — QUESTION-AXIS RELEVANCE first, then readability. Both are presentation preferences over
+ * candidates the plan is already entitled to use: nothing is invented, and when no on-axis candidate exists
+ * nothing is substituted for one. `domain` and `askedAxis` are existing authoritative fields — this adds no
+ * axis semantics of its own.
+ */
+function preferenceOrder(claims: readonly GroundedClaim[], plan: GroundedNarrativePlan): GroundedClaim[] {
+  const onAxis = (c: GroundedClaim) => (c.domain === plan.askedAxis ? 0 : 1);
+  return claims
+    .map((c, i) => ({ c, i, axis: onAxis(c), jargon: technicalTokensIn(c.authoritativeMeaning).length }))
+    .sort((a, b) => a.axis - b.axis || a.jargon - b.jargon || a.i - b.i)
+    .map((x) => x.c);
+}
+
+/**
+ * Pools, split by ACTION DIRECTION rather than by polarity (V5.2 §1).
+ *
+ * `open` / `blocked` hold ONLY claims whose direction came from a real verdict stance — see
+ * `actionDirectionOf`. `observational` holds everything else: evidence-catalog items and opposing-premise
+ * risk factors, whose polarity says which side of an argument they sit on, not whether the reader should
+ * move. Those are perfectly good things to CHECK, and that is where they go.
  */
 function pools(plan: GroundedNarrativePlan) {
-  const evidence = plan.claims.filter((c) => c.role === 'EVIDENCE');
+  const usable = plan.claims.filter(usableAsAction);
+  const directional = (d: 'OPEN' | 'BLOCKED') =>
+    preferenceOrder(usable.filter((c) => actionDirectionOf(c) === d), plan);
   return {
-    supports: [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === 'SUPPORT')],
-    limits: [...claimsOf(plan, plan.cautionClaims), ...evidence.filter((c) => c.polarity === 'LIMIT')],
-    reasons: claimsOf(plan, plan.coreReasons),
-    synthesis: claimsOf(plan, plan.contradictionClaims),
-    timing: claimsOf(plan, plan.timingClaims),
+    open: directional('OPEN'),
+    blocked: directional('BLOCKED'),
+    observational: preferenceOrder(
+      usable.filter((c) => actionDirectionOf(c) === null && c.role !== 'TIMING' && c.role !== 'IMPLICATION'),
+      plan,
+    ),
+    reasons: preferenceOrder(claimsOf(plan, plan.coreReasons).filter(usableAsAction), plan),
+    timing: claimsOf(plan, plan.timingClaims).filter(usableAsAction),
   };
 }
 
@@ -133,59 +172,60 @@ export function buildGroundedActionPlan(plan: GroundedNarrativePlan): GroundedAc
   let holdCondition: GroundedActionItem | undefined;
   let timingCheckpoint: GroundedActionItem | undefined;
 
+  // WHAT TO CHECK draws from the observational pool FIRST — evidence items and risk factors are precisely
+  // the things a reader can go and verify — and only then from what is blocked. A direction-bearing claim is
+  // never spent here ahead of the bucket that actually needs it.
+  const verifyPool = [...p.observational, ...p.reasons, ...p.blocked];
+
   switch (plan.intent) {
     case 'DECISION': {
-      // What to verify comes from the LIMITS first: the thing that could change the answer is what is worth
-      // checking. Support/hold conditions are taken AFTER, from what is left, so nothing is said twice.
-      verifyItems = items([...p.limits, ...p.reasons], FRAME.VERIFY, 1);
-      // The explicit proceed/hold condition is reserved BEFORE the buckets are filled. A decision question
-      // whose whole evidence set was spent on descriptive bullets is exactly the ceiling this repair exists
-      // to lift — the reader asked whether to move, so the answer owes an explicit condition first.
-      if (!declined) proceedCondition = take(p.supports, 1).map((c) => item(c, FRAME.PROCEED))[0];
-      holdCondition = take(declined ? [...p.synthesis, ...p.limits, ...p.reasons] : [...p.limits, ...p.reasons], 1)
+      // The explicit proceed/hold conditions are reserved BEFORE the descriptive buckets, and both draw ONLY
+      // from direction-bearing claims. So "supports a negative conclusion" can never read as 진행, and an
+      // opposing premise whose own sentence is favourable can never read as 보류.
+      if (!declined) proceedCondition = take(p.open, 1).map((c) => item(c, FRAME.PROCEED))[0];
+      holdCondition = take(declined ? [...p.blocked, ...p.observational] : p.blocked, 1)
         .map((c) => item(c, declined ? FRAME.UNRESOLVED : FRAME.HOLD))[0];
-      supportConditions = items(p.supports, FRAME.SUPPORT);
-      cautionConditions = items(p.limits, FRAME.LIMIT);
+      verifyItems = items(verifyPool, FRAME.VERIFY, 1);
+      supportConditions = items(p.open, FRAME.SUPPORT);
+      cautionConditions = items(p.blocked, FRAME.LIMIT);
       break;
     }
     case 'TIMING': {
-      // §3 — a checkpoint exists ONLY when the verdict supplied an authoritative temporal claim. With no
+      // §6 — a checkpoint exists ONLY when the verdict supplied an authoritative temporal claim. With no
       // grounded time there is no checkpoint, not a softer one.
       timingCheckpoint = take(p.timing, 1).map((c) => item(c, FRAME.CHECKPOINT))[0];
-      verifyItems = items([...p.limits, ...p.reasons], FRAME.VERIFY, 1);
-      supportConditions = items(p.supports, FRAME.SUPPORT);
-      cautionConditions = items(p.limits, FRAME.LIMIT);
+      verifyItems = items(verifyPool, FRAME.VERIFY, 1);
+      supportConditions = items(p.open, FRAME.SUPPORT);
+      cautionConditions = items(p.blocked, FRAME.LIMIT);
       break;
     }
     case 'EXPLANATION': {
       // A causal question gets the pattern, what to watch, and behaviour tied to the named risk — never
       // proceed/hold, which would answer a decision nobody asked about.
-      verifyItems = items([...p.reasons, ...p.synthesis], FRAME.NOTICE, 1);
-      supportConditions = items(p.supports, FRAME.NOTICE);
-      cautionConditions = items(p.limits, FRAME.SLOW);
+      verifyItems = items(verifyPool, FRAME.NOTICE, 1);
+      supportConditions = items(p.open, FRAME.NOTICE);
+      cautionConditions = items(p.blocked, FRAME.SLOW);
       break;
     }
     case 'TRAIT': {
-      verifyItems = items([...p.reasons, ...p.synthesis], FRAME.FIT_CONDITION, 1);
-      supportConditions = items(p.supports, FRAME.FIT_WORKS);
-      cautionConditions = items(p.limits, FRAME.FIT_COSTS);
+      verifyItems = items(verifyPool, FRAME.FIT_CONDITION, 1);
+      supportConditions = items(p.open, FRAME.FIT_WORKS);
+      cautionConditions = items(p.blocked, FRAME.FIT_COSTS);
       break;
     }
     case 'COMPARISON': {
-      // The decisive axis is whatever Cross itself resolved (synthesis/contradiction); the two sides are the
-      // evidence as it stands. An unresolved comparison keeps its unresolved state — it never becomes a pick.
-      verifyItems = items([...p.synthesis, ...p.reasons], FRAME.DECISIVE, 1);
+      // The decisive point is whatever is most relevant to the asked axis; the two sides are the
+      // direction-bearing claims as they stand. An unresolved comparison keeps its unresolved state.
+      verifyItems = items(verifyPool, FRAME.DECISIVE, 1);
       if (declined) {
-        // Reserved before the buckets, for the same reason as DECISION — and an unresolved comparison must
-        // still SAY it is unresolved, which is the one line that keeps it from reading as a pick.
-        holdCondition = take([...p.synthesis, ...p.reasons, ...p.limits, ...p.supports], 1)
+        holdCondition = take([...p.blocked, ...p.observational, ...p.open], 1)
           .map((c) => item(c, FRAME.UNRESOLVED))[0];
       } else {
-        proceedCondition = take(p.supports, 1).map((c) => item(c, FRAME.PROCEED))[0];
-        holdCondition = take([...p.limits, ...p.reasons], 1).map((c) => item(c, FRAME.HOLD))[0];
+        proceedCondition = take(p.open, 1).map((c) => item(c, FRAME.PROCEED))[0];
+        holdCondition = take(p.blocked, 1).map((c) => item(c, FRAME.HOLD))[0];
       }
-      supportConditions = items(p.supports, FRAME.SUPPORT);
-      cautionConditions = items(p.limits, FRAME.LIMIT);
+      supportConditions = items(p.open, FRAME.SUPPORT);
+      cautionConditions = items(p.blocked, FRAME.LIMIT);
       break;
     }
   }
@@ -240,6 +280,11 @@ const CONDITIONAL_LABELS = {
   LIMIT: '보류해야 하는 조건',
   TIMING: '시기 체크',
 } as const;
+
+// An UNRESOLVED line is not a hold CONDITION — nothing has to change for it to lift, because the evidence
+// never settled the question in the first place. Labelling it 보류해야 하는 조건 told the reader there was a
+// condition to wait on. It gets its own heading instead.
+const UNRESOLVED_LABEL = '지금은 정할 수 없는 것';
 const OBSERVATIONAL_LABELS = {
   VERIFY: '확인할 것',
   SUPPORT: '힘을 받는 지점',
@@ -281,10 +326,25 @@ function leastTechnical(items: readonly GroundedActionItem[], spent: Set<string>
 export function renderGroundedActionLines(plan: GroundedActionPlan): GroundedActionLine[] {
   const label = LABELS_FOR[plan.intent];
   const spent = new Set<string>();
+  // V5.2 §4 — SENTENCE-LEVEL dedup across buckets, using the same `joinDistinctSentences` ledger the
+  // grounded composition already uses. Two claims can carry the SAME sentence under different ids — a hold
+  // claim whose first sentence is the proceed claim verbatim — and neither id-identity nor whole-text
+  // identity catches it. The frame is split off first and re-attached after, so a line can never be reduced
+  // to a bare instruction with nothing behind it: if no claim sentence survives, the line is dropped whole.
+  const said = new Set<string>();
   const out: GroundedActionLine[] = [];
   const push = (bucket: string, items: readonly (GroundedActionItem | undefined)[]) => {
     const chosen = leastTechnical(items.filter((x): x is GroundedActionItem => !!x), spent);
-    if (chosen) out.push({ label: bucket, text: chosen.text, sourceClaimIds: chosen.sourceClaimIds });
+    if (!chosen) return;
+    const frame = FRAMES.find((f) => chosen.text.endsWith(f));
+    const claim = frame ? chosen.text.slice(0, -frame.length).trim() : chosen.text;
+    const fresh = joinDistinctSentences([claim], said);
+    if (fresh.length === 0) return;
+    out.push({
+      label: frame === FRAME.UNRESOLVED ? UNRESOLVED_LABEL : bucket,
+      text: frame ? `${fresh} ${frame}` : fresh,
+      sourceClaimIds: chosen.sourceClaimIds,
+    });
   };
   push(label.VERIFY, plan.verifyItems);
   push(label.SUPPORT, [plan.proceedCondition, ...plan.supportConditions]);

@@ -99,10 +99,34 @@ export type GroundedNarrativePlan = {
    * NONE ⇒ no system carried a finding.
    */
   synthesisMode: 'COMBINED' | 'SINGLE_SYSTEM' | 'NONE';
+  /** The axis the question actually asked, carried so presentation can prefer an on-axis claim (§V5.2). */
+  askedAxis: JudgmentDomain;
   /** The union of every authoritative string above — the fact boundary the LLM's language is checked against. */
   groundedCorpus: string;
   provenance: readonly ['deokbunai.grounded-narrative-plan.v2'];
 };
+
+/**
+ * V5.2 — ACTION DIRECTION, and the one place it legitimately exists.
+ *
+ * `polarity` answers "does this claim SUPPORT or LIMIT the authoritative conclusion". That is not the same
+ * question as "does this argue for moving or for holding", and the V5.1 run proved the difference is not
+ * academic: a `MYUNGRI:directEvidence` claim reading "원국 월주 파에 마찰을 일으킨다" carries polarity SUPPORT
+ * (it supports a negative conclusion), and a `CROSS:riskFactors` claim reading "대궁에 흐름이 열리고 들어오는
+ * 힘이 들어옵니다" carries LIMIT (it is an OPPOSING premise of a standing proposition). Presenting either by
+ * polarity put a favourable sentence under 보류해야 하는 조건 in 6 of 40 cases.
+ *
+ * Exactly ONE construction below derives polarity from a real directional stance: the `axisVerdicts` loop,
+ * via `stanceValence(a.stance)`. This reads that same decision back out — it computes nothing new, and it
+ * leaves `polarity` untouched. Every other claim returns null: no safe direction signal exists for it, so
+ * the action renderer must place it in a neutral/observational bucket rather than guess.
+ */
+const STANCE_DERIVED_PROVENANCE = 'CROSS:axisVerdicts:';
+
+export function actionDirectionOf(c: GroundedClaim): 'OPEN' | 'BLOCKED' | null {
+  if (!c.provenance.startsWith(STANCE_DERIVED_PROVENANCE)) return null;
+  return c.polarity === 'SUPPORT' ? 'OPEN' : c.polarity === 'LIMIT' ? 'BLOCKED' : null;
+}
 
 const byId = (claims: readonly GroundedClaim[], role: ClaimRole): string[] =>
   claims.filter((c) => c.role === role).map((c) => c.id);
@@ -260,6 +284,7 @@ export function buildGroundedNarrativePlan(
     timingClaims: byId(distinct, 'TIMING'),
     implicationClaims: byId(distinct, 'IMPLICATION'),
     actionBoundary: contentPlan.actionBoundary,
+    askedAxis: verdict.questionDomain,
     coverageGaps,
     coveredBy: appliedDisciplines,
     materialContributors: appliedDisciplines,

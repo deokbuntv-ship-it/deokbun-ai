@@ -76,3 +76,41 @@ describe('V5 QA contract — the consumed 40 is one shared, deterministic set', 
     expect(selectRegressionCases().map((c) => c.caseId)).toEqual(a.map((c) => c.caseId));
   });
 });
+
+// V5.2 §5 — SPECIFIC-EVIDENCE LOCATION SEMANTICS. The triage showed the scorer was failing answers whose
+// question-relevant anchor was present but sat in 전문근거 instead of being duplicated into body prose. The
+// correction is location-agnostic BUT keeps the relevance requirement, and internal reference still cannot
+// count. Weights are untouched.
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const JUDGE_SOURCE = readFileSync(join(__dirname, 'qaJudge.ts'), 'utf8');
+
+describe('V5.2 QA contract — specific evidence is judged on the complete product', () => {
+  it('K — a visible 전문근거 anchor counts wherever it sits in the product', () => {
+    const p = completeProductView(structuredResult, '');
+    const evidenceSection = p.userVisibleAnswer.sections.find((s) => s.title.startsWith('전문근거'))!;
+    expect(evidenceSection.body).toContain('식상생재');
+    expect(p.userVisibleText).toContain('식상생재');
+    // The scorer is told not to require the same anchor to be repeated in body prose.
+    expect(JUDGE_SOURCE).toContain('위치를 따지지 마십시오');
+  });
+
+  it('L — technical does not mean relevant: the rubric still requires question relevance', () => {
+    expect(JUDGE_SOURCE).toContain('기술적이라는 이유만으로 자동 인정되지는 않습니다');
+    expect(JUDGE_SOURCE).toContain('지금 질문한 사안과 관련이 있어야 합니다');
+    expect(JUDGE_SOURCE).toContain('질문한 사안과 무관한 자리만 제시되어 있으면 인정하지 마십시오');
+  });
+
+  it('M — evidence that exists only in the internal reference cannot count', () => {
+    const p = completeProductView(structuredResult, '');
+    expect(p.userVisibleText).not.toContain(INTERNAL_LINE);
+    expect(JUDGE_SOURCE).toContain('사용자에게 보이지 않는 근거는 인정하지 마십시오');
+  });
+
+  it('rubric weights are unchanged by this batch', () => {
+    expect(JUDGE_SOURCE).toContain('personalization (0-20)');
+    expect(JUDGE_SOURCE).toContain('crossSystemSynthesis (0-15)');
+    expect(JUDGE_SOURCE).toContain('actionUsefulness (0-5)');
+  });
+});
