@@ -123,8 +123,18 @@ export type GroundedNarrativePlan = {
  */
 const STANCE_DERIVED_PROVENANCE = 'CROSS:axisVerdicts:';
 
-export function actionDirectionOf(c: GroundedClaim): 'OPEN' | 'BLOCKED' | null {
+export function actionDirectionOf(c: GroundedClaim, askedAxis: JudgmentDomain): 'OPEN' | 'BLOCKED' | null {
   if (!c.provenance.startsWith(STANCE_DERIVED_PROVENANCE)) return null;
+  // RED-TEAM BLOCKER 2 — ASKED-AXIS DIRECTIONAL AUTHORITY.
+  //
+  // A directional stance answers the proposition of ITS OWN axis. A 배우자 stance is a real, authoritative
+  // finding, and it may still be shown as compound truth, contradiction or scope qualification — but it is
+  // not an answer to "이 회사로 옮겨도 될까". Letting it reach 진행해도 되는 조건 / 보류해야 하는 조건 made an
+  // unrelated axis the proceed/hold authority for the asked decision. Off-axis claims return null here and
+  // therefore land in the OBSERVATIONAL pool (확인할 것), which asserts no direction at all.
+  //
+  // `askedAxis` is REQUIRED, not optional: a caller cannot forget to scope this.
+  if (c.domain !== askedAxis) return null;
   return c.polarity === 'SUPPORT' ? 'OPEN' : c.polarity === 'LIMIT' ? 'BLOCKED' : null;
 }
 
@@ -169,8 +179,21 @@ export function buildGroundedNarrativePlan(
     }, 'C');
   }
   // COMPOUND TRUTH (§7) — each axis keeps its OWN resolved stance, never averaged into the headline.
+  //
+  // RED-TEAM BLOCKER 2 — THE ASKED AXIS IS NO LONGER SKIPPED.
+  //
+  // It used to be, on the reasoning that its stance IS the headline. The consequence was structural, not
+  // cosmetic: `actionDirectionOf` derives direction ONLY from this loop, so once the asked axis was skipped
+  // every direction-bearing claim in the catalog was off-axis BY CONSTRUCTION — and 진행/보류 for a career
+  // question could only ever be authorized by a 배우자/이동 stance. The asked axis is admitted here so an
+  // ON-AXIS directional claim can exist at all; `actionDirectionOf` then refuses every other axis.
+  //
+  // The one asked-axis entry still skipped is the headline itself: `primaryConclusion` is already server-
+  // owned and delivered as 결론, and re-serving it as an action bucket would say it twice (§6 — one
+  // authoritative claim, one appearance). Every OTHER on-axis stance stands.
+  const headlineKey = verdict.primaryConclusion.replace(/s+/g, '');
   for (const a of verdict.axisVerdicts) {
-    if (a.domain === verdict.questionDomain) continue;
+    if (a.domain === verdict.questionDomain && a.conclusion.replace(/s+/g, '') === headlineKey) continue;
     const valence = stanceValence(a.stance);
     if (valence === 'NONE') continue;
     add({
@@ -702,6 +725,27 @@ export function composeGroundedFallback(
   // "다만 <the same sentence>" — the exact repetition a naive prefix-then-dedupe produces.
   const said = new Set<string>();
   joinDistinctSentences([plan.directConclusion], said);
+
+  // RED-TEAM BLOCKER 3 — THE ACTION CONTRACT IS RESERVED BEFORE THE BODY IS COMPOSED.
+  //
+  // The labelled GroundedActionPlan is authoritative PRESENTATION CONTENT, not a nice-to-have: whatever
+  // buckets the accepted path would expose, this path must expose too. Previously the causal chain below
+  // ran first and `pick` spent claims into `used`; the action lines were then filtered by that same `used`,
+  // so a bucket disappeared precisely BECAUSE its claim was good enough to lead the body — and when the
+  // last bucket went, `sharedActionBody` was empty and the section degraded to a generic boundary sentence.
+  // The accepted path kept 진행/보류/시기 체크 while this one delivered prose: a materially less informative
+  // answer for the SAME authoritative result, which the shared action contract forbids.
+  //
+  // The priority is inverted here — reserve the action claims FIRST (into `used`, so `pick` will not take
+  // them, and into `said`, so a body sentence identical to one of theirs is dropped as the duplicate it
+  // is), then compose the body from what remains. Dedup still happens; it simply removes the BODY
+  // occurrence instead of the labelled one, so every line `renderGroundedActionLines` produced survives.
+  const actionLines = sharedAction?.lines ?? [];
+  for (const c of claimsOf(plan, actionLines.flatMap((l) => l.sourceClaimIds))) {
+    used.add(c.id);
+    // The RAW claim text — the form the 강점/주의 bullets and the synthesis body below dedupe on.
+    joinDistinctSentences([c.authoritativeMeaning], said);
+  }
   const chain: string[] = [];
   const emit = (text: string | undefined, connective = ''): void => {
     if (!text) return;
@@ -754,16 +798,7 @@ export function composeGroundedFallback(
   // The ledger is fed the CLAIM, not the label-prefixed line: "조심할 지점 — 타고난 배우자 자리…" is one
   // sentence whose key differs from the bare claim, so registering the whole line left the later 강점/주의
   // bullets free to say the same sentence again.
-  const actionLines = (sharedAction?.lines ?? [])
-    // A line whose claim already carried the causal body above is dropped WHOLE — by id, so a realized
-    // sentence and its raw engine original are still recognised as the same claim.
-    .filter((l) => !l.sourceClaimIds.some((id) => used.has(id)));
-  // Registered in BOTH ledgers, so the 강점/주의 bullets and the synthesis body below cannot repeat what the
-  // action section just said. `said` takes the RAW claim text, which is the form those sections dedupe on.
-  for (const c of claimsOf(plan, actionLines.flatMap((l) => l.sourceClaimIds))) {
-    used.add(c.id);
-    joinDistinctSentences([c.authoritativeMeaning], said);
-  }
+  // Reserved above (BLOCKER 3): every line the shared renderer produced is rendered, unfiltered.
   const sharedActionBody = actionLines.map((l) => sharedAction!.format(l)).join('\n');
   const actionSection = sharedAction && sharedActionBody.length > 0
     ? { title: sharedAction.title, body: sharedActionBody }

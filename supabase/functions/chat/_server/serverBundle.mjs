@@ -7659,6 +7659,9 @@ var ALL_STANCES = [
 function isDirectional(s) {
   return FOR_STANCES.includes(s) || AGAINST_STANCES.includes(s);
 }
+function contributedNothing(j) {
+  return j.applicable && !isDirectional(j.stance) && j.counterEvidence.length === 0 && j.timingSignals.length === 0 && j.directEvidence.every((e) => e.coverageGap === true);
+}
 function stanceValence(s) {
   if (FOR_STANCES.includes(s)) return "FOR";
   if (AGAINST_STANCES.includes(s)) return "AGAINST";
@@ -10752,7 +10755,8 @@ var evidenceFrom = (premises, ids, axis) => ids.map((id) => premises.get(id)).fi
   meaning: p.assertion,
   domain: axis,
   temporalScope: p.temporalScope,
-  directness: p.applicability === "DIRECT" ? "DIRECT" : p.applicability === "BACKGROUND" ? "GENERAL" : "ADJACENT"
+  directness: p.applicability === "DIRECT" ? "DIRECT" : p.applicability === "BACKGROUND" ? "GENERAL" : "ADJACENT",
+  ...p.concept === "DOCTRINE_BLOCK" ? { coverageGap: true } : {}
 }));
 function reasonCross(input) {
   const asked = input.questionDomain;
@@ -11468,6 +11472,9 @@ function renderVerdictDirective(v) {
       `· ${DISCIPLINE_LABEL2[c.discipline]}: ${c.contribution}${c.whyItDidNotDominate ? ` (다만 ${c.whyItDidNotDominate})` : ""}`
     );
   }
+  const nulls = nullContributors(v);
+  const materialCount = v.disciplineJudgments.filter((j) => j.applicable && !nulls.has(j.discipline)).length;
+  lines.push(materialCount >= 2 ? '· 실제로 근거를 낸 체계가 둘 이상입니다. 위의 일치·엇갈림·영역 분리·시간 분리를 합친 뜻을 먼저 말씀하십시오. "명리는 A, 자미는 B, 기문은 C"처럼 나열만 하면 종합이 아닙니다.' : "· 이번 질문에 실제로 근거를 낸 체계는 하나뿐입니다. 여러 체계가 같은 결론을 가리킨다거나 서로 맞물렸다고 말하지 마십시오. 쓸 수 있는 근거로 결론을 분명히 설명하고, 나머지는 이 축을 직접 보는 자리가 없어 넣지 않았다고만 말씀하십시오.");
   const otherAxes = v.axisVerdicts.filter((a) => a.domain !== v.questionDomain && a.stance !== "INSUFFICIENT_EVIDENCE");
   if (otherAxes.length) {
     lines.push(
@@ -11501,6 +11508,9 @@ function renderVerdictDirective(v) {
     "· 순서: ① 점사 결론 → ② 왜 그렇게 보는지(학문별 핵심) → ③ 세 학문을 합치면 → ④ 시기(근거 있을 때만) → ⑤ 조심할 점 → ⑥ 현실적으로 어떻게 움직일지. 조언이 결론을 대신하지 않게 하십시오."
   );
   return lines.join("\n");
+}
+function nullContributors(v) {
+  return new Set(v.disciplineJudgments.filter(contributedNothing).map((j) => j.discipline));
 }
 
 // src/features/divination/reasoning/myungriPremises.ts
@@ -12287,7 +12297,9 @@ var evidenceOf = (premises, ids, axis, asked) => ids.map((id) => premises.find((
   meaning: p.assertion,
   domain: axis,
   temporalScope: p.temporalScope,
-  directness: p.questionAxis === asked ? "DIRECT" : p.applicability === "BACKGROUND" ? "GENERAL" : "ADJACENT"
+  directness: p.questionAxis === asked ? "DIRECT" : p.applicability === "BACKGROUND" ? "GENERAL" : "ADJACENT",
+  // A withheld doctrine is carried, never counted — see `coverageGap` on JudgmentEvidence.
+  ...p.concept === "DOCTRINE_BLOCK" ? { coverageGap: true } : {}
 }));
 function strengthOf(p) {
   if (p.conclusionType === "STRUCTURAL" || p.conclusionType === "CAUSAL") {
@@ -15165,7 +15177,9 @@ function parseDivinationVerdict(v) {
     meaning: str2(e.meaning),
     domain: e.domain,
     temporalScope: e.temporalScope,
-    directness: e.directness
+    directness: e.directness,
+    // Deliberately restored: without it a follow-up would re-count a coverage gap as evidence.
+    ...e.coverageGap === true ? { coverageGap: true } : {}
   }));
   const optional = (k, x) => typeof x === "string" ? { [k]: x } : {};
   const restored = {
@@ -15576,8 +15590,11 @@ function pooledEvidence(verdict) {
   const supporting = [];
   const counter2 = [];
   for (const j of verdict.disciplineJudgments) {
-    if (!j.applicable) continue;
-    for (const e of j.directEvidence) supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:directEvidence` });
+    if (!j.applicable || contributedNothing(j)) continue;
+    for (const e of j.directEvidence) {
+      if (e.coverageGap) continue;
+      supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:directEvidence` });
+    }
     if (verdict.asksTiming) {
       for (const e of j.timingSignals) supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:timingSignals` });
     }
@@ -15691,6 +15708,12 @@ function narrativeIntentOf(intent, isComparison) {
   if (intent === "TIMING") return "TIMING";
   return "DECISION";
 }
+var STANCE_DERIVED_PROVENANCE = "CROSS:axisVerdicts:";
+function actionDirectionOf(c, askedAxis) {
+  if (!c.provenance.startsWith(STANCE_DERIVED_PROVENANCE)) return null;
+  if (c.domain !== askedAxis) return null;
+  return c.polarity === "SUPPORT" ? "OPEN" : c.polarity === "LIMIT" ? "BLOCKED" : null;
+}
 var byId = (claims, role2) => claims.filter((c) => c.role === role2).map((c) => c.id);
 var DISCIPLINE_LABEL4 = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
 var disciplineLabel = (d) => DISCIPLINE_LABEL4[d];
@@ -15727,8 +15750,9 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
       provenance: "CROSS:currentFlow"
     }, "C");
   }
+  const headlineKey = verdict.primaryConclusion.replace(/s+/g, "");
   for (const a of verdict.axisVerdicts) {
-    if (a.domain === verdict.questionDomain) continue;
+    if (a.domain === verdict.questionDomain && a.conclusion.replace(/s+/g, "") === headlineKey) continue;
     const valence = stanceValence(a.stance);
     if (valence === "NONE") continue;
     add({
@@ -15775,8 +15799,9 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
       provenance: "CROSS:contradictionResolutions"
     }, "S");
   }
-  const appliedDisciplines = verdict.contributions.filter((c) => c.applied).map((c) => c.discipline);
-  const unappliedDisciplines = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
+  const judgments = verdict.disciplineJudgments;
+  const appliedDisciplines = judgments.filter((j) => !contributedNothing(j)).filter((j) => verdict.contributions.find((c) => c.discipline === j.discipline)?.applied !== false).map((j) => j.discipline);
+  const unappliedDisciplines = verdict.contributions.map((c) => c.discipline).filter((d) => !appliedDisciplines.includes(d));
   if (appliedDisciplines.length > 0 && unappliedDisciplines.length > 0) {
     add({
       discipline: "CROSS",
@@ -15823,7 +15848,7 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
       provenance: "CROSS:actionableInterpretation"
     }, "C");
   }
-  const coverageGaps = verdict.contributions.filter((c) => !c.applied).map((c) => c.discipline);
+  const coverageGaps = unappliedDisciplines;
   const SCOPE_TOKEN = {
     NATAL: "원국",
     DAEWOON: "대운",
@@ -15855,8 +15880,11 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
     timingClaims: byId(distinct, "TIMING"),
     implicationClaims: byId(distinct, "IMPLICATION"),
     actionBoundary: contentPlan.actionBoundary,
+    askedAxis: verdict.questionDomain,
     coverageGaps,
     coveredBy: appliedDisciplines,
+    materialContributors: appliedDisciplines,
+    synthesisMode: appliedDisciplines.length >= 2 ? "COMBINED" : appliedDisciplines.length === 1 ? "SINGLE_SYSTEM" : "NONE",
     groundedCorpus,
     provenance: ["deokbunai.grounded-narrative-plan.v2"]
   };
@@ -15901,6 +15929,11 @@ function ageRangesIn(text) {
   const out = /* @__PURE__ */ new Set();
   for (const m of text.matchAll(AGE_RANGE)) out.add(`${Number(m[1])}~${Number(m[2])}`);
   return out;
+}
+function technicalTokensIn(text) {
+  const found = /* @__PURE__ */ new Set();
+  for (const re of TECHNICAL_LEXICON) for (const m of text.matchAll(re)) found.add(m[0]);
+  return [...found];
 }
 function untraceableFacts(text, plan) {
   if (!text) return [];
@@ -15973,6 +16006,7 @@ function gateAgainstGroundedNarrative(parsed, plan) {
 }
 var claimsOf = (plan, ids) => ids.map((id) => plan.claims.find((c) => c.id === id)).filter((c) => !!c);
 var meaningsOf = (plan, ids) => claimsOf(plan, ids).map((c) => c.authoritativeMeaning);
+var ACTION_LABEL_SEPARATOR = " — ";
 var SYNTHESIS_SECTION_TITLE = "왜 이렇게 보나요";
 function renderGroundedSections(plan) {
   const out = [];
@@ -16029,7 +16063,7 @@ var CAP = 3;
 function bulletsFrom(pool, spent, said) {
   return joinDistinctSentences(pool.filter((c) => !spent.has(c.id)).map((c) => c.authoritativeMeaning), said).split(/(?<=[.!?…])\s+/).map((s) => realize(s)).filter((s) => s.length > 0).slice(0, CAP);
 }
-function composeGroundedFallback(plan) {
+function composeGroundedFallback(plan, sharedAction) {
   const declined = plan.verdictState === "DECLINED";
   const evidence = plan.claims.filter((c) => c.role === "EVIDENCE");
   const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === "SUPPORT")];
@@ -16042,8 +16076,8 @@ function composeGroundedFallback(plan) {
   const dominant = leadIsLimit ? limits : supports;
   const other = leadIsLimit ? supports : limits;
   const used = /* @__PURE__ */ new Set();
-  const pick = (pools) => {
-    for (const pool of pools) {
+  const pick = (pools2) => {
+    for (const pool of pools2) {
       const free = pool.filter((c) => !used.has(c.id));
       const chosen = free.find((c) => !!c.technicalAnchor) ?? free[0];
       if (chosen) {
@@ -16057,6 +16091,11 @@ function composeGroundedFallback(plan) {
   const leadPools = declined ? [nonDirectional(synthesis), nonDirectional(reasons)] : plan.intent === "TIMING" ? [reasons, dominant, other, synthesis] : plan.intent === "EXPLANATION" ? [reasons, dominant, synthesis, other] : plan.intent === "TRAIT" ? [natal, reasons, dominant, other] : plan.intent === "COMPARISON" ? [synthesis, dominant, other, reasons] : [dominant, other, reasons, synthesis];
   const said = /* @__PURE__ */ new Set();
   joinDistinctSentences([plan.directConclusion], said);
+  const actionLines = sharedAction?.lines ?? [];
+  for (const c of claimsOf(plan, actionLines.flatMap((l) => l.sourceClaimIds))) {
+    used.add(c.id);
+    joinDistinctSentences([c.authoritativeMeaning], said);
+  }
   const chain = [];
   const emit = (text, connective = "") => {
     if (!text) return;
@@ -16082,7 +16121,8 @@ function composeGroundedFallback(plan) {
   const why = pick(plan.actionBoundary === "CAUTIOUS" ? [limits, reasons, supports] : [supports, reasons, limits]);
   const whyText = why ? joinDistinctSentences([why.authoritativeMeaning], said) : "";
   const bridge = plan.intent === "EXPLANATION" || plan.intent === "TRAIT" ? "" : `${THEREFORE} `;
-  const actionSection = whyText.length > 0 ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) } : base;
+  const sharedActionBody = actionLines.map((l) => sharedAction.format(l)).join("\n");
+  const actionSection = sharedAction && sharedActionBody.length > 0 ? { title: sharedAction.title, body: sharedActionBody } : whyText.length > 0 ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) } : base;
   const synthesisBody = realize(joinDistinctSentences(
     synthesis.filter((c) => !used.has(c.id)).map((c) => c.authoritativeMeaning),
     said
@@ -16103,6 +16143,201 @@ function composeGroundedFallback(plan) {
     futureFlow: timing.length > 0 ? realize(joinDistinctSentences(timing)) : void 0,
     followUps: [...FOLLOW_UPS[plan.intent]]
   };
+}
+
+// src/features/chat/server/groundedActionPlan.ts
+var FRAME = {
+  VERIFY: "이 부분이 실제로 어떤지 먼저 확인하십시오.",
+  SUPPORT: "여기까지는 밀고 가셔도 됩니다.",
+  LIMIT: "이 조건이 풀리기 전에는 크게 벌리지 마십시오.",
+  PROCEED: "이 조건이 유지되는 동안은 진행하셔도 됩니다.",
+  HOLD: "이 조건이 그대로면 확정은 미루십시오.",
+  UNRESOLVED: "어느 쪽인지 지금 근거로는 정해지지 않아, 한쪽으로 확정하지 마십시오.",
+  CHECKPOINT: "이 흐름이 바뀌는지 한 번 더 확인하고 다음 결정을 하십시오.",
+  NOTICE: "이 자리가 다시 건드려지는지 지켜보십시오.",
+  SLOW: "이 지점에서 반응을 한 박자 늦추십시오.",
+  FIT_WORKS: "이 결이 힘을 받는 자리에 시간을 쓰십시오.",
+  FIT_COSTS: "이 자리에서는 같은 결이 비용으로 돌아옵니다.",
+  FIT_CONDITION: "이 조건이 갖춰진 자리인지 보고 고르십시오.",
+  DECISIVE: "여기가 두 쪽을 가르는 지점입니다."
+};
+var FRAMES = Object.values(FRAME);
+var MAX_PER_BUCKET = 2;
+var ACTION_TITLE = {
+  DECISION: "이렇게 움직이시면 됩니다",
+  COMPARISON: "어느 쪽을 먼저 보시면 됩니다",
+  TIMING: "시점을 이렇게 보시면 됩니다",
+  EXPLANATION: "이렇게 이해하시면 됩니다",
+  TRAIT: "이 결을 이렇게 쓰시면 됩니다"
+};
+var claimsOf2 = (plan, ids) => ids.map((id) => plan.claims.find((c) => c.id === id)).filter((c) => !!c);
+var ENGINE_SCAFFOLD = /→|은\(는\)|이\(가\)|을\(를\)|와\(과\)|로\(으로\)/;
+var usableAsAction = (c) => c.role !== "SYNTHESIS" && c.role !== "CONTRADICTION" && !ENGINE_SCAFFOLD.test(c.authoritativeMeaning);
+function preferenceOrder(claims, plan) {
+  const onAxis = (c) => c.domain === plan.askedAxis ? 0 : 1;
+  return claims.map((c, i) => ({ c, i, axis: onAxis(c), jargon: technicalTokensIn(c.authoritativeMeaning).length })).sort((a, b) => a.axis - b.axis || a.jargon - b.jargon || a.i - b.i).map((x) => x.c);
+}
+function pools(plan) {
+  const usable = plan.claims.filter(usableAsAction);
+  const directional = (d) => preferenceOrder(usable.filter((c) => actionDirectionOf(c, plan.askedAxis) === d), plan);
+  return {
+    open: directional("OPEN"),
+    blocked: directional("BLOCKED"),
+    observational: preferenceOrder(
+      usable.filter((c) => actionDirectionOf(c, plan.askedAxis) === null && c.role !== "TIMING" && c.role !== "IMPLICATION"),
+      plan
+    ),
+    reasons: preferenceOrder(claimsOf2(plan, plan.coreReasons).filter(usableAsAction), plan),
+    timing: claimsOf2(plan, plan.timingClaims).filter(usableAsAction)
+  };
+}
+function buildGroundedActionPlan(plan) {
+  const declined = plan.verdictState === "DECLINED";
+  const p = pools(plan);
+  const spent = /* @__PURE__ */ new Set();
+  const take = (pool, n = 1) => {
+    const out = [];
+    for (const c of pool) {
+      if (out.length >= n) break;
+      if (spent.has(c.id)) continue;
+      spent.add(c.id);
+      out.push(c);
+    }
+    return out;
+  };
+  const item = (c, frame) => ({
+    // The claim VERBATIM, then a fixed frame. Realization is orthography/speech level only.
+    text: realize(`${c.authoritativeMeaning} ${frame}`),
+    sourceClaimIds: [c.id]
+  });
+  const items = (pool, frame, n = MAX_PER_BUCKET) => take(pool, n).map((c) => item(c, frame));
+  let verifyItems = [];
+  let supportConditions = [];
+  let cautionConditions = [];
+  let proceedCondition;
+  let holdCondition;
+  let timingCheckpoint;
+  const verifyPool = [...p.observational, ...p.reasons, ...p.blocked];
+  switch (plan.intent) {
+    case "DECISION": {
+      if (!declined) proceedCondition = take(p.open, 1).map((c) => item(c, FRAME.PROCEED))[0];
+      holdCondition = take(declined ? [...p.blocked, ...p.observational] : p.blocked, 1).map((c) => item(c, declined ? FRAME.UNRESOLVED : FRAME.HOLD))[0];
+      verifyItems = items(verifyPool, FRAME.VERIFY, 1);
+      supportConditions = items(p.open, FRAME.SUPPORT);
+      cautionConditions = items(p.blocked, FRAME.LIMIT);
+      break;
+    }
+    case "TIMING": {
+      timingCheckpoint = take(p.timing, 1).map((c) => item(c, FRAME.CHECKPOINT))[0];
+      verifyItems = items(verifyPool, FRAME.VERIFY, 1);
+      supportConditions = items(p.open, FRAME.SUPPORT);
+      cautionConditions = items(p.blocked, FRAME.LIMIT);
+      break;
+    }
+    case "EXPLANATION": {
+      verifyItems = items(verifyPool, FRAME.NOTICE, 1);
+      supportConditions = items(p.open, FRAME.NOTICE);
+      cautionConditions = items(p.blocked, FRAME.SLOW);
+      break;
+    }
+    case "TRAIT": {
+      verifyItems = items(verifyPool, FRAME.FIT_CONDITION, 1);
+      supportConditions = items(p.open, FRAME.FIT_WORKS);
+      cautionConditions = items(p.blocked, FRAME.FIT_COSTS);
+      break;
+    }
+    case "COMPARISON": {
+      verifyItems = items(verifyPool, FRAME.DECISIVE, 1);
+      if (declined) {
+        holdCondition = take([...p.blocked, ...p.observational, ...p.open], 1).map((c) => item(c, FRAME.UNRESOLVED))[0];
+      } else {
+        proceedCondition = take(p.open, 1).map((c) => item(c, FRAME.PROCEED))[0];
+        holdCondition = take(p.blocked, 1).map((c) => item(c, FRAME.HOLD))[0];
+      }
+      supportConditions = items(p.open, FRAME.SUPPORT);
+      cautionConditions = items(p.blocked, FRAME.LIMIT);
+      break;
+    }
+  }
+  const all = [
+    ...verifyItems,
+    ...supportConditions,
+    ...cautionConditions,
+    proceedCondition,
+    holdCondition,
+    timingCheckpoint
+  ].filter((x) => !!x);
+  return {
+    intent: plan.intent,
+    recommendationBoundary: plan.actionBoundary,
+    verifyItems,
+    supportConditions,
+    cautionConditions,
+    ...proceedCondition ? { proceedCondition } : {},
+    ...holdCondition ? { holdCondition } : {},
+    ...timingCheckpoint ? { timingCheckpoint } : {},
+    sourceClaimIds: [...new Set(all.flatMap((i) => i.sourceClaimIds))],
+    provenance: ["deokbunai.grounded-action-plan.v1"]
+  };
+}
+var CONDITIONAL_LABELS = {
+  VERIFY: "확인할 것",
+  SUPPORT: "진행해도 되는 조건",
+  LIMIT: "보류해야 하는 조건",
+  TIMING: "시기 체크"
+};
+var UNRESOLVED_LABEL = "지금은 정할 수 없는 것";
+var OBSERVATIONAL_LABELS = {
+  VERIFY: "확인할 것",
+  SUPPORT: "힘을 받는 지점",
+  LIMIT: "조심할 지점",
+  TIMING: "시기 체크"
+};
+var LABELS_FOR = {
+  DECISION: CONDITIONAL_LABELS,
+  COMPARISON: CONDITIONAL_LABELS,
+  TIMING: CONDITIONAL_LABELS,
+  EXPLANATION: OBSERVATIONAL_LABELS,
+  TRAIT: OBSERVATIONAL_LABELS
+};
+function leastTechnical(items, spent) {
+  const free = items.filter((i) => !i.sourceClaimIds.some((id) => spent.has(id)));
+  if (free.length === 0) return void 0;
+  const chosen = free.map((i, order) => ({ i, order, jargon: technicalTokensIn(i.text).length })).sort((a, b) => a.jargon - b.jargon || a.order - b.order)[0].i;
+  for (const id of chosen.sourceClaimIds) spent.add(id);
+  return chosen;
+}
+function renderGroundedActionLines(plan) {
+  const label = LABELS_FOR[plan.intent];
+  const spent = /* @__PURE__ */ new Set();
+  const said = /* @__PURE__ */ new Set();
+  const out = [];
+  const push = (bucket, items) => {
+    const chosen = leastTechnical(items.filter((x) => !!x), spent);
+    if (!chosen) return;
+    const frame = FRAMES.find((f) => chosen.text.endsWith(f));
+    const claim = frame ? chosen.text.slice(0, -frame.length).trim() : chosen.text;
+    const fresh = joinDistinctSentences([claim], said);
+    if (fresh.length === 0) return;
+    out.push({
+      label: frame === FRAME.UNRESOLVED ? UNRESOLVED_LABEL : bucket,
+      text: frame ? `${fresh} ${frame}` : fresh,
+      sourceClaimIds: chosen.sourceClaimIds
+    });
+  };
+  push(label.VERIFY, plan.verifyItems);
+  push(label.SUPPORT, [plan.proceedCondition, ...plan.supportConditions]);
+  push(label.LIMIT, [plan.holdCondition, ...plan.cautionConditions]);
+  push(label.TIMING, [plan.timingCheckpoint]);
+  return out;
+}
+function formatGroundedActionLine(line) {
+  return `${line.label}${ACTION_LABEL_SEPARATOR}${line.text}`;
+}
+function renderGroundedActionSection(plan) {
+  const lines = renderGroundedActionLines(plan);
+  if (lines.length === 0) return null;
+  return { title: ACTION_TITLE[plan.intent], body: lines.map(formatGroundedActionLine).join("\n") };
 }
 
 // src/features/chat/server/storedDecisionGrounding.ts
@@ -16600,15 +16835,22 @@ ${extraDirective}` : base
   const narrativeIntent = verdictForGuard ? narrativeIntentOf(verdictForGuard.questionIntent, plan.comparisonContext.isComparison) : "DECISION";
   const clampedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard, narrativeIntent);
   const groundedPlan = verdictForGuard && contentPlanHolder.current ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent) : null;
+  const groundedActionPlan = groundedPlan ? buildGroundedActionPlan(groundedPlan) : null;
+  const groundedActionSection = groundedActionPlan ? renderGroundedActionSection(groundedActionPlan) : null;
+  const sharedActionForFallback = groundedActionPlan && groundedActionSection ? {
+    title: groundedActionSection.title,
+    lines: renderGroundedActionLines(groundedActionPlan),
+    format: formatGroundedActionLine
+  } : null;
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
   const rejectedButGrounded = clampedResult === null && groundedPlan !== null && (outcome.kind === "SEMANTIC_REJECTED" || outcome.kind === "STRUCTURAL_FALLBACK" && untraceableFacts(outcome.text, groundedPlan).length > 0);
   const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
   const groundedFallbackResult = () => applyVerdictAuthorityClamp(
-    { kind: "ACCEPTED", result: composeGroundedFallback(groundedPlan) },
+    { kind: "ACCEPTED", result: composeGroundedFallback(groundedPlan, sharedActionForFallback) },
     verdictForGuard,
     narrativeIntent
   );
-  const acceptedResult = gated ? gated.fatal ? groundedFallbackResult() : gated.result : rejectedButGrounded ? groundedFallbackResult() : clampedResult;
+  const acceptedResult = groundedPlan !== null ? groundedFallbackResult() : clampedResult;
   const groundedViolations = gated?.fatal ? classifyGroundedViolations(gated.violations) : rejectedButGrounded ? ["LLM_OUTPUT_REJECTED"] : [];
   const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
   const graphRevision = storedInstant === null ? void 0 : continuation === "REFINE_EXISTING" && graphExtended ? {
@@ -16638,15 +16880,29 @@ ${extraDirective}` : base
   );
   const conclusionPolarity = isAuthoritativeWhy ? previousDecision?.polarity : plan.polarity;
   const deliveredSectionTitles = new Set((acceptedResult?.domainInterpretation ?? []).map((d) => d.title));
+  const deliveredBody = [
+    acceptedResult?.coreSummary,
+    acceptedResult?.coreInterpretation,
+    acceptedResult?.disposition,
+    ...acceptedResult?.strengths ?? [],
+    ...acceptedResult?.cautions ?? [],
+    ...(acceptedResult?.domainInterpretation ?? []).flatMap((d) => [d.title, d.body]),
+    acceptedResult?.futureFlow
+  ].filter((x) => typeof x === "string").join("\n").replace(/\s+/g, "");
+  const closingLine = verdictForGuard?.actionableInterpretation ?? null;
+  const closingSection = closingLine && !deliveredBody.includes(closingLine.replace(/\s+/g, "")) ? { title: "한마디", body: closingLine } : null;
   const authoritativeSections = [
+    ...groundedActionSection ? [groundedActionSection] : [],
+    ...closingSection ? [closingSection] : [],
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow
     // survived — the presentation VM renders that under the same "앞으로의 흐름" heading, and one flow
     // section is the product, not two.
     ...groundedPlan ? renderGroundedSections(groundedPlan).filter(
-      (s) => !(s.title === "앞으로의 흐름" && !!acceptedResult?.futureFlow) && !deliveredSectionTitles.has(s.title)
-    ) : [],
-    ...contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0 ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence) : []
-  ];
+      (s) => !(s.title === "앞으로의 흐름" && !!acceptedResult?.futureFlow)
+    ) : []
+  ].filter((s) => !deliveredSectionTitles.has(s.title)).concat(
+    contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0 ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence) : []
+  );
   const verifiedEvidence = authoritativeSections.length > 0 ? authoritativeSections : void 0;
   const structuredResult = acceptedResult ? {
     ...buildStructuredConsultationResult(acceptedResult, effectiveGrounding),

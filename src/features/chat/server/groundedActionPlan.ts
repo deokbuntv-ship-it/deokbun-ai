@@ -113,20 +113,25 @@ function preferenceOrder(claims: readonly GroundedClaim[], plan: GroundedNarrati
 /**
  * Pools, split by ACTION DIRECTION rather than by polarity (V5.2 §1).
  *
- * `open` / `blocked` hold ONLY claims whose direction came from a real verdict stance — see
- * `actionDirectionOf`. `observational` holds everything else: evidence-catalog items and opposing-premise
- * risk factors, whose polarity says which side of an argument they sit on, not whether the reader should
- * move. Those are perfectly good things to CHECK, and that is where they go.
+ * `open` / `blocked` hold ONLY claims whose direction came from a real verdict stance ON THE ASKED AXIS —
+ * see `actionDirectionOf`. `observational` holds everything else: evidence-catalog items, opposing-premise
+ * risk factors, and every OFF-AXIS directional stance (RED-TEAM BLOCKER 2). Their polarity says which side
+ * of an argument they sit on, or which way a DIFFERENT proposition resolved — not whether the reader should
+ * move on the one they asked about. Those are perfectly good things to CHECK, and that is where they go.
+ *
+ * The consequence is the one the blocker required: with no asked-axis directional claim, `open` and
+ * `blocked` are both empty, so proceedCondition/holdCondition are undefined and their buckets are OMITTED —
+ * never back-filled from an unrelated axis, and never inferred from generic SUPPORT/LIMIT polarity.
  */
 function pools(plan: GroundedNarrativePlan) {
   const usable = plan.claims.filter(usableAsAction);
   const directional = (d: 'OPEN' | 'BLOCKED') =>
-    preferenceOrder(usable.filter((c) => actionDirectionOf(c) === d), plan);
+    preferenceOrder(usable.filter((c) => actionDirectionOf(c, plan.askedAxis) === d), plan);
   return {
     open: directional('OPEN'),
     blocked: directional('BLOCKED'),
     observational: preferenceOrder(
-      usable.filter((c) => actionDirectionOf(c) === null && c.role !== 'TIMING' && c.role !== 'IMPLICATION'),
+      usable.filter((c) => actionDirectionOf(c, plan.askedAxis) === null && c.role !== 'TIMING' && c.role !== 'IMPLICATION'),
       plan,
     ),
     reasons: preferenceOrder(claimsOf(plan, plan.coreReasons).filter(usableAsAction), plan),

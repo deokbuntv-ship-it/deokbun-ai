@@ -77,11 +77,13 @@ const axis = (o: Partial<Axis>): Axis => ({
 } as Axis);
 
 // A verdict carrying REAL directional stances. Only `axisVerdicts` polarity is stance-derived, so this is
-// the only fixture shape in which 진행/보류 buckets can exist at all (V5.2 §1).
+// the only fixture shape in which 진행/보류 buckets can exist at all (V5.2 §1) — and since RED-TEAM BLOCKER 2
+// the stance must also sit ON THE ASKED AXIS. The third entry is deliberately off-axis: it is real compound
+// truth that must stay VISIBLE, while never becoming this question's proceed/hold authority.
 const BOTH_SIDES = mkVerdict({
   axisVerdicts: [
-    axis({ domain: 'MONEY_INFLOW', stance: 'FOR', conclusion: '들어오는 쪽은 열려 있습니다' }),
-    axis({ domain: 'CONFLICT', stance: 'AGAINST', conclusion: '주변과 부딪히는 자리가 함께 섭니다', dominantDiscipline: 'ZIWEI' }),
+    axis({ domain: 'OPPORTUNITY', stance: 'FOR', conclusion: '들어오는 쪽은 열려 있습니다' }),
+    axis({ domain: 'OPPORTUNITY', stance: 'AGAINST', conclusion: '주변과 부딪히는 자리가 함께 섭니다', dominantDiscipline: 'ZIWEI' }),
     axis({ domain: 'MOVEMENT', stance: 'AGAINST', conclusion: '옮기는 쪽은 아직 막혀 있습니다', dominantDiscipline: 'ZIWEI' }),
   ],
 });
@@ -306,12 +308,12 @@ describe('V5.1 — action renders as explicit, labelled buckets', () => {
   });
 
   it('C — among a bucket own candidates, the least jargon-dense one is what the reader sees', () => {
-    // Two direction-bearing FOR stances on the same axis: one plain, one carrying technical identifiers the
+    // Two direction-bearing FOR stances on the ASKED axis: one plain, one carrying technical identifiers the
     // 전문근거 section already prints with their 근거 attached.
     const v = mkVerdict({
       axisVerdicts: [
-        axis({ domain: 'MONEY_INFLOW', conclusion: '지금의 큰 흐름이 원국 일주 천간합과 맞물려 풀립니다' }),
-        axis({ domain: 'MONEY_INFLOW', conclusion: '활동이 결과로 이어지는 통로가 열려 있습니다' }),
+        axis({ domain: 'OPPORTUNITY', conclusion: '지금의 큰 흐름이 원국 일주 천간합과 맞물려 풀립니다' }),
+        axis({ domain: 'OPPORTUNITY', conclusion: '활동이 결과로 이어지는 통로가 열려 있습니다' }),
       ],
     });
     const body = renderGroundedActionSection(buildGroundedActionPlan(planFor('DECISION', v)))!.body;
@@ -413,7 +415,7 @@ describe('V5.2 — action direction comes from a stance, never from polarity alo
     const plan = planFor('DECISION', v);
     const supportPolarity = plan.claims.filter((c) => c.polarity === 'SUPPORT');
     expect(supportPolarity.length).toBeGreaterThan(0);
-    expect(actionDirectionOf(supportPolarity[0])).toBeNull();
+    expect(actionDirectionOf(supportPolarity[0], plan.askedAxis)).toBeNull();
     expect(lineFor(plan, LABELS.proceed)).toBeUndefined();
   });
 
@@ -424,13 +426,13 @@ describe('V5.2 — action direction comes from a stance, never from polarity alo
     const plan = planFor('DECISION', v);
     const risk = plan.claims.find((c) => c.provenance === 'CROSS:riskFactors')!;
     expect(risk.polarity).toBe('LIMIT');
-    expect(actionDirectionOf(risk)).toBeNull();
+    expect(actionDirectionOf(risk, plan.askedAxis)).toBeNull();
     expect(lineFor(plan, LABELS.hold)).toBeUndefined();
   });
 
   it('C — an adverse claim backing an adverse conclusion never reads as a proceed condition', () => {
     const plan = planFor('DECISION', mkVerdict({
-      axisVerdicts: [axis({ stance: 'AGAINST', conclusion: '이 자리는 막혀 있어 지금 밀어붙이기 어렵습니다' })],
+      axisVerdicts: [axis({ domain: 'OPPORTUNITY', stance: 'AGAINST', conclusion: '이 자리는 막혀 있어 지금 밀어붙이기 어렵습니다' })],
     }));
     expect(lineFor(plan, LABELS.proceed)).toBeUndefined();
     expect(lineFor(plan, LABELS.hold)?.text).toContain('막혀 있어');
@@ -439,7 +441,7 @@ describe('V5.2 — action direction comes from a stance, never from polarity alo
   it('D — a favourable claim never lands under hold just because of its evidenceRole', () => {
     const plan = planFor('DECISION', mkVerdict({
       riskFactors: [ev({ fact: '부처 화록', meaning: '대궁에 흐름이 열리고 들어오는 힘이 들어옵니다' })],
-      axisVerdicts: [axis({ stance: 'AGAINST', conclusion: '옮기는 쪽은 아직 막혀 있습니다', domain: 'MOVEMENT' })],
+      axisVerdicts: [axis({ stance: 'AGAINST', conclusion: '옮기는 쪽은 아직 막혀 있습니다', domain: 'OPPORTUNITY' })],
     }));
     const hold = lineFor(plan, LABELS.hold);
     expect(hold?.text).toContain('막혀 있습니다');
@@ -447,9 +449,9 @@ describe('V5.2 — action direction comes from a stance, never from polarity alo
     expect(lineFor(plan, LABELS.verify)?.text).toContain('흐름이 열리고');
   });
 
-  // `buildGroundedNarrativePlan`'s compound-truth loop deliberately SKIPS the asked axis (it is already the
-  // headline), so a direction-bearing claim is off-axis by construction. Axis preference therefore binds
-  // where candidates actually carry the asked domain: the observational pool that feeds 확인할 것.
+  // Since RED-TEAM BLOCKER 2 the compound-truth loop admits the asked axis (only the headline sentence
+  // itself is skipped), so direction-bearing claims are ON-axis by construction. Axis preference still binds
+  // over the observational pool that feeds 확인할 것, which is what this case exercises.
   it('E — an on-axis candidate outranks an unrelated one when both already exist', () => {
     const plan = planFor('DECISION', mkVerdict({
       questionDomain: 'CAREER',
@@ -491,9 +493,9 @@ describe('V5.2 — action direction comes from a stance, never from polarity alo
     const shared = '대궁에 흐름이 열리고 들어오는 힘이 들어옵니다.';
     const plan = planFor('DECISION', mkVerdict({
       axisVerdicts: [
-        axis({ stance: 'FOR', conclusion: shared }),
+        axis({ domain: 'OPPORTUNITY', stance: 'FOR', conclusion: shared }),
         axis({
-          domain: 'MOVEMENT',
+          domain: 'OPPORTUNITY',
           stance: 'AGAINST',
           conclusion: shared + ' 이 자리는 스스로 끌고 가기보다 맞은편 자리의 성향을 따라갑니다.',
         }),

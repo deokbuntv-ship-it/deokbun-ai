@@ -585,6 +585,9 @@ export async function buildServerConsultation(
       format: formatGroundedActionLine,
     }
     : null;
+  // DIAGNOSTICS ONLY since BLOCKER 1 — the delivered body no longer depends on this. Kept because the
+  // fabrication rate it measures is the signal the next blind benchmark reads, and losing it would make
+  // "the model invented a fact" and "the model wrote clean prose" indistinguishable in telemetry.
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
   // DELIVERY QUALITY V3 §11 — THE GENERALIZABLE CONTRACT DEFECT behind the recurring CAREER-11 hard fail.
   // When the LLM's own output is discarded (SEMANTIC_REJECTED, or a STRUCTURAL_FALLBACK whose salvaged prose
@@ -607,11 +610,31 @@ export async function buildServerConsultation(
     { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!, sharedActionForFallback) },
     verdictForGuard, narrativeIntent,
   )!;
-  const acceptedResult = gated
-    ? (gated.fatal ? groundedFallbackResult() : gated.result)
-    : rejectedButGrounded
-      ? groundedFallbackResult()
-      : clampedResult;
+  // RED-TEAM BLOCKER 1 — SERVER-OWNED FACT AUTHORITY.
+  //
+  // The grounded gate above is a LEXICON gate: it catches a phantom 관록궁, a fabricated 28~37세, a 십신
+  // characterization the engines never produced. It cannot catch "사업이 곧 크게 성장합니다" — an ordinary-
+  // Korean factual proposition carrying zero technical tokens, which the model was free to invent and the
+  // gate was free to accept. No longer prompt, and no wider regex, closes that: a lexicon can only ever
+  // recognise the vocabulary someone thought to list, and the brief forbids trying to detect "factual
+  // language" lexically for exactly that reason.
+  //
+  // So the authority is moved instead of policed. Whenever authoritative material EXISTS — a Cross verdict
+  // and therefore a claim catalog — every factual field the reader receives is MATERIALIZED from it:
+  // `composeGroundedFallback` renders 결론 / 쉬운 설명 / 강점 / 주의 / 영역별 / 앞으로의 흐름 from the
+  // GroundedClaimCatalog, GroundedActionPlan and VerifiedEvidenceCatalog, using only claim text verbatim
+  // plus the fixed connectives and frames those modules own. The model no longer supplies a conclusion
+  // fact, a causal fact, a support/caution fact, a timing fact or an action reason, because none of its
+  // prose reaches the answer — which makes an attached claim id irrelevant too: a valid id cannot
+  // authorize a sentence that is never delivered.
+  //
+  // The gate still RUNS (below, for diagnostics): it is now the measurement of how often the model would
+  // have smuggled a fact, not the thing standing between that fact and the reader.
+  //
+  // With no verdict there is no authoritative material to materialize, so nothing changes on that path —
+  // it is the pre-existing grounding-unavailable contract, where the prompt forbids chart claims and
+  // `validateStructuredAgainstGrounding` is the authority. Billing is untouched either way.
+  const acceptedResult = groundedPlan !== null ? groundedFallbackResult() : clampedResult;
   const groundedViolations: GroundedViolationCategory[] = gated?.fatal
     ? classifyGroundedViolations(gated.violations)
     : rejectedButGrounded ? ['LLM_OUTPUT_REJECTED'] : [];
