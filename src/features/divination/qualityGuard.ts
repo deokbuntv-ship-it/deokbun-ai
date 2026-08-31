@@ -62,8 +62,13 @@ const GENERIC_ADVICE = [
 // (막+힙), 열리다 becomes "열립니다" (열+립). Matching on `막히` therefore MISSES the polite form the engine
 // actually writes, which is how a headline that plainly stated a direction was reported as direction-less.
 // Each stem below lists the conjugated syllables it needs, not just the dictionary form.
-const PROSE_FOR = /(하는\s*쪽|가는\s*쪽|괜찮습니다|좋은\s*(시기|흐름)|열려|열리|열립|받쳐줍니다|받쳐\s*주|진행하|해도\s*(됩|좋)|맞습니다)/;
-const PROSE_AGAINST = /(하지\s*않는\s*쪽|아닙니다|미루|접|어렵|무리|막히|막힙|막혀|좋지\s*않|피하|난도가\s*높|쉽지\s*않|좁히|좁힙|줄이|줄입|약해|벌일\s*자리는\s*아)/;
+// NEGATION: "무리가 없습니다" and "어렵지 않습니다" state a FOR direction using an AGAINST word. The bare
+// stems read them backwards — a headline that says "지금 움직이는 것 자체는 무리가 없습니다" under a FOR
+// verdict was reported as VERDICT_REVERSED_IN_PROSE, the exact opposite of what it says. So the affirmative-
+// by-negation forms are listed as FOR, and the two stems that invert this way no longer match their own
+// negation. Same class of repair as the conjugation note above: the guard reads the engine's register.
+const PROSE_FOR = /(하는\s*쪽|가는\s*쪽|괜찮습니다|좋은\s*(시기|흐름)|열려|열리|열립|받쳐줍니다|받쳐\s*주|진행하|해도\s*(됩|좋)|맞습니다|무리[가는]?\s*없|어렵지\s*않|부담[이는]?\s*없)/;
+const PROSE_AGAINST = /(하지\s*않는\s*쪽|아닙니다|미루|접|어렵(?!지\s*않)|무리(?![가는]?\s*없)|막히|막힙|막혀|좋지\s*않|피하|난도가\s*높|쉽지\s*않|좁히|좁힙|줄이|줄입|약해|벌일\s*자리는\s*아)/;
 
 /**
  * Validate a composed paid reading against its own verdict. `prose` is the user-facing text (composed card or

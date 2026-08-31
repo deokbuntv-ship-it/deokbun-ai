@@ -203,6 +203,12 @@ export function surfaceRelevanceOf(
   materialCorpus: string,
 ): SurfaceRelevance {
   if (claim.domain === null) return 'SUPPORTING_CONTEXT';
+  // A TIMING claim is a SUPPORTING judgment for whatever was asked — "이 흐름은 하반기로 갈수록 옅어집니다"
+  // qualifies a business question and a relationship question alike, and is off-axis to neither. It is
+  // stated here explicitly because V6.1 gave TIMING its own consultation domain (so that a question whose
+  // proposition IS the period can be routed); without this line that routing change would silently reclassify
+  // every temporal claim on every other axis as off-axis and strip it from the answer.
+  if (claim.domain === 'TIMING') return 'SUPPORTING_CONTEXT';
   const asked = contentDomainOf(askedAxis);
   const own = contentDomainOf(claim.domain);
   if (asked === null || own === null) return 'SUPPORTING_CONTEXT';

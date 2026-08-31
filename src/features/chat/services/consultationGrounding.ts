@@ -174,6 +174,13 @@ const DOMAIN_MAP: Record<ConsultationDomain, JudgmentDomain> = {
   시험: 'CAREER',
   이사: 'MOVEMENT',
   계약: 'DECISION',
+  // V6.1 — 변화 reuses the SAME axis 이사 already routes to, so a life-transition question reaches the
+  // existing CHANGE judgment path without a new judge or a new metaphysical rule.
+  변화: 'MOVEMENT',
+  // V6.1 — the period ITSELF as the asked proposition. All three disciplines already implement a TIMING
+  // consultation judge (myungriConsultationJudge.judgeTiming, the Ziwei 大限 reader, the Qimen 값사문 reader);
+  // it was simply unreachable, because no topic label ever routed to this axis.
+  시기: 'TIMING',
   전반: 'GENERAL',
 };
 
@@ -219,7 +226,12 @@ const MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현�
 const ASKED_MATTER_ID: Record<ConsultationDomain, string | null> = {
   사업: 'BUSINESS', 창업: 'STARTUP', 이직: 'JOB_CHANGE', 직업: 'OCCUPATION', 재물: 'MONEY',
   결혼: 'MARRIAGE', 연애: 'ROMANCE', 재회: 'REUNION', 관계: 'RELATIONSHIP', 건강: 'HEALTH', 시험: 'EXAM',
-  이사: 'RELOCATION', 계약: 'CONTRACT', 전반: null,
+  이사: 'RELOCATION', 계약: 'CONTRACT',
+  // V6.1 — both are AXES, not named matters. "환경을 바꾸고 싶다" and "올해는 어떤 흐름인가요" identify the part
+  // of life being asked about without naming a specific thing to judge, and §11 is explicit that UNKNOWN
+  // must stay UNKNOWN: back-filling a matter identity here would invent a specificity the user never gave.
+  변화: null, 시기: null,
+  전반: null,
 };
 
 export function resolveAskedTarget(question: string): SemanticTarget | null {
@@ -234,7 +246,12 @@ export function resolveAskedTarget(question: string): SemanticTarget | null {
 export function resolveJudgmentDomain(question: string): JudgmentDomain {
   const q = question ?? '';
   const topic = classifyConsultationDomain(q);
-  const financial = topic === '재물' || MONEY_SUBJECT.test(q);
+  // V6.1 — the money widening is a 전반 FALLBACK, which is what it was written to be ("저축이 남을까요?"
+  // classifies as 전반 but is plainly financial). Applied unconditionally it also HIJACKED questions that had
+  // already resolved to a real axis: any business or career question mentioning 돈 was re-routed to
+  // MONEY_INFLOW and answered on the wrong proposition. `resolveAskedTarget` above already scopes it exactly
+  // this way, so the two now agree instead of disagreeing on the same question.
+  const financial = topic === '재물' || (topic === '전반' && MONEY_SUBJECT.test(q));
   if (financial) {
     if (RETENTION_CUE.test(q) && !INFLOW_CUE.test(q)) return 'MONEY_RETENTION';
     if (topic === '재물' || INFLOW_CUE.test(q)) return 'MONEY_INFLOW';

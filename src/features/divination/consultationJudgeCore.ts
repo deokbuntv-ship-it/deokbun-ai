@@ -82,6 +82,17 @@ const ASKED_MATTER_TO_DOMAIN: Partial<Record<string, ConsultationJudgeDomain>> =
 const AXIS_TO_DOMAIN: Partial<Record<JudgmentDomain, ConsultationJudgeDomain>> = {
   OPPORTUNITY: 'BUSINESS', MONEY_INFLOW: 'MONEY', MONEY_RETENTION: 'MONEY', CAREER: 'CAREER',
   RELATION_BOND: 'LOVE', RELATION_STABILITY: 'LOVE', MOVEMENT: 'CHANGE',
+  // V6.1 ROUTER CLOSURE — TIMING is reachable when it IS the asked proposition.
+  //
+  // It was excluded on the reasoning that timing is a SUPPORTING judgment and never the primary matter. That
+  // holds for a subject asked about in time ("이직은 언제?"), and the router still keeps those on their own
+  // subject axis — 시기 is deliberately the LAST family in classifyConsultationDomain, so any subject
+  // outranks it. What the exclusion also did, unintentionally, was leave the period-as-proposition question
+  // ("올해는 저한테 어떤 흐름인가요") with no axis at all, while all three disciplines already implement a
+  // TIMING consultation judge and `consultationContentPlan`'s own JUDGMENT_TO_CONTENT_DOMAIN already mapped
+  // TIMING → TIMING. This line is the routing half that was missing; it adds no judge and no rule, and it is
+  // inert for every input that existed before, because nothing could produce questionDomain === 'TIMING'.
+  TIMING: 'TIMING',
 };
 
 /**

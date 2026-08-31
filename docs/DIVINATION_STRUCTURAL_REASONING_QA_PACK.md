@@ -36,6 +36,7 @@
 | OPPORTUNITY | MYUNGRI, ZIWEI |
 | RELATION_BOND | ZIWEI |
 | RELATION_STABILITY | MYUNGRI, ZIWEI |
+| TIMING | QIMEN |
 
 - **CANDIDATE_SYNTHESIS = n / m** — 런타임이 "추론일 수 있다"고 지목한 후보 수입니다. 실제 추론인지는
   전제를 지우거나 뒤집어 결론이 움직이는지 확인해야 하며, 그 검증은 V4B 커널 팩에서 수행합니다.
@@ -2959,25 +2960,25 @@
 ## [G 정직한 저하] A′ · 시주미상 · 시기
 
 **QUESTION** = 언제가 좋을까요?
-**QUESTION_INTENT** = TIMING · **ASKED_AXIS** = GENERAL
+**QUESTION_INTENT** = TIMING · **ASKED_AXIS** = TIMING
 **INPUT** = A′(시주미상) · 1990-8-15 시주 미상 · 평가시점 epoch 1773104400
 
 ### MYUNGRI
-- PRIMARY = **CONDITIONAL_AGAINST** (근거강도 NONE · 확신 MEDIUM · 직접성 GENERAL · 자료 REDUCED)
-- 결론: 전반에 대해서는 서로 다른 근거 2가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-- 결정 요인(구조): 같은 방향으로 함께 서는 근거 2건
+- PRIMARY = **INSUFFICIENT_EVIDENCE** (근거강도 NONE · 확신 LOW · 직접성 GENERAL · 자료 REDUCED)
+- 결론: 명리에서 이 질문을 직접 흔드는 신호는 확인되지 않습니다.
+- 결정 요인(구조): 해당 축 근거 없음
 - MAJOR_FACTS_USED: 원국 십신 배치, 원국 합충형파해, 월령, 통근·투간, 세운, 월운, 원국×운 관계(종류·위치), 일간 강약(구조), 억부용신(구조), 상담판정(시기 판정)
 - SUBJUDGMENTS:
     - RELATION_STABILITY = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 타고난 배우자 자리 자체가 흔들리는 구조다.
     - MONEY_INFLOW = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 올해 흐름에 재물 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 올해 흐름이 원국 일주 천간충를 정면으로 흔든다.
-    - GENERAL = CONDITIONAL_AGAINST (SEWOON/DIRECT) — 올해 흐름이 원국 년주 자형에 마찰을 일으킨다.
+    - GENERAL = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 올해 흐름이 원국 년주 자형에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 올해 흐름이 원국 일주 충를 정면으로 흔든다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
-    - GENERAL = CONDITIONAL_AGAINST (WOLWOON/DIRECT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 지원·배움 쪽 기운이 들어와 이 축이 실제로 움직인다.
+    - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 파에 마찰을 일으킨다.
     - RELATION_STABILITY = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 일주 형를 정면으로 흔든다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
-    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/DIRECT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
 - COUNTER_EVIDENCE: (없음)
 
@@ -2988,15 +2989,15 @@
 - PRIMARY = **FOR** (근거강도 STRONG · 확신 MEDIUM · 직접성 DIRECT · 자료 EXACT)
 - 결론: 이끄는 문이 열려 있고 판의 기운도 같이 밀어 줍니다. 지금 움직여도 됩니다.
 - 결정 요인(구조): 값사 開門 · 값부 天心 · 九地
-- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(EVENT_SUCCESS)
+- MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(TIMING)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (GENERAL = CONDITIONAL_AGAINST)
-- 결론: 전반에 대해서는 서로 다른 근거 2가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+- **FINAL_VERDICT = FOR** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (TIMING = FOR)
+- 결론: 지금 움직이는 것 자체는 무리가 없습니다.
 - SYNTHETIC_INFERENCES = 3 / 12
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -3025,10 +3026,10 @@
         ← 값사 開門 (離궁)
 - CONTRADICTION_RESOLUTIONS = 없음
 - WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · TIMING:FOR
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
-- 학문별 기여: MYUNGRI=CONDITIONAL_AGAINST · ZIWEI=미적용 · QIMEN=FOR
+- 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=미적용 · QIMEN=FOR
 
 ---
 

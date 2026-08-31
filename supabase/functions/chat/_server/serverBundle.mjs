@@ -8572,7 +8572,18 @@ var AXIS_TO_DOMAIN = {
   CAREER: "CAREER",
   RELATION_BOND: "LOVE",
   RELATION_STABILITY: "LOVE",
-  MOVEMENT: "CHANGE"
+  MOVEMENT: "CHANGE",
+  // V6.1 ROUTER CLOSURE — TIMING is reachable when it IS the asked proposition.
+  //
+  // It was excluded on the reasoning that timing is a SUPPORTING judgment and never the primary matter. That
+  // holds for a subject asked about in time ("이직은 언제?"), and the router still keeps those on their own
+  // subject axis — 시기 is deliberately the LAST family in classifyConsultationDomain, so any subject
+  // outranks it. What the exclusion also did, unintentionally, was leave the period-as-proposition question
+  // ("올해는 저한테 어떤 흐름인가요") with no axis at all, while all three disciplines already implement a
+  // TIMING consultation judge and `consultationContentPlan`'s own JUDGMENT_TO_CONTENT_DOMAIN already mapped
+  // TIMING → TIMING. This line is the routing half that was missing; it adds no judge and no rule, and it is
+  // inert for every input that existed before, because nothing could produce questionDomain === 'TIMING'.
+  TIMING: "TIMING"
 };
 function routeConsultationJudgeDomain(askedTarget, questionDomain) {
   if (askedTarget?.key.startsWith("ASKED_MATTER:")) {
@@ -12515,22 +12526,96 @@ function renderChain(chain, depth = 0) {
 }
 
 // src/features/chat/server/consultationDomain.ts
+var SUBJECT_FAMILIES = [
+  // ── REUNION: an ended relationship, and whether it can resume. ────────────────────────────────────
+  {
+    domain: "재회",
+    pattern: /재회|재결합|다시\s*만나|다시\s*연락|되돌[릴리]|돌아올|돌아와|붙잡|헤어[지진졌]|이별|전\s*(?:남자|여자)\s*친구|전남친|전여친|(?:헤어진|끝난).{0,12}(?:다시|연락|사람)|안부\s*연락|여지가/
+  },
+  // ── MARRIAGE: the commitment decision itself. ─────────────────────────────────────────────────────
+  { domain: "결혼", pattern: /결혼|혼인|약혼|상견례|신혼|평생\s*(?:함께|같이)/ },
+  // ── ROMANCE: meeting, dating, and how a current relationship is going. ────────────────────────────
+  {
+    domain: "연애",
+    // The last group is how people describe a relationship they are ALREADY in without naming it: "이 관계가
+    // 편해질까", "오래갈 수 있는 사이인지", "만난 지 일 년 됐는데". 인간관계/사람 관계 stay with the 관계 family
+    // below — those are distinct strings, so the two never compete for the same phrasing.
+    pattern: /연애|사랑|썸|이성|애인|인연|소개팅|맞선|고백|데이트|남자\s*친구|여자\s*친구|남친|여친|만나는\s*사람|사귀|호감|설레|마음을\s*열|이\s*관계|사이[인일가]|만난\s*지|관계가\s*(?:끝|깨|멀)/
+  },
+  // ── STARTUP: opening or founding something new. ───────────────────────────────────────────────────
+  { domain: "창업", pattern: /창업|개업|(?:가게|매장|점포|사무실|지점).{0,6}(?:내려|내는|차리|열려|열까|오픈)|법인\s*설립/ },
+  // ── BUSINESS: running one — the operation, its customers, its costs and its expansion. ────────────
+  {
+    domain: "사업",
+    // "투자를 받다" is RAISING capital — a decision about the business, the mirror image of "투자를 하다",
+    // which is a personal money decision and stays with 재물.
+    pattern: /사업|장사|자영업|가게|매장|점포|프랜차이즈|거래처|납품|재고|손님|고객|매출|영업|인건비|재료값|원가|마진|수익성|폐업|동업|확장|지점|임대료|스토어|배달|단가|투자를?\s*받/
+  },
+  // ── JOB CHANGE: leaving, moving, being recruited away. ────────────────────────────────────────────
+  {
+    domain: "이직",
+    // "옮기다" needs a workplace beside it. On its own it is the most overloaded verb in this whole file —
+    // people move house, move money and move deadlines with it — so a bare "옮기는 게 나을까요" is left to
+    // whichever family actually named the thing being moved.
+    pattern: /이직|전직|퇴사|사직|그만두|(?:회사|직장|자리)를?\s*옮기|(?:다른|새)\s*(?:회사|직장)|스카우트|스카웃|헤드헌/
+  },
+  // ── CAREER: the role, the workplace, and moving within it. ────────────────────────────────────────
+  {
+    domain: "직업",
+    pattern: /직업|직장|회사|취업|커리어|일자리|진로|승진|진급|발령|부서|보직|팀장|과장|차장|부장|임원|상사|동료|연봉|복직|복귀|정규직|계약직|근무|출근|야근|면접|입사|적성|하고\s*싶던\s*(?:일|분야)|이\s*일을\s*계속|일을\s*해야/
+  },
+  // ── EXAM: a pass/fail outcome that is its own event. ──────────────────────────────────────────────
+  { domain: "시험", pattern: /시험|합격|불합격|수능|자격증|취득|고시|공시|채용\s*시험/ },
+  // ── MONEY: what comes in, what stays, and what is owned. ──────────────────────────────────────────
+  {
+    domain: "재물",
+    pattern: /재물|재정|금전|돈|자산|수입|소득|저축|목돈|현금|자금|투자|주식|코인|펀드|부동산|빚|대출|이자|상속|유산|물려받|굴리|씀씀이|생활비|모으[는을]|목돈/
+  },
+  // ── CONTRACT: signing, dealing, committing on paper. ──────────────────────────────────────────────
+  // ── RELOCATION: where you live. Ordered BEFORE 계약 for the same reason 재물 outranks it: a housing
+  //    question that mentions renewing a lease is still a housing question, not a contract question. ──
+  {
+    domain: "이사",
+    pattern: /이사|이주|전세|월세|재계약|집을?\s*(?:옮|사|알아|구하)|(?:새|다른)\s*(?:동네|집)|이전하|내려가|해외로\s*(?:나가|가)|귀농|귀촌/
+  },
+  // ── CONTRACT: signing, dealing, committing on paper — as the subject in its own right. ────────────
+  { domain: "계약", pattern: /계약|서명|체결|거래를|매매|잔금/ },
+  // ── RELATIONSHIP (non-romantic): people friction as the subject. ──────────────────────────────────
+  { domain: "관계", pattern: /인간관계|대인\s*관계|관계운|사람\s*관계|사람들\s*때문|사람\s*때문/ },
+  // ── HEALTH. ───────────────────────────────────────────────────────────────────────────────────────
+  { domain: "건강", pattern: /건강|질병|아프|몸이|체력|컨디션|병원|수술/ }
+];
+var RESIDUAL_FAMILIES = [
+  // ── PERIOD-AS-PROPOSITION. ────────────────────────────────────────────────────────────────────────
+  {
+    domain: "시기",
+    // Three general constructions, beyond the plain period nouns:
+    //   "지금이 …할 때인지" / "…할 때인가" — the whole proposition is whether NOW is the moment.
+    //   "요즘 같은 때" / "지금 같은 시기" — the current stretch of time as the thing being asked about.
+    //   "앞으로 N년/개월" — a forward window as the scope of the question.
+    pattern: /어떤\s*(?:시기|구간|흐름|해)|무슨\s*(?:시기|운)|시기(?:를|가|는|적으로)|시점|타이밍|운의\s*흐름|올해\s*(?:는|저한테|나한테|어떤|운)|지금이\s*(?:어떤|무슨|원래)|얼마나\s*(?:이어|더|갈)|언제쯤|언제가|몇\s*년\s*(?:안에|뒤|후)|상반기|하반기|어느\s*쪽\s*감|때인[지가]|(?:요즘|지금)\s*같은\s*(?:때|시기)|앞으로\s*(?:\d+|[일이삼사오육칠팔구십]|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|몇)\s*(?:년|해|개월|달)/
+  },
+  // ── CHANGE: a transition of direction or circumstances that is none of the subjects above. ────────
+  {
+    domain: "변화",
+    pattern: /변화|바꾸|바꿔|바뀌|달라지|전환|새롭게\s*시작|방향을\s*(?:틀|바꾸|정)|환경을|정리하고|벗어나|반복되는|틀에서/
+  }
+];
+function focusClause(question) {
+  const parts = question.split(/(?<=[.!?。？！\n])\s*/).map((s) => s.trim()).filter((s) => s.length > 0);
+  return parts.length > 0 ? parts[parts.length - 1] : question;
+}
+var firstMatch = (families, text) => families.find((f) => f.pattern.test(text))?.domain ?? null;
+var UNJUDGED_SUBJECTS = ["건강", "관계", "계약"];
+var isJudged = (d) => d !== null && !UNJUDGED_SUBJECTS.includes(d);
 function classifyConsultationDomain(question) {
   const q = question ?? "";
-  if (/창업|개업/.test(q)) return "창업";
-  if (/사업|장사|가게|매출|자영업/.test(q)) return "사업";
-  if (/이직|전직|퇴사/.test(q)) return "이직";
-  if (/직업|직장|취업|커리어|일자리|진로/.test(q)) return "직업";
-  if (/재물|재정|돈|투자|자산|수입|금전|씀씀이/.test(q)) return "재물";
-  if (/결혼|혼인|약혼/.test(q)) return "결혼";
-  if (/재회|다시\s*만나|재결합|다시\s*연락|헤어진.*(다시|재회)|전\s*(남자|여자)\s*친구/.test(q)) return "재회";
-  if (/연애|사랑|썸|이성|애인|인연/.test(q)) return "연애";
-  if (/인간관계|대인|관계운|사람\s*관계/.test(q)) return "관계";
-  if (/건강|질병|몸|체력|컨디션/.test(q)) return "건강";
-  if (/시험|합격|수능|자격증|취득|고시/.test(q)) return "시험";
-  if (/이사|이주|이전|이사운|집을?\s*(옮|사)/.test(q)) return "이사";
-  if (/계약|서명|거래|체결/.test(q)) return "계약";
-  return "전반";
+  if (q.trim().length === 0) return "전반";
+  const focus = focusClause(q);
+  const subject = firstMatch(SUBJECT_FAMILIES, focus) ?? firstMatch(SUBJECT_FAMILIES, q);
+  if (isJudged(subject)) return subject;
+  const residual = firstMatch(RESIDUAL_FAMILIES, focus) ?? firstMatch(RESIDUAL_FAMILIES, q);
+  return residual ?? subject ?? "전반";
 }
 
 // src/features/chat/selectors/qimenActivation.ts
@@ -12682,6 +12767,13 @@ var DOMAIN_MAP = {
   시험: "CAREER",
   이사: "MOVEMENT",
   계약: "DECISION",
+  // V6.1 — 변화 reuses the SAME axis 이사 already routes to, so a life-transition question reaches the
+  // existing CHANGE judgment path without a new judge or a new metaphysical rule.
+  변화: "MOVEMENT",
+  // V6.1 — the period ITSELF as the asked proposition. All three disciplines already implement a TIMING
+  // consultation judge (myungriConsultationJudge.judgeTiming, the Ziwei 大限 reader, the Qimen 값사문 reader);
+  // it was simply unreachable, because no topic label ever routed to this axis.
+  시기: "TIMING",
   전반: "GENERAL"
 };
 var RETENTION_CUE = /모(?:이|일|여|였|았|을|으)|남[아을는]|쌓|저축|지키|새(?:나가|어)|유지되/;
@@ -12715,6 +12807,11 @@ var ASKED_MATTER_ID = {
   시험: "EXAM",
   이사: "RELOCATION",
   계약: "CONTRACT",
+  // V6.1 — both are AXES, not named matters. "환경을 바꾸고 싶다" and "올해는 어떤 흐름인가요" identify the part
+  // of life being asked about without naming a specific thing to judge, and §11 is explicit that UNKNOWN
+  // must stay UNKNOWN: back-filling a matter identity here would invent a specificity the user never gave.
+  변화: null,
+  시기: null,
   전반: null
 };
 function resolveAskedTarget(question) {
@@ -12726,7 +12823,7 @@ function resolveAskedTarget(question) {
 function resolveJudgmentDomain(question) {
   const q = question ?? "";
   const topic2 = classifyConsultationDomain(q);
-  const financial = topic2 === "재물" || MONEY_SUBJECT.test(q);
+  const financial = topic2 === "재물" || topic2 === "전반" && MONEY_SUBJECT.test(q);
   if (financial) {
     if (RETENTION_CUE.test(q) && !INFLOW_CUE.test(q)) return "MONEY_RETENTION";
     if (topic2 === "재물" || INFLOW_CUE.test(q)) return "MONEY_INFLOW";
@@ -14491,7 +14588,7 @@ function buildConsultationDecisionMeta(question, plan, grounding, resolvedTempor
   };
 }
 var POLARITY_TIERS = ["FAVORABLE", "STEADY", "DYNAMIC", "CAUTION"];
-var DOMAINS = ["사업", "창업", "이직", "직업", "재물", "결혼", "연애", "재회", "관계", "건강", "시험", "이사", "계약", "전반"];
+var DOMAINS = ["사업", "창업", "이직", "직업", "재물", "결혼", "연애", "재회", "관계", "건강", "시험", "이사", "계약", "변화", "시기", "전반"];
 var PILLAR_POSITIONS2 = ["YEAR", "MONTH", "DAY", "HOUR"];
 var STEM_RELATION_KINDS2 = ["STEM_COMBINATION", "STEM_CLASH"];
 var BRANCH_RELATION_KINDS2 = [
@@ -15484,6 +15581,7 @@ function crossMaterialCorpus(verdict) {
 }
 function surfaceRelevanceOf(claim, askedAxis, materialCorpus) {
   if (claim.domain === null) return "SUPPORTING_CONTEXT";
+  if (claim.domain === "TIMING") return "SUPPORTING_CONTEXT";
   const asked = contentDomainOf(askedAxis);
   const own = contentDomainOf(claim.domain);
   if (asked === null || own === null) return "SUPPORTING_CONTEXT";

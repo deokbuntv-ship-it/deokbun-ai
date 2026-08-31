@@ -78,7 +78,11 @@ export function buildConsultationDecisionMeta(
 }
 
 const POLARITY_TIERS = ['FAVORABLE', 'STEADY', 'DYNAMIC', 'CAUTION'];
-const DOMAINS = ['사업', '창업', '이직', '직업', '재물', '결혼', '연애', '재회', '관계', '건강', '시험', '이사', '계약', '전반'];
+// The persisted-row allowlist. It MUST cover every ConsultationDomain the classifier can emit: a stored
+// decision carrying a label this list omits fails the parser, and a later follow-up over it then fails
+// closed as malformed history (G6 PATCH 2 §9) — so a routing label added without this line would silently
+// break continuation for exactly the questions the new axis was added to serve. V6.1 adds 변화 and 시기.
+const DOMAINS = ['사업', '창업', '이직', '직업', '재물', '결혼', '연애', '재회', '관계', '건강', '시험', '이사', '계약', '변화', '시기', '전반'];
 const PILLAR_POSITIONS = ['YEAR', 'MONTH', 'DAY', 'HOUR'];
 const STEM_RELATION_KINDS = ['STEM_COMBINATION', 'STEM_CLASH'];
 const BRANCH_RELATION_KINDS = [
