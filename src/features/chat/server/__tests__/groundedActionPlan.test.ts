@@ -5,7 +5,9 @@
 import {
   buildGroundedNarrativePlan, untraceableFacts, type GroundedNarrativePlan, type NarrativeIntent,
 } from '@/features/chat/server/groundedNarrative';
-import { buildGroundedActionPlan, renderGroundedActionSection } from '@/features/chat/server/groundedActionPlan';
+import {
+  buildGroundedActionPlan, renderGroundedActionLines, renderGroundedActionSection,
+} from '@/features/chat/server/groundedActionPlan';
 import { buildConsultationContentPlan } from '@/features/chat/server/consultationContentPlan';
 import { buildUserVisibleAnswer, orderDetailSections } from '@/features/chat/presentation/userVisibleAnswer';
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
@@ -249,5 +251,141 @@ describe('COMPLETE-PRODUCT contract — what the reader actually receives', () =
     }));
     expect(answer.sections.map((s) => s.title))
       .toEqual(['결론', '쉬운 설명', '이렇게 움직이시면 됩니다']);
+  });
+});
+
+// ── V5.1 ACTION RENDERING ─────────────────────────────────────────────────────────────────────────────
+//
+// The V5 run named two manifestations of one RENDERING defect: proceed- and hold-framed lines joined into a
+// single unlabelled paragraph (correct conditional advice reading as a contradiction), and every bucket
+// flattened into that paragraph so the section met the reader with raw claim text. Both are fixed in
+// presentation only — which claims the plan selected, and their ids, are unchanged.
+describe('V5.1 — action renders as explicit, labelled buckets', () => {
+  const LABELS = { verify: '확인할 것', proceed: '진행해도 되는 조건', hold: '보류해야 하는 조건', timing: '시기 체크' };
+
+  // A verdict with BOTH a supportive and a limiting axis conclusion — the case the V5 run rendered as one
+  // unlabelled paragraph, so proceed and hold looked like the answer contradicting itself.
+  const BOTH_SIDES = mkVerdict({
+    axisVerdicts: [
+      { domain: 'MONEY_INFLOW', stance: 'FOR', conclusion: '들어오는 쪽은 열려 있습니다', dominantDiscipline: 'MYUNGRI', contested: false },
+      { domain: 'CONFLICT', stance: 'AGAINST', conclusion: '주변과 부딪히는 자리가 함께 섭니다', dominantDiscipline: 'ZIWEI', contested: false },
+      { domain: 'MOVEMENT', stance: 'AGAINST', conclusion: '옮기는 쪽은 아직 막혀 있습니다', dominantDiscipline: 'ZIWEI', contested: false },
+    ] as CrossDivinationVerdict['axisVerdicts'],
+  });
+
+  it('A — proceedCondition and holdCondition render under DISTINCT labels', () => {
+    const plan = planFor('DECISION', BOTH_SIDES);
+    const action = buildGroundedActionPlan(plan);
+    expect(action.proceedCondition).toBeDefined();
+    expect(action.holdCondition).toBeDefined();
+    const lines = renderGroundedActionLines(action);
+    const labels = lines.map((l) => l.label);
+    expect(labels).toContain(LABELS.proceed);
+    expect(labels).toContain(LABELS.hold);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it('B — a plan carrying both does not read as an unconditional contradiction', () => {
+    const body = renderGroundedActionSection(buildGroundedActionPlan(planFor('DECISION', BOTH_SIDES)))!.body;
+    // Each condition is its OWN labelled line: no single line asserts both "밀고 가셔도" and "미루십시오".
+    for (const line of body.split('\n')) {
+      const proceeds = /진행하셔도 됩니다|밀고 가셔도 됩니다/.test(line);
+      const holds = /확정은 미루십시오|크게 벌리지 마십시오/.test(line);
+      expect(proceeds && holds).toBe(false);
+    }
+    // And the reader is told which is which before either sentence.
+    for (const line of body.split('\n')) expect(line).toMatch(/^[^—]+ — /);
+  });
+
+  it('C — among a bucket\'s own items, the least jargon-dense one is what the reader sees', () => {
+    // Two SUPPORT claims: one plain, one carrying technical identifiers the 전문근거 section already prints.
+    const v = mkVerdict({
+      disciplineJudgments: [
+        mkJudgment({
+          discipline: 'MYUNGRI',
+          directEvidence: [
+            ev({ fact: '식상생재', meaning: '지금의 큰 흐름이 원국 일주 천간합과 맞물려 풀립니다' }),
+            ev({ fact: '재성 통근', meaning: '활동이 결과로 이어지는 통로가 열려 있습니다' }),
+          ],
+        }),
+        REAL_ZIWEI,
+      ],
+    });
+    const body = renderGroundedActionSection(buildGroundedActionPlan(planFor('DECISION', v)))!.body;
+    const proceedLine = body.split('\n').find((l) => l.startsWith(LABELS.proceed))!;
+    expect(proceedLine).toContain('활동이 결과로 이어지는 통로가 열려 있습니다');
+    expect(proceedLine).not.toContain('원국 일주 천간합');
+  });
+
+  it('D — sourceClaimIds are unchanged, and every rendered line traces into them', () => {
+    for (const intent of ['DECISION', 'TIMING', 'EXPLANATION', 'TRAIT', 'COMPARISON'] as NarrativeIntent[]) {
+      const plan = planFor(intent);
+      const action = buildGroundedActionPlan(plan);
+      const items = [
+        ...action.verifyItems, ...action.supportConditions, ...action.cautionConditions,
+        action.proceedCondition, action.holdCondition, action.timingCheckpoint,
+      ].filter((x): x is NonNullable<typeof x> => !!x);
+      // Still exactly the union of the items the plan selected — rendering did not widen or narrow it.
+      expect([...action.sourceClaimIds].sort())
+        .toEqual([...new Set(items.flatMap((i) => i.sourceClaimIds))].sort());
+      for (const line of renderGroundedActionLines(action)) {
+        for (const id of line.sourceClaimIds) expect(action.sourceClaimIds).toContain(id);
+      }
+    }
+  });
+
+  it('E — the rendered section still introduces zero new facts, every intent', () => {
+    for (const intent of ['DECISION', 'TIMING', 'EXPLANATION', 'TRAIT', 'COMPARISON'] as NarrativeIntent[]) {
+      const plan = planFor(intent);
+      const body = renderGroundedActionSection(buildGroundedActionPlan(plan))!.body;
+      // The bucket labels are fixed text, so they can never register as a product fact either.
+      expect(untraceableFacts(body, plan)).toEqual([]);
+    }
+  });
+
+  it('F — no 시기 체크 bucket without an authoritative temporal claim', () => {
+    const noTiming = renderGroundedActionLines(buildGroundedActionPlan(planFor('TIMING', mkVerdict({ timingConclusion: null }))));
+    expect(noTiming.map((l) => l.label)).not.toContain(LABELS.timing);
+
+    const withTiming = renderGroundedActionLines(buildGroundedActionPlan(
+      planFor('TIMING', mkVerdict({ timingConclusion: '올해 하반기로 갈수록 압박이 옅어집니다.', asksTiming: true })),
+    ));
+    const timing = withTiming.find((l) => l.label === LABELS.timing);
+    expect(timing?.text).toContain('올해 하반기로 갈수록 압박이 옅어집니다');
+  });
+
+  it('G — a bucket with no grounded content is omitted, never padded', () => {
+    // A TIMING plan with no authoritative temporal claim simply has no 시기 체크 line.
+    const labels = renderGroundedActionLines(buildGroundedActionPlan(planFor('TIMING', mkVerdict({ timingConclusion: null }))))
+      .map((l) => l.label);
+    expect(labels).not.toContain(LABELS.timing);
+    expect(labels.length).toBeGreaterThan(0);
+    // And a plan with no claims at all renders no section rather than an empty shell.
+    const bare = mkVerdict({ disciplineJudgments: [NULL_QIMEN], contributions: [] });
+    expect(renderGroundedActionLines(buildGroundedActionPlan(planFor('DECISION', bare)))).toEqual([]);
+    expect(renderGroundedActionSection(buildGroundedActionPlan(planFor('DECISION', bare)))).toBeNull();
+  });
+
+  it('EXPLANATION is not labelled with decision framing — its buckets are observational', () => {
+    const labels = renderGroundedActionLines(buildGroundedActionPlan(planFor('EXPLANATION'))).map((l) => l.label);
+    expect(labels).not.toContain(LABELS.proceed);
+    expect(labels).not.toContain(LABELS.hold);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  it('H — one grounded meaning is not repeated across buckets', () => {
+    for (const intent of ['DECISION', 'COMPARISON'] as NarrativeIntent[]) {
+      const lines = renderGroundedActionLines(buildGroundedActionPlan(planFor(intent)));
+      const ids = lines.flatMap((l) => l.sourceClaimIds);
+      expect(new Set(ids).size).toBe(ids.length);
+      const texts = lines.map((l) => l.text);
+      expect(new Set(texts).size).toBe(texts.length);
+    }
+  });
+
+  it('is deterministic — the same plan renders byte-identical lines', () => {
+    const plan = planFor('DECISION');
+    expect(renderGroundedActionLines(buildGroundedActionPlan(plan)))
+      .toEqual(renderGroundedActionLines(buildGroundedActionPlan(plan)));
   });
 });

@@ -569,6 +569,12 @@ export async function buildServerConsultation(
   // fields; in the CORE prose it cannot be excised, so the user receives the deterministic composition of
   // the same grounded claims rather than fabricated prose. ONE pass, never a regeneration loop, and never a
   // billing change: this is presentation only.
+  // V5.1 — ONE action renderer for BOTH delivery paths. Built here, before the fallback composition, so the
+  // deterministic answer and the accepted answer present action under the same labelled buckets instead of
+  // this file holding one shape and `composeGroundedFallback` holding another.
+  const groundedActionSection = groundedPlan
+    ? renderGroundedActionSection(buildGroundedActionPlan(groundedPlan))
+    : null;
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
   // DELIVERY QUALITY V3 §11 — THE GENERALIZABLE CONTRACT DEFECT behind the recurring CAREER-11 hard fail.
   // When the LLM's own output is discarded (SEMANTIC_REJECTED, or a STRUCTURAL_FALLBACK whose salvaged prose
@@ -588,7 +594,8 @@ export async function buildServerConsultation(
   // declined verdict speaks in its declined, question-shaped headline on both paths rather than in the raw
   // `primaryConclusion` — one headline contract, one place that decides it.
   const groundedFallbackResult = (): ParsedStructuredConsultation => applyVerdictAuthorityClamp(
-    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!) }, verdictForGuard, narrativeIntent,
+    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!, groundedActionSection) },
+    verdictForGuard, narrativeIntent,
   )!;
   const acceptedResult = gated
     ? (gated.fatal ? groundedFallbackResult() : gated.result)
@@ -658,9 +665,6 @@ export async function buildServerConsultation(
   // order is 행동 → 한마디 → 왜 이렇게 보나요 → 앞으로의 흐름 → 전문근거. The grounded FALLBACK already renders
   // its own action section into domainInterpretation under the same heading, and the deliveredSectionTitles
   // filter below is what keeps that from becoming two copies of the same section.
-  const groundedActionSection = groundedPlan
-    ? renderGroundedActionSection(buildGroundedActionPlan(groundedPlan))
-    : null;
   // "한마디" — the verdict's own closing implication, shown ONLY when the delivered body does not already
   // carry it (the fallback composition ends its causal chain with this exact sentence).
   const deliveredBody = [

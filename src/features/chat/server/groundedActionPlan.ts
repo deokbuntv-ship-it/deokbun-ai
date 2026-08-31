@@ -14,8 +14,8 @@
 // about the chart — the same construction the grounded fallback already uses for its boundary sentence. Each
 // item carries the claim ids it stands on, so every action reason is traceable, and `untraceableFacts` over
 // any rendered item is empty by construction.
-import type { GroundedClaim, GroundedNarrativePlan, NarrativeIntent } from './groundedNarrative';
-import { joinDistinctSentences, realize } from './koreanRealization';
+import { technicalTokensIn, type GroundedClaim, type GroundedNarrativePlan, type NarrativeIntent } from './groundedNarrative';
+import { realize } from './koreanRealization';
 
 export const GROUNDED_ACTION_PLAN_VERSION = 'grounded-action-plan@1.0.0';
 
@@ -207,23 +207,103 @@ export function buildGroundedActionPlan(plan: GroundedNarrativePlan): GroundedAc
   };
 }
 
+// ── V5.1 RENDERING ───────────────────────────────────────────────────────────────────────────────────
+//
+// The V5 run named two manifestations of ONE rendering defect, in its own words:
+//
+//   1. proceed-framed and hold-framed lines were joined into a single unlabelled paragraph, so correct
+//      CONDITIONAL advice read as a contradiction — "여기까지는 밀고 가셔도 됩니다" sitting beside
+//      "이 조건이 풀리기 전에는 크게 벌리지 마십시오" with nothing saying which condition each belongs to.
+//   2. every bucket was flattened into that same paragraph, so an accepted answer could deliver nine
+//      sentences of raw claim text and meet the reader with 원국/시주/반합/천간충 in a section that is
+//      supposed to tell them what to DO. The 전문근거 section already carries that proof, with its 근거
+//      attached; repeating the identifiers here proves nothing to the reader.
+//
+// Both are fixed HERE, in presentation only. Which claims the plan selected, and their sourceClaimIds, are
+// untouched — see `buildGroundedActionPlan` above.
+
+/** A rendered line: one labelled bucket, one sentence, and the claim ids it stands on. */
+export type GroundedActionLine = {
+  label: string;
+  text: string;
+  sourceClaimIds: readonly string[];
+};
+
+// Labels come in two sets, because the same bucket means different things to different questions. A
+// decision-shaped question is asking whether to move, so its support/limit buckets ARE proceed/hold
+// conditions. A "why is this happening" or "what am I like" question is not asking that at all, and
+// labelling its buckets 진행/보류 would smuggle decision framing into an answer that never offered one —
+// the same mistake the V5 intent-specific plan exists to prevent.
+const CONDITIONAL_LABELS = {
+  VERIFY: '확인할 것',
+  SUPPORT: '진행해도 되는 조건',
+  LIMIT: '보류해야 하는 조건',
+  TIMING: '시기 체크',
+} as const;
+const OBSERVATIONAL_LABELS = {
+  VERIFY: '확인할 것',
+  SUPPORT: '힘을 받는 지점',
+  LIMIT: '조심할 지점',
+  TIMING: '시기 체크',
+} as const;
+type BucketLabels = { VERIFY: string; SUPPORT: string; LIMIT: string; TIMING: string };
+const LABELS_FOR: Record<NarrativeIntent, BucketLabels> = {
+  DECISION: CONDITIONAL_LABELS,
+  COMPARISON: CONDITIONAL_LABELS,
+  TIMING: CONDITIONAL_LABELS,
+  EXPLANATION: OBSERVATIONAL_LABELS,
+  TRAIT: OBSERVATIONAL_LABELS,
+};
+
+/**
+ * Which item in a bucket the reader sees. NOT a re-selection: the plan already chose these items, and
+ * `sourceClaimIds` is unchanged either way. Among what it was handed, the renderer shows the one carrying
+ * the FEWEST technical identifiers — measured with the fact gate's own lexicon, so no second jargon
+ * dictionary exists — with original order breaking ties, which keeps the output deterministic.
+ */
+function leastTechnical(items: readonly GroundedActionItem[], spent: Set<string>): GroundedActionItem | undefined {
+  const free = items.filter((i) => !i.sourceClaimIds.some((id) => spent.has(id)));
+  if (free.length === 0) return undefined;
+  const chosen = free
+    .map((i, order) => ({ i, order, jargon: technicalTokensIn(i.text).length }))
+    .sort((a, b) => a.jargon - b.jargon || a.order - b.order)[0].i;
+  for (const id of chosen.sourceClaimIds) spent.add(id);
+  return chosen;
+}
+
+/**
+ * The action plan as LABELLED lines. Empty buckets are omitted — never padded — and a claim already shown in
+ * an earlier bucket is not repeated in a later one (§7 dedup, by stable claim id rather than similarity).
+ *
+ * proceedCondition and holdCondition are BOTH valid at once: they speak about different conditions, and the
+ * labels are what make that legible instead of contradictory.
+ */
+export function renderGroundedActionLines(plan: GroundedActionPlan): GroundedActionLine[] {
+  const label = LABELS_FOR[plan.intent];
+  const spent = new Set<string>();
+  const out: GroundedActionLine[] = [];
+  const push = (bucket: string, items: readonly (GroundedActionItem | undefined)[]) => {
+    const chosen = leastTechnical(items.filter((x): x is GroundedActionItem => !!x), spent);
+    if (chosen) out.push({ label: bucket, text: chosen.text, sourceClaimIds: chosen.sourceClaimIds });
+  };
+  push(label.VERIFY, plan.verifyItems);
+  push(label.SUPPORT, [plan.proceedCondition, ...plan.supportConditions]);
+  push(label.LIMIT, [plan.holdCondition, ...plan.cautionConditions]);
+  // §6 — a checkpoint exists only when `buildGroundedActionPlan` was given an authoritative temporal claim.
+  push(label.TIMING, [plan.timingCheckpoint]);
+  return out;
+}
+
 /**
  * The user-visible "행동" section, rendered with NO LLM step — same contract as `renderVerifiedEvidenceSection`.
  * Returns null when no claim was available to stand on, because a boundary sentence with nothing behind it is
  * exactly the generic advice this repair exists to remove.
  */
 export function renderGroundedActionSection(plan: GroundedActionPlan): { title: string; body: string } | null {
-  const ordered = [
-    ...plan.verifyItems,
-    ...plan.supportConditions,
-    ...plan.cautionConditions,
-    ...(plan.proceedCondition ? [plan.proceedCondition] : []),
-    ...(plan.holdCondition ? [plan.holdCondition] : []),
-    ...(plan.timingCheckpoint ? [plan.timingCheckpoint] : []),
-  ];
-  if (ordered.length === 0) return null;
-  const body = joinDistinctSentences(ordered.map((i) => i.text));
-  return body.length > 0 ? { title: ACTION_TITLE[plan.intent], body: realize(body) } : null;
+  const lines = renderGroundedActionLines(plan);
+  if (lines.length === 0) return null;
+  const body = lines.map((l) => `${l.label} — ${realize(l.text)}`).join('\n');
+  return { title: ACTION_TITLE[plan.intent], body };
 }
 
 export { ACTION_TITLE as GROUNDED_ACTION_TITLE };

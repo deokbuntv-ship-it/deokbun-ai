@@ -344,6 +344,18 @@ function ageRangesIn(text: string): Set<string> {
 }
 
 /**
+ * Every technical identifier in `text`, per the SAME bounded lexicon the fact gate uses. V5.1 reuses it so
+ * the action renderer can prefer the least jargon-dense of the claims it was already given, WITHOUT anyone
+ * authoring a second jargon dictionary. Presentation-only: a hit is never a violation here, just a signal
+ * that the reader would meet a term the 전문근거 section already carries with its 근거 attached.
+ */
+export function technicalTokensIn(text: string): string[] {
+  const found = new Set<string>();
+  for (const re of TECHNICAL_LEXICON) for (const m of text.matchAll(re)) found.add(m[0]);
+  return [...found];
+}
+
+/**
  * Every technical entity / exact age range in `text` that the grounded corpus does not supply. Empty ⇒ the
  * text introduced no product fact of its own.
  */
@@ -584,7 +596,16 @@ function bulletsFrom(pool: readonly GroundedClaim[], spent: ReadonlySet<string>,
  *
  * Presentation only — billing/charge-release semantics are untouched.
  */
-export function composeGroundedFallback(plan: GroundedNarrativePlan): ParsedStructuredConsultation {
+export function composeGroundedFallback(
+  plan: GroundedNarrativePlan,
+  /**
+   * V5.1 — the SHARED grounded action section. When supplied, both delivery paths render action through the
+   * one renderer (bucketed, labelled, jargon-minimizing) instead of this file keeping a second, differently
+   * shaped action source. Sentences already spent above are dropped from it by the same `said` ledger that
+   * governs every other section, so injecting it can never make the answer repeat itself.
+   */
+  sharedActionSection?: { title: string; body: string } | null,
+): ParsedStructuredConsultation {
   const declined = plan.verdictState === 'DECLINED';
   const evidence = plan.claims.filter((c) => c.role === 'EVIDENCE');
   const supports = [...claimsOf(plan, plan.positiveClaims), ...evidence.filter((c) => c.polarity === 'SUPPORT')];
@@ -683,9 +704,14 @@ export function composeGroundedFallback(plan: GroundedNarrativePlan): ParsedStru
   // EXPLANATION/TRAIT boundaries are already causal sentences of their own ("… 이유입니다"), so a 그래서 in
   // front of them would double the connective.
   const bridge = plan.intent === 'EXPLANATION' || plan.intent === 'TRAIT' ? '' : `${THEREFORE} `;
-  const actionSection = whyText.length > 0
-    ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) }
-    : base;
+  const sharedActionBody = sharedActionSection
+    ? joinDistinctSentences([sharedActionSection.body], said)
+    : '';
+  const actionSection = sharedActionSection && sharedActionBody.length > 0
+    ? { title: sharedActionSection.title, body: sharedActionBody }
+    : whyText.length > 0
+      ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) }
+      : base;
 
   // V4 §3 CROSS SYNTHESIS — rendered into the answer BODY, not only into the citation blocks, so the reader
   // actually learns why several systems produce this conclusion. Anything already spent above is skipped.

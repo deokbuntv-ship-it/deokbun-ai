@@ -212,3 +212,53 @@ describe('V5 — the delivered answer carries exactly one action section', () =>
     expect(actionAt).toBeLessThan(evidenceAt);
   });
 });
+
+// V5.1 test I — the ACCEPTED path and the grounded FALLBACK deliver action through the SAME renderer.
+// Before this, groundedNarrative kept a second, differently shaped action source of its own, so which
+// delivery path an answer took decided whether the reader got labelled buckets.
+describe('V5.1 — one action rendering contract across both delivery paths', () => {
+  const ACTION_TITLES = [
+    '이렇게 움직이시면 됩니다', '어느 쪽을 먼저 보시면 됩니다', '시점을 이렇게 보시면 됩니다',
+    '이렇게 이해하시면 됩니다', '이 결을 이렇게 쓰시면 됩니다',
+  ];
+  const BUCKETS = ['확인할 것', '진행해도 되는 조건', '보류해야 하는 조건', '시기 체크', '힘을 받는 지점', '조심할 지점'];
+
+  const PLAIN_ANSWER = JSON.stringify({
+    coreSummary: '차분한 흐름입니다.',
+    coreInterpretation: '차분함과 추진력이 함께 있는 결이라, 한번 잡은 일을 오래 끌고 가는 쪽에서 결과가 붙습니다. '
+      + '다만 조급하게 서두르면 흐름이 흐트러지기 쉬우니, 속도를 조절하면서 되돌릴 수 있는 범위부터 차근히 넓혀 가시는 편이 좋습니다. '
+      + '지금은 크게 방향을 틀기보다 지금 하고 계신 일을 유지하시는 쪽이 안정적입니다.',
+    strengths: ['한번 잡은 일을 오래 끌고 갑니다.'],
+    cautions: ['조급하게 서두르기보다 속도를 조절하는 편이 좋습니다.'],
+    followUps: ['어떤 방식이 맞을까요?'],
+  });
+
+  const actionOf = async (answer: string) => {
+    const { deps } = capturingDeps(answer);
+    const r = await buildServerConsultation(baseRequest(), deps);
+    expect(r.ok).toBe(true);
+    if (!r.ok || !r.structuredResult) throw new Error('no result');
+    const { buildUserVisibleAnswer } = await import('@/features/chat/presentation/userVisibleAnswer');
+    const sections = buildUserVisibleAnswer(r.structuredResult).sections;
+    const action = sections.filter((s) => ACTION_TITLES.includes(s.title));
+    return { action, fallback: r.diagnostics.groundedFallback === true };
+  };
+
+  it('both paths deliver exactly one action section, in labelled buckets', async () => {
+    for (const answer of [PLAIN_ANSWER, GOOD_ANSWER]) {
+      const { action } = await actionOf(answer);
+      expect(action).toHaveLength(1);
+      const lines = action[0].body.split('\n');
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of lines) {
+        const label = line.split(' — ')[0];
+        expect(BUCKETS).toContain(label);
+      }
+    }
+  });
+
+  it('the two paths exercise genuinely different composition routes', async () => {
+    expect((await actionOf(PLAIN_ANSWER)).fallback).toBe(false);
+    expect((await actionOf(GOOD_ANSWER)).fallback).toBe(true);
+  });
+});
