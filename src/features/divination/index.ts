@@ -17,6 +17,7 @@ export {
   FOR_STANCES,
   evidenceAdequacy,
   isDirectional,
+  contributedNothing,
   stanceValence,
   type ContradictionResolution,
   type ContradictionResolutionKind,

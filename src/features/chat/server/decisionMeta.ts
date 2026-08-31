@@ -624,6 +624,8 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   const evidence = (x: unknown) => arr(x).map((e) => ({
     fact: str(e.fact), meaning: str(e.meaning), domain: e.domain, temporalScope: e.temporalScope,
     directness: e.directness,
+    // Deliberately restored: without it a follow-up would re-count a coverage gap as evidence.
+    ...(e.coverageGap === true ? { coverageGap: true } : {}),
   }));
   const optional = (k: string, x: unknown) => (typeof x === 'string' ? { [k]: x } : {});
 

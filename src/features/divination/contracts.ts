@@ -89,6 +89,21 @@ export const ALL_STANCES: readonly Stance[] = [
 export function isDirectional(s: Stance): boolean {
   return FOR_STANCES.includes(s) || AGAINST_STANCES.includes(s);
 }
+/**
+ * A judgment that is APPLICABLE but said NOTHING: it was computed, it asserts no direction, and every line it
+ * carries is a coverage-gap notice rather than a finding. Such a discipline must not enter the synthesis slot
+ * — an answer composed against a system that reported only "no route here" reads as three-system synthesis
+ * while standing on two, and that one line surfaces as user-facing 전문근거 with no chart fact behind it.
+ */
+export function contributedNothing(j: Pick<DivinationJudgment,
+  'applicable' | 'stance' | 'directEvidence' | 'counterEvidence' | 'timingSignals'>): boolean {
+  return j.applicable
+    && !isDirectional(j.stance)
+    && j.counterEvidence.length === 0
+    && j.timingSignals.length === 0
+    && j.directEvidence.every((e) => e.coverageGap === true);
+}
+
 export function stanceValence(s: Stance): 'FOR' | 'AGAINST' | 'NONE' {
   if (FOR_STANCES.includes(s)) return 'FOR';
   if (AGAINST_STANCES.includes(s)) return 'AGAINST';
@@ -156,6 +171,13 @@ export type JudgmentEvidence = {
   domain: JudgmentDomain;
   temporalScope: TemporalScope;
   directness: QuestionDirectness;
+  /**
+   * True when this line reports a COVERAGE GAP (a `DOCTRINE_BLOCK` premise — "this discipline has no adopted
+   * route to the asked axis") instead of a finding. It is still carried, so the withholding stays visible in
+   * the persisted verdict and in the "왜 이렇게 보나요?" layer — but it is NOT evidence, and anything that
+   * composes an answer or cites evidence must skip it. Absent ⇒ a real finding.
+   */
+  coverageGap?: boolean;
 };
 
 /**

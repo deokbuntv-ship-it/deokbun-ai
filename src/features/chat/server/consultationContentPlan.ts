@@ -18,7 +18,7 @@ import {
   type CrossDivinationVerdict, type JudgmentEvidence, type TemporalScope, type JudgmentDomain,
   type Discipline, type DivinationJudgment,
   routeConsultationJudgeDomain, type ConsultationJudgeDomain,
-  isDeclinedToDecide,
+  isDeclinedToDecide, contributedNothing,
 } from '@/features/divination';
 
 import { realize } from './koreanRealization';
@@ -169,8 +169,14 @@ function pooledEvidence(verdict: CrossDivinationVerdict): { supporting: PooledEv
   const supporting: PooledEvidence[] = [];
   const counter: PooledEvidence[] = [];
   for (const j of verdict.disciplineJudgments as DivinationJudgment[]) {
-    if (!j.applicable) continue;
-    for (const e of j.directEvidence) supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:directEvidence` });
+    // A discipline that only reported a coverage gap is NOT a third opinion — see `contributedNothing`.
+    if (!j.applicable || contributedNothing(j)) continue;
+    // A gap notice inside an otherwise-contributing discipline is dropped too: it carries no chart fact, so
+    // materializing it as "전문근거 · 명리 (E1)" showed the user an engine limitation dressed as evidence.
+    for (const e of j.directEvidence) {
+      if (e.coverageGap) continue;
+      supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:directEvidence` });
+    }
     if (verdict.asksTiming) {
       for (const e of j.timingSignals) supporting.push({ evidence: e, discipline: j.discipline, provenance: `${j.discipline}:timingSignals` });
     }

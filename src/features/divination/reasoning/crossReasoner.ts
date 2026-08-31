@@ -223,6 +223,7 @@ const evidenceFrom = (
     domain: axis,
     temporalScope: p.temporalScope,
     directness: p.applicability === 'DIRECT' ? 'DIRECT' : p.applicability === 'BACKGROUND' ? 'GENERAL' : 'ADJACENT',
+    ...(p.concept === 'DOCTRINE_BLOCK' ? { coverageGap: true } : {}),
   }));
 
 export function reasonCross(input: CrossReasonInput): CrossReasoning {

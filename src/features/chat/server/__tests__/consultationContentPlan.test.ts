@@ -9,7 +9,7 @@ import {
   buildConsultationContentPlan, renderContentPlanDirective, renderVerifiedEvidenceSection, type ContentDomain,
 } from '@/features/chat/server/consultationContentPlan';
 import { applyVerdictAuthorityClamp } from '@/features/chat/server/buildServerConsultation';
-import { renderVerdictDirective, buildDeclinedSummary, declinedReasonCategory } from '@/features/divination/verdictDirective';
+import { renderVerdictDirective, buildDeclinedSummary, declinedReasonCategory, renderEvidenceDirective } from '@/features/divination/verdictDirective';
 import type { ConsultationOutcome, ParsedStructuredConsultation } from '@/features/chat/prompts/structuredConsultation';
 import type {
   CrossDivinationVerdict, DivinationJudgment, DisciplineContribution, JudgmentDomain, JudgmentEvidence, Stance,
@@ -551,3 +551,54 @@ describe('§14.I — fabricated technical facts are structurally impossible thro
 // Type-level smoke: ContentDomain must stay assignable from the 7 judge domains + GENERAL.
 const _domainCheck: ContentDomain[] = ['BUSINESS', 'MONEY', 'CAREER', 'LOVE', 'REUNION', 'CHANGE', 'TIMING', 'GENERAL'];
 void _domainCheck;
+
+// NULL-CONTRIBUTOR REPAIR — a discipline that only reported a COVERAGE GAP is not a third opinion. Before
+// this, REUNION-09's Myungri judgment carried exactly one line ("명리에서 이 축을 직접 보는 경로가 아직
+// 채택되어 있지 않습니다"), which became "전문근거 · 명리 (E1)" and was offered to the composer as a fact to
+// cite — so the answer was composed, and scored, against a system holding nothing.
+describe('coverage-gap judgments do not enter the evidence pool', () => {
+  const gap = ev({
+    fact: '질문 축 REUNION', meaning: '명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.',
+    domain: 'GENERAL', directness: 'DIRECT', temporalScope: 'UNSCOPED', coverageGap: true,
+  });
+  const nullMyungri = mkJudgment({
+    discipline: 'MYUNGRI', stance: 'INSUFFICIENT_EVIDENCE', evidenceStrength: 'NONE',
+    dominantConclusion: '명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.',
+    directEvidence: [gap],
+  });
+  const realZiwei = mkJudgment({
+    discipline: 'ZIWEI',
+    directEvidence: [ev({ fact: '천이궁 화록', meaning: '움직이는 자리에 실익이 붙습니다', domain: 'OPPORTUNITY', directness: 'DIRECT' })],
+  });
+
+  it('drops the gap line instead of materializing it as user-facing 전문근거', () => {
+    const plan = buildConsultationContentPlan(mkVerdict({ disciplineJudgments: [nullMyungri, realZiwei] }));
+    expect(plan.selectedEvidence.map((e) => e.discipline)).toEqual(['ZIWEI']);
+    expect(renderVerifiedEvidenceSection(plan.selectedEvidence)
+      .some((s) => s.body.includes('채택되어 있지'))).toBe(false);
+  });
+
+  it('keeps a gap-carrying discipline whose OTHER lines are real findings', () => {
+    const mixed = mkJudgment({
+      discipline: 'MYUNGRI', stance: 'INSUFFICIENT_EVIDENCE', evidenceStrength: 'NONE',
+      directEvidence: [gap, ev({ fact: '일간 강약', meaning: '일간이 신약한 구조입니다', domain: 'OPPORTUNITY', directness: 'DIRECT' })],
+    });
+    const plan = buildConsultationContentPlan(mkVerdict({ disciplineJudgments: [mixed, realZiwei] }));
+    expect(plan.selectedEvidence.map((e) => e.canonicalTechnicalAnchor).sort()).toEqual(['일간 강약', '천이궁 화록']);
+  });
+
+  it('does not offer a null contributor as a fact the composer may cite', () => {
+    const verdict = mkVerdict({
+      disciplineJudgments: [nullMyungri, realZiwei],
+      evidenceReferences: [
+        { discipline: 'MYUNGRI', lines: ['명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않습니다.'] },
+        { discipline: 'ZIWEI', lines: ['천이궁 화록 — 움직이는 자리에 실익이 붙습니다'] },
+      ],
+    });
+    const directive = renderEvidenceDirective(verdict);
+    expect(directive).toContain('천이궁 화록');
+    expect(directive).not.toContain('채택되어 있지');
+    // The record itself is untouched — the withholding stays visible and the fact corpus stays as wide.
+    expect(verdict.evidenceReferences).toHaveLength(2);
+  });
+});

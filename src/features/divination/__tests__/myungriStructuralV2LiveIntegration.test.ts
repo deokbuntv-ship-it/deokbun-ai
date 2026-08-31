@@ -201,3 +201,19 @@ describe('sole structural verdict authority', () => {
     }
   });
 });
+
+// NULL-CONTRIBUTOR REPAIR — the coverage-gap line the reasoner emits for an axis with no adopted route must
+// be TAGGED as such at the source. Everything downstream (the 전문근거 catalog, the citable-fact directive)
+// filters on that tag, so if it stops being set the gap silently becomes evidence again.
+describe('coverage-gap evidence is tagged at the source', () => {
+  it('a DOCTRINE_BLOCK premise reaches directEvidence marked coverageGap, and real findings are not', () => {
+    const { judgment } = judge(NATAL.STRONG);
+    const gaps = judgment.directEvidence.filter((e) => e.coverageGap);
+    expect(gaps.length).toBeGreaterThan(0);
+    // Every tagged line is a WITHHOLDING (no adopted route / not enough basis to judge), never a finding.
+    for (const g of gaps) expect(g.meaning).toMatch(/채택되어 있지 않다|부족합니다|판단하지 않습니다/);
+    for (const e of judgment.directEvidence.filter((x) => !x.coverageGap)) {
+      expect(e.meaning).not.toContain('채택되어 있지 않다');
+    }
+  });
+});

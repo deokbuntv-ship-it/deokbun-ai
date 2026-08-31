@@ -8,8 +8,10 @@
 import {
   AGAINST_STANCES,
   FOR_STANCES,
+  contributedNothing,
   type CrossDivinationVerdict,
   type Discipline,
+  type DivinationJudgment,
   type Stance,
 } from './contracts';
 import { routeConsultationJudgeDomain } from './consultationJudgeCore';
@@ -206,6 +208,18 @@ export function verdictEvidenceLines(v: CrossDivinationVerdict): string[] {
   return v.evidenceReferences.flatMap((ref) => ref.lines.map((line) => `[${label(ref.discipline)}] ${line}`));
 }
 
+/**
+ * Disciplines that were applied but reported only a coverage gap. Their lines stay in `evidenceReferences`
+ * (the persisted record, the "왜 이렇게 보나요?" layer, and the grounded-fact corpus all still need them) —
+ * what changes is that the composer is no longer told to CITE them, which is what produced answers that
+ * attributed a share of the reasoning to a system holding nothing.
+ */
+function nullContributors(v: CrossDivinationVerdict): Set<Discipline | 'CROSS'> {
+  return new Set((v.disciplineJudgments as DivinationJudgment[])
+    .filter(contributedNothing)
+    .map((j) => j.discipline as Discipline | 'CROSS'));
+}
+
 // FINAL_PROSE_DELIVERY_REPAIR_V1 §3-6 — `verdictEvidenceLines` above was computed for exactly this purpose
 // (§22's "왜 이렇게 보나요?" layer) but was never actually appended to the prompt anywhere in the real
 // pipeline — root-caused via the prose-loss QA analysis: the final answer routinely verbalized at a
@@ -213,7 +227,10 @@ export function verdictEvidenceLines(v: CrossDivinationVerdict): string[] {
 // that were ALREADY sitting in this list. This renders that same list as a bounded instruction: cite 1–3 of
 // THESE exact lines (never invent/recompute — the list IS the fact boundary), in plain language first.
 export function renderEvidenceDirective(v: CrossDivinationVerdict): string {
-  const lines = verdictEvidenceLines(v);
+  const nulls = nullContributors(v);
+  const lines = verdictEvidenceLines({
+    ...v, evidenceReferences: v.evidenceReferences.filter((r) => !nulls.has(r.discipline)),
+  });
   if (lines.length === 0) return '';
   return [
     '[실제 근거 문장 — 아래 목록에 있는 사실만 사용하고, 새로 만들지 마십시오]',

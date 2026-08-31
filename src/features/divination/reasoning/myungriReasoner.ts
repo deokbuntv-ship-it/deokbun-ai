@@ -76,6 +76,8 @@ const evidenceOf = (
       domain: axis,
       temporalScope: p.temporalScope,
       directness: (p.questionAxis === asked ? 'DIRECT' : p.applicability === 'BACKGROUND' ? 'GENERAL' : 'ADJACENT') as QuestionDirectness,
+      // A withheld doctrine is carried, never counted — see `coverageGap` on JudgmentEvidence.
+      ...(p.concept === 'DOCTRINE_BLOCK' ? { coverageGap: true } : {}),
     }));
 
 /**
