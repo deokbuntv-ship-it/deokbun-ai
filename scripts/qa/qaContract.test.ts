@@ -5,7 +5,9 @@
 //   npx jest --roots scripts/qa --testMatch "**/qaContract.test.ts"
 import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 
-import { completeProductView, materialContributorsOf } from './qaCompleteProduct';
+import {
+  completeProductView, invalidSingleContributorZero, materialContributorsOf,
+} from './qaCompleteProduct';
 import { selectRegressionCases } from './regressionCases';
 
 const INTERNAL_LINE = '원국 일지 육합 — 내부 참고 전용 문장';
@@ -112,5 +114,58 @@ describe('V5.2 QA contract — specific evidence is judged on the complete produ
     expect(JUDGE_SOURCE).toContain('personalization (0-20)');
     expect(JUDGE_SOURCE).toContain('crossSystemSynthesis (0-15)');
     expect(JUDGE_SOURCE).toContain('actionUsefulness (0-5)');
+  });
+});
+
+// V5.2 CLOSURE — the single-material-contributor rubric, and a consistency check that makes an invalid
+// zero VISIBLE in future measurement. Nothing here rewrites a score, retries a judge, or calls one.
+describe('V5.2 closure — single-material-contributor cross scoring', () => {
+  const judge = (cross: number, issues: string[] = [], notes = '') => ({
+    scoreBreakdown: { crossSystemSynthesis: cross }, issues, notes,
+  });
+  const rec = (o: Partial<Parameters<typeof invalidSingleContributorZero>[0]> = {}) => ({
+    caseId: 'CASE-1',
+    materialContributors: ['ZIWEI'],
+    notCoveredSystems: ['MYUNGRI', 'QIMEN'],
+    judge: judge(0),
+    ...o,
+  });
+
+  it('the rubric requires the four criteria and forbids a reflexive zero', () => {
+    expect(JUDGE_SOURCE).toContain('그것만을 이유로 0점을 주는 것은 잘못된 채점입니다');
+    expect(JUDGE_SOURCE).toContain('적용 범위를 정직하게 처리했는가');
+    expect(JUDGE_SOURCE).toContain('없는 결합을 지어내지 않았는가');
+    expect(JUDGE_SOURCE).toContain('결론(입장)을 분명하게 설명했는가');
+    expect(JUDGE_SOURCE).toContain('커버되지 않은 부분을 이 질문과 관련지어 밝혔는가');
+    // The 15-point weight is untouched by this closure patch.
+    expect(JUDGE_SOURCE).toContain('crossSystemSynthesis (0-15)');
+  });
+
+  it('flags a zero given to a single material contributor with no stated reason', () => {
+    const flag = invalidSingleContributorZero(rec());
+    expect(flag).not.toBeNull();
+    expect(flag!.caseId).toBe('CASE-1');
+    expect(flag!.statedReason).toBe('(근거 없음)');
+  });
+
+  it('does NOT flag a zero the judge actually reasoned through', () => {
+    expect(invalidSingleContributorZero(rec({
+      judge: judge(0, ['한 체계뿐인데 여러 체계가 맞물린 것처럼 서술해 적용 범위를 잘못 다뤘습니다.']),
+    }))).toBeNull();
+  });
+
+  it('does NOT flag a non-zero score, or a genuine multi-contributor case', () => {
+    expect(invalidSingleContributorZero(rec({ judge: judge(11) }))).toBeNull();
+    expect(invalidSingleContributorZero(rec({ materialContributors: ['MYUNGRI', 'ZIWEI'] }))).toBeNull();
+    // Nothing to be honest ABOUT when no system was excluded.
+    expect(invalidSingleContributorZero(rec({ notCoveredSystems: [] }))).toBeNull();
+    expect(invalidSingleContributorZero(rec({ judge: null }))).toBeNull();
+  });
+
+  it('never rewrites a score — it only reports', () => {
+    const before = rec();
+    const snapshot = JSON.stringify(before);
+    invalidSingleContributorZero(before);
+    expect(JSON.stringify(before)).toBe(snapshot);
   });
 });

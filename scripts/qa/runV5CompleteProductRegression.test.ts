@@ -24,7 +24,9 @@ import type { DigestProvider } from '@/features/interpretation';
 
 import { QA_PROFILES, type QaCase } from './consultationQaFixtures';
 import { buildRealCallLLM } from './openaiCallLLM';
-import { completeProductView, type CompleteProductView } from './qaCompleteProduct';
+import {
+  completeProductView, invalidSingleContributorZero, type CompleteProductView,
+} from './qaCompleteProduct';
 import { judgeQaCase, type QaJudgeVerdict } from './qaJudge';
 import { genericPhraseHits } from './qaTextChecks';
 import { CONTROL_IDS, selectRegressionCases } from './regressionCases';
@@ -231,6 +233,10 @@ describe('V5 — 40-case complete-product regression (consumed set)', () => {
       actionSectionPresentCount: records.filter((r) => r.hasActionSection).length,
       verifiedEvidencePresentCount: records.filter((r) => r.verifiedEvidence.length > 0).length,
       singleMaterialContributorCount: scored.filter((r) => r.materialContributors.length === 1).length,
+      // V5.2 CLOSURE — cases where crossSystemSynthesis was zeroed on a single material contributor with no
+      // stated rubric reason. The rubric forbids that; this only makes it VISIBLE for a human to read. No
+      // score is rewritten and no judge is retried.
+      invalidSingleContributorZeroFlags: records.map(invalidSingleContributorZero).filter(Boolean),
       multiMaterialContributorCount: scored.filter((r) => r.materialContributors.length >= 2).length,
 
       jsonlPath: JSONL_PATH,

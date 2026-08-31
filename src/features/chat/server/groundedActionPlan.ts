@@ -15,7 +15,7 @@
 // item carries the claim ids it stands on, so every action reason is traceable, and `untraceableFacts` over
 // any rendered item is empty by construction.
 import {
-  actionDirectionOf, technicalTokensIn,
+  ACTION_LABEL_SEPARATOR, actionDirectionOf, technicalTokensIn,
   type GroundedClaim, type GroundedNarrativePlan, type NarrativeIntent,
 } from './groundedNarrative';
 import { joinDistinctSentences, realize } from './koreanRealization';
@@ -359,11 +359,19 @@ export function renderGroundedActionLines(plan: GroundedActionPlan): GroundedAct
  * Returns null when no claim was available to stand on, because a boundary sentence with nothing behind it is
  * exactly the generic advice this repair exists to remove.
  */
+/**
+ * ONE formatter, used by BOTH delivery paths. `line.text` is already realized (see `item` above), so this
+ * only attaches the bucket label — and because the grounded fallback formats through this same function,
+ * the two paths cannot drift into differently-shaped action lines.
+ */
+export function formatGroundedActionLine(line: GroundedActionLine): string {
+  return `${line.label}${ACTION_LABEL_SEPARATOR}${line.text}`;
+}
+
 export function renderGroundedActionSection(plan: GroundedActionPlan): { title: string; body: string } | null {
   const lines = renderGroundedActionLines(plan);
   if (lines.length === 0) return null;
-  const body = lines.map((l) => `${l.label} — ${realize(l.text)}`).join('\n');
-  return { title: ACTION_TITLE[plan.intent], body };
+  return { title: ACTION_TITLE[plan.intent], body: lines.map(formatGroundedActionLine).join('\n') };
 }
 
 export { ACTION_TITLE as GROUNDED_ACTION_TITLE };

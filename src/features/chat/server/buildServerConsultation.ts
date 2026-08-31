@@ -57,7 +57,9 @@ import {
   narrativeIntentOf, renderGroundedSections, untraceableFacts,
   type GroundedViolationCategory, type NarrativeIntent,
 } from './groundedNarrative';
-import { buildGroundedActionPlan, renderGroundedActionSection } from './groundedActionPlan';
+import {
+  buildGroundedActionPlan, formatGroundedActionLine, renderGroundedActionLines, renderGroundedActionSection,
+} from './groundedActionPlan';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
@@ -572,8 +574,16 @@ export async function buildServerConsultation(
   // V5.1 — ONE action renderer for BOTH delivery paths. Built here, before the fallback composition, so the
   // deterministic answer and the accepted answer present action under the same labelled buckets instead of
   // this file holding one shape and `composeGroundedFallback` holding another.
-  const groundedActionSection = groundedPlan
-    ? renderGroundedActionSection(buildGroundedActionPlan(groundedPlan))
+  const groundedActionPlan = groundedPlan ? buildGroundedActionPlan(groundedPlan) : null;
+  const groundedActionSection = groundedActionPlan ? renderGroundedActionSection(groundedActionPlan) : null;
+  // The fallback receives the same section as LINES, so it can reconcile it with the claim ledger by id
+  // rather than by text — the rendered text is realized while the bullets dedupe on the raw engine string.
+  const sharedActionForFallback = groundedActionPlan && groundedActionSection
+    ? {
+      title: groundedActionSection.title,
+      lines: renderGroundedActionLines(groundedActionPlan),
+      format: formatGroundedActionLine,
+    }
     : null;
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
   // DELIVERY QUALITY V3 §11 — THE GENERALIZABLE CONTRACT DEFECT behind the recurring CAREER-11 hard fail.
@@ -594,7 +604,7 @@ export async function buildServerConsultation(
   // declined verdict speaks in its declined, question-shaped headline on both paths rather than in the raw
   // `primaryConclusion` — one headline contract, one place that decides it.
   const groundedFallbackResult = (): ParsedStructuredConsultation => applyVerdictAuthorityClamp(
-    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!, groundedActionSection) },
+    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!, sharedActionForFallback) },
     verdictForGuard, narrativeIntent,
   )!;
   const acceptedResult = gated

@@ -262,3 +262,109 @@ describe('V5.1 — one action rendering contract across both delivery paths', ()
     expect((await actionOf(GOOD_ANSWER)).fallback).toBe(true);
   });
 });
+
+// V5.2 CLOSURE — the grounded FALLBACK must deliver the action section with its bucket structure intact.
+// In the V5.2 run all 5 fallback answers ran their labels together into one paragraph, because
+// composeGroundedFallback passed the already-structured body through joinDistinctSentences.
+describe('V5.2 closure — fallback preserves action bucket boundaries', () => {
+  const ACTION_TITLES = [
+    '이렇게 움직이시면 됩니다', '어느 쪽을 먼저 보시면 됩니다', '시점을 이렇게 보시면 됩니다',
+    '이렇게 이해하시면 됩니다', '이 결을 이렇게 쓰시면 됩니다',
+  ];
+  const BUCKETS = [
+    '확인할 것', '진행해도 되는 조건', '보류해야 하는 조건', '시기 체크',
+    '힘을 받는 지점', '조심할 지점', '지금은 정할 수 없는 것',
+  ];
+
+  const PLAIN_ANSWER = JSON.stringify({
+    coreSummary: '차분한 흐름입니다.',
+    coreInterpretation: '차분함과 추진력이 함께 있는 결이라, 한번 잡은 일을 오래 끌고 가는 쪽에서 결과가 붙습니다. '
+      + '다만 조급하게 서두르면 흐름이 흐트러지기 쉬우니, 속도를 조절하면서 되돌릴 수 있는 범위부터 차근히 넓혀 가시는 편이 좋습니다. '
+      + '지금은 크게 방향을 틀기보다 지금 하고 계신 일을 유지하시는 쪽이 안정적입니다.',
+    strengths: ['한번 잡은 일을 오래 끌고 갑니다.'],
+    cautions: ['조급하게 서두르기보다 속도를 조절하는 편이 좋습니다.'],
+    followUps: ['어떤 방식이 맞을까요?'],
+  });
+
+  const actionOf = async (answer: string) => {
+    const { deps } = capturingDeps(answer);
+    const r = await buildServerConsultation(baseRequest(), deps);
+    expect(r.ok).toBe(true);
+    if (!r.ok || !r.structuredResult) throw new Error('no result');
+    const { buildUserVisibleAnswer } = await import('@/features/chat/presentation/userVisibleAnswer');
+    const section = buildUserVisibleAnswer(r.structuredResult).sections
+      .find((s) => ACTION_TITLES.includes(s.title));
+    return { section, fallback: r.diagnostics.groundedFallback === true };
+  };
+
+  const labelsOf = (body: string) => body.split('\n').map((l) => l.split(' — ')[0]);
+
+  it('A — a grounded-FALLBACK answer keeps one labelled bucket per line', async () => {
+    const { section, fallback } = await actionOf(GOOD_ANSWER);
+    expect(fallback).toBe(true);
+    expect(section).toBeDefined();
+    const lines = section!.body.split('\n');
+    // Every label that appears must own a line: no two buckets share one.
+    const labelHits = (section!.body.match(/(?:확인할 것|진행해도 되는 조건|보류해야 하는 조건|시기 체크|힘을 받는 지점|조심할 지점|지금은 정할 수 없는 것) — /g) ?? []);
+    expect(labelHits.length).toBe(lines.length);
+    for (const label of labelsOf(section!.body)) expect(BUCKETS).toContain(label);
+  });
+
+  it('B — both paths render the SAME action contract: same heading, same bucket format, same order', async () => {
+    const accepted = await actionOf(PLAIN_ANSWER);
+    const fallback = await actionOf(GOOD_ANSWER);
+    expect(accepted.fallback).toBe(false);
+    expect(fallback.fallback).toBe(true);
+    expect(fallback.section!.title).toBe(accepted.section!.title);
+
+    const acceptedLabels = labelsOf(accepted.section!.body);
+    const fallbackLabels = labelsOf(fallback.section!.body);
+    for (const l of fallbackLabels) expect(BUCKETS).toContain(l);
+    // The fallback composes its own body from the SAME claims, so a bucket whose claim already carried that
+    // body is dropped — it may show fewer buckets, but never different ones and never in a different order.
+    expect(fallbackLabels.every((l) => acceptedLabels.includes(l))).toBe(true);
+    const projected = acceptedLabels.filter((l) => fallbackLabels.includes(l));
+    expect(fallbackLabels).toEqual(projected);
+    // Same rendering format on both paths: exactly one 'label — claim' per line.
+    for (const body of [accepted.section!.body, fallback.section!.body]) {
+      for (const line of body.split('\n')) expect(line.split(' — ').length).toBeGreaterThanOrEqual(2);
+    }
+  });
+  it('C — sentence-level dedup still applies: nothing in the action section repeats the body above it', async () => {
+    const { deps } = capturingDeps(GOOD_ANSWER);
+    const r = await buildServerConsultation(baseRequest(), deps);
+    if (!r.ok || !r.structuredResult) throw new Error('no result');
+    const { buildUserVisibleAnswer } = await import('@/features/chat/presentation/userVisibleAnswer');
+    const sections = buildUserVisibleAnswer(r.structuredResult).sections;
+    const action = sections.find((s) => ACTION_TITLES.includes(s.title))!;
+    const before = sections.slice(0, sections.indexOf(action))
+      .map((s) => s.body).join('\n').replace(/\s+/g, '');
+    for (const line of action.body.split('\n')) {
+      const claim = line.split(' — ').slice(1).join(' — ');
+      for (const sentence of claim.split(/(?<=[.!?…])\s+/)) {
+        const t = sentence.trim().replace(/\s+/g, '');
+        if (t.length > 12) expect(before.includes(t)).toBe(false);
+      }
+    }
+    // And within the action section itself, no sentence is said twice.
+    const seen = new Set<string>();
+    for (const line of action.body.split('\n')) {
+      for (const sentence of line.split(/(?<=[.!?…])\s+/)) {
+        const t = sentence.trim().replace(/\s+/g, '');
+        if (t.length <= 12) continue;
+        expect(seen.has(t)).toBe(false);
+        seen.add(t);
+      }
+    }
+  });
+
+  it('D/E — the fallback action section introduces no fact and stays traceable', async () => {
+    const { section } = await actionOf(GOOD_ANSWER);
+    // Every rendered line is a labelled bucket carrying one authoritative claim plus a fixed instruction.
+    for (const line of section!.body.split('\n')) {
+      const [label, ...rest] = line.split(' — ');
+      expect(BUCKETS).toContain(label);
+      expect(rest.join(' — ').trim().length).toBeGreaterThan(0);
+    }
+  });
+});

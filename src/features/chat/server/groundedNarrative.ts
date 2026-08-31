@@ -504,6 +504,18 @@ const meaningsOf = (plan: GroundedNarrativePlan, ids: readonly string[]): string
 
 /** The cross-synthesis heading. Shared, because the grounded fallback now renders this section into the
  *  answer body and the caller drops the duplicate rendered here. */
+/** Separator between an action bucket label and its claim. Shared with `groundedActionPlan`. */
+export const ACTION_LABEL_SEPARATOR = ' — ';
+
+/** One rendered action bucket, as `groundedActionPlan` produced it. `text` is already realized. */
+export type SharedActionLine = { label: string; text: string; sourceClaimIds: readonly string[] };
+export type SharedActionSection = {
+  title: string;
+  lines: readonly SharedActionLine[];
+  /** The ONE formatter both paths render through — supplied by `groundedActionPlan`, never reimplemented. */
+  format: (line: SharedActionLine) => string;
+};
+
 export const SYNTHESIS_SECTION_TITLE = '왜 이렇게 보나요';
 
 /**
@@ -624,12 +636,11 @@ function bulletsFrom(pool: readonly GroundedClaim[], spent: ReadonlySet<string>,
 export function composeGroundedFallback(
   plan: GroundedNarrativePlan,
   /**
-   * V5.1 — the SHARED grounded action section. When supplied, both delivery paths render action through the
-   * one renderer (bucketed, labelled, jargon-minimizing) instead of this file keeping a second, differently
-   * shaped action source. Sentences already spent above are dropped from it by the same `said` ledger that
-   * governs every other section, so injecting it can never make the answer repeat itself.
+   * V5.1/V5.2 — the SHARED grounded action section, carried as its LINES so this file can reconcile it with
+   * the claim ledger by IDENTITY. The rendered text is realized (합쇼체) while the bullets below dedupe on the
+   * raw engine string, so matching the two by text is impossible — the claim ids are what make it work.
    */
-  sharedActionSection?: { title: string; body: string } | null,
+  sharedAction?: SharedActionSection | null,
 ): ParsedStructuredConsultation {
   const declined = plan.verdictState === 'DECLINED';
   const evidence = plan.claims.filter((c) => c.role === 'EVIDENCE');
@@ -729,11 +740,33 @@ export function composeGroundedFallback(
   // EXPLANATION/TRAIT boundaries are already causal sentences of their own ("… 이유입니다"), so a 그래서 in
   // front of them would double the connective.
   const bridge = plan.intent === 'EXPLANATION' || plan.intent === 'TRAIT' ? '' : `${THEREFORE} `;
-  const sharedActionBody = sharedActionSection
-    ? joinDistinctSentences([sharedActionSection.body], said)
-    : '';
-  const actionSection = sharedActionSection && sharedActionBody.length > 0
-    ? { title: sharedActionSection.title, body: sharedActionBody }
+  // V5.2 CLOSURE — the shared action section arrives ALREADY STRUCTURED: one labelled bucket per line.
+  // Passing the whole body through `joinDistinctSentences` split it on every sentence boundary and rejoined
+  // with a space, so `\n` between buckets was destroyed and all 5 grounded-fallback answers in the V5.2 run
+  // delivered the labels run together as one paragraph — the exact shape V5.1 existed to remove, surviving
+  // on this path alone.
+  //
+  // The ledger still applies, but LINE-WISE and atomically: a bucket line whose sentences were all already
+  // said above is dropped whole, and any line that still carries something new is emitted unchanged. Keeping
+  // the line intact is deliberate — stripping a redundant claim sentence out of the middle would strand its
+  // fixed instruction ("… 이 조건이 그대로면 확정은 미루십시오.") with nothing behind it.
+  //
+  // The ledger is fed the CLAIM, not the label-prefixed line: "조심할 지점 — 타고난 배우자 자리…" is one
+  // sentence whose key differs from the bare claim, so registering the whole line left the later 강점/주의
+  // bullets free to say the same sentence again.
+  const actionLines = (sharedAction?.lines ?? [])
+    // A line whose claim already carried the causal body above is dropped WHOLE — by id, so a realized
+    // sentence and its raw engine original are still recognised as the same claim.
+    .filter((l) => !l.sourceClaimIds.some((id) => used.has(id)));
+  // Registered in BOTH ledgers, so the 강점/주의 bullets and the synthesis body below cannot repeat what the
+  // action section just said. `said` takes the RAW claim text, which is the form those sections dedupe on.
+  for (const c of claimsOf(plan, actionLines.flatMap((l) => l.sourceClaimIds))) {
+    used.add(c.id);
+    joinDistinctSentences([c.authoritativeMeaning], said);
+  }
+  const sharedActionBody = actionLines.map((l) => sharedAction!.format(l)).join('\n');
+  const actionSection = sharedAction && sharedActionBody.length > 0
+    ? { title: sharedAction.title, body: sharedActionBody }
     : whyText.length > 0
       ? { title: base.title, body: realize(`${whyText} ${bridge}${base.body}`) }
       : base;

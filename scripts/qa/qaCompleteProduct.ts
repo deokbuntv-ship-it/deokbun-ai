@@ -79,3 +79,46 @@ export function completeProductView(
     authoritativeReference: v.evidenceReferences.flatMap((e) => e.lines.slice(0, 2).map((l) => `[${e.discipline}] ${l}`)),
   };
 }
+
+/**
+ * V5.2 CLOSURE — QA CONSISTENCY CHECK, not a score rewrite.
+ *
+ * The rubric explicitly forbids giving crossSystemSynthesis 0/15 merely because only ONE system materially
+ * contributed while the others are legitimately NOT_COVERED. REUNION-09 received exactly that in the V5.2
+ * run. This makes the invalid pattern VISIBLE in future measurement: it never changes a score, never retries
+ * the judge, and never touches an old result — a flagged case is one a human must read.
+ *
+ * Deliberately narrow. It fires only on the shape the rubric names: a single material contributor, a zero
+ * cross score, and no stated reason referencing the four criteria the judge was told to evaluate.
+ */
+export type CrossZeroFlag = {
+  caseId: string;
+  materialContributors: string[];
+  notCoveredSystems: string[];
+  /** The judge's own stated rationale, so a reviewer can see whether one was given at all. */
+  statedReason: string;
+};
+
+const RUBRIC_CRITERION = /적용 범위|미적용|커버|결합|지어|입장|스탠스|하나뿐|한 체계/;
+
+export function invalidSingleContributorZero(record: {
+  caseId: string;
+  materialContributors: string[];
+  notCoveredSystems: string[];
+  judge: { scoreBreakdown: { crossSystemSynthesis: number }; issues: string[]; notes: string } | null;
+}): CrossZeroFlag | null {
+  const j = record.judge;
+  if (!j) return null;
+  if (j.scoreBreakdown.crossSystemSynthesis !== 0) return null;
+  if (record.materialContributors.length !== 1) return null;
+  if (record.notCoveredSystems.length === 0) return null;
+  const stated = [...j.issues, j.notes].filter((x) => x.length > 0).join(' ');
+  // A judge that DID reason through (a)-(d) and still landed on 0 is not flagged — only an unexplained zero.
+  if (RUBRIC_CRITERION.test(stated)) return null;
+  return {
+    caseId: record.caseId,
+    materialContributors: [...record.materialContributors],
+    notCoveredSystems: [...record.notCoveredSystems],
+    statedReason: stated || '(근거 없음)',
+  };
+}
