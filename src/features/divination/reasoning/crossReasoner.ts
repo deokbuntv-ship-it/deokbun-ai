@@ -4,7 +4,7 @@
 // and then looks for propositions to justify it — `standingPropositions()` decides what survives, `project()`
 // translates, and if you deleted `project()` the reasoning would be unchanged.
 import {
-  DIVINATION_VERDICT_VERSION, NO_SIGNAL, isDirectional,
+  DIVINATION_VERDICT_VERSION, FOR_STANCES, NO_SIGNAL, isDirectional,
   type ContradictionResolution, type ContradictionResolutionKind, type CrossDivinationVerdict,
   type Discipline, type DisciplineContribution, type DivinationJudgment, type JudgmentConfidence,
   type JudgmentDomain, type JudgmentEvidence, type QuestionIntent, type Stance,
@@ -56,6 +56,12 @@ export type CrossReasonInput = {
   askedTarget?: SemanticTarget | null;
   judgments: DivinationJudgment[];
   asksTiming: boolean;
+  /**
+   * DECISION SEMANTICS V1 — the axes the DecisionProposition bound as PRIMARY. Absent ⇒ `[questionDomain]`,
+   * which is exactly the previous behaviour. Membership is NOT authority: only these decide direction, while
+   * OUTCOME/CONSTRAINT/CONTEXT bindings stay out of the candidate set on purpose (see selectAnswerCandidates).
+   */
+  decidingAxes?: readonly JudgmentDomain[];
   /** Server evaluation instant, preserved so a follow-up restores the same temporal frame (§21). */
   evaluatedAtEpochSeconds?: number | null;
   /** Premises/propositions from a discipline that IS on the graph (Myungri). */
@@ -95,16 +101,26 @@ export type CrossReasoning = {
  */
 export function selectAnswerCandidates(
   standing: ReasonedProposition[], asked: JudgmentDomain, intent: QuestionIntent,
+  // DECISION SEMANTICS V1 — the axes the DecisionProposition marked PRIMARY, i.e. the ones entitled to decide
+  // this question's direction. Absent ⇒ `[asked]`, which is byte-for-byte the previous behaviour, so every
+  // existing caller (the QA pack, the persisted-graph validator, graphExtension) is unchanged by construction.
+  //
+  // ONLY deciding axes reach this list. OUTCOME/CONSTRAINT/CONTEXT bindings are deliberately NOT admitted:
+  // they qualify the answer through the existing axis-verdict and contradiction machinery, and admitting them
+  // here would both re-open the off-axis contamination V6 closed AND manufacture new UNRESOLVED verdicts,
+  // because `resolveAnswer` declines whenever candidates disagree.
+  deciding?: readonly JudgmentDomain[],
 ): ReasonedProposition[] {
-  const onAsked = standing.filter((p) => p.questionAxis === asked);
+  const axes: readonly JudgmentDomain[] = deciding && deciding.length > 0 ? deciding : [asked];
+  const decides = (p: ReasonedProposition) => axes.includes(p.questionAxis);
   const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
   const describesChart = (p: ReasonedProposition) =>
     p.conclusionType === 'STRUCTURAL' && p.derivationRule !== 'PRIMITIVE' && p.derivationRule !== 'CROSS_STANDOFF';
-  const onAskedAxis = (p: ReasonedProposition) => asked === 'GENERAL' || p.questionAxis === asked;
+  const onAskedAxis = (p: ReasonedProposition) => asked === 'GENERAL' || decides(p);
   return nonDecision
     ? standing.filter((p) => onAskedAxis(p)
       && ((intent === 'CAUSE_WHY' && p.conclusionType === 'CAUSAL') || describesChart(p)))
-    : onAsked.filter((p) => p.direction !== 'NONE');
+    : standing.filter((p) => decides(p) && p.direction !== 'NONE');
 }
 
 /**
@@ -255,8 +271,17 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const all = [...reasoned, ...ancestry];
   const byId = new Map(premises.map((p) => [p.id, p]));
 
-  // ── 3. Pick the answer FROM the graph, on the ASKED axis only (§13 — no unrelated-axis fallback) ─
-  const onAsked = standing.filter((p) => p.questionAxis === asked);
+  // ── 3. Pick the answer FROM the graph, on the DECIDING axes only (§13 — no unrelated-axis fallback) ─
+  //
+  // DECISION SEMANTICS V1 — "the asked axis" widens to "the axes the proposition marked PRIMARY", defaulting
+  // to exactly `[asked]`. §13's guarantee is unchanged: an axis still cannot answer a question it was not
+  // bound to. What changes is that a question about KEEPING money now binds MONEY_RETENTION as the deciding
+  // axis instead of being forced through MONEY_INFLOW and declining with the retention judgment in hand.
+  const deciding: readonly JudgmentDomain[] = input.decidingAxes && input.decidingAxes.length > 0
+    ? input.decidingAxes
+    : [asked];
+  const decides = (p: ReasonedProposition) => deciding.includes(p.questionAxis);
+  const onAsked = standing.filter(decides);
   const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
   // A CROSS_STANDOFF is an ABSTENTION ("we cannot settle this"), not a description of the chart. It shares the
   // STRUCTURAL conclusion type because it asserts no direction, so it must be excluded explicitly here —
@@ -270,7 +295,7 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   // GENERAL is the ABSENCE of an axis constraint ("왜 자꾸 부딪히나" names no domain), not a substitute axis —
   // so a causal answer about whichever seat is actually recurring is the honest answer to it. A question that
   // DOES name an axis (건강, 이동, 재물) constrains normally.
-  const onAskedAxis = (p: ReasonedProposition) => asked === 'GENERAL' || p.questionAxis === asked;
+  const onAskedAxis = (p: ReasonedProposition) => asked === 'GENERAL' || decides(p);
   // V4C §7 — NO FIRST-MATCH SELECTION.
   //
   // V4B chained `.find()` calls — a causal hit, else a chart description, else any CROSS conclusion, else any
@@ -289,8 +314,8 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const resolution = resolveAnswer(candidates);
   const primary = resolution.kind === 'SINGLE' ? resolution.primary : null;
 
-  const standoffs = derivations.filter((d) => d.standoff && d.proposition.questionAxis === asked);
-  const examined = new Set(propositions.filter((p) => p.questionAxis === asked).map((p) => p.discipline));
+  const standoffs = derivations.filter((d) => d.standoff && decides(d.proposition));
+  const examined = new Set(propositions.filter(decides).map((p) => p.discipline));
   const blind = applicable.map((j) => j.discipline).filter((d) => !examined.has(d));
 
   // ── 4. PROJECT to the verdict shape ─────────────────────────────────────────────────────────────
@@ -450,13 +475,24 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
       : null,
     favorableFactors,
     riskFactors,
-    actionableInterpretation: !primary
-      ? '지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다.'
-      : primary.conclusionType === 'STRUCTURAL' || primary.conclusionType === 'CAUSAL'
+    // DECISION SEMANTICS V1 — DIRECTION AND ACTION COME FROM THE SAME OUTCOME.
+    //
+    // This gated on `!primary` while `direction` (above) gates on `primary || AGREED`. On the AGREED path the
+    // two disagreed BY CONSTRUCTION: the verdict said FOR and its own action sentence said "유지하시는 편이
+    // 낫습니다". The V6.1 census measured that on 19 of 78 delivered consultations — every one of them a FOR
+    // verdict carrying a hold instruction. V6's conclusion surface caught the contradiction and substituted a
+    // non-directional close, which prevented the reversal but left the answer hedged against its own headline.
+    //
+    // Both now read `direction`, the single resolved outcome. A non-directional verdict gets a genuinely
+    // non-directional sentence rather than a hold dressed as neutrality, so the surface layer no longer has an
+    // inconsistency to repair.
+    actionableInterpretation: !isDirectional(direction)
+      ? '지금 확인된 근거로는 한쪽을 정하지 않습니다. 되돌릴 수 있는 범위에서 확인해 보십시오.'
+      : primary && (primary.conclusionType === 'STRUCTURAL' || primary.conclusionType === 'CAUSAL')
         ? '이 구조를 알고 계시는 것 자체가 다음 판단의 기준이 됩니다.'
-        : primary.direction === 'FAVORABLE'
+        : FOR_STANCES.includes(direction)
           ? '지금 흐름을 그대로 밀고 가셔도 됩니다.'
-          : primary.restriction === 'TIMING'
+          : direction === 'FOR_BUT_LATER' || direction === 'AGAINST_FOR_NOW' || primary?.restriction === 'TIMING'
             ? '방향은 유지하시되, 큰 실행은 흐름이 풀린 뒤로 미루십시오.'
             : '규모를 줄이고, 되돌릴 수 있는 형태로만 움직이십시오.',
     confidence,

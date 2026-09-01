@@ -320,12 +320,16 @@ export function buildGroundedNarrativePlan(
   // CRITICAL ORDERING — the corpus is built from the FULL claim list ABOVE, deduplication happens BELOW.
   // Deduplication is a presentation concern; letting it shrink the corpus would tighten the fact gate and
   // push MORE answers into fallback for text the server itself supplied.
+  const conclusionSurface = buildConclusionSurfacePlan(verdict);
   const distinct = dedupeClaims(claims);
 
   return {
     verdictState: declined ? 'DECLINED' : 'DIRECTIONAL',
     intent,
-    directConclusion: verdict.primaryConclusion,
+    // DECISION SEMANTICS V1 — the headline must answer the PROPOSITION. When the winning conclusion is a
+    // PRIMITIVE engine relation, the surface plan supplies a bounded, state-faithful sentence in its place and
+    // the raw relation stays available below as a supporting reason (it is already a claim in the catalog).
+    directConclusion: conclusionSurface.headlineOverride ?? verdict.primaryConclusion,
     claims: distinct,
     coreReasons: byId(distinct, 'CORE_REASON'),
     positiveClaims: byId(distinct, 'POSITIVE'),
@@ -335,7 +339,7 @@ export function buildGroundedNarrativePlan(
     implicationClaims: byId(distinct, 'IMPLICATION'),
     actionBoundary: contentPlan.actionBoundary,
     askedAxis: verdict.questionDomain,
-    conclusionSurface: buildConclusionSurfacePlan(verdict),
+    conclusionSurface,
     coverageGaps,
     coveredBy: appliedDisciplines,
     materialContributors: appliedDisciplines,

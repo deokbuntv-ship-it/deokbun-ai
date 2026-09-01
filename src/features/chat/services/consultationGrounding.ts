@@ -74,7 +74,8 @@ import {
   type TemporalLayerFacts,
 } from '@/features/divination';
 import { buildRelationsToNatal } from '@/features/myungri';
-import { classifyConsultationDomain, type ConsultationDomain } from '@/features/chat/server/consultationDomain';
+import { classifyConsultationDomain, focusClause, type ConsultationDomain } from '@/features/chat/server/consultationDomain';
+import { buildDecisionProposition, decidingAxes } from '@/features/chat/server/decisionProposition';
 import { classifyTimingQuestion } from '@/features/chat/selectors/qimenActivation';
 import { toSajuEngineInput } from '@/features/manse/services/birthInputMapper';
 import type { ConsultationGrounding, TargetPolarity } from '@/features/chat/prompts/grounding';
@@ -198,15 +199,39 @@ const TIMING_CUE = /언제|지금|이번\s*달|타이밍|시기|시점/;
 const PROBABILITY_CUE = /가능성|될까|있을까|하게\s*될/;
 const DECISION_CUE = /해도\s*(될까|괜찮|되나)|말까|할까요|추천|괜찮을까/;
 
+// DECISION SEMANTICS V1 — THE INTENT IS READ FROM THE ASK, NOT FROM THE NARRATION.
+//
+// This scanned the WHOLE question, so a cue sitting in the SITUATION the person described decided the shape of
+// the answer. "같이 일하는 사람들 때문에 매일 힘듭니다. 계속 버티는 게 의미가 있을까요?" matched 때문 and
+// classified CAUSE_WHY; "성격은 잘 맞는데 … 잘 될 수 있는 인연인가요?" matched 성격 and classified DESCRIPTIVE.
+//
+// That is not a cosmetic mislabel. `selectAnswerCandidates` treats CAUSE_WHY/DESCRIPTIVE as NON-DECISION
+// intents and admits only CAUSAL/структural conclusions as candidates, so every directional proposition on the
+// asked axis became structurally ineligible and the verdict declined with directional material sitting right
+// there in the graph — 4 of the 6 D2 declines in the census.
+//
+// The focus clause is the same head-final rule the domain router already uses: classify the ask, and fall back
+// to the whole question only when the ask names no cue of its own.
 export function resolveQuestionIntent(question: string): QuestionIntent {
   const q = question ?? '';
+  const focus = focusClause(q);
   // Order matters: an explicit decision/cause phrasing outranks an incidental descriptive word.
-  if (CAUSE_CUE.test(q)) return 'CAUSE_WHY';
-  if (DECISION_CUE.test(q)) return 'DECISION';
-  if (DESCRIPTIVE_CUE.test(q) && !TIMING_CUE.test(q)) return 'DESCRIPTIVE';
-  if (TIMING_CUE.test(q)) return 'TIMING';
-  if (PROBABILITY_CUE.test(q)) return 'PROBABILITY';
-  return 'OUTCOME';
+  const classify = (text: string): QuestionIntent | null => {
+    if (CAUSE_CUE.test(text)) return 'CAUSE_WHY';
+    if (DECISION_CUE.test(text)) return 'DECISION';
+    if (DESCRIPTIVE_CUE.test(text) && !TIMING_CUE.test(text)) return 'DESCRIPTIVE';
+    if (TIMING_CUE.test(text)) return 'TIMING';
+    if (PROBABILITY_CUE.test(text)) return 'PROBABILITY';
+    return null;
+  };
+  const fromFocus = classify(focus);
+  if (fromFocus !== null) return fromFocus;
+  // The whole-question fallback deliberately EXCLUDES the two NON-DECISION intents. CAUSE_WHY and DESCRIPTIVE
+  // do not merely label the answer — they disqualify every directional proposition in .
+  // An intent with that much power must be established by the ask itself; a 성격/때문 sitting in the narration
+  // must never be able to turn a decision question into a description.
+  const fromWhole = classify(q);
+  return fromWhole === 'CAUSE_WHY' || fromWhole === 'DESCRIPTIVE' ? 'OUTCOME' : fromWhole ?? 'OUTCOME';
 }
 
 /** Money words the topic classifier may not carry (it never learned 저축/모으다) but that are clearly financial. */
@@ -613,9 +638,16 @@ export async function buildConsultationGrounding(
         consultationJudgment: qimenConsultationJudgment,
       }),
     ];
+    // DECISION SEMANTICS V1 — WHAT the user asked the system to judge, resolved once from the values the
+    // server already computed above (no new classifier, no provider call). Its PRIMARY axis bindings are what
+    // Cross may decide on; OUTCOME/CONSTRAINT/CONTEXT bindings deliberately stay out of the candidate set.
+    const decisionProposition = buildDecisionProposition(q, {
+      askedAxis: questionDomain, intent: questionIntent, asksTiming, askedTarget,
+    });
     divinationVerdict = judgeCross({
       question: q, questionDomain, subject: canonicalSubject,
       askedTarget, judgments, asksTiming, questionIntent,
+      decidingAxes: decidingAxes(decisionProposition),
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
       myungriPropositions: myungriReasoning.standing,

@@ -34,6 +34,8 @@ export type CrossJudgeInput = {
   myungriPropositionGraph?: ReasonedProposition[];
   /** V4D §10 — the matter the question named, or null/absent for UNKNOWN. */
   askedTarget?: SemanticTarget | null;
+  /** DECISION SEMANTICS V1 — PRIMARY-role axes; absent ⇒ [questionDomain] (unchanged behaviour). */
+  decidingAxes?: readonly JudgmentDomain[];
   natalBaseline?: string | null;
   currentFlow?: string | null;
 };
@@ -46,6 +48,7 @@ export function judgeCrossReasoned(input: CrossJudgeInput): CrossReasoning {
     subject: input.subject,
     questionIntent: input.questionIntent,
     askedTarget: input.askedTarget,
+    decidingAxes: input.decidingAxes,
     judgments: input.judgments,
     asksTiming: input.asksTiming,
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds,

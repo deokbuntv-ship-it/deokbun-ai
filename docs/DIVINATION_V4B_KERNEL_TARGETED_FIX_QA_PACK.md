@@ -514,8 +514,8 @@ V4A 팩은 엔진에게 "무엇을 해냈나"를 묻고 그 대답을 옮겨 적
 ## [자리·이동] A · 이직
 
 **QUESTION** = 이직해도 될까요?
-**INTENT** = DECISION · **ASKED_AXIS** = MOVEMENT · **VERDICT** = FOR
-**결론** = 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+**INTENT** = DECISION · **ASKED_AXIS** = MOVEMENT · **VERDICT** = INSUFFICIENT_EVIDENCE
+**결론** = 이동에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 **전제 수** = 34 · **명제 수** = 22 · **후보(runtime)** = 4
 
 #### CONVERGENT_SEAT_PRESSURE — `NATAL_SEAT:DAY`

@@ -76,7 +76,7 @@ const SUBJECT_FAMILIES: readonly DomainFamily[] = [
     // The last group is how people describe a relationship they are ALREADY in without naming it: "이 관계가
     // 편해질까", "오래갈 수 있는 사이인지", "만난 지 일 년 됐는데". 인간관계/사람 관계 stay with the 관계 family
     // below — those are distinct strings, so the two never compete for the same phrasing.
-    pattern: /연애|사랑|썸|이성|애인|인연|소개팅|맞선|고백|데이트|남자\s*친구|여자\s*친구|남친|여친|만나는\s*사람|사귀|호감|설레|마음을\s*열|이\s*관계|사이[인일가]|만난\s*지|관계가\s*(?:끝|깨|멀)/,
+    pattern: /연애|사랑|썸|이성|애인|인연|소개팅|맞선|고백|데이트|남자\s*친구|여자\s*친구|남친|여친|만나는\s*(?:사람|분)|사귀|호감|설레|마음을\s*열|이\s*관계|사이[인일가]|만난\s*지|관계가\s*(?:끝|깨|멀)/,
   },
   // ── STARTUP: opening or founding something new. ───────────────────────────────────────────────────
   { domain: '창업', pattern: /창업|개업|(?:가게|매장|점포|사무실|지점).{0,6}(?:내려|내는|차리|열려|열까|오픈)|법인\s*설립/ },
@@ -154,7 +154,12 @@ const RESIDUAL_FAMILIES: readonly DomainFamily[] = [
 // The FOCUS clause — the last sentence of the question. Korean puts the asked proposition at the end, so a
 // question that narrates a situation and then asks about one part of it is answered by its final clause.
 // Trailing empties are dropped so a terminal '?' or '.' does not make the focus blank.
-function focusClause(question: string): string {
+//
+// Exported because the SAME head-final rule governs every reading of a question, not just the domain: the
+// intent resolver and the decision-proposition builder must agree with this one about which words carry the
+// ask. Having two definitions of "what was actually asked" is how a career question came to be answered as a
+// causal one — the situation clause said 때문에 and the ask said 계속 버티는 게 의미가 있을까요.
+export function focusClause(question: string): string {
   const parts = question.split(/(?<=[.!?。？！\n])\s*/).map((s) => s.trim()).filter((s) => s.length > 0);
   return parts.length > 0 ? parts[parts.length - 1] : question;
 }

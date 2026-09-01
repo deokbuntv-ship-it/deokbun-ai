@@ -10187,6 +10187,59 @@ function adaptJudgment(j, opts) {
       })
     });
   }
+  const coveredAxes = new Set(j.domainSubJudgments.map((s) => s.domain));
+  if (isDirectional(j.stance) && !coveredAxes.has(j.questionDomain)) {
+    const relation = relationFor(j.stance);
+    const direction = DIRECTION_OF[relation];
+    const backing = direction === "UNFAVORABLE" || direction === "RESTRICTED" ? j.counterEvidence ?? [] : j.directEvidence ?? [];
+    const against = direction === "UNFAVORABLE" || direction === "RESTRICTED" ? j.directEvidence ?? [] : j.counterEvidence ?? [];
+    if (backing.length > 0 || against.length > 0) {
+      const facts = [...backing, ...against];
+      const premise = {
+        id: nextId(ADAPTER_ID_PREFIX[j.discipline]),
+        discipline: j.discipline,
+        sourceFactIds: (backing.length ? backing : facts).map((e) => e.fact),
+        subject: opts.subject,
+        target: disciplineTarget(j.discipline, j.questionDomain),
+        questionIntent: opts.questionIntent,
+        questionAxis: j.questionDomain,
+        temporalScope: j.temporalScope,
+        semanticRelation: relation,
+        concept: "ADAPTED",
+        assertion: j.dominantConclusion,
+        role: "ASSERTS",
+        reliability: j.dataReliability,
+        applicability: j.questionDomain === opts.askedAxis && j.questionDirectness === "DIRECT" ? "DIRECT" : j.questionDirectness === "GENERAL" ? "BACKGROUND" : "CONTEXTUAL",
+        doctrineReference: ADAPTER_DOCTRINE[j.discipline]
+      };
+      premises.push(premise);
+      propositions.push({
+        id: `p:${premise.id}`,
+        discipline: j.discipline,
+        subject: premise.subject,
+        target: premise.target,
+        questionIntent: opts.questionIntent,
+        questionAxis: j.questionDomain,
+        temporalScope: j.temporalScope,
+        assertion: j.dominantConclusion,
+        conclusionType: "DIRECTIONAL",
+        direction,
+        answersAsked: j.questionDomain === opts.askedAxis,
+        ...QUALIFIED_STANCES.has(j.stance) ? { qualified: true } : {},
+        ...relation === "CONSTRAINS" || relation === "DELAYS" ? { restriction: relation === "DELAYS" ? "TIMING" : "SCOPE" } : {},
+        supportingPremiseIds: [premise.id],
+        opposingPremiseIds: [],
+        derivedFromPropositionIds: [],
+        unresolvedPremiseIds: [],
+        doctrineReferences: [premise.doctrineReference],
+        derivationRule: PRIMITIVE_RULE,
+        adequacy: computeAdequacy([premise], [], {
+          dataComplete: j.dataReliability === "EXACT",
+          doctrine: "PARTIAL"
+        })
+      });
+    }
+  }
   return { premises, propositions };
 }
 
@@ -10713,12 +10766,13 @@ var RESOLUTION_KIND = {
   // the same structure as any other so the reader sees both sides and why neither won.
   CROSS_STANDOFF: "DIRECTNESS"
 };
-function selectAnswerCandidates(standing, asked, intent) {
-  const onAsked = standing.filter((p) => p.questionAxis === asked);
+function selectAnswerCandidates(standing, asked, intent, deciding) {
+  const axes = deciding && deciding.length > 0 ? deciding : [asked];
+  const decides = (p) => axes.includes(p.questionAxis);
   const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
   const describesChart = (p) => p.conclusionType === "STRUCTURAL" && p.derivationRule !== "PRIMITIVE" && p.derivationRule !== "CROSS_STANDOFF";
-  const onAskedAxis = (p) => asked === "GENERAL" || p.questionAxis === asked;
-  return nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : onAsked.filter((p) => p.direction !== "NONE");
+  const onAskedAxis = (p) => asked === "GENERAL" || decides(p);
+  return nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : standing.filter((p) => decides(p) && p.direction !== "NONE");
 }
 function authoritativeConclusionForState(propositions, askedAxis, intent) {
   const standing = standingPropositions(propositions);
@@ -10795,15 +10849,17 @@ function reasonCross(input) {
   const ancestry = (input.propositionGraph ?? []).filter((p) => !reasoned.some((r) => r.id === p.id));
   const all = [...reasoned, ...ancestry];
   const byId2 = new Map(premises.map((p) => [p.id, p]));
-  const onAsked = standing.filter((p) => p.questionAxis === asked);
+  const deciding = input.decidingAxes && input.decidingAxes.length > 0 ? input.decidingAxes : [asked];
+  const decides = (p) => deciding.includes(p.questionAxis);
+  const onAsked = standing.filter(decides);
   const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
   const describesChart = (p) => p.conclusionType === "STRUCTURAL" && p.derivationRule !== "PRIMITIVE" && p.derivationRule !== "CROSS_STANDOFF";
-  const onAskedAxis = (p) => asked === "GENERAL" || p.questionAxis === asked;
+  const onAskedAxis = (p) => asked === "GENERAL" || decides(p);
   const candidates = nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : onAsked.filter((p) => p.direction !== "NONE");
   const resolution = resolveAnswer(candidates);
   const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
-  const standoffs = derivations.filter((d) => d.standoff && d.proposition.questionAxis === asked);
-  const examined = new Set(propositions.filter((p) => p.questionAxis === asked).map((p) => p.discipline));
+  const standoffs = derivations.filter((d) => d.standoff && decides(d.proposition));
+  const examined = new Set(propositions.filter(decides).map((p) => p.discipline));
   const blind = applicable.map((j) => j.discipline).filter((d) => !examined.has(d));
   const contributingTo = (d) => [
     // §28 — sorted. This list names WHO disagreed, and for a standoff it also supplies the reported
@@ -10885,7 +10941,18 @@ function reasonCross(input) {
     timingConclusion: timingProps.length > 0 && (input.asksTiming || direction === "FOR_BUT_LATER") ? timingProps.map((p) => p.assertion).join(" ") : null,
     favorableFactors,
     riskFactors,
-    actionableInterpretation: !primary ? "지금은 크게 방향을 틀기보다, 이미 하고 있는 일을 유지하시는 편이 낫습니다." : primary.conclusionType === "STRUCTURAL" || primary.conclusionType === "CAUSAL" ? "이 구조를 알고 계시는 것 자체가 다음 판단의 기준이 됩니다." : primary.direction === "FAVORABLE" ? "지금 흐름을 그대로 밀고 가셔도 됩니다." : primary.restriction === "TIMING" ? "방향은 유지하시되, 큰 실행은 흐름이 풀린 뒤로 미루십시오." : "규모를 줄이고, 되돌릴 수 있는 형태로만 움직이십시오.",
+    // DECISION SEMANTICS V1 — DIRECTION AND ACTION COME FROM THE SAME OUTCOME.
+    //
+    // This gated on `!primary` while `direction` (above) gates on `primary || AGREED`. On the AGREED path the
+    // two disagreed BY CONSTRUCTION: the verdict said FOR and its own action sentence said "유지하시는 편이
+    // 낫습니다". The V6.1 census measured that on 19 of 78 delivered consultations — every one of them a FOR
+    // verdict carrying a hold instruction. V6's conclusion surface caught the contradiction and substituted a
+    // non-directional close, which prevented the reversal but left the answer hedged against its own headline.
+    //
+    // Both now read `direction`, the single resolved outcome. A non-directional verdict gets a genuinely
+    // non-directional sentence rather than a hold dressed as neutrality, so the surface layer no longer has an
+    // inconsistency to repair.
+    actionableInterpretation: !isDirectional(direction) ? "지금 확인된 근거로는 한쪽을 정하지 않습니다. 되돌릴 수 있는 범위에서 확인해 보십시오." : primary && (primary.conclusionType === "STRUCTURAL" || primary.conclusionType === "CAUSAL") ? "이 구조를 알고 계시는 것 자체가 다음 판단의 기준이 됩니다." : FOR_STANCES.includes(direction) ? "지금 흐름을 그대로 밀고 가셔도 됩니다." : direction === "FOR_BUT_LATER" || direction === "AGAINST_FOR_NOW" || primary?.restriction === "TIMING" ? "방향은 유지하시되, 큰 실행은 흐름이 풀린 뒤로 미루십시오." : "규모를 줄이고, 되돌릴 수 있는 형태로만 움직이십시오.",
     confidence,
     confidenceReason: !primary ? blind.length > 0 ? `${blind.map(disc).join("·")}에 이 축을 직접 보는 자리가 정의되어 있지 않습니다(엔진 커버리지 공백).` : "적용은 됐지만 방향을 정할 신호가 약합니다." : primary.derivationRule === "PRIMITIVE" ? "단일 근거에 기대고 있어 확신을 높게 두지 않습니다." : `${primary.derivationRule} 규칙으로 여러 근거가 맞물려 도출되었습니다.`,
     evidenceReferences: [
@@ -10908,6 +10975,7 @@ function judgeCrossReasoned(input) {
     subject: input.subject,
     questionIntent: input.questionIntent,
     askedTarget: input.askedTarget,
+    decidingAxes: input.decidingAxes,
     judgments: input.judgments,
     asksTiming: input.asksTiming,
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds,
@@ -12540,7 +12608,7 @@ var SUBJECT_FAMILIES = [
     // The last group is how people describe a relationship they are ALREADY in without naming it: "이 관계가
     // 편해질까", "오래갈 수 있는 사이인지", "만난 지 일 년 됐는데". 인간관계/사람 관계 stay with the 관계 family
     // below — those are distinct strings, so the two never compete for the same phrasing.
-    pattern: /연애|사랑|썸|이성|애인|인연|소개팅|맞선|고백|데이트|남자\s*친구|여자\s*친구|남친|여친|만나는\s*사람|사귀|호감|설레|마음을\s*열|이\s*관계|사이[인일가]|만난\s*지|관계가\s*(?:끝|깨|멀)/
+    pattern: /연애|사랑|썸|이성|애인|인연|소개팅|맞선|고백|데이트|남자\s*친구|여자\s*친구|남친|여친|만나는\s*(?:사람|분)|사귀|호감|설레|마음을\s*열|이\s*관계|사이[인일가]|만난\s*지|관계가\s*(?:끝|깨|멀)/
   },
   // ── STARTUP: opening or founding something new. ───────────────────────────────────────────────────
   { domain: "창업", pattern: /창업|개업|(?:가게|매장|점포|사무실|지점).{0,6}(?:내려|내는|차리|열려|열까|오픈)|법인\s*설립/ },
@@ -12617,6 +12685,157 @@ function classifyConsultationDomain(question) {
   const residual = firstMatch(RESIDUAL_FAMILIES, focus) ?? firstMatch(RESIDUAL_FAMILIES, q);
   return residual ?? subject ?? "전반";
 }
+
+// src/features/chat/server/decisionProposition.ts
+var CMP = /어느\s*(?:쪽|것|게|편)|둘\s*중|두\s*개\s*중|중에\s*(?:어느|뭐|무엇)|아니면|\S+할지\s*\S*할지|나을까요|골라야|택해야|선택하는\s*게/;
+var WHEN = /언제|몇\s*월|어느\s*(?:시기|때)|시기[를가는]|시점[을이는]|타이밍/;
+var WHY = /왜\s|왜요|이유(?:가|는|를)|원인(?:이|은)|때문(?:인가|일까)/;
+var WHAT_AM_I = /어떤\s*사람|제\s*성격|성향(?:이|은)|타고난\s*(?:성격|기질|결)|저는\s*어떤/;
+var SHOULD = /[가-힣]+도\s*(?:될까|괜찮|되나|좋을까|하나)|할까요|말까|괜찮을까|나을까|맞을까|진행해도|시작해도|계속\s*(?:\S+\s*)?(?:해도|가도|다녀도|버티|끌고)|의미가\s*있을까/;
+var WILL = /있을까요|될까요|가능성|생길까|올까요|이어질|잘\s*될/;
+function propositionKind(focus, whole) {
+  if (CMP.test(focus)) return "A_VS_B";
+  if (WHY.test(focus)) return "WHY_X";
+  if (WHAT_AM_I.test(focus)) return "WHAT_AM_I";
+  if (WHEN.test(focus)) return "WHEN_X";
+  if (SHOULD.test(focus)) return "SHOULD_I_DO_X";
+  if (WILL.test(focus)) return "WILL_X_HAPPEN";
+  if (CMP.test(whole)) return "A_VS_B";
+  if (WHEN.test(whole)) return "WHEN_X";
+  if (SHOULD.test(whole)) return "SHOULD_I_DO_X";
+  if (WILL.test(whole)) return "WILL_X_HAPPEN";
+  if (WHY.test(whole)) return "WHY_X";
+  if (WHAT_AM_I.test(whole)) return "WHAT_AM_I";
+  return "WILL_X_HAPPEN";
+}
+var OUTCOME_OF = {
+  SHOULD_I_DO_X: "DIRECTION",
+  A_VS_B: "DIRECTION",
+  WILL_X_HAPPEN: "OCCURRENCE",
+  WHEN_X: "PERIOD",
+  WHY_X: "CAUSE",
+  WHAT_AM_I: "DESCRIPTION"
+};
+var OPTION_SPLIT = /\s*,?\s*(?:아니면|또는|vs\.?|혹은)\s*|(?<=쪽|것)(?:과|와)\s+|\s*,\s*(?=\S+(?:할지|하는\s*게|하느냐|쪽))/;
+var OPTION_TAIL = /(?:할지|하는\s*게|하느냐|하는\s*것|쪽(?:과|와|이|을|은)?|중에서?|중)\s*.*$/;
+function extractOptions(focus, whole) {
+  const source = CMP.test(focus) ? focus : whole;
+  const parts = source.split(OPTION_SPLIT).map((s) => s.trim()).filter((s) => s.length > 0);
+  if (parts.length < 2) return [];
+  const cleaned = parts.map((p) => p.replace(/^[^가-힣A-Za-z0-9]+/, "").replace(OPTION_TAIL, "").trim()).map((p) => p.split(/\s+/).slice(-6).join(" ").trim()).filter((p) => p.length >= 2 && p.length <= 40);
+  return [...new Set(cleaned)].slice(0, 3);
+}
+var ASK_TAIL = /(?:할까요|될까요|괜찮을까요|나을까요|맞을까요|있을까요|궁금합니다|궁금해요|봐주세요|알고\s*싶어요|모르겠어요|고민입니다|고민\s*중입니다)\s*[.?!]?\s*$/;
+function extractDecisionObject(focus) {
+  const trimmed = focus.replace(ASK_TAIL, "").replace(/[.?!]\s*$/, "").trim();
+  if (trimmed.length < 2) return null;
+  const words = trimmed.split(/\s+/);
+  const obj = words.slice(-8).join(" ").trim();
+  return obj.length >= 2 && obj.length <= 60 ? obj : null;
+}
+var FORMER = /헤어진|전\s*(?:남자|여자)\s*친구|전남친|전여친|재회|다시\s*(?:만나|연락)|되돌[릴리]|그\s*사람/;
+var PARTNER = /만나는\s*사람|남자\s*친구|여자\s*친구|남친|여친|배우자|상대(?:방|가|는|에게)|애인|지금\s*만나/;
+var NEAR2 = /올해|내년|이번\s*달|다음\s*달|곧|조만간|앞으로|하반기|상반기|몇\s*(?:달|개월|년)/;
+var PRESENT = /지금|현재|요즘|당장|이번에/;
+var RETENTION = /모으|모이|모일|남[아을는]|쌓|저축|지키|유지|새(?:나가|어)|아끼|절약|목돈|통장|그대로[예입이]|안\s*남|남지\s*않/;
+var INFLOW = /벌|들어오|수입|소득|매출|버는|불리|굴리|투자|늘리/;
+var LASTING = /오래|계속|이어지|이어질|편해질|결혼|평생|잘\s*될|안정|같이\s*살|버틸|끝납|끝나|깨지/;
+var MEETING = /만날|만나고|인연|소개팅|새로운\s*사람|고백|썸|끌리/;
+function bindAxes(domain, fallbackAxis, kind, text, focus, asksTiming) {
+  const hits = (re) => re.test(focus) ? "FOCUS" : re.test(text) ? "TEXT" : "NONE";
+  const prefer = (a, b) => {
+    const ha = hits(a);
+    const hb = hits(b);
+    if (ha === hb) return null;
+    if (ha === "FOCUS") return true;
+    if (hb === "FOCUS") return false;
+    return ha === "TEXT";
+  };
+  const out = [];
+  const push = (axis, role2) => {
+    if (!out.some((b) => b.axis === axis)) out.push({ axis, role: role2 });
+  };
+  switch (domain) {
+    case "MONEY": {
+      const keeps = prefer(RETENTION, INFLOW);
+      if (keeps === true) {
+        push("MONEY_RETENTION", "PRIMARY");
+        push("MONEY_INFLOW", "OUTCOME");
+      } else {
+        push("MONEY_INFLOW", "PRIMARY");
+        push("MONEY_RETENTION", "OUTCOME");
+      }
+      break;
+    }
+    case "LOVE": {
+      const lasts = prefer(LASTING, MEETING);
+      if (lasts === true) {
+        push("RELATION_STABILITY", "PRIMARY");
+        push("RELATION_BOND", "OUTCOME");
+      } else {
+        push("RELATION_BOND", "PRIMARY");
+        push("RELATION_STABILITY", "OUTCOME");
+      }
+      break;
+    }
+    case "REUNION": {
+      const lasts = prefer(LASTING, MEETING);
+      if (lasts === true) {
+        push("RELATION_STABILITY", "PRIMARY");
+        push("RELATION_BOND", "OUTCOME");
+      } else {
+        push("RELATION_BOND", "PRIMARY");
+        push("RELATION_STABILITY", "OUTCOME");
+      }
+      break;
+    }
+    case "CAREER": {
+      push("CAREER", "PRIMARY");
+      push("MOVEMENT", "CONSTRAINT");
+      break;
+    }
+    case "CHANGE": {
+      push("MOVEMENT", "PRIMARY");
+      push("CAREER", "CONSTRAINT");
+      break;
+    }
+    case "BUSINESS": {
+      push("OPPORTUNITY", "PRIMARY");
+      push("MONEY_RETENTION", "OUTCOME");
+      break;
+    }
+    case "TIMING": {
+      push("TIMING", "PRIMARY");
+      break;
+    }
+    default: {
+      push(fallbackAxis, "PRIMARY");
+      break;
+    }
+  }
+  if ((asksTiming || kind === "WHEN_X") && !out.some((b) => b.axis === "TIMING")) push("TIMING", "TIMING");
+  return out;
+}
+function buildDecisionProposition(question, resolved) {
+  const q = (question ?? "").trim();
+  const focus = focusClause(q);
+  const topic2 = classifyConsultationDomain(q);
+  const askedDomain = routeConsultationJudgeDomain(resolved.askedTarget ?? void 0, resolved.askedAxis);
+  const kind = propositionKind(focus, q);
+  const options = kind === "A_VS_B" ? extractOptions(focus, q) : [];
+  return {
+    kind,
+    askedDomain,
+    decisionObject: extractDecisionObject(focus),
+    requestedOutcome: OUTCOME_OF[kind],
+    options,
+    temporalScope: PRESENT.test(focus) ? "PRESENT" : NEAR2.test(q) ? "NEAR_TERM" : "UNSPECIFIED",
+    counterparty: FORMER.test(q) ? "FORMER_PARTNER" : PARTNER.test(q) ? "PARTNER" : null,
+    bearingAxes: bindAxes(askedDomain, resolved.askedAxis, kind, q, focus, resolved.asksTiming),
+    provenance: ["deokbunai.decision-proposition.v1"]
+  };
+}
+var decidingAxes = (p) => p.bearingAxes.filter((b) => b.role === "PRIMARY").map((b) => b.axis);
 
 // src/features/chat/selectors/qimenActivation.ts
 var DECISION = /(해도\s*(될까|괜찮|되나|돼요?|할까요?)|하는\s*게\s*(좋을|나을|맞을|유리)|하면\s*(어떨까|될까|괜찮)|하는\s*것이\s*(좋|나을)|괜찮을까|괜찮을까요|유리할까|불리할까|해야\s*할까|말까|해도\s*되나요)/;
@@ -12785,12 +13004,19 @@ var PROBABILITY_CUE = /가능성|될까|있을까|하게\s*될/;
 var DECISION_CUE = /해도\s*(될까|괜찮|되나)|말까|할까요|추천|괜찮을까/;
 function resolveQuestionIntent(question) {
   const q = question ?? "";
-  if (CAUSE_CUE.test(q)) return "CAUSE_WHY";
-  if (DECISION_CUE.test(q)) return "DECISION";
-  if (DESCRIPTIVE_CUE.test(q) && !TIMING_CUE.test(q)) return "DESCRIPTIVE";
-  if (TIMING_CUE.test(q)) return "TIMING";
-  if (PROBABILITY_CUE.test(q)) return "PROBABILITY";
-  return "OUTCOME";
+  const focus = focusClause(q);
+  const classify2 = (text) => {
+    if (CAUSE_CUE.test(text)) return "CAUSE_WHY";
+    if (DECISION_CUE.test(text)) return "DECISION";
+    if (DESCRIPTIVE_CUE.test(text) && !TIMING_CUE.test(text)) return "DESCRIPTIVE";
+    if (TIMING_CUE.test(text)) return "TIMING";
+    if (PROBABILITY_CUE.test(text)) return "PROBABILITY";
+    return null;
+  };
+  const fromFocus = classify2(focus);
+  if (fromFocus !== null) return fromFocus;
+  const fromWhole = classify2(q);
+  return fromWhole === "CAUSE_WHY" || fromWhole === "DESCRIPTIVE" ? "OUTCOME" : fromWhole ?? "OUTCOME";
 }
 var MONEY_SUBJECT = /돈|저축|자산|재물|재정|수입|금전|목돈|현금/;
 var ASKED_MATTER_ID = {
@@ -13044,6 +13270,12 @@ async function buildConsultationGrounding(draft, deps, question) {
         consultationJudgment: qimenConsultationJudgment
       })
     ];
+    const decisionProposition = buildDecisionProposition(q, {
+      askedAxis: questionDomain,
+      intent: questionIntent,
+      asksTiming,
+      askedTarget
+    });
     divinationVerdict = judgeCross({
       question: q,
       questionDomain,
@@ -13052,6 +13284,7 @@ async function buildConsultationGrounding(draft, deps, question) {
       judgments,
       asksTiming,
       questionIntent,
+      decidingAxes: decidingAxes(decisionProposition),
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,
       myungriPropositions: myungriReasoning.standing,
@@ -15553,21 +15786,30 @@ function conclusionStateOf(verdict) {
   if (CONDITIONAL_DIRECTIONS.includes(d)) return "MIXED";
   return "UNRESOLVED";
 }
+var PRIMITIVE_BASIS = /^단일 근거/;
+var HEADLINE_BY_STATE = {
+  OPEN: (a) => `${a}에 대해서는 지금 열려 있는 쪽으로 봅니다. 아래 근거가 그 방향으로 함께 서 있습니다.`,
+  BLOCKED: (a) => `${a}에 대해서는 지금 크게 벌일 자리는 아닙니다. 아래 근거가 같은 제한을 가리킵니다.`,
+  MIXED: (a) => `${a}에 대해서는 열리는 쪽과 걸리는 쪽이 함께 있습니다. 어느 한쪽만 보고 정하기는 이릅니다.`,
+  UNRESOLVED: (a) => `${a}에 대해서는 지금 근거만으로 한쪽을 확정하기 어렵습니다.`,
+  INSUFFICIENT: (a) => `${a}에 대해서는 판단에 필요한 근거가 아직 충분하지 않습니다.`
+};
 function buildConclusionSurfacePlan(verdict) {
   const state = conclusionStateOf(verdict);
   const supplied = (verdict.actionableInterpretation ?? "").trim();
   const directional = state === "OPEN" || state === "BLOCKED";
   const suppliedIsNeutral = supplied.length > 0 && closingDirectionOf(supplied) === "NEUTRAL";
+  const headlineOverride = PRIMITIVE_BASIS.test(verdict.dominantBasis ?? "") ? HEADLINE_BY_STATE[state](axisLabel(verdict.questionDomain)) : null;
   if (state === "UNRESOLVED" || state === "INSUFFICIENT") {
-    return { state, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
+    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
   }
   if (state === "MIXED") {
-    return { state, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
+    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
   }
-  if (supplied.length === 0) return { state, closing: null, directional };
+  if (supplied.length === 0) return { state, headlineOverride, closing: null, directional };
   const asserted = closingDirectionOf(supplied);
   const consistent = asserted === "NEUTRAL" || (state === "OPEN" ? asserted === "PROCEED" : asserted === "HOLD");
-  return { state, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
+  return { state, headlineOverride, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
 }
 var CROSS_QUALIFIER_FRAME = "이 판단에 함께 걸리는 다른 축입니다";
 var contentDomainOf = (d) => routeConsultationJudgeDomain(void 0, d);
@@ -15611,10 +15853,14 @@ function buildTemporalSurfacePlan(authority, hasCheckpoint) {
     };
   }
   if (years.length > 0) {
-    return {
-      precision: "NARROW",
-      text: `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(", ")}입니다.`
-    };
+    const named = `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(", ")}입니다.`;
+    if (authority.referenceMonth !== null && ref !== null) {
+      return {
+        precision: "NARROW",
+        text: `${named} 이 판단은 ${ref}년 ${authority.referenceMonth}월 흐름을 기준으로 본 것이고, 그보다 좁혀 특정 달을 짚을 근거는 아직 없습니다.`
+      };
+    }
+    return { precision: "NARROW", text: named };
   }
   if (ref !== null) {
     const month = authority.referenceMonth !== null ? ` ${authority.referenceMonth}월` : "";
@@ -16183,11 +16429,15 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
     ...verdict.evidenceReferences.flatMap((r) => r.lines),
     ...claims.flatMap((c) => [c.authoritativeMeaning, c.technicalAnchor ?? ""])
   ].filter((s) => typeof s === "string" && s.length > 0).join("\n");
+  const conclusionSurface = buildConclusionSurfacePlan(verdict);
   const distinct = dedupeClaims(claims);
   return {
     verdictState: declined ? "DECLINED" : "DIRECTIONAL",
     intent,
-    directConclusion: verdict.primaryConclusion,
+    // DECISION SEMANTICS V1 — the headline must answer the PROPOSITION. When the winning conclusion is a
+    // PRIMITIVE engine relation, the surface plan supplies a bounded, state-faithful sentence in its place and
+    // the raw relation stays available below as a supporting reason (it is already a claim in the catalog).
+    directConclusion: conclusionSurface.headlineOverride ?? verdict.primaryConclusion,
     claims: distinct,
     coreReasons: byId(distinct, "CORE_REASON"),
     positiveClaims: byId(distinct, "POSITIVE"),
@@ -16197,7 +16447,7 @@ function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
     implicationClaims: byId(distinct, "IMPLICATION"),
     actionBoundary: contentPlan.actionBoundary,
     askedAxis: verdict.questionDomain,
-    conclusionSurface: buildConclusionSurfacePlan(verdict),
+    conclusionSurface,
     coverageGaps,
     coveredBy: appliedDisciplines,
     materialContributors: appliedDisciplines,
@@ -17069,7 +17319,7 @@ async function buildServerConsultation(request, deps) {
   const selectedContext = selectConsultationContext(draft);
   if (selectedContext === null) return { ok: false, reason: "INVALID_INPUT" };
   let graphExtended = false;
-  const followUpIntent = classifyFollowUpIntent(question);
+  const followUpShape = classifyFollowUpIntent(question);
   const continuationIfHealthy = classifyContinuationIntent(question, true);
   const mayContinue = continuationIfHealthy !== "NEW_QUESTION";
   let followUpDirective = null;
@@ -17077,7 +17327,8 @@ async function buildServerConsultation(request, deps) {
   let previousDecision = null;
   let previousMeta = null;
   let priorHistoryProblem = null;
-  if ((followUpIntent !== "NONE" || mayContinue) && deps.loadPreviousDecision) {
+  let followUpIntent = "NONE";
+  if ((followUpShape !== "NONE" || mayContinue) && deps.loadPreviousDecision) {
     let loaded;
     try {
       loaded = await deps.loadPreviousDecision();
@@ -17091,6 +17342,7 @@ async function buildServerConsultation(request, deps) {
       if (loaded.status === "MALFORMED" || loaded.status === "LOAD_FAILED") priorHistoryProblem = loaded.status;
     }
     previousDecision = previousDecisionFromMeta(previousMeta);
+    followUpIntent = previousMeta !== null ? followUpShape : "NONE";
     if (followUpIntent !== "NONE") {
       const action = resolveFollowUpAction(followUpIntent, previousDecision, {
         engineVersion: DEOKBUNAI_SAJU_RULE_SET_VERSION

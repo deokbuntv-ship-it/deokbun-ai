@@ -373,7 +373,16 @@ export async function buildServerConsultation(
   //     "둘 중에는?" describes the prior candidates with NO winner (Option B). "그럼 언제?" stays deferred.
   /** §23 — set when the standing graph was actually extended this turn (recorded, never acted on). */
   let graphExtended = false;
-  const followUpIntent = classifyFollowUpIntent(question);
+  // DECISION SEMANTICS V1 §Bug2 — WORDING PROPOSES A FOLLOW-UP; A PERSISTED DECISION ESTABLISHES ONE.
+  //
+  //  reads language shape only, and BETWEEN_CANDIDATES matches any "어느 쪽…" —
+  // which an ordinary FIRST-TURN comparison question says all the time. Every downstream exemption keyed on
+  // this value alone, including the zero-grounding guard, so a first turn with no chart and no prior decision
+  // took the follow-up path, skipped GROUNDING_UNAVAILABLE, and was delivered and charged.
+  //
+  //  is the PROPOSAL.  below is the AUTHORITY, and it only exists once a
+  // previous decision has actually been loaded. No case-specific branch: language alone never establishes it.
+  const followUpShape = classifyFollowUpIntent(question);
   // V4C §23 — A REFINEMENT MUST NOT RESTART THE READING.
   //
   // The audit's confirmed failure: "사업을 확장할까?" followed by "돈은?" produced two unrelated readings that
@@ -404,7 +413,8 @@ export async function buildServerConsultation(
   // load. `priorHistoryProblem` is read once below, only to stop that; MALFORMED and LOAD_FAILED are kept
   // distinct for diagnostics even though both fail closed identically downstream.
   let priorHistoryProblem: 'MALFORMED' | 'LOAD_FAILED' | null = null;
-  if ((followUpIntent !== 'NONE' || mayContinue) && deps.loadPreviousDecision) {
+  let followUpIntent: ReturnType<typeof classifyFollowUpIntent> = 'NONE';
+  if ((followUpShape !== 'NONE' || mayContinue) && deps.loadPreviousDecision) {
     let loaded: PriorHistoryLoad;
     try {
       loaded = await deps.loadPreviousDecision();
@@ -418,6 +428,8 @@ export async function buildServerConsultation(
       if (loaded.status === 'MALFORMED' || loaded.status === 'LOAD_FAILED') priorHistoryProblem = loaded.status;
     }
     previousDecision = previousDecisionFromMeta(previousMeta);
+    // The proposal becomes authoritative ONLY against a real persisted decision.
+    followUpIntent = previousMeta !== null ? followUpShape : 'NONE';
     if (followUpIntent !== 'NONE') {
       // Compare to the current frozen ruleset constant without calculating current decision B.
       const action = resolveFollowUpAction(followUpIntent, previousDecision, {

@@ -13,7 +13,7 @@
 | 궁합 케이스 | 6 |
 | 총 합성추론(SYNTHETIC_INFERENCE) 수 | 159 |
 | 답을 내면서 추론이 0이던 케이스 | 0 (0이어야 함 — §7) |
-| 방향을 내지 못한 케이스 | 17 / 36 |
+| 방향을 내지 못한 케이스 | 18 / 36 |
 
 ## ⚠ 미해결 블로커 — 축 커버리지 공백 (§13)
 
@@ -695,9 +695,9 @@
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = FOR** (확신 HIGH)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (MOVEMENT = FOR)
-- 결론: 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- 결론: 이동에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - SYNTHETIC_INFERENCES = 4 / 22
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
@@ -3839,10 +3839,10 @@
 - (없음)
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (RELATION_BOND = CONDITIONAL_AGAINST)
-- 결론: 끌리는 힘에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-- SYNTHETIC_INFERENCES = 3 / 10
+- 결론: 끌리는 힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 5 / 13
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 생각을 정하는 층에서 정면으로 부딪힙니다.
         ← 일간 천간충 / 일지 육합/반합
@@ -3864,9 +3864,13 @@
         ← 일간 천간충 / 상대→A: INDIRECT_WEALTH / 일지 육합/반합
     - [CROSS_AXIS_COMPOUND] (CROSS) 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 일간 천간충 / A 부처궁에 태양 화록 / 일지 육합/반합
-- CONTRADICTION_RESOLUTIONS = BOND_VS_STABILITY: 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 끌리는 힘과 서로 미치는 영향은 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / BOND_VS_STABILITY: 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_BOND:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_FOR · CONFLICT:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합)
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 관계를 끌고 갈 동력이 있습니다. 반대 근거도 있으나, 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다.
+        ← A 부처궁에 태양 화록 / 일지 육합/반합 / 일간 천간충
+    - [CROSS_AXIS_COMPOUND] (CROSS) 부딪힘과 끌리는 힘은 다르게 봅니다. 끌리는 힘은 열립니다, 부딪힘은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 두 사람 사이 BRANCH_HARM / A 부처궁에 태양 화록
+- CONTRADICTION_RESOLUTIONS = BOND_VS_STABILITY: 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 끌리는 힘과 서로 미치는 영향은 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / BOND_VS_STABILITY: 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 관계를 끌고 갈 동력이 있습니다. 반대 근거도 있으나, 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다. / DIFFERENT_DOMAIN: 부딪힘과 끌리는 힘은 다르게 봅니다. 끌리는 힘은 열립니다, 부딪힘은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다 (밀려난 쪽: 명리) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_BOND:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_FOR · CONFLICT:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:FOR(경합) · RELATION_BOND:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=CONDITIONAL_AGAINST · ZIWEI=FOR
@@ -4125,10 +4129,10 @@
 - (없음)
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (CONFLICT = CONDITIONAL_AGAINST)
-- 결론: 부딪힘에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.
-- SYNTHETIC_INFERENCES = 2 / 8
+- 결론: 부딪힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 4 / 11
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 같이 사는 과정의 난도는 높게 봅니다.
         ← 일지 충·형·해(배우자 자리)
@@ -4142,13 +4146,17 @@
         ← A 재백궁에 천동 화기
     - [PRIMITIVE] (ZIWEI) 모아 두는 쪽은 무난합니다.
         ← C 전택궁에 태양 화권
+    - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 부딪힘은 열립니다, 같이 사는 난도은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 일지 충·형·해(배우자 자리) / A 부처궁에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 부딪힘과 서로 미치는 영향은 다르게 봅니다. 부딪힘은 막힙니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 두 사람 사이 BRANCH_SELF_PUNISHMENT / 상대→A: EATING_GOD
     - [CROSS_AXIS_COMPOUND] (CROSS) 부딪힘과 같이 사는 난도는 다르게 봅니다. 부딪힘은 막힙니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 두 사람 사이 BRANCH_SELF_PUNISHMENT / A 부처궁에 태양 화록
-- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 부딪힘과 서로 미치는 영향은 다르게 봅니다. 부딪힘은 막힙니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 부딪힘과 같이 사는 난도는 다르게 봅니다. 부딪힘은 막힙니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_AGAINST · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · CONFLICT:CONDITIONAL_AGAINST(경합) · CONFLICT:CONDITIONAL_AGAINST(경합)
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 관계를 끌고 갈 동력이 있습니다. 반대 근거도 있으나, 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다.
+        ← A 부처궁에 태양 화록 / 두 사람 사이 BRANCH_SELF_PUNISHMENT
+- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 부딪힘은 열립니다, 같이 사는 난도은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 부딪힘과 서로 미치는 영향은 다르게 봅니다. 부딪힘은 막힙니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 부딪힘과 같이 사는 난도는 다르게 봅니다. 부딪힘은 막힙니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 관계를 끌고 갈 동력이 있습니다. 반대 근거도 있으나, 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다 (밀려난 쪽: 명리)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_AGAINST · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · CONFLICT:FOR(경합) · CONFLICT:CONDITIONAL_AGAINST(경합) · CONFLICT:CONDITIONAL_AGAINST(경합) · CONFLICT:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=AGAINST · ZIWEI=FOR

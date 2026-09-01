@@ -406,18 +406,18 @@
 - DOMAIN_DECOMPOSITION = 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
 - TEMPORAL_DECOMPOSITION = 없음
 - AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MOVEMENT:FOR · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · TIMING:CONDITIONAL_FOR · MOVEMENT:FOR(경합)
-- DOMINANT_EVIDENCE = CROSS_AXIS_COMPOUND · 자리·직업과 이동
+- DOMINANT_EVIDENCE = 서로 다른 방향으로 함께 서는 결론 2건 (미확정)
 - LOSING_EVIDENCE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- RESOLUTION = CROSS_AXIS_COMPOUND 규칙으로 여러 근거가 맞물려 도출되었습니다.
-- **FINAL_VERDICT = FOR** (확신 HIGH)
-- NEW_INFERENCE = 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- RESOLUTION = 기문둔갑에 이 축을 직접 보는 자리가 정의되어 있지 않습니다(엔진 커버리지 공백).
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- NEW_INFERENCE = 이동에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 지금의 큰 흐름 → 원국 일주 천간합 / 지금의 큰 흐름 → 원국 시주 반합 / 올해 흐름 → 원국 시주 육합
 - COUNTER_EVIDENCE_REF = 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과 / 지금의 큰 흐름 → 원국 월주 해
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI+QIMEN
 - TEMPORAL_SCOPE = NATAL/PRESENT_MOMENT
 - TRACEABLE = YES
-- 결론: 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- 결론: 이동에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=FOR
 
@@ -1401,22 +1401,22 @@
 - (없음)
 
 ### CROSS
-- SAME_PROPOSITION_CONFLICT = 없음
-- DOMAIN_DECOMPOSITION = 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 끌리는 힘과 서로 미치는 영향은 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- SAME_PROPOSITION_CONFLICT = 자미두수는 "관계를 끌고 갈 동력이 있습니다.", 명리는 "생각을 정하는 층에서 정면으로 부딪힙니다."
+- DOMAIN_DECOMPOSITION = 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 끌리는 힘과 서로 미치는 영향은 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 끌리는 힘과 같이 사는 난도는 다르게 봅니다. 끌리는 힘은 범위를 좁혀야 합니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 부딪힘과 끌리는 힘은 다르게 봅니다. 끌리는 힘은 열립니다, 부딪힘은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
 - TEMPORAL_DECOMPOSITION = 없음
-- AXIS_VERDICTS = RELATION_BOND:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_FOR · CONFLICT:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합)
-- DOMINANT_EVIDENCE = 같은 방향으로 함께 서는 결론 4건
-- LOSING_EVIDENCE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- RESOLUTION = 자미두수에 이 축을 직접 보는 자리가 정의되어 있지 않습니다(엔진 커버리지 공백).
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
-- NEW_INFERENCE = 끌리는 힘에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+- AXIS_VERDICTS = RELATION_BOND:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_FOR · CONFLICT:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합) · RELATION_BOND:FOR(경합) · RELATION_BOND:FOR(경합)
+- DOMINANT_EVIDENCE = 서로 다른 방향으로 함께 서는 결론 6건 (미확정)
+- LOSING_EVIDENCE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다 (밀려난 쪽: 명리) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- RESOLUTION = 적용은 됐지만 방향을 정할 신호가 약합니다.
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- NEW_INFERENCE = 끌리는 힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 일지 육합/반합 / 상호 십신에 재성 (INDIRECT_WEALTH/SEVEN_KILLINGS) / 상대→A: INDIRECT_WEALTH
 - COUNTER_EVIDENCE_REF = 일지 육합/반합 / 일지 육합/반합 / 일지 육합/반합
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = NATAL
 - TRACEABLE = YES
-- 결론: 끌리는 힘에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+- 결론: 끌리는 힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=CONDITIONAL_AGAINST · ZIWEI=FOR
 
@@ -1515,22 +1515,22 @@
 - (없음)
 
 ### CROSS
-- SAME_PROPOSITION_CONFLICT = 없음
-- DOMAIN_DECOMPOSITION = 부딪힘과 서로 미치는 영향은 다르게 봅니다. 부딪힘은 막힙니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 부딪힘과 같이 사는 난도는 다르게 봅니다. 부딪힘은 막힙니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- SAME_PROPOSITION_CONFLICT = 자미두수는 "관계를 끌고 갈 동력이 있습니다.", 명리는 "두 사람이 마주 앉는 자리에서 직접 부딪히는 구조입니다."
+- DOMAIN_DECOMPOSITION = 같이 사는 난도과 부딪힘은 다르게 봅니다. 부딪힘은 열립니다, 같이 사는 난도은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다. / 부딪힘과 서로 미치는 영향은 다르게 봅니다. 부딪힘은 막힙니다, 서로 미치는 영향은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / 부딪힘과 같이 사는 난도는 다르게 봅니다. 부딪힘은 막힙니다, 같이 사는 난도은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
 - TEMPORAL_DECOMPOSITION = 없음
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_AGAINST · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · CONFLICT:CONDITIONAL_AGAINST(경합) · CONFLICT:CONDITIONAL_AGAINST(경합)
-- DOMINANT_EVIDENCE = 같은 방향으로 함께 서는 결론 3건
-- LOSING_EVIDENCE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- RESOLUTION = 자미두수에 이 축을 직접 보는 자리가 정의되어 있지 않습니다(엔진 커버리지 공백).
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
-- NEW_INFERENCE = 부딪힘에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_AGAINST · INFLUENCE:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · CONFLICT:FOR(경합) · CONFLICT:CONDITIONAL_AGAINST(경합) · CONFLICT:CONDITIONAL_AGAINST(경합) · CONFLICT:FOR(경합)
+- DOMINANT_EVIDENCE = 서로 다른 방향으로 함께 서는 결론 5건 (미확정)
+- LOSING_EVIDENCE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다 (밀려난 쪽: 명리)
+- RESOLUTION = 적용은 됐지만 방향을 정할 신호가 약합니다.
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- NEW_INFERENCE = 부딪힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - INFERENCE_IS_PRIMITIVE_FACT = NO (축별 판정 + 교차 추론으로 새로 도출)
 - SUPPORTED_BY = 상대→A: EATING_GOD / A 부처궁에 태양 화록 / C 전택궁에 태양 화권
-- COUNTER_EVIDENCE_REF = (없음)
+- COUNTER_EVIDENCE_REF = 두 사람 사이 BRANCH_SELF_PUNISHMENT
 - DISCIPLINES_CONTRIBUTING = MYUNGRI+ZIWEI
 - TEMPORAL_SCOPE = NATAL
 - TRACEABLE = YES
-- 결론: 부딪힘에 대해서는 서로 다른 근거 3가지가 모두 같은 쪽을 가리킵니다. 지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.
+- 결론: 부딪힘에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=AGAINST · ZIWEI=FOR
 
@@ -1664,8 +1664,8 @@
 
 - Q1 verdict = **INSUFFICIENT_EVIDENCE** — 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
 - Q1 axes = RELATION_STABILITY:AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · GENERAL:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_STABILITY:AGAINST · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:AGAINST · RELATION_STABILITY:AGAINST · RELATION_STABILITY:AGAINST · RELATION_STABILITY:AGAINST · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:FOR_BUT_LATER · RELATION_STABILITY:FOR_BUT_LATER
-- Q2 verdict = **FOR** — 지금 움직이는 것 자체는 무리가 없습니다.
-- Q2 axes = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · TIMING:FOR
+- Q2 verdict = **FOR** — 지금 움직이는 것 자체는 무리가 없습니다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다; 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+- Q2 axes = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · TIMING:CONDITIONAL_AGAINST · TIMING:FOR
 - 후속 턴은 저장된 교차판정(divinationVerdict)을 decisionMeta로 이어받아 "왜요?"에서 같은 판정을 설명합니다.
 
 ---

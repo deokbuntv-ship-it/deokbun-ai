@@ -32,6 +32,7 @@ import {
   type ConsultationJudgeDomain,
   type CrossDivinationVerdict,
   type JudgmentDomain,
+  axisLabel,
 } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ResolvedTemporalContext } from './serverConsultationTypes';
@@ -56,6 +57,17 @@ export type ClosingDirection = 'PROCEED' | 'HOLD' | 'NEUTRAL';
 
 export type ConclusionSurfacePlan = {
   state: ConclusionState;
+  /**
+   * DECISION SEMANTICS V1 — the headline the reader receives, which must answer the PROPOSITION.
+   *
+   * `verdict.primaryConclusion` is the winning proposition's own `assertion`, and a PRIMITIVE winner's
+   * assertion is a raw engine relation ("올해 흐름이 원국 월주 자형에 마찰을 일으킨다"). Three of 78 delivered
+   * consultations shipped that as the entire answer to a decision question, because a proposition carries no
+   * separate consumer-conclusion field. When the winner is primitive this is a bounded, direction-faithful
+   * sentence built from the SAME resolved state, and the raw relation stays available as supporting reason.
+   * Null ⇒ the verdict's own conclusion already answers the proposition and is used unchanged.
+   */
+  headlineOverride: string | null;
   /**
    * The closing sentence the answer is allowed to end on, or null when the verdict authorizes none. Never
    * invented: it is `verdict.actionableInterpretation` verbatim when its own direction is consistent with
@@ -131,26 +143,44 @@ export function conclusionStateOf(verdict: CrossDivinationVerdict): ConclusionSt
  * cannot reach an OPEN answer, and cannot reach an UNRESOLVED one at all — which is what the two Blind-84
  * HARD_FAIL polarity reversals were.
  */
+// A PRIMITIVE winner is reported by the reasoner as `단일 근거 · <target>`; every synthesised winner names its
+// derivation rule instead. That existing field is the signal — no new flag, and no re-parsing of the prose.
+const PRIMITIVE_BASIS = /^단일 근거/;
+
+// The bounded, proposition-answering headline. One fixed sentence per resolved state, with the asked axis
+// named from the shared ontology. It asserts nothing the verdict did not already resolve.
+const HEADLINE_BY_STATE: Record<ConclusionState, (axis: string) => string> = {
+  OPEN: (a) => `${a}에 대해서는 지금 열려 있는 쪽으로 봅니다. 아래 근거가 그 방향으로 함께 서 있습니다.`,
+  BLOCKED: (a) => `${a}에 대해서는 지금 크게 벌일 자리는 아닙니다. 아래 근거가 같은 제한을 가리킵니다.`,
+  MIXED: (a) => `${a}에 대해서는 열리는 쪽과 걸리는 쪽이 함께 있습니다. 어느 한쪽만 보고 정하기는 이릅니다.`,
+  UNRESOLVED: (a) => `${a}에 대해서는 지금 근거만으로 한쪽을 확정하기 어렵습니다.`,
+  INSUFFICIENT: (a) => `${a}에 대해서는 판단에 필요한 근거가 아직 충분하지 않습니다.`,
+};
+
 export function buildConclusionSurfacePlan(verdict: CrossDivinationVerdict): ConclusionSurfacePlan {
   const state = conclusionStateOf(verdict);
   const supplied = (verdict.actionableInterpretation ?? '').trim();
   const directional = state === 'OPEN' || state === 'BLOCKED';
   const suppliedIsNeutral = supplied.length > 0 && closingDirectionOf(supplied) === 'NEUTRAL';
+  // Only a PRIMITIVE winner needs the substitution; a synthesised conclusion already speaks to the question.
+  const headlineOverride = PRIMITIVE_BASIS.test(verdict.dominantBasis ?? '')
+    ? HEADLINE_BY_STATE[state](axisLabel(verdict.questionDomain))
+    : null;
 
   if (state === 'UNRESOLVED' || state === 'INSUFFICIENT') {
     // A verdict that declined to decide gets a close that also declines. Its own supplied sentence is only
     // usable when it asserts nothing — which is exactly the STRUCTURAL/CAUSAL "이 구조를 알고 계시는 것 자체가
     // 다음 판단의 기준이 됩니다" case.
-    return { state, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
+    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
   }
   if (state === 'MIXED') {
-    return { state, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
+    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
   }
-  if (supplied.length === 0) return { state, closing: null, directional };
+  if (supplied.length === 0) return { state, headlineOverride, closing: null, directional };
   const asserted = closingDirectionOf(supplied);
   const consistent = asserted === 'NEUTRAL'
     || (state === 'OPEN' ? asserted === 'PROCEED' : asserted === 'HOLD');
-  return { state, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
+  return { state, headlineOverride, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
 }
 
 // ── 2. QUESTION-AXIS SURFACE RELEVANCE ───────────────────────────────────────────────────────────────
@@ -310,10 +340,22 @@ export function buildTemporalSurfacePlan(
     };
   }
   if (years.length > 0) {
-    return {
-      precision: 'NARROW',
-      text: `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(', ')}입니다.`,
-    };
+    // DECISION SEMANTICS V1 §TIMING — DO NOT DISCARD THE MONTH BEHIND THE YEAR.
+    //
+    // The year branch used to return here and the reference-month branch below was unreachable, so 32 of 37
+    // timing sections in the V6.1 run said only "2026년" while a populated `referenceMonth` and a directional
+    // 월운 layer sat unused. The month is stated as the ANCHOR the judgment was made at — which is exactly what
+    // it is. It is deliberately NOT presented as a chosen or best month: current-month evidence is not an
+    // engine claim about a future month, and the closing clause says so rather than letting the reader infer it.
+    const named = `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(', ')}입니다.`;
+    if (authority.referenceMonth !== null && ref !== null) {
+      return {
+        precision: 'NARROW',
+        text: `${named} 이 판단은 ${ref}년 ${authority.referenceMonth}월 흐름을 기준으로 본 것이고, `
+          + `그보다 좁혀 특정 달을 짚을 근거는 아직 없습니다.`,
+      };
+    }
+    return { precision: 'NARROW', text: named };
   }
   if (ref !== null) {
     const month = authority.referenceMonth !== null ? ` ${authority.referenceMonth}월` : '';

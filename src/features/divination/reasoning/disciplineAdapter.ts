@@ -175,5 +175,78 @@ export function adaptJudgment(
     });
   }
 
+  // DECISION SEMANTICS V1 §D2 — A TOP-LEVEL DIRECTIONAL STANCE MUST NOT VANISH.
+  //
+  // The loop above walks `domainSubJudgments` only. A discipline that answered the asked axis with its OWN
+  // headline stance — `j.questionDomain` + `j.stance` + `j.directEvidence` — and emitted no sub-judgment for
+  // that axis produced NO premise and NO proposition at all, so Cross saw "해당 축 근거 없음" while the judge
+  // was holding a fully evidenced directional reading. The V6.1 census measured this on 2 of the 6 D2 declines
+  // (Ziwei answering a TIMING question with CONDITIONAL_FOR and 4–6 direct evidence facts).
+  //
+  // This forwards exactly what the judge already said — no new inference, no new doctrine — and it is bound by
+  // the SAME guards as a sub-judgment: it must be directional, it must not duplicate an axis a sub-judgment
+  // already covered, and it must have named facts behind it. An evidence-free stance still never enters.
+  const coveredAxes = new Set(j.domainSubJudgments.map((s) => s.domain));
+  if (isDirectional(j.stance) && !coveredAxes.has(j.questionDomain)) {
+    const relation = relationFor(j.stance);
+    const direction = DIRECTION_OF[relation];
+    const backing = direction === 'UNFAVORABLE' || direction === 'RESTRICTED'
+      ? (j.counterEvidence ?? [])
+      : (j.directEvidence ?? []);
+    const against = direction === 'UNFAVORABLE' || direction === 'RESTRICTED'
+      ? (j.directEvidence ?? [])
+      : (j.counterEvidence ?? []);
+    if (backing.length > 0 || against.length > 0) {
+      const facts = [...backing, ...against];
+      const premise: DivinationPremise = {
+        id: nextId(ADAPTER_ID_PREFIX[j.discipline]),
+        discipline: j.discipline,
+        sourceFactIds: (backing.length ? backing : facts).map((e) => e.fact),
+        subject: opts.subject,
+        target: disciplineTarget(j.discipline, j.questionDomain),
+        questionIntent: opts.questionIntent,
+        questionAxis: j.questionDomain,
+        temporalScope: j.temporalScope,
+        semanticRelation: relation,
+        concept: 'ADAPTED',
+        assertion: j.dominantConclusion,
+        role: 'ASSERTS',
+        reliability: j.dataReliability,
+        applicability: j.questionDomain === opts.askedAxis && j.questionDirectness === 'DIRECT'
+          ? 'DIRECT'
+          : j.questionDirectness === 'GENERAL' ? 'BACKGROUND' : 'CONTEXTUAL',
+        doctrineReference: ADAPTER_DOCTRINE[j.discipline],
+      };
+      premises.push(premise);
+      propositions.push({
+        id: `p:${premise.id}`,
+        discipline: j.discipline,
+        subject: premise.subject,
+        target: premise.target,
+        questionIntent: opts.questionIntent,
+        questionAxis: j.questionDomain,
+        temporalScope: j.temporalScope,
+        assertion: j.dominantConclusion,
+        conclusionType: 'DIRECTIONAL',
+        direction,
+        answersAsked: j.questionDomain === opts.askedAxis,
+        ...(QUALIFIED_STANCES.has(j.stance) ? { qualified: true } : {}),
+        ...(relation === 'CONSTRAINS' || relation === 'DELAYS'
+          ? { restriction: (relation === 'DELAYS' ? 'TIMING' : 'SCOPE') as ReasonedProposition['restriction'] }
+          : {}),
+        supportingPremiseIds: [premise.id],
+        opposingPremiseIds: [],
+        derivedFromPropositionIds: [],
+        unresolvedPremiseIds: [],
+        doctrineReferences: [premise.doctrineReference],
+        derivationRule: PRIMITIVE_RULE,
+        adequacy: computeAdequacy([premise], [], {
+          dataComplete: j.dataReliability === 'EXACT',
+          doctrine: 'PARTIAL',
+        }),
+      });
+    }
+  }
+
   return { premises, propositions };
 }
