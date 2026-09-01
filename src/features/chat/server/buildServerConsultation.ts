@@ -62,13 +62,14 @@ import {
   GROUNDED_ACTION_TITLE,
 } from './groundedActionPlan';
 import {
-  buildTemporalSurfacePlan, temporalAuthorityFrom, TEMPORAL_SECTION_TITLE,
+  buildTemporalSurfacePlan, temporalAuthorityFrom, closingDirectionOf, TEMPORAL_SECTION_TITLE,
 } from './consultationSurfacePlan';
 import { buildDecisionProposition } from './decisionProposition';
+import { buildConsumerDecisionPlan, consumerMeaningDirective } from './consumerDecisionPlan';
 import {
-  buildConsumerDecisionPlan, consumerMeaningDirective, renderConsumerDecisionSections,
-  CONFLICT_SECTION_TITLE, DECISION_MEANING_TITLE,
-} from './consumerDecisionPlan';
+  buildNarrativeContract, deliveryDeclines, renderNarrativeSections, validateRealization,
+  CROSS_SECTION_TITLE, MEANING_SECTION_TITLE, CONFLICT_SECTION_TITLE,
+} from './consultationNarrativeContract';
 import { joinDistinctSentences, realizeForConsumer } from './koreanRealization';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -199,7 +200,7 @@ const PROTECTED_TITLES: readonly string[] = [
   ...Object.values(GROUNDED_ACTION_TITLE), '한마디', TEMPORAL_SECTION_TITLE,
   // DELIVERY V7 — a compound truth and a standoff are conclusions, not explanation. Losing either half to
   // deduplication would turn "both of these are true" back into a single-direction answer.
-  DECISION_MEANING_TITLE, CONFLICT_SECTION_TITLE,
+  CROSS_SECTION_TITLE, MEANING_SECTION_TITLE, CONFLICT_SECTION_TITLE,
 ];
 const PROTECTED_SECTION = (title: string): boolean =>
   PROTECTED_TITLES.includes(title) || title.startsWith('전문근거');
@@ -281,7 +282,23 @@ export function applyVerdictAuthorityClamp(
   intent: NarrativeIntent = 'DECISION',
 ): ParsedStructuredConsultation | null {
   if (outcome.kind !== 'ACCEPTED') return null;
-  if (verdict === null || !isDeclinedToDecide(verdict)) return outcome.result;
+  if (verdict === null) return outcome.result;
+  // REALIZATION V8 — THE CONCLUSION FOLLOWS THE ANSWER, NOT THE GRAPH.
+  //
+  // `isDeclinedToDecide` asks whether the proposition GRAPH settled a direction. Since the synthesis exists
+  // that is a different question from whether the ANSWER declines, and the clamp was still asking the graph:
+  // it overwrote 15 of 77 delivered conclusions with the generic decline while their own synthesis had
+  // resolved (OUTCOME_SPLIT 5, SINGLE_AUTHORITY 4, TEMPORAL_SPLIT 2, QUALIFIED 2, AGREED 1, COMPOUND_MIXED
+  // 1). Every one of those scored PUV-YES = 0.
+  //
+  // The clamp's purpose is unchanged — `coreSummary` is decision authority and the model may not own it —
+  // but the authority it enforces is now the contract's own conclusion. A genuinely declining answer
+  // (TRUE_STANDOFF / non-direction / no-applicable) still gets the question-shaped declined sentence.
+  const contract = buildNarrativeContract(verdict);
+  if (contract && !deliveryDeclines(verdict)) {
+    return { ...outcome.result, coreSummary: contract.customerConclusionMeaning };
+  }
+  if (!deliveryDeclines(verdict)) return outcome.result;
   return { ...outcome.result, coreSummary: buildDeclinedSummary(verdict, intent) };
 }
 
@@ -605,6 +622,10 @@ export async function buildServerConsultation(
     // Built here from the verdict's own synthesis — the identical value `buildConclusionSurfacePlan` derives
     // the headline, state and close from, so the prompt and the rendered answer cannot disagree.
     const consumerPlanForDirective = verdict ? buildConsumerDecisionPlan(verdict) : null;
+    // REALIZATION V8 — the ONE authoritative meaning this answer may communicate. Built once here and used
+    // by the conclusion clamp, the rendered synthesis sections and the realization validator, so no surface
+    // can drift from another.
+    const narrativeContract = verdict ? buildNarrativeContract(verdict) : null;
     const planDirective = verdict && contentPlan
       ? [
         renderAnswerPlanDirective(plan, questionDomain),
@@ -796,9 +817,40 @@ export async function buildServerConsultation(
   // authoritative claims only. This is not a CAREER-11 special case and does not look at the question: it
   // applies to every rejected answer for which a grounded plan exists. The canned message survives only for
   // the genuinely answer-less case (no verdict ⇒ no plan), and safety hard-stops return long before here.
-  const rejectedButGrounded = clampedResult === null
+  // REALIZATION V8 — SEMANTIC COVERAGE OF THE LANGUAGE REALIZATION.
+  //
+  // The model is a language realizer: it may not decide polarity, participation, timing or a winner. That is
+  // now CHECKED rather than instructed. The accepted composition is validated against the narrative contract
+  // — conclusion polarity, action consistency, authority claims, a compound truth arriving with both sides,
+  // and technical entities the verdict never carried. A violation discards the realization ONCE and the
+  // deterministic composition from the SAME contract is delivered instead. There is no second model attempt
+  // and no quality reroll: the fallback is the answer.
+  const realizationViolations = clampedResult && verdictForGuard
+    ? (() => {
+      const contract = buildNarrativeContract(verdictForGuard);
+      if (!contract) return [];
+      const body = [
+        clampedResult.coreInterpretation, ...(clampedResult.strengths ?? []),
+        ...(clampedResult.cautions ?? []),
+        ...(clampedResult.domainInterpretation ?? []).map((d) => d.body),
+      ].filter((x): x is string => typeof x === 'string').join('\n');
+      return validateRealization(
+        contract,
+        {
+          conclusion: clampedResult.coreSummary ?? '',
+          // The action the reader actually meets: the rendered grounded action section when one exists,
+          // otherwise the contract's own bounded action.
+          action: groundedActionSection?.body ?? contract.actionBoundaries.join(' '),
+          body,
+        },
+        closingDirectionOf,
+      );
+    })()
+    : [];
+  const rejectedButGrounded = (clampedResult === null || realizationViolations.length > 0)
     && groundedPlan !== null
-    && (outcome.kind === 'SEMANTIC_REJECTED'
+    && (realizationViolations.length > 0
+      || outcome.kind === 'SEMANTIC_REJECTED'
       || (outcome.kind === 'STRUCTURAL_FALLBACK' && untraceableFacts(outcome.text, groundedPlan).length > 0));
   const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
   // The composition is run back through the SAME verdict-authority clamp the accepted path uses, so a
@@ -934,9 +986,12 @@ export async function buildServerConsultation(
   // carry BOTH sides plus a practical implication, and neither survives being left to composition: the model
   // sees one conclusion sentence and naturally writes one direction. These are rendered from the plan, so
   // "what is supported / what is limited / what to do about it" is structurally present rather than hoped for.
-  const consumerPlanSections = groundedPlan?.conclusionSurface.consumerPlan
-    ? renderConsumerDecisionSections(groundedPlan.conclusionSurface.consumerPlan)
-    : [];
+  // REALIZATION V8 — the same material, plus the piece that was missing entirely: HOW the systems combine.
+  // CROSS sat at 8.31/15 across three releases because the answer listed disciplines and never synthesised
+  // them for the reader. The contract's `crossExplanation` is that synthesis, naming only the systems that
+  // actually contributed.
+  const deliveredContract = verdictForGuard ? buildNarrativeContract(verdictForGuard) : null;
+  const consumerPlanSections = deliveredContract ? renderNarrativeSections(deliveredContract) : [];
   const authoritativeSections = [
     ...(groundedActionSection ? [groundedActionSection] : []),
     ...consumerPlanSections,

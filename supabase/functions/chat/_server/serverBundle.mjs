@@ -16686,29 +16686,6 @@ var consumerMeaningDirective = (plan) => ({
   actionBoundary: plan.actionBoundary,
   directional: plan.conclusionState === "OPEN" || plan.conclusionState === "BLOCKED"
 });
-var DECISION_MEANING_TITLE = "이 결론을 어떻게 보면 되나요";
-var CONFLICT_SECTION_TITLE = "두 판단이 갈리는 지점";
-function renderConsumerDecisionSections(plan) {
-  const out = [];
-  const line = (t) => `· ${t.axisName}: ${t.meaning}`;
-  const compound = plan.conclusionState === "MIXED";
-  const bothSides = [...plan.outcomeQualifications, ...plan.limitingTruths];
-  if (compound && bothSides.length > 0) {
-    const body = [
-      ...plan.supportingTruths.map(line),
-      ...bothSides.map(line),
-      plan.actionBoundary
-    ].join("\n");
-    out.push({ title: DECISION_MEANING_TITLE, body });
-  }
-  if (plan.conflictExplanation) {
-    out.push({
-      title: CONFLICT_SECTION_TITLE,
-      body: [plan.conflictExplanation, plan.authorityDisclosure, plan.actionBoundary].join("\n")
-    });
-  }
-  return out;
-}
 
 // src/features/chat/server/consultationSurfacePlan.ts
 var PROCEED_LEXICON = /밀고\s*가|그대로\s*가|진행하(?:셔도|시면|십시오)|계속\s*하(?:셔도|시면)|움직이(?:셔도|시면|십시오)|해도\s*됩니다|시작하(?:셔도|시면)/;
@@ -17736,6 +17713,192 @@ function renderGroundedActionSection(plan) {
   return { title: ACTION_TITLE[plan.intent], body: lines.map(formatGroundedActionLine).join("\n") };
 }
 
+// src/features/chat/server/consultationNarrativeContract.ts
+var DISCIPLINE_LABEL6 = {
+  MYUNGRI: "명리",
+  ZIWEI: "자미두수",
+  QIMEN: "기문둔갑"
+};
+var joinNames2 = (ds) => ds.map((d) => DISCIPLINE_LABEL6[d]).join("·");
+var say2 = (t) => realizeForConsumer(t);
+function deliveryDeclines(verdict) {
+  if (!verdict) return true;
+  const plan = buildConsumerDecisionPlan(verdict);
+  if (!plan) return verdict.direction === "INSUFFICIENT_DATA" || verdict.direction === "INSUFFICIENT_EVIDENCE";
+  return plan.conclusionState === "UNRESOLVED" || plan.conclusionState === "INSUFFICIENT";
+}
+function crossExplanationFor(kind, deciders, others, primaryAxis, otherAxis, direction) {
+  const opens = direction === "PROCEED";
+  const alsoLooked = others.length > 0 ? ` ${joinNames2(others)}은(는) 이 물음을 직접 판단할 자리가 없어, 참고로만 두었습니다.` : "";
+  switch (kind) {
+    case "AGREED":
+      return `${joinNames2(deciders)}이(가) 서로 다른 자리를 보고도 ${primaryAxis}에 대해 같은 쪽을 가리킵니다. 한 곳의 판단이 아니라 각각 따로 본 결과가 겹친 것이라, 그만큼 방향은 분명하다고 보셔도 됩니다.${alsoLooked}`;
+    case "SINGLE_AUTHORITY":
+      return `이 물음을 직접 볼 수 있는 자리가 ${joinNames2(deciders)}에 있어, 그 판단으로 답을 드립니다.${alsoLooked} 근거가 약하다는 뜻이 아니라, 여러 학문이 같은 결론에 이르렀다고는 말씀드리지 않는다는 뜻입니다.`;
+    case "QUALIFIED":
+      return `${joinNames2(deciders)}이(가) 본 ${primaryAxis}${opens ? "은(는) 열려 있습니다" : "에는 제약이 있습니다"}. 다만 같은 판단 안에서 걸리는 지점이 함께 잡혀, 방향은 그대로 두되 범위를 좁혀서 보셔야 합니다.${alsoLooked}`;
+    case "OUTCOME_SPLIT":
+      return `${joinNames2(deciders)}이(가) 보기에 ${primaryAxis} 자체${opens ? "는 막히지 않습니다" : "는 지금 무리가 있습니다"}. 그런데 그 뒤에 남는 ${otherAxis ?? "결과"}은(는) 같은 쪽으로 보기 어렵습니다. 하는 것과 하고 난 뒤가 다르게 나오는 경우라, 두 가지를 나눠서 판단하셔야 합니다.${alsoLooked}`;
+    case "TEMPORAL_SPLIT":
+      return `${joinNames2(deciders)}이(가) 본 ${primaryAxis}은(는) 큰 흐름과 가까운 시기가 서로 다르게 나옵니다. 방향이 틀렸다는 뜻이 아니라 시점이 어긋나 있다는 뜻이라, 두 기간을 같은 것으로 묶지 마십시오.${alsoLooked}`;
+    case "COMPOUND_MIXED":
+      return `${joinNames2(deciders)}의 판단 안에 서로 다른 두 가지가 함께 서 있습니다. 어느 하나가 틀린 것이 아니라 둘 다 사실이라, 한쪽만 떼어 보시면 결론이 뒤집힙니다.${alsoLooked}`;
+    case "TRUE_STANDOFF":
+      return `${joinNames2(deciders)}이(가) 각각 이 물음을 직접 판단했는데, 서로 반대 방향을 가리킵니다. 어느 한쪽이 더 직접적이라고 볼 근거가 없어, 한쪽으로 정해 드리면 지금 있는 근거를 넘어서게 됩니다. 그래서 정하지 않고 양쪽을 그대로 보여 드립니다.${alsoLooked}`;
+    case "NON_DIRECTIONAL":
+      return `물어보신 것이 좋다·나쁘다를 고르는 질문이 아니어서, 그 형태로는 답하지 않겠습니다. 대신 ${joinNames2([...deciders, ...others])}에서 확인된 부분을 그대로 정리해 드립니다.`;
+    case "NO_APPLICABLE_JUDGMENT":
+      return `이 물음을 직접 판단할 자리가 어느 쪽에도 서지 않았습니다. 없는 이야기를 만들어 드리지 않겠습니다.`;
+  }
+}
+function implicationsFor(kind, supporting, limiting, outcome, temporal) {
+  const out = [];
+  const names = (ts) => [...new Set(ts.map((t) => t.axisName))].join("·");
+  if (outcome.length > 0) {
+    out.push(`지금 결정하실 것은 ${names(outcome)}까지 함께 정하는 일입니다. 실행 여부만 정하고 그 뒤를 비워 두시면, 열려 있던 쪽이 그대로 손해로 돌아옵니다.`);
+  }
+  if (limiting.length > 0 && kind !== "OUTCOME_SPLIT") {
+    out.push(`${names(limiting)}에서 걸리는 부분은 시간이 지난다고 저절로 풀리는 종류가 아닙니다. 그 부분을 먼저 정리해 두셔야 방향이 그대로 유지됩니다.`);
+  }
+  if (temporal.length > 0) {
+    out.push(`시점에 따라 같은 선택의 결과가 달라집니다. 방향을 바꾸실 것이 아니라, 언제 움직이실지를 따로 정하십시오.`);
+  }
+  if (supporting.length > 0 && out.length === 0) {
+    out.push(`${names(supporting)}이(가) 받쳐 주는 동안 움직이시는 편이, 같은 일을 나중에 하시는 것보다 부담이 적습니다.`);
+  }
+  return out.map(say2);
+}
+function buildNarrativeContract(verdict) {
+  const plan = buildConsumerDecisionPlan(verdict);
+  const synthesis = verdict.decisionCrossSynthesis;
+  if (!plan || !synthesis) return null;
+  const q = verdict.question ?? "";
+  const proposition = buildDecisionProposition(q, {
+    askedAxis: resolveJudgmentDomain(q),
+    intent: resolveQuestionIntent(q),
+    asksTiming: verdict.asksTiming
+  });
+  const deciders = synthesis.primaryJudgments.map((p) => p.discipline);
+  const contributors = synthesis.participatingJudgments.filter((p) => p.authority !== "CONTEXT_ONLY").map((p) => p.discipline);
+  const others = contributors.filter((d) => !deciders.includes(d));
+  const participating = [.../* @__PURE__ */ new Set([...deciders, ...others])];
+  const primaryAxis = axisLabel(synthesis.primaryJudgments[0]?.axis ?? verdict.questionDomain, "전반");
+  const otherAxis = plan.outcomeQualifications[0]?.axisName ?? null;
+  const allowedTechnicalRefs = [.../* @__PURE__ */ new Set([
+    ...verdict.favorableFactors.map((e) => e.fact),
+    ...verdict.riskFactors.map((e) => e.fact),
+    ...verdict.disciplineJudgments.flatMap((j) => [
+      ...j.directEvidence.map((e) => e.fact),
+      ...j.counterEvidence.map((e) => e.fact)
+    ])
+  ])].filter((s) => typeof s === "string" && s.length > 0);
+  return {
+    propositionId: plan.propositionId,
+    requestedOutcome: plan.requestedOutcome,
+    decisionObject: proposition.decisionObject,
+    options: proposition.options,
+    counterparty: proposition.counterparty,
+    resolutionKind: plan.resolutionKind,
+    primaryDirection: plan.primaryDirection,
+    conclusionState: plan.conclusionState,
+    customerConclusionMeaning: plan.headlineMeaning,
+    supportingTruths: plan.supportingTruths,
+    limitingTruths: plan.limitingTruths,
+    outcomeTruths: plan.outcomeQualifications,
+    temporalTruths: plan.temporalQualifications,
+    participatingDisciplines: participating,
+    disciplineContributions: synthesis.participatingJudgments.filter((p) => p.authority !== "CONTEXT_ONLY").map((p) => ({
+      discipline: p.discipline,
+      authority: p.authority,
+      axis: p.axis,
+      statement: p.statement
+    })),
+    crossExplanation: say2(crossExplanationFor(
+      plan.resolutionKind,
+      deciders.length > 0 ? deciders : contributors,
+      others,
+      primaryAxis,
+      otherAxis,
+      plan.primaryDirection
+    )),
+    practicalImplications: implicationsFor(
+      plan.resolutionKind,
+      plan.supportingTruths,
+      plan.limitingTruths,
+      plan.outcomeQualifications,
+      plan.temporalQualifications
+    ),
+    actionBoundaries: [plan.actionBoundary],
+    evidenceRefs: plan.evidenceRefs,
+    allowedTechnicalRefs,
+    provenance: ["deokbunai.consultation-narrative-contract.v1"]
+  };
+}
+var CROSS_SECTION_TITLE = "세 갈래를 함께 보면";
+var MEANING_SECTION_TITLE = "이 결론을 어떻게 보면 되나요";
+var CONFLICT_SECTION_TITLE = "두 판단이 갈리는 지점";
+function renderNarrativeSections(contract) {
+  const out = [];
+  const line = (t) => `· ${t.axisName}: ${t.meaning}`;
+  out.push({ title: CROSS_SECTION_TITLE, body: contract.crossExplanation });
+  const bothSides = [...contract.outcomeTruths, ...contract.limitingTruths];
+  const compound = contract.conclusionState === "MIXED";
+  if (compound && bothSides.length > 0) {
+    out.push({
+      title: MEANING_SECTION_TITLE,
+      body: [
+        ...contract.supportingTruths.map(line),
+        ...bothSides.map(line),
+        ...contract.practicalImplications,
+        ...contract.actionBoundaries
+      ].filter(Boolean).join("\n")
+    });
+  }
+  if (contract.resolutionKind === "TRUE_STANDOFF") {
+    out.push({
+      title: CONFLICT_SECTION_TITLE,
+      body: [
+        ...contract.disciplineContributions.filter((c) => c.authority === "DIRECT_PROPOSITION").map((c) => `· ${DISCIPLINE_LABEL6[c.discipline]}: ${c.statement}`),
+        ...contract.actionBoundaries
+      ].join("\n")
+    });
+  }
+  return out;
+}
+var MULTI_SYSTEM_CLAIM = /세\s*(?:체계|학문|가지)\s*(?:모두|다)|모든 체계|세 곳 모두/;
+var TECHNICAL_LEXICON2 = /명궁|신궁|(?:형제|부처|자녀|재백|질액|천이|노복|교우|관록|전택|복덕|부모)궁|화록|화권|화과|화기|비견|겁재|식신|편재|정재|편관|정관|편인|재성|관성|식상|비겁|칠살/g;
+function validateRealization(contract, parts, directionOf2) {
+  const out = [];
+  const norm2 = (d) => d === "NEUTRAL" ? "NONE" : d;
+  const conclusionDir = norm2(directionOf2(parts.conclusion));
+  const actionDir = norm2(directionOf2(parts.action));
+  if (contract.primaryDirection !== "NONE" && conclusionDir !== "NONE" && conclusionDir !== contract.primaryDirection) out.push("CONCLUSION_POLARITY");
+  if (contract.primaryDirection === "NONE" && contract.conclusionState !== "MIXED" && (conclusionDir !== "NONE" || actionDir !== "NONE")) out.push("CONCLUSION_POLARITY");
+  if (conclusionDir !== "NONE" && actionDir !== "NONE" && conclusionDir !== actionDir) {
+    out.push("ACTION_CONTRADICTION");
+  }
+  if (contract.participatingDisciplines.length < 2 && MULTI_SYSTEM_CLAIM.test(parts.body)) {
+    out.push("AUTHORITY_OVERCLAIM");
+  }
+  const absent = ["MYUNGRI", "ZIWEI", "QIMEN"].filter((d) => !contract.participatingDisciplines.includes(d));
+  for (const d of absent) {
+    const label = DISCIPLINE_LABEL6[d];
+    if (new RegExp(`${label}\\s*(?:도|가|는|은|에서는?)\\s*[^.]{0,20}(?:봅니다|보입니다|나옵니다|가리킵니다|판단)`).test(parts.body)) {
+      out.push("FORCED_THIRD_DISCIPLINE");
+      break;
+    }
+  }
+  if (contract.conclusionState === "MIXED") {
+    const both = [...contract.outcomeTruths, ...contract.limitingTruths];
+    const carried = both.length === 0 || both.some((t) => parts.body.includes(t.axisName) || parts.body.includes(t.meaning));
+    if (!carried) out.push("MATERIAL_SIDE_MISSING");
+  }
+  const refs = parts.body.match(TECHNICAL_LEXICON2) || [];
+  const allowed = contract.allowedTechnicalRefs.join(" ");
+  if (refs.some((r) => !allowed.includes(r))) out.push("UNSUPPORTED_TECHNICAL_REF");
+  return out;
+}
+
 // src/features/chat/server/storedDecisionGrounding.ts
 var relationLines = (label, relations) => relations.map(({ position, kind }) => `${label} ${position}: ${kind}`);
 function verdictEvidenceFor(meta, discipline) {
@@ -18057,7 +18220,8 @@ var PROTECTED_TITLES = [
   TEMPORAL_SECTION_TITLE,
   // DELIVERY V7 — a compound truth and a standoff are conclusions, not explanation. Losing either half to
   // deduplication would turn "both of these are true" back into a single-direction answer.
-  DECISION_MEANING_TITLE,
+  CROSS_SECTION_TITLE,
+  MEANING_SECTION_TITLE,
   CONFLICT_SECTION_TITLE
 ];
 var PROTECTED_SECTION = (title) => PROTECTED_TITLES.includes(title) || title.startsWith("전문근거");
@@ -18100,7 +18264,12 @@ function metaFrom(grounding, mode) {
 }
 function applyVerdictAuthorityClamp(outcome, verdict, intent = "DECISION") {
   if (outcome.kind !== "ACCEPTED") return null;
-  if (verdict === null || !isDeclinedToDecide(verdict)) return outcome.result;
+  if (verdict === null) return outcome.result;
+  const contract = buildNarrativeContract(verdict);
+  if (contract && !deliveryDeclines(verdict)) {
+    return { ...outcome.result, coreSummary: contract.customerConclusionMeaning };
+  }
+  if (!deliveryDeclines(verdict)) return outcome.result;
   return { ...outcome.result, coreSummary: buildDeclinedSummary(verdict, intent) };
 }
 function safetyStopResult(route, question, nowEpochSeconds) {
@@ -18245,6 +18414,7 @@ async function buildServerConsultation(request, deps) {
     const contentPlan = verdict ? buildConsultationContentPlan(verdict) : null;
     contentPlanHolder.current = contentPlan;
     const consumerPlanForDirective = verdict ? buildConsumerDecisionPlan(verdict) : null;
+    const narrativeContract = verdict ? buildNarrativeContract(verdict) : null;
     const planDirective = verdict && contentPlan ? [
       renderAnswerPlanDirective(plan, questionDomain),
       // DECISION JUDGMENT V1 — what the person asked FOR, so the reading contract matches the request.
@@ -18329,7 +18499,28 @@ ${extraDirective}` : base
     format: formatGroundedActionLine
   } : null;
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
-  const rejectedButGrounded = clampedResult === null && groundedPlan !== null && (outcome.kind === "SEMANTIC_REJECTED" || outcome.kind === "STRUCTURAL_FALLBACK" && untraceableFacts(outcome.text, groundedPlan).length > 0);
+  const realizationViolations = clampedResult && verdictForGuard ? (() => {
+    const contract = buildNarrativeContract(verdictForGuard);
+    if (!contract) return [];
+    const body = [
+      clampedResult.coreInterpretation,
+      ...clampedResult.strengths ?? [],
+      ...clampedResult.cautions ?? [],
+      ...(clampedResult.domainInterpretation ?? []).map((d) => d.body)
+    ].filter((x) => typeof x === "string").join("\n");
+    return validateRealization(
+      contract,
+      {
+        conclusion: clampedResult.coreSummary ?? "",
+        // The action the reader actually meets: the rendered grounded action section when one exists,
+        // otherwise the contract's own bounded action.
+        action: groundedActionSection?.body ?? contract.actionBoundaries.join(" "),
+        body
+      },
+      closingDirectionOf
+    );
+  })() : [];
+  const rejectedButGrounded = (clampedResult === null || realizationViolations.length > 0) && groundedPlan !== null && (realizationViolations.length > 0 || outcome.kind === "SEMANTIC_REJECTED" || outcome.kind === "STRUCTURAL_FALLBACK" && untraceableFacts(outcome.text, groundedPlan).length > 0);
   const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
   const groundedFallbackResult = () => applyVerdictAuthorityClamp(
     { kind: "ACCEPTED", result: composeGroundedFallback(groundedPlan, sharedActionForFallback) },
@@ -18384,7 +18575,8 @@ ${extraDirective}` : base
       (groundedActionPlan?.sourceClaimIds.length ?? 0) > 0
     ).text
   } : null;
-  const consumerPlanSections = groundedPlan?.conclusionSurface.consumerPlan ? renderConsumerDecisionSections(groundedPlan.conclusionSurface.consumerPlan) : [];
+  const deliveredContract = verdictForGuard ? buildNarrativeContract(verdictForGuard) : null;
+  const consumerPlanSections = deliveredContract ? renderNarrativeSections(deliveredContract) : [];
   const authoritativeSections = [
     ...groundedActionSection ? [groundedActionSection] : [],
     ...consumerPlanSections,

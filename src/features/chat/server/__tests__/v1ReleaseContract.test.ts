@@ -79,7 +79,14 @@ describe('§D13 V1 release contract (integrated)', () => {
     expect(r.diagnostics?.groundedFallback).toBe(true);
     expect(r.text).not.toContain('5월이 2월보다');
     expect(r.text).not.toMatch(/5월이 더 좋습니다/);
-    // The server's own declined headline quotes the question (so "5월" appears) but never picks a side.
-    expect(r.structuredResult?.coreSummary).toMatch(/한쪽을 지금 고르기보다|확정하기 어렵습니다/);
+    // REALIZATION V8 — the property under test is NO OPTION WINNER, which is what the two assertions above
+    // check. This one used the declined wording as a proxy for it, and that proxy stopped holding once the
+    // conclusion started following the synthesis instead of the graph verdict: a resolved answer now states
+    // its own bounded direction on the ASKED AXIS. Naming neither option is still absolute, so the property
+    // is asserted directly rather than through a sentence that happens to decline.
+    const summary = r.structuredResult?.coreSummary ?? '';
+    expect(summary.length).toBeGreaterThan(0);
+    expect(summary).not.toMatch(/5월|2월/);          // no month is chosen
+    expect(summary).not.toMatch(/더 좋|더 나[은으]|낫습니다/); // and no comparative winner is stated
   });
 });
