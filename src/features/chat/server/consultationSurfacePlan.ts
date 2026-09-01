@@ -36,6 +36,7 @@ import {
 } from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ResolvedTemporalContext } from './serverConsultationTypes';
+import { buildConsumerDecisionPlan, type ConsumerDecisionPlanV1 } from './consumerDecisionPlan';
 
 export const CONSULTATION_SURFACE_PLAN_VERSION = 'consultation-surface-plan@1.0.0';
 
@@ -57,6 +58,12 @@ export type ClosingDirection = 'PROCEED' | 'HOLD' | 'NEUTRAL';
 
 export type ConclusionSurfacePlan = {
   state: ConclusionState;
+  /**
+   * DELIVERY V7 — the one customer meaning this surface was derived from, when the verdict carried a
+   * synthesis. Present so every downstream section reads the SAME plan instead of re-deriving polarity, and
+   * `null` for a legacy/restored verdict without one (behaviour then unchanged).
+   */
+  consumerPlan: ConsumerDecisionPlanV1 | null;
   /**
    * DECISION SEMANTICS V1 — the headline the reader receives, which must answer the PROPOSITION.
    *
@@ -158,29 +165,61 @@ const HEADLINE_BY_STATE: Record<ConclusionState, (axis: string) => string> = {
 };
 
 export function buildConclusionSurfacePlan(verdict: CrossDivinationVerdict): ConclusionSurfacePlan {
-  const state = conclusionStateOf(verdict);
+  // DELIVERY V7 — THE SYNTHESIS IS THE CUSTOMER AUTHORITY.
+  //
+  // `verdict.direction` is the proposition graph's own projection and stays exactly as it was (it is the raw
+  // verdict provenance, and `decisionMeta` still re-derives it). What it cannot express is a compound truth:
+  // a graph that finds "the action is supported and its downstream result is limited" resolves to
+  // INSUFFICIENT_EVIDENCE, and the reader was then told 정하지 않겠습니다 about something the system had in
+  // fact decided. 28 of the 77 replayable consultations are compound, so this is the common case, not an edge.
+  //
+  // Where the synthesis resolved something, its state governs every directional surface in the answer —
+  // which is the point of this being the ONE conclusion authority rather than a second one.
+  const consumerPlan = buildConsumerDecisionPlan(verdict);
+  const graphState = conclusionStateOf(verdict);
+  const state = consumerPlan && consumerPlan.resolutionKind !== 'NO_APPLICABLE_JUDGMENT'
+    ? consumerPlan.conclusionState
+    : graphState;
   const supplied = (verdict.actionableInterpretation ?? '').trim();
   const directional = state === 'OPEN' || state === 'BLOCKED';
   const suppliedIsNeutral = supplied.length > 0 && closingDirectionOf(supplied) === 'NEUTRAL';
-  // Only a PRIMITIVE winner needs the substitution; a synthesised conclusion already speaks to the question.
+  // The headline is replaced in exactly two cases: a PRIMITIVE winner (whose assertion is a raw engine
+  // relation, never a customer conclusion), and a verdict whose own state could not express what the
+  // synthesis resolved. A verdict that already states a good synthesised conclusion keeps it.
   const headlineOverride = PRIMITIVE_BASIS.test(verdict.dominantBasis ?? '')
-    ? HEADLINE_BY_STATE[state](axisLabel(verdict.questionDomain))
-    : null;
+    ? (consumerPlan?.headlineMeaning ?? HEADLINE_BY_STATE[state](axisLabel(verdict.questionDomain)))
+    : consumerPlan && state !== graphState
+      ? consumerPlan.headlineMeaning
+      : null;
 
   if (state === 'UNRESOLVED' || state === 'INSUFFICIENT') {
     // A verdict that declined to decide gets a close that also declines. Its own supplied sentence is only
     // usable when it asserts nothing — which is exactly the STRUCTURAL/CAUSAL "이 구조를 알고 계시는 것 자체가
     // 다음 판단의 기준이 됩니다" case.
-    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
+    //
+    // DELIVERY V7 — a TRUE_STANDOFF or a non-direction request is not an empty refusal. Its plan carries a
+    // GROUNDED boundary that names what can actually be checked, and that is a better close than the fixed
+    // sentence. It is admitted only after the SAME neutrality test every other close passes, so a boundary
+    // that reads as advice can never re-decide a question the synthesis left open.
+    const boundary = consumerPlan
+      && (consumerPlan.resolutionKind === 'TRUE_STANDOFF' || consumerPlan.resolutionKind === 'NON_DIRECTIONAL')
+      && closingDirectionOf(consumerPlan.actionBoundary) === 'NEUTRAL'
+      ? consumerPlan.actionBoundary
+      : null;
+    return {
+      state, consumerPlan, headlineOverride,
+      closing: boundary ?? (suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING),
+      directional: false,
+    };
   }
   if (state === 'MIXED') {
-    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
+    return { state, consumerPlan, headlineOverride, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
   }
-  if (supplied.length === 0) return { state, headlineOverride, closing: null, directional };
+  if (supplied.length === 0) return { state, consumerPlan, headlineOverride, closing: null, directional };
   const asserted = closingDirectionOf(supplied);
   const consistent = asserted === 'NEUTRAL'
     || (state === 'OPEN' ? asserted === 'PROCEED' : asserted === 'HOLD');
-  return { state, headlineOverride, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
+  return { state, consumerPlan, headlineOverride, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
 }
 
 // ── 2. QUESTION-AXIS SURFACE RELEVANCE ───────────────────────────────────────────────────────────────

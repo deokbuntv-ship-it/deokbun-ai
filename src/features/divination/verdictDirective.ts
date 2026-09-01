@@ -143,12 +143,35 @@ export function renderVerdictDirective(
   // 있을까요" answered with "결론은 범위를 줄이는 쪽입니다" answers a question that was not asked. The stance
   // is unchanged and still binding — this only tells the prose layer what shape of answer it is bound to.
   requestedOutcome?: RequestedOutcome,
+  /**
+   * DELIVERY V7 — the ONE customer meaning, when the verdict carried a synthesis.
+   *
+   * The direction instruction below is read off `v.direction`, which is the proposition GRAPH's projection.
+   * Where the synthesis resolved a compound truth the graph could not express, that instruction says "방향을
+   * 정할 만한 신호가 없습니다" while the answer's own headline states a direction — recreating exactly the
+   * "directional headline + contradictory generic close" architecture V6 was built to remove. When a meaning
+   * is supplied it governs, and the graph's own instruction is not emitted at all.
+   */
+  consumerMeaning?: {
+    headlineMeaning: string; instruction: string; authorityDisclosure: string; actionBoundary: string;
+    /** false ⇒ no proceed/hold language is authorised, whatever the graph's own direction says. */
+    directional: boolean;
+  } | null,
 ): string {
   const lines: string[] = ['[점사 판정 — 서버가 확정한 결론(그대로 노출하지 말 것)]'];
-  const declined = isDeclinedToDecide(v);
+  // The no-direction warning must follow whichever authority is actually governing this answer, or a
+  // resolved compound truth would be delivered under an instruction telling the model it has no direction.
+  const declined = consumerMeaning ? !consumerMeaning.directional : isDeclinedToDecide(v);
 
-  lines.push(`· 결론: ${v.primaryConclusion}`);
-  lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  if (consumerMeaning) {
+    lines.push(`· 결론: ${consumerMeaning.headlineMeaning}`);
+    lines.push(`· ${consumerMeaning.instruction}`);
+    lines.push(`· 참여한 학문에 대해 이렇게만 말하십시오 (더 늘리지 마십시오): ${consumerMeaning.authorityDisclosure}`);
+    lines.push(`· 실용적 조언은 이 범위를 넘지 마십시오: ${consumerMeaning.actionBoundary}`);
+  } else {
+    lines.push(`· 결론: ${v.primaryConclusion}`);
+    lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  }
   if (requestedOutcome === 'CONDUCT') {
     lines.push(
       '· 이 질문은 "할까 말까"가 아니라 "무엇을 조심하고 어떻게 해야 하는가"를 물었습니다. 위 방향은 판단의 근거로만 쓰고, 답은 아래 근거로 잡힌 제약·주의 지점을 구체적으로 짚는 형태로 쓰십시오. 근거에 없는 일반적인 조언을 지어내지 마십시오.',

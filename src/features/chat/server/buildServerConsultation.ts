@@ -65,6 +65,10 @@ import {
   buildTemporalSurfacePlan, temporalAuthorityFrom, TEMPORAL_SECTION_TITLE,
 } from './consultationSurfacePlan';
 import { buildDecisionProposition } from './decisionProposition';
+import {
+  buildConsumerDecisionPlan, consumerMeaningDirective, renderConsumerDecisionSections,
+  CONFLICT_SECTION_TITLE, DECISION_MEANING_TITLE,
+} from './consumerDecisionPlan';
 import { joinDistinctSentences, realizeForConsumer } from './koreanRealization';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -193,6 +197,9 @@ const balanced = (text: string): boolean =>
 // paraphrased in the body still has to show the 근거 it stands on.
 const PROTECTED_TITLES: readonly string[] = [
   ...Object.values(GROUNDED_ACTION_TITLE), '한마디', TEMPORAL_SECTION_TITLE,
+  // DELIVERY V7 — a compound truth and a standoff are conclusions, not explanation. Losing either half to
+  // deduplication would turn "both of these are true" back into a single-direction answer.
+  DECISION_MEANING_TITLE, CONFLICT_SECTION_TITLE,
 ];
 const PROTECTED_SECTION = (title: string): boolean =>
   PROTECTED_TITLES.includes(title) || title.startsWith('전문근거');
@@ -595,17 +602,29 @@ export async function buildServerConsultation(
     // from `verdict`'s own evidence pools — it cannot add a fact or change the verdict itself.
     const contentPlan = verdict ? buildConsultationContentPlan(verdict) : null;
     contentPlanHolder.current = contentPlan;
+    // Built here from the verdict's own synthesis — the identical value `buildConclusionSurfacePlan` derives
+    // the headline, state and close from, so the prompt and the rendered answer cannot disagree.
+    const consumerPlanForDirective = verdict ? buildConsumerDecisionPlan(verdict) : null;
     const planDirective = verdict && contentPlan
       ? [
         renderAnswerPlanDirective(plan, questionDomain),
         // DECISION JUDGMENT V1 — what the person asked FOR, so the reading contract matches the request.
         // The verdict's own stance is unchanged; this only stops a conduct or timing ask from being read
         // back to the user as 하는 쪽 / 하지 않는 쪽.
-        renderVerdictDirective(verdict, buildDecisionProposition(question, {
-          askedAxis: resolveJudgmentDomain(question),
-          intent: resolveQuestionIntent(question),
-          asksTiming: verdict.asksTiming,
-        }).requestedOutcome),
+        renderVerdictDirective(
+          verdict,
+          buildDecisionProposition(question, {
+            askedAxis: resolveJudgmentDomain(question),
+            intent: resolveQuestionIntent(question),
+            asksTiming: verdict.asksTiming,
+          }).requestedOutcome,
+          // DELIVERY V7 — the SAME plan the headline, the close and the sections derive from. Without it the
+          // model is instructed from `verdict.direction` while the answer around it states the synthesis's
+          // conclusion, which is the two-authorities architecture this batch exists to remove.
+          consumerPlanForDirective && consumerPlanForDirective.resolutionKind !== 'NO_APPLICABLE_JUDGMENT'
+            ? consumerMeaningDirective(consumerPlanForDirective)
+            : null,
+        ),
         renderContentPlanDirective(contentPlan),
       ]
           .filter(Boolean)
@@ -909,8 +928,18 @@ export async function buildServerConsultation(
       ).text,
     }
     : null;
+  // DELIVERY V7 — the compound and standoff material, server-rendered.
+  //
+  // 28 of 77 replayable consultations are compound truths and 4 are genuine standoffs. Both shapes have to
+  // carry BOTH sides plus a practical implication, and neither survives being left to composition: the model
+  // sees one conclusion sentence and naturally writes one direction. These are rendered from the plan, so
+  // "what is supported / what is limited / what to do about it" is structurally present rather than hoped for.
+  const consumerPlanSections = groundedPlan?.conclusionSurface.consumerPlan
+    ? renderConsumerDecisionSections(groundedPlan.conclusionSurface.consumerPlan)
+    : [];
   const authoritativeSections = [
     ...(groundedActionSection ? [groundedActionSection] : []),
+    ...consumerPlanSections,
     ...(temporalSection ? [temporalSection] : []),
     ...(closingSection ? [closingSection] : []),
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow

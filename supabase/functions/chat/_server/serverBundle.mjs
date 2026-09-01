@@ -11914,11 +11914,18 @@ function buildDeclinedSummary(v, intent = "DECISION") {
   const reason = REASON_PHRASE[declinedReasonCategory(v)];
   return `${scope}에 대해서는 ${reason} 현재 근거만으로 한쪽 방향을 확정하기 어렵습니다. ${DECLINED_CLOSING[intent]}`;
 }
-function renderVerdictDirective(v, requestedOutcome) {
+function renderVerdictDirective(v, requestedOutcome, consumerMeaning) {
   const lines = ["[점사 판정 — 서버가 확정한 결론(그대로 노출하지 말 것)]"];
-  const declined = isDeclinedToDecide(v);
-  lines.push(`· 결론: ${v.primaryConclusion}`);
-  lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  const declined = consumerMeaning ? !consumerMeaning.directional : isDeclinedToDecide(v);
+  if (consumerMeaning) {
+    lines.push(`· 결론: ${consumerMeaning.headlineMeaning}`);
+    lines.push(`· ${consumerMeaning.instruction}`);
+    lines.push(`· 참여한 학문에 대해 이렇게만 말하십시오 (더 늘리지 마십시오): ${consumerMeaning.authorityDisclosure}`);
+    lines.push(`· 실용적 조언은 이 범위를 넘지 마십시오: ${consumerMeaning.actionBoundary}`);
+  } else {
+    lines.push(`· 결론: ${v.primaryConclusion}`);
+    lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  }
   if (requestedOutcome === "CONDUCT") {
     lines.push(
       '· 이 질문은 "할까 말까"가 아니라 "무엇을 조심하고 어떻게 해야 하는가"를 물었습니다. 위 방향은 판단의 근거로만 쓰고, 답은 아래 근거로 잡힌 제약·주의 지점을 구체적으로 짚는 형태로 쓰십시오. 근거에 없는 일반적인 조언을 지어내지 마십시오.'
@@ -15854,6 +15861,156 @@ function parseDivinationVerdict(v) {
     return void 0;
   }
   const decidingAxes2 = Array.isArray(o.decidingAxes) ? o.decidingAxes : void 0;
+  const KINDS = /* @__PURE__ */ new Set([
+    "AGREED",
+    "QUALIFIED",
+    "COMPOUND_MIXED",
+    "TEMPORAL_SPLIT",
+    "OUTCOME_SPLIT",
+    "TRUE_STANDOFF",
+    "SINGLE_AUTHORITY",
+    "NON_DIRECTIONAL",
+    "NO_APPLICABLE_JUDGMENT"
+  ]);
+  const SY_STANCES = /* @__PURE__ */ new Set(["FOR", "AGAINST", "QUALIFIED_FOR", "QUALIFIED_AGAINST", "COMPOUND", "UNRESOLVED"]);
+  const OUTCOMES = /* @__PURE__ */ new Set(["DIRECTION", "OCCURRENCE", "PERIOD", "CAUSE", "DESCRIPTION", "CONDUCT"]);
+  const AUTHORITIES = /* @__PURE__ */ new Set([
+    "DIRECT_PROPOSITION",
+    "BOUNDED_DOMAIN_SUMMARY",
+    "INDIRECT_QUALIFIER",
+    "CONTEXT_ONLY"
+  ]);
+  const SY_ROLES = /* @__PURE__ */ new Set(["PRIMARY", "OUTCOME", "CONSTRAINT", "TIMING", "CONTEXT"]);
+  const CONCLUSION_DIRECTIONS = /* @__PURE__ */ new Set(["FAVORABLE", "UNFAVORABLE", "RESTRICTED", "NONE"]);
+  const BANDS = /* @__PURE__ */ new Set(["NEAR", "STRUCTURAL", "UNSCOPED"]);
+  const RECONCILED = /* @__PURE__ */ new Set(["AUTHORITY_DIRECTNESS", "STRICT_DOMINANCE", "TEMPORAL_SCOPE", "QUALIFICATION"]);
+  let decisionCrossSynthesis;
+  if (o.decisionCrossSynthesis !== void 0) {
+    const raw = o.decisionCrossSynthesis;
+    if (raw === null || typeof raw !== "object") {
+      return void 0;
+    }
+    const sy = raw;
+    if (typeof sy.propositionId !== "string" || sy.propositionId.length === 0) {
+      return void 0;
+    }
+    if (!enumOk(KINDS, sy.resolutionKind)) {
+      return void 0;
+    }
+    if (!enumOk(SY_STANCES, sy.finalStance)) {
+      return void 0;
+    }
+    if (!enumOk(OUTCOMES, sy.requestedOutcome)) {
+      return void 0;
+    }
+    const parts = (x) => {
+      if (!Array.isArray(x)) return null;
+      return x.every((e) => e !== null && typeof e === "object") ? x : null;
+    };
+    const participants = parts(sy.participatingJudgments);
+    const primaries = parts(sy.primaryJudgments);
+    const qualifiers = parts(sy.qualifiers);
+    const pairs = parts(sy.conflictPairs);
+    if (!participants || !primaries || !qualifiers || !pairs) {
+      return void 0;
+    }
+    const parseParticipant = (p) => {
+      if (!enumOk(DISCIPLINES, p.discipline)) return null;
+      if (!enumOk(AUTHORITIES, p.authority)) return null;
+      if (!enumOk(CONCLUSION_DIRECTIONS, p.direction)) return null;
+      if (!enumOk(RELIABILITIES, p.reliability)) return null;
+      if (!enumOk(DIRECTNESS, p.directness)) return null;
+      if (p.axis !== null && !enumOk(AXES, p.axis)) return null;
+      if (p.role !== null && !enumOk(SY_ROLES, p.role)) return null;
+      if (p.temporalBand !== null && !enumOk(BANDS, p.temporalBand)) return null;
+      if (typeof p.statement !== "string") return null;
+      if (!isStringArray2(p.evidenceIds) || !isStringArray2(p.derivedFromAxes)) return null;
+      if (!p.derivedFromAxes.every((a) => AXES.has(a))) return null;
+      return {
+        discipline: p.discipline,
+        authority: p.authority,
+        axis: p.axis,
+        role: p.role,
+        direction: p.direction,
+        statement: p.statement,
+        directness: p.directness,
+        reliability: p.reliability,
+        temporalBand: p.temporalBand,
+        evidenceIds: [...p.evidenceIds],
+        derivedFromAxes: [...p.derivedFromAxes]
+      };
+    };
+    const parseTruths = (x) => {
+      const arr2 = parts(x);
+      if (!arr2) return null;
+      const out = arr2.map((t) => {
+        if (!enumOk(DISCIPLINES, t.discipline) || !enumOk(AXES, t.axis) || !enumOk(SY_ROLES, t.role)) return null;
+        if (!enumOk(CONCLUSION_DIRECTIONS, t.direction) || !enumOk(BANDS, t.temporalBand)) return null;
+        if (typeof t.statement !== "string" || !isStringArray2(t.evidenceIds)) return null;
+        return {
+          discipline: t.discipline,
+          axis: t.axis,
+          role: t.role,
+          direction: t.direction,
+          temporalBand: t.temporalBand,
+          statement: t.statement,
+          evidenceIds: [...t.evidenceIds]
+        };
+      });
+      return out.some((t) => t === null) ? null : out;
+    };
+    const participantsOut = participants.map(parseParticipant);
+    const primariesOut = primaries.map(parseParticipant);
+    const qualifiersOut = qualifiers.map(parseParticipant);
+    if ([...participantsOut, ...primariesOut, ...qualifiersOut].some((p) => p === null)) {
+      return void 0;
+    }
+    const supporting = parseTruths(sy.supportingTruths);
+    const limiting = parseTruths(sy.limitingTruths);
+    const temporal = parseTruths(sy.temporalQualifications);
+    const outcomes = parseTruths(sy.outcomeQualifications);
+    if (!supporting || !limiting || !temporal || !outcomes) {
+      return void 0;
+    }
+    const pairsOut = pairs.map((c) => {
+      if (!enumOk(DISCIPLINES, c.a) || !enumOk(DISCIPLINES, c.b) || !enumOk(AXES, c.axis)) return null;
+      if (!Array.isArray(c.directions) || c.directions.length !== 2) return null;
+      if (!c.directions.every((d) => enumOk(CONCLUSION_DIRECTIONS, d))) return null;
+      if (c.reconciledBy !== null && !enumOk(RECONCILED, c.reconciledBy)) return null;
+      return {
+        a: c.a,
+        b: c.b,
+        axis: c.axis,
+        directions: [c.directions[0], c.directions[1]],
+        reconciledBy: c.reconciledBy
+      };
+    });
+    if (pairsOut.some((c) => c === null)) {
+      return void 0;
+    }
+    if (!Array.isArray(sy.provenance) || sy.provenance.length !== 1 || sy.provenance[0] !== "deokbunai.decision-cross-synthesis.v1") {
+      return void 0;
+    }
+    if (sy.unresolvedReason !== void 0 && typeof sy.unresolvedReason !== "string") {
+      return void 0;
+    }
+    decisionCrossSynthesis = {
+      propositionId: sy.propositionId,
+      requestedOutcome: sy.requestedOutcome,
+      participatingJudgments: participantsOut,
+      primaryJudgments: primariesOut,
+      qualifiers: qualifiersOut,
+      resolutionKind: sy.resolutionKind,
+      finalStance: sy.finalStance,
+      supportingTruths: supporting,
+      limitingTruths: limiting,
+      temporalQualifications: temporal,
+      outcomeQualifications: outcomes,
+      conflictPairs: pairsOut,
+      ...typeof sy.unresolvedReason === "string" ? { unresolvedReason: sy.unresolvedReason } : {},
+      provenance: ["deokbunai.decision-cross-synthesis.v1"]
+    };
+  }
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger2(o.evaluatedAtEpochSeconds)) {
     return void 0;
   }
@@ -15966,6 +16123,7 @@ function parseDivinationVerdict(v) {
     questionDomain: o.questionDomain,
     questionIntent: o.questionIntent,
     ...decidingAxes2 ? { decidingAxes: [...decidingAxes2] } : {},
+    ...decisionCrossSynthesis ? { decisionCrossSynthesis } : {},
     evaluatedAtEpochSeconds: typeof o.evaluatedAtEpochSeconds === "number" ? o.evaluatedAtEpochSeconds : null,
     asksTiming: o.asksTiming,
     premises: premisesOut,
@@ -16218,149 +16376,6 @@ function isDecisionVersionMismatch(persisted, current) {
   return false;
 }
 
-// src/features/chat/server/consultationSurfacePlan.ts
-var PROCEED_LEXICON = /밀고\s*가|그대로\s*가|진행하(?:셔도|시면|십시오)|계속\s*하(?:셔도|시면)|움직이(?:셔도|시면|십시오)|해도\s*됩니다|시작하(?:셔도|시면)/;
-var HOLD_LEXICON = /유지하시는|유지하십시오|방향을\s*틀기보다|미루십시오|미루시는|늦추십시오|줄이(?:고|십시오|시는)|확정하지\s*(?:마|않)|크게\s*벌리지|하지\s*마십시오|보류/;
-function closingDirectionOf(text) {
-  if (HOLD_LEXICON.test(text)) return "HOLD";
-  return PROCEED_LEXICON.test(text) ? "PROCEED" : "NEUTRAL";
-}
-var NON_DIRECTIONAL_CLOSING = "지금 확인된 근거는 여기까지입니다. 한쪽으로 미리 정해 두지 마시고, 되돌릴 수 있는 범위에서 확인해 보십시오.";
-var MIXED_CLOSING = "이 두 조건은 함께 걸려 있습니다. 한쪽만 떼어 놓고 보시면 결론이 달라지니, 두 가지를 같이 두고 판단하십시오.";
-var FOR_DIRECTIONS = ["STRONGLY_FOR", "FOR"];
-var CONDITIONAL_DIRECTIONS = ["CONDITIONAL_FOR", "FOR_BUT_LATER", "AGAINST_FOR_NOW", "CONDITIONAL_AGAINST"];
-var AGAINST_DIRECTIONS = ["AGAINST", "STRONGLY_AGAINST"];
-function conclusionStateOf(verdict) {
-  const d = verdict.direction;
-  if (d === "INSUFFICIENT_DATA") return "INSUFFICIENT";
-  if (d === "INSUFFICIENT_EVIDENCE") return "UNRESOLVED";
-  if (FOR_DIRECTIONS.includes(d)) return "OPEN";
-  if (AGAINST_DIRECTIONS.includes(d)) return "BLOCKED";
-  if (CONDITIONAL_DIRECTIONS.includes(d)) return "MIXED";
-  return "UNRESOLVED";
-}
-var PRIMITIVE_BASIS = /^단일 근거/;
-var HEADLINE_BY_STATE = {
-  OPEN: (a) => `${a}에 대해서는 지금 열려 있는 쪽으로 봅니다. 아래 근거가 그 방향으로 함께 서 있습니다.`,
-  BLOCKED: (a) => `${a}에 대해서는 지금 크게 벌일 자리는 아닙니다. 아래 근거가 같은 제한을 가리킵니다.`,
-  MIXED: (a) => `${a}에 대해서는 열리는 쪽과 걸리는 쪽이 함께 있습니다. 어느 한쪽만 보고 정하기는 이릅니다.`,
-  UNRESOLVED: (a) => `${a}에 대해서는 지금 근거만으로 한쪽을 확정하기 어렵습니다.`,
-  INSUFFICIENT: (a) => `${a}에 대해서는 판단에 필요한 근거가 아직 충분하지 않습니다.`
-};
-function buildConclusionSurfacePlan(verdict) {
-  const state = conclusionStateOf(verdict);
-  const supplied = (verdict.actionableInterpretation ?? "").trim();
-  const directional = state === "OPEN" || state === "BLOCKED";
-  const suppliedIsNeutral = supplied.length > 0 && closingDirectionOf(supplied) === "NEUTRAL";
-  const headlineOverride = PRIMITIVE_BASIS.test(verdict.dominantBasis ?? "") ? HEADLINE_BY_STATE[state](axisLabel(verdict.questionDomain)) : null;
-  if (state === "UNRESOLVED" || state === "INSUFFICIENT") {
-    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING, directional: false };
-  }
-  if (state === "MIXED") {
-    return { state, headlineOverride, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
-  }
-  if (supplied.length === 0) return { state, headlineOverride, closing: null, directional };
-  const asserted = closingDirectionOf(supplied);
-  const consistent = asserted === "NEUTRAL" || (state === "OPEN" ? asserted === "PROCEED" : asserted === "HOLD");
-  return { state, headlineOverride, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
-}
-var CROSS_QUALIFIER_FRAME = "이 판단에 함께 걸리는 다른 축입니다";
-var contentDomainOf = (d) => routeConsultationJudgeDomain(void 0, d);
-var squash = (s) => s.replace(/\s+/g, "");
-function crossMaterialCorpus(verdict) {
-  return squash([
-    ...verdict.agreementPoints,
-    ...verdict.contradictionResolutions.flatMap((r) => [r.conflict, r.resolution]),
-    ...verdict.contradictionPoints
-  ].join("\n"));
-}
-function surfaceRelevanceOf(claim, askedAxis, materialCorpus) {
-  if (claim.domain === null) return "SUPPORTING_CONTEXT";
-  if (claim.domain === "TIMING") return "SUPPORTING_CONTEXT";
-  const asked = contentDomainOf(askedAxis);
-  const own = contentDomainOf(claim.domain);
-  if (asked === null || own === null) return "SUPPORTING_CONTEXT";
-  if (own === asked) return "ASKED_AXIS_PRIMARY";
-  return materialCorpus.includes(squash(claim.authoritativeMeaning)) ? "CROSS_MATERIAL_QUALIFIER" : "OFF_AXIS_NON_MATERIAL";
-}
-var isSurfaceable = (r) => r !== "OFF_AXIS_NON_MATERIAL";
-var monthKeyText = (key2) => `${Math.trunc(key2 / 100)}년 ${key2 % 100}월`;
-var BROAD_LIMIT = "그보다 좁은 시점은 지금 근거로는 나누기 어렵습니다.";
-var NO_AUTHORITY = "지금 확인된 근거로는 시점을 좁혀 말씀드릴 수 없습니다. 없는 시기를 만들어 드리지는 않겠습니다.";
-var NO_AUTHORITY_CHECKPOINT = "아래 조건이 실제로 바뀌는 지점을 시점 대신 기준으로 삼으십시오.";
-var MAX_LISTED_PERIODS = 3;
-var PAST_YEAR_WINDOW = 1;
-var FUTURE_YEAR_WINDOW = 10;
-function buildTemporalSurfacePlan(authority, hasCheckpoint) {
-  const hasTimingProse = (authority.timingConclusion ?? "").trim().length > 0;
-  const ref = authority.referenceYear;
-  const nowKey = ref !== null && authority.referenceMonth !== null ? ref * 100 + authority.referenceMonth : null;
-  const allMonths = [...authority.months].filter(Number.isInteger).sort((a, b) => a - b);
-  const forward = nowKey === null ? allMonths : allMonths.filter((m) => m >= nowKey);
-  const months = forward.length > 0 ? forward : allMonths;
-  const years = [...authority.years].filter((y) => Number.isFinite(y) && (ref === null || y >= ref - PAST_YEAR_WINDOW && y <= ref + FUTURE_YEAR_WINDOW)).sort((a, b) => a - b);
-  if (months.length > 0) {
-    return {
-      precision: "NARROW",
-      text: `근거가 실제로 잡히는 시점은 ${months.slice(0, MAX_LISTED_PERIODS).map(monthKeyText).join(", ")}입니다.`
-    };
-  }
-  if (years.length > 0) {
-    const named = `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(", ")}입니다.`;
-    if (authority.referenceMonth !== null && ref !== null) {
-      return {
-        precision: "NARROW",
-        text: `${named} 이 판단은 ${ref}년 ${authority.referenceMonth}월 흐름을 기준으로 본 것이고, 그보다 좁혀 특정 달을 짚을 근거는 아직 없습니다.`
-      };
-    }
-    return { precision: "NARROW", text: named };
-  }
-  if (ref !== null) {
-    const month = authority.referenceMonth !== null ? ` ${authority.referenceMonth}월` : "";
-    return { precision: "NARROW", text: `이 판단은 ${ref}년${month} 흐름을 기준으로 본 것입니다.` };
-  }
-  if (authority.ageMin !== null && authority.ageMax !== null) {
-    return {
-      precision: "BROAD",
-      text: `지금 보고 있는 큰 흐름은 ${authority.ageMin}~${authority.ageMax}세 구간입니다. ${BROAD_LIMIT}`
-    };
-  }
-  if (hasTimingProse) return { precision: "BROAD", text: BROAD_LIMIT };
-  return { precision: "NONE", text: hasCheckpoint ? `${NO_AUTHORITY} ${NO_AUTHORITY_CHECKPOINT}` : NO_AUTHORITY };
-}
-var TEMPORAL_SECTION_TITLE = "시기";
-function temporalAuthorityFrom(grounding, temporalContext, verdict) {
-  const years = /* @__PURE__ */ new Set();
-  const months = /* @__PURE__ */ new Set();
-  let ageMin = null;
-  let ageMax = null;
-  if (grounding.status === "available") {
-    for (const ev6 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
-      const ta = ev6.timingAnchors;
-      if (!ta) continue;
-      for (const y of ta.years ?? []) if (Number.isFinite(y)) years.add(y);
-      for (const m of ta.months ?? []) if (Number.isInteger(m)) months.add(m);
-      if (ta.daewoonAgeSpan) {
-        ageMin = ageMin === null ? ta.daewoonAgeSpan.min : Math.min(ageMin, ta.daewoonAgeSpan.min);
-        ageMax = ageMax === null ? ta.daewoonAgeSpan.max : Math.max(ageMax, ta.daewoonAgeSpan.max);
-      }
-    }
-  }
-  for (const t of temporalContext.resolvedTargets) {
-    if (t >= 1e5) months.add(t);
-    else if (Number.isInteger(t)) years.add(t);
-  }
-  return {
-    years: [...years],
-    months: [...months],
-    referenceYear: temporalContext.referenceYear ?? null,
-    referenceMonth: temporalContext.referenceMonth ?? null,
-    ageMin,
-    ageMax,
-    timingConclusion: verdict?.timingConclusion ?? null
-  };
-}
-
 // src/features/chat/server/koreanRealization.ts
 var HANGUL_BASE = 44032;
 var HANGUL_LAST = 55203;
@@ -16491,6 +16506,341 @@ function realizeForConsumer(text) {
   return realize(toConsumerIdentifiers(text));
 }
 
+// src/features/chat/server/consumerDecisionPlan.ts
+var DISCIPLINE_LABEL3 = {
+  MYUNGRI: "명리",
+  ZIWEI: "자미두수",
+  QIMEN: "기문둔갑"
+};
+var joinNames = (ds) => ds.map((d) => DISCIPLINE_LABEL3[d]).join("·");
+var say = (text) => realizeForConsumer(text);
+var STATE_BY_KIND = {
+  AGREED: "FROM_STANCE",
+  SINGLE_AUTHORITY: "FROM_STANCE",
+  QUALIFIED: "MIXED",
+  COMPOUND_MIXED: "MIXED",
+  TEMPORAL_SPLIT: "MIXED",
+  OUTCOME_SPLIT: "MIXED",
+  TRUE_STANDOFF: "UNRESOLVED",
+  NON_DIRECTIONAL: "UNRESOLVED",
+  NO_APPLICABLE_JUDGMENT: "UNRESOLVED"
+};
+var truthOf = (t) => ({
+  axis: t.axis,
+  axisName: axisLabel(t.axis, "전반"),
+  discipline: t.discipline,
+  meaning: t.statement,
+  evidenceIds: t.evidenceIds
+});
+function headlineFor(kind, direction, primaryAxis, otherAxis, disciplines) {
+  const opens = direction === "PROCEED";
+  switch (kind) {
+    case "AGREED":
+      return opens ? `${primaryAxis}에 대해서는 지금 열려 있는 쪽으로 봅니다. 서로 다른 근거가 같은 방향으로 함께 서 있습니다.` : `${primaryAxis}에 대해서는 지금 크게 벌일 자리는 아닙니다. 서로 다른 근거가 같은 제한을 가리킵니다.`;
+    case "SINGLE_AUTHORITY":
+      return opens ? `${primaryAxis}에 대해서는 열려 있는 쪽으로 봅니다. 다만 이 판단은 ${joinNames(disciplines)} 한 곳에서 나온 것이라, 그만큼의 무게로 보시면 됩니다.` : `${primaryAxis}에 대해서는 크게 벌일 자리는 아닙니다. 다만 이 판단은 ${joinNames(disciplines)} 한 곳에서 나온 것이라, 그만큼의 무게로 보시면 됩니다.`;
+    case "QUALIFIED":
+      return opens ? `${primaryAxis} 자체는 열려 있는 쪽으로 봅니다. 다만 함께 걸리는 부분이 있어, 그 범위 안에서 보셔야 합니다.` : `${primaryAxis}은(는) 지금 크게 벌일 자리는 아닙니다. 다만 아주 막혀 있는 것은 아니라, 범위를 좁히면 여지는 있습니다.`;
+    case "OUTCOME_SPLIT":
+      return `${primaryAxis} 자체${opens ? "는 열려 있습니다" : "는 지금 무리가 있습니다"}. 다만 그 뒤에 오는 ${otherAxis ?? "결과"}은(는) 같은 쪽으로 보기 어렵습니다. 이 둘은 나눠서 보셔야 합니다.`;
+    case "TEMPORAL_SPLIT":
+      return `${primaryAxis}은(는) 큰 흐름과 가까운 시기가 서로 다르게 나옵니다. 방향과 시점을 같은 것으로 묶지 마시고 나눠서 보십시오.`;
+    case "COMPOUND_MIXED":
+      return `${primaryAxis}에 대해서는 서로 다른 두 가지가 함께 사실입니다. 어느 한쪽만 떼어 보시면 결론이 달라집니다.`;
+    case "TRUE_STANDOFF":
+      return `${primaryAxis}에 대해서는 ${joinNames(disciplines)}이(가) 서로 다른 방향을 가리킵니다. 어느 한쪽으로 정하는 것은 지금 근거가 받쳐 주지 않아, 정하지 않고 양쪽을 그대로 보여 드립니다.`;
+    case "NON_DIRECTIONAL":
+      return `${primaryAxis}에 대해 물어보신 것은 좋다·나쁘다를 정하는 질문이 아니어서, 그 형태로 답하지 않겠습니다. 아래에 확인된 부분을 그대로 정리해 드립니다.`;
+    case "NO_APPLICABLE_JUDGMENT":
+      return `${primaryAxis}에 대해서는 지금 세울 수 있는 판단이 나오지 않았습니다. 없는 이야기를 만들어 드리지는 않겠습니다.`;
+  }
+}
+function disclosureFor(kind, deciders, contributors) {
+  if (kind === "TRUE_STANDOFF" && deciders.length >= 2) {
+    return `이 판단에는 ${joinNames(deciders)}가 각각 참여했고, 두 곳의 결론이 서로 다릅니다.`;
+  }
+  if (deciders.length >= 2) {
+    return `${joinNames(deciders)}가 각각 따로 보고 같은 결론에 이르렀습니다.`;
+  }
+  if (deciders.length === 1) {
+    const others = contributors.filter((d) => d !== deciders[0]);
+    const tail = others.length > 0 ? ` ${joinNames(others)}은(는) 이 질문을 직접 보는 자리가 없어 참고로만 두었습니다.` : "";
+    return `이 결론은 ${joinNames(deciders)}이(가) 본 것입니다.${tail}`;
+  }
+  return contributors.length > 0 ? `${joinNames(contributors)}에서 참고할 만한 내용은 있었지만, 이 질문을 직접 판단할 자리는 나오지 않았습니다.` : "이 질문을 직접 판단할 자리가 어느 쪽에도 나오지 않았습니다.";
+}
+function actionFor(kind, direction, limits, outcomes, temporal, primaryAxis) {
+  const named = [...limits, ...outcomes];
+  const watch = named.length > 0 ? [...new Set(named.map((t) => t.axisName))].join("·") : null;
+  switch (kind) {
+    case "AGREED":
+    case "SINGLE_AUTHORITY":
+      return direction === "PROCEED" ? `${primaryAxis}은(는) 지금 움직이셔도 되는 쪽입니다. 다만 한 번에 크게 벌리기보다, 되돌릴 수 있는 크기에서 시작하십시오.` : `${primaryAxis}에서는 지금 새로 벌이는 쪽은 미루십시오. 이미 하고 계신 범위를 지키는 것이 이번 흐름에 맞습니다.`;
+    case "QUALIFIED":
+      return watch ? `${primaryAxis}은(는) ${direction === "PROCEED" ? "가셔도 되는 쪽입니다" : "지금은 미루시는 쪽입니다"}. 대신 ${watch}에서 걸리는 부분을 먼저 정리해 두고 움직이십시오.` : `${primaryAxis}은(는) ${direction === "PROCEED" ? "가셔도 되는 쪽이되" : "미루시는 쪽이되"}, 범위를 좁혀서 보십시오.`;
+    // An axis label is a NOUN PHRASE for a reading ("끌리는 힘", "돈이 남는 쪽"), never an action, so it may
+    // not be glued into a verb phrase — "끌리는 힘를 실행하는 것" is what that produced. It stays a topic.
+    case "OUTCOME_SPLIT":
+      return `${primaryAxis} 자체는 ${direction === "PROCEED" ? "지금 막히지 않습니다" : "지금은 무리입니다"}. 문제는 그 다음이라, ${watch ?? "뒤따르는 결과"} 쪽을 미리 정해 두고 들어가십시오.`;
+    case "TEMPORAL_SPLIT":
+      return temporal.length > 0 ? `방향은 그대로 두시고 시점만 나눠 보십시오. ${temporal[0].meaning}` : `방향은 그대로 두시고, 시점만 따로 확인하고 움직이십시오.`;
+    case "COMPOUND_MIXED":
+      return watch ? `두 가지가 함께 걸려 있어, 한쪽만 보고 정하시면 뒤집힙니다. ${watch} 쪽을 함께 두고 판단하십시오.` : `두 가지가 함께 걸려 있습니다. 한쪽만 떼어 놓고 정하지 마십시오.`;
+    case "TRUE_STANDOFF":
+      return watch ? `어느 쪽으로 정해 드리지 않겠습니다. 대신 ${watch}에서 확인된 부분은 실제로 확인이 가능하니, 그것부터 확인하고 결정하십시오.` : `어느 쪽으로 정해 드리지 않겠습니다. 지금은 되돌릴 수 있는 범위 밖으로 나가지 않는 것까지가 근거로 말씀드릴 수 있는 선입니다.`;
+    case "NON_DIRECTIONAL":
+      return named.length > 0 ? `${watch} 쪽에서 확인된 부분을 먼저 챙기십시오.` : "지금 확인된 범위 안에서만 보시고, 그 밖으로는 넘겨짚지 마십시오.";
+    case "NO_APPLICABLE_JUDGMENT":
+      return "지금은 이 질문을 판단할 근거가 서지 않아, 무엇을 하시라고 말씀드리지 않겠습니다.";
+  }
+}
+function buildConsumerDecisionPlan(verdict) {
+  const s = verdict.decisionCrossSynthesis;
+  if (!s) return null;
+  const deciders = s.primaryJudgments.map((p) => p.discipline);
+  const contributors = s.participatingJudgments.filter((p) => p.authority !== "CONTEXT_ONLY").map((p) => p.discipline);
+  const direction = s.finalStance === "FOR" || s.finalStance === "QUALIFIED_FOR" ? "PROCEED" : s.finalStance === "AGAINST" || s.finalStance === "QUALIFIED_AGAINST" ? "HOLD" : s.finalStance === "COMPOUND" ? s.primaryJudgments.some((p) => p.direction === "FAVORABLE") ? "PROCEED" : s.primaryJudgments.some((p) => p.direction === "UNFAVORABLE") ? "HOLD" : "NONE" : "NONE";
+  const mapped = STATE_BY_KIND[s.resolutionKind];
+  const conclusionState = mapped !== "FROM_STANCE" ? mapped : direction === "PROCEED" ? "OPEN" : direction === "HOLD" ? "BLOCKED" : "UNRESOLVED";
+  const supportingTruths = s.supportingTruths.map(truthOf);
+  const limitingTruths = s.limitingTruths.map(truthOf);
+  const outcomeQualifications = s.outcomeQualifications.map(truthOf);
+  const temporalQualifications = s.temporalQualifications.map(truthOf);
+  const primaryAxis = axisLabel(
+    s.primaryJudgments[0]?.axis ?? verdict.questionDomain,
+    "전반"
+  );
+  const otherAxis = outcomeQualifications[0]?.axisName ?? null;
+  const conflictExplanation = s.resolutionKind === "TRUE_STANDOFF" ? say([
+    ...s.primaryJudgments.map((p) => `${DISCIPLINE_LABEL3[p.discipline]}은(는) "${p.statement}"`),
+    s.unresolvedReason ?? ""
+  ].filter((x) => x.length > 0).join(" / ")) : null;
+  return {
+    propositionId: s.propositionId,
+    resolutionKind: s.resolutionKind,
+    requestedOutcome: s.requestedOutcome,
+    headlineMeaning: say(headlineFor(
+      s.resolutionKind,
+      direction,
+      primaryAxis,
+      otherAxis,
+      deciders.length > 0 ? deciders : contributors
+    )),
+    primaryDirection: direction,
+    conclusionState,
+    supportingTruths,
+    limitingTruths,
+    outcomeQualifications,
+    temporalQualifications,
+    conflictExplanation,
+    authorityDisclosure: say(disclosureFor(s.resolutionKind, deciders, contributors)),
+    actionBoundary: say(actionFor(
+      s.resolutionKind,
+      direction,
+      limitingTruths,
+      outcomeQualifications,
+      temporalQualifications,
+      primaryAxis
+    )),
+    evidenceRefs: [...new Set([
+      ...supportingTruths,
+      ...limitingTruths,
+      ...outcomeQualifications,
+      ...temporalQualifications
+    ].flatMap((t) => t.evidenceIds))],
+    provenance: ["deokbunai.consumer-decision-plan.v1"]
+  };
+}
+var INSTRUCTION_BY_STATE = {
+  OPEN: '결론은 "하는 쪽"입니다. 분명하게 말하되 과장하지 마십시오.',
+  BLOCKED: '결론은 "하지 않는 쪽"입니다. 분명하게 말하십시오.',
+  MIXED: '이 답은 한쪽으로 정해지지 않습니다. 서로 다른 두 가지가 함께 사실이므로, 반드시 둘 다 말하고 어느 한쪽으로 요약하지 마십시오. "좋은 점도 있고 나쁜 점도 있습니다" 같은 뭉뚱그린 문장으로 줄이지도 마십시오.',
+  UNRESOLVED: "방향을 정하지 않았습니다. 억지로 좋다·나쁘다를 만들지 말고, 무엇이 보이고 무엇이 안 보이는지 그대로 말하십시오.",
+  INSUFFICIENT: "지금 근거로는 방향을 정하지 않습니다. 무엇이 있어야 볼 수 있는지 솔직하게 말하십시오."
+};
+var consumerMeaningDirective = (plan) => ({
+  headlineMeaning: plan.headlineMeaning,
+  instruction: INSTRUCTION_BY_STATE[plan.conclusionState],
+  authorityDisclosure: plan.authorityDisclosure,
+  actionBoundary: plan.actionBoundary,
+  directional: plan.conclusionState === "OPEN" || plan.conclusionState === "BLOCKED"
+});
+var DECISION_MEANING_TITLE = "이 결론을 어떻게 보면 되나요";
+var CONFLICT_SECTION_TITLE = "두 판단이 갈리는 지점";
+function renderConsumerDecisionSections(plan) {
+  const out = [];
+  const line = (t) => `· ${t.axisName}: ${t.meaning}`;
+  const compound = plan.conclusionState === "MIXED";
+  const bothSides = [...plan.outcomeQualifications, ...plan.limitingTruths];
+  if (compound && bothSides.length > 0) {
+    const body = [
+      ...plan.supportingTruths.map(line),
+      ...bothSides.map(line),
+      plan.actionBoundary
+    ].join("\n");
+    out.push({ title: DECISION_MEANING_TITLE, body });
+  }
+  if (plan.conflictExplanation) {
+    out.push({
+      title: CONFLICT_SECTION_TITLE,
+      body: [plan.conflictExplanation, plan.authorityDisclosure, plan.actionBoundary].join("\n")
+    });
+  }
+  return out;
+}
+
+// src/features/chat/server/consultationSurfacePlan.ts
+var PROCEED_LEXICON = /밀고\s*가|그대로\s*가|진행하(?:셔도|시면|십시오)|계속\s*하(?:셔도|시면)|움직이(?:셔도|시면|십시오)|해도\s*됩니다|시작하(?:셔도|시면)/;
+var HOLD_LEXICON = /유지하시는|유지하십시오|방향을\s*틀기보다|미루십시오|미루시는|늦추십시오|줄이(?:고|십시오|시는)|확정하지\s*(?:마|않)|크게\s*벌리지|하지\s*마십시오|보류/;
+function closingDirectionOf(text) {
+  if (HOLD_LEXICON.test(text)) return "HOLD";
+  return PROCEED_LEXICON.test(text) ? "PROCEED" : "NEUTRAL";
+}
+var NON_DIRECTIONAL_CLOSING = "지금 확인된 근거는 여기까지입니다. 한쪽으로 미리 정해 두지 마시고, 되돌릴 수 있는 범위에서 확인해 보십시오.";
+var MIXED_CLOSING = "이 두 조건은 함께 걸려 있습니다. 한쪽만 떼어 놓고 보시면 결론이 달라지니, 두 가지를 같이 두고 판단하십시오.";
+var FOR_DIRECTIONS = ["STRONGLY_FOR", "FOR"];
+var CONDITIONAL_DIRECTIONS = ["CONDITIONAL_FOR", "FOR_BUT_LATER", "AGAINST_FOR_NOW", "CONDITIONAL_AGAINST"];
+var AGAINST_DIRECTIONS = ["AGAINST", "STRONGLY_AGAINST"];
+function conclusionStateOf(verdict) {
+  const d = verdict.direction;
+  if (d === "INSUFFICIENT_DATA") return "INSUFFICIENT";
+  if (d === "INSUFFICIENT_EVIDENCE") return "UNRESOLVED";
+  if (FOR_DIRECTIONS.includes(d)) return "OPEN";
+  if (AGAINST_DIRECTIONS.includes(d)) return "BLOCKED";
+  if (CONDITIONAL_DIRECTIONS.includes(d)) return "MIXED";
+  return "UNRESOLVED";
+}
+var PRIMITIVE_BASIS = /^단일 근거/;
+var HEADLINE_BY_STATE = {
+  OPEN: (a) => `${a}에 대해서는 지금 열려 있는 쪽으로 봅니다. 아래 근거가 그 방향으로 함께 서 있습니다.`,
+  BLOCKED: (a) => `${a}에 대해서는 지금 크게 벌일 자리는 아닙니다. 아래 근거가 같은 제한을 가리킵니다.`,
+  MIXED: (a) => `${a}에 대해서는 열리는 쪽과 걸리는 쪽이 함께 있습니다. 어느 한쪽만 보고 정하기는 이릅니다.`,
+  UNRESOLVED: (a) => `${a}에 대해서는 지금 근거만으로 한쪽을 확정하기 어렵습니다.`,
+  INSUFFICIENT: (a) => `${a}에 대해서는 판단에 필요한 근거가 아직 충분하지 않습니다.`
+};
+function buildConclusionSurfacePlan(verdict) {
+  const consumerPlan = buildConsumerDecisionPlan(verdict);
+  const graphState = conclusionStateOf(verdict);
+  const state = consumerPlan && consumerPlan.resolutionKind !== "NO_APPLICABLE_JUDGMENT" ? consumerPlan.conclusionState : graphState;
+  const supplied = (verdict.actionableInterpretation ?? "").trim();
+  const directional = state === "OPEN" || state === "BLOCKED";
+  const suppliedIsNeutral = supplied.length > 0 && closingDirectionOf(supplied) === "NEUTRAL";
+  const headlineOverride = PRIMITIVE_BASIS.test(verdict.dominantBasis ?? "") ? consumerPlan?.headlineMeaning ?? HEADLINE_BY_STATE[state](axisLabel(verdict.questionDomain)) : consumerPlan && state !== graphState ? consumerPlan.headlineMeaning : null;
+  if (state === "UNRESOLVED" || state === "INSUFFICIENT") {
+    const boundary = consumerPlan && (consumerPlan.resolutionKind === "TRUE_STANDOFF" || consumerPlan.resolutionKind === "NON_DIRECTIONAL") && closingDirectionOf(consumerPlan.actionBoundary) === "NEUTRAL" ? consumerPlan.actionBoundary : null;
+    return {
+      state,
+      consumerPlan,
+      headlineOverride,
+      closing: boundary ?? (suppliedIsNeutral ? supplied : NON_DIRECTIONAL_CLOSING),
+      directional: false
+    };
+  }
+  if (state === "MIXED") {
+    return { state, consumerPlan, headlineOverride, closing: suppliedIsNeutral ? supplied : MIXED_CLOSING, directional: false };
+  }
+  if (supplied.length === 0) return { state, consumerPlan, headlineOverride, closing: null, directional };
+  const asserted = closingDirectionOf(supplied);
+  const consistent = asserted === "NEUTRAL" || (state === "OPEN" ? asserted === "PROCEED" : asserted === "HOLD");
+  return { state, consumerPlan, headlineOverride, closing: consistent ? supplied : NON_DIRECTIONAL_CLOSING, directional };
+}
+var CROSS_QUALIFIER_FRAME = "이 판단에 함께 걸리는 다른 축입니다";
+var contentDomainOf = (d) => routeConsultationJudgeDomain(void 0, d);
+var squash = (s) => s.replace(/\s+/g, "");
+function crossMaterialCorpus(verdict) {
+  return squash([
+    ...verdict.agreementPoints,
+    ...verdict.contradictionResolutions.flatMap((r) => [r.conflict, r.resolution]),
+    ...verdict.contradictionPoints
+  ].join("\n"));
+}
+function surfaceRelevanceOf(claim, askedAxis, materialCorpus) {
+  if (claim.domain === null) return "SUPPORTING_CONTEXT";
+  if (claim.domain === "TIMING") return "SUPPORTING_CONTEXT";
+  const asked = contentDomainOf(askedAxis);
+  const own = contentDomainOf(claim.domain);
+  if (asked === null || own === null) return "SUPPORTING_CONTEXT";
+  if (own === asked) return "ASKED_AXIS_PRIMARY";
+  return materialCorpus.includes(squash(claim.authoritativeMeaning)) ? "CROSS_MATERIAL_QUALIFIER" : "OFF_AXIS_NON_MATERIAL";
+}
+var isSurfaceable = (r) => r !== "OFF_AXIS_NON_MATERIAL";
+var monthKeyText = (key2) => `${Math.trunc(key2 / 100)}년 ${key2 % 100}월`;
+var BROAD_LIMIT = "그보다 좁은 시점은 지금 근거로는 나누기 어렵습니다.";
+var NO_AUTHORITY = "지금 확인된 근거로는 시점을 좁혀 말씀드릴 수 없습니다. 없는 시기를 만들어 드리지는 않겠습니다.";
+var NO_AUTHORITY_CHECKPOINT = "아래 조건이 실제로 바뀌는 지점을 시점 대신 기준으로 삼으십시오.";
+var MAX_LISTED_PERIODS = 3;
+var PAST_YEAR_WINDOW = 1;
+var FUTURE_YEAR_WINDOW = 10;
+function buildTemporalSurfacePlan(authority, hasCheckpoint) {
+  const hasTimingProse = (authority.timingConclusion ?? "").trim().length > 0;
+  const ref = authority.referenceYear;
+  const nowKey = ref !== null && authority.referenceMonth !== null ? ref * 100 + authority.referenceMonth : null;
+  const allMonths = [...authority.months].filter(Number.isInteger).sort((a, b) => a - b);
+  const forward = nowKey === null ? allMonths : allMonths.filter((m) => m >= nowKey);
+  const months = forward.length > 0 ? forward : allMonths;
+  const years = [...authority.years].filter((y) => Number.isFinite(y) && (ref === null || y >= ref - PAST_YEAR_WINDOW && y <= ref + FUTURE_YEAR_WINDOW)).sort((a, b) => a - b);
+  if (months.length > 0) {
+    return {
+      precision: "NARROW",
+      text: `근거가 실제로 잡히는 시점은 ${months.slice(0, MAX_LISTED_PERIODS).map(monthKeyText).join(", ")}입니다.`
+    };
+  }
+  if (years.length > 0) {
+    const named = `근거가 실제로 잡히는 해는 ${years.slice(0, MAX_LISTED_PERIODS).map((y) => `${y}년`).join(", ")}입니다.`;
+    if (authority.referenceMonth !== null && ref !== null) {
+      return {
+        precision: "NARROW",
+        text: `${named} 이 판단은 ${ref}년 ${authority.referenceMonth}월 흐름을 기준으로 본 것이고, 그보다 좁혀 특정 달을 짚을 근거는 아직 없습니다.`
+      };
+    }
+    return { precision: "NARROW", text: named };
+  }
+  if (ref !== null) {
+    const month = authority.referenceMonth !== null ? ` ${authority.referenceMonth}월` : "";
+    return { precision: "NARROW", text: `이 판단은 ${ref}년${month} 흐름을 기준으로 본 것입니다.` };
+  }
+  if (authority.ageMin !== null && authority.ageMax !== null) {
+    return {
+      precision: "BROAD",
+      text: `지금 보고 있는 큰 흐름은 ${authority.ageMin}~${authority.ageMax}세 구간입니다. ${BROAD_LIMIT}`
+    };
+  }
+  if (hasTimingProse) return { precision: "BROAD", text: BROAD_LIMIT };
+  return { precision: "NONE", text: hasCheckpoint ? `${NO_AUTHORITY} ${NO_AUTHORITY_CHECKPOINT}` : NO_AUTHORITY };
+}
+var TEMPORAL_SECTION_TITLE = "시기";
+function temporalAuthorityFrom(grounding, temporalContext, verdict) {
+  const years = /* @__PURE__ */ new Set();
+  const months = /* @__PURE__ */ new Set();
+  let ageMin = null;
+  let ageMax = null;
+  if (grounding.status === "available") {
+    for (const ev6 of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+      const ta = ev6.timingAnchors;
+      if (!ta) continue;
+      for (const y of ta.years ?? []) if (Number.isFinite(y)) years.add(y);
+      for (const m of ta.months ?? []) if (Number.isInteger(m)) months.add(m);
+      if (ta.daewoonAgeSpan) {
+        ageMin = ageMin === null ? ta.daewoonAgeSpan.min : Math.min(ageMin, ta.daewoonAgeSpan.min);
+        ageMax = ageMax === null ? ta.daewoonAgeSpan.max : Math.max(ageMax, ta.daewoonAgeSpan.max);
+      }
+    }
+  }
+  for (const t of temporalContext.resolvedTargets) {
+    if (t >= 1e5) months.add(t);
+    else if (Number.isInteger(t)) years.add(t);
+  }
+  return {
+    years: [...years],
+    months: [...months],
+    referenceYear: temporalContext.referenceYear ?? null,
+    referenceMonth: temporalContext.referenceMonth ?? null,
+    ageMin,
+    ageMax,
+    timingConclusion: verdict?.timingConclusion ?? null
+  };
+}
+
 // src/features/chat/server/consultationContentPlan.ts
 var DOMAIN_FACETS = {
   BUSINESS: [
@@ -16548,7 +16898,7 @@ function roleOf(scope) {
   if (scope === "DAEWOON" || scope === "SEWOON" || scope === "WOLWOON") return "PERIOD";
   return "NATAL";
 }
-var DISCIPLINE_LABEL3 = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
+var DISCIPLINE_LABEL4 = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
 var JUDGMENT_TO_CONTENT_DOMAIN = {
   OPPORTUNITY: "BUSINESS",
   MONEY_INFLOW: "MONEY",
@@ -16700,7 +17050,7 @@ function renderVerifiedEvidenceSection(catalog) {
     byDiscipline.set(e.discipline, lines);
   }
   return [...byDiscipline].map(([discipline, lines]) => ({
-    title: `전문근거 · ${DISCIPLINE_LABEL3[discipline]}`,
+    title: `전문근거 · ${DISCIPLINE_LABEL4[discipline]}`,
     body: lines.join("\n")
   }));
 }
@@ -16720,8 +17070,8 @@ function actionDirectionOf(c, askedAxis) {
   return c.polarity === "SUPPORT" ? "OPEN" : c.polarity === "LIMIT" ? "BLOCKED" : null;
 }
 var byId = (claims, role2) => claims.filter((c) => c.role === role2).map((c) => c.id);
-var DISCIPLINE_LABEL4 = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
-var disciplineLabel = (d) => DISCIPLINE_LABEL4[d];
+var DISCIPLINE_LABEL5 = { MYUNGRI: "명리", ZIWEI: "자미두수", QIMEN: "기문둔갑" };
+var disciplineLabel = (d) => DISCIPLINE_LABEL5[d];
 function evidencePolarity(e) {
   return e.evidenceRole === "COUNTER" ? "LIMIT" : "SUPPORT";
 }
@@ -17683,7 +18033,11 @@ var balanced = (text) => (text.match(/\(/g)?.length ?? 0) === (text.match(/\)/g)
 var PROTECTED_TITLES = [
   ...Object.values(ACTION_TITLE),
   "한마디",
-  TEMPORAL_SECTION_TITLE
+  TEMPORAL_SECTION_TITLE,
+  // DELIVERY V7 — a compound truth and a standoff are conclusions, not explanation. Losing either half to
+  // deduplication would turn "both of these are true" back into a single-direction answer.
+  DECISION_MEANING_TITLE,
+  CONFLICT_SECTION_TITLE
 ];
 var PROTECTED_SECTION = (title) => PROTECTED_TITLES.includes(title) || title.startsWith("전문근거");
 function sanitizeConversation(turns) {
@@ -17869,16 +18223,24 @@ async function buildServerConsultation(request, deps) {
     const verdict = effectiveGrounding.status === "available" ? effectiveGrounding.divinationVerdict ?? null : null;
     const contentPlan = verdict ? buildConsultationContentPlan(verdict) : null;
     contentPlanHolder.current = contentPlan;
+    const consumerPlanForDirective = verdict ? buildConsumerDecisionPlan(verdict) : null;
     const planDirective = verdict && contentPlan ? [
       renderAnswerPlanDirective(plan, questionDomain),
       // DECISION JUDGMENT V1 — what the person asked FOR, so the reading contract matches the request.
       // The verdict's own stance is unchanged; this only stops a conduct or timing ask from being read
       // back to the user as 하는 쪽 / 하지 않는 쪽.
-      renderVerdictDirective(verdict, buildDecisionProposition(question, {
-        askedAxis: resolveJudgmentDomain(question),
-        intent: resolveQuestionIntent(question),
-        asksTiming: verdict.asksTiming
-      }).requestedOutcome),
+      renderVerdictDirective(
+        verdict,
+        buildDecisionProposition(question, {
+          askedAxis: resolveJudgmentDomain(question),
+          intent: resolveQuestionIntent(question),
+          asksTiming: verdict.asksTiming
+        }).requestedOutcome,
+        // DELIVERY V7 — the SAME plan the headline, the close and the sections derive from. Without it the
+        // model is instructed from `verdict.direction` while the answer around it states the synthesis's
+        // conclusion, which is the two-authorities architecture this batch exists to remove.
+        consumerPlanForDirective && consumerPlanForDirective.resolutionKind !== "NO_APPLICABLE_JUDGMENT" ? consumerMeaningDirective(consumerPlanForDirective) : null
+      ),
       renderContentPlanDirective(contentPlan)
     ].filter(Boolean).join("\n") : renderAnswerPlanDirective(plan, questionDomain);
     const base = followUpDirective ? `${planDirective}
@@ -18001,8 +18363,10 @@ ${extraDirective}` : base
       (groundedActionPlan?.sourceClaimIds.length ?? 0) > 0
     ).text
   } : null;
+  const consumerPlanSections = groundedPlan?.conclusionSurface.consumerPlan ? renderConsumerDecisionSections(groundedPlan.conclusionSurface.consumerPlan) : [];
   const authoritativeSections = [
     ...groundedActionSection ? [groundedActionSection] : [],
+    ...consumerPlanSections,
     ...temporalSection ? [temporalSection] : [],
     ...closingSection ? [closingSection] : [],
     // The temporal block is skipped when the accepted answer's own (already grounded-gated) futureFlow

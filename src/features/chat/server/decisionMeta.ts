@@ -508,6 +508,121 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   }
   const decidingAxes: JudgmentDomain[] | undefined = Array.isArray(o.decidingAxes)
     ? (o.decidingAxes as JudgmentDomain[]) : undefined;
+
+  // ── DELIVERY V7 — THE SYNTHESIS, STRICTLY VALIDATED ────────────────────────────────────────────
+  //
+  // It is now the CUSTOMER authority: the headline, the close, the compound/standoff sections and the
+  // language layer's reading contract all derive from it. A follow-up turn that silently dropped it would
+  // answer the same question under the older vocabulary — the defect class this batch closes for the
+  // deciding axes. It is therefore parsed field by field into a NEW object like everything else here; a row
+  // that fails any check loses the synthesis and falls back to the graph verdict, never to a partly-trusted
+  // pass-through.
+  const KINDS = new Set([
+    'AGREED', 'QUALIFIED', 'COMPOUND_MIXED', 'TEMPORAL_SPLIT', 'OUTCOME_SPLIT', 'TRUE_STANDOFF',
+    'SINGLE_AUTHORITY', 'NON_DIRECTIONAL', 'NO_APPLICABLE_JUDGMENT',
+  ]);
+  const SY_STANCES = new Set(['FOR', 'AGAINST', 'QUALIFIED_FOR', 'QUALIFIED_AGAINST', 'COMPOUND', 'UNRESOLVED']);
+  const OUTCOMES = new Set(['DIRECTION', 'OCCURRENCE', 'PERIOD', 'CAUSE', 'DESCRIPTION', 'CONDUCT']);
+  const AUTHORITIES = new Set([
+    'DIRECT_PROPOSITION', 'BOUNDED_DOMAIN_SUMMARY', 'INDIRECT_QUALIFIER', 'CONTEXT_ONLY',
+  ]);
+  const SY_ROLES = new Set(['PRIMARY', 'OUTCOME', 'CONSTRAINT', 'TIMING', 'CONTEXT']);
+  const CONCLUSION_DIRECTIONS = new Set(['FAVORABLE', 'UNFAVORABLE', 'RESTRICTED', 'NONE']);
+  const BANDS = new Set(['NEAR', 'STRUCTURAL', 'UNSCOPED']);
+  const RECONCILED = new Set(['AUTHORITY_DIRECTNESS', 'STRICT_DOMINANCE', 'TEMPORAL_SCOPE', 'QUALIFICATION']);
+
+  let decisionCrossSynthesis: CrossDivinationVerdict['decisionCrossSynthesis'];
+  if (o.decisionCrossSynthesis !== undefined) {
+    const raw = o.decisionCrossSynthesis;
+    if (raw === null || typeof raw !== 'object') { return undefined; }
+    const sy = raw as Record<string, unknown>;
+    if (typeof sy.propositionId !== 'string' || sy.propositionId.length === 0) { return undefined; }
+    if (!enumOk(KINDS, sy.resolutionKind)) { return undefined; }
+    if (!enumOk(SY_STANCES, sy.finalStance)) { return undefined; }
+    if (!enumOk(OUTCOMES, sy.requestedOutcome)) { return undefined; }
+    const parts = (x: unknown): Record<string, unknown>[] | null => {
+      if (!Array.isArray(x)) return null;
+      return x.every((e) => e !== null && typeof e === 'object') ? (x as Record<string, unknown>[]) : null;
+    };
+    const participants = parts(sy.participatingJudgments);
+    const primaries = parts(sy.primaryJudgments);
+    const qualifiers = parts(sy.qualifiers);
+    const pairs = parts(sy.conflictPairs);
+    if (!participants || !primaries || !qualifiers || !pairs) { return undefined; }
+    const parseParticipant = (p: Record<string, unknown>) => {
+      if (!enumOk(DISCIPLINES, p.discipline)) return null;
+      if (!enumOk(AUTHORITIES, p.authority)) return null;
+      if (!enumOk(CONCLUSION_DIRECTIONS, p.direction)) return null;
+      if (!enumOk(RELIABILITIES, p.reliability)) return null;
+      if (!enumOk(DIRECTNESS, p.directness)) return null;
+      if (p.axis !== null && !enumOk(AXES, p.axis)) return null;
+      if (p.role !== null && !enumOk(SY_ROLES, p.role)) return null;
+      if (p.temporalBand !== null && !enumOk(BANDS, p.temporalBand)) return null;
+      if (typeof p.statement !== 'string') return null;
+      if (!isStringArray(p.evidenceIds) || !isStringArray(p.derivedFromAxes)) return null;
+      if (!(p.derivedFromAxes as string[]).every((a) => AXES.has(a))) return null;
+      return {
+        discipline: p.discipline, authority: p.authority, axis: p.axis, role: p.role,
+        direction: p.direction, statement: p.statement, directness: p.directness,
+        reliability: p.reliability, temporalBand: p.temporalBand,
+        evidenceIds: [...(p.evidenceIds as string[])],
+        derivedFromAxes: [...(p.derivedFromAxes as string[])],
+      };
+    };
+    const parseTruths = (x: unknown) => {
+      const arr = parts(x);
+      if (!arr) return null;
+      const out = arr.map((t) => {
+        if (!enumOk(DISCIPLINES, t.discipline) || !enumOk(AXES, t.axis) || !enumOk(SY_ROLES, t.role)) return null;
+        if (!enumOk(CONCLUSION_DIRECTIONS, t.direction) || !enumOk(BANDS, t.temporalBand)) return null;
+        if (typeof t.statement !== 'string' || !isStringArray(t.evidenceIds)) return null;
+        return {
+          discipline: t.discipline, axis: t.axis, role: t.role, direction: t.direction,
+          temporalBand: t.temporalBand, statement: t.statement, evidenceIds: [...(t.evidenceIds as string[])],
+        };
+      });
+      return out.some((t) => t === null) ? null : out;
+    };
+    const participantsOut = participants.map(parseParticipant);
+    const primariesOut = primaries.map(parseParticipant);
+    const qualifiersOut = qualifiers.map(parseParticipant);
+    if ([...participantsOut, ...primariesOut, ...qualifiersOut].some((p) => p === null)) { return undefined; }
+    const supporting = parseTruths(sy.supportingTruths);
+    const limiting = parseTruths(sy.limitingTruths);
+    const temporal = parseTruths(sy.temporalQualifications);
+    const outcomes = parseTruths(sy.outcomeQualifications);
+    if (!supporting || !limiting || !temporal || !outcomes) { return undefined; }
+    const pairsOut = pairs.map((c) => {
+      if (!enumOk(DISCIPLINES, c.a) || !enumOk(DISCIPLINES, c.b) || !enumOk(AXES, c.axis)) return null;
+      if (!Array.isArray(c.directions) || c.directions.length !== 2) return null;
+      if (!c.directions.every((d) => enumOk(CONCLUSION_DIRECTIONS, d))) return null;
+      if (c.reconciledBy !== null && !enumOk(RECONCILED, c.reconciledBy)) return null;
+      return {
+        a: c.a, b: c.b, axis: c.axis,
+        directions: [c.directions[0], c.directions[1]], reconciledBy: c.reconciledBy,
+      };
+    });
+    if (pairsOut.some((c) => c === null)) { return undefined; }
+    if (!Array.isArray(sy.provenance) || sy.provenance.length !== 1
+      || sy.provenance[0] !== 'deokbunai.decision-cross-synthesis.v1') { return undefined; }
+    if (sy.unresolvedReason !== undefined && typeof sy.unresolvedReason !== 'string') { return undefined; }
+    decisionCrossSynthesis = {
+      propositionId: sy.propositionId,
+      requestedOutcome: sy.requestedOutcome,
+      participatingJudgments: participantsOut,
+      primaryJudgments: primariesOut,
+      qualifiers: qualifiersOut,
+      resolutionKind: sy.resolutionKind,
+      finalStance: sy.finalStance,
+      supportingTruths: supporting,
+      limitingTruths: limiting,
+      temporalQualifications: temporal,
+      outcomeQualifications: outcomes,
+      conflictPairs: pairsOut,
+      ...(typeof sy.unresolvedReason === 'string' ? { unresolvedReason: sy.unresolvedReason } : {}),
+      provenance: ['deokbunai.decision-cross-synthesis.v1'],
+    } as unknown as CrossDivinationVerdict['decisionCrossSynthesis'];
+  }
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger(o.evaluatedAtEpochSeconds)) { return undefined; }
   // Every proposition must belong to the same person the verdict is about.
   const subjects = new Set(parsed.map((pr) => pr.subject as string));
@@ -652,6 +767,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     questionDomain: o.questionDomain,
     questionIntent: o.questionIntent,
     ...(decidingAxes ? { decidingAxes: [...decidingAxes] } : {}),
+    ...(decisionCrossSynthesis ? { decisionCrossSynthesis } : {}),
     evaluatedAtEpochSeconds: typeof o.evaluatedAtEpochSeconds === 'number' ? o.evaluatedAtEpochSeconds : null,
     asksTiming: o.asksTiming,
     premises: premisesOut,
