@@ -280,8 +280,14 @@ function assessAxis(
     : null;
 
   const panel = sub && isDirectional(sub.stance) ? fromSubJudgment(sub, role) : null;
+  // A WHOLE-DOMAIN ask is broader than any single-aspect panel entry, so the domain judgment answers it — but
+  // only when the domain judgment actually SAYS something. A MIXED domain reading asserts no direction, and
+  // letting it come first silenced a perfectly good directional panel reading and reported the discipline as
+  // having nothing to say (measured on a money ask whose two options split the domain). A summary that
+  // asserts nothing may qualify a direct reading; it may never replace it with silence.
+  const domainDecides = domain && isDirectional(domain.stance) ? domain : null;
   const ordered = wholeDomain
-    ? [domain, panel, headline, sub ? fromSubJudgment(sub, role) : null]
+    ? [domainDecides, panel, headline, domain, sub ? fromSubJudgment(sub, role) : null]
     : [panel, headline, domain, sub ? fromSubJudgment(sub, role) : null];
   return ordered.find((a): a is DecisionAssessment => a !== null) ?? null;
 }

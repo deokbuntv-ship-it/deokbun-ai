@@ -33,6 +33,19 @@ const DIRECTION_OF: Record<SemanticRelation, ReasonedProposition['direction']> =
   ABSENT: 'NONE',
 };
 
+/**
+ * The CONCLUSION DIRECTION a stance carries — the product's existing stance→direction semantics, in one
+ * callable place.
+ *
+ * This is exactly what the two tables above already compute for every adapted sub-judgment; it is exported
+ * because DECISION CROSS SYNTHESIS V1 has to read the same distinction the graph reads, and in particular the
+ * one the flat FOR/AGAINST split loses: `CONDITIONAL_AGAINST`/`AGAINST_FOR_NOW` are RESTRICTED ("do it, but
+ * narrower / not yet"), not UNFAVORABLE ("do not"). Re-deriving that mapping in the synthesis module would be
+ * a second copy of a semantics that must not drift.
+ */
+export const propositionDirectionOf = (stance: string): ReasonedProposition['direction'] =>
+  DIRECTION_OF[relationFor(stance)];
+
 /** Stances that leave the door open rather than commit. */
 const QUALIFIED_STANCES = new Set<string>(['CONDITIONAL_FOR', 'CONDITIONAL_AGAINST', 'FOR_BUT_LATER', 'AGAINST_FOR_NOW']);
 

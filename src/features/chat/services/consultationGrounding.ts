@@ -68,6 +68,8 @@ import {
   judgeCrossConsultation,
   judgeDecision,
   projectDecisionJudgments,
+  propositionIdOf,
+  synthesizeDecisionCross,
   type DecisionJudgmentV1,
   type DomainJudgeSummary,
   type CrossDivinationVerdict,
@@ -672,6 +674,14 @@ export async function buildConsultationGrounding(
       domainResult: domainResultFor(j.discipline),
     }));
     const judgedJudgments = projectDecisionJudgments(judgments, decisionJudgments);
+    // DECISION CROSS SYNTHESIS V1 — what those three independent judgments add up to. Structured data only in
+    // this version: it is attached to the verdict below, and it deliberately does NOT set the verdict's
+    // direction, which stays the proposition graph's own projection.
+    const decisionCrossSynthesis = synthesizeDecisionCross({
+      proposition: decisionProposition,
+      propositionId: propositionIdOf(decisionProposition),
+      judgments: decisionJudgments,
+    });
     divinationVerdict = judgeCross({
       question: q, questionDomain, subject: canonicalSubject,
       askedTarget, judgments: judgedJudgments, asksTiming, questionIntent,
@@ -681,6 +691,7 @@ export async function buildConsultationGrounding(
       myungriPropositions: myungriReasoning.standing,
       myungriPropositionGraph: myungriReasoning.propositions,
     });
+    divinationVerdict = { ...divinationVerdict, decisionCrossSynthesis };
     // Cross Divination Judge V1 (consultation layer) — synthesizes the SAME three consultation-domain
     // results just computed above (`myungriReasoning.consultationJudgments`/`ziweiConsultationJudgment`/
     // `qimenConsultationJudgment`) into one proposition-specific compound verdict, then folds ONLY into

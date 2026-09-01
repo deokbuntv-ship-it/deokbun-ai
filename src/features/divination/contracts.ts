@@ -297,6 +297,7 @@ export type DivinationJudgment = {
  * derived from and the NAMED rule that derived it — the two things that make synthesis checkable.
  */
 import type { DivinationPremise, ReasonedProposition } from './reasoning/kernel';
+import type { DecisionCrossSynthesisV1 } from './decisionCrossSynthesis';
 export type { DivinationPremise, ReasonedProposition };
 
 /** How a cross-discipline disagreement was resolved (§10). NEVER 'NEUTRALIZED' — that is not an option. */
@@ -364,6 +365,16 @@ export type CrossDivinationVerdict = {
    * dropped on the follow-up turn. Storing them is what lets the check reproduce the same selection.
    */
   decidingAxes?: JudgmentDomain[];
+  /**
+   * DECISION CROSS SYNTHESIS V1 — what the three independent proposition judgments add up to, as structured
+   * data: who decided, who qualified, which conflicts were reconciled and how, and which genuinely were not.
+   *
+   * It is DELIBERATELY NOT the verdict's direction in this version. `direction`/`primaryConclusion` remain the
+   * proposition graph's own projection, so "the graph is the sole verdict authority" is untouched and the
+   * restore path keeps re-deriving exactly what it did before. This field is the input the presentation and
+   * conflict layers will consume once the classification has been reviewed.
+   */
+  decisionCrossSynthesis?: DecisionCrossSynthesisV1;
   /** Server evaluation instant, so a follow-up restores the same temporal frame. */
   evaluatedAtEpochSeconds: number | null;
   /**

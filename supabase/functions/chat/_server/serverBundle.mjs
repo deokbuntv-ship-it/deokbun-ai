@@ -10093,6 +10093,7 @@ var DIRECTION_OF = {
   DELAYS: "RESTRICTED",
   ABSENT: "NONE"
 };
+var propositionDirectionOf = (stance) => DIRECTION_OF[relationFor(stance)];
 var QUALIFIED_STANCES = /* @__PURE__ */ new Set(["CONDITIONAL_FOR", "CONDITIONAL_AGAINST", "FOR_BUT_LATER", "AGAINST_FOR_NOW"]);
 function disciplineTarget(discipline, axis) {
   if (discipline === "QIMEN") return qimenBoardTarget();
@@ -10324,7 +10325,8 @@ function assessAxis(j, axis, role2, domainResult, wholeDomain) {
   const headline = j.questionDomain === axis && isDirectional(j.stance) ? fromHeadline(j, axis, role2) : null;
   const domain = role2 === "PRIMARY" && domainResult && domainResult.status !== "UNRESOLVED" ? fromDomainJudge(domainResult, j, axis, role2) : null;
   const panel = sub2 && isDirectional(sub2.stance) ? fromSubJudgment(sub2, role2) : null;
-  const ordered = wholeDomain ? [domain, panel, headline, sub2 ? fromSubJudgment(sub2, role2) : null] : [panel, headline, domain, sub2 ? fromSubJudgment(sub2, role2) : null];
+  const domainDecides = domain && isDirectional(domain.stance) ? domain : null;
+  const ordered = wholeDomain ? [domainDecides, panel, headline, domain, sub2 ? fromSubJudgment(sub2, role2) : null] : [panel, headline, domain, sub2 ? fromSubJudgment(sub2, role2) : null];
   return ordered.find((a) => a !== null) ?? null;
 }
 function timingFor(j, bearing) {
@@ -11211,6 +11213,167 @@ function judgeCrossReasoned(input) {
 }
 function judgeCross(input) {
   return judgeCrossReasoned(input).verdict;
+}
+
+// src/features/divination/decisionCrossSynthesis.ts
+var DECISION_CROSS_SYNTHESIS_V1_METHOD = "deokbunai.decision-cross-synthesis.v1";
+var DIRECTNESS_RANK = { DIRECT: 2, ADJACENT: 1, GENERAL: 0 };
+var RELIABILITY_RANK = { EXACT: 3, REDUCED: 2, MINIMAL: 1, UNUSABLE: 0 };
+var strictlyDominates = (a, b) => {
+  const dA = DIRECTNESS_RANK[a.directness];
+  const dB = DIRECTNESS_RANK[b.directness];
+  const rA = RELIABILITY_RANK[a.reliability];
+  const rB = RELIABILITY_RANK[b.reliability];
+  return dA >= dB && rA >= rB && (dA > dB || rA > rB);
+};
+var authorityOf = (j) => {
+  if (!j.applicable) return "CONTEXT_ONLY";
+  if (j.primaryAssessment) {
+    return j.primaryAssessment.basis === "DOMAIN_JUDGE" ? "BOUNDED_DOMAIN_SUMMARY" : "DIRECT_PROPOSITION";
+  }
+  const material = j.limitingAssessments.length + j.supportingAssessments.length + j.timingAssessments.length;
+  return material > 0 ? "INDIRECT_QUALIFIER" : "CONTEXT_ONLY";
+};
+var participantOf = (j, authority) => {
+  const a = j.primaryAssessment;
+  return {
+    discipline: j.discipline,
+    authority,
+    axis: a?.axis ?? null,
+    role: a?.role ?? null,
+    direction: a ? propositionDirectionOf(a.stance) : "NONE",
+    statement: a?.statement ?? "",
+    directness: a?.directness ?? j.questionDirectness,
+    reliability: j.dataReliability,
+    temporalBand: a ? temporalBand(a.temporalScope) : null,
+    evidenceIds: j.evidenceIds,
+    // A bounded summary is ONE contribution. Naming the axes it aggregates is what makes it visible that its
+    // sources are inside it, so nothing downstream counts the summary and its material as two voices.
+    derivedFromAxes: authority === "BOUNDED_DOMAIN_SUMMARY" && a ? [.../* @__PURE__ */ new Set([a.axis, ...j.supportingAssessments.map((s) => s.axis), ...j.limitingAssessments.map((s) => s.axis)])] : []
+  };
+};
+var truthsFrom = (j, assessments) => assessments.map((a) => ({
+  discipline: j.discipline,
+  axis: a.axis,
+  role: a.role,
+  statement: a.statement,
+  direction: propositionDirectionOf(a.stance),
+  temporalBand: temporalBand(a.temporalScope),
+  evidenceIds: [...a.evidence, ...a.counterEvidence].filter((e) => e.coverageGap !== true).map((e) => e.fact)
+}));
+function synthesizeDecisionCross(input) {
+  const { propositionId, proposition } = input;
+  const judgments = input.judgments.filter((j) => j.propositionId === propositionId);
+  const participants = judgments.map((j) => participantOf(j, authorityOf(j)));
+  const base = {
+    propositionId,
+    requestedOutcome: proposition.requestedOutcome,
+    participatingJudgments: participants,
+    provenance: [DECISION_CROSS_SYNTHESIS_V1_METHOD]
+  };
+  const withJ = judgments.map((j, i) => ({ j, p: participants[i] }));
+  const supportingTruths = withJ.flatMap(({ j }) => truthsFrom(j, j.supportingAssessments));
+  const limitingTruths = withJ.flatMap(({ j }) => truthsFrom(j, j.limitingAssessments));
+  const temporalQualifications = withJ.flatMap(({ j }) => truthsFrom(j, j.timingAssessments));
+  const outcomeQualifications = supportingTruths.filter((t) => t.role === "OUTCOME");
+  const truths = { supportingTruths, limitingTruths, temporalQualifications, outcomeQualifications };
+  if (proposition.requestedOutcome === "CAUSE" || proposition.requestedOutcome === "DESCRIPTION") {
+    return {
+      ...base,
+      primaryJudgments: [],
+      qualifiers: participants.filter((p) => p.authority !== "CONTEXT_ONLY"),
+      resolutionKind: "NON_DIRECTIONAL",
+      finalStance: "UNRESOLVED",
+      ...truths,
+      conflictPairs: []
+    };
+  }
+  const directional = participants.filter((p) => p.direction !== "NONE");
+  const direct = directional.filter((p) => p.authority === "DIRECT_PROPOSITION");
+  const bounded = directional.filter((p) => p.authority === "BOUNDED_DOMAIN_SUMMARY");
+  const deciders = direct.length > 0 ? direct : bounded;
+  const qualifiers = participants.filter((p) => p.authority !== "CONTEXT_ONLY" && !deciders.includes(p));
+  if (deciders.length === 0) {
+    const answerable = proposition.requestedOutcome === "CONDUCT" ? limitingTruths.length > 0 || supportingTruths.length > 0 : proposition.requestedOutcome === "PERIOD" && temporalQualifications.length > 0;
+    return {
+      ...base,
+      primaryJudgments: [],
+      qualifiers,
+      resolutionKind: answerable ? "NON_DIRECTIONAL" : "NO_APPLICABLE_JUDGMENT",
+      finalStance: "UNRESOLVED",
+      ...truths,
+      conflictPairs: [],
+      unresolvedReason: answerable ? void 0 : "이 물음에 대해 방향을 세울 수 있는 판단이 어느 학문에서도 나오지 않았습니다."
+    };
+  }
+  const favorable = deciders.filter((p) => p.direction === "FAVORABLE");
+  const unfavorable = deciders.filter((p) => p.direction === "UNFAVORABLE");
+  const restricted = deciders.filter((p) => p.direction === "RESTRICTED");
+  const conflictPairs = [];
+  const setAside = /* @__PURE__ */ new Set();
+  for (const a of favorable) {
+    for (const b of unfavorable) {
+      const reconciledBy = a.temporalBand !== b.temporalBand ? "TEMPORAL_SCOPE" : strictlyDominates(a, b) || strictlyDominates(b, a) ? "STRICT_DOMINANCE" : null;
+      if (reconciledBy === "STRICT_DOMINANCE") setAside.add(strictlyDominates(a, b) ? b : a);
+      conflictPairs.push({
+        a: a.discipline,
+        b: b.discipline,
+        axis: a.axis ?? b.axis,
+        directions: [a.direction, b.direction],
+        reconciledBy
+      });
+    }
+  }
+  const opposed2 = conflictPairs.some((c) => c.reconciledBy === null);
+  const standingFor = favorable.filter((p) => !setAside.has(p));
+  const standingAgainst = unfavorable.filter((p) => !setAside.has(p));
+  const anyMixed = judgments.some((j) => j.decisionStance === "MIXED" && deciders.some((p) => p.discipline === j.discipline));
+  const dominantDirection = standingFor.length > 0 ? "FAVORABLE" : standingAgainst.length > 0 ? "UNFAVORABLE" : "RESTRICTED";
+  const opposes = (t, dir) => t.direction !== "NONE" && t.direction !== dir;
+  const decidingBands = new Set(deciders.map((p) => p.temporalBand));
+  const outcomeOpposes = (dir) => outcomeQualifications.some((t) => opposes(t, dir));
+  const temporalOpposes = (dir) => temporalQualifications.some((t) => opposes(t, dir) && !decidingBands.has(t.temporalBand));
+  const qualifierNarrows = (dir) => limitingTruths.some((t) => opposes(t, dir)) || qualifiers.some((q) => q.direction !== "NONE" && q.direction !== dir);
+  const oneMatterSplit = (dir) => [...supportingTruths, ...limitingTruths].some((t) => opposes(t, dir) && deciders.some((d) => d.axis && axesShareOneMatter(d.axis, t.axis)));
+  let resolutionKind;
+  let finalStance;
+  let unresolvedReason;
+  if (opposed2) {
+    resolutionKind = "TRUE_STANDOFF";
+    finalStance = "UNRESOLVED";
+    unresolvedReason = "같은 물음을 같은 자격으로 직접 판단한 결론들이 서로 반대 방향을 가리키고, 어느 쪽이 더 직접적이라고 볼 근거가 없습니다.";
+  } else if (conflictPairs.some((c) => c.reconciledBy === "TEMPORAL_SCOPE") || temporalOpposes(dominantDirection)) {
+    resolutionKind = "TEMPORAL_SPLIT";
+    finalStance = "COMPOUND";
+  } else if (anyMixed) {
+    resolutionKind = "COMPOUND_MIXED";
+    finalStance = "COMPOUND";
+  } else if (outcomeOpposes(dominantDirection)) {
+    resolutionKind = "OUTCOME_SPLIT";
+    finalStance = "COMPOUND";
+  } else if (oneMatterSplit(dominantDirection)) {
+    resolutionKind = "COMPOUND_MIXED";
+    finalStance = "COMPOUND";
+  } else if (restricted.length > 0 || qualifierNarrows(dominantDirection)) {
+    resolutionKind = "QUALIFIED";
+    finalStance = dominantDirection === "UNFAVORABLE" ? "QUALIFIED_AGAINST" : "QUALIFIED_FOR";
+  } else if (deciders.length === 1) {
+    resolutionKind = "SINGLE_AUTHORITY";
+    finalStance = dominantDirection === "UNFAVORABLE" ? "AGAINST" : dominantDirection === "RESTRICTED" ? "QUALIFIED_FOR" : "FOR";
+  } else {
+    resolutionKind = "AGREED";
+    finalStance = dominantDirection === "UNFAVORABLE" ? "AGAINST" : dominantDirection === "RESTRICTED" ? "QUALIFIED_FOR" : "FOR";
+  }
+  return {
+    ...base,
+    primaryJudgments: deciders,
+    qualifiers,
+    resolutionKind,
+    finalStance,
+    ...truths,
+    conflictPairs,
+    ...unresolvedReason ? { unresolvedReason } : {}
+  };
 }
 
 // src/features/divination/crossConsultationJudge.ts
@@ -13548,6 +13711,11 @@ async function buildConsultationGrounding(draft, deps, question) {
       domainResult: domainResultFor(j.discipline)
     }));
     const judgedJudgments = projectDecisionJudgments(judgments, decisionJudgments);
+    const decisionCrossSynthesis = synthesizeDecisionCross({
+      proposition: decisionProposition,
+      propositionId: propositionIdOf(decisionProposition),
+      judgments: decisionJudgments
+    });
     divinationVerdict = judgeCross({
       question: q,
       questionDomain,
@@ -13562,6 +13730,7 @@ async function buildConsultationGrounding(draft, deps, question) {
       myungriPropositions: myungriReasoning.standing,
       myungriPropositionGraph: myungriReasoning.propositions
     });
+    divinationVerdict = { ...divinationVerdict, decisionCrossSynthesis };
     const myungriConsultationResult = ziweiRoutedDomain && myungriReasoning.consultationJudgments ? myungriReasoning.consultationJudgments[ziweiRoutedDomain] : null;
     const crossConsultation = qimenRoutedDomain ? judgeCrossConsultation({
       domain: qimenRoutedDomain,
@@ -16390,13 +16559,13 @@ var JUDGMENT_TO_CONTENT_DOMAIN = {
   MOVEMENT: "CHANGE",
   TIMING: "TIMING"
 };
-var DIRECTNESS_RANK = { DIRECT: 0, ADJACENT: 1, GENERAL: 2 };
+var DIRECTNESS_RANK2 = { DIRECT: 0, ADJACENT: 1, GENERAL: 2 };
 var ROLE_PRIORITY_WHEN_ASKING_TIMING = { CURRENT: 0, PERIOD: 1, NATAL: 2 };
 var ROLE_PRIORITY_WHEN_BASELINE = { NATAL: 0, PERIOD: 1, CURRENT: 2 };
 function evidenceRank(e, domain, asksTiming) {
   const domainMatch = JUDGMENT_TO_CONTENT_DOMAIN[e.domain] === domain ? 0 : 1;
   const roleRank = (asksTiming ? ROLE_PRIORITY_WHEN_ASKING_TIMING : ROLE_PRIORITY_WHEN_BASELINE)[roleOf(e.temporalScope)];
-  return [domainMatch, DIRECTNESS_RANK[e.directness], roleRank];
+  return [domainMatch, DIRECTNESS_RANK2[e.directness], roleRank];
 }
 function compareRank(a, b) {
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
