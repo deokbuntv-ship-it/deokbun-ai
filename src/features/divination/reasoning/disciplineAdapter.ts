@@ -46,6 +46,21 @@ const DIRECTION_OF: Record<SemanticRelation, ReasonedProposition['direction']> =
 export const propositionDirectionOf = (stance: string): ReasonedProposition['direction'] =>
   DIRECTION_OF[relationFor(stance)];
 
+/**
+ * WHICH KIND of restriction a stance carries, when it carries one.
+ *
+ * Exactly what `adaptJudgment` already writes onto every restricted proposition below — `DELAYS` is a TIMING
+ * restriction, `CONSTRAINS` is a SCOPE one — lifted out so the synthesis can read the same distinction
+ * instead of collapsing both into a bare `RESTRICTED`. That collapse is what let a CONDITIONAL_AGAINST be
+ * delivered as a positive direction: the graph's own `stanceOf` restores RESTRICTED as `FOR_BUT_LATER` for
+ * TIMING and `CONDITIONAL_AGAINST` for everything else, and the synthesis had no way to tell them apart.
+ */
+export const propositionRestrictionOf = (stance: string): ReasonedProposition['restriction'] | null => {
+  const relation = relationFor(stance);
+  if (relation === 'DELAYS') return 'TIMING';
+  return relation === 'CONSTRAINS' ? 'SCOPE' : null;
+};
+
 /** Stances that leave the door open rather than commit. */
 const QUALIFIED_STANCES = new Set<string>(['CONDITIONAL_FOR', 'CONDITIONAL_AGAINST', 'FOR_BUT_LATER', 'AGAINST_FOR_NOW']);
 

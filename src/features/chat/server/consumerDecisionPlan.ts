@@ -22,6 +22,7 @@
 //   3. Turn a truthful inability into an answer. NO_APPLICABLE_JUDGMENT keeps the verdict's own state.
 import {
   axisLabel,
+  polarityOf,
   type CrossResolutionKind, type DecisionCrossSynthesisV1, type Discipline,
   type CrossDivinationVerdict, type JudgmentDomain, type RequestedOutcome, type SynthesisTruth,
 } from '@/features/divination';
@@ -243,8 +244,12 @@ export function buildConsumerDecisionPlan(verdict: CrossDivinationVerdict): Cons
         : s.finalStance === 'COMPOUND'
           // A compound still has a primary side — that is what the reader acts on, with the other half
           // stated beside it. It is read off the deciding judgments, never re-inferred from prose.
-          ? (s.primaryJudgments.some((p) => p.direction === 'FAVORABLE') ? 'PROCEED'
-            : s.primaryJudgments.some((p) => p.direction === 'UNFAVORABLE') ? 'HOLD' : 'NONE')
+          //
+          // V7.1 — through `polarityOf`, the SAME resolver the synthesis uses. Testing the raw direction here
+          // dropped a scope-restricted decider on the floor: a compound whose only deciding reading was a
+          // conditional negative reported no direction at all, rather than the hold it had actually found.
+          ? (s.primaryJudgments.some((p) => polarityOf(p) === 'POSITIVE') ? 'PROCEED'
+            : s.primaryJudgments.some((p) => polarityOf(p) === 'NEGATIVE') ? 'HOLD' : 'NONE')
           : 'NONE';
 
   const mapped = STATE_BY_KIND[s.resolutionKind];

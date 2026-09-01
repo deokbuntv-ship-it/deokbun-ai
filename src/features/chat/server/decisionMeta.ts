@@ -557,13 +557,18 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       if (!enumOk(DIRECTNESS, p.directness)) return null;
       if (p.axis !== null && !enumOk(AXES, p.axis)) return null;
       if (p.role !== null && !enumOk(SY_ROLES, p.role)) return null;
+      // V7.1 — the restriction KIND behind a RESTRICTED direction. Dropping it on restore would flip a
+      // conditional negative back to a positive direction on the follow-up turn, which is the exact defect
+      // this repair closes.
+      if (p.restriction !== null && p.restriction !== undefined && !enumOk(RESTRICTIONS, p.restriction)) return null;
       if (p.temporalBand !== null && !enumOk(BANDS, p.temporalBand)) return null;
       if (typeof p.statement !== 'string') return null;
       if (!isStringArray(p.evidenceIds) || !isStringArray(p.derivedFromAxes)) return null;
       if (!(p.derivedFromAxes as string[]).every((a) => AXES.has(a))) return null;
       return {
         discipline: p.discipline, authority: p.authority, axis: p.axis, role: p.role,
-        direction: p.direction, statement: p.statement, directness: p.directness,
+        direction: p.direction, restriction: p.restriction ?? null,
+        statement: p.statement, directness: p.directness,
         reliability: p.reliability, temporalBand: p.temporalBand,
         evidenceIds: [...(p.evidenceIds as string[])],
         derivedFromAxes: [...(p.derivedFromAxes as string[])],

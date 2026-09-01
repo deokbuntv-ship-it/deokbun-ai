@@ -10094,6 +10094,11 @@ var DIRECTION_OF = {
   ABSENT: "NONE"
 };
 var propositionDirectionOf = (stance) => DIRECTION_OF[relationFor(stance)];
+var propositionRestrictionOf = (stance) => {
+  const relation = relationFor(stance);
+  if (relation === "DELAYS") return "TIMING";
+  return relation === "CONSTRAINS" ? "SCOPE" : null;
+};
 var QUALIFIED_STANCES = /* @__PURE__ */ new Set(["CONDITIONAL_FOR", "CONDITIONAL_AGAINST", "FOR_BUT_LATER", "AGAINST_FOR_NOW"]);
 function disciplineTarget(discipline, axis) {
   if (discipline === "QIMEN") return qimenBoardTarget();
@@ -11219,6 +11224,17 @@ function judgeCross(input) {
 var DECISION_CROSS_SYNTHESIS_V1_METHOD = "deokbunai.decision-cross-synthesis.v1";
 var DIRECTNESS_RANK = { DIRECT: 2, ADJACENT: 1, GENERAL: 0 };
 var RELIABILITY_RANK = { EXACT: 3, REDUCED: 2, MINIMAL: 1, UNUSABLE: 0 };
+var polarityOf = (p) => {
+  if (p.direction === "FAVORABLE") return "POSITIVE";
+  if (p.direction === "UNFAVORABLE") return "NEGATIVE";
+  if (p.direction === "RESTRICTED") return p.restriction === "TIMING" ? "POSITIVE" : "NEGATIVE";
+  return "NONE";
+};
+var stanceForPolarity = (polarity, qualified) => {
+  if (polarity === "NEGATIVE") return qualified ? "QUALIFIED_AGAINST" : "AGAINST";
+  if (polarity === "POSITIVE") return qualified ? "QUALIFIED_FOR" : "FOR";
+  return "UNRESOLVED";
+};
 var strictlyDominates = (a, b) => {
   const dA = DIRECTNESS_RANK[a.directness];
   const dB = DIRECTNESS_RANK[b.directness];
@@ -11242,6 +11258,7 @@ var participantOf = (j, authority) => {
     axis: a?.axis ?? null,
     role: a?.role ?? null,
     direction: a ? propositionDirectionOf(a.stance) : "NONE",
+    restriction: a ? propositionRestrictionOf(a.stance) : null,
     statement: a?.statement ?? "",
     directness: a?.directness ?? j.questionDirectness,
     reliability: j.dataReliability,
@@ -11329,6 +11346,8 @@ function synthesizeDecisionCross(input) {
   const standingAgainst = unfavorable.filter((p) => !setAside.has(p));
   const anyMixed = judgments.some((j) => j.decisionStance === "MIXED" && deciders.some((p) => p.discipline === j.discipline));
   const dominantDirection = standingFor.length > 0 ? "FAVORABLE" : standingAgainst.length > 0 ? "UNFAVORABLE" : "RESTRICTED";
+  const standingDeciders = deciders.filter((p) => !setAside.has(p));
+  const dominantPolarity = standingDeciders.some((p) => polarityOf(p) === "POSITIVE") ? "POSITIVE" : standingDeciders.some((p) => polarityOf(p) === "NEGATIVE") ? "NEGATIVE" : "NONE";
   const opposes = (t, dir) => t.direction !== "NONE" && t.direction !== dir;
   const decidingBands = new Set(deciders.map((p) => p.temporalBand));
   const outcomeOpposes = (dir) => outcomeQualifications.some((t) => opposes(t, dir));
@@ -11356,13 +11375,13 @@ function synthesizeDecisionCross(input) {
     finalStance = "COMPOUND";
   } else if (restricted.length > 0 || qualifierNarrows(dominantDirection)) {
     resolutionKind = "QUALIFIED";
-    finalStance = dominantDirection === "UNFAVORABLE" ? "QUALIFIED_AGAINST" : "QUALIFIED_FOR";
+    finalStance = stanceForPolarity(dominantPolarity, true);
   } else if (deciders.length === 1) {
     resolutionKind = "SINGLE_AUTHORITY";
-    finalStance = dominantDirection === "UNFAVORABLE" ? "AGAINST" : dominantDirection === "RESTRICTED" ? "QUALIFIED_FOR" : "FOR";
+    finalStance = stanceForPolarity(dominantPolarity, dominantDirection === "RESTRICTED");
   } else {
     resolutionKind = "AGREED";
-    finalStance = dominantDirection === "UNFAVORABLE" ? "AGAINST" : dominantDirection === "RESTRICTED" ? "QUALIFIED_FOR" : "FOR";
+    finalStance = stanceForPolarity(dominantPolarity, dominantDirection === "RESTRICTED");
   }
   return {
     ...base,
@@ -15922,6 +15941,7 @@ function parseDivinationVerdict(v) {
       if (!enumOk(DIRECTNESS, p.directness)) return null;
       if (p.axis !== null && !enumOk(AXES, p.axis)) return null;
       if (p.role !== null && !enumOk(SY_ROLES, p.role)) return null;
+      if (p.restriction !== null && p.restriction !== void 0 && !enumOk(RESTRICTIONS, p.restriction)) return null;
       if (p.temporalBand !== null && !enumOk(BANDS, p.temporalBand)) return null;
       if (typeof p.statement !== "string") return null;
       if (!isStringArray2(p.evidenceIds) || !isStringArray2(p.derivedFromAxes)) return null;
@@ -15932,6 +15952,7 @@ function parseDivinationVerdict(v) {
         axis: p.axis,
         role: p.role,
         direction: p.direction,
+        restriction: p.restriction ?? null,
         statement: p.statement,
         directness: p.directness,
         reliability: p.reliability,
@@ -16599,7 +16620,7 @@ function buildConsumerDecisionPlan(verdict) {
   if (!s) return null;
   const deciders = s.primaryJudgments.map((p) => p.discipline);
   const contributors = s.participatingJudgments.filter((p) => p.authority !== "CONTEXT_ONLY").map((p) => p.discipline);
-  const direction = s.finalStance === "FOR" || s.finalStance === "QUALIFIED_FOR" ? "PROCEED" : s.finalStance === "AGAINST" || s.finalStance === "QUALIFIED_AGAINST" ? "HOLD" : s.finalStance === "COMPOUND" ? s.primaryJudgments.some((p) => p.direction === "FAVORABLE") ? "PROCEED" : s.primaryJudgments.some((p) => p.direction === "UNFAVORABLE") ? "HOLD" : "NONE" : "NONE";
+  const direction = s.finalStance === "FOR" || s.finalStance === "QUALIFIED_FOR" ? "PROCEED" : s.finalStance === "AGAINST" || s.finalStance === "QUALIFIED_AGAINST" ? "HOLD" : s.finalStance === "COMPOUND" ? s.primaryJudgments.some((p) => polarityOf(p) === "POSITIVE") ? "PROCEED" : s.primaryJudgments.some((p) => polarityOf(p) === "NEGATIVE") ? "HOLD" : "NONE" : "NONE";
   const mapped = STATE_BY_KIND[s.resolutionKind];
   const conclusionState = mapped !== "FROM_STANCE" ? mapped : direction === "PROCEED" ? "OPEN" : direction === "HOLD" ? "BLOCKED" : "UNRESOLVED";
   const supportingTruths = s.supportingTruths.map(truthOf);

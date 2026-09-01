@@ -33,7 +33,7 @@ import type {
 import type {
   AxisRole, DecisionAssessment, DecisionJudgmentV1, JudgedProposition, RequestedOutcome,
 } from './decisionJudgment';
-import { propositionDirectionOf } from './reasoning/disciplineAdapter';
+import { propositionDirectionOf, propositionRestrictionOf } from './reasoning/disciplineAdapter';
 import { temporalBand, type ReasonedProposition } from './reasoning/kernel';
 
 export const DECISION_CROSS_SYNTHESIS_V1_METHOD = 'deokbunai.decision-cross-synthesis.v1' as const;
@@ -79,6 +79,15 @@ export type SynthesisParticipant = {
   readonly axis: JudgmentDomain | null;
   readonly role: AxisRole | null;
   readonly direction: ReasonedProposition['direction'];
+  /**
+   * WHICH kind of restriction a `RESTRICTED` direction carries — `null` for every other direction.
+   *
+   * `RESTRICTED` conflates two opposite leanings: a SCOPE restriction is a conditional negative
+   * (CONDITIONAL_AGAINST — "범위를 줄이는 쪽"), while a TIMING one is a delayed positive (FOR_BUT_LATER).
+   * Without this the polarity resolver below cannot tell them apart, and every conditional negative was
+   * delivered as a positive direction.
+   */
+  readonly restriction: ReasonedProposition['restriction'] | null;
   readonly statement: string;
   readonly directness: QuestionDirectness;
   readonly reliability: DataReliability;
@@ -147,6 +156,34 @@ export type DecisionCrossSynthesisV1 = {
 const DIRECTNESS_RANK: Record<QuestionDirectness, number> = { DIRECT: 2, ADJACENT: 1, GENERAL: 0 };
 const RELIABILITY_RANK: Record<DataReliability, number> = { EXACT: 3, REDUCED: 2, MINIMAL: 1, UNUSABLE: 0 };
 
+// ── POLARITY — ONE RESOLVER, USED EVERYWHERE A DIRECTION IS NAMED ─────────────────────────────────────
+//
+// V7.1. Three branches below independently asked `dominantDirection === 'UNFAVORABLE' ? negative : positive`,
+// so every value that was not literally UNFAVORABLE fell into the positive arm — including `RESTRICTED`,
+// which is what a CONDITIONAL_AGAINST projects to. The measured consequence: 5 of 77 consultations whose
+// deciding judgments were ALL negative were delivered as PROCEED, 3 of them while the graph verdict itself
+// said CONDITIONAL_AGAINST.
+//
+// The distinction is not new doctrine — it is the product's own, read back from `stanceOf`: a RESTRICTED
+// conclusion restores as `FOR_BUT_LATER` when its restriction is TIMING and as `CONDITIONAL_AGAINST`
+// otherwise. This resolver states exactly that, once, so no branch can drift positive again.
+export type SynthesisPolarity = 'POSITIVE' | 'NEGATIVE' | 'NONE';
+
+export const polarityOf = (p: Pick<SynthesisParticipant, 'direction' | 'restriction'>): SynthesisPolarity => {
+  if (p.direction === 'FAVORABLE') return 'POSITIVE';
+  if (p.direction === 'UNFAVORABLE') return 'NEGATIVE';
+  // A delayed positive stays positive; a scope-limited one is the conditional negative it came from.
+  if (p.direction === 'RESTRICTED') return p.restriction === 'TIMING' ? 'POSITIVE' : 'NEGATIVE';
+  return 'NONE';
+};
+
+/** The one place a polarity becomes a customer-facing stance. Qualified and firm forms share the mapping. */
+const stanceForPolarity = (polarity: SynthesisPolarity, qualified: boolean): FinalStance => {
+  if (polarity === 'NEGATIVE') return qualified ? 'QUALIFIED_AGAINST' : 'AGAINST';
+  if (polarity === 'POSITIVE') return qualified ? 'QUALIFIED_FOR' : 'FOR';
+  return 'UNRESOLVED';
+};
+
 /** A is strictly dominant when it is no worse on EITHER declared scale and strictly better on at least one. */
 const strictlyDominates = (a: SynthesisParticipant, b: SynthesisParticipant): boolean => {
   const dA = DIRECTNESS_RANK[a.directness]; const dB = DIRECTNESS_RANK[b.directness];
@@ -175,6 +212,7 @@ const participantOf = (j: DecisionJudgmentV1, authority: AuthorityClass): Synthe
     axis: a?.axis ?? null,
     role: a?.role ?? null,
     direction: a ? propositionDirectionOf(a.stance) : 'NONE',
+    restriction: a ? propositionRestrictionOf(a.stance) : null,
     statement: a?.statement ?? '',
     directness: a?.directness ?? j.questionDirectness,
     reliability: j.dataReliability,
@@ -305,6 +343,16 @@ export function synthesizeDecisionCross(input: DecisionCrossSynthesisInput): Dec
   const dominantDirection: ReasonedProposition['direction'] =
     standingFor.length > 0 ? 'FAVORABLE' : standingAgainst.length > 0 ? 'UNFAVORABLE' : 'RESTRICTED';
 
+  // V7.1 — the POLARITY the answer actually carries, which is not the same question as which raw direction
+  // dominates. Precedence is unchanged (a surviving positive decider still leads a qualified answer); what
+  // changes is that a scope-restricted decider is now counted on the negative side instead of falling
+  // through to a positive default when it is the only thing standing.
+  const standingDeciders = deciders.filter((p) => !setAside.has(p));
+  const dominantPolarity: SynthesisPolarity =
+    standingDeciders.some((p) => polarityOf(p) === 'POSITIVE') ? 'POSITIVE'
+      : standingDeciders.some((p) => polarityOf(p) === 'NEGATIVE') ? 'NEGATIVE'
+        : 'NONE';
+
   // THE ROLE-BEARING MATERIAL LIVES IN THE TRUTHS, NOT IN THE PARTICIPANTS.
   //
   // A participant carries its discipline's PRIMARY assessment, so its role is always PRIMARY and its axis is
@@ -354,18 +402,18 @@ export function synthesizeDecisionCross(input: DecisionCrossSynthesisInput): Dec
     finalStance = 'COMPOUND';
   } else if (restricted.length > 0 || qualifierNarrows(dominantDirection)) {
     resolutionKind = 'QUALIFIED';
-    finalStance = dominantDirection === 'UNFAVORABLE' ? 'QUALIFIED_AGAINST' : 'QUALIFIED_FOR';
+    finalStance = stanceForPolarity(dominantPolarity, true);
   } else if (deciders.length === 1) {
     // ONE judgment decided and nothing contradicts it. Reporting that as AGREED would claim independent
     // corroboration that does not exist — the same fabrication the multi-system-synthesis guard exists to
     // stop. The answer is just as usable; it simply rests on one system, and says so.
     resolutionKind = 'SINGLE_AUTHORITY';
-    finalStance = dominantDirection === 'UNFAVORABLE' ? 'AGAINST'
-      : dominantDirection === 'RESTRICTED' ? 'QUALIFIED_FOR' : 'FOR';
+    // A restricted decider is caught by the QUALIFIED branch above, so this is only ever reached with a firm
+    // direction — it goes through the shared resolver anyway, so the asymmetry cannot grow back here.
+    finalStance = stanceForPolarity(dominantPolarity, dominantDirection === 'RESTRICTED');
   } else {
     resolutionKind = 'AGREED';
-    finalStance = dominantDirection === 'UNFAVORABLE' ? 'AGAINST'
-      : dominantDirection === 'RESTRICTED' ? 'QUALIFIED_FOR' : 'FOR';
+    finalStance = stanceForPolarity(dominantPolarity, dominantDirection === 'RESTRICTED');
   }
 
   return {

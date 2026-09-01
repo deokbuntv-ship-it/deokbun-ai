@@ -69,9 +69,10 @@ export {
   type OptionComparability, type PropositionKind, type RequestedOutcome,
 } from './decisionJudgment';
 export {
-  synthesizeDecisionCross, DECISION_CROSS_SYNTHESIS_V1_METHOD,
+  synthesizeDecisionCross, polarityOf, DECISION_CROSS_SYNTHESIS_V1_METHOD,
   type AuthorityClass, type ConflictPair, type CrossResolutionKind, type DecisionCrossSynthesisV1,
-  type DecisionCrossSynthesisInput, type FinalStance, type SynthesisParticipant, type SynthesisTruth,
+  type DecisionCrossSynthesisInput, type FinalStance, type SynthesisParticipant, type SynthesisPolarity,
+  type SynthesisTruth,
 } from './decisionCrossSynthesis';
 export {
   judgeCrossConsultation, CROSS_CONSULTATION_JUDGE_V1_METHOD,
