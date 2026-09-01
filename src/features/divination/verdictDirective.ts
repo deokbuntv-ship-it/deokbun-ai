@@ -15,6 +15,7 @@ import {
   type Stance,
 } from './contracts';
 import { routeConsultationJudgeDomain } from './consultationJudgeCore';
+import type { RequestedOutcome } from './decisionJudgment';
 
 const DISCIPLINE_LABEL: Record<Discipline, string> = {
   MYUNGRI: '명리',
@@ -133,12 +134,30 @@ export function buildDeclinedSummary(
   return `${scope}에 대해서는 ${reason} 현재 근거만으로 한쪽 방향을 확정하기 어렵습니다. ${DECLINED_CLOSING[intent]}`;
 }
 
-export function renderVerdictDirective(v: CrossDivinationVerdict): string {
+export function renderVerdictDirective(
+  v: CrossDivinationVerdict,
+  // DECISION JUDGMENT V1 — WHAT THE PERSON ACTUALLY ASKED FOR. Absent ⇒ the existing behaviour exactly.
+  //
+  // The direction instruction below states the verdict's stance as 하는 쪽 / 하지 않는 쪽, which is the right
+  // reading contract for a decision and the WRONG one for a request that was never a decision. "조심할 게
+  // 있을까요" answered with "결론은 범위를 줄이는 쪽입니다" answers a question that was not asked. The stance
+  // is unchanged and still binding — this only tells the prose layer what shape of answer it is bound to.
+  requestedOutcome?: RequestedOutcome,
+): string {
   const lines: string[] = ['[점사 판정 — 서버가 확정한 결론(그대로 노출하지 말 것)]'];
   const declined = isDeclinedToDecide(v);
 
   lines.push(`· 결론: ${v.primaryConclusion}`);
   lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  if (requestedOutcome === 'CONDUCT') {
+    lines.push(
+      '· 이 질문은 "할까 말까"가 아니라 "무엇을 조심하고 어떻게 해야 하는가"를 물었습니다. 위 방향은 판단의 근거로만 쓰고, 답은 아래 근거로 잡힌 제약·주의 지점을 구체적으로 짚는 형태로 쓰십시오. 근거에 없는 일반적인 조언을 지어내지 마십시오.',
+    );
+  } else if (requestedOutcome === 'PERIOD') {
+    lines.push(
+      '· 이 질문은 시기를 물었습니다. 답의 중심은 아래 시기 판단이어야 합니다. 시기를 좁힐 근거가 없으면 없다고 말하고, 없는 시기를 지어내지 마십시오.',
+    );
+  }
   if (declined) {
     lines.push(
       '· 방향을 정하지 않았다는 판정을, 뒤에 붙는 조언에서 슬쩍 한쪽으로 되돌리지 마십시오. "그래도 A가 낫습니다 / B가 안전합니다 / 기다리는 편이 좋습니다"처럼 들리는 문장은 그 자체로 다시 방향을 고른 것입니다 — 판단을 유보한 상태를 조언에서도 그대로 유지하십시오.',

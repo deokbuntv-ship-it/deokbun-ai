@@ -66,6 +66,10 @@ import {
   judgeAllQimenConsultationDomains,
   routeConsultationJudgeDomain,
   judgeCrossConsultation,
+  judgeDecision,
+  projectDecisionJudgments,
+  type DecisionJudgmentV1,
+  type DomainJudgeSummary,
   type CrossDivinationVerdict,
   type JudgmentDomain,
   type NatalStructureInput,
@@ -202,11 +206,12 @@ const DECISION_CUE = /해도\s*(될까|괜찮|되나)|말까|할까요|추천|�
 // DECISION SEMANTICS V1 — THE INTENT IS READ FROM THE ASK, NOT FROM THE NARRATION.
 //
 // This scanned the WHOLE question, so a cue sitting in the SITUATION the person described decided the shape of
-// the answer. "같이 일하는 사람들 때문에 매일 힘듭니다. 계속 버티는 게 의미가 있을까요?" matched 때문 and
-// classified CAUSE_WHY; "성격은 잘 맞는데 … 잘 될 수 있는 인연인가요?" matched 성격 and classified DESCRIPTIVE.
+// the answer. A narration carrying 때문 ahead of a plain 계속할까요 ask classified CAUSE_WHY; a narration
+// carrying 성격 ahead of a plain 될까요 ask classified DESCRIPTIVE — in both cases the cue is in the
+// background the person gave, and the ask itself is a decision.
 //
 // That is not a cosmetic mislabel. `selectAnswerCandidates` treats CAUSE_WHY/DESCRIPTIVE as NON-DECISION
-// intents and admits only CAUSAL/структural conclusions as candidates, so every directional proposition on the
+// intents and admits only CAUSAL/STRUCTURAL conclusions as candidates, so every directional proposition on the
 // asked axis became structurally ineligible and the verdict declined with directional material sitting right
 // there in the graph — 4 of the 6 D2 declines in the census.
 //
@@ -644,9 +649,32 @@ export async function buildConsultationGrounding(
     const decisionProposition = buildDecisionProposition(q, {
       askedAxis: questionDomain, intent: questionIntent, asksTiming, askedTarget,
     });
+    // DECISION JUDGMENT V1 — each discipline now judges the PROPOSITION, not just its own axis panel.
+    //
+    // The material is the discipline's OWN Consultation Judge V1 result for the routed domain, which every
+    // paid turn already computes above. Myungri's was reaching Cross as a `role: 'QUALIFIES'` premise that
+    // `primitivePropositions` filters out and no derivation rule reads; Ziwei's and Qimen's were folded in
+    // as evidence only. All three were structurally incapable of answering the asked axis, which is what the
+    // census measured as D1 — "abundant directional judgment, none of it on the axis asked about".
+    //
+    // `projectDecisionJudgments` then makes exactly one narrow addition per discipline: a PRIMARY-axis
+    // sub-judgment, only where that discipline had no directional reading of it. Everything downstream —
+    // `adaptJudgment`, the premise graph, `resolveAnswer`, the winner/conflict rules — is untouched.
+    const myungriDomainResults = myungriReasoning.consultationJudgments;
+    const domainResultFor = (d: 'MYUNGRI' | 'ZIWEI' | 'QIMEN'): DomainJudgeSummary | null => {
+      if (d === 'MYUNGRI') return (ziweiRoutedDomain && myungriDomainResults?.[ziweiRoutedDomain]) ?? null;
+      if (d === 'ZIWEI') return ziweiConsultationJudgment ?? null;
+      return qimenConsultationJudgment ?? null;
+    };
+    const decisionJudgments: DecisionJudgmentV1[] = judgments.map((j) => judgeDecision({
+      judgment: j,
+      proposition: decisionProposition,
+      domainResult: domainResultFor(j.discipline),
+    }));
+    const judgedJudgments = projectDecisionJudgments(judgments, decisionJudgments);
     divinationVerdict = judgeCross({
       question: q, questionDomain, subject: canonicalSubject,
-      askedTarget, judgments, asksTiming, questionIntent,
+      askedTarget, judgments: judgedJudgments, asksTiming, questionIntent,
       decidingAxes: decidingAxes(decisionProposition),
       evaluatedAtEpochSeconds: now,
       myungriPremises: myungriReasoning.premises,

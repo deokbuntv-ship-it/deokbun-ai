@@ -35,6 +35,25 @@ export const agreedHeadline = (
   }
 };
 
+/**
+ * DECISION JUDGMENT V1 — one discipline's DOMAIN judgment, stated on the axis the proposition bound it to.
+ *
+ * The Consultation Judge results state their conclusion as REASONING ("억부용신 방향이 활동·재물 계열과 맞아,
+ * 사업 실행을 구조적으로 뒷받침합니다") — correct for the layer they were written for, and wrong in the slot a
+ * sub-judgment conclusion occupies, because that slot can become the verdict headline. The QA pack caught it
+ * immediately: the paid-reading quality guard reads such a sentence as carrying NO direction and files
+ * VERDICT_LOST_IN_PROSE against the verdict's own headline.
+ *
+ * NOTHING IS DECIDED OR ADDED HERE. The status was already settled by the discipline's own `combineStatus`;
+ * this only states it in the register the rest of the verdict layer speaks, and the discipline's own sentence
+ * still reaches the reader in full as the evidence behind it. MIXED and UNRESOLVED have no entry on purpose —
+ * they assert no direction, and no sentence here may give them one.
+ */
+export const domainJudgmentHeadline = (axis: JudgmentDomain, favorable: boolean): string =>
+  favorable
+    ? `${axisLabel(axis, '전반')}은 전반적으로 열려 있는 쪽으로 봅니다.`
+    : `${axisLabel(axis, '전반')}에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.`;
+
 /** The headline an UNRESOLVED set licenses: the fact that it does not settle, stated plainly. */
 export const unresolvedHeadline = (axis: JudgmentDomain): string =>
   `${axisLabel(axis, '전반')}에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.`;

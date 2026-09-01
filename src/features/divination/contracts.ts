@@ -204,6 +204,15 @@ export type DomainSubJudgment = {
   evidence: JudgmentEvidence[];
   /** Named, engine-traceable opposition for this axis. */
   counterEvidence: JudgmentEvidence[];
+  /**
+   * DECISION JUDGMENT V1 — present ONLY on an entry the discipline's own axis panel did not emit: the
+   * proposition-level reading projected from that same discipline's Consultation Judge V1 domain result
+   * (`decisionJudgment.ts`). Absent ⇒ the judge's own panel entry, which is every pre-existing entry.
+   *
+   * It exists so the addition is never mistaken for a structural finding the judge made — in the persisted
+   * verdict, in the "왜 이렇게 보나요?" layer, and in any audit that asks which readings came from where.
+   */
+  source?: 'DECISION_JUDGMENT_V1';
 };
 
 /**
@@ -343,6 +352,18 @@ export type CrossDivinationVerdict = {
    * was explaining.
    */
   questionIntent: QuestionIntent;
+  /**
+   * DECISION JUDGMENT V1 — the axes the DecisionProposition bound as PRIMARY, i.e. the ones this verdict's
+   * answer was actually selected over. Absent/empty ⇒ `[questionDomain]`, which is every pre-V6.1 row.
+   *
+   * WHY IT IS PERSISTED. `decisionMeta.ts` re-derives `direction`/`headlinePropositionIds`/`primaryConclusion`
+   * from the restored graph and rejects the row on any disagreement — "the graph is the sole verdict
+   * authority". That re-derivation calls `selectAnswerCandidates`, whose candidate set depends on the deciding
+   * axes. Decision Semantics V1 widened those beyond `questionDomain` without persisting them, so a restored
+   * verdict whose deciding axis differed from its asked axis re-projected to a DIFFERENT answer and was
+   * dropped on the follow-up turn. Storing them is what lets the check reproduce the same selection.
+   */
+  decidingAxes?: JudgmentDomain[];
   /** Server evaluation instant, so a follow-up restores the same temporal frame. */
   evaluatedAtEpochSeconds: number | null;
   /**

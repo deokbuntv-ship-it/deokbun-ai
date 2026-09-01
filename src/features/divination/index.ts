@@ -61,6 +61,13 @@ export {
   type QimenConsultationDomain, type QimenDomainJudgeResult, type QimenTargetRef,
 } from './qimenConsultationJudge';
 export { judgeCross, judgeCrossReasoned, type CrossJudgeInput } from './crossJudge';
+// ── DECISION JUDGMENT V1 — the proposition-aware layer above the discipline judges ────────────────
+export {
+  judgeDecision, projectDecisionJudgments, propositionIdOf, DECISION_JUDGMENT_V1_METHOD,
+  type AssessmentBasis, type AxisRole, type BearingAxis, type DecisionAssessment, type DecisionJudgeInput,
+  type DecisionJudgmentV1, type DecisionStance, type DomainJudgeSummary, type JudgedProposition,
+  type OptionComparability, type PropositionKind, type RequestedOutcome,
+} from './decisionJudgment';
 export {
   judgeCrossConsultation, CROSS_CONSULTATION_JUDGE_V1_METHOD,
   type CrossConsultationJudgeInput, type CrossConsultationResult, type CrossSystemContribution,

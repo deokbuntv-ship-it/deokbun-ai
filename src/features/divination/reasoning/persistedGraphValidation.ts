@@ -444,9 +444,15 @@ export function validateCrossDerivation(
 // rejected outright; there is no partial trust of the persisted copy.
 export function projectVerdictFromGraph(
   propositions: ReasonedProposition[], askedAxis: JudgmentDomain, intent: QuestionIntent,
+  // DECISION JUDGMENT V1 — the verdict's own persisted deciding axes. The projection has to select over the
+  // SAME candidate set the live pipeline did, and since Decision Semantics V1 that set is the PRIMARY-role
+  // axes rather than `[askedAxis]`. Absent ⇒ `[askedAxis]`, i.e. every pre-V6.1 row is projected exactly as
+  // before. Omitting this argument (as the pre-V6.1 code necessarily did) silently re-projects a
+  // widened-axis verdict against the wrong candidate set and rejects the row as corrupt.
+  deciding?: readonly JudgmentDomain[],
 ): { direction: Stance; headlinePropositionIds: string[] } {
   const standing = standingPropositions(propositions);
-  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent, deciding);
   const resolution = resolveAnswer(candidates);
   const primary = resolution.kind === 'SINGLE' ? resolution.primary : null;
   const direction: Stance = primary

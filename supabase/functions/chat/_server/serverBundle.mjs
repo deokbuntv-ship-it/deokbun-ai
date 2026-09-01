@@ -4897,7 +4897,7 @@ function createFacts(output) {
   return facts;
 }
 function createEvidence(output) {
-  const factIds = {
+  const factIds2 = {
     year: FACT_IDS.YEAR_PILLAR,
     month: FACT_IDS.MONTH_PILLAR,
     day: FACT_IDS.DAY_PILLAR,
@@ -4919,7 +4919,7 @@ function createEvidence(output) {
       kind: "LOOKUP",
       ruleId: output.provenance.calendarDatasetVersion,
       ruleVersion: output.provenance.calendarConversionRuleVersion,
-      factIds: [factIds.year, factIds.month, factIds.day],
+      factIds: [factIds2.year, factIds2.month, factIds2.day],
       parentEvidenceIds: [EVIDENCE_IDS.input]
     },
     {
@@ -4927,7 +4927,7 @@ function createEvidence(output) {
       kind: "RULE",
       ruleId: output.provenance.productRule.ruleId,
       ruleVersion: output.provenance.productRule.ruleVersion,
-      factIds: [factIds.year, factIds.month]
+      factIds: [factIds2.year, factIds2.month]
     },
     {
       // year/month pillars are attributed by 立春 / the twelve 節 — the authoritative boundary rule.
@@ -4935,26 +4935,26 @@ function createEvidence(output) {
       kind: "RULE",
       ruleId: output.provenance.yearMonthAttributionRule.ruleId,
       ruleVersion: output.provenance.yearMonthAttributionRule.ruleVersion,
-      factIds: [factIds.year, factIds.month]
+      factIds: [factIds2.year, factIds2.month]
     },
     {
       id: EVIDENCE_IDS.dayRule,
       kind: "RULE",
       ruleId: output.provenance.dayRule.ruleId,
       ruleVersion: output.provenance.dayRule.ruleVersion,
-      factIds: [factIds.day]
+      factIds: [factIds2.day]
     },
     {
       id: EVIDENCE_IDS.hourRule,
       kind: "RULE",
       ruleId: output.provenance.hourRule.ruleId,
       ruleVersion: output.provenance.hourRule.ruleVersion,
-      ...factIds.hour ? { factIds: [factIds.hour] } : {}
+      ...factIds2.hour ? { factIds: [factIds2.hour] } : {}
     },
     {
       id: EVIDENCE_IDS.year,
       kind: "DERIVATION",
-      factIds: [factIds.year],
+      factIds: [factIds2.year],
       parentEvidenceIds: [
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
@@ -4965,7 +4965,7 @@ function createEvidence(output) {
     {
       id: EVIDENCE_IDS.month,
       kind: "DERIVATION",
-      factIds: [factIds.month],
+      factIds: [factIds2.month],
       parentEvidenceIds: [
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
@@ -4976,7 +4976,7 @@ function createEvidence(output) {
     {
       id: EVIDENCE_IDS.day,
       kind: "DERIVATION",
-      factIds: [factIds.day],
+      factIds: [factIds2.day],
       parentEvidenceIds: [
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
@@ -4984,11 +4984,11 @@ function createEvidence(output) {
       ]
     }
   ];
-  if (factIds.hour) {
+  if (factIds2.hour) {
     evidence.push({
       id: EVIDENCE_IDS.hour,
       kind: "DERIVATION",
-      factIds: [factIds.hour],
+      factIds: [factIds2.hour],
       parentEvidenceIds: [
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.day,
@@ -5005,7 +5005,7 @@ function createEvidence(output) {
       EVIDENCE_IDS.year,
       EVIDENCE_IDS.month,
       EVIDENCE_IDS.day,
-      ...factIds.hour ? [EVIDENCE_IDS.hour] : []
+      ...factIds2.hour ? [EVIDENCE_IDS.hour] : []
     ]
   });
   evidence.push({
@@ -7768,6 +7768,7 @@ var agreedHeadline = (axis, direction, count) => {
       return `${lead}다만 방향까지 정할 만한 신호는 아닙니다.`;
   }
 };
+var domainJudgmentHeadline = (axis, favorable) => favorable ? `${axisLabel(axis, "전반")}은 전반적으로 열려 있는 쪽으로 봅니다.` : `${axisLabel(axis, "전반")}에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.`;
 var unresolvedHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.`;
 var extensionNoSignalHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 앞선 판정의 근거만으로 방향을 정할 수 없습니다. 없는 이야기를 지어내지는 않겠습니다.`;
 var refinementFailureHeadline = (axis) => `${axisLabel(axis, "전반")}에 대해서는 앞선 판정을 이어서 더 좁혀 드리기 어렵습니다. 앞서 드린 판정이 그대로 유효하며, 새로 보시려면 "지금 다시 보면?"이라고 물어봐 주세요.`;
@@ -10243,6 +10244,221 @@ function adaptJudgment(j, opts) {
   return { premises, propositions };
 }
 
+// src/features/divination/decisionJudgment.ts
+var DECISION_JUDGMENT_V1_METHOD = "deokbunai.decision-judgment.v1";
+function propositionIdOf(p) {
+  const primary = p.bearingAxes.filter((b) => b.role === "PRIMARY").map((b) => b.axis).sort();
+  return [
+    p.kind,
+    p.requestedOutcome,
+    p.askedDomain ?? "NONE",
+    primary.join("+") || "NONE",
+    p.wholeDomain ? "WHOLE" : "ASPECT"
+  ].join("|");
+}
+function stanceForStatus(status) {
+  switch (status) {
+    case "FAVORABLE":
+      return "CONDITIONAL_FOR";
+    case "CAUTION":
+      return "CONDITIONAL_AGAINST";
+    case "MIXED":
+      return NO_SIGNAL;
+    case "UNRESOLVED":
+      return NO_SIGNAL;
+  }
+}
+var factIds = (es) => es.filter((e) => e.coverageGap !== true).map((e) => e.fact);
+var real = (es) => (es ?? []).filter((e) => e.coverageGap !== true);
+function fromSubJudgment(sub2, role2) {
+  return {
+    axis: sub2.domain,
+    role: role2,
+    stance: sub2.stance,
+    statement: sub2.conclusion,
+    evidence: real(sub2.evidence),
+    counterEvidence: real(sub2.counterEvidence),
+    temporalScope: sub2.temporalScope,
+    directness: sub2.directness,
+    reliability: sub2.reliability,
+    basis: "AXIS_SUB_JUDGMENT"
+  };
+}
+function fromHeadline(j, axis, role2) {
+  return {
+    axis,
+    role: role2,
+    stance: j.stance,
+    statement: j.dominantConclusion,
+    evidence: real(j.directEvidence),
+    counterEvidence: real(j.counterEvidence),
+    temporalScope: j.temporalScope,
+    directness: j.questionDirectness,
+    reliability: j.dataReliability,
+    basis: "DISCIPLINE_HEADLINE"
+  };
+}
+function fromDomainJudge(d, j, axis, role2) {
+  const stance = stanceForStatus(d.status);
+  return {
+    axis,
+    role: role2,
+    stance,
+    // The domain judge's own sentence is REASONING, not a verdict statement, and this slot can become the
+    // verdict headline. Directional statuses are therefore restated on the bound axis in the verdict layer's
+    // own register; the discipline's sentence still travels in full as the evidence behind it. A
+    // non-directional status keeps its own words, because nothing is being stated about a direction.
+    statement: isDirectional(stance) ? domainJudgmentHeadline(axis, d.status === "FAVORABLE") : d.conclusion,
+    evidence: real(d.supportingEvidence),
+    counterEvidence: real(d.counterEvidence),
+    temporalScope: j.temporalScope,
+    // ADJACENT on purpose: the domain judge reads the DOMAIN, not the exact axis. Claiming DIRECT would let
+    // it tie with — and under `resolveAnswer` therefore block — a genuinely direct panel reading.
+    directness: "ADJACENT",
+    reliability: j.dataReliability,
+    basis: "DOMAIN_JUDGE"
+  };
+}
+function assessAxis(j, axis, role2, domainResult, wholeDomain) {
+  const sub2 = j.domainSubJudgments.find((s) => s.domain === axis) ?? null;
+  const headline = j.questionDomain === axis && isDirectional(j.stance) ? fromHeadline(j, axis, role2) : null;
+  const domain = role2 === "PRIMARY" && domainResult && domainResult.status !== "UNRESOLVED" ? fromDomainJudge(domainResult, j, axis, role2) : null;
+  const panel = sub2 && isDirectional(sub2.stance) ? fromSubJudgment(sub2, role2) : null;
+  const ordered = wholeDomain ? [domain, panel, headline, sub2 ? fromSubJudgment(sub2, role2) : null] : [panel, headline, domain, sub2 ? fromSubJudgment(sub2, role2) : null];
+  return ordered.find((a) => a !== null) ?? null;
+}
+function timingFor(j, bearing) {
+  const out = [];
+  const signals = real(j.timingSignals);
+  if (signals.length > 0) {
+    out.push({
+      axis: "TIMING",
+      role: "TIMING",
+      stance: NO_SIGNAL,
+      statement: signals.map((e) => e.meaning).join(" "),
+      evidence: signals,
+      counterEvidence: [],
+      temporalScope: j.temporalScope,
+      directness: "ADJACENT",
+      reliability: j.dataReliability,
+      basis: "DISCIPLINE_HEADLINE"
+    });
+  }
+  for (const b of bearing) {
+    if (b.role !== "TIMING") continue;
+    const sub2 = j.domainSubJudgments.find((s) => s.domain === b.axis);
+    if (sub2) out.push(fromSubJudgment(sub2, "TIMING"));
+  }
+  return out;
+}
+function judgeDecision(input) {
+  const { judgment: j, proposition: p } = input;
+  const domainResult = p.askedDomain !== null && input.domainResult?.domain === p.askedDomain ? input.domainResult : null;
+  const base = {
+    discipline: j.discipline,
+    propositionId: propositionIdOf(p),
+    propositionKind: p.kind,
+    requestedOutcome: p.requestedOutcome,
+    dataReliability: j.dataReliability,
+    optionComparability: p.optionComparability,
+    provenance: [DECISION_JUDGMENT_V1_METHOD]
+  };
+  if (!j.applicable) {
+    return {
+      ...base,
+      applicable: false,
+      decisionStance: "NOT_APPLICABLE",
+      primaryAssessment: null,
+      supportingAssessments: [],
+      limitingAssessments: [],
+      timingAssessments: [],
+      unresolvedReasons: j.applicabilityReason ? [j.applicabilityReason] : [],
+      evidenceIds: [],
+      confidence: "LOW",
+      questionDirectness: j.questionDirectness,
+      evidenceStrength: "NONE"
+    };
+  }
+  const of = (role2) => p.bearingAxes.filter((b) => b.role === role2).map((b) => assessAxis(j, b.axis, role2, role2 === "PRIMARY" ? domainResult : null, p.wholeDomain)).filter((a) => a !== null);
+  const primaryAssessment = of("PRIMARY")[0] ?? null;
+  const supportingAssessments = of("OUTCOME");
+  const limitingAssessments = of("CONSTRAINT");
+  const timingAssessments = timingFor(j, p.bearingAxes);
+  const all = [primaryAssessment, ...supportingAssessments, ...limitingAssessments, ...timingAssessments].filter((a) => a !== null);
+  const evidenceIds = [...new Set(all.flatMap((a) => [...factIds(a.evidence), ...factIds(a.counterEvidence)]))];
+  const cautionMaterial = [
+    ...all.filter((a) => a.counterEvidence.length > 0),
+    ...limitingAssessments.filter((a) => a.evidence.length > 0)
+  ];
+  const directional = primaryAssessment && isDirectional(primaryAssessment.stance) ? primaryAssessment.stance.includes("FOR") ? "FOR" : "AGAINST" : null;
+  const mixed = domainResult?.status === "MIXED" || primaryAssessment !== null && !isDirectional(primaryAssessment.stance) && primaryAssessment.evidence.length > 0 && primaryAssessment.counterEvidence.length > 0;
+  const decisionStance = (() => {
+    switch (p.requestedOutcome) {
+      // §12 — a description or a cause is not a decision, and declining a direction it never asked for
+      // would be the category error, not the honest answer.
+      case "DESCRIPTION":
+      case "CAUSE":
+        return all.length > 0 ? "DESCRIPTIVE" : "UNRESOLVED";
+      case "PERIOD":
+        if (timingAssessments.length > 0) return "PERIOD";
+        return directional ?? (mixed ? "MIXED" : "UNRESOLVED");
+      case "CONDUCT":
+        if (cautionMaterial.length > 0) return "ADVISORY";
+        return directional ?? (mixed ? "MIXED" : "UNRESOLVED");
+      default:
+        return directional ?? (mixed ? "MIXED" : "UNRESOLVED");
+    }
+  })();
+  const unresolvedReasons = decisionStance === "UNRESOLVED" ? [
+    ...domainResult?.uncertaintyReasons ?? [],
+    ...primaryAssessment ? [] : [`${axisNames(p)}에 대해 이 학문에서 세울 판단이 없습니다.`]
+  ] : [];
+  return {
+    ...base,
+    applicable: true,
+    decisionStance,
+    primaryAssessment,
+    supportingAssessments,
+    limitingAssessments,
+    timingAssessments,
+    unresolvedReasons: [...new Set(unresolvedReasons)],
+    evidenceIds,
+    confidence: j.confidence,
+    questionDirectness: primaryAssessment?.directness ?? j.questionDirectness,
+    // The discipline's own strength stands when its own panel answered; a domain-judge-derived reading is
+    // never STRONG, because it is a bounded domain summary rather than a direct structural finding.
+    evidenceStrength: primaryAssessment?.basis === "DOMAIN_JUDGE" ? primaryAssessment.evidence.length + primaryAssessment.counterEvidence.length > 0 ? "MODERATE" : "NONE" : j.evidenceStrength
+  };
+}
+var axisNames = (p) => p.bearingAxes.filter((b) => b.role === "PRIMARY").map((b) => b.axis).join("·") || "이 질문";
+function projectDecisionJudgments(judgments, decisions) {
+  return judgments.map((j) => {
+    const d = decisions.find((x) => x.discipline === j.discipline);
+    const a = d?.primaryAssessment;
+    if (!a || a.basis !== "DOMAIN_JUDGE") return j;
+    if (!isDirectional(a.stance)) return j;
+    if (a.evidence.length === 0 && a.counterEvidence.length === 0) return j;
+    if (j.domainSubJudgments.some((s) => s.domain === a.axis && isDirectional(s.stance))) return j;
+    const injected = {
+      domain: a.axis,
+      stance: a.stance,
+      conclusion: a.statement,
+      temporalScope: a.temporalScope,
+      directness: a.directness,
+      reliability: a.reliability,
+      evidence: [...a.evidence],
+      counterEvidence: [...a.counterEvidence],
+      source: "DECISION_JUDGMENT_V1"
+    };
+    return { ...j, domainSubJudgments: [...j.domainSubJudgments, injected] };
+  });
+}
+function decisionProjectionOnly(j) {
+  const projected = j.domainSubJudgments.filter((s) => s.source === "DECISION_JUDGMENT_V1");
+  if (projected.length === 0) return null;
+  return { ...j, stance: NO_SIGNAL, domainSubJudgments: projected };
+}
+
 // src/features/divination/reasoning/derivedChildPostconditions.ts
 var MYUNGRI_CHILD_SHAPES = {
   CONTESTED_SHARE: {
@@ -10774,9 +10990,9 @@ function selectAnswerCandidates(standing, asked, intent, deciding) {
   const onAskedAxis = (p) => asked === "GENERAL" || decides(p);
   return nonDecision ? standing.filter((p) => onAskedAxis(p) && (intent === "CAUSE_WHY" && p.conclusionType === "CAUSAL" || describesChart(p))) : standing.filter((p) => decides(p) && p.direction !== "NONE");
 }
-function authoritativeConclusionForState(propositions, askedAxis, intent) {
+function authoritativeConclusionForState(propositions, askedAxis, intent, deciding) {
   const standing = standingPropositions(propositions);
-  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent, deciding);
   const resolution = resolveAnswer(candidates);
   if (resolution.kind === "SINGLE") return resolution.primary.assertion;
   if (resolution.kind === "AGREED") {
@@ -10785,12 +11001,13 @@ function authoritativeConclusionForState(propositions, askedAxis, intent) {
   if (resolution.kind === "UNRESOLVED") return unresolvedHeadline(askedAxis);
   return null;
 }
-function controlledDeclineConclusions(propositions, askedAxis, intent, applicableDisciplines) {
+function controlledDeclineConclusions(propositions, askedAxis, intent, applicableDisciplines, deciding) {
   const standing = standingPropositions(propositions);
   const nonDecision = intent === "DESCRIPTIVE" || intent === "CAUSE_WHY";
-  const standoffs = standing.filter((p) => p.derivationRule === "CROSS_STANDOFF" && p.questionAxis === askedAxis).sort((x, y) => x.target.key.localeCompare(y.target.key));
+  const axes = deciding && deciding.length > 0 ? deciding : [askedAxis];
+  const standoffs = standing.filter((p) => p.derivationRule === "CROSS_STANDOFF" && axes.includes(p.questionAxis)).sort((x, y) => x.target.key.localeCompare(y.target.key));
   const examined = new Set(
-    propositions.filter((p) => p.questionAxis === askedAxis && p.discipline !== "CROSS").map((p) => p.discipline)
+    propositions.filter((p) => axes.includes(p.questionAxis) && p.discipline !== "CROSS").map((p) => p.discipline)
   );
   const blind = applicableDisciplines.filter((d) => !examined.has(d));
   const coverageNote = blind.length > 0 ? ` (${blind.map(disc).join("·")}에는 이 축을 직접 보는 자리가 없습니다.)` : "";
@@ -10838,8 +11055,10 @@ function reasonCross(input) {
   const premises = [...input.premises ?? []];
   const propositions = [...input.propositions ?? []];
   for (const j of applicable) {
-    if (j.discipline === "MYUNGRI" && input.propositions?.some((p) => p.discipline === "MYUNGRI")) continue;
-    const adapted = adaptJudgment(j, { subject, questionIntent: intent, askedAxis: asked });
+    const graphSupplied = j.discipline === "MYUNGRI" && input.propositions?.some((p) => p.discipline === "MYUNGRI");
+    const source = graphSupplied ? decisionProjectionOnly(j) : j;
+    if (!source) continue;
+    const adapted = adaptJudgment(source, { subject, questionIntent: intent, askedAxis: asked });
     premises.push(...adapted.premises);
     propositions.push(...adapted.propositions);
   }
@@ -10911,6 +11130,10 @@ function reasonCross(input) {
     question: input.question,
     questionDomain: asked,
     questionIntent: intent,
+    // The axes the answer was ACTUALLY selected over — persisted so `decisionMeta.ts` can reproduce this
+    // exact candidate selection when it re-derives the verdict from the restored graph. Omitted when it is
+    // just `[asked]`, so nothing changes for a question whose deciding axis is its asked axis.
+    ...deciding.length === 1 && deciding[0] === asked ? {} : { decidingAxes: [...deciding] },
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds ?? null,
     asksTiming: input.asksTiming,
     premises,
@@ -11528,11 +11751,20 @@ function buildDeclinedSummary(v, intent = "DECISION") {
   const reason = REASON_PHRASE[declinedReasonCategory(v)];
   return `${scope}에 대해서는 ${reason} 현재 근거만으로 한쪽 방향을 확정하기 어렵습니다. ${DECLINED_CLOSING[intent]}`;
 }
-function renderVerdictDirective(v) {
+function renderVerdictDirective(v, requestedOutcome) {
   const lines = ["[점사 판정 — 서버가 확정한 결론(그대로 노출하지 말 것)]"];
   const declined = isDeclinedToDecide(v);
   lines.push(`· 결론: ${v.primaryConclusion}`);
   lines.push(`· ${DIRECTION_INSTRUCTION[v.direction]}`);
+  if (requestedOutcome === "CONDUCT") {
+    lines.push(
+      '· 이 질문은 "할까 말까"가 아니라 "무엇을 조심하고 어떻게 해야 하는가"를 물었습니다. 위 방향은 판단의 근거로만 쓰고, 답은 아래 근거로 잡힌 제약·주의 지점을 구체적으로 짚는 형태로 쓰십시오. 근거에 없는 일반적인 조언을 지어내지 마십시오.'
+    );
+  } else if (requestedOutcome === "PERIOD") {
+    lines.push(
+      "· 이 질문은 시기를 물었습니다. 답의 중심은 아래 시기 판단이어야 합니다. 시기를 좁힐 근거가 없으면 없다고 말하고, 없는 시기를 지어내지 마십시오."
+    );
+  }
   if (declined) {
     lines.push(
       '· 방향을 정하지 않았다는 판정을, 뒤에 붙는 조언에서 슬쩍 한쪽으로 되돌리지 마십시오. "그래도 A가 낫습니다 / B가 안전합니다 / 기다리는 편이 좋습니다"처럼 들리는 문장은 그 자체로 다시 방향을 고른 것입니다 — 판단을 유보한 상태를 조언에서도 그대로 유지하십시오.'
@@ -12693,15 +12925,18 @@ var WHY = /왜\s|왜요|이유(?:가|는|를)|원인(?:이|은)|때문(?:인가|
 var WHAT_AM_I = /어떤\s*사람|제\s*성격|성향(?:이|은)|타고난\s*(?:성격|기질|결)|저는\s*어떤/;
 var SHOULD = /[가-힣]+도\s*(?:될까|괜찮|되나|좋을까|하나)|할까요|말까|괜찮을까|나을까|맞을까|진행해도|시작해도|계속\s*(?:\S+\s*)?(?:해도|가도|다녀도|버티|끌고)|의미가\s*있을까/;
 var WILL = /있을까요|될까요|가능성|생길까|올까요|이어질|잘\s*될/;
+var CONDUCT = /어떻게\s*(?:해야|하는\s*게|하면|처신|대응|행동|준비)|조심(?:해야|할|하는|하는\s*게)|주의(?:해야|할)|신경\s*(?:써야|쓰면|쓸|쓰는)|준비(?:해야|해\s*둘|해\s*두면|해두면|해둘|할\s*게)|챙겨야|챙길\s*게|피해야|뭘\s*(?:해야|준비|조심|신경)|어디에\s*(?:힘|공|시간|노력)을/;
 function propositionKind(focus, whole) {
   if (CMP.test(focus)) return "A_VS_B";
   if (WHY.test(focus)) return "WHY_X";
   if (WHAT_AM_I.test(focus)) return "WHAT_AM_I";
   if (WHEN.test(focus)) return "WHEN_X";
+  if (CONDUCT.test(focus)) return "HOW_SHOULD_I_ACT";
   if (SHOULD.test(focus)) return "SHOULD_I_DO_X";
   if (WILL.test(focus)) return "WILL_X_HAPPEN";
   if (CMP.test(whole)) return "A_VS_B";
   if (WHEN.test(whole)) return "WHEN_X";
+  if (CONDUCT.test(whole)) return "HOW_SHOULD_I_ACT";
   if (SHOULD.test(whole)) return "SHOULD_I_DO_X";
   if (WILL.test(whole)) return "WILL_X_HAPPEN";
   if (WHY.test(whole)) return "WHY_X";
@@ -12714,8 +12949,24 @@ var OUTCOME_OF = {
   WILL_X_HAPPEN: "OCCURRENCE",
   WHEN_X: "PERIOD",
   WHY_X: "CAUSE",
-  WHAT_AM_I: "DESCRIPTION"
+  WHAT_AM_I: "DESCRIPTION",
+  HOW_SHOULD_I_ACT: "CONDUCT"
 };
+var STAY_SIDE = /남(?:는|을|아)|유지|그대로|지금(?:처럼|\s*있|\s*사는|\s*다니)|기다리|묵혀|더\s*(?:두|버티|다니)|안\s*(?:하|가|옮)|말지|쉬는|재계약|묶어두|예금으로/;
+var ACT_SIDE = /옮기|바꾸|시작|정리|나가|이직|그만|끝내|움직이|떠나|팔|사는\s*쪽|갚는|새\s*/;
+function comparabilityOf(kind, options, focus) {
+  if (kind !== "A_VS_B") return "NOT_A_COMPARISON";
+  if (options.length < 2) {
+    return /\S+할지\s*\S*말지|하는\s*게\s*나을지\s*마는/.test(focus) ? "STATUS_QUO_INVERSE" : "DISTINCT_OPTIONS";
+  }
+  const stay = options.filter((o) => STAY_SIDE.test(o)).length;
+  const act = options.filter((o) => ACT_SIDE.test(o)).length;
+  if (stay === 1 && act === 1 && !options.every((o) => STAY_SIDE.test(o) && ACT_SIDE.test(o))) {
+    return "STATUS_QUO_INVERSE";
+  }
+  if (/\S+할지\s*\S*말지|하는\s*게\s*나을지\s*마는/.test(focus)) return "STATUS_QUO_INVERSE";
+  return "DISTINCT_OPTIONS";
+}
 var OPTION_SPLIT = /\s*,?\s*(?:아니면|또는|vs\.?|혹은)\s*|(?<=쪽|것)(?:과|와)\s+|\s*,\s*(?=\S+(?:할지|하는\s*게|하느냐|쪽))/;
 var OPTION_TAIL = /(?:할지|하는\s*게|하느냐|하는\s*것|쪽(?:과|와|이|을|은)?|중에서?|중)\s*.*$/;
 function extractOptions(focus, whole) {
@@ -12755,9 +13006,15 @@ function bindAxes(domain, fallbackAxis, kind, text, focus, asksTiming) {
   const push = (axis, role2) => {
     if (!out.some((b) => b.axis === axis)) out.push({ axis, role: role2 });
   };
+  let wholeDomain = false;
+  const aspect = (a, b) => {
+    const r = prefer(a, b);
+    wholeDomain = r === null;
+    return r;
+  };
   switch (domain) {
     case "MONEY": {
-      const keeps = prefer(RETENTION, INFLOW);
+      const keeps = aspect(RETENTION, INFLOW);
       if (keeps === true) {
         push("MONEY_RETENTION", "PRIMARY");
         push("MONEY_INFLOW", "OUTCOME");
@@ -12768,7 +13025,7 @@ function bindAxes(domain, fallbackAxis, kind, text, focus, asksTiming) {
       break;
     }
     case "LOVE": {
-      const lasts = prefer(LASTING, MEETING);
+      const lasts = aspect(LASTING, MEETING);
       if (lasts === true) {
         push("RELATION_STABILITY", "PRIMARY");
         push("RELATION_BOND", "OUTCOME");
@@ -12779,7 +13036,7 @@ function bindAxes(domain, fallbackAxis, kind, text, focus, asksTiming) {
       break;
     }
     case "REUNION": {
-      const lasts = prefer(LASTING, MEETING);
+      const lasts = aspect(LASTING, MEETING);
       if (lasts === true) {
         push("RELATION_STABILITY", "PRIMARY");
         push("RELATION_BOND", "OUTCOME");
@@ -12814,7 +13071,7 @@ function bindAxes(domain, fallbackAxis, kind, text, focus, asksTiming) {
     }
   }
   if ((asksTiming || kind === "WHEN_X") && !out.some((b) => b.axis === "TIMING")) push("TIMING", "TIMING");
-  return out;
+  return { axes: out, wholeDomain };
 }
 function buildDecisionProposition(question, resolved) {
   const q = (question ?? "").trim();
@@ -12823,15 +13080,18 @@ function buildDecisionProposition(question, resolved) {
   const askedDomain = routeConsultationJudgeDomain(resolved.askedTarget ?? void 0, resolved.askedAxis);
   const kind = propositionKind(focus, q);
   const options = kind === "A_VS_B" ? extractOptions(focus, q) : [];
+  const bound = bindAxes(askedDomain, resolved.askedAxis, kind, q, focus, resolved.asksTiming);
   return {
     kind,
     askedDomain,
     decisionObject: extractDecisionObject(focus),
     requestedOutcome: OUTCOME_OF[kind],
     options,
+    optionComparability: comparabilityOf(kind, options, focus),
+    wholeDomain: bound.wholeDomain,
     temporalScope: PRESENT.test(focus) ? "PRESENT" : NEAR2.test(q) ? "NEAR_TERM" : "UNSPECIFIED",
     counterparty: FORMER.test(q) ? "FORMER_PARTNER" : PARTNER.test(q) ? "PARTNER" : null,
-    bearingAxes: bindAxes(askedDomain, resolved.askedAxis, kind, q, focus, resolved.asksTiming),
+    bearingAxes: bound.axes,
     provenance: ["deokbunai.decision-proposition.v1"]
   };
 }
@@ -13276,12 +13536,24 @@ async function buildConsultationGrounding(draft, deps, question) {
       asksTiming,
       askedTarget
     });
+    const myungriDomainResults = myungriReasoning.consultationJudgments;
+    const domainResultFor = (d) => {
+      if (d === "MYUNGRI") return (ziweiRoutedDomain && myungriDomainResults?.[ziweiRoutedDomain]) ?? null;
+      if (d === "ZIWEI") return ziweiConsultationJudgment ?? null;
+      return qimenConsultationJudgment ?? null;
+    };
+    const decisionJudgments = judgments.map((j) => judgeDecision({
+      judgment: j,
+      proposition: decisionProposition,
+      domainResult: domainResultFor(j.discipline)
+    }));
+    const judgedJudgments = projectDecisionJudgments(judgments, decisionJudgments);
     divinationVerdict = judgeCross({
       question: q,
       questionDomain,
       subject: canonicalSubject,
       askedTarget,
-      judgments,
+      judgments: judgedJudgments,
       asksTiming,
       questionIntent,
       decidingAxes: decidingAxes(decisionProposition),
@@ -14772,9 +15044,9 @@ function validateCrossDerivation(prop, propositionById, ctx) {
       return false;
   }
 }
-function projectVerdictFromGraph(propositions, askedAxis, intent) {
+function projectVerdictFromGraph(propositions, askedAxis, intent, deciding) {
   const standing = standingPropositions(propositions);
-  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent, deciding);
   const resolution = resolveAnswer(candidates);
   const primary = resolution.kind === "SINGLE" ? resolution.primary : null;
   const direction = primary ? stanceOf(primary) : resolution.kind === "AGREED" ? agreedStance(resolution.members, resolution.direction) : NO_SIGNAL;
@@ -15409,6 +15681,10 @@ function parseDivinationVerdict(v) {
   if (typeof o.asksTiming !== "boolean") {
     return void 0;
   }
+  if (o.decidingAxes !== void 0 && !(Array.isArray(o.decidingAxes) && o.decidingAxes.every((a) => enumOk(AXES, a)))) {
+    return void 0;
+  }
+  const decidingAxes2 = Array.isArray(o.decidingAxes) ? o.decidingAxes : void 0;
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger2(o.evaluatedAtEpochSeconds)) {
     return void 0;
   }
@@ -15460,7 +15736,8 @@ function parseDivinationVerdict(v) {
     const projectedVerdict = projectVerdictFromGraph(
       parsed,
       o.questionDomain,
-      o.questionIntent
+      o.questionIntent,
+      decidingAxes2
     );
     if (projectedVerdict.direction !== o.direction) {
       return void 0;
@@ -15477,7 +15754,8 @@ function parseDivinationVerdict(v) {
     const expectedConclusion = authoritativeConclusionForState(
       parsed,
       o.questionDomain,
-      o.questionIntent
+      o.questionIntent,
+      decidingAxes2
     );
     if (expectedConclusion === null || o.primaryConclusion !== expectedConclusion) {
       return void 0;
@@ -15488,7 +15766,8 @@ function parseDivinationVerdict(v) {
       parsed,
       o.questionDomain,
       o.questionIntent,
-      applicableDisciplines
+      applicableDisciplines,
+      decidingAxes2
     );
     if (!declineConclusions.includes(o.primaryConclusion)) {
       return void 0;
@@ -15497,7 +15776,8 @@ function parseDivinationVerdict(v) {
   const projectedHeadlinesForReconstruction = Array.isArray(o.headlinePropositionIds) ? headlineIds : projectVerdictFromGraph(
     parsed,
     o.questionDomain,
-    o.questionIntent
+    o.questionIntent,
+    decidingAxes2
   ).headlinePropositionIds;
   const str2 = (x, fallback = "") => typeof x === "string" ? x : fallback;
   const strArr = (x) => isStringArray2(x) ? [...x] : [];
@@ -15516,6 +15796,7 @@ function parseDivinationVerdict(v) {
     question: str2(o.question),
     questionDomain: o.questionDomain,
     questionIntent: o.questionIntent,
+    ...decidingAxes2 ? { decidingAxes: [...decidingAxes2] } : {},
     evaluatedAtEpochSeconds: typeof o.evaluatedAtEpochSeconds === "number" ? o.evaluatedAtEpochSeconds : null,
     asksTiming: o.asksTiming,
     premises: premisesOut,
@@ -15547,7 +15828,10 @@ function parseDivinationVerdict(v) {
         directness: sj.directness,
         reliability: sj.reliability,
         evidence: evidence(sj.evidence),
-        counterEvidence: evidence(sj.counterEvidence)
+        counterEvidence: evidence(sj.counterEvidence),
+        // Deliberately restored: without it a projected proposition-level reading comes back looking like a
+        // structural finding the discipline's own panel made.
+        ...sj.source === "DECISION_JUDGMENT_V1" ? { source: "DECISION_JUDGMENT_V1" } : {}
       })),
       confidence: j.confidence,
       questionDirectness: j.questionDirectness,
@@ -17416,7 +17700,18 @@ async function buildServerConsultation(request, deps) {
     const verdict = effectiveGrounding.status === "available" ? effectiveGrounding.divinationVerdict ?? null : null;
     const contentPlan = verdict ? buildConsultationContentPlan(verdict) : null;
     contentPlanHolder.current = contentPlan;
-    const planDirective = verdict && contentPlan ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderContentPlanDirective(contentPlan)].filter(Boolean).join("\n") : renderAnswerPlanDirective(plan, questionDomain);
+    const planDirective = verdict && contentPlan ? [
+      renderAnswerPlanDirective(plan, questionDomain),
+      // DECISION JUDGMENT V1 — what the person asked FOR, so the reading contract matches the request.
+      // The verdict's own stance is unchanged; this only stops a conduct or timing ask from being read
+      // back to the user as 하는 쪽 / 하지 않는 쪽.
+      renderVerdictDirective(verdict, buildDecisionProposition(question, {
+        askedAxis: resolveJudgmentDomain(question),
+        intent: resolveQuestionIntent(question),
+        asksTiming: verdict.asksTiming
+      }).requestedOutcome),
+      renderContentPlanDirective(contentPlan)
+    ].filter(Boolean).join("\n") : renderAnswerPlanDirective(plan, questionDomain);
     const base = followUpDirective ? `${planDirective}
 ${followUpDirective}` : planDirective;
     return buildPrompt({

@@ -11,9 +11,9 @@
 | 단독 상담 케이스 | 36 |
 | 반사실 대조쌍 | 5 |
 | 궁합 케이스 | 6 |
-| 총 합성추론(SYNTHETIC_INFERENCE) 수 | 159 |
+| 총 합성추론(SYNTHETIC_INFERENCE) 수 | 205 |
 | 답을 내면서 추론이 0이던 케이스 | 0 (0이어야 함 — §7) |
-| 방향을 내지 못한 케이스 | 18 / 36 |
+| 방향을 내지 못한 케이스 | 17 / 36 |
 
 ## ⚠ 미해결 블로커 — 축 커버리지 공백 (§13)
 
@@ -32,11 +32,11 @@
 | HEALTH_ENERGY | ZIWEI |
 | MONEY_INFLOW | MYUNGRI, ZIWEI |
 | MONEY_RETENTION | MYUNGRI, ZIWEI |
-| MOVEMENT | ZIWEI |
+| MOVEMENT | QIMEN, ZIWEI |
 | OPPORTUNITY | MYUNGRI, ZIWEI |
-| RELATION_BOND | ZIWEI |
-| RELATION_STABILITY | MYUNGRI, ZIWEI |
-| TIMING | QIMEN |
+| RELATION_BOND | MYUNGRI, ZIWEI |
+| RELATION_STABILITY | MYUNGRI, QIMEN, ZIWEI |
+| TIMING | MYUNGRI, QIMEN |
 
 - **CANDIDATE_SYNTHESIS = n / m** — 런타임이 "추론일 수 있다"고 지목한 후보 수입니다. 실제 추론인지는
   전제를 지우거나 뒤집어 결론이 움직이는지 확인해야 하며, 그 검증은 V4B 커널 팩에서 수행합니다.
@@ -75,6 +75,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -94,10 +95,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = AGAINST** (확신 HIGH)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = STRUCTURAL_ANSWER)
-- 결론: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- SYNTHETIC_INFERENCES = 4 / 21
+- 결론: 돈이 들어오는 쪽에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 5 / 23
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -133,17 +134,19 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [PRIMITIVE] (ZIWEI) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
-        ← 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [PRIMITIVE] (MYUNGRI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=true
     - [PRIMITIVE] (ZIWEI) 전택은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
         ← 자녀(대궁)에 무곡 화권
     - [PRIMITIVE] (ZIWEI) 관록에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과 / 원국 재성 존재=true, 운 재성 활성=true
     - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 재백(본궁)에 천동 화기 / 자녀(대궁)에 무곡 화권 / 관록(삼합궁)에 태음 화과
-- CONTRADICTION_RESOLUTIONS = INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:AGAINST(경합)
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 명리) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:AGAINST(경합) · MONEY_INFLOW:AGAINST(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=AGAINST · QIMEN=미적용
@@ -190,6 +193,7 @@
     - MONEY_INFLOW = INSUFFICIENT_EVIDENCE (NATAL/DIRECT) — 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 전택 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
     - CAREER = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
+    - MONEY_INFLOW = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 돈이 들어오는 쪽에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
 - COUNTER_EVIDENCE:
     - 형제(삼합궁)에 거문 화기 — 삼합궁에 막히거나 얽혀서 애를 먹는 힘이 걸립니다.
 
@@ -197,10 +201,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 HIGH)
+- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = STRUCTURAL_ANSWER)
-- 결론: 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
-- SYNTHETIC_INFERENCES = 6 / 22
+- 결론: 돈이 들어오는 쪽에 대해서는 서로 다른 근거 2가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
+- SYNTHETIC_INFERENCES = 6 / 23
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -242,13 +246,15 @@
         ← 형제(삼합궁)에 거문 화기 / 자녀(대궁)에 태음 화록
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 관록의 염정
+    - [PRIMITIVE] (ZIWEI) 돈이 들어오는 쪽에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
+        ← 형제(삼합궁)에 거문 화기
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
 - CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=CONDITIONAL_AGAINST · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=미적용
@@ -280,6 +286,7 @@
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -291,6 +298,7 @@
     - MONEY_INFLOW = INSUFFICIENT_EVIDENCE (NATAL/DIRECT) — 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - MONEY_RETENTION = CONDITIONAL_FOR (NATAL/ADJACENT) — 전택에 화권이 들어와 있어, 저절로 굴러오지는 않지만 직접 미시면 열리는 쪽입니다.
     - CAREER = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE:
     - 형제(삼합궁)에 문창 화기 — 삼합궁에 막히거나 얽혀서 애를 먹는 힘이 걸립니다.
 
@@ -298,10 +306,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = STRUCTURAL_ANSWER)
-- 결론: 돈이 들어오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 3 / 17
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = CONDITIONAL_FOR)
+- 결론: 돈이 들어오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.
+- SYNTHETIC_INFERENCES = 6 / 22
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
         ← 지금의 큰 흐름 활동·표현
@@ -329,17 +337,27 @@
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
+    - [PRIMITIVE] (MYUNGRI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false
     - [PRIMITIVE] (ZIWEI) 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 재백의 파군
     - [PRIMITIVE] (ZIWEI) 전택에 화권이 들어와 있어, 저절로 굴러오지는 않지만 직접 미시면 열리는 쪽입니다.
         ← 전택(본궁)에 태양 화권 / 형제(삼합궁)에 문창 화기
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 관록의 칠살
+    - [PRIMITIVE] (ZIWEI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 전택(본궁)에 태양 화권
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER(경합)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 원국 재물 4자리 / 이 시기 흐름 겁재 / 원국 재성 존재=true, 운 재성 활성=false
+    - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 원국 재물 4자리 / 이 시기 흐름 겁재 / 전택(본궁)에 태양 화권
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 MONEY_INFLOW 판단 / 재백궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false / 전택(본궁)에 태양 화권
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합) · MONEY_INFLOW:FOR(경합) · MONEY_INFLOW:FOR(경합) · MONEY_INFLOW:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=미적용
@@ -370,6 +388,7 @@
     - OPPORTUNITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -388,10 +407,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = FOR** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = FOR)
-- 결론: 재백은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
-- SYNTHETIC_INFERENCES = 2 / 16
+- **FINAL_VERDICT = FOR** (확신 HIGH)
+- ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = CONDITIONAL_FOR)
+- 결론: 서로 다른 자리(명리 MONEY_INFLOW 판단 / 재백궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+- SYNTHETIC_INFERENCES = 3 / 18
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -417,6 +436,8 @@
         ← 이 시기 흐름 → 원국 년주 천간충
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 올해 흐름 → 원국 년주 해
+    - [PRIMITIVE] (MYUNGRI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false
     - [PRIMITIVE] (ZIWEI) 재백은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
         ← 복덕(대궁)에 천기 화록
     - [PRIMITIVE] (ZIWEI) 전택에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
@@ -425,9 +446,11 @@
         ← 부처(대궁)에 태음 화기 / 관록 무주성 · 대궁 부처의 천동·태음을 빌려 봄
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 MONEY_INFLOW 판단 / 재백궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false / 복덕(대궁)에 천기 화록
 - CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MONEY_INFLOW:FOR · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · MONEY_INFLOW:FOR · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합) · MONEY_INFLOW:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=미적용
@@ -463,6 +486,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -482,10 +506,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = AGAINST** (확신 HIGH)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = STRUCTURAL_ANSWER)
-- 결론: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- SYNTHETIC_INFERENCES = 4 / 21
+- 결론: 돈이 들어오는 쪽에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 5 / 23
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -521,17 +545,19 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [PRIMITIVE] (ZIWEI) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
-        ← 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [PRIMITIVE] (MYUNGRI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=true
     - [PRIMITIVE] (ZIWEI) 전택은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
         ← 자녀(대궁)에 무곡 화권
     - [PRIMITIVE] (ZIWEI) 관록에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과 / 원국 재성 존재=true, 운 재성 활성=true
     - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 재백(본궁)에 천동 화기 / 자녀(대궁)에 무곡 화권 / 관록(삼합궁)에 태음 화과
-- CONTRADICTION_RESOLUTIONS = INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:AGAINST · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:AGAINST(경합)
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 막힙니다, 돈이 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 명리) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:AGAINST(경합) · MONEY_INFLOW:AGAINST(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=AGAINST · QIMEN=미적용
@@ -567,6 +593,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - MONEY_RETENTION = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 남는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -586,10 +613,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = FOR** (확신 HIGH)
-- ANSWERED_ON_ASKED_AXIS = YES (MONEY_RETENTION = FOR)
-- 결론: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
-- SYNTHETIC_INFERENCES = 4 / 21
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (MONEY_RETENTION = CONDITIONAL_FOR)
+- 결론: 돈이 남는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.
+- SYNTHETIC_INFERENCES = 6 / 24
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -625,17 +652,23 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
+    - [PRIMITIVE] (MYUNGRI) 돈이 남는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=true
     - [PRIMITIVE] (ZIWEI) 전택은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
         ← 자녀(대궁)에 무곡 화권
     - [PRIMITIVE] (ZIWEI) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
         ← 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [PRIMITIVE] (ZIWEI) 관록에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 MONEY_RETENTION 판단 / 전택궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 원국 재성 존재=true, 운 재성 활성=true / 자녀(대궁)에 무곡 화권
+    - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 원국 재성 존재=true, 운 재성 활성=true / 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 자녀(대궁)에 무곡 화권 / 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
-- CONTRADICTION_RESOLUTIONS = INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_RETENTION:FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · MONEY_RETENTION:FOR(경합)
+- CONTRADICTION_RESOLUTIONS = INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 남는 쪽은 열립니다, 돈이 들어오는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · MONEY_RETENTION:FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · MONEY_RETENTION:FOR(경합) · MONEY_RETENTION:CONDITIONAL_FOR(경합) · MONEY_RETENTION:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=미적용
@@ -692,13 +725,14 @@
 - MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CAREER)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
+    - CAREER = CONDITIONAL_FOR (PRESENT_MOMENT/ADJACENT) — 자리·직업은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
 - **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (MOVEMENT = FOR)
 - 결론: 이동에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- SYNTHETIC_INFERENCES = 4 / 22
+- SYNTHETIC_INFERENCES = 4 / 23
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -742,11 +776,13 @@
         ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
+    - [PRIMITIVE] (QIMEN) 자리·직업은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 값사문(開門)
     - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 월주 해 / 부처(삼합궁)에 태양 화록
 - CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MOVEMENT:FOR · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · TIMING:CONDITIONAL_FOR · MOVEMENT:FOR(경합)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · MOVEMENT:FOR · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · TIMING:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MOVEMENT:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=FOR
@@ -805,13 +841,14 @@
 - MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
+    - RELATION_STABILITY = CONDITIONAL_FOR (PRESENT_MOMENT/ADJACENT) — 같이 사는 난도은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
 - **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (RELATION_STABILITY = AGAINST)
 - 결론: 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
-- SYNTHETIC_INFERENCES = 19 / 37
+- SYNTHETIC_INFERENCES = 24 / 43
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -849,10 +886,14 @@
         ← 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
+    - [PRIMITIVE] (QIMEN) 같이 사는 난도은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 값사문(開門)
     - [CROSS_STANDOFF] (CROSS) 원국 일지(배우자·자기 자리)·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 원국 일지 충·형·파·해 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 원국 일지 충·형·파·해 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
+    - [CROSS_STANDOFF] (CROSS) 기문 국·원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 원국 일지 충·형·파·해 / 값사문(開門)
     - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
     - [CROSS_TIMING_SPLIT] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
@@ -865,23 +906,31 @@
         ← 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충 / 값사문(開門)
     - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
         ← 이 시기 흐름 → 원국 일주 형 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 이 시기 흐름 → 원국 일주 형 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 이 시기 흐름 → 원국 일주 형 / 값사문(開門)
     - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
     - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 이 시기 흐름 → 원국 일주 형 / 부처(본궁)에 태양 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 일주 천간합 / 이 시기 흐름 → 원국 일주 형 / 형제 무주성 · 대궁 노복의 염정·탐랑을 빌려 봄
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일지(배우자·자기 자리)·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIRECTNESS: 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · GENERAL:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합)
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 지금의 큰 흐름 → 원국 일주 천간합 / 이 시기 흐름 → 원국 일주 형 / 값사문(開門)
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 일지(배우자·자기 자리)·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 기문 국·원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIFFERENT_TIMESCALE: 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. / DIRECTNESS: 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 올해 흐름이 원국 일주 천간충를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / DIRECTNESS: 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 이 시기 흐름이 원국 일주 형를 정면으로 흔든다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 기문둔갑) / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 기문둔갑) / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 기문둔갑) / 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다 (밀려난 쪽: 자미두수) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 기문둔갑)
+- AXIS_VERDICTS = RELATION_STABILITY:AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_STABILITY:FOR · GENERAL:CONDITIONAL_AGAINST · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합) · RELATION_STABILITY:FOR_BUT_LATER(경합)
 - DOCTRINE_BLOCKERS = 없음
-- 시기: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
+- 시기: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 이 달에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 범위를 좁혀야 합니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다. 원국 일주은(는) 큰 흐름에서 열려 있는 자리인데, 올해에 바로 그 자리가 흔들리고 있다. 방향과 지금 실행할 시점은 나누어 봐야 한다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다. 원국 일주은(는) 큰 흐름에서 열려 있는데 가까운 시기가 바로 그 자리를 누르고 있습니다. 방향과 시점을 나눠서 봐야 합니다.
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=FOR
 
 ---
@@ -1215,6 +1264,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -1241,10 +1291,10 @@
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = CONDITIONAL_AGAINST)
-- 결론: 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-- SYNTHETIC_INFERENCES = 7 / 26
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = CONDITIONAL_FOR)
+- 결론: 기회가 오는 쪽에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 9 / 29
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -1280,8 +1330,8 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [PRIMITIVE] (ZIWEI) 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
-        ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
     - [PRIMITIVE] (ZIWEI) 관록에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
     - [PRIMITIVE] (ZIWEI) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
@@ -1290,17 +1340,21 @@
         ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 시주 반합 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 올해 흐름 → 원국 시주 육합 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 이 시기 흐름 → 원국 시주 반합 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 쪽과 자리·직업은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 재백(삼합궁)에 천동 화기 / 관록(본궁)에 태음 화과 / 관록(삼합궁)에 태음 화과
-- CONTRADICTION_RESOLUTIONS = OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 기회가 오는 쪽과 자리·직업은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · TIMING:CONDITIONAL_FOR · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합)
+- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / DIFFERENT_DOMAIN: 기회가 오는 쪽과 자리·직업은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 명리) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · TIMING:CONDITIONAL_FOR · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_AGAINST · QIMEN=FOR
@@ -1535,6 +1589,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -1555,10 +1610,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = CONDITIONAL_AGAINST)
-- 결론: 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-- SYNTHETIC_INFERENCES = 7 / 25
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = CONDITIONAL_FOR)
+- 결론: 기회가 오는 쪽에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 9 / 28
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -1594,25 +1649,29 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [PRIMITIVE] (ZIWEI) 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
-        ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
     - [PRIMITIVE] (ZIWEI) 관록에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 관록(본궁)에 태음 화과 / 재백(삼합궁)에 천동 화기
     - [PRIMITIVE] (ZIWEI) 재백에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
         ← 재백(본궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [PRIMITIVE] (ZIWEI) 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다.
         ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 시주 반합 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 올해 흐름 → 원국 시주 육합 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 이 시기 흐름 → 원국 시주 반합 / 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다.
+        ← 재백(삼합궁)에 천동 화기 / 관록(삼합궁)에 태음 화과 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 쪽과 자리·직업은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 재백(삼합궁)에 천동 화기 / 관록(본궁)에 태음 화과 / 관록(삼합궁)에 태음 화과
-- CONTRADICTION_RESOLUTIONS = OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 기회가 오는 쪽과 자리·직업은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합)
+- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 명궁 자체보다 맞물린 자리에서 걸리는 기운이 들어와, 지금 크게 벌이기는 쉽지 않습니다. 반대 근거도 있으나, 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다. / DIFFERENT_DOMAIN: 기회가 오는 쪽과 자리·직업은 다르게 봅니다. 기회가 오는 쪽은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다 (밀려난 쪽: 명리) / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · MONEY_INFLOW:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합) · OPPORTUNITY:CONDITIONAL_AGAINST(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_AGAINST · QIMEN=미적용
@@ -1647,6 +1706,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -1659,16 +1719,17 @@
     - CAREER = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 재백은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
     - GENERAL = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### QIMEN
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = STRUCTURAL_ANSWER)
-- 결론: 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 4 / 21
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = CONDITIONAL_FOR)
+- 결론: 기회가 오는 쪽에 대해서는 서로 다른 근거 7가지가 모두 같은 쪽을 가리킵니다. 열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.
+- SYNTHETIC_INFERENCES = 9 / 28
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -1702,6 +1763,8 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 탐랑
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
@@ -1710,11 +1773,23 @@
         ← 복덕(대궁)에 무곡 화권
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 탐랑
+    - [PRIMITIVE] (ZIWEI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 복덕(대궁)에 무곡 화권
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 해 / 복덕(대궁)에 무곡 화권
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 해
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER(경합)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 올해 흐름 → 원국 시주 해 / 원국/운 식상 존재=true, 재성 존재=true
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 올해 흐름 → 원국 시주 해 / 복덕(대궁)에 무곡 화권
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 OPPORTUNITY 판단 / 명궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true / 복덕(대궁)에 무곡 화권
+- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OUTCOME:STRUCTURAL_ANSWER(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=미적용
@@ -1744,6 +1819,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -1753,10 +1829,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = NO — 물어본 축으로 답하지 않음
-- 결론: 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 3 / 11
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = CONDITIONAL_FOR)
+- 결론: 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+- SYNTHETIC_INFERENCES = 3 / 12
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -1780,9 +1856,11 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
 - CONTRADICTION_RESOLUTIONS = 없음
 - WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=미적용 · QIMEN=미적용
@@ -2376,13 +2454,14 @@
 - MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CHANGE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
+    - MOVEMENT = CONDITIONAL_FOR (PRESENT_MOMENT/ADJACENT) — 이동은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 MEDIUM)
 - ANSWERED_ON_ASKED_AXIS = YES (MOVEMENT = STRUCTURAL_ANSWER)
-- 결론: 이동에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리·기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 3 / 18
+- 결론: 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 열립니다, 잡았을 때 남는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+- SYNTHETIC_INFERENCES = 4 / 20
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
         ← 지금의 큰 흐름 활동·표현
@@ -2418,11 +2497,15 @@
         ← 명궁의 탐랑
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
+    - [PRIMITIVE] (QIMEN) 이동은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 값사문(開門)
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MOVEMENT:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 열립니다, 잡았을 때 남는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 이 시기 흐름 → 원국 시주 천간충 / 값사문(開門)
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 열립니다, 잡았을 때 남는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MOVEMENT:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · MOVEMENT:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합) · MOVEMENT:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=FOR
@@ -2475,13 +2558,14 @@
 - MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(CHANGE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
+    - MOVEMENT = CONDITIONAL_FOR (PRESENT_MOMENT/ADJACENT) — 이동은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (MOVEMENT = CONDITIONAL_AGAINST)
-- 결론: 이동에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 해도 되지만 범위를 좁히는 쪽이 낫습니다. 여러 근거가 같은 제한을 가리키고 있습니다.
-- SYNTHETIC_INFERENCES = 5 / 20
+- 결론: 이동에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 8 / 24
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -2515,17 +2599,25 @@
         ← 명궁의 태양·거문
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
+    - [PRIMITIVE] (QIMEN) 이동은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 값사문(開門)
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 천간충 / 값사문(開門)
     - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 지금의 큰 흐름 → 원국 월주 반합 / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 올해 흐름 → 원국 월주 천간합 / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 올해 흐름 → 원국 시주 반합 / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MOVEMENT:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합)
+    - [CROSS_STANDOFF] (CROSS) 기문 국·천이궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 값사문(開門) / 부처(삼합궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 값사문(開門) / 부처(대궁)에 태음 화기 / 관록 무주성 · 대궁 부처의 천동·태음을 빌려 봄
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 자리·직업은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIFFERENT_DOMAIN: 잡았을 때 남는 쪽과 이동은 다르게 봅니다. 이동은 범위를 좁혀야 합니다, 잡았을 때 남는 쪽은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 기문 국·천이궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 이동은 다르게 봅니다. 이동은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MOVEMENT:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · MOVEMENT:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER(경합) · MOVEMENT:CONDITIONAL_FOR(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:CONDITIONAL_AGAINST(경합) · MOVEMENT:STRUCTURAL_ANSWER(경합) · MOVEMENT:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_AGAINST · QIMEN=FOR
@@ -2563,6 +2655,7 @@
     - MONEY_RETENTION = CONDITIONAL_AGAINST (SEWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
     - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2590,10 +2683,10 @@
     - 값사문(驚門) — 사안을 이끄는 자리가 막혀 있습니다.
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = STRUCTURAL_ANSWER)
-- 결론: 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 7 / 28
+- 결론: 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.
+- SYNTHETIC_INFERENCES = 11 / 33
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -2633,6 +2726,8 @@
         ← 올해 흐름 → 원국 월주 해 / 지금의 큰 흐름 → 원국 월주 해
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 자미·천상
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
@@ -2645,15 +2740,23 @@
         ← 값사 驚門 (乾궁) / 乾궁 九地
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 시주 파 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 올해 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 올해 흐름 → 원국 시주 파 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_STANDOFF] (CROSS) 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 년주 육합 / 이 시기 흐름 → 원국 년주 형
     - [CROSS_STANDOFF] (CROSS) 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 년주 육합 / 이 시기 흐름 → 원국 년주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · OUTCOME:CONDITIONAL_FOR · GENERAL:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:FOR_BUT_LATER · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합) · GENERAL:STRUCTURAL_ANSWER(경합) · GENERAL:STRUCTURAL_ANSWER(경합)
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 년주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · OUTCOME:CONDITIONAL_FOR · GENERAL:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:FOR_BUT_LATER · CAREER:STRUCTURAL_ANSWER(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OUTCOME:STRUCTURAL_ANSWER(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · GENERAL:STRUCTURAL_ANSWER(경합) · GENERAL:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: 지금 당장의 시점은 아닙니다.
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=AGAINST_FOR_NOW
@@ -2685,6 +2788,7 @@
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2696,6 +2800,7 @@
     - MONEY_INFLOW = INSUFFICIENT_EVIDENCE (NATAL/DIRECT) — 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - MONEY_RETENTION = CONDITIONAL_FOR (NATAL/ADJACENT) — 전택에 화권이 들어와 있어, 저절로 굴러오지는 않지만 직접 미시면 열리는 쪽입니다.
     - CAREER = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
+    - MONEY_INFLOW = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE:
     - 형제(삼합궁)에 문창 화기 — 삼합궁에 막히거나 얽혀서 애를 먹는 힘이 걸립니다.
 
@@ -2709,10 +2814,10 @@
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = STRUCTURAL_ANSWER)
-- 결론: 돈이 들어오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (명리·기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 3 / 18
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
+- ANSWERED_ON_ASKED_AXIS = YES (MONEY_INFLOW = CONDITIONAL_FOR)
+- 결론: 돈이 들어오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.
+- SYNTHETIC_INFERENCES = 6 / 23
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
         ← 지금의 큰 흐름 활동·표현
@@ -2740,19 +2845,29 @@
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
+    - [PRIMITIVE] (MYUNGRI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false
     - [PRIMITIVE] (ZIWEI) 재백에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 재백의 파군
     - [PRIMITIVE] (ZIWEI) 전택에 화권이 들어와 있어, 저절로 굴러오지는 않지만 직접 미시면 열리는 쪽입니다.
         ← 전택(본궁)에 태양 화권 / 형제(삼합궁)에 문창 화기
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 관록의 칠살
+    - [PRIMITIVE] (ZIWEI) 돈이 들어오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 전택(본궁)에 태양 화권
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 원국 재물 4자리 / 이 시기 흐름 겁재 / 원국 재성 존재=true, 운 재성 활성=false
+    - [CROSS_AXIS_COMPOUND] (CROSS) 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 원국 재물 4자리 / 이 시기 흐름 겁재 / 전택(본궁)에 태양 화권
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 MONEY_INFLOW 판단 / 재백궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false / 전택(본궁)에 태양 화권
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / INFLOW_VS_RETENTION: 돈이 들어오는 것과 남는 것은 다르게 봅니다. 돈이 들어오는 쪽은 열립니다, 돈이 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · MONEY_INFLOW:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합) · MONEY_INFLOW:FOR(경합) · MONEY_INFLOW:FOR(경합) · MONEY_INFLOW:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=FOR
@@ -2916,13 +3031,14 @@
 - MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
+    - RELATION_STABILITY = CONDITIONAL_FOR (PRESENT_MOMENT/ADJACENT) — 같이 사는 난도은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = CONDITIONAL_AGAINST** (확신 LOW)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (RELATION_STABILITY = CONDITIONAL_AGAINST)
-- 결론: 같이 사는 난도에 대해서는 서로 다른 근거 4가지가 모두 같은 쪽을 가리킵니다. 지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.
-- SYNTHETIC_INFERENCES = 3 / 12
+- 결론: 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 6 / 16
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -2948,9 +3064,17 @@
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
-- CONTRADICTION_RESOLUTIONS = 없음
-- WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR
+    - [PRIMITIVE] (QIMEN) 같이 사는 난도은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 값사문(開門)
+    - [CROSS_STANDOFF] (CROSS) 기문 국·원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 원국 일지 충·형·파·해 / 값사문(開門)
+    - [CROSS_STANDOFF] (CROSS) 기문 국·원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충 / 값사문(開門)
+    - [CROSS_STANDOFF] (CROSS) 기문 국·원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 이 시기 흐름 → 원국 일주 형 / 값사문(開門)
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 기문 국·원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 기문 국·원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 기문 국·원국 일주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=CONDITIONAL_AGAINST · ZIWEI=미적용 · QIMEN=FOR
@@ -2980,6 +3104,7 @@
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
+    - TIMING = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 지금 시점에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -2995,10 +3120,10 @@
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = FOR** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (TIMING = FOR)
-- 결론: 지금 움직이는 것 자체는 무리가 없습니다.
-- SYNTHETIC_INFERENCES = 3 / 12
+- **FINAL_VERDICT = FOR** (확신 MEDIUM)
+- ANSWERED_ON_ASKED_AXIS = YES (TIMING = CONDITIONAL_AGAINST)
+- 결론: 지금 움직이는 것 자체는 무리가 없습니다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다; 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다; 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다.
+- SYNTHETIC_INFERENCES = 4 / 14
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -3022,11 +3147,13 @@
         ← 이 시기 흐름 → 원국 년주 파 / 올해 흐름 → 원국 년주 자형
     - [RECURRING_FRICTION_CAUSE] (MYUNGRI) 반복해서 부딪히는 데는 이유가 있다. 원국 일지(배우자·자기 자리)가 원국에서 이미 약하게 짜여 있는데, 지금 흐름이 바로 그 자리를 다시 건드리고 있다.
         ← 원국 일지 충·형·파·해 / 올해 흐름 → 원국 일주 천간충 / 올해 흐름 → 원국 일주 충
-    - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
-        ← 값사 開門 (離궁)
-- CONTRADICTION_RESOLUTIONS = 없음
-- WHY_OTHER_DID_NOT_DOMINATE = 해당 없음
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · TIMING:FOR
+    - [PRIMITIVE] (MYUNGRI) 지금 시점에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
+        ← 올해 흐름 → 원국 일주 천간충
+    - [CROSS_CONTRADICTION_RESOLVED] (CROSS) 지금 움직이는 것 자체는 무리가 없습니다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다; 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다; 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다.
+        ← 값사 開門 (離궁) / 올해 흐름 → 원국 일주 천간충
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 지금 움직이는 것 자체는 무리가 없습니다. 반대 근거도 있으나, 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다; 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다; 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 한쪽은 물어보신 시점을 정확히 다루고, 다른 쪽은 넓은 시기를 말합니다; 한쪽은 이 질문에 직접 닿는 근거 위에 서 있고, 다른 쪽은 배경 맥락뿐입니다; 한쪽은 확정된 입력에서 나왔고, 다른 쪽은 불확실한 입력에 기대고 있습니다 (밀려난 쪽: 명리)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · RELATION_STABILITY:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_AGAINST · TIMING:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=미적용 · QIMEN=FOR
@@ -3062,6 +3189,7 @@
     - CAREER = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 월주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - OUTCOME = STRUCTURAL_ANSWER (SEWOON/ADJACENT) — 원국 시주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
     - MONEY_INFLOW = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3086,10 +3214,10 @@
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = STRUCTURAL_ANSWER)
-- 결론: 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 6 / 24
+- 결론: 기회가 오는 쪽에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.
+- SYNTHETIC_INFERENCES = 10 / 29
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -3125,6 +3253,8 @@
         ← 올해 흐름 → 원국 시주 파 / 지금의 큰 흐름 → 원국 시주 파
     - [INFLOW_VS_RETENTION] (MYUNGRI) 돈이 들어오는 쪽과 남는 쪽은 이 명식에서 같은 답이 아니다. 유입은 움직이는데 보유 쪽에 반대 신호가 붙어 있어, 두 축을 나누어 답해야 한다.
         ← 이 시기 흐름 재물
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 자미·천상
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
@@ -3137,11 +3267,19 @@
         ← 값사 開門 (離궁)
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간합 / 지금의 큰 흐름 → 원국 월주 해
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 지금의 큰 흐름 → 원국 시주 파 / 원국/운 식상 존재=true, 재성 존재=true
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 올해 흐름 → 원국 시주 천간합 / 올해 흐름 → 원국 시주 파
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER(경합) · OUTCOME:STRUCTURAL_ANSWER(경합)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 올해 흐름 → 원국 월주 해 / 원국/운 식상 존재=true, 재성 존재=true
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 올해 흐름 → 원국 시주 파 / 원국/운 식상 존재=true, 재성 존재=true
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 자리·직업과 기회가 오는 쪽은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 자리·직업은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 범위를 좁혀야 합니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · OPPORTUNITY:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · INFLUENCE:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · MONEY_INFLOW:STRUCTURAL_ANSWER · RELATION_STABILITY:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · OUTCOME:STRUCTURAL_ANSWER · MONEY_INFLOW:CONDITIONAL_AGAINST · OPPORTUNITY:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · CAREER:STRUCTURAL_ANSWER(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OUTCOME:STRUCTURAL_ANSWER(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=FOR
@@ -3173,6 +3311,7 @@
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - OPPORTUNITY = CONDITIONAL_FOR (NATAL/ADJACENT) — 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3197,10 +3336,10 @@
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
+- **FINAL_VERDICT = CONDITIONAL_FOR** (확신 MEDIUM)
 - ANSWERED_ON_ASKED_AXIS = YES (OPPORTUNITY = STRUCTURAL_ANSWER)
-- 결론: 기회가 오는 쪽에 대해서는 방향을 정할 만한 신호가 잡히지 않습니다. 억지로 좋다·나쁘다를 말씀드리지 않겠습니다. (기문둔갑에는 이 축을 직접 보는 자리가 없습니다.)
-- SYNTHETIC_INFERENCES = 3 / 19
+- 결론: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+- SYNTHETIC_INFERENCES = 4 / 21
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
         ← 지금의 큰 흐름 활동·표현
@@ -3228,6 +3367,8 @@
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
+    - [PRIMITIVE] (MYUNGRI) 기회가 오는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국/운 식상 존재=true, 재성 존재=true
     - [PRIMITIVE] (ZIWEI) 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 명궁의 탐랑
     - [PRIMITIVE] (ZIWEI) 관록에는 방향을 정할 만한 신호가 들어오지 않습니다.
@@ -3240,9 +3381,11 @@
         ← 값사 開門 (離궁)
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
-- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합)
+    - [CROSS_AXIS_COMPOUND] (CROSS) 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+        ← 이 시기 흐름 → 원국 시주 천간충 / 원국/운 식상 존재=true, 재성 존재=true
+- CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / OPPORTUNITY_VS_OUTCOME: 기회가 오는 것과 그것을 잡아서 남는 것은 다르게 봅니다. 기회가 오는 쪽은 열립니다, 잡았을 때 남는 쪽은 막힙니다. 둘 다 사실이라 나누어 말씀드립니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
+- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · OPPORTUNITY:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · CAREER:STRUCTURAL_ANSWER · MONEY_INFLOW:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · TIMING:CONDITIONAL_FOR · OUTCOME:STRUCTURAL_ANSWER(경합) · OPPORTUNITY:CONDITIONAL_FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=FOR
@@ -3273,6 +3416,7 @@
     - OPPORTUNITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 이 시기 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
     - GENERAL = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 년주 천간충를 정면으로 흔든다.
     - GENERAL = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - MONEY_RETENTION = CONDITIONAL_FOR (NATAL/ADJACENT) — 돈이 남는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3291,10 +3435,10 @@
 - APPLIED = NO — 지금 시점의 움직임을 묻는 질문이 아니라, 기문둔갑은 적용하지 않았습니다.
 
 ### REASONING
-- **FINAL_VERDICT = FOR** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (MONEY_RETENTION = FOR)
-- 결론: 전택에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
-- SYNTHETIC_INFERENCES = 2 / 16
+- **FINAL_VERDICT = FOR** (확신 HIGH)
+- ANSWERED_ON_ASKED_AXIS = YES (MONEY_RETENTION = CONDITIONAL_FOR)
+- 결론: 서로 다른 자리(명리 MONEY_RETENTION 판단 / 전택궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+- SYNTHETIC_INFERENCES = 3 / 18
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -3320,6 +3464,8 @@
         ← 이 시기 흐름 → 원국 년주 천간충
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 년주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 년주 천간충 / 올해 흐름 → 원국 년주 해
+    - [PRIMITIVE] (MYUNGRI) 돈이 남는 쪽은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false
     - [PRIMITIVE] (ZIWEI) 전택에 화과가 들어와 있어 이름과 신뢰는 받쳐줍니다. 다만 실제로 들어오는 몫까지는 기대하기 어렵습니다.
         ← 전택(본궁)에 자미 화과
     - [PRIMITIVE] (ZIWEI) 재백은 맞물린 자리에서 힘을 받는 편이라, 범위를 지키면 진행하실 만합니다.
@@ -3328,9 +3474,11 @@
         ← 부처(대궁)에 태음 화기 / 관록 무주성 · 대궁 부처의 천동·태음을 빌려 봄
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 MONEY_RETENTION 판단 / 전택궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 열려 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 원국 재성 존재=true, 운 재성 활성=false / 전택(본궁)에 자미 화과
 - CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MONEY_RETENTION:FOR · MONEY_INFLOW:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합)
+- AXIS_VERDICTS = RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · MONEY_RETENTION:CONDITIONAL_FOR · MONEY_RETENTION:FOR · MONEY_INFLOW:CONDITIONAL_FOR · CAREER:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER(경합) · MONEY_RETENTION:FOR(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=CONDITIONAL_FOR · QIMEN=미적용
@@ -3575,6 +3723,7 @@
     - OUTCOME = CONDITIONAL_FOR (WOLWOON/ADJACENT) — 이 시기 흐름이 원국 시주 반합와 맞물려 풀린다.
     - MONEY_RETENTION = CONDITIONAL_AGAINST (WOLWOON/ADJACENT) — 원국에 실제로 재물 자리가 있는데 지금 그 몫을 나눠 갖는 기운이 함께 들어와, 버는 것과 남기는 것이 서로 다른 문제가 된다.
     - RELATION_STABILITY = STRUCTURAL_ANSWER (WOLWOON/ADJACENT) — 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
+    - RELATION_BOND = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 끌리는 힘에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### ZIWEI
@@ -3587,6 +3736,7 @@
     - RELATION_STABILITY = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - GENERAL = INSUFFICIENT_EVIDENCE (NATAL/ADJACENT) — 명궁에는 방향을 정할 만한 신호가 들어오지 않습니다.
     - CONFLICT = AGAINST (NATAL/ADJACENT) — 형제에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
+    - RELATION_BOND = CONDITIONAL_AGAINST (NATAL/ADJACENT) — 끌리는 힘에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
 - COUNTER_EVIDENCE:
     - 형제(본궁)에 문창 화기 — 이 자리에 막히거나 얽혀서 애를 먹는 힘이 걸립니다.
 
@@ -3595,9 +3745,9 @@
 
 ### REASONING
 - **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
-- ANSWERED_ON_ASKED_AXIS = YES (RELATION_BOND = STRUCTURAL_ANSWER)
+- ANSWERED_ON_ASKED_AXIS = YES (RELATION_BOND = CONDITIONAL_AGAINST)
 - 결론: 지금 확인할 수 있는 구조만으로는 이 부분을 설명해 드리기 어렵습니다. 없는 이야기를 지어내지는 않겠습니다.
-- SYNTHETIC_INFERENCES = 3 / 18
+- SYNTHETIC_INFERENCES = 4 / 21
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 지금의 큰 흐름에 활동·표현 쪽 기운이 들어와 이 축이 실제로 움직인다.
         ← 지금의 큰 흐름 활동·표현
@@ -3625,6 +3775,8 @@
         ← 원국 재물 4자리 / 이 시기 흐름 겁재
     - [CONVERGENT_SEAT_PRESSURE] (MYUNGRI) 원국 일주에는 서로 다른 시기의 압력이 겹쳐 들어와, 한 번 스치는 일이 아니라 반복해서 건드려지는 자리다.
         ← 이 시기 흐름 → 원국 일주 파 / 올해 흐름 → 원국 일주 자형
+    - [PRIMITIVE] (MYUNGRI) 끌리는 힘에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
+        ← 올해 흐름 → 원국 일주 자형
     - [PRIMITIVE] (ZIWEI) 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
         ← 부처의 염정·천부
     - [PRIMITIVE] (ZIWEI) 부처에는 방향을 정할 만한 신호가 들어오지 않습니다.
@@ -3633,11 +3785,15 @@
         ← 명궁의 탐랑
     - [PRIMITIVE] (ZIWEI) 형제에 화기가 들어와, 이 부분은 수월하게 풀리지 않고 막히기 쉽습니다.
         ← 형제(본궁)에 문창 화기 / 전택(삼합궁)에 태양 화권
+    - [PRIMITIVE] (ZIWEI) 끌리는 힘에는 지금 걸리는 지점이 있어, 크게 벌일 자리는 아닙니다.
+        ← 형제(본궁)에 문창 화기
     - [CROSS_STANDOFF] (CROSS) 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 이 시기 흐름 → 원국 시주 천간충 / 이 시기 흐름 → 원국 시주 반합
+    - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(명리 RELATION_BOND 판단 / 부처궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 범위를 좁혀야 하는 자리입니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
+        ← 올해 흐름 → 원국 일주 자형 / 형제(본궁)에 문창 화기
 - CONTRADICTION_RESOLUTIONS = DIRECTNESS: 원국 시주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
 - WHY_OTHER_DID_NOT_DOMINATE = 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
-- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_BOND:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_AGAINST · OUTCOME:STRUCTURAL_ANSWER(경합)
+- AXIS_VERDICTS = OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · CAREER:STRUCTURAL_ANSWER · INFLUENCE:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_AGAINST · CAREER:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · MONEY_RETENTION:CONDITIONAL_AGAINST · RELATION_STABILITY:STRUCTURAL_ANSWER · RELATION_BOND:CONDITIONAL_AGAINST · RELATION_BOND:STRUCTURAL_ANSWER · RELATION_STABILITY:STRUCTURAL_ANSWER · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_AGAINST · RELATION_BOND:CONDITIONAL_AGAINST · OUTCOME:STRUCTURAL_ANSWER(경합) · RELATION_BOND:CONDITIONAL_AGAINST(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=INSUFFICIENT_EVIDENCE · ZIWEI=INSUFFICIENT_EVIDENCE · QIMEN=미적용
@@ -3689,13 +3845,14 @@
 - MAJOR_FACTS_USED: 값사문, 값부 구성, 팔신, 값사·값부 착궁, 천반·지반, 상담판정(LOVE)
 - SUBJUDGMENTS:
     - TIMING = FOR (PRESENT_MOMENT/DIRECT) — 지금 움직이는 것 자체는 무리가 없습니다.
+    - RELATION_STABILITY = CONDITIONAL_FOR (PRESENT_MOMENT/ADJACENT) — 같이 사는 난도은 전반적으로 열려 있는 쪽으로 봅니다.
 - COUNTER_EVIDENCE: (없음)
 
 ### REASONING
-- **FINAL_VERDICT = AGAINST** (확신 LOW)
+- **FINAL_VERDICT = INSUFFICIENT_EVIDENCE** (확신 LOW)
 - ANSWERED_ON_ASKED_AXIS = YES (RELATION_STABILITY = AGAINST)
-- 결론: 같이 사는 난도에 대해서는 서로 다른 근거 5가지가 모두 같은 쪽을 가리킵니다. 지금 크게 벌일 자리는 아닙니다. 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 막고 있는 상태입니다.
-- SYNTHETIC_INFERENCES = 5 / 20
+- 결론: 같이 사는 난도에 대해서는 서로 다른 결론이 함께 성립하고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. 아래에 양쪽 근거를 그대로 보여 드립니다.
+- SYNTHETIC_INFERENCES = 7 / 23
 - PROPOSITIONS:
     - [PRIMITIVE] (MYUNGRI) 타고난 배우자 자리 자체가 흔들리는 구조다.
         ← 원국 일지 충·형·파·해
@@ -3729,17 +3886,23 @@
         ← 전택(삼합궁)에 자미 화과
     - [PRIMITIVE] (QIMEN) 지금 움직이는 것 자체는 무리가 없습니다.
         ← 값사 開門 (離궁)
+    - [PRIMITIVE] (QIMEN) 같이 사는 난도은 전반적으로 열려 있는 쪽으로 봅니다.
+        ← 값사문(開門)
     - [CROSS_REINFORCEMENT] (CROSS) 서로 다른 자리(원국 일지(배우자·자기 자리) / 부처궁)를 본 두 학문이 각각의 근거로 같은 결론에 이릅니다: 이 축은 막혀 있습니다. 한쪽만 보고 내린 결론이 아니라는 뜻입니다.
         ← 원국 일지 충·형·파·해 / 부처(본궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 원국 일지 충·형·파·해 / 전택(삼합궁)에 자미 화과
+    - [CROSS_STANDOFF] (CROSS) 기문 국·원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 원국 일지 충·형·파·해 / 값사문(開門)
     - [CROSS_STANDOFF] (CROSS) 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
         ← 지금의 큰 흐름 → 원국 월주 천간충 / 지금의 큰 흐름 → 원국 월주 반합
     - [CROSS_AXIS_COMPOUND] (CROSS) 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
         ← 부처(본궁)에 태음 화기 / 전택(삼합궁)에 자미 화과 / 복덕(삼합궁)에 천기 화록
-- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다.
-- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다.
-- AXIS_VERDICTS = RELATION_STABILITY:AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:AGAINST · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · CAREER:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:AGAINST(경합)
+    - [CROSS_STANDOFF] (CROSS) 기문 국·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+        ← 값사문(開門) / 부처(본궁)에 태음 화기 / 복덕(삼합궁)에 천기 화록
+- CONTRADICTION_RESOLUTIONS = DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 기문 국·원국 일지(배우자·자기 자리)에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIRECTNESS: 원국 월주에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다. / DIFFERENT_DOMAIN: 같이 사는 난도과 부딪힘은 다르게 봅니다. 같이 사는 난도은 막힙니다, 부딪힘은 열립니다. 둘 다 사실이라 나누어 말씀드립니다. / DIRECTNESS: 기문 국·부처궁에 대해서는 반대되는 근거가 대등하게 맞서 있고, 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없습니다. 한쪽으로 정하지 않겠습니다.
+- WHY_OTHER_DID_NOT_DOMINATE = 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다. / 서로 다른 축이라 결론을 뒤집지 않고 조건으로 붙습니다. / 어느 쪽이 더 직접적이라고 볼 구조적 근거가 없어, 억지로 승자를 만들지 않았습니다.
+- AXIS_VERDICTS = RELATION_STABILITY:AGAINST · CAREER:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_AGAINST · GENERAL:CONDITIONAL_FOR · CAREER:CONDITIONAL_FOR · GENERAL:STRUCTURAL_ANSWER · CAREER:CONDITIONAL_FOR · GENERAL:CONDITIONAL_AGAINST · OUTCOME:CONDITIONAL_FOR · OPPORTUNITY:STRUCTURAL_ANSWER · GENERAL:CONDITIONAL_AGAINST · GENERAL:STRUCTURAL_ANSWER · RELATION_STABILITY:AGAINST · GENERAL:STRUCTURAL_ANSWER · CONFLICT:CONDITIONAL_FOR · TIMING:CONDITIONAL_FOR · RELATION_STABILITY:CONDITIONAL_FOR · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:STRUCTURAL_ANSWER(경합) · CAREER:STRUCTURAL_ANSWER(경합) · RELATION_STABILITY:AGAINST(경합) · RELATION_STABILITY:STRUCTURAL_ANSWER(경합)
 - DOCTRINE_BLOCKERS = 없음
 - 시기: (근거 없음 — 시점 언급 금지)
 - 학문별 기여: MYUNGRI=AGAINST · ZIWEI=AGAINST · QIMEN=FOR
@@ -3750,21 +3913,21 @@
 
 ## [반사실 대조] 시주만 바뀌면 판단이 움직이는가
 
-- A = A · 시주 14시 → **CONDITIONAL_AGAINST**
-- B = A″ · 시주 02시 → **INSUFFICIENT_EVIDENCE**
+- A = A · 시주 14시 → **INSUFFICIENT_EVIDENCE**
+- B = A″ · 시주 02시 → **CONDITIONAL_FOR**
 - DIRECTION_MOVED = YES
-- AXES_MOVED = MONEY_INFLOW: CONDITIONAL_AGAINST → CONDITIONAL_FOR · CAREER: CONDITIONAL_FOR → STRUCTURAL_ANSWER · OUTCOME: CONDITIONAL_FOR → STRUCTURAL_ANSWER · GENERAL: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER · OPPORTUNITY: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER
-- 근거 차이: 같은 방향으로 함께 서는 결론 5건  ⟷  해당 축 근거 없음
+- AXES_MOVED = MONEY_INFLOW: CONDITIONAL_AGAINST → CONDITIONAL_FOR · CAREER: CONDITIONAL_FOR → STRUCTURAL_ANSWER · OUTCOME: CONDITIONAL_FOR → STRUCTURAL_ANSWER · GENERAL: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER · OPPORTUNITY: CONDITIONAL_AGAINST → CONDITIONAL_FOR
+- 근거 차이: 서로 다른 방향으로 함께 서는 결론 7건 (미확정)  ⟷  같은 방향으로 함께 서는 결론 7건
 
 ---
 
 ## [반사실 대조] 시주를 모르면 정직하게 낮아지는가
 
-- A = A · 시주 14시 → **CONDITIONAL_AGAINST**
-- B = A′ · 시주 미상 → **INSUFFICIENT_EVIDENCE**
+- A = A · 시주 14시 → **INSUFFICIENT_EVIDENCE**
+- B = A′ · 시주 미상 → **CONDITIONAL_FOR**
 - DIRECTION_MOVED = YES
-- AXES_MOVED = MONEY_INFLOW: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER · CAREER: CONDITIONAL_FOR → (없음) · OUTCOME: CONDITIONAL_FOR → (없음) · GENERAL: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER · OPPORTUNITY: CONDITIONAL_AGAINST → (없음)
-- 근거 차이: 같은 방향으로 함께 서는 결론 5건  ⟷  해당 축 근거 없음
+- AXES_MOVED = MONEY_INFLOW: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER · CAREER: CONDITIONAL_FOR → (없음) · OUTCOME: CONDITIONAL_FOR → (없음) · GENERAL: CONDITIONAL_AGAINST → STRUCTURAL_ANSWER · OPPORTUNITY: CONDITIONAL_AGAINST → CONDITIONAL_FOR
+- 근거 차이: 서로 다른 방향으로 함께 서는 결론 7건 (미확정)  ⟷  단일 근거 · 명리 OPPORTUNITY 판단
 
 ---
 
@@ -3780,21 +3943,21 @@
 
 ## [반사실 대조] 같은 원국에서 버는 축과 남는 축이 갈리는가
 
-- A = A · 버는 쪽 → **AGAINST**
-- B = A · 남는 쪽 → **FOR**
+- A = A · 버는 쪽 → **INSUFFICIENT_EVIDENCE**
+- B = A · 남는 쪽 → **CONDITIONAL_FOR**
 - DIRECTION_MOVED = YES
 - AXES_MOVED = MONEY_INFLOW: AGAINST → CONDITIONAL_AGAINST · MONEY_RETENTION: CONDITIONAL_FOR → FOR
-- 근거 차이: CROSS_AXIS_COMPOUND · 돈이 들어오는 것과 남는 것  ⟷  CROSS_AXIS_COMPOUND · 돈이 들어오는 것과 남는 것
+- 근거 차이: 서로 다른 방향으로 함께 서는 결론 3건 (미확정)  ⟷  같은 방향으로 함께 서는 결론 5건
 
 ---
 
 ## [반사실 대조] 같은 질문에서 원국이 다르면 갈리는가
 
-- A = A · 돈 → **AGAINST**
-- B = C · 돈 → **INSUFFICIENT_EVIDENCE**
+- A = A · 돈 → **INSUFFICIENT_EVIDENCE**
+- B = C · 돈 → **CONDITIONAL_FOR**
 - DIRECTION_MOVED = YES
-- AXES_MOVED = MONEY_INFLOW: AGAINST → STRUCTURAL_ANSWER · CAREER: CONDITIONAL_FOR → STRUCTURAL_ANSWER · OUTCOME: CONDITIONAL_FOR → STRUCTURAL_ANSWER · GENERAL: STRUCTURAL_ANSWER → CONDITIONAL_FOR · OPPORTUNITY: (없음) → STRUCTURAL_ANSWER · INFLUENCE: (없음) → CONDITIONAL_AGAINST
-- 근거 차이: CROSS_AXIS_COMPOUND · 돈이 들어오는 것과 남는 것  ⟷  해당 축 근거 없음
+- AXES_MOVED = MONEY_INFLOW: AGAINST → CONDITIONAL_FOR · CAREER: CONDITIONAL_FOR → STRUCTURAL_ANSWER · OUTCOME: CONDITIONAL_FOR → STRUCTURAL_ANSWER · GENERAL: STRUCTURAL_ANSWER → CONDITIONAL_FOR · OPPORTUNITY: (없음) → STRUCTURAL_ANSWER · INFLUENCE: (없음) → CONDITIONAL_AGAINST
+- 근거 차이: 서로 다른 방향으로 함께 서는 결론 3건 (미확정)  ⟷  같은 방향으로 함께 서는 결론 5건
 
 ---
 

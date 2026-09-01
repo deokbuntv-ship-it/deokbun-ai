@@ -15,6 +15,7 @@ import {
   refinementFailureHeadline, standoffHeadline, unresolvedHeadline,
 } from './headlineProse';
 import { adaptJudgment } from './disciplineAdapter';
+import { decisionProjectionOnly } from '../decisionJudgment';
 import { deriveCross, SUBORDINATION_TEXT, type CrossDerivation } from './crossRules';
 import {
   resolveAnswer, screenAll, standingPropositions,
@@ -150,9 +151,11 @@ export function selectAnswerCandidates(
  */
 export function authoritativeConclusionForState(
   propositions: ReasonedProposition[], askedAxis: JudgmentDomain, intent: QuestionIntent,
+  /** The verdict's persisted deciding axes — see `projectVerdictFromGraph`. Absent ⇒ `[askedAxis]`. */
+  deciding?: readonly JudgmentDomain[],
 ): string | null {
   const standing = standingPropositions(propositions);
-  const candidates = selectAnswerCandidates(standing, askedAxis, intent);
+  const candidates = selectAnswerCandidates(standing, askedAxis, intent, deciding);
   const resolution = resolveAnswer(candidates);
   if (resolution.kind === 'SINGLE') return resolution.primary.assertion;
   if (resolution.kind === 'AGREED') {
@@ -176,14 +179,20 @@ export function authoritativeConclusionForState(
 export function controlledDeclineConclusions(
   propositions: ReasonedProposition[], askedAxis: JudgmentDomain, intent: QuestionIntent,
   applicableDisciplines: Discipline[],
+  /** The verdict's persisted deciding axes — see `projectVerdictFromGraph`. Absent ⇒ `[askedAxis]`. */
+  deciding?: readonly JudgmentDomain[],
 ): string[] {
   const standing = standingPropositions(propositions);
   const nonDecision = intent === 'DESCRIPTIVE' || intent === 'CAUSE_WHY';
+  // The SAME axes `reasonCross` collected its standoffs and its examined-discipline set over — both are
+  // computed there with `decides()`, not with axis equality, so a widened-axis verdict's decline text is
+  // only reproducible here when the deciding axes come along.
+  const axes: readonly JudgmentDomain[] = deciding && deciding.length > 0 ? deciding : [askedAxis];
   const standoffs = standing
-    .filter((p) => p.derivationRule === 'CROSS_STANDOFF' && p.questionAxis === askedAxis)
+    .filter((p) => p.derivationRule === 'CROSS_STANDOFF' && axes.includes(p.questionAxis))
     .sort((x, y) => x.target.key.localeCompare(y.target.key));
   const examined = new Set(
-    propositions.filter((p) => p.questionAxis === askedAxis && p.discipline !== 'CROSS').map((p) => p.discipline),
+    propositions.filter((p) => axes.includes(p.questionAxis) && p.discipline !== 'CROSS').map((p) => p.discipline),
   );
   const blind = applicableDisciplines.filter((d) => !examined.has(d));
   const coverageNote = blind.length > 0 ? ` (${blind.map(disc).join('·')}에는 이 축을 직접 보는 자리가 없습니다.)` : '';
@@ -256,8 +265,15 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
   const premises: DivinationPremise[] = [...(input.premises ?? [])];
   const propositions: ReasonedProposition[] = [...(input.propositions ?? [])];
   for (const j of applicable) {
-    if (j.discipline === 'MYUNGRI' && input.propositions?.some((p) => p.discipline === 'MYUNGRI')) continue;
-    const adapted = adaptJudgment(j, { subject, questionIntent: intent, askedAxis: asked });
+    // A discipline that supplied its own premise graph is not re-adapted from its finished judgment — the
+    // graph is the richer source and adapting on top of it would double every reading. Its DECISION JUDGMENT
+    // V1 projection is the one exception: that reading is by construction NOT in the supplied graph (the
+    // graph was built before the proposition was known), so skipping it entirely left the discipline silent
+    // on the very axis the question was about.
+    const graphSupplied = j.discipline === 'MYUNGRI' && input.propositions?.some((p) => p.discipline === 'MYUNGRI');
+    const source = graphSupplied ? decisionProjectionOnly(j) : j;
+    if (!source) continue;
+    const adapted = adaptJudgment(source, { subject, questionIntent: intent, askedAxis: asked });
     premises.push(...adapted.premises);
     propositions.push(...adapted.propositions);
   }
@@ -435,6 +451,10 @@ export function reasonCross(input: CrossReasonInput): CrossReasoning {
     question: input.question,
     questionDomain: asked,
     questionIntent: intent,
+    // The axes the answer was ACTUALLY selected over — persisted so `decisionMeta.ts` can reproduce this
+    // exact candidate selection when it re-derives the verdict from the restored graph. Omitted when it is
+    // just `[asked]`, so nothing changes for a question whose deciding axis is its asked axis.
+    ...(deciding.length === 1 && deciding[0] === asked ? {} : { decidingAxes: [...deciding] }),
     evaluatedAtEpochSeconds: input.evaluatedAtEpochSeconds ?? null,
     asksTiming: input.asksTiming,
     premises,

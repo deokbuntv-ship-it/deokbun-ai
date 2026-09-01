@@ -86,7 +86,20 @@ describe('REAL paid-consultation grounding carries a cross-discipline verdict', 
     const v = g.divinationVerdict;
     expect(v).toBeTruthy();
     if (!v) return;
-    expect(isDirectional(v.direction)).toBe(true); // never a shrug on a real chart
+    // DECISION JUDGMENT V1 — what this assertion protects, stated directly instead of by proxy.
+    //
+    // It read `isDirectional(v.direction)`, as a stand-in for "the pipeline did not silently degrade to no
+    // Ziwei signal" (this file's own header). That proxy stopped holding once every discipline began judging
+    // the asked PROPOSITION rather than only its own axis panel: on this chart 명리's own 재물 domain
+    // judgment reads FAVORABLE and 자미's 재백궁 reads AGAINST, so the honest verdict is now a genuine
+    // two-discipline standoff. Declining to invent a winner there is the engine working, not degrading —
+    // whereas a renamed palace would still produce silence, which is what is asserted below.
+    expect(v.dominantBasis).not.toMatch(/해당 축 근거 없음/);
+    const ziweiMoney = v.disciplineJudgments
+      .find((j) => j.discipline === 'ZIWEI')!
+      .domainSubJudgments.find((s) => s.domain === 'MONEY_INFLOW');
+    expect(ziweiMoney).toBeTruthy();
+    expect(isDirectional(ziweiMoney!.stance)).toBe(true); // the palace lookup still binds to a real palace
     expect(v.primaryConclusion).not.toMatch(/반반|경우에\s*따라/);
     // every discipline is accounted for: applied with a contribution, or declared not applicable
     const names = v.contributions.map((c) => c.discipline).sort();

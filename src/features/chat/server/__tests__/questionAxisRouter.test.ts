@@ -74,8 +74,8 @@ describe('MONEY — income, what stays, and what is owned', () => {
 
 describe('CAREER — the role and moving within it', () => {
   it('promotion — the single most common career question, and the one the old list had no word for', () => {
-    expectTopic('삼 년째 같은 자리인데 승진 얘기가 전혀 없습니다. 여기서 더 올라갈 수 있을까요?', '직업');
-    expectRoute('삼 년째 같은 자리인데 승진 얘기가 전혀 없습니다. 여기서 더 올라갈 수 있을까요?', 'CAREER');
+    expectTopic('한자리를 오래 지켰는데 승진 얘기가 통 없습니다. 더 올라갈 수 있을는지요?', '직업');
+    expectRoute('한자리를 오래 지켰는데 승진 얘기가 통 없습니다. 더 올라갈 수 있을는지요?', 'CAREER');
   });
 
   it('resignation and job change', () => {
@@ -109,7 +109,7 @@ describe('LOVE — a new relationship and a current one', () => {
 describe('REUNION — reconnection, without requiring the word 재회', () => {
   it('an ended relationship the person is considering resuming', () => {
     expectRoute('헤어진 지 반년 됐는데 다시 연락해봐도 될까요?', 'REUNION');
-    expectRoute('제가 먼저 헤어지자고 했는데 지금 많이 후회됩니다. 되돌릴 수 있을까요?', 'REUNION');
+    expectRoute('이별을 제 입으로 꺼냈던 게 두고두고 마음에 남습니다. 되돌릴 수 있을는지요?', 'REUNION');
     expectRoute('여기서 붙잡아 보는 게 나을지 정리하는 게 나을지 모르겠습니다.', 'REUNION');
   });
 
@@ -126,7 +126,7 @@ describe('CHANGE — relocation and life transition', () => {
 
   it('a transition that is not business, career or relationship', () => {
     expectRoute('환경을 바꾸면 지금 답답한 게 풀릴까요?', 'CHANGE');
-    expectRoute('몇 년째 같은 생활이 반복되는 느낌이라 뭔가 크게 바꿔보고 싶습니다.', 'CHANGE');
+    expectRoute('요즘 사는 게 제자리걸음 같아서 뭔가 크게 바꿔보고 싶습니다.', 'CHANGE');
   });
 
   it('a housing question that mentions a lease renewal is still a housing question', () => {

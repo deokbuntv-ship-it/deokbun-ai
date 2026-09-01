@@ -64,6 +64,7 @@ import {
 import {
   buildTemporalSurfacePlan, temporalAuthorityFrom, TEMPORAL_SECTION_TITLE,
 } from './consultationSurfacePlan';
+import { buildDecisionProposition } from './decisionProposition';
 import { joinDistinctSentences, realizeForConsumer } from './koreanRealization';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
@@ -595,7 +596,18 @@ export async function buildServerConsultation(
     const contentPlan = verdict ? buildConsultationContentPlan(verdict) : null;
     contentPlanHolder.current = contentPlan;
     const planDirective = verdict && contentPlan
-      ? [renderAnswerPlanDirective(plan, questionDomain), renderVerdictDirective(verdict), renderContentPlanDirective(contentPlan)]
+      ? [
+        renderAnswerPlanDirective(plan, questionDomain),
+        // DECISION JUDGMENT V1 — what the person asked FOR, so the reading contract matches the request.
+        // The verdict's own stance is unchanged; this only stops a conduct or timing ask from being read
+        // back to the user as 하는 쪽 / 하지 않는 쪽.
+        renderVerdictDirective(verdict, buildDecisionProposition(question, {
+          askedAxis: resolveJudgmentDomain(question),
+          intent: resolveQuestionIntent(question),
+          asksTiming: verdict.asksTiming,
+        }).requestedOutcome),
+        renderContentPlanDirective(contentPlan),
+      ]
           .filter(Boolean)
           .join('\n')
       : renderAnswerPlanDirective(plan, questionDomain);

@@ -124,7 +124,7 @@ describe('bearing axes carry a role, and only PRIMARY may decide', () => {
   it('exactly one PRIMARY axis is ever bound, so widening cannot manufacture a conflict', () => {
     for (const q of [
       '지금 하는 사업을 더 키워도 될까요?', '올해 수입이 늘어날까요?', '지금 회사에서 승진할 수 있을까요?',
-      '올해 좋은 인연이 있을까요?', '헤어진 사람과 다시 이어질 수 있을까요?', '지금 이사해도 괜찮을까요?',
+      '내년에는 마음 맞는 짝을 찾을 수 있을는지요?', '헤어진 사람과 다시 이어질 수 있을까요?', '이번 봄에 방을 옮겨도 무리가 없을는지요?',
       '올해는 저한테 어떤 흐름인가요?',
     ]) expect(decidingAxes(propose(q))).toHaveLength(1);
   });
@@ -166,9 +166,9 @@ describe('a directional judge result on the asked axis cannot disappear before C
   });
 
   it('the intent is read from the ask, so a narrated cause no longer disqualifies the direction', () => {
-    // "…사람들 때문에 힘듭니다. 계속 버티는 게 의미가 있을까요?" — 때문 sits in the SITUATION; the ask is a
-    // decision. Classifying it CAUSE_WHY made every directional proposition on the axis ineligible.
-    expect(resolveQuestionIntent('같이 일하는 사람들 때문에 매일 힘듭니다. 계속 버티는 게 의미가 있을까요?')).not.toBe('CAUSE_WHY');
+    // 때문 sits in the SITUATION the person narrated; the ask itself is a decision. Classifying such a
+    // question CAUSE_WHY made every directional proposition on the axis ineligible.
+    expect(resolveQuestionIntent('윗집 소음 때문에 잠을 통 못 잡니다. 이 집에 더 머무는 게 나을는지요?')).not.toBe('CAUSE_WHY');
     expect(resolveQuestionIntent('성격은 잘 맞는데 사는 곳이 멉니다. 잘 될 수 있는 인연인가요?')).not.toBe('DESCRIPTIVE');
     // A genuine cause question is still a cause question.
     expect(resolveQuestionIntent('왜 자꾸 같은 일이 반복될까요?')).toBe('CAUSE_WHY');

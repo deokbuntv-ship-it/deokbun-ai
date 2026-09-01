@@ -23,41 +23,24 @@
 // option A beats option B — that requires a Judge-contract change and is explicitly a later batch.
 import {
   routeConsultationJudgeDomain,
+  type AxisRole,
+  type BearingAxis,
   type ConsultationJudgeDomain,
   type JudgmentDomain,
+  type OptionComparability,
+  type PropositionKind,
   type QuestionIntent,
+  type RequestedOutcome,
   type SemanticTarget,
 } from '@/features/divination';
 import { classifyConsultationDomain, focusClause, type ConsultationDomain } from './consultationDomain';
 
-export const DECISION_PROPOSITION_VERSION = 'decision-proposition@1.0.0';
+export const DECISION_PROPOSITION_VERSION = 'decision-proposition@1.1.0';
 
-/** What SHAPE of thing the person asked. Read from the ask (the focus clause), never from the narration. */
-export type PropositionKind =
-  | 'SHOULD_I_DO_X'   // a single action, weighed against not doing it
-  | 'A_VS_B'          // two or more named alternatives
-  | 'WILL_X_HAPPEN'   // an occurrence, not a choice
-  | 'WHEN_X'          // the period itself is the requested answer
-  | 'WHY_X'           // a cause is requested
-  | 'WHAT_AM_I';      // a description of the person, not a decision
-
-/** What a satisfying answer has to deliver. */
-export type RequestedOutcome = 'DIRECTION' | 'OCCURRENCE' | 'PERIOD' | 'CAUSE' | 'DESCRIPTION';
-
-/**
- * WHY an axis is bound to this proposition — and therefore how much authority it may carry.
- *
- * This is the field that keeps V6's off-axis repair intact while widening what the system may look at.
- * Membership in `bearingAxes` is NOT a vote; the ROLE is.
- *
- *   PRIMARY    — directly answers the proposition. The ONLY role that may decide the direction.
- *   OUTCOME    — a result materially caused by the proposition; may colour what the direction MEANS.
- *   CONSTRAINT — materially limits or qualifies it; may produce compound truth, never replace the answer.
- *   TIMING     — temporal bearing only.
- *   CONTEXT    — explanatory only. May never make OPEN/BLOCKED/proceed/hold for the user's decision.
- */
-export type AxisRole = 'PRIMARY' | 'OUTCOME' | 'CONSTRAINT' | 'TIMING' | 'CONTEXT';
-export type BearingAxis = { readonly axis: JudgmentDomain; readonly role: AxisRole };
+// DECISION JUDGMENT V1 — the proposition-SHAPE types now live in `divination/decisionJudgment.ts`, because
+// the discipline judges have to judge against them and a second copy on this side of the boundary would
+// drift. This module keeps what genuinely belongs to the server layer: reading them out of Korean text.
+export type { AxisRole, BearingAxis, OptionComparability, PropositionKind, RequestedOutcome };
 
 export type DecisionProposition = {
   readonly kind: PropositionKind;
@@ -71,6 +54,19 @@ export type DecisionProposition = {
    * an option, so nothing downstream may derive "A is better than B" from this list.
    */
   readonly options: readonly string[];
+  /**
+   * DECISION JUDGMENT V1 — whether the named options are even comparable by an AXIS judgment.
+   *
+   * STATUS_QUO_INVERSE is the one case where a direction settles a comparison without option-level doctrine:
+   * "옮길지 남을지" names an action and its own negation, so AGAINST the action IS the other option. Two
+   * independent objects ("A 회사와 B 회사") stay DISTINCT_OPTIONS and get no winner.
+   */
+  readonly optionComparability: OptionComparability;
+  /**
+   * The ask names the DOMAIN and no aspect of it ("제 연애운 좀 봐주세요"). Detected from the ABSENCE of any
+   * sub-aspect cue, not from a new keyword list — see `bindAxes`.
+   */
+  readonly wholeDomain: boolean;
   /** Whether the proposition itself is scoped in time, from the question's own framing. */
   readonly temporalScope: 'PRESENT' | 'NEAR_TERM' | 'UNSPECIFIED';
   /** Another person who is part of the proposition, when the question puts one there. */
@@ -88,19 +84,27 @@ const WHY = /왜\s|왜요|이유(?:가|는|를)|원인(?:이|은)|때문(?:인�
 const WHAT_AM_I = /어떤\s*사람|제\s*성격|성향(?:이|은)|타고난\s*(?:성격|기질|결)|저는\s*어떤/;
 const SHOULD = /[가-힣]+도\s*(?:될까|괜찮|되나|좋을까|하나)|할까요|말까|괜찮을까|나을까|맞을까|진행해도|시작해도|계속\s*(?:\S+\s*)?(?:해도|가도|다녀도|버티|끌고)|의미가\s*있을까/;
 const WILL = /있을까요|될까요|가능성|생길까|올까요|이어질|잘\s*될/;
+// DECISION JUDGMENT V1 — the CONDUCT/CAUTION family: what should I watch, how should I carry myself, what
+// should I prepare. Every alternative is a general Korean request-for-guidance construction, not a topic
+// word: 어떻게+행동동사, 조심/주의, 신경 쓰-, 준비해 두-, 피해야, and the 어디에 X를 쏟- idiom. The person is
+// asking WHAT TO DO, and answering "방향을 정할 수 없습니다" answers a question they did not ask.
+const CONDUCT = /어떻게\s*(?:해야|하는\s*게|하면|처신|대응|행동|준비)|조심(?:해야|할|하는|하는\s*게)|주의(?:해야|할)|신경\s*(?:써야|쓰면|쓸|쓰는)|준비(?:해야|해\s*둘|해\s*두면|해두면|해둘|할\s*게)|챙겨야|챙길\s*게|피해야|뭘\s*(?:해야|준비|조심|신경)|어디에\s*(?:힘|공|시간|노력)을/;
 
 function propositionKind(focus: string, whole: string): PropositionKind {
   // A comparison is recognised first: it is the most specific shape and it survives any other cue.
   if (CMP.test(focus)) return 'A_VS_B';
   if (WHY.test(focus)) return 'WHY_X';
   if (WHAT_AM_I.test(focus)) return 'WHAT_AM_I';
-  // A "when" ask outranks a bare should/will, because the period IS what was requested.
+  // A "when" ask outranks a bare should/will, because the period IS what was requested. It also outranks
+  // conduct: "언제 조심해야 하나요" is asking for the period, not for the list of cautions.
   if (WHEN.test(focus)) return 'WHEN_X';
+  if (CONDUCT.test(focus)) return 'HOW_SHOULD_I_ACT';
   if (SHOULD.test(focus)) return 'SHOULD_I_DO_X';
   if (WILL.test(focus)) return 'WILL_X_HAPPEN';
   // Nothing in the ask — fall back to the whole question, same order.
   if (CMP.test(whole)) return 'A_VS_B';
   if (WHEN.test(whole)) return 'WHEN_X';
+  if (CONDUCT.test(whole)) return 'HOW_SHOULD_I_ACT';
   if (SHOULD.test(whole)) return 'SHOULD_I_DO_X';
   if (WILL.test(whole)) return 'WILL_X_HAPPEN';
   if (WHY.test(whole)) return 'WHY_X';
@@ -110,8 +114,35 @@ function propositionKind(focus: string, whole: string): PropositionKind {
 
 const OUTCOME_OF: Record<PropositionKind, RequestedOutcome> = {
   SHOULD_I_DO_X: 'DIRECTION', A_VS_B: 'DIRECTION', WILL_X_HAPPEN: 'OCCURRENCE',
-  WHEN_X: 'PERIOD', WHY_X: 'CAUSE', WHAT_AM_I: 'DESCRIPTION',
+  WHEN_X: 'PERIOD', WHY_X: 'CAUSE', WHAT_AM_I: 'DESCRIPTION', HOW_SHOULD_I_ACT: 'CONDUCT',
 };
+
+// ── OPTION COMPARABILITY — is a direction enough to settle the comparison? ────────────────────────────
+// A status-quo option is the one that changes nothing: staying, keeping, waiting, continuing as now. When one
+// named option is that and the other is an act, "하지 않는 쪽" already names the other option, so a direction
+// on the act settles the choice without any option-level doctrine. Two independent objects never do.
+const STAY_SIDE = /남(?:는|을|아)|유지|그대로|지금(?:처럼|\s*있|\s*사는|\s*다니)|기다리|묵혀|더\s*(?:두|버티|다니)|안\s*(?:하|가|옮)|말지|쉬는|재계약|묶어두|예금으로/;
+const ACT_SIDE = /옮기|바꾸|시작|정리|나가|이직|그만|끝내|움직이|떠나|팔|사는\s*쪽|갚는|새\s*/;
+
+function comparabilityOf(kind: PropositionKind, options: readonly string[], focus: string): OptionComparability {
+  if (kind !== 'A_VS_B') return 'NOT_A_COMPARISON';
+  // A comparison whose options the extractor could not name is still a comparison, and the conservative
+  // reading is the one that yields no winner. Calling it NOT_A_COMPARISON would let the ask be treated as a
+  // plain single-action decision, which is precisely how an invented winner would get in.
+  if (options.length < 2) {
+    return /\S+할지\s*\S*말지|하는\s*게\s*나을지\s*마는/.test(focus) ? 'STATUS_QUO_INVERSE' : 'DISTINCT_OPTIONS';
+  }
+  const stay = options.filter((o) => STAY_SIDE.test(o)).length;
+  const act = options.filter((o) => ACT_SIDE.test(o)).length;
+  // Exactly one side of the pair is the status quo and exactly one is the act — anything else (both acts,
+  // both stays, or a side that reads as neither) is two independent objects and gets no winner.
+  if (stay === 1 && act === 1 && !options.every((o) => STAY_SIDE.test(o) && ACT_SIDE.test(o))) {
+    return 'STATUS_QUO_INVERSE';
+  }
+  // The ask itself can also frame the pair as an act against its own negation ("할지 말지").
+  if (/\S+할지\s*\S*말지|하는\s*게\s*나을지\s*마는/.test(focus)) return 'STATUS_QUO_INVERSE';
+  return 'DISTINCT_OPTIONS';
+}
 
 // ── OPTIONS — preserved, never judged ─────────────────────────────────────────────────────────────────
 // Split on the connectives Korean uses to lay two choices side by side. Each side is trimmed to the clause
@@ -177,7 +208,7 @@ function bindAxes(
   text: string,
   focus: string,
   asksTiming: boolean,
-): BearingAxis[] {
+): { axes: BearingAxis[]; wholeDomain: boolean } {
   // The ASK decides which sibling axis answers; the narration is only consulted when the ask is silent.
   // "버는 건 그대로인데 남는 게 없습니다. 돈이 좀 모일까요?" names both, and the question is about keeping.
   const hits = (re: RegExp) => (re.test(focus) ? 'FOCUS' : re.test(text) ? 'TEXT' : 'NONE');
@@ -192,12 +223,24 @@ function bindAxes(
   const push = (axis: JudgmentDomain, role: AxisRole) => {
     if (!out.some((b) => b.axis === axis)) out.push({ axis, role });
   };
+  // WHOLE DOMAIN, WITHOUT A NEW KEYWORD LIST.
+  //
+  // `prefer` returns null in exactly two situations, and both mean the same thing: the ask does not pick a
+  // side of the domain. Either no aspect cue appears at all ("제 연애운 좀 봐주세요"), or both appear at the
+  // same level and neither is the ask ("수입은 늘었는데 통장은 그대로… 계속될까요"). A domain with no aspect
+  // split (CAREER/CHANGE/BUSINESS/TIMING) is never whole-domain — its one axis already IS the domain.
+  let wholeDomain = false;
+  const aspect = (a: RegExp, b: RegExp) => {
+    const r = prefer(a, b);
+    wholeDomain = r === null;
+    return r;
+  };
 
   switch (domain) {
     case 'MONEY': {
       // Which money question is it — what comes IN, or what STAYS? Both axes exist in the ontology; the
       // proposition decides which one answers and which one is the result.
-      const keeps = prefer(RETENTION, INFLOW);
+      const keeps = aspect(RETENTION, INFLOW);
       if (keeps === true) { push('MONEY_RETENTION', 'PRIMARY'); push('MONEY_INFLOW', 'OUTCOME'); }
       else { push('MONEY_INFLOW', 'PRIMARY'); push('MONEY_RETENTION', 'OUTCOME'); }
       break;
@@ -205,7 +248,7 @@ function bindAxes(
     case 'LOVE': {
       // Meeting someone is a BOND question; whether it lasts is a STABILITY question. Binding both as
       // PRIMARY would make two different questions compete; binding the other as OUTCOME keeps the answer.
-      const lasts = prefer(LASTING, MEETING);
+      const lasts = aspect(LASTING, MEETING);
       if (lasts === true) { push('RELATION_STABILITY', 'PRIMARY'); push('RELATION_BOND', 'OUTCOME'); }
       else { push('RELATION_BOND', 'PRIMARY'); push('RELATION_STABILITY', 'OUTCOME'); }
       break;
@@ -214,7 +257,7 @@ function bindAxes(
       // Reconnection is judged on the bond — but "다시 이어지면 결국 똑같아질까" is not asking whether the
       // attraction returns, it is asking whether it would LAST this time. Same discriminator as LOVE, for the
       // same reason: the ask decides which of the two relationship axes answers it.
-      const lasts = prefer(LASTING, MEETING);
+      const lasts = aspect(LASTING, MEETING);
       if (lasts === true) { push('RELATION_STABILITY', 'PRIMARY'); push('RELATION_BOND', 'OUTCOME'); }
       else { push('RELATION_BOND', 'PRIMARY'); push('RELATION_STABILITY', 'OUTCOME'); }
       break;
@@ -250,7 +293,7 @@ function bindAxes(
   }
   // A timing-flavoured question gets TIMING bearing unless TIMING already answers it.
   if ((asksTiming || kind === 'WHEN_X') && !out.some((b) => b.axis === 'TIMING')) push('TIMING', 'TIMING');
-  return out;
+  return { axes: out, wholeDomain };
 }
 
 /**
@@ -270,15 +313,18 @@ export function buildDecisionProposition(
   const askedDomain = routeConsultationJudgeDomain(resolved.askedTarget ?? undefined, resolved.askedAxis);
   const kind = propositionKind(focus, q);
   const options = kind === 'A_VS_B' ? extractOptions(focus, q) : [];
+  const bound = bindAxes(askedDomain, resolved.askedAxis, kind, q, focus, resolved.asksTiming);
   return {
     kind,
     askedDomain,
     decisionObject: extractDecisionObject(focus),
     requestedOutcome: OUTCOME_OF[kind],
     options,
+    optionComparability: comparabilityOf(kind, options, focus),
+    wholeDomain: bound.wholeDomain,
     temporalScope: PRESENT.test(focus) ? 'PRESENT' : NEAR.test(q) ? 'NEAR_TERM' : 'UNSPECIFIED',
     counterparty: FORMER.test(q) ? 'FORMER_PARTNER' : PARTNER.test(q) ? 'PARTNER' : null,
-    bearingAxes: bindAxes(askedDomain, resolved.askedAxis, kind, q, focus, resolved.asksTiming),
+    bearingAxes: bound.axes,
     provenance: ['deokbunai.decision-proposition.v1'],
   };
 }

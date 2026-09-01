@@ -16,7 +16,9 @@ import {
 import {
   projectVerdictFromGraph, validateCrossDerivation, validateMyungriDerivation, validatePersistedPrimitive,
 } from '@/features/divination/reasoning/persistedGraphValidation';
-import type { CrossDivinationVerdict, Discipline, DivinationPremise, ReasonedProposition } from '@/features/divination';
+import type {
+  CrossDivinationVerdict, Discipline, DivinationPremise, JudgmentDomain, ReasonedProposition,
+} from '@/features/divination';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationDecisionMeta, ResolvedTemporalContext } from './serverConsultationTypes';
 
@@ -498,6 +500,14 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
   if (!enumOk(INTENTS, o.questionIntent)) { return undefined; }
   if (!enumOk(AXES, o.questionDomain)) { return undefined; }
   if (typeof o.asksTiming !== 'boolean') { return undefined; }
+  // DECISION JUDGMENT V1 — the axes the answer was selected over. Validated as a real axis list (fail-closed
+  // on anything else), absent on every row written before Decision Semantics V1. `undefined` makes every
+  // projection below fall back to `[questionDomain]`, which is exactly what those rows were produced with.
+  if (o.decidingAxes !== undefined && !(Array.isArray(o.decidingAxes) && o.decidingAxes.every((a) => enumOk(AXES, a)))) {
+    return undefined;
+  }
+  const decidingAxes: JudgmentDomain[] | undefined = Array.isArray(o.decidingAxes)
+    ? (o.decidingAxes as JudgmentDomain[]) : undefined;
   if (o.evaluatedAtEpochSeconds !== null && !isFiniteInteger(o.evaluatedAtEpochSeconds)) { return undefined; }
   // Every proposition must belong to the same person the verdict is about.
   const subjects = new Set(parsed.map((pr) => pr.subject as string));
@@ -569,6 +579,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       parsed as unknown as ReasonedProposition[],
       o.questionDomain as ReasonedProposition['questionAxis'],
       o.questionIntent as ReasonedProposition['questionIntent'],
+      decidingAxes,
     );
     if (projectedVerdict.direction !== o.direction) { return undefined; }
     if (Array.isArray(o.headlinePropositionIds)) {
@@ -590,6 +601,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       parsed as unknown as ReasonedProposition[],
       o.questionDomain as ReasonedProposition['questionAxis'],
       o.questionIntent as ReasonedProposition['questionIntent'],
+      decidingAxes,
     );
     if (expectedConclusion === null || o.primaryConclusion !== expectedConclusion) { return undefined; }
   } else {
@@ -600,6 +612,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       o.questionDomain as ReasonedProposition['questionAxis'],
       o.questionIntent as ReasonedProposition['questionIntent'],
       applicableDisciplines,
+      decidingAxes,
     );
     if (!declineConclusions.includes(o.primaryConclusion as string)) { return undefined; }
   }
@@ -610,6 +623,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
       parsed as unknown as ReasonedProposition[],
       o.questionDomain as ReasonedProposition['questionAxis'],
       o.questionIntent as ReasonedProposition['questionIntent'],
+      decidingAxes,
     ).headlinePropositionIds;
 
   // ── V4C §25 — RECONSTRUCTION, NOT PASS-THROUGH ─────────────────────────────────────────────────
@@ -637,6 +651,7 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
     question: str(o.question),
     questionDomain: o.questionDomain,
     questionIntent: o.questionIntent,
+    ...(decidingAxes ? { decidingAxes: [...decidingAxes] } : {}),
     evaluatedAtEpochSeconds: typeof o.evaluatedAtEpochSeconds === 'number' ? o.evaluatedAtEpochSeconds : null,
     asksTiming: o.asksTiming,
     premises: premisesOut,
@@ -665,6 +680,9 @@ export function parseDivinationVerdict(v: unknown): CrossDivinationVerdict | und
         domain: sj.domain, stance: sj.stance, conclusion: str(sj.conclusion),
         temporalScope: sj.temporalScope, directness: sj.directness, reliability: sj.reliability,
         evidence: evidence(sj.evidence), counterEvidence: evidence(sj.counterEvidence),
+        // Deliberately restored: without it a projected proposition-level reading comes back looking like a
+        // structural finding the discipline's own panel made.
+        ...(sj.source === 'DECISION_JUDGMENT_V1' ? { source: 'DECISION_JUDGMENT_V1' as const } : {}),
       })),
       confidence: j.confidence,
       questionDirectness: j.questionDirectness,
