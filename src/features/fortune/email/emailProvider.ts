@@ -47,7 +47,21 @@ export function createTestEmailProvider(opts?: { configured?: boolean; nextStatu
   };
 }
 
-// The single access point; a real provider is injected here once credentials exist (OWNER action).
+// The single access point.
+//
+// ⚠ DO NOT WIRE A REAL PROVIDER HERE (2026-09-04). This module runs in the CLIENT bundle, and
+// every real provider authenticates with a secret API key — putting one here would ship it to
+// every user. That is why this returns Noop and always will.
+//
+// The real send already exists, SERVER-SIDE, where the key can live:
+//   supabase/functions/run-email-campaigns/index.ts     — sendEmail(), EMAIL_PROVIDER=resend
+//   supabase/functions/retry-email-deliveries/index.ts  — same adapter for the retry path
+// Both read RESEND_API_KEY / EMAIL_FROM from Deno env and return `not_configured` (never a
+// fake SENT) until the owner sets them. Activating email is an Edge-secret action, NOT a code
+// change — see PROJECT_STATE §7.16.
+//
+// This interface stays because the CONTRACT (message shape, statuses, idempotency key) is what
+// the campaign/worker logic is written against and unit-tested with `createTestEmailProvider`.
 export function getEmailProvider(): EmailProvider {
   return noopEmailProvider;
 }

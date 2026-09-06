@@ -67,8 +67,16 @@ function yongshinSupportsFamily(yongshin: MyungriYongshinResult, dayMasterElemen
   const candidates = [yongshin.primaryCandidate, ...yongshin.supportingCandidates].filter((e): e is FiveElement => !!e);
   return candidates.find((c) => familyOf(dayMasterElement, c) === family) ?? null;
 }
-/** Yongshin's CONTRAINDICATED candidates whose ten-god family (relative to the day master) is `family`. */
+/**
+ * Yongshin's CONTRAINDICATED candidates whose ten-god family (relative to the day master) is `family`.
+ *
+ * 2026-09-02 — status 가드를 지지 쪽과 **대칭**으로 맞췄다 (YONGSHIN_CONSISTENCY_AUDIT N11). 이전에는
+ * 지지 쪽에만 가드가 있어서, MULTI_CANDIDATE(용신·희신이 비어 지지 신호가 구조적으로 불가능)에서
+ * 경고만 살아남았다 — "방향을 정할 근거가 없다"고 선언한 사주가 RISK 만 만드는 편향이었다.
+ * 두 헬퍼가 같은 조건에서만 말하도록 한다.
+ */
 function yongshinWarnsAgainstFamily(yongshin: MyungriYongshinResult, dayMasterElement: FiveElement, family: TenGodFamily): FiveElement | null {
+  if (yongshin.status !== 'SELECTED' && yongshin.status !== 'MULTI_CANDIDATE') return null;
   return yongshin.contraindicatedCandidates.find((c) => familyOf(dayMasterElement, c) === family) ?? null;
 }
 
@@ -127,14 +135,14 @@ function judgeBusiness(input: MyungriConsultationJudgeInput): DomainJudgeResult 
       });
       syn.push({
         premises: [`억부용신 후보=${supportElement}`, `해당 오행의 십신 계열=${familyOf(dayMasterElement, supportElement)}`],
-        conclusion: '억부용신이 사업 실행에 필요한 방향과 겹쳐, 지금 구조가 실행을 방해하지 않습니다.',
+        conclusion: '억부용신 방향이 사업 실행에 필요한 방향과 겹쳐, 지금 구조가 실행을 방해하지 않습니다.',
       });
     }
     const warnElement = yongshinWarnsAgainstFamily(yongshin, dayMasterElement, 'OUTPUT') ?? yongshinWarnsAgainstFamily(yongshin, dayMasterElement, 'WEALTH');
     if (warnElement) {
       rules.push({
         kind: 'RISK',
-        reasoning: '억부용신이 피해야 할 방향이 활동·재물 계열과 겹쳐, 무리한 확장은 구조를 해칠 수 있습니다.',
+        reasoning: '억부용신 기준으로 피해야 할 방향이 활동·재물 계열과 겹쳐, 무리한 확장은 구조를 해칠 수 있습니다.',
         evidence: [],
         disciplineNote: `yongshin contraindicated ${warnElement} overlaps OUTPUT/WEALTH`,
       });
@@ -201,14 +209,14 @@ function judgeMoney(input: MyungriConsultationJudgeInput): DomainJudgeResult {
       if (syn.length === 0) {
         syn.push({
           premises: [`억부용신 후보=${support}`, `해당 오행의 십신 계열=WEALTH`],
-          conclusion: '억부용신이 재물 계열과 겹쳐, 재물 흐름이 구조적으로 막혀 있지 않습니다.',
+          conclusion: '억부용신 방향이 재물 계열과 겹쳐, 재물 흐름이 구조적으로 막혀 있지 않습니다.',
         });
       }
     }
     const warn = yongshinWarnsAgainstFamily(yongshin, dayMasterElement, 'WEALTH');
     if (warn) {
       rules.push({
-        kind: 'RISK', reasoning: '억부용신이 피해야 할 방향이 재물 계열과 겹쳐, 무리한 재물 확장은 조심해야 합니다.',
+        kind: 'RISK', reasoning: '억부용신 기준으로 피해야 할 방향이 재물 계열과 겹쳐, 무리한 재물 확장은 조심해야 합니다.',
         evidence: [], disciplineNote: `yongshin contraindicated ${warn} overlaps WEALTH`,
       });
     }

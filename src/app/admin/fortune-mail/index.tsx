@@ -577,6 +577,7 @@ function TextField({
     <TextInput
       value={value}
       onChangeText={onChangeText}
+      accessibilityLabel={placeholder}
       placeholder={placeholder}
       placeholderTextColor={adminTheme.inkMuted}
       keyboardType={keyboard}

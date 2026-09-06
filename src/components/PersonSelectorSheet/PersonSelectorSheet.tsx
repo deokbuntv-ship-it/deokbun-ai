@@ -112,7 +112,7 @@ export function PersonSelectorSheet({
               key={subject.id}
               onPress={() => selectSubject(subject)}
               accessibilityRole="button"
-              accessibilityState={{ selected }}
+              aria-selected={selected}
               style={({ pressed }) => [
                 styles.row,
                 {

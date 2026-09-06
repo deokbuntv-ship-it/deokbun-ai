@@ -1,0 +1,9 @@
+{
+  "//": "frozen 경로 변경 기준선. `scripts/release-preflight.mjs` 의 §3b 가 이 값과 현재를 비교한다.",
+  "//why": "release-preflight 의 기존 frozen 가드는 `git diff HEAD` 라 커밋되지 않은 변경만 본다. 커밋하는 순간 통과하므로, freeze 도입 이후 실제로 몇 번 frozen 경로가 바뀌었는지는 아무도 보지 못했다(실측 64건). 정책은 오너 미판정(OWNER_TODO D8)이므로 막지 않고 세어서 보여만 준다.",
+  "sinceCommit": "49a310b",
+  "sinceDate": "2026-08-22",
+  "commitsTouchingFrozen": 64,
+  "recordedAt": "2026-09-06",
+  "recordedBy": "PROJECT_STATE.md §7.23"
+}

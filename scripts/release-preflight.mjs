@@ -32,6 +32,40 @@ try {
   ok('frozen-engine guard (no uncommitted frozen changes)');
 } catch { block('frozen-engine guard: uncommitted changes in a frozen path'); }
 
+// ── 3b. frozen 경로 변경 가시화 (2026-09-06 추가 — 기존 §3 가드는 손대지 않았다) ─────────────
+//
+// §3 의 가드는 `git diff --quiet HEAD` 다. 즉 **커밋되지 않은 변경만** 본다. 커밋하는 순간 통과하므로,
+// freeze 도입(49a310b, 2026-08-22) 이후 frozen 경로를 건드린 커밋 64개가 **한 건도 막히지 않았다** —
+// 가드가 그 질문을 한 적이 없다. 이건 가드의 버그가 아니라 범위이고, 어느 쪽이 옳은지는 정책 판단이라
+// 오너에게 열려 있다(OWNER_TODO D8).
+//
+// 그래서 여기서는 **막지 않는다.** 지금 막으면 정책이 정해지기 전에 모든 작업이 멈춘다. 대신 세어서
+// 보여 준다: 실행할 때마다 현재 수치가 보이고, 기준선보다 늘었으면 WARN 으로 눈에 띈다.
+try {
+  const FROZEN_BASELINE = p('.freeze-baseline.json');
+  const since = existsSync(FROZEN_BASELINE) ? JSON.parse(readFileSync(FROZEN_BASELINE, 'utf8')) : null;
+  if (!since) {
+    warn('freeze 기준선 파일(.freeze-baseline.json)이 없어 frozen 커밋 추이를 비교할 수 없음');
+  } else {
+    const n = Number(
+      execSync(`git rev-list --count ${since.sinceCommit}..HEAD -- ${FROZEN.join(' ')}`, { encoding: 'utf8' }).trim(),
+    );
+    const delta = n - Number(since.commitsTouchingFrozen);
+    const line = `frozen 경로 변경 커밋 ${n}건 (기준선 ${since.commitsTouchingFrozen}, ${since.sinceCommit} 이후)`;
+    if (delta > 0) {
+      warn(`${line} — 기준선보다 ${delta}건 늘었다. 정책 미판정(OWNER_TODO D8): 승인된 재개방인지 확인할 것`);
+    } else {
+      ok(`${line} — 증가 없음`);
+    }
+    // 지금 커밋되지 않은 채 남아 있는 frozen 변경도 이름으로 보여 준다. §3 은 "있다/없다" 만 말한다.
+    const dirty = execSync(`git status --porcelain -- ${FROZEN.join(' ')}`, { encoding: 'utf8' })
+      .split('\n').map((l) => l.trim()).filter(Boolean);
+    if (dirty.length > 0) warn(`커밋되지 않은 frozen 변경 ${dirty.length}건: ${dirty.map((l) => l.split(/\s+/).pop()).join(' ')}`);
+  }
+} catch (e) {
+  warn(`frozen 커밋 추이 확인 실패: ${String(e).slice(0, 80)}`);
+}
+
 // 4. Client direct-Duk-grant guard — the structural test exists (run by jest above).
 existsSync(p('src/features/duk/__tests__/clientGrantGuard.test.ts'))
   ? ok('client-grant guard test present') : block('client-grant guard test MISSING');

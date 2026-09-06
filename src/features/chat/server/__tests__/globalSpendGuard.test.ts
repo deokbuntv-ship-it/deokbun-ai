@@ -140,3 +140,52 @@ describe('paid provider wiring contract', () => {
     expect(source).toContain("error: 'GLOBAL_GENERATION_LIMIT_REACHED'");
   });
 });
+
+// ── H5 잠금 (20260912) ─────────────────────────────────────────────────────────
+// `20260836` 이 중복 제거 장부를 만들면서 RLS·revoke·grant 를 빠뜨렸다. 그 결과 공개 anon 키로
+// 718행이 읽히고 쓰기까지 됐다(staging 실측). 행을 미리 넣으면 래퍼가 IDEMPOTENT_REPLAY 로
+// 실제 예약 함수를 건너뛰므로 **GENERATION_DISABLED 비상 정지까지 우회**된다.
+// 이 잠금이 조용히 사라지면 같은 구멍이 다시 열린다.
+describe('global_reservation_requests 잠금 (H5)', () => {
+  const lockdown = readFileSync(
+    resolve(process.cwd(), 'supabase/migrations/20260912000000_global_reservation_requests_lockdown.sql'),
+    'utf8',
+  );
+
+  it('형제 테이블과 같은 3중 잠금을 건다', () => {
+    expect(lockdown).toContain('alter table public.global_reservation_requests enable row level security;');
+    expect(lockdown).toContain('revoke all on table public.global_reservation_requests from public, anon, authenticated;');
+    expect(lockdown).toContain('grant select, insert, delete on table public.global_reservation_requests to service_role;');
+  });
+
+  it('security definer 경로가 필요로 하는 연산을 전부 grant 한다', () => {
+    const wrapper = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20260836000000_global_reservation_request_id.sql'),
+      'utf8',
+    );
+    const deletion = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20260903000000_account_deletion.sql'),
+      'utf8',
+    );
+    // 래퍼는 select 하고 insert 한다. 계정 삭제는 delete 한다. 셋 다 grant 에 있어야 한다.
+    expect(wrapper).toMatch(/select \* into v_prior from public\.global_reservation_requests/);
+    expect(wrapper).toMatch(/insert into public\.global_reservation_requests/);
+    expect(deletion).toMatch(/delete from public\.global_reservation_requests/);
+    const grant = lockdown.match(/grant ([a-z, ]+) on table public\.global_reservation_requests/)?.[1] ?? '';
+    for (const op of ['select', 'insert', 'delete']) expect(grant).toContain(op);
+  });
+
+  // ⚠ 아래 두 검사는 **실행되는 SQL** 만 봐야 한다. 이 마이그레이션의 주석이 force RLS 를
+  // 왜 안 쓰는지 설명하고 있어서, 파일 전체를 대상으로 하면 자기 설명에 걸린다.
+  const statements = lockdown.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+
+  it('force RLS 를 걸지 않는다 — 걸면 소유자로 도는 definer 함수까지 막혀 상담이 멈춘다', () => {
+    expect(statements).not.toMatch(/force row level security/);
+    expect(statements).not.toMatch(/create policy/);
+  });
+
+  it('ai_usage_logs 는 RLS 만 켜고 권한은 건드리지 않는다 — 진짜 grant 집합을 레포가 모른다', () => {
+    expect(statements).toContain('alter table public.ai_usage_logs enable row level security;');
+    expect(statements).not.toMatch(/(revoke|grant)[^\n]*ai_usage_logs/);
+  });
+});

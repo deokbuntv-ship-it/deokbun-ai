@@ -51,7 +51,8 @@ export function tenGodJudgmentDomain(tg: TenGod): JudgmentDomain {
   }
 }
 
-const FAMILY_LABEL: Record<TenGodFamily, string> = {
+/** 십신 계열의 소비자용 한국어. 이 모듈이 `TenGodFamily` 의 정의처이므로 라벨도 여기 둔다. */
+export const FAMILY_LABEL: Record<TenGodFamily, string> = {
   WEALTH: '재물의 기운', OFFICER: '자리·책임의 기운', OUTPUT: '활동·표현의 기운',
   PEER: '경쟁·동료의 기운', RESOURCE: '지원·배움의 기운',
 };

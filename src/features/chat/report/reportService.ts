@@ -10,9 +10,12 @@ import {
   type CompatibilityReportDimension,
 } from '@/features/chat/report/compatibilityReportComposer';
 import { conversationService } from '@/features/chat/services/conversationService';
+import type { PremiumReportPayload } from '@/features/premium/types';
 import { getSupabaseClient } from '@/services/supabase';
 
-export type ReportType = 'consultation' | 'compatibility';
+// 'premium' (2026-09-02) is the 50덕 Premium Report. It shares this table and the payload-agnostic
+// renderer, but carries its OWN payload shape (PremiumReportPayload) — see src/features/premium/types.ts.
+export type ReportType = 'consultation' | 'compatibility' | 'premium';
 
 // Consultation report persistence (Commercial UX V4 §16/§29). Builds a report DETERMINISTICALLY from the
 // conversation's already-validated structured answers + stored summary (buildConsultationReport — ZERO
@@ -26,7 +29,8 @@ export type ConsultationReport = {
   id: string;
   conversationId: string | null;
   title: string;
-  payload: ConsultationReportPayload;
+  // A premium row carries PremiumReportPayload instead — discriminate on reportType before reading it.
+  payload: ConsultationReportPayload | PremiumReportPayload;
   reportType: ReportType;
   createdAt: string;
   updatedAt: string | null;
@@ -36,7 +40,7 @@ type ReportRow = {
   id: string;
   conversation_id: string | null;
   title: string;
-  report_payload: ConsultationReportPayload;
+  report_payload: ConsultationReportPayload | PremiumReportPayload;
   report_type?: string | null;
   created_at: string;
   updated_at?: string | null;
@@ -48,7 +52,7 @@ const toReport = (r: ReportRow): ConsultationReport => ({
   conversationId: r.conversation_id,
   title: r.title,
   payload: r.report_payload,
-  reportType: r.report_type === 'compatibility' ? 'compatibility' : 'consultation',
+  reportType: r.report_type === 'compatibility' || r.report_type === 'premium' ? r.report_type : 'consultation',
   createdAt: r.created_at,
   updatedAt: r.updated_at ?? null,
 });

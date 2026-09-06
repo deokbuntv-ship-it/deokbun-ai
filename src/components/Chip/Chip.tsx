@@ -43,7 +43,7 @@ export function Chip({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityState={onPress ? { selected } : undefined}
+      aria-selected={onPress ? selected : undefined}
       accessibilityLabel={accessibilityLabel ?? label}
       // Visual pill is 34dp tall (freeze C19) but the TOUCH target must stay 44dp — hitSlop buys the
       // missing 10dp without inflating the layout.

@@ -25,8 +25,13 @@ describe('resolveLlmBudgets — consultation raised, summary bounded, never unbo
     expect(b.consultation).toBeGreaterThan(800); // the value that produced status=incomplete in production
     expect(b.consultation).toBeGreaterThanOrEqual(2500);
     expect(b.summary).toBe(DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS);
-    expect(b.summary).toBeLessThanOrEqual(1200);
+    // Raised 1000 → 3000 on 2026-09-02: the old ceiling cut through the middle of the measured
+    // distribution (8/10 staging summaries died on OPENAI_INCOMPLETE, survivors at 880 and 976). The
+    // invariant this test protects is "summary is bounded and stays below consultation", not a specific
+    // small number — and it must still be well under HARD_MAX so a bad env can never make it unbounded.
+    expect(b.summary).toBeGreaterThanOrEqual(2000); // above the measured failure point
     expect(b.summary).toBeLessThan(b.consultation);
+    expect(b.summary).toBeLessThanOrEqual(HARD_MAX_OUTPUT_TOKENS / 2);
   });
   it('env overrides are honored (within bounds)', () => {
     expect(resolveLlmBudgets({ consultation: '3000', summary: '1100' })).toEqual({ consultation: 3000, summary: 1100 });

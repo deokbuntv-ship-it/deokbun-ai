@@ -21,6 +21,8 @@ import { reportService } from '@/features/chat/report/reportService';
 import type { CompatibilityResultMeta } from '@/features/chat/server';
 import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
 import { InsufficientDuk } from '@/components/InsufficientDuk';
 import { SessionMeter } from '@/components/SessionMeter';
@@ -88,6 +90,18 @@ export default function CompatibilityChatScreen() {
     [subjects, params.targetId],
   );
 
+  // 절기 경계일 — 두 사람 중 누구라도 시각이 갈리면 궁합은 성립하지 않는다. 판정은 생년월일만으로
+  // 결정론적이라 여기서 즉시 알 수 있다. 복원(이미 값을 치른 대화)은 막지 않고 **새 전송만** 막는다.
+  const boundaryBlockedNames = useMemo(
+    () =>
+      [self, target]
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .filter((s) => isSolarTermBoundaryTimeRequired(s.birthInfo))
+        .map((s) => s.displayName),
+    [self, target],
+  );
+  const boundaryBlocked = boundaryBlockedNames.length > 0;
+
   const serviceRef = useRef(
     createCompatibilityConsultationService(supabaseEdgeConsultationAdapter, () => isAuthenticatedRef.current),
   );
@@ -96,6 +110,8 @@ export default function CompatibilityChatScreen() {
   const [sending, setSending] = useState(false);
   const [tier, setTier] = useState<CompatibilityResultMeta | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+  // 근거 부재로 실패한 경우에만 켠다 — 오류 카드에 '출생정보 확인' 경로를 붙이기 위해.
+  const [needsBirthInfoFix, setNeedsBirthInfoFix] = useState(false);
   // Authoritative server balance snapshot for the INSUFFICIENT_DUK paywall card (Sprint J1 §10). Never client-computed.
   const [insufficientSnap, setInsufficientSnap] = useState<{ balance: number; required: number; shortfall: number } | null>(null);
   // §P0 — the SERVER's compatibility session, held raw. 12덕 buys ONE session of 5 successful questions; the
@@ -197,10 +213,15 @@ export default function CompatibilityChatScreen() {
     // unmounted by compatExhausted — without this guard it would silently start (and charge for) a
     // new session. The visible exhausted consent card is the required explicit confirmation.
     if (compatExhausted) return;
+    // ⚠ 절기 경계일 백스톱. 정문(궁합 탭)에서 이미 막지만 이 화면은 라우트라 딥링크로 바로 올 수 있고,
+    // 도착 즉시 자동 전송한다. 서버는 두 차트가 다 없어도 실패하지 않고 12덕을 받아 간다(§7.29).
+    // 여기가 자동 전송·컴포저·후속칩이 **모두 지나가는 한 자리**라 가드도 여기 하나면 된다.
+    if (boundaryBlocked) return;
     const q = question.trim();
     if (q.length === 0) return;
     sendingRef.current = true;
     setErrorText(null);
+    setNeedsBirthInfoFix(false);
     setInsufficientSnap(null);
     setInput('');
     const userMsg: CompatMessage = { id: newId('user'), role: 'user', text: q };
@@ -220,6 +241,11 @@ export default function CompatibilityChatScreen() {
           // Actionable paywall instead of a generic failure (§10). Numbers are the server snapshot; the client
           // never grants — it only routes to where 덕 can be earned (candle) or topped up.
           setInsufficientSnap(result.insufficientDuk);
+        } else if (result.errorCode === 'GROUNDING_UNAVAILABLE') {
+          // 서버가 자기 설명을 실어 보냈으면 그쪽이 더 정확하다 — 어느 입력을 고쳐야 하는지는 서버만 안다
+          // (일반 상담의 `mapConsultationError(detail)` 과 같은 우선순위). 없을 때만 고정 문구.
+          setErrorText(result.message ?? mapConsumerError('GROUNDING_UNAVAILABLE').message);
+          setNeedsBirthInfoFix(true);
         } else {
           // Shared consumer error copy (§10) — distinct wording per code instead of one generic fallback, and
           // never a raw backend term.
@@ -454,6 +480,15 @@ export default function CompatibilityChatScreen() {
                     <Text variant="bodySmall" colorToken="textSecondary">
                       이번 질문은 전달되지 않았어요. 질문 횟수는 그대로예요.
                     </Text>
+                    {/* 근거 부재는 재시도로 풀리지 않는다 — 고쳐야 할 것은 입력이므로 갈 곳을 준다. */}
+                    {needsBirthInfoFix ? (
+                      <Button
+                        label="출생 정보 확인하기"
+                        variant="secondary"
+                        radius="lg"
+                        onPress={() => router.push({ pathname: '/subjects' })}
+                      />
+                    ) : null}
                   </Stack>
                 </Card>
               ) : null}
@@ -468,6 +503,18 @@ export default function CompatibilityChatScreen() {
                 session={null} — an unconditional promise that became FALSE at the 5-turn limit, where the next
                 question silently opened a NEW 12덕 session. Now the SERVER's real count drives it. */}
             {tier ? <SessionMeter session={session} style={styles.meter} /> : null}
+            {boundaryBlocked ? (
+              // 컴포저 **위**에 둔다. 컴포저 자리를 뺏지 않는 이유: 소진 동의 카드가 컴포저를 대체하는
+              // 구조(`{compatExhausted ? (`)는 두 개의 잠금 테스트가 그 형태 그대로를 검사한다. 대신
+              // 입력칸을 비활성화해서 "보내면 될지도" 로 읽히지 않게 했다.
+              <View style={styles.meter}>
+                <BoundaryTimeNotice
+                  context="compatibility"
+                  names={boundaryBlockedNames}
+                  onEnterTime={() => router.push({ pathname: '/subjects' })}
+                />
+              </View>
+            ) : null}
             {compatExhausted ? (
               // Explicit CONSENT before another paid session — the same gate the 상담 flow already has. No new
               // session and no charge happen on render; only this tap navigates to start a new 궁합 상담, and the
@@ -490,7 +537,7 @@ export default function CompatibilityChatScreen() {
                 value={input}
                 onChangeText={setInput}
                 onSend={() => void send(input)}
-                disabled={sending || !self || !target}
+                disabled={sending || !self || !target || boundaryBlocked}
               />
             )}
           </View>

@@ -27,6 +27,8 @@ import {
   useConsultationDraft,
   useConsultationSubjects,
 } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { birthMonthDay, isBirthdayTodayKst, trackRetentionEvent } from '@/features/retention';
 import { useAuth } from '@/features/auth';
 import { useWallet } from '@/features/duk/useWallet';
@@ -142,6 +144,10 @@ export default function HomeScreen() {
 
   // One-shot post-onboarding welcome/economy card (§6/§7). Consumed once per fresh onboarding; never grants 덕.
   const [showWelcome, setShowWelcome] = useState(false);
+  // 절기 경계일 안내 — existing accounts are NOT retro-blocked, so the only way they learn why nothing
+  // works is a banner. Dismissal is per-session (same in-memory scope as the welcome card): it returns on
+  // the next launch until the birth time is actually fixed, which is the point.
+  const [boundaryDismissed, setBoundaryDismissed] = useState(false);
   useEffect(() => {
     if (consumeWelcomePending()) setShowWelcome(true);
   }, []);
@@ -463,6 +469,18 @@ export default function HomeScreen() {
                   </Pressable>
                 </Stack>
               </Card>
+            ) : null}
+
+            {/* 절기 경계일 — this account's birth cannot produce a chart at all (상담·오늘·월별 all fail).
+                Nothing is blocked retroactively; this is the notice that tells them which field fixes it. */}
+            {!boundaryDismissed && isSolarTermBoundaryTimeRequired(selfSubject?.birthInfo) ? (
+              <BoundaryTimeNotice
+                context="surface"
+                onEditBirthInfo={() =>
+                  router.push({ pathname: '/birth-info', params: { subjectId: selfSubject?.id ?? '' } })
+                }
+                onDismiss={() => setBoundaryDismissed(true)}
+              />
             ) : null}
 
             {/* 생일 축하 — deterministic, birthday-only, 0 LLM. The birthday 덕 is granted server-side

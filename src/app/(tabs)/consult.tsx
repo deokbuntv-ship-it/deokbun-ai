@@ -213,6 +213,16 @@ export default function ConsultationListScreen() {
               onPress={startNew}
             />
 
+            {/* ②-b 프리미엄 리포트 — a SECOND product, not a bigger consultation, so it sits under the
+                primary as its own secondary action with its own price on the label. Same rule as ②: the
+                cost is on the button. It does not compete with 새 상담 for the primary slot. */}
+            <Button
+              label={`프리미엄 리포트  🍀 ${dukLabel(DUK_PRICES.premium_report)}`}
+              variant="secondary"
+              radius="lg"
+              onPress={() => router.push('/premium')}
+            />
+
             {/* ③ Tertiary 3 — demoted, text-only, wrapping. Not a four-button grid. */}
             <View style={styles.tertiaryRow}>
               <Button label="대상자 관리" variant="tertiary" onPress={() => router.push('/subjects')} />

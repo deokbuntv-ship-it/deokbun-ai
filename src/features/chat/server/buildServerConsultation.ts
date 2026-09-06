@@ -74,6 +74,7 @@ import { joinDistinctSentences, realizeForConsumer } from './koreanRealization';
 import { groundingFromStoredDecision, priorAxisContextFor } from './storedDecisionGrounding';
 import { buildResolvedTemporalContext } from './resolvedTemporalContext';
 import { DEOKBUNAI_SAJU_RULE_SET_VERSION } from '@/features/interpretation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
 import {
   classifyContinuationIntent,
   classifyFollowUpIntent,
@@ -110,6 +111,17 @@ export const GROUNDING_UNAVAILABLE_MESSAGE =
   '지금 등록된 출생 정보로는 사주·자미두수·기문둔갑 어느 쪽도 실제로 세울 수 없었습니다. '
   + '태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹쳐, 월주를 어느 쪽으로 볼지 확정할 수 없기 때문입니다. '
   + '없는 근거로 풀이를 지어내지는 않겠습니다. 태어난 시각(또는 대략적인 시간대)을 입력해 주시면 바로 다시 봐 드리겠습니다.';
+
+/**
+ * The SAME non-success, narrowed to the one cause the reader can fix: the birth date is a 절기 boundary
+ * date and no EXACT time was given, so the 월주 has two candidates. Note what the generic message above
+ * gets wrong for this case — a 대략적인 시간대 does NOT fix it. The engine treats APPROXIMATE exactly like
+ * UNKNOWN (`timeIsKnown: civilLocal.accuracy === 'EXACT'`), so only an exact time resolves the boundary.
+ */
+export const AMBIGUOUS_BOUNDARY_DATE_MESSAGE =
+  '등록하신 생일이 사주의 달이 바뀌는 절기 경계일이라, 태어난 시각을 모르면 월주가 두 가지로 갈립니다. '
+  + '어느 쪽인지 확정할 수 없어 없는 근거로 풀이를 지어내지 않습니다. '
+  + '이 날짜는 대략적인 시간대로는 갈리는 부분이 정해지지 않아, 정확한 태어난 시각이 있어야 풀이를 드릴 수 있습니다.';
 
 /**
  * V6 §DEDUP CONTRACT — ONE sentence ledger across the WHOLE delivered answer, in delivery order.
@@ -698,7 +710,16 @@ export async function buildServerConsultation(
     && followUpIntent === 'NONE'
     && continuation === 'NEW_QUESTION'
   ) {
-    return { ok: false, reason: 'GROUNDING_UNAVAILABLE', message: GROUNDING_UNAVAILABLE_MESSAGE };
+    // Same outcome (released, charged nothing) — but when the cause is the 절기 boundary date, say so with
+    // its own code so the client can point at the birth-time field instead of offering a retry. The
+    // judgment is the shared gate, which asks the frozen engine rather than re-deriving anything.
+    return isSolarTermBoundaryTimeRequired(birthInfo)
+      ? {
+          ok: false,
+          reason: 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED',
+          message: AMBIGUOUS_BOUNDARY_DATE_MESSAGE,
+        }
+      : { ok: false, reason: 'GROUNDING_UNAVAILABLE', message: GROUNDING_UNAVAILABLE_MESSAGE };
   }
 
   // 4) The single outbound trust exit (first attempt).
@@ -1050,6 +1071,10 @@ export async function buildServerConsultation(
     ...(guard.regenerated ? { regenerated: true } : {}),
     ...(groundedFallbackUsed ? { groundedFallback: true } : {}),
     ...(groundedViolations.length > 0 ? { groundedViolations } : {}),
+    // 관측용 (2026-09-06). 카테고리는 dedupe 되므로 규모를 따로 남긴다 — 한 토큰이 한 번 샌 것과
+    // 규칙이 계속 오발화하는 것은 카테고리 목록만으로 구별되지 않는다.
+    ...(gated ? { groundedViolationCount: gated.violations.length } : {}),
+    ...(groundedFallbackUsed ? { groundedGateUnit: gated?.fatal === true ? 'answer' as const : 'section' as const } : {}),
     ...(safetyRoute !== 'NORMAL' ? { safetyRoute } : {}),
     ...(followUpIntent !== 'NONE' ? { followUp: followUpIntent } : {}),
     ...(followUpVersionMismatch ? { versionMismatch: true } : {}),

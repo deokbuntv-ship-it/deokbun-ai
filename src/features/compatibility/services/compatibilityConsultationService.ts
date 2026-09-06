@@ -39,10 +39,13 @@ export type CompatibilityChatResult =
     }
   | {
       success: false;
-      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK';
+      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK' | 'GROUNDING_UNAVAILABLE';
       requestId: string;
       // Authoritative server balance — present ONLY for 'INSUFFICIENT_DUK' (drives the top-up/paywall UX).
       insufficientDuk?: { balance: number; required: number; shortfall: number };
+      // The SERVER's own consumer-safe explanation — present ONLY for 'GROUNDING_UNAVAILABLE'. Only the
+      // server knows which input is missing, so it is preferred over the client's fixed copy.
+      message?: string | null;
     };
 
 function hasBirth(b: BirthInfoDraft | null | undefined): b is BirthInfoDraft {
@@ -120,6 +123,12 @@ export function createCompatibilityConsultationService(
             insufficientDuk: { balance: result.balance, required: result.required, shortfall: result.shortfall },
             requestId,
           };
+        }
+        // ⚠ 2026-09-06 — 여기서 GROUNDING_UNAVAILABLE 이 REQUEST_FAILED 로 뭉개지고 있었다. 그 결과
+        // 화면에는 "잠시 후 다시 시도해 주세요" 가 떴는데, 같은 출생정보로 재시도하면 똑같이 실패하므로
+        // **사실이 아닌 안내**였다. 값도 치르지 않았고 재시도로도 풀리지 않는다 — 고쳐야 할 것은 입력이다.
+        if (result.error === 'GROUNDING_UNAVAILABLE') {
+          return { success: false, errorCode: 'GROUNDING_UNAVAILABLE', message: result.message, requestId };
         }
         logFailure('REQUEST_FAILED', 'error');
         return { success: false, errorCode: 'REQUEST_FAILED', requestId };

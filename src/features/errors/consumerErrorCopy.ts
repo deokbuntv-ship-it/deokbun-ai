@@ -30,7 +30,8 @@ export type ConsumerErrorCode =
   | 'NOT_CONFIGURED'
   | 'INVALID_INPUT'
   | 'SAFETY_HANDLED'
-  | 'SERVICE_UNAVAILABLE';
+  | 'SERVICE_UNAVAILABLE'
+  | 'GROUNDING_UNAVAILABLE';
 
 export type ConsumerErrorView = {
   code: ConsumerErrorCode;
@@ -94,6 +95,22 @@ const TABLE: Record<ConsumerErrorCode, Omit<ConsumerErrorView, 'code'>> = {
     kind: 'blocked',
     message: '지금 서비스에 연결할 수 없어요.\n잠시 후 다시 시도해 주세요.',
     canRetry: true,
+  },
+  // 2026-09-06 신설. 이 코드가 없어서 궁합은 `REQUEST_FAILED` 로 폴백했고 화면에는
+  // "잠시 후 다시 시도해 주세요" 가 떴다 — **사실이 아닌 안내**다. 같은 출생정보로 다시 보내면 똑같이
+  // 실패한다. 그래서 `canRetry: false` 이고 문구는 세 가지를 반드시 말한다:
+  //   ① 왜 안 되는지  ② 덕이 차감되지 않았다는 사실  ③ 다음에 할 행동(출생정보 확인)
+  //
+  // 누구의 출생정보인지는 **일부러 특정하지 않는다.** 서버가 자기 메시지를 실어 보낼 때는 그쪽이 더
+  // 정확해서 화면이 그걸 먼저 쓰고, 이 고정 문구는 서버가 말이 없을 때만 쓰인다. 그 경우 우리가 한쪽을
+  // 지목하면 틀릴 수 있다 — 두 분을 다 보여 주고 사용자가 보고 고르게 하는 편이 확실하다.
+  GROUNDING_UNAVAILABLE: {
+    kind: 'profile',
+    message:
+      '등록된 출생 정보로는 사주를 세울 수 없어서 풀이를 드리지 못했어요.\n'
+      + '덕은 차감되지 않았어요.\n'
+      + '두 분의 출생 정보에서 태어난 시각을 확인해 주시면 바로 이어서 봐드릴게요.',
+    canRetry: false,
   },
 };
 

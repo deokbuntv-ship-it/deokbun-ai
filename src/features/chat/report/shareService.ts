@@ -6,6 +6,7 @@ import {
   isValidShareToken,
   type SharedReportOutcome,
 } from '@/features/chat/report/shareToken';
+import { parseSharePreview, type SharePreviewOutcome } from '@/features/chat/report/sharePreview';
 import { getPublicBaseUrl } from '@/features/publicSite/publicUrl';
 import { getSupabaseClient } from '@/services/supabase';
 
@@ -148,10 +149,28 @@ async function loadSharedReport(rawToken: string): Promise<SharedReportOutcome> 
   return classifySharedReportResponse(res);
 }
 
+/**
+ * ANONYMOUS preview. Calls a DIFFERENT function from the full read on purpose — full read and
+ * preview are different permissions, so `get_shared_report` keeps its authenticated-only grant
+ * untouched and this one is granted to `anon`. The narrowing lives in the SERVER's returned
+ * payload, so devtools on the preview page show only what the server chose to send.
+ */
+async function loadSharePreview(rawToken: string): Promise<SharePreviewOutcome> {
+  if (!isValidShareToken(rawToken)) return { status: 'unavailable' };
+  const supabase = getSupabaseClient();
+  const res = await supabase.rpc('get_shared_report_preview', { p_token: rawToken });
+  if (res.error) {
+    logDbError(res.error, 'report_share', 'db');
+    return { status: 'unavailable' };
+  }
+  return parseSharePreview(res.data);
+}
+
 export const shareService = {
   createShare,
   listActiveShares,
   revokeShare,
   loadSharedReport,
+  loadSharePreview,
   buildShareUrl,
 };

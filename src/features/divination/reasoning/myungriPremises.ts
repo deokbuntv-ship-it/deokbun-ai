@@ -19,7 +19,7 @@ import type {
 import { domainFamily, type NatalBaseline } from '../myungriNatal';
 import type { LayerAnalysis } from '../myungriLayer';
 import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
-import type { MyungriStructuralV2Result } from '../myungriStructuralV2';
+import type { MyungriStructuralV2Result, SeasonRoleFact } from '../myungriStructuralV2';
 import type { MyungriYongshinResult, TreatmentRationale } from '../myungriYongshin';
 import type { ConsultationJudgeDomain, DomainJudgeResult } from '../myungriConsultationJudge';
 import type { FiveElement } from '@/features/interpretation';
@@ -84,6 +84,28 @@ const STRENGTH_CLASSIFICATION_LABEL: Record<string, string> = {
   MIXED_EVIDENCE: '일간의 계절과 뿌리가 서로 다른 방향을 가리켜, 구조적 방향을 하나로 단정하지 않습니다.',
   UNRESOLVED: '시주 등 필요한 정보가 확정되지 않아 일간의 구조적 방향을 판단하지 않습니다.',
 };
+
+/**
+ * 강약 라벨을 **사실과 맞는** 한 문장으로. 판정은 이미 끝났고 여기서는 문장만 고른다.
+ *
+ * 2026-09-02 수리 (YONGSHIN_CONSISTENCY_AUDIT §2 F1). 위 표는 `STRONG_LEANING` 을 언제나
+ * "계절과 뿌리 **양쪽**에서 힘을 받는다"로 내보냈다. 그런데 `runStructuralSynthesis` 는 계절이
+ * `NEUTRAL`(休)이면 **뿌리만으로** ANCHORED 를 준다 — 계절은 아무것도 기여하지 않았는데 기여했다고
+ * 사용자에게 말하고 있었다. 같은 파일의 구조 판정기 자신도 그 상태를 "계절이 일간의 힘을 밀지도
+ * 빼지도 않습니다(休)"로 서술한다(myungriStructuralV2.ts:179). 이 문장은 실제 전달문으로 나갔다
+ * (docs/DIVINATION_QA_PACK.md).
+ *
+ * 고친 것은 **문장뿐이다.** 분류·방향·후속 판정은 한 글자도 바뀌지 않는다.
+ *
+ * `WEAK_LEANING` 은 그대로 둔다: 부정 진술이라 도달 가능한 세 계절(NEUTRAL/DRAINED/OPPOSED)
+ * 모두에서 참이다. 거짓이 아닌 문장을 고치면 근거 없이 출고물만 흔든다.
+ */
+function strengthAssertionText(classification: string, seasonFact: SeasonRoleFact | undefined): string {
+  if (classification === 'STRONG_LEANING' && seasonFact === 'NEUTRAL') {
+    return '일간이 뿌리에서 힘을 받고, 계절은 힘을 더하지도 빼지도 않는 구조입니다.';
+  }
+  return STRENGTH_CLASSIFICATION_LABEL[classification];
+}
 
 const ELEMENT_LABEL: Record<FiveElement, string> = {
   WOOD: '목(木)', FIRE: '화(火)', EARTH: '토(土)', METAL: '금(金)', WATER: '수(水)',
@@ -304,7 +326,7 @@ export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPrem
     if (r.capability === 'AVAILABLE') {
       const directional = r.strengthView.classification === 'STRONG_LEANING'
         || r.strengthView.classification === 'WEAK_LEANING';
-      let assertion = STRENGTH_CLASSIFICATION_LABEL[r.strengthView.classification];
+      let assertion = strengthAssertionText(r.strengthView.classification, r.seasonFact);
       if (r.specialStructureStatus.status === 'CANDIDATE') {
         // §6 — CANDIDATE is carried as supporting structural metadata alongside the strength read; it
         // never becomes its own verdict and never gates/replaces strengthView.

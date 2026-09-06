@@ -268,7 +268,8 @@ describe('follow-up authority requires a persisted decision, not wording', () =>
       deps({ async callLLM() { called += 1; return ANSWER; } }),
     );
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe('GROUNDING_UNAVAILABLE');
+    // 1996-10-08 with no time is the 절기 경계일 case, so the refusal now carries the narrower reason.
+    if (!r.ok) expect(r.reason).toBe('AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED');
     expect(called).toBe(0);                       // no model call ⇒ nothing to charge for
     expect(r).not.toHaveProperty('structuredResult');
   });

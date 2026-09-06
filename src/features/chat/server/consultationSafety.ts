@@ -28,18 +28,97 @@ export type SafetyRoute =
 // natural Korean — real crisis phrasing ("자해하고 싶어", "자해충동이 있어") is unaffected. NOT a topic
 // whitelist: 대출/투자/손실/빚 themselves are still fully unfiltered; this narrows only the one mismatched
 // regex alternative that caused the misroute.
+//
+// ⚠⚠ DO NOT ADD `버티는` TO THE (살아야|살아갈|살아가는|버틸|버텨야|버티고) GROUP. ⚠⚠
+//
+// The list is ASYMMETRIC on purpose-by-accident: `살아가는` is present, `버티는` is not. It looks like an
+// oversight and it is extremely tempting to "make it consistent". Do not. Measured 2026-09-06 against the
+// golden corpus: TWO of the 84 questions escape a crisis hard stop **only** because `버티는` is absent —
+//
+//   B84-019  "…같이 일하는 사람들 때문에 매일 힘듭니다. 계속 버티는 게 의미가 있을까요"   (a resignation question)
+//   B84-064  "…여기서 그냥 익숙하게 버티는 것 중에 어느 쪽이 저한테 나을까요?"          (a relocation question)
+//
+// Adding `버티는` routes both to the SELF_HARM crisis response: the reader asking whether to quit a job
+// gets suicide hotlines instead of a consultation. Verified by substitution — the same sentences with
+// 버틸/버텨야/버티고 DO fire today. The retained alternatives still catch the genuine crisis phrasing
+// ("더 이상 버틸 이유가 없어요"), which is what this group exists for, so the asymmetry costs nothing.
+// Locked by `consultationSafetyNarrowing.test.ts`; see `docs/SAFETY_ROUTING_AUDIT.md`.
 const SELF_HARM =
   /자살|(?<!투)(?<!출)(?<!융)자해|죽고\s*싶|죽어\s*버리고?\s*싶|죽어\s*버릴|살기\s*(가\s*)?싫|살고\s*싶지\s*않|목숨을?\s*끊|스스로\s*목숨|세상을?\s*(떠나|등지)고\s*싶|사라지고\s*싶|죽는\s*게\s*(낫|나을|더\s*나)|(살아야|살아갈|살아가는|버틸|버텨야|버티고)[^.\n]{0,7}(이유|의미)[^.\n]{0,7}(없|모르겠|있을까|있나|있냐|있는지|있어\s*\?|있어요\s*\?)/;
 
 // DEATH_LIFESPAN — asking fortune to predict lifespan or death timing. Checked AFTER self-harm so a
 // self-harm phrasing that also mentions dying routes to SELF_HARM first.
-const DEATH_LIFESPAN =
-  /수명|몇\s*살(까지|에)?[^.\n]{0,6}(죽|사망|눈\s*감)|언제\s*죽|죽을\s*(운|팔자|나이|때)|죽는\s*(날|시기|때|나이)|사망\s*(시기|시점|나이|운)|얼마나\s*(더\s*)?(오래\s*)?살|오래\s*살(까|겠|\s*수\s*있|게\s*될)/;
+//
+// NARROWED 2026-09-06 (owner-approved, three exclusions only — see docs/SAFETY_ROUTING_AUDIT.md).
+// The principle: remove ONLY over-fires with ZERO safety value. An over-fire costs the reader their
+// answer AND teaches them to dismiss the crisis screen — so a pointless one is not merely annoying,
+// it erodes the true positives. Nothing here touches a phrasing a person could use about themselves.
+//
+//  (a) 수명 — the noun means "service life" for objects just as often as "lifespan" for people.
+//      "배터리 수명이 궁금해요" was hard-stopped. Excluded only when an OBJECT noun sits immediately
+//      before it. The list is closed and every entry is provably not a person, so the exclusion can
+//      never swallow a human question: "부모님 수명", "제 수명", a bare "수명" all still fire.
+//      ⚠ KNOWN REMAINING over-fire: "수명이 다한 장비를 바꿔야 할까요" — the object noun comes AFTER.
+//      Left firing on purpose: a lookahead broad enough to catch it would also catch "제 수명이 다한
+//      건가요", which SHOULD route. Accepted cost.
+//  (b) 얼마나 (더)(오래) 살 — narrowed by the VERB, not by a subject list, which is both smaller and
+//      more robust: 살아남다 (survive) and 살리다 (keep alive) are different verbs from 살다 (live).
+//      "회사가 얼마나 더 살아남을까요" / "이 사업을 얼마나 오래 살릴 수 있을까요" are business questions
+//      and no subject enumeration is needed to tell them apart. "얼마나 오래 살 수 있을까요" still fires.
+//  (c) 오래 살 수 있는 <직업/일/…> — a career question ("오래 살 수 있는 직업일까요"), not a lifespan one.
+//      Excluded only in that attributive shape; "오래 살 수 있을까요" is untouched.
+const OBJECT_LIFESPAN_SUBJECT = '배터리|장비|부품|제품|기기|설비|차량|엔진|타이어|서버|하드웨어|건물|가전|소모품|자재';
+const CAREER_NOUN = '직업|일|분야|업종|직장|자리|커리어|업계';
+const DEATH_LIFESPAN = new RegExp(
+  [
+    `(?<!(?:${OBJECT_LIFESPAN_SUBJECT})\\s*)수명`,
+    '몇\\s*살(까지|에)?[^.\\n]{0,6}(죽|사망|눈\\s*감)',
+    '언제\\s*죽',
+    '죽을\\s*(운|팔자|나이|때)',
+    '죽는\\s*(날|시기|때|나이)',
+    '사망\\s*(시기|시점|나이|운)',
+    '얼마나\\s*(더\\s*)?(오래\\s*)?살(?!아남|리|릴|려|립)',
+    `오래\\s*살(?!\\s*수\\s*있는\\s*(?:${CAREER_NOUN}))(까|겠|\\s*수\\s*있|게\\s*될)`,
+  ].join('|'),
+);
 
 // MEDICAL diagnosis / prognosis from fortune. Requires disease/diagnosis terms — NOT bare 건강, so a
 // low-stakes wellness question ("요즘 건강운 어때?") stays NORMAL and is handled by the existing caution policy.
-const MEDICAL =
-  /(사주|팔자|명(에|이|리)|역학)[^.\n]{0,10}(암|병|질병|불치|중병|큰\s*병|종양)|(암|중병|불치병|큰\s*병|종양)[^.\n]{0,6}(이야|인가|일까|걸리|생기|있(어|나|을까|는지|나요))|이\s*(병|증상|질환)[^.\n]{0,8}(나(을까|아|아요|을지)|낫|치료|완치|호전|경과)|무슨\s*병|진단[^.\n]{0,4}(해|되|받|명)|완치(\s*(되|될|가능|여부))|불치/;
+//
+// NARROWED 2026-09-06 — the `진단` alternative only. Same principle as the DEATH_LIFESPAN narrowing above:
+// remove ONLY over-fires with ZERO safety value, and never touch a phrasing a person could use about their
+// own body. Measured over-fires (4/4 fired before, all NORMAL after):
+//
+//   "제 사업을 진단해 주세요"  "제 성격을 진단해 볼 수 있을까요"
+//   "이 프로젝트를 진단받고 싶어요"  "지금 상황을 진단해 주시면 좋겠어요"
+//
+// 진단하다 is ordinary Korean for "assess" — 사업 진단, 조직 진단, 성격 진단. A bare `진단해` therefore says
+// nothing about medicine, and this was the highest-frequency remaining over-fire in the 2026-09-06 audit.
+//
+// WHY A CUE LIST AND NOT AN EXCLUSION LIST: the things a person might 진단 (사업·조직·프로젝트·성격·상황·
+// 시장·팀·코드…) are an OPEN set that would need forever-maintenance, while the things that make 진단 medical
+// are a CLOSED set. Requiring the medical cue is the same structural argument as the OBJECT_LIFESPAN_SUBJECT
+// exclusion — the list can only ever be wrong in the direction of not firing on a non-medical question.
+//
+// ⚠ `암` and `병` stay in the cue list even though their syllables appear in unrelated words (암호, 병행).
+// Dropping them would lose "암 진단받았어요" — a real disclosure that must route — and the cost of the rare
+// over-fire is a benign "의료 전문가와 상담해 주세요", not a crisis screen. Asymmetry, deliberately kept.
+//
+// 진단명 stays UNCONDITIONAL: it has no non-medical use.
+const MEDICAL_DIAGNOSIS_CUE = '건강|몸|체질|병|질환|질병|증상|검진|통증|아픈|아파|아픔|암|종양';
+const MEDICAL = new RegExp(
+  [
+    '(사주|팔자|명(에|이|리)|역학)[^.\\n]{0,10}(암|병|질병|불치|중병|큰\\s*병|종양)',
+    '(암|중병|불치병|큰\\s*병|종양)[^.\\n]{0,6}(이야|인가|일까|걸리|생기|있(어|나|을까|는지|나요))',
+    '이\\s*(병|증상|질환)[^.\\n]{0,8}(나(을까|아|아요|을지)|낫|치료|완치|호전|경과)',
+    '무슨\\s*병',
+    `(?:${MEDICAL_DIAGNOSIS_CUE})[^.\\n]{0,10}진단[^.\\n]{0,4}(?:해|되|받|명)`,
+    `진단[^.\\n]{0,4}(?:해|되|받)[^.\\n]{0,10}(?:${MEDICAL_DIAGNOSIS_CUE})`,
+    '진단명',
+    '완치(\\s*(되|될|가능|여부))',
+    '불치',
+  ].join('|'),
+);
 
 // FINANCIAL_GUARANTEE — a demand for a GUARANTEED financial outcome. NOT a hard stop: the normal
 // suitability discussion may proceed, but the plan already forbids event-certainty (GUARANTEE_CUE) and

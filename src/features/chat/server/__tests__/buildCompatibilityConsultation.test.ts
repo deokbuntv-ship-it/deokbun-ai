@@ -186,3 +186,76 @@ describe('buildCompatibilityConsultation — canonical subject propagation into 
     expect(verdict!.propositions.some((p) => p.subject === '본인')).toBe(false);
   });
 });
+
+// ── ⚠⚠ H6 — 근거가 없으면 값을 받지 않는다 (2026-09-06) ──────────────────────────────────────────
+//
+// 이 블록이 존재하는 이유: 2026-09-06 까지 이 함수에는 **조기 종료가 없었다.** 두 차트 중 하나라도
+// 프로즌 엔진이 세우지 못하면 `grounding` 이 GROUNDING_UNAVAILABLE 인 채로 남았는데도 LLM 을 부르고
+// "구조 판정 없음" 답변을 만들어 **성공 경로로** 나갔다 → **12덕이 청구됐다.** 실측으로 확인한 뒤 고쳤다.
+//
+// ⚠ `calls() === 0` 이 이 블록의 핵심이다. 종료해도 LLM 을 부르면 비용이 새고, 무엇보다 "세우지 못한
+// 풀이" 를 여전히 생성하고 있다는 뜻이다.
+describe('⚠ H6 — pairwise 근거가 없으면 typed non-success (LLM 0콜)', () => {
+  // 1996-10-08 = 寒露 경계일 (REG4-SUBJ-10). 시각 unknown → 프로즌 엔진이 월주를 확정하지 못한다.
+  const BOUNDARY = birth({
+    displayName: '김민준', gender: 'male',
+    birthYear: '1996', birthMonth: '10', birthDay: '8',
+    birthTimeAccuracy: 'unknown', birthHour: null, birthMinute: null,
+  });
+
+  it('상대가 절기 경계일 → ok:false · 좁은 사유 · LLM 0콜', async () => {
+    const { deps, calls } = makeDeps();
+    const r = await buildCompatibilityConsultation(baseRequest({ partnerBirthInput: BOUNDARY as never }), deps);
+    expect(r.ok).toBe(false);
+    expect((r as { reason?: string }).reason).toBe('AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED');
+    expect(calls()).toBe(0);
+  });
+
+  it('본인이 절기 경계일이어도 같다 — 관계는 한쪽만으로 성립하지 않는다', async () => {
+    const { deps, calls } = makeDeps();
+    const r = await buildCompatibilityConsultation(baseRequest({ birthInput: BOUNDARY as never }), deps);
+    expect(r.ok).toBe(false);
+    expect((r as { reason?: string }).reason).toBe('AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED');
+    expect(calls()).toBe(0);
+  });
+
+  it('둘 다 경계일이어도 같다 — 조건이 하나이므로 세 경우가 갈리지 않는다', async () => {
+    const { deps, calls } = makeDeps();
+    const r = await buildCompatibilityConsultation(
+      baseRequest({ birthInput: BOUNDARY as never, partnerBirthInput: BOUNDARY as never }),
+      deps,
+    );
+    expect(r.ok).toBe(false);
+    expect(calls()).toBe(0);
+  });
+
+  it('경계일이 아닌 근거 부재는 일반 사유로 나간다 — 사유가 원인을 구분한다', async () => {
+    const { deps, calls } = makeDeps();
+    // 1800 년은 엔진 지원 범위(1970-2050) 밖이다 → 차트가 안 서고, 경계일 판정도 false 다.
+    const OUT_OF_RANGE = birth({ birthYear: '1800' });
+    const r = await buildCompatibilityConsultation(baseRequest({ partnerBirthInput: OUT_OF_RANGE as never }), deps);
+    expect(r.ok).toBe(false);
+    expect((r as { reason?: string }).reason).toBe('GROUNDING_UNAVAILABLE');
+    expect(calls()).toBe(0);
+  });
+
+  it('⚠ 새 코드도 새 반환 구조도 만들지 않았다 — Edge 의 기존 422 분기를 그대로 탄다', async () => {
+    const { deps } = makeDeps();
+    const r = await buildCompatibilityConsultation(baseRequest({ partnerBirthInput: BOUNDARY as never }), deps);
+    // 두 사유는 이미 솔로 경로가 쓰던 것이고, Edge 는 둘을 한 분기에서 받아
+    // releasePaidRequest + releaseDukIfHeld 를 **같은 코드 경로로** 지난다(0덕 보장이 공유된다).
+    expect(['GROUNDING_UNAVAILABLE', 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED'])
+      .toContain((r as { reason?: string }).reason);
+    // 실패 응답에 성공 필드가 섞여 나가지 않는다.
+    expect(r).not.toHaveProperty('text');
+    expect(r).not.toHaveProperty('compatibility');
+  });
+
+  it('⚠ 정상 궁합에는 회귀가 없다 — 여전히 성공하고 LLM 은 정확히 1콜', async () => {
+    const { deps, calls } = makeDeps();
+    const r = await buildCompatibilityConsultation(baseRequest(), deps);
+    expect(r.ok).toBe(true);
+    expect(calls()).toBe(1);
+    expect((r as { compatibility?: unknown }).compatibility).toBeTruthy();
+  });
+});

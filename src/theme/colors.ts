@@ -42,6 +42,9 @@ const palette = {
   actionPrimaryPressed: '#4A463D',
   actionPrimaryText: '#FDFBF6', // 12.8:1 on action.primary
   actionSecondaryBorder: '#DCD4C2',
+  // 위험 버튼의 부드러운 테두리. stateError 를 그대로 쓰면 파괴적 행동이 지나치게 크게 외친다.
+  // 2026-09-06: Button.tsx 에 이름 없이 박혀 있던 값을 옮겨 왔다(값 불변).
+  actionDangerBorder: '#E8CFCB',
   actionDisabledBg: '#EFEAE0',
   actionDisabledText: '#A79E8E',
   stateWarn: '#C8A94A',
@@ -123,6 +126,7 @@ export type SemanticColors = {
   onLavender: string;
   // ---- Action chrome ----
   actionSecondaryBorder: string;
+  actionDangerBorder: string;
   actionDisabledBg: string;
   actionDisabledText: string;
 };
@@ -162,6 +166,7 @@ const lightColors = {
   onBlush: palette.onBlush,
   onLavender: palette.onLavender,
   actionSecondaryBorder: palette.actionSecondaryBorder,
+  actionDangerBorder: palette.actionDangerBorder,
   actionDisabledBg: palette.actionDisabledBg,
   actionDisabledText: palette.actionDisabledText,
 } satisfies SemanticColors;
@@ -201,6 +206,10 @@ const darkColors = {
   onBlush: palette.onBlushDark,
   onLavender: palette.onLavenderDark,
   actionSecondaryBorder: palette.warmDarkBorder,
+  // ⚠ 다크에서도 라이트와 같은 값이다 — 옮겨 오기 전 Button.tsx 의 하드코딩이 스킴과 무관했으므로
+  // 값을 그대로 보존했다(시각 변화 0). 어두운 표면 위의 연분홍 테두리가 맞는지는 디자인 판단이라
+  // 바꾸지 않았다 — `KNOWN_RISKS.md` L8 로 등재.
+  actionDangerBorder: palette.actionDangerBorder,
   actionDisabledBg: palette.warmDarkElevated,
   actionDisabledText: '#7C776D',
 } satisfies SemanticColors;

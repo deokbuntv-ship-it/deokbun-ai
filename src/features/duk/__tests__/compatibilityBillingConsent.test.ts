@@ -74,7 +74,10 @@ describe('CLIENT consent gate — a new paid 궁합 session needs an explicit ta
   });
   it('a same-frame double tap cannot start two sends (client guard; NOT the billing guarantee)', () => {
     expect(compat).toMatch(/sending \|\| sendingRef\.current/);
-    expect(compat).toMatch(/disabled=\{sending \|\| !self \|\| !target\}/);
+    // 닫는 중괄호를 빼서 조건이 **추가**되는 것은 허용한다 — 이 단언이 지키려는 것은
+    // "보내는 중이거나 두 사람이 없으면 컴포저가 잠긴다" 이지, 그 셋이 전부라는 것이 아니다.
+    // (2026-09-06 절기 경계일 차단이 네 번째 조건으로 붙었다.)
+    expect(compat).toMatch(/disabled=\{sending \|\| !self \|\| !target/);
   });
 });
 

@@ -1,5 +1,12 @@
 # DeokbunAI (덕분이) V1.0 — Launch Readiness
 
+> ⚠ **2026-09-06 — 출시 컷라인(무엇을 하고 무엇을 안 할지)은 `docs/V1_CUTLINE.md` 가 소유한다.**
+> 이 문서는 게이트 정의를 소유하고, 그 게이트 중 무엇이 V1 필수인지는 컷라인 문서를 본다.
+
+> ⚠ **HISTORICAL — Launch-Readiness Closure 스프린트 기준.** 현재 상태는 `PROJECT_STATE.md`, 기능 판정은 `FEATURE_MASTER_CHECKLIST.md`, 오너 액션은 `OWNER_TODO.md`.
+> 이 문서의 테스트 수치·게이트 상태는 낡았다 (실제: **298 suites / 4,841 tests**, 2026-09-04).
+
+
 Repository-grounded status, operations/recovery runbook, and owner boundary as of the
 Launch-Readiness Closure sprint (HEAD after `feat(admin): retention control center`).
 This document is the durable companion to that sprint's final report.

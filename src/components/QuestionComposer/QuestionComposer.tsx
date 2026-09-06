@@ -42,6 +42,8 @@ export function QuestionComposer({
         무엇이 궁금하세요?
       </Text>
       <TextInput
+        // 홈의 질문 입력칸 — 보이는 라벨이 없으므로 접근 이름을 직접 준다.
+        accessibilityLabel="질문 입력"
         style={[styles.input, { color: theme.textPrimary }]}
         placeholder={placeholder}
         placeholderTextColor={theme.textMuted}

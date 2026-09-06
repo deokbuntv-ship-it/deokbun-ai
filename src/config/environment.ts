@@ -61,6 +61,53 @@ export function assertEnvironmentConsistency(r: ResolvedEnvironment = resolveEnv
   return r;
 }
 
+/**
+ * Refuse to let a LOCAL DEV RUN silently attach to production (KNOWN_RISKS H5, 2026-09-05).
+ *
+ * THE HOLE THIS CLOSES: `assertEnvironmentConsistency` only fires when APP_ENV is DECLARED. With it
+ * unset — which is exactly what a bare `.env` gives you — the resolver happily INFERS 'production'
+ * from the URL and everything works. `npm start` then writes real rows into the real database and
+ * nothing says so. The CLI has three layers of production defence (`link`, `config.toml`, the
+ * PreToolUse hook) but all three inspect COMMANDS; none of them can see the app's own runtime.
+ *
+ * WHY IT IS SCOPED TO `__DEV__` AND NOT TO EVERY BUILD: every eas.json profile already declares
+ * APP_ENV, so native builds pass regardless. The web production build is made by Vercel, and if its
+ * dashboard does not set APP_ENV a blanket throw would break the owner's deploys to fix a problem
+ * they do not have. The actual reported failure is a person running the app locally, so that is
+ * exactly what this blocks — a smaller, sharper rule that cannot take production down.
+ *
+ * Escape hatch: declare `EXPO_PUBLIC_APP_ENV=production` (i.e. say it out loud). `.env.prod` in the
+ * repo root holds the production values ready for `cp .env.prod .env`.
+ */
+export function assertNotSilentProduction(
+  r: ResolvedEnvironment = resolveEnvironment(),
+  isDev: boolean = typeof __DEV__ !== 'undefined' && __DEV__,
+): ResolvedEnvironment {
+  if (!isDev) return r;
+  if (r.projectRef && KNOWN_PROJECT_REFS[r.projectRef] === 'production' && r.declared !== 'production') {
+    throw new Error(
+      '로컬 개발 실행이 PRODUCTION 을 가리키고 있습니다. 기본값은 staging 이어야 합니다.\n' +
+        `  현재 프로젝트 ref: ${r.projectRef} (production)\n` +
+        '  고치기: .env 를 staging 으로 되돌리세요 (기본값이 그것입니다).\n' +
+        '  정말 프로덕션에 붙어야 한다면 EXPO_PUBLIC_APP_ENV=production 을 명시하세요 ' +
+        '(cp .env.prod .env). 조용히 붙는 것만 막습니다.',
+    );
+  }
+  return r;
+}
+
+/**
+ * One line at boot saying which backend this process is talking to.
+ *
+ * The point of H5 was not only that a dev run could reach production but that it did so WITHOUT
+ * SAYING SO. Even when the target is correct, printing it turns "I assumed staging" into something
+ * a person can check in one glance. Never prints keys — ref and label only.
+ */
+export function describeEnvironment(r: ResolvedEnvironment = resolveEnvironment()): string {
+  const how = r.declared ? 'declared' : 'inferred';
+  return `[env] ${environmentLabel(r.env)} (${r.env}, ${how}) · ref=${r.projectRef ?? 'unknown'}`;
+}
+
 /** Operator/debug label for the current environment (e.g. admin top bar). Never shown in the consumer prod UI. */
 export function environmentLabel(env: AppEnvironment = resolveEnvironment().env): string {
   return env === 'production' ? '운영' : env === 'staging' ? '스테이징' : '개발';

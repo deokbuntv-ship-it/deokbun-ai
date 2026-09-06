@@ -47,9 +47,14 @@ create table public.duk_ledger (
 );
 create index duk_ledger_user_bucket_idx on public.duk_ledger (user_id, bucket);
 create index duk_ledger_user_created_idx on public.duk_ledger (user_id, created_at desc);
--- one charge per (session, reason): the first-turn commit cannot double-charge on retry.
-create unique index duk_ledger_session_reason_uniq on public.duk_ledger (session_id, reason)
-  where session_id is not null;
+-- one charge per (session, reason, BUCKET): the first-turn commit cannot double-charge on retry.
+-- ⚠ 2026-09-06 (H7): `bucket` was MISSING from this key. A price that spans two buckets writes one debit
+-- PER BUCKET (that is the design — balances are grouped by bucket), so two rows collided on the same key and
+-- the whole commit rolled back. Every paid product failed whenever REWARD remained but the price exceeded it
+-- — i.e. the default state of a user who has purchased Duk. Superseded by migration
+-- 20260908000000_duk_ledger_bucket_unique.sql; see docs/PAID_PATH_MATRIX.md §3.
+create unique index duk_ledger_session_reason_bucket_uniq
+  on public.duk_ledger (session_id, reason, bucket) where session_id is not null;
 -- one grant per (user, reason, request) for idempotent grants (e.g. one WELCOME).
 create unique index duk_ledger_grant_uniq on public.duk_ledger (user_id, reason, request_id)
   where request_id is not null;

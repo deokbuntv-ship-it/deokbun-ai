@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_TEAM_ID.com.deokbun.app"],
+        "components": [
+          { "/": "/*", "comment": "모든 경로를 앱으로 — 추적 파라미터는 어느 경로에나 붙을 수 있다" }
+        ]
+      }
+    ]
+  }
+}

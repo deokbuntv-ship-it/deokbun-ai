@@ -37,6 +37,9 @@ const RECORD_ROWS: MyRow[] = [
   { label: '알림 설정', to: '/notification-settings' },
 ];
 const POLICY_ROWS: MyRow[] = [
+  // 문의하기 leads the group: it is the only row here someone opens because they need help,
+  // and the privacy policy (legalContent.ts:86) promises this channel exists.
+  { label: '문의하기', to: '/support' },
   { label: 'AI 생성 콘텐츠 안내', to: '/ai-notice' },
   { label: '개인정보 처리방침', to: '/privacy-policy' },
   { label: '서비스 이용약관', to: '/terms-of-service' },
@@ -227,6 +230,23 @@ export default function MyScreen() {
               </Pressable>
             ) : null}
 
+            {/* 계정 탈퇴 — directly under 로그아웃, not buried. Apple requires an in-app deletion
+                path (App Store Review 5.1.1(v)) and the privacy policy already promises one.
+                Quieter than 로그아웃 because it is rarer, never HIDDEN because hiding it is the
+                dark pattern the guideline exists to prevent. */}
+            {isAuthenticated ? (
+              <Pressable
+                onPress={() => router.push('/account-delete')}
+                accessibilityRole="button"
+                accessibilityLabel="계정 탈퇴"
+                style={styles.deleteAccount}
+              >
+                <Text variant="bodySmall" colorToken="textMuted">
+                  계정 탈퇴
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Text variant="caption" colorToken="textMuted" style={styles.disclaimer}>
               덕분이의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
               의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
@@ -266,5 +286,6 @@ const styles = StyleSheet.create({
   divider: { height: 1 },
   logout: { alignItems: 'center', justifyContent: 'center', minHeight: 48, marginTop: spacing.sm },
   logoutLabel: { fontWeight: '600' },
+  deleteAccount: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   disclaimer: { paddingTop: spacing.lg, paddingHorizontal: spacing.xs, lineHeight: 18 },
 });

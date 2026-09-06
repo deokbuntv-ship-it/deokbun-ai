@@ -21,6 +21,7 @@ export function AdminTopBar() {
 
       <View style={styles.searchWrap}>
         <TextInput
+          accessibilityLabel="통합 검색"
           style={styles.search}
           placeholder="사용자 · 상담 · 운세우편 통합 검색"
           placeholderTextColor={adminTheme.inkMuted}

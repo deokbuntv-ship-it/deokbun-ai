@@ -1,5 +1,62 @@
 {
+  "$comment": [
+    "팀 전체에 적용되는 설정. 커밋된다. (KNOWN_RISKS M2 — 2026-09-05 승격)",
+    "",
+    "왜 승격했나: 프로덕션 방어 3층 중 훅과 deny 규칙이 gitignore 된 .claude/settings.local.json 에만",
+    "있어서, 다른 사람·다른 머신에는 방어가 하나도 없었다. 아래는 '누가 어느 머신에서 작업하든",
+    "참이어야 하는 것'만 담는다.",
+    "",
+    "여기 넣지 않은 것: permissions.allow. 그것은 개인이 어디까지 자동 승인할지의 신뢰 결정이고,",
+    "머신 고유 경로(채점 워크스페이스 등)를 포함한다. settings.local.json 에 그대로 남긴다.",
+    "",
+    "훅 경로는 $CLAUDE_PROJECT_DIR 로 쓴다 — local 판본은 C:/Development/... 를 하드코딩하고 있어",
+    "다른 사람의 체크아웃에서는 훅이 조용히 실패했을 것이다."
+  ],
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean*)",
+      "Bash(git checkout --*)",
+      "Bash(git stash*)",
+
+      "Bash(npx supabase db push --project-ref olvkpaldrwvtexxpoaag*)",
+      "Bash(npx supabase functions deploy chat --project-ref olvkpaldrwvtexxpoaag*)",
+      "Bash(npx supabase link --project-ref olvkpaldrwvtexxpoaag*)",
+      "Bash(npx supabase db reset*)",
+
+      "Bash(rm *)",
+      "Bash(rm -rf*)",
+      "Bash(rmdir*)",
+      "Bash(del *)",
+      "Bash(Remove-Item*)",
+      "Bash(truncate*)",
+      "Bash(shred*)",
+
+      "Edit(app.json)",
+      "Edit(docs/DEOKBUNI_AUTONOMOUS_BATCH_REPORT.md)",
+      "Edit(docs/DEOKBUNI_AUTONOMOUS_BATCH_2_REPORT.md)",
+      "Edit(docs/DEOKBUNI_AUTONOMOUS_BATCH_3_REPORT.md)",
+      "Edit(docs/MYUNGRI_100_ADOPTION_ANALYSIS.md)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/prod-ref-guard.mjs\"",
+            "timeout": 10,
+            "statusMessage": "prod-ref guard"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -29,13 +29,31 @@ export function isAuthLLMError(error: unknown): boolean {
 // same question can never succeed. Same shape as the 402 reader below: status first, body only for that
 // status, and the server's own consumer-safe explanation is carried through verbatim rather than replaced by
 // a generic client string — it is the one thing that tells the user WHAT to fix.
-export async function parseGroundingUnavailable(error: unknown): Promise<{ message: string | null } | null> {
+//
+// ⚠ 2026-09-06 — AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED WAS BEING DROPPED HERE.
+//
+// The Edge returns the 절기 경계일 case as its OWN error string with the SAME 422 and its own, better
+// message ("정확한 태어난 시각이 있어야 …" — the generic one wrongly says 대략적인 시간대 would fix it).
+// This function accepted only `GROUNDING_UNAVAILABLE`, so that reply fell through to the generic
+// `REQUEST_FAILED` and the reader was told "연결 상태를 확인하고 다시 시도해 주세요" — for a condition where
+// retrying the same question can NEVER succeed. Both reasons are the same outcome for the client (nothing
+// charged, a retry cannot help, an input must change), so both are accepted and the server's own message
+// is what distinguishes them on screen.
+const UNGROUNDED_REASONS = ['GROUNDING_UNAVAILABLE', 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED'] as const;
+export type UngroundedReason = (typeof UNGROUNDED_REASONS)[number];
+
+export async function parseGroundingUnavailable(
+  error: unknown,
+): Promise<{ reason: UngroundedReason; message: string | null } | null> {
   const ctx = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
   if (!ctx || ctx.status !== 422 || typeof ctx.json !== 'function') return null;
   try {
     const body = (await ctx.json()) as { error?: unknown; message?: unknown };
-    if (!body || body.error !== 'GROUNDING_UNAVAILABLE') return null;
-    return { message: typeof body.message === 'string' && body.message.length > 0 ? body.message : null };
+    const reason = (UNGROUNDED_REASONS as readonly string[]).includes(body?.error as string)
+      ? (body.error as UngroundedReason)
+      : null;
+    if (!reason) return null;
+    return { reason, message: typeof body.message === 'string' && body.message.length > 0 ? body.message : null };
   } catch {
     return null;
   }

@@ -14,6 +14,8 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { setPendingConsultationIntent, useConsultationDraft, useConsultationSubjects } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import {
   todayFortuneService,
   toTodayDetailView,
@@ -161,6 +163,16 @@ export default function TodayScreen() {
                 <Button label="MY로 이동" onPress={() => router.replace('/my')} />
               </Stack>
             </Card>
+          ) : status === 'unavailable' && isSolarTermBoundaryTimeRequired(self?.birthInfo) ? (
+            // 절기 경계일 — the chart genuinely cannot be built, and the generic "시간을 알 수 없으면 일부
+            // 해석이 제한될 수 있어요" below understates it: nothing is produced at all. Same shared
+            // judgment as the registration forms and the Edge.
+            <BoundaryTimeNotice
+              context="surface"
+              onEditBirthInfo={() =>
+                router.push({ pathname: '/birth-info', params: { subjectId: self?.id ?? '' } })
+              }
+            />
           ) : status === 'unavailable' ? (
             <Card radius="xl">
               <Stack gap="md">

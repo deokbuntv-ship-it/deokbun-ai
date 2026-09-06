@@ -4,6 +4,7 @@ import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
+import { signInWithAppleNative } from '@/features/auth/apple/appleAuthService';
 import { signInWithNaverBridge } from '@/features/auth/naver/naverAuthService';
 import {
 	LOGIN_CALLBACK_PATH,
@@ -88,10 +89,26 @@ async function signInWithProvider(
 	providerId: AuthProviderId,
 ): Promise<AuthActionResult> {
 	// naver → trusted edge bridge (Naver is not a Supabase provider; see
-	// naver/naverAuthService). kakao/google → built-in Supabase providers via the
-	// shared signInWithOAuth flow below. apple → unsupported (not enabled).
+	// naver/naverAuthService). kakao/google/apple → built-in Supabase providers via
+	// the shared signInWithOAuth flow below.
 	if (providerId === 'naver') {
 		return signInWithNaverBridge();
+	}
+
+	// apple (2026-09-02): try the iOS SYSTEM sheet first, then fall through to the shared
+	// browser flow. `not_available` is NOT a failure — it is web, Android, or an iOS build
+	// without the native module, all of which the Supabase provider path below handles.
+	// A real native outcome (including a user cancel) is returned as-is and never silently
+	// retried in a browser: re-opening a web sheet right after someone dismissed the system
+	// one would be the wrong answer to "cancel".
+	if (providerId === 'apple') {
+		const native = await signInWithAppleNative();
+		if (native.kind === 'success') {
+			return { success: true };
+		}
+		if (native.kind === 'failed') {
+			return { success: false, reason: native.reason };
+		}
 	}
 
 	const resolution = resolveSupabaseProvider(providerId);

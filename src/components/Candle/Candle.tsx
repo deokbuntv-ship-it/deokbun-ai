@@ -118,10 +118,15 @@ export function useReduceMotion(): boolean {
         if (active) setReduce(v);
       })
       .catch(() => {});
+    // ⚠ react-native-web returns UNDEFINED here when `window.matchMedia` is unavailable (its
+    // `prefersReducedMotionMedia` is resolved at module load and is null without it). Native always
+    // returns a subscription, so the unguarded `.remove()` only fails on the web target — where this
+    // app actually ships a static build. Optional-call instead of a branch: nothing to remove is a
+    // valid outcome, not an error.
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => setReduce(v));
     return () => {
       active = false;
-      sub.remove();
+      sub?.remove();
     };
   }, []);
   return reduce;

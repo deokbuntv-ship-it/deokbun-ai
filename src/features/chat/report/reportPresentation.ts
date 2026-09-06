@@ -5,6 +5,7 @@
 // engine/debug language. No Date.now(): the display date comes from the report's own generatedAt so the
 // output is testable and stable.
 
+import type { ConsultationReportPayload } from '@/features/chat/report/consultationReportComposer';
 import type { ConsultationReport } from '@/features/chat/report/reportService';
 
 export type ReportDetailSection =
@@ -52,11 +53,20 @@ function reportDate(report: ConsultationReport): string {
   );
 }
 
+// A premium row stores a DIFFERENT payload shape (PremiumReportPayload) under the same column. These
+// generic projections only understand the 6-field consultation payload, so they narrow first: a premium
+// report is projected by `toPremiumProductView` in the premium feature instead. Narrowing here (rather
+// than widening every field access) keeps this file the single owner of the generic shape.
+function genericPayload(report: ConsultationReport): Partial<ConsultationReportPayload> {
+  if (report.reportType === 'premium') return {};
+  return (report.payload ?? {}) as Partial<ConsultationReportPayload>;
+}
+
 export function toReportListItem(report: ConsultationReport): ReportListItemView {
-  const p = report.payload ?? ({} as ConsultationReport['payload']);
+  const p = genericPayload(report);
   return {
     id: report.id,
-    title: (report.title ?? '').trim() || '상담 보고서',
+    title: (report.title ?? '').trim() || (report.reportType === 'premium' ? '프리미엄 리포트' : '상담 보고서'),
     dateLabel: reportDate(report),
     preview: firstLine(p.summary, p.keyFindings?.[0]),
   };
@@ -124,7 +134,7 @@ export function premiumViewFromSharedContent(c: SharedReportContent): PremiumRep
 }
 
 export function toReportDetailView(report: ConsultationReport): ReportDetailView {
-  const p = report.payload ?? ({} as ConsultationReport['payload']);
+  const p = genericPayload(report);
   const sections: ReportDetailSection[] = [];
 
   const summary = (p.summary ?? '').trim();

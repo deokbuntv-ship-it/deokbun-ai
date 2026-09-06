@@ -344,7 +344,7 @@ function QuestionRow({
       {/* active toggle */}
       <View style={{ flex: 0.8, alignItems: 'center', gap: 4 }}>
         <Badge label={q.isActive ? '노출중' : '비노출'} tone={q.isActive ? 'success' : 'neutral'} />
-        <Switch value={q.isActive} onValueChange={onToggle} disabled={busy} />
+        <Switch accessibilityLabel={`${q.questionText ?? '질문'} 노출`} value={q.isActive} onValueChange={onToggle} disabled={busy} />
       </View>
       {/* metrics */}
       {stat(String(counts.impressions), 0.7)}
@@ -386,6 +386,7 @@ function QuestionForm({
     <TextInput
       value={value}
       onChangeText={onChangeText}
+      accessibilityLabel={placeholder}
       placeholder={placeholder}
       placeholderTextColor={adminTheme.inkMuted}
       editable={opts?.editable ?? true}
@@ -444,7 +445,7 @@ function QuestionForm({
           <Text variant="bodyMedium" style={{ color: adminTheme.ink }}>
             홈에 노출
           </Text>
-          <Switch value={form.isActive} onValueChange={(v) => setForm({ ...form, isActive: v })} />
+          <Switch accessibilityLabel="노출 여부" value={form.isActive} onValueChange={(v) => setForm({ ...form, isActive: v })} />
         </View>
       </View>
 

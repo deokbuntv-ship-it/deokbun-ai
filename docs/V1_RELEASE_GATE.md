@@ -1,5 +1,9 @@
 # V1 RELEASE GATE (§Y)
 
+> ⚠ **HISTORICAL — Sprint F.1 기준.** 현재 상태는 `PROJECT_STATE.md`, 기능 판정은 `FEATURE_MASTER_CHECKLIST.md`, 오너 액션은 `OWNER_TODO.md`.
+> 이 문서의 테스트 수치·게이트 상태는 낡았다 (실제: **298 suites / 4,841 tests**, 2026-09-04).
+
+
 > **Status:** GATE DEFINITION (updated Sprint F.1). Tracks the nine gates that must close before V1 ships, plus
 > the F.1 sub-gates (§3). "Done" = code complete + tested locally; owner/deploy items are marked.
 

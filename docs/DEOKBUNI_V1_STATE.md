@@ -1,5 +1,10 @@
 # DeokbunAI V1 — Authoritative State (SSOT)
 
+> **📍 문서 권위 (2026-09-04 확정)** — ⚠ **HISTORICAL — 2026-08-22 기준. 더 이상 SSOT 가 아니다.** 현재 상태는 `PROJECT_STATE.md`, 기능 판정은 `FEATURE_MASTER_CHECKLIST.md`. 이 문서의 수치(마이그레이션 40개, jest 195/1891 등)는 낡았다.
+> 전체 서열: `OWNER_TODO.md`(오너 액션) · `PROJECT_STATE.md`(운영 상태) · `FEATURE_MASTER_CHECKLIST.md`(기능 판정) · `KNOWN_RISKS.md`(위험) · `BACKLOG_V1_1.md`(V1.1) · `DATABASE_RUNBOOK.md`(DB 적용 절차).
+> 충돌 시 판정 순서: **코드 → 테스트/빌드 → 라이브 스키마·배포 실측 → git 이력 → 프로덕션 E2E → 문서.**
+
+
 **As of:** 2026-08-22 · **Branch:** `admin/master-operations-content` · This supersedes earlier status docs (`V1_LAUNCH_READINESS.md`, `DEOKBUNI_V1_CURRENT_REPOSITORY_AUDIT.md`, the per-batch reports) as the current single source of truth. Those remain as history.
 
 ## Architecture (current)
@@ -8,7 +13,7 @@
 - **Two projects:** STAGING `aephpsiurgkvqcswyeie` (all migrations validated), PRODUCTION `olvkpaldrwvtexxpoaag` (**untouched by all autonomous batches**).
 
 ## Feature completeness (internal V1)
-- **Consumer:** auth (Kakao/Google via Supabase, Naver via edge; Apple not-V1), signup-first onboarding, canonical SELF birth, Home (덕 chip/today/monthly/popular-Q/recent), consultation (server-authoritative, idempotent, INSUFFICIENT_DUK paywall), compatibility, Today, Monthly, mailbox, MY, wallet + candle, AI disclosure everywhere, consumer error taxonomy, notification center + bell. **Complete.**
+- **Consumer:** auth (Kakao/Google/**Apple** via Supabase, Naver via edge — **Apple is V1-required as of 2026-09-02**: iOS uses the native Sign in with Apple sheet, web/Android the Supabase provider flow; code complete, Apple Developer console setup pending), signup-first onboarding, canonical SELF birth, Home (덕 chip/today/monthly/popular-Q/recent), consultation (server-authoritative, idempotent, INSUFFICIENT_DUK paywall), compatibility, Today, Monthly, mailbox, MY, wallet + candle, AI disclosure everywhere, consumer error taxonomy, notification center + bell. **Complete.**
 - **Economy (locked values):** Welcome +10, Candle +1/24h, **Birthday +5** (runtime live, exactly-once/user/year), General 5, Compatibility 12, Premium report 50; PLUS foundation-only (unmonetized). Ledger buckets PLUS→REWARD→PAID; refund→duk_debt; future PAID→DEBT_OFFSET (CHECK fixed). Client can NEVER grant (CI-guarded).
 - **Retention:** scheduler substrate + birthday job (notification + reward), delivery history + bounded retry, push abstraction + concrete Expo adapter (client registration wired in 알림 설정) + email Resend adapter — all provider-independent, fail-closed. Real delivery = EXTERNAL_BLOCKED.
 - **Admin/ops:** dashboard, users, consultations + decision-audit inspector, economy console + audited adjustment + audit log, LLM usage + per-model cost (Terra UNPRICED), spend-guard kill switch, retention/email campaign consoles, popular questions, acquisition/ads. Honest "연결 준비 중" where external.

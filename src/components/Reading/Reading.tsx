@@ -158,7 +158,7 @@ export function ReadingEvidence({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={open ? `${title} 접기` : title}
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen((o) => !o)}
         hitSlop={8}
       >

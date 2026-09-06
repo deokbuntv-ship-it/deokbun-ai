@@ -21,6 +21,8 @@ import {
     type Gender,
     type LunarMonthType,
 } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { setPendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
@@ -83,7 +85,7 @@ function SelectField<T extends string>({
             key={option.value}
             onPress={() => onSelect(option.value)}
             accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
+            aria-selected={isSelected}
           >
             <Card
               style={{
@@ -251,6 +253,20 @@ export default function BirthInfoScreen() {
       : birthTimeAccuracy === 'approximate'
         ? approximatePeriod !== null
         : birthTimeAccuracy === 'unknown';
+
+  // 절기 경계일 — the date entered is a 節 boundary AND no exact time was given, so the 월주 has two
+  // candidates and 상담/오늘/월별 would all fail. Advisory only: it never enters `isFormValid`, so the
+  // save buttons stay enabled and the user decides. Same judgment the Edge and the 오늘/월별 notices use.
+  const showBoundaryWarning =
+    isDateValid
+    && isSolarTermBoundaryTimeRequired({
+      calendarType,
+      lunarMonthType,
+      birthYear: year,
+      birthMonth: month,
+      birthDay: day,
+      birthTimeAccuracy,
+    });
 
   const isFormValid =
     gender !== null &&
@@ -615,6 +631,24 @@ export default function BirthInfoScreen() {
                   알 수 없는 출생시간을 임의로 추측하지 않습니다.
                 </Text>
               ) : null}
+
+              {showBoundaryWarning ? (
+                <BoundaryTimeNotice
+                  context="form"
+                  // 본인 문안은 상담·오늘·월별을 말하는데, 궁합 상대에게는 셋 다 해당이 없고 정작
+                  // "이 분과의 궁합은 못 본다" 는 말이 빠져 있었다. 판정은 같고 결과만 다르게 말한다.
+                  // ⚠ 본인 등록(현행)은 그대로다 — 여기 분기는 상대(비-본인) 등록에서만 켜진다.
+                  forCompatibilityTarget={fromCompatibility && !isSelf}
+                  onEnterTime={() => handleBirthTimeAccuracySelect('exact')}
+                  onSaveAnyway={
+                    isEditMode
+                      ? handleSaveEdit
+                      : fromCompatibility
+                        ? handleSaveForCompatibility
+                        : handleSaveAndStart
+                  }
+                />
+              ) : null}
             </Stack>
 
             <Input
@@ -630,7 +664,7 @@ export default function BirthInfoScreen() {
               <Pressable
                 onPress={() => setIsSelf((value) => !value)}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: isSelf }}
+                aria-checked={isSelf}
               >
                 <Card
                   style={{

@@ -22,6 +22,7 @@ import { resolveQuestionMonths } from '@/features/chat/services/questionMonths';
 import { resolveQuestionYears } from '@/features/chat/services/questionYears';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
 import { buildCompatibilityEvidence } from '@/features/compatibility/engine';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
 import { buildZiweiParts } from '@/features/chat/services/consultationGrounding';
 import {
   AGAINST_STANCES,
@@ -150,8 +151,12 @@ function metaFrom(grounding: ConsultationGrounding): ServerGroundingMeta {
 
 /**
  * Build a full 궁합 consultation on the server (trusted). Reason codes fail closed exactly like the solo
- * path. A merely UNAVAILABLE pairwise grounding is NOT a failure — the prompt then answers within the
- * stated limits and never fabricates a pair verdict.
+ * path.
+ *
+ * ⚠ CHANGED 2026-09-06 (H6). This used to say "a merely UNAVAILABLE pairwise grounding is NOT a failure —
+ * the prompt then answers within the stated limits". That was the bug: such an answer left through the
+ * SUCCESS path and **12덕 was charged for a reading that was never performed.** An unavailable pairwise
+ * grounding is now a typed NON-SUCCESS (step 2-b) — released, charged nothing, no LLM call.
  */
 export async function buildCompatibilityConsultation(
   request: ServerConsultationRequest,
@@ -304,6 +309,41 @@ export async function buildCompatibilityConsultation(
   }
 
   const safeGrounding = toSafeGrounding(grounding);
+
+  // 2-b) ⚠ NO PAIRWISE BASIS — typed non-success, released and charged NOTHING (H6, 2026-09-06).
+  //
+  // THE BUG THIS CLOSES: until now this function had no early exit at all. When either frozen chart failed
+  // (`runFrozenSaju` → null) or the pairwise evidence came back unavailable, `grounding` simply stayed
+  // GROUNDING_UNAVAILABLE, the LLM was called anyway, a "구조 판정 없음" answer was produced, and it left
+  // through the SUCCESS path — so **12덕 was charged for a reading that was never performed.** Measured
+  // 2026-09-06 with a 절기 boundary birth: `ok:true`, 1 LLM call, `grounded:false`, all three engines
+  // `unavailable`. The solo path's own comment already stated the rule this violated — "a paid divination
+  // product must never bill for a reading it could not perform" — 궁합 was simply outside it.
+  //
+  // WHY THE CONDITION IS SIMPLER THAN THE SOLO PATH'S: the solo exit exempts follow-up turns
+  // (`followUpDirective`/`followUpIntent`/`continuation`), because a solo answer DEGRADES — 명리 can fail
+  // while 기문 still answers, and a restored follow-up turn answers honestly about what it cannot reach.
+  // 궁합 has no such machinery and no such middle ground: `grounding` here becomes 'available' ONLY when
+  // BOTH charts resolved AND `buildCompatibilityEvidence` returned 'available'. Pairwise evidence is a
+  // RELATION between two charts, so one missing chart is not a degraded reading, it is no reading.
+  // Therefore ONE condition covers all three cases the review asked about — one chart missing, both
+  // missing, and pair-not-available — with nothing to enumerate and no state-dependent branch that could
+  // later rot on one side. Checked on `safeGrounding` (post-validation) rather than `grounding` so a
+  // malformed-but-"available" triplet also exits instead of reaching the prompt.
+  //
+  // NOTHING NEW IS INTRODUCED: same reasons, same shape, same Edge branch. `REASON_STATUS` already maps
+  // both to 422 and the Edge's single handler already does `releasePaidRequest` + `releaseDukIfHeld()` —
+  // the 0덕 guarantee is the SAME code path as the solo path, not a parallel one.
+  //
+  // `message` is deliberately omitted. The solo copy is written for one person ("등록하신 생일이 …"), and
+  // when the client gets no server message it falls back to its own 궁합 wording, which names BOTH people
+  // ("두 분의 출생 정보에서 태어난 시각을 확인해 주시면"). The narrower REASON is still reported so the
+  // 절기 경계일 cause stays countable in diagnostics.
+  if (safeGrounding.status !== 'available') {
+    return isSolarTermBoundaryTimeRequired(selfBirth) || isSolarTermBoundaryTimeRequired(targetBirth)
+      ? { ok: false, reason: 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED' }
+      : { ok: false, reason: 'GROUNDING_UNAVAILABLE' };
+  }
 
   // 3) SERVER-owned Decision Engine (mode='compatibility') → directive the LLM verbalizes. One message
   //    builder reused for the first attempt AND the single constrained regeneration (§9).

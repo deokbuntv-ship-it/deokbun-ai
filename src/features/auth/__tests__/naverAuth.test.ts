@@ -42,8 +42,11 @@ describe('resolveSupabaseProvider (directive §6 — provider abstraction)', () 
     expect(resolveSupabaseProvider('naver')).toEqual({ supported: false });
   });
 
-  it('reports apple (declared but not enabled) as unsupported', () => {
-    expect(resolveSupabaseProvider('apple')).toEqual({ supported: false });
+  // 2026-09-02 — 오너가 애플 로그인을 V1 필수로 확정했다. 이 단언은 "선언만 있고 꺼져 있다"는
+  // 이전 상태를 잠그고 있었으므로 뒤집는다. 검증 의도(provider 해석이 정확한가)는 그대로다.
+  // 애플 계약 전체는 `features/auth/__tests__/appleAuth.test.ts` 가 따로 잠근다.
+  it('reports apple as a Supabase provider (V1 필수 — 2026-09-02)', () => {
+    expect(resolveSupabaseProvider('apple')).toEqual({ supported: true, supabaseProvider: 'apple' });
   });
 });
 

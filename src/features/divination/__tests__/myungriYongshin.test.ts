@@ -72,8 +72,26 @@ describe('A/B — WEAK/STRONG labels never mechanically select a fixed element s
   it('the forbidden direction is CONTRAINDICATED, not selected: UNANCHORED never contraindicates PEER/RESOURCE, ANCHORED never contraindicates OUTPUT/WEALTH/OFFICER as primary', () => {
     const weak = judge(CHART.UNANCHORED_DRAINED_NOT_CANDIDATE);
     expect(weak.contraindicatedCandidates).toContain('METAL'); // 甲 wood's OFFICER family is METAL — further conquest of a weak DM
-    const strong = judge(CHART.ANCHORED_NEUTRAL, familyIn(['OUTPUT']));
-    expect(strong.contraindicatedCandidates).toContain('WATER'); // 甲 wood's RESOURCE family is WATER — over-reinforcing an already-strong DM
+
+    // 2026-09-02 (YONGSHIN_CONSISTENCY_AUDIT F2/§7) — this half used to assert on
+    // `judge(CHART.ANCHORED_NEUTRAL, familyIn(['OUTPUT']))`, which does NOT reach a SELECTED result:
+    // that fixture carries a real 子午冲, so for a 甲 WOOD day master the mediator is WOOD (=PEER),
+    // EOKBU and TONGGWAN disagree, and the branch returns MULTI_CANDIDATE. The old assertion was
+    // therefore checking the contraindication of a result that had explicitly declined to pick a
+    // direction — the exact self-contradiction the audit confirmed. MULTI_CANDIDATE now carries no
+    // contraindication at all (see the MULTI branch's own comment), so the assertion is split:
+    // the SELECTED case still proves the contraindication exists, and the MULTI case proves it does not.
+    const strongSelected = judgeMyungriYongshin({
+      structuralV2: structuralOf(CHART.ANCHORED_NEUTRAL),
+      branchClashes: [], // 충이 없는 ANCHORED 라야 억부 단독 SELECTED 에 도달한다
+      familyExists: familyIn(['OUTPUT']),
+    });
+    expect(strongSelected.status).toBe('SELECTED');
+    expect(strongSelected.contraindicatedCandidates).toContain('WATER'); // 甲 wood's RESOURCE family is WATER — over-reinforcing an already-strong DM
+
+    const strongConflicted = judge(CHART.ANCHORED_NEUTRAL, familyIn(['OUTPUT']));
+    expect(strongConflicted.status).toBe('MULTI_CANDIDATE');
+    expect(strongConflicted.contraindicatedCandidates).toEqual([]);
   });
 });
 

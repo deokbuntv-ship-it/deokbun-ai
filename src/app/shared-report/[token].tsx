@@ -16,20 +16,40 @@ import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
 import { setPendingShareToken } from '@/features/chat/report/pendingSharedReport';
 import { premiumViewFromSharedContent, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
 import { shareService } from '@/features/chat/report/shareService';
+import { SharedReportPreview } from '@/features/chat/report/SharedReportPreview';
+import type { SharePreview } from '@/features/chat/report/sharePreview';
 import { isValidShareToken } from '@/features/chat/report/shareToken';
+import { ShareCardHead } from '@/features/chat/report/ShareCardHead';
 
 // 공유받은 상담 보고서 (Commercial UX V4 §22–§29). Lives inside the (tabs) group → renders within the REAL
 // consumer nav shell.
 //
-// AUTH-GATE ORDERING (P0-B, §C): the RENDER branches on auth state FIRST, so a logged-out visitor NEVER
-// reaches the fetch, the report body, or the unavailable state — it stores the shape-valid token in an
-// ephemeral store (never `returnTo`, no open redirect) and hands off to /login via a DECLARATIVE Redirect
-// (robust on a fresh/incognito direct load, unlike an effect-based router.replace). The RPC is called ONLY
-// when authenticated. Read-only: no owner controls (§28/§29). Revoked/expired/invalid → one
-// indistinguishable "cannot view" state (§H/§41).
+// AUTH-GATE ORDERING (P0-B, §C): the RENDER branches on auth state FIRST. Read-only: no owner controls
+// (§28/§29). Revoked/expired/invalid → one indistinguishable "cannot view" state (§H/§41).
+//
+// §22 NARROWED, 2026-09-06 (owner decision). Previously a logged-out visitor was redirected straight to
+// /login and saw nothing. That lost them: someone tapping a friend's link has no idea what it is yet, and
+// a login wall in front of an unknown thing is where people leave. Now there are TWO reads:
+//   · logged out  → `loadSharePreview`  → the CONCLUSION only, from a separate anon-granted RPC
+//   · authed      → `loadSharedReport`  → the full bounded DTO, authenticated-only grant UNCHANGED
+// The narrowing is in the server's returned payload, not in this component — a field the anonymous
+// reader must not see never arrives, so devtools shows nothing extra. The shape-valid token is still
+// stashed in the ephemeral store (never `returnTo`, no open redirect) so signing up returns here.
 type FetchStatus = 'loading' | 'ready' | 'unavailable';
 
+// The card must be emitted on EVERY branch — including the logged-out <Redirect> — because the
+// crawler that builds a messenger preview is never logged in. Wrapping is the only way to get a
+// head next to a <Redirect>, which cannot take a sibling on its own.
 export default function SharedReportScreen() {
+  return (
+    <>
+      <ShareCardHead />
+      <SharedReportBody />
+    </>
+  );
+}
+
+function SharedReportBody() {
   const router = useRouter();
   const params = useLocalSearchParams<{ token?: string }>();
   const token = typeof params.token === 'string' ? params.token : '';
@@ -38,6 +58,9 @@ export default function SharedReportScreen() {
 
   const [view, setView] = useState<PremiumReportVM | null>(null);
   const [status, setStatus] = useState<FetchStatus>('loading');
+  // Anonymous half. Fetched only while logged out; cleared implicitly once the full view loads.
+  const [preview, setPreview] = useState<SharePreview | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<FetchStatus>('loading');
 
   // Stash the token BEFORE any redirect (logged out OR authenticated-but-not-onboarded), shape-valid only.
   // Never in returnTo. FINAL OVERRIDE: a new/incomplete member must finish onboarding first, then the
@@ -82,12 +105,33 @@ export default function SharedReportScreen() {
     };
   }, [token, authState.status, onboardingState]);
 
+  // Fetch the ANONYMOUS preview while logged out. Separate RPC, separate permission, separate
+  // state — the full-read effect above is untouched and still never runs for a logged-out visitor.
+  useEffect(() => {
+    if (authState.status !== "unauthenticated") return;
+    if (!isValidShareToken(token)) { setPreviewStatus("unavailable"); return; }
+    let active = true;
+    setPreviewStatus("loading");
+    shareService
+      .loadSharePreview(token)
+      .then((o) => {
+        if (!active) return;
+        if (o.status === "ok") { setPreview(o.preview); setPreviewStatus("ready"); }
+        else setPreviewStatus("unavailable");
+      })
+      .catch(() => { if (active) setPreviewStatus("unavailable"); });
+    return () => { active = false; };
+  }, [token, authState.status]);
+
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/');
   };
 
   // ── Auth gate FIRST (render-level) ──────────────────────────────────────────
+  // The share CARD (what a messenger renders before anyone clicks) is emitted on EVERY branch,
+  // including the logged-out redirect — the crawler that builds the preview is never logged in.
+  // It is deliberately identical for every share: see ShareCardHead for why.
   if (authState.status === 'loading') {
     return (
       <Screen padded={false} frame>
@@ -103,8 +147,61 @@ export default function SharedReportScreen() {
     );
   }
   if (authState.status === 'unauthenticated') {
-    // The report body is NEVER fetched or shown before login (§22).
-    return <Redirect href="/login" />;
+    // §22 UPDATED 2026-09-06 (owner decision). The FULL body is still never fetched before login —
+    // `get_shared_report` keeps its authenticated-only grant and is not called on this branch.
+    // What changed is that a logged-out visitor now gets the CONCLUSION, from a separate,
+    // deliberately narrower RPC. Value first, account second: a login wall in front of a link a
+    // friend sent loses the visitor before they know what it is.
+    if (previewStatus === 'loading') {
+      return (
+        <Screen padded={false} frame>
+          <AppHeader title="공유받은 결과" />
+          <View style={styles.centerPad}>
+            <Card radius="xl">
+              <Text variant="bodyMedium" colorToken="textSecondary">
+                불러오는 중입니다...
+              </Text>
+            </Card>
+          </View>
+        </Screen>
+      );
+    }
+    if (previewStatus === 'ready' && preview) {
+      return (
+        <Screen padded={false} frame>
+          <AppHeader title="공유받은 결과" />
+          <ScrollView contentContainerStyle={styles.previewScroll} showsVerticalScrollIndicator={false}>
+            <SharedReportPreview
+              preview={preview}
+              onOpenFull={() => {
+                // The token is already stashed by the effect above; stash again so a direct tap is
+                // safe even if that effect has not run in this render pass. Idempotent.
+                if (isValidShareToken(token)) setPendingShareToken(token);
+                router.push('/login');
+              }}
+            />
+          </ScrollView>
+        </Screen>
+      );
+    }
+    // Invalid / revoked / expired → the SAME indistinguishable state as the full read (§41), and
+    // still no login wall: there is nothing behind it to log in for.
+    return (
+      <Screen padded={false} frame>
+        <AppHeader title="공유받은 결과" />
+        <View style={styles.centerPad}>
+          <Card radius="xl">
+            <Stack gap="sm">
+              <Text variant="bodyMedium">지금은 볼 수 없는 링크예요.</Text>
+              <Text variant="bodySmall" colorToken="textSecondary">
+                링크가 만료되었거나 공유가 중단되었을 수 있어요. 보내주신 분께 다시 요청해 주세요.
+              </Text>
+              <Button label="덕분이 둘러보기" variant="secondary" radius="lg" onPress={() => router.replace('/')} />
+            </Stack>
+          </Card>
+        </View>
+      </Screen>
+    );
   }
   // Authenticated but onboarding facts still resolving → hold (never flash the report).
   if (onboardingState === 'AUTHENTICATED_LOADING') {
@@ -176,6 +273,7 @@ export default function SharedReportScreen() {
 }
 
 const styles = StyleSheet.create({
+  previewScroll: { flexGrow: 1, paddingBottom: 40 },
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 20,

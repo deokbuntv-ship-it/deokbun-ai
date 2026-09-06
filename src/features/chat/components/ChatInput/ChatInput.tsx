@@ -43,7 +43,7 @@ export function ChatInput({ value, onChangeText, onSend, disabled, placeholder }
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel="메시지 전송"
-          accessibilityState={{ disabled: !!disabled }}
+          aria-disabled={!!disabled}
           style={({ pressed }) => [
             styles.send,
             {

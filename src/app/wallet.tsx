@@ -143,8 +143,12 @@ export default function WalletScreen() {
               />
             )}
 
-            {/* A read failure must never be shown to a paying user as "0덕" — offer the retry instead. */}
-            {isAuthenticated && walletState === 'error' ? (
+            {/* A read failure must never be shown to a paying user as "0덕" — offer the retry instead.
+                ⚠ 2026-09-06: 여기가 `walletState` 를 직접 봤다. `walletStateOf` 는 잔액이 undefined 면
+                'error' 를 돌려주므로 **아직 불러오는 중에도 "불러오지 못했어요" 가 떴다** — 돈 화면에
+                가짜 실패다. 바로 위 잔액 카드는 이미 `displayWalletState`(로딩과 실패를 구분한 값)를
+                쓰고 있었으므로, 두 변수 중 잘못된 쪽을 본 것이었다. */}
+            {isAuthenticated && displayWalletState === 'error' ? (
               <StateView
                 kind="error"
                 title="덕 정보를 불러오지 못했어요"

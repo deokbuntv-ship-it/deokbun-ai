@@ -41,10 +41,10 @@
 // identical technique `services/monthCommand.ts` and `services/generalSeasonalPhase.ts` already use
 // independently (their own header comments explain why: a small, auditable re-derivation rather than
 // a shared table those FROZEN files would have to be edited to expose).
-import { calculateTenGod, getBranchElement, type EarthlyBranch, type FiveElement, type HeavenlyStem } from '@/features/interpretation';
+import { calculateTenGod, getBranchElement, FIVE_ELEMENT_LABELS, type EarthlyBranch, type FiveElement, type HeavenlyStem } from '@/features/interpretation';
 import type { TenGod } from '@/features/interpretation/saju/derived/contracts';
-import { tenGodFamily, type TenGodFamily } from './myungriJudge';
-import type { MyungriStructuralV2Result, StructuralState } from './myungriStructuralV2';
+import { FAMILY_LABEL, tenGodFamily, type TenGodFamily } from './myungriJudge';
+import type { MyungriStructuralV2Result, SeasonRoleFact, StructuralState } from './myungriStructuralV2';
 import type { JudgmentEvidence } from './contracts';
 
 export const MYUNGRI_YONGSHIN_V1_METHOD = 'deokbunai.myungri-yongshin.v1' as const;
@@ -72,6 +72,33 @@ export type MyungriYongshinResult = {
   reasoning: { premises: string[]; conclusion: string }[];
   uncertaintyReasons: string[];
   johooStatus: 'DEFERRED';
+};
+
+/**
+ * 희신 목록 정규화 — 중복과 용신 자신을 걷어낸다.
+ *
+ * 2026-09-02 수리 (YONGSHIN_CONSISTENCY_AUDIT N3). 배출구 계열이 원국에 **정확히 하나만** 있으면
+ * runEokbu 의 `?? chosen` 폴백이 `supporting === primary` 를 만든다. 억부 단독 경로는
+ * `.filter(e => e !== eokbu.primary)` 로 빈 배열을 만들어 정직했지만, 억부+통관 SELECTED 경로는
+ * 중재자만 걸러내므로 `['METAL','METAL']` 이 남았다. 렌더러(myungriPremises.ts)는 중복 제거를 하지
+ * 않아 유료 사용자에게 "함께 쓸 수 있는 방향은 금(金), 금(金)입니다."가 나갔다(실행 재현 확인).
+ * 후보 집합 자체는 바뀌지 않는다 — 같은 원소를 두 번 세지 않을 뿐이다.
+ */
+const supportingOf = (candidates: readonly FiveElement[], primary: FiveElement): FiveElement[] =>
+  [...new Set(candidates)].filter((e) => e !== primary);
+
+/**
+ * 오행의 한국어. 2026-09-02 — 이 모듈의 문장들이 `${chosen}`/`${mediator}` 로 **영문 enum 을 한국어에
+ * 그대로 보간**하고 있었다("실제로 존재하는 OUTPUT 계열 기운을…", "통관시키는 WOOD가 후보로…").
+ * 지금은 소비자가 없어 노출되지 않지만, 한 번이라도 표면화되면 조사 처리도 없이 그대로 나간다 —
+ * Premium V1 에서 FIRE/METAL 이 사용자 화면에 나갔던 것과 같은 종류다. 라벨은 새로 만들지 않고
+ * 엔진의 `FIVE_ELEMENT_LABELS` 와 `myungriJudge.FAMILY_LABEL` 을 재사용한다.
+ */
+const EL_LABEL = (e: FiveElement): string => (FIVE_ELEMENT_LABELS as Record<string, { hangul: string }>)[e]?.hangul ?? e;
+/** 받침이 있으면 앞, 없으면 뒤. 오행 한 글자마다 조사가 갈린다(목이/화가, 금을/수를). */
+const josa = (word: string, withBatchim: string, without: string): string => {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  return word + (c >= 0 && c <= 11171 && c % 28 > 0 ? withBatchim : without);
 };
 
 const ev = (fact: string, meaning: string): JudgmentEvidence => ({
@@ -115,6 +142,15 @@ function runEokbu(
   structuralState: StructuralState,
   dayMasterElement: FiveElement,
   familyExists: (family: TenGodFamily) => boolean,
+  /**
+   * 문장 전용. **분기에 쓰지 않는다** — 아래 어느 `if` 도 이 값을 읽지 않으며, 후보·희신·기신은
+   * 이 인자가 없던 때와 정확히 같다(2026-09-02 20개 차트 대조로 확인).
+   *
+   * 왜 받는가: 헤더가 후보를 "실제 구조 사실(뿌리 존재, **계절 역할**, 충 오행)"에서 도출한다고
+   * 선언해 놓고 이 함수는 계절을 받지도 못한 채 "계절에서 힘을 받는다"를 사실로 출력하고 있었다
+   * (YONGSHIN_CONSISTENCY_AUDIT F1). 판정을 바꾸지 않고 그 거짓만 없앤다.
+   */
+  seasonFact: SeasonRoleFact | undefined,
 ): { primary: FiveElement; supporting: FiveElement; contraindicated: FiveElement; candidates: YongshinCandidate[] } | null {
   if (structuralState === 'UNANCHORED') {
     // DM lacks root AND season support — needs reinforcement. (A direct seasonal conquest sub-case
@@ -154,8 +190,8 @@ function runEokbu(
       candidates: [
         {
           element: primary, rationale: 'EOKBU',
-          reasoning: `일간이 뿌리와 계절 양쪽에서 힘을 받아 여유가 있어, 실제로 존재하는 ${chosen} 계열 기운을 배출구로 우선 씁니다.`,
-          evidence: [ev(`구조 상태 ${structuralState}`, '일간이 뿌리와 계절 양쪽에서 힘을 받는 구조입니다.'), ev(`${chosen} 계열 존재`, '원국에 해당 계열의 십신이 실제로 있습니다.')],
+          reasoning: `${seasonFact === 'NEUTRAL' ? '일간이 뿌리에서 힘을 받아 여유가 있고 계절은 힘을 더하지도 빼지도 않아' : '일간이 뿌리와 계절 양쪽에서 힘을 받아 여유가 있어'}, 실제로 존재하는 ${FAMILY_LABEL[chosen]}을 배출구로 우선 씁니다.`,
+          evidence: [ev(`구조 상태 ${structuralState}`, seasonFact === 'NEUTRAL' ? '일간이 뿌리에서 힘을 받고, 계절은 힘을 더하지도 빼지도 않는 구조입니다.' : '일간이 뿌리와 계절 양쪽에서 힘을 받는 구조입니다.'), ev(`${FAMILY_LABEL[chosen]} 존재`, '원국에 해당 계열의 십신이 실제로 있습니다.')],
         },
       ],
     };
@@ -181,8 +217,8 @@ function runTonggwan(
     if (!mediator) continue;
     return {
       element: mediator, rationale: 'TONGGWAN',
-      reasoning: `원국 안에서 ${controller}가 ${controlled}를 극하는 충(沖)이 실제로 있어, 두 오행을 통관시키는 ${mediator}가 후보로 성립합니다.`,
-      evidence: [ev(`지지충: ${clash.branches.join('-')}`, `${controller}와 ${controlled}가 정면으로 부딪히는 자리입니다.`)],
+      reasoning: `원국 안에서 ${josa(EL_LABEL(controller), '이', '가')} ${josa(EL_LABEL(controlled), '을', '를')} 극하는 충(沖)이 실제로 있어, 두 오행을 통관시키는 ${josa(EL_LABEL(mediator), '이', '가')} 후보로 성립합니다.`,
+      evidence: [ev(`지지충: ${clash.branches.join('-')}`, `${EL_LABEL(controller)}${josa(EL_LABEL(controller), '과', '와')} ${josa(EL_LABEL(controlled), '이', '가')} 정면으로 부딪히는 자리입니다.`)],
     };
   }
   return null;
@@ -240,7 +276,7 @@ export function judgeMyungriYongshin(input: {
     };
   }
 
-  const eokbu = runEokbu(sv2.structuralState, sv2.dayMasterElement, input.familyExists);
+  const eokbu = runEokbu(sv2.structuralState, sv2.dayMasterElement, input.familyExists, sv2.seasonFact);
   const tonggwan = runTonggwan(input.branchClashes);
   const byeongyak = runByeongyak(sv2.structuralState);
 
@@ -270,8 +306,21 @@ export function judgeMyungriYongshin(input: {
       : tongFamily === 'RESOURCE' || tongFamily === 'PEER';
     if (worsens) {
       return {
+        // [7] 2026-09-02 — 기신도 비운다 (YONGSHIN_CONSISTENCY_AUDIT F2).
+        //
+        // 이 분기는 억부와 통관이 **방향에 대해** 이견일 때만 발화한다: ANCHORED 에서
+        // `worsens = tongFamily ∈ {RESOURCE, PEER}` 인데 둘 다 "보강" 계열이고, 억부의 기신은 바로 그
+        // RESOURCE 원소다. 즉 다투는 명제가 "보강이냐 배출이냐"인데, 기신을 남기면 "보강은 나쁘다"로
+        // **그 명제를 억부 편으로 정해 버린다** — 바로 위 conclusion 이 "정할 근거가 없다"고 쓴 그 명제를.
+        // tongFamily === RESOURCE 인 경우엔 한술 더 떠 `tonggwan.element === contraindicated` 라
+        // 같은 결과 객체가 한 원소를 "후보"이자 "피할 것"으로 동시에 싣는다(관측 4건 중 FIRE 일간 3건).
+        //
+        // 교리 의도인지 확인했다: 이 동작을 의도라고 선언한 주석·문서·테스트가 레포에 없다
+        // (`myungriYongshin.test.ts:161-165` 는 primaryCandidate 가 null 임만 단언하고 기신은 보지 않는다).
+        // 따라서 교리 판단이 아니라 논리 오류로 판정하고 비운다. 결과적으로 MULTI_CANDIDATE 에서 용신은
+        // 지지도 경고도 만들지 않는다 — "하나로 정할 근거가 없다"의 정직한 귀결이다.
         ...base, status: 'MULTI_CANDIDATE', primaryCandidate: null,
-        supportingCandidates: [], contraindicatedCandidates: [eokbu.contraindicated],
+        supportingCandidates: [], contraindicatedCandidates: [],
         treatmentRationalesFired: rationalesFired,
         candidates: [...eokbu.candidates, tonggwan],
         evidence: [...eokbu.candidates.flatMap((c) => c.evidence), ...tonggwan.evidence],
@@ -285,7 +334,7 @@ export function judgeMyungriYongshin(input: {
     // 통관(즉각적 구조 장애 해소)이 억부(일반 보강)보다 우선 — 서로 상충하지 않을 때만.
     return {
       ...base, status: 'SELECTED', primaryCandidate: tonggwan.element,
-      supportingCandidates: [eokbu.primary, eokbu.supporting].filter((e) => e !== tonggwan.element),
+      supportingCandidates: supportingOf([eokbu.primary, eokbu.supporting], tonggwan.element),
       contraindicatedCandidates: [eokbu.contraindicated],
       treatmentRationalesFired: rationalesFired,
       candidates: [tonggwan, ...eokbu.candidates],
@@ -301,7 +350,7 @@ export function judgeMyungriYongshin(input: {
   if (eokbu) {
     return {
       ...base, status: 'SELECTED', primaryCandidate: eokbu.primary,
-      supportingCandidates: [eokbu.supporting].filter((e) => e !== eokbu.primary),
+      supportingCandidates: supportingOf([eokbu.supporting], eokbu.primary),
       contraindicatedCandidates: [eokbu.contraindicated],
       treatmentRationalesFired: rationalesFired, candidates: eokbu.candidates,
       evidence: eokbu.candidates.flatMap((c) => c.evidence),

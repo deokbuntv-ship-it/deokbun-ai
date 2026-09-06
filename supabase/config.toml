@@ -6,7 +6,23 @@
 # If you prefer the full CLI-generated config, delete this file first and run
 # `supabase init`, then re-add the [functions.chat] block below.
 
-project_id = "olvkpaldrwvtexxpoaag"
+# ── DEFAULT TARGET IS STAGING. THIS IS A SAFETY DEFAULT, NOT A PREFERENCE. ───────────────────────────
+# Until 2026-09-02 this said `olvkpaldrwvtexxpoaag` (PRODUCTION) and the CLI was linked to production
+# too, so a bare `supabase db push` or `supabase functions deploy chat` — no --project-ref — would have
+# shipped straight to production. Nothing in the repo said so; it was found only by reading
+# `supabase projects list` before a staging deploy.
+#
+# The default is now staging, and the local link was repointed to match. Production is still fully
+# reachable, but ONLY by naming it:
+#
+#     supabase functions deploy chat --project-ref olvkpaldrwvtexxpoaag
+#
+# That is the whole point: a production deploy must be a sentence someone typed on purpose, never the
+# thing that happens when an argument is forgotten.
+project_id = "aephpsiurgkvqcswyeie"  # Deokbuni Staging
+
+# Production ref, recorded here so it never has to be looked up (and so it is obvious which is which):
+#   production = "olvkpaldrwvtexxpoaag"   # deokbuntv-ship-it's Project — pass explicitly, never default
 
 [functions.chat]
 enabled = true
@@ -54,6 +70,16 @@ verify_jwt = false
 [functions.ad-track]
 enabled = true
 verify_jwt = false
+
+# Account deletion (회원 탈퇴). Needs the SERVICE ROLE to call the auth admin API, so it can
+# never run in the client. JWT ON — and the function additionally re-verifies the bearer and
+# uses the TOKEN'S user id, never a body-supplied one, so one user can never delete another.
+# Optional Edge secrets for Apple grant revocation (all four or none):
+# APPLE_SERVICE_ID / APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_PRIVATE_KEY (+ optional APPLE_BUNDLE_ID).
+# Absent → revocation is skipped with a logged reason; deletion still completes.
+[functions.account-delete]
+enabled = true
+verify_jwt = true
 
 # IAP purchase verification (Sprint I). Authenticated user submits an OPAQUE store token; the server verifies
 # it with the store and grants Duk. JWT ON — only an authenticated user may request verification.

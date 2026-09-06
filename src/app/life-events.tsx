@@ -85,6 +85,7 @@ export default function LifeEventsScreen() {
               <Stack gap="md">
                 <Text variant="bodyLarge" style={{ fontWeight: '700' }}>일정 추가</Text>
                 <TextInput
+                  accessibilityLabel="사건 제목"
                   value={title}
                   onChangeText={setTitle}
                   placeholder="예: 이사, 면접, 계약"
@@ -98,6 +99,7 @@ export default function LifeEventsScreen() {
                   ))}
                 </Stack>
                 <TextInput
+                  accessibilityLabel="사건 날짜"
                   value={date}
                   onChangeText={setDate}
                   placeholder="2026-09-20"
@@ -107,7 +109,7 @@ export default function LifeEventsScreen() {
                 />
                 <View style={styles.reminderRow}>
                   <Text variant="bodyMedium">이 일정 알림 받기</Text>
-                  <Switch value={reminder} onValueChange={setReminder} trackColor={{ true: theme.primary, false: theme.border }} />
+                  <Switch accessibilityLabel="이 일정 알림 받기" value={reminder} onValueChange={setReminder} trackColor={{ true: theme.primary, false: theme.border }} />
                 </View>
                 {error ? <Text variant="bodySmall" colorToken="danger">{error}</Text> : null}
                 <Button label={saving ? '저장 중…' : '저장'} onPress={add} radius="lg" disabled={saving} />
@@ -142,6 +144,7 @@ export default function LifeEventsScreen() {
                         <Text variant="bodySmall" colorToken="textSecondary">{e.eventDate}</Text>
                       </View>
                       <Switch
+                        accessibilityLabel={`${e.title} 알림 받기`}
                         value={e.reminderEnabled}
                         onValueChange={(v) => { void lifeEventService.setReminder(e.id, v); reload(); }}
                         trackColor={{ true: theme.primary, false: theme.border }}

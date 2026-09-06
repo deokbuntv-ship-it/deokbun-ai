@@ -11,8 +11,14 @@
 // incomplete, totalTokens ~8079) — reasoning + a full schema-conforming answer needs more room. Still
 // within HARD_MAX (8000) and the model context.
 export const DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS = 5000;
-// Summary: short compression only.
-export const DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 1000;
+// Summary: short VISIBLE text, but reasoning is billed against the same ceiling — which is the whole
+// lesson of the 800 → 5000 consultation fix above, and summary was left behind by it. Raised 1000 → 3000
+// on 2026-09-02 after measuring the staging cost benchmark: 8 of 10 summaries died on
+// OPENAI_INCOMPLETE_max_output_tokens, and the 2 that survived came in at 880 and 976 — i.e. the old
+// ceiling cut straight through the middle of the real distribution. A ceiling is truncation insurance,
+// not a spend cap (you are billed on ACTUAL tokens), so the unused headroom costs nothing while a
+// too-low ceiling costs the FULL budget and returns nothing at all.
+export const DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 3000;
 // Hard bounds so a bad env value can neither starve nor blow up cost.
 export const MIN_MAX_OUTPUT_TOKENS = 256;
 export const HARD_MAX_OUTPUT_TOKENS = 8000;

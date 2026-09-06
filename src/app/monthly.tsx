@@ -14,6 +14,8 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { MaxContentWidth } from '@/constants/theme';
 import { setPendingConsultationIntent, useConsultationDraft, useConsultationSubjects } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import {
   monthlyFortuneService,
   monthlyToneVariant,
@@ -170,6 +172,15 @@ export default function MonthlyScreen() {
                 <Button label="MY로 이동" onPress={() => router.replace('/my')} />
               </Stack>
             </Card>
+          ) : status === 'unavailable' && isSolarTermBoundaryTimeRequired(self?.birthInfo) ? (
+            // 절기 경계일 — see the same branch in today.tsx. Nothing is produced at all, so the generic
+            // "일부 해석이 제한될 수 있어요" wording below would be misleading here.
+            <BoundaryTimeNotice
+              context="surface"
+              onEditBirthInfo={() =>
+                router.push({ pathname: '/birth-info', params: { subjectId: self?.id ?? '' } })
+              }
+            />
           ) : status === 'unavailable' ? (
             <Card radius="xl">
               <Stack gap="md">

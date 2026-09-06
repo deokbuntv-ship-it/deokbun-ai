@@ -423,7 +423,9 @@ describe('V6 ROOT CAUSE 5 — a reading with no basis is not a reading', () => {
     );
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.reason).toBe('GROUNDING_UNAVAILABLE');
+    // This fixture is 1996-10-08 with no time — the 절기 경계일 case — so the typed non-success now carries
+    // the NARROWER reason. Same outcome (no delivery, no charge); the code just names the fixable input.
+    expect(r.reason).toBe('AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED');
     expect(r.message).toContain('태어난 시각');
   });
 
@@ -496,8 +498,10 @@ describe('V6 ROOT CAUSE 6 — the language model is not a delivery single point 
   });
 
   it('P — the no-grounding outcome releases the reservation and commits no Duk', () => {
+    // AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED shares this exact branch on purpose — the release calls must
+    // stay one code path, so this scan covers both reasons at once.
     const branch = EDGE.slice(
-      EDGE.indexOf("if (result.reason === 'GROUNDING_UNAVAILABLE')"),
+      EDGE.indexOf("if (result.reason === 'GROUNDING_UNAVAILABLE' || result.reason === 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED')"),
       EDGE.indexOf('// SUBJECT_FORBIDDEN(403)'),
     );
     expect(branch).toContain('await releasePaidRequest(paid.context);');

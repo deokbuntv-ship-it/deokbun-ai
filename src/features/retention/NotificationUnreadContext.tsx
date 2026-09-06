@@ -64,7 +64,9 @@ export function NotificationUnreadProvider({ children }: { children: ReactNode }
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') refresh();
     });
-    return () => sub.remove();
+    // Same web hazard as Candle: RNW AppState.addEventListener returns undefined when AppState is
+    // unavailable (no document.visibilityState). Native always returns a subscription.
+    return () => sub?.remove();
   }, [refresh]);
 
   const markOneRead = useCallback(() => setUnreadState((s) =>

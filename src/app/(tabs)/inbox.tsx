@@ -39,7 +39,7 @@ import {
 // are a separate section rather than mixed into the fortune sub-filters.
 type Status = 'loading' | 'ready' | 'error';
 type ReportStatus = 'idle' | 'loading' | 'ready' | 'error';
-type Section = 'fortune' | 'report' | 'compat';
+type Section = 'fortune' | 'report' | 'compat' | 'premium';
 
 export default function FortuneInboxScreen() {
   const router = useRouter();
@@ -92,7 +92,7 @@ export default function FortuneInboxScreen() {
   // Load saved reports when (and each time) the 보고서 section is opened — newest first, owner-scoped
   // by RLS. Runs on section change, not every render (§29-analog: no per-render DB query).
   useEffect(() => {
-    if (section !== 'report' && section !== 'compat') return;
+    if (section !== 'report' && section !== 'compat' && section !== 'premium') return;
     if (!isAuthenticated) {
       setReports([]);
       setReportStatus('ready');
@@ -102,7 +102,7 @@ export default function FortuneInboxScreen() {
     setReportStatus('loading');
     // 보고서 → consultation reports · 궁합 → compatibility reports (owner-scoped by RLS, newest first).
     reportService
-      .listReportsByType(section === 'compat' ? 'compatibility' : 'consultation')
+      .listReportsByType(section === 'compat' ? 'compatibility' : section === 'premium' ? 'premium' : 'consultation')
       .then((rows) => {
         if (!active) return;
         setReports(rows);
@@ -149,6 +149,13 @@ export default function FortuneInboxScreen() {
                 label="궁합"
                 selected={section === 'compat'}
                 onPress={() => setSection('compat')}
+              />
+              {/* 프리미엄 리포트 is its own product, so it gets its own filter rather than being mixed
+                  into 보고서 where a 50덕 report would be indistinguishable from a 5덕 one. */}
+              <Chip
+                label="프리미엄"
+                selected={section === 'premium'}
+                onPress={() => setSection('premium')}
               />
             </Stack>
 

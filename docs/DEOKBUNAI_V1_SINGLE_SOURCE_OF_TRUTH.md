@@ -1,5 +1,10 @@
 # DEOKBUNAI V1.0 — SINGLE SOURCE OF TRUTH (SSOT)
 
+> **📍 문서 권위 (2026-09-04 확정)** — ⚠ **HISTORICAL — HEAD `cf2fe7e`(2026-08-14) 기준. 이름과 달리 더 이상 SSOT 가 아니다.** 107 커밋 낡았다. 다만 이 문서의 **충돌 해소 우선순위 규칙**은 전 문서 공통 규칙으로 채택됐다.
+> 전체 서열: `OWNER_TODO.md`(오너 액션) · `PROJECT_STATE.md`(운영 상태) · `FEATURE_MASTER_CHECKLIST.md`(기능 판정) · `KNOWN_RISKS.md`(위험) · `BACKLOG_V1_1.md`(V1.1) · `DATABASE_RUNBOOK.md`(DB 적용 절차).
+> 충돌 시 판정 순서: **코드 → 테스트/빌드 → 라이브 스키마·배포 실측 → git 이력 → 프로덕션 E2E → 문서.**
+
+
 > **Purpose.** One authoritative, code-verified baseline of what DeokbunAI actually
 > is right now — implemented vs. documented, local vs. production, foundation vs.
 > live-wired. This is the official input to the next *Independent Product + UX + AI +

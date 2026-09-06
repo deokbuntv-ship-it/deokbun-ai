@@ -43,7 +43,7 @@ export function SocialButton({ provider, onPress, disabled, loading = false, sty
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={p.label}
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      aria-disabled={isDisabled} aria-busy={loading}
       style={({ pressed }) => [
         {
           backgroundColor: p.bg,

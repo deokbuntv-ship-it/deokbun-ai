@@ -53,7 +53,7 @@ function ToggleRow({ label, hint }: { label: string; hint?: string }) {
           </Text>
         ) : null}
       </View>
-      <Switch value={false} disabled trackColor={{ true: adminTheme.navy }} />
+      <Switch accessibilityLabel={label} value={false} disabled trackColor={{ true: adminTheme.navy }} />
     </View>
   );
 }
@@ -144,7 +144,7 @@ function GenerationGuardCard() {
                 끄면 새 유료 생성이 즉시 중단됩니다(캐시·기존 답변은 계속 제공).
               </Text>
             </View>
-            <Switch value={guard.generationEnabled} disabled={saving} onValueChange={onToggle} trackColor={{ true: adminTheme.navy }} />
+            <Switch accessibilityLabel="AI 생성 허용" value={guard.generationEnabled} disabled={saving} onValueChange={onToggle} trackColor={{ true: adminTheme.navy }} />
           </View>
           <InfoRow label="시간당 사용/한도" value={`${guard.hourlyUsed} / ${guard.hourlyLimit}`} />
           <InfoRow label="일일 사용/한도" value={`${guard.dailyUsed} / ${guard.dailyLimit}`} />

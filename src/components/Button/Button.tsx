@@ -74,7 +74,7 @@ export function Button({
   };
   const borderColor: Partial<Record<ButtonVariant, string>> = {
     secondary: theme.actionSecondaryBorder,
-    danger: '#E8CFCB',
+    danger: theme.actionDangerBorder,
   };
   const pressedFill: Partial<Record<ButtonVariant, string>> = {
     brand: theme.brandPrimaryPressed,
@@ -96,7 +96,7 @@ export function Button({
     <Pressable
       disabled={isDisabled}
       accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      aria-disabled={isDisabled} aria-busy={loading}
       style={({ pressed }) => [
         {
           backgroundColor: isDisabled

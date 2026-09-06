@@ -26,7 +26,7 @@ export function BottomSheet({ visible, onClose, title, children, footer }: Botto
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
-        <Pressable style={styles.backdrop} accessibilityLabel="닫기" onPress={onClose} />
+        <Pressable style={styles.backdrop} accessibilityRole="button" accessibilityLabel="닫기" onPress={onClose} />
         <View
           style={[
             styles.sheet,

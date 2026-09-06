@@ -218,6 +218,14 @@ export type ServerConsultationDiagnostics = {
   groundedFallback?: boolean;
   /** V3 §2 — WHY the deterministic composition was delivered. Bounded categories, never answer content. */
   groundedViolations?: string[];
+  /**
+   * 2026-09-06 — HOW MANY firings, not how many distinct categories. `groundedViolations` is deduped, so
+   * three discarded sections that all tripped the same rule collapse to one entry; without this the log
+   * cannot tell a single stray token from a systematically over-firing rule.
+   */
+  groundedViolationCount?: number;
+  /** 2026-09-06 — what was discarded: the WHOLE answer (core prose, fatal) or individual sections. */
+  groundedGateUnit?: 'answer' | 'section';
   // Live follow-up (Sprint E): the classified follow-up intent + whether the stored decision was under a
   // different decision version than current (so a "왜?" explained the OLD decision without recomputing).
   followUp?: string; // WHY | NEXT_YEAR | BETWEEN_CANDIDATES | WHEN
@@ -271,7 +279,12 @@ export type ServerConsultationResult =
         // deliver the resulting general-purpose coaching as a completed, charged consultation — which is not
         // a divination product. This is a typed NON-SUCCESS: the caller releases the reservation, charges
         // nothing, and tells the reader what input would let the reading actually run.
-        | 'GROUNDING_UNAVAILABLE';
-      /** Present for GROUNDING_UNAVAILABLE — the consumer-safe explanation, server-authored and fact-free. */
+        | 'GROUNDING_UNAVAILABLE'
+        // The SAME non-success as GROUNDING_UNAVAILABLE — released, charged nothing — but narrowed to the
+        // one cause the reader can actually fix: the birth date is a 절기 boundary date and no exact time
+        // was given, so the 월주 has two candidates. Split out from the generic code so the client can say
+        // WHICH input fixes it and link to the edit screen instead of offering a pointless retry.
+        | 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED';
+      /** Present for both unavailable reasons — the consumer-safe explanation, server-authored and fact-free. */
       message?: string;
     };

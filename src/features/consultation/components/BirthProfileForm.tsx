@@ -13,6 +13,8 @@ import {
   isValidMonthString,
   isValidYearString,
 } from '@/features/consultation/birthProfileValidation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import type {
   ApproximateTimePeriod,
   BirthInfoDraft,
@@ -115,6 +117,18 @@ export function BirthProfileForm({
       : timeAccuracy === 'approximate'
         ? period !== null
         : timeAccuracy === 'unknown';
+  // 절기 경계일 — same shared judgment as birth-info.tsx and the Edge. Advisory: deliberately NOT part of
+  // `valid`, so the submit button stays enabled and the user chooses.
+  const showBoundaryWarning =
+    dateValid
+    && isSolarTermBoundaryTimeRequired({
+      calendarType,
+      lunarMonthType,
+      birthYear: year,
+      birthMonth: month,
+      birthDay: day,
+      birthTimeAccuracy: timeAccuracy,
+    });
   const valid =
     gender !== null &&
     calendarType !== null &&
@@ -180,6 +194,13 @@ export function BirthProfileForm({
           <Text variant="bodySmall" colorToken="textSecondary">
             시간을 모르셔도 괜찮아요. 다만 일부 해석 범위가 제한될 수 있고, 덕분이는 모르는 시간을 임의로 추측하지 않아요.
           </Text>
+        ) : null}
+        {showBoundaryWarning ? (
+          <BoundaryTimeNotice
+            context="form"
+            onEnterTime={() => onTimeAccuracy('exact')}
+            onSaveAnyway={submit}
+          />
         ) : null}
       </Stack>
 

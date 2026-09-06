@@ -15,6 +15,7 @@ type NavHref =
   | '/admin/users'
   | '/admin/consultations'
   | '/admin/consultation-intelligence'
+  | '/admin/support'
   | '/admin/popular-questions'
   | '/admin/retention'
   | '/admin/ads'
@@ -29,6 +30,7 @@ const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '사용자 관리', href: '/admin/users' },
   { label: '상담 관리', href: '/admin/consultations' },
   { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
+  { label: '고객문의', href: '/admin/support' },
   { label: '홈 인기질문', href: '/admin/popular-questions' },
   { label: '리텐션 · 알림', href: '/admin/retention' },
   { label: '광고', href: '/admin/ads' },
@@ -69,7 +71,7 @@ export function AdminSidebar() {
               <Link key={item.href} href={item.href} asChild>
                 <Pressable
                   accessibilityRole="link"
-                  accessibilityState={{ selected: active }}
+                  aria-selected={active}
                   style={{
                     paddingVertical: 11,
                     paddingHorizontal: 12,

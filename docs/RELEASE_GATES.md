@@ -1,5 +1,12 @@
 # DeokbunAI V1 — Release Gates G1–G9 (Sprint J7)
 
+> ⚠ **2026-09-06 — 출시 컷라인(무엇을 하고 무엇을 안 할지)은 `docs/V1_CUTLINE.md` 가 소유한다.**
+> 이 문서는 게이트 정의를 소유하고, 그 게이트 중 무엇이 V1 필수인지는 컷라인 문서를 본다.
+
+> ⚠ **HISTORICAL — 2026-08 Sprint J7 기준.** 현재 상태는 `PROJECT_STATE.md`, 기능 판정은 `FEATURE_MASTER_CHECKLIST.md`, 오너 액션은 `OWNER_TODO.md`.
+> 이 문서의 테스트 수치·게이트 상태는 낡았다 (실제: **298 suites / 4,841 tests**, 2026-09-04).
+
+
 Reassessed against current code. Status: **PASS** · **PARTIAL** · **BLOCKED_EXTERNAL** (needs a provider/account we won't provision) · **DEFERRED** (owner-timed, e.g. 05B store). Store gates are NOT marked PASS without a real store sandbox.
 
 | Gate | Scope | Status | Evidence / what remains |

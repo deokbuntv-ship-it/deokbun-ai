@@ -27,6 +27,24 @@ export const GPT_5_MINI_PRICING: ModelPricingConfig = {
   outputUnitPrice: 2.0,
 };
 
+// gpt-5.6-terra — the 궁합/deep/premium model. Previously carried NO verified price, so every Terra cost
+// read as "가격 미확인". Verified for the cost benchmark:
+//   source: https://developers.openai.com/api/docs/pricing  (Standard tier)
+//   retrieved: 2026-09-02
+// This is a POLICY VALUE, not a constant to inline anywhere: it is 8× mini on input and 6× on output, so it
+// dominates 궁합 원가. Read it from here; never hardcode a Terra price at a call site, and re-verify before
+// any pricing decision rests on it.
+export const GPT_5_6_TERRA_PRICING: ModelPricingConfig = {
+  provider: 'openai',
+  model: 'gpt-5.6-terra',
+  effectiveFrom: '2026-09-02',
+  currency: 'USD',
+  unit: 'per_1m_tokens',
+  inputUnitPrice: 2.0,
+  cachedInputUnitPrice: 0.2,
+  outputUnitPrice: 12.0,
+};
+
 // gpt-5-nano — 5× cheaper output. A candidate for SIMPLE questions ONLY if the owner
 // judges quality acceptable (constitution §25: 상담 품질 > 비용). Not wired; recommendation only.
 export const GPT_5_NANO_PRICING: ModelPricingConfig = {

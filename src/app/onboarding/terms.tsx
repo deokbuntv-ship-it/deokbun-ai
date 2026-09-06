@@ -102,7 +102,7 @@ export default function OnboardingTermsScreen() {
         <Pressable
           onPress={onToggle}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: on }}
+          aria-checked={on}
           accessibilityLabel={label}
           style={styles.row}
         >
@@ -152,7 +152,7 @@ export default function OnboardingTermsScreen() {
             <Pressable
               onPress={toggleAll}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: allChecked }}
+              aria-checked={allChecked}
               accessibilityLabel="전체 동의"
               style={({ pressed }) => [
                 styles.allRow,

@@ -1,6 +1,14 @@
 // Server trust boundary — public surface. The Edge Function imports `buildServerConsultation` /
 // `buildServerSummary`; the client imports the request/response types to shape its inputs-only request.
 export { buildServerConsultation, evaluateConsultationSafetyStop, applyVerdictAuthorityClamp } from './buildServerConsultation';
+// 절기 경계일 게이트 — the Edge's own defence layer. Same judgment the registration forms use, so a
+// boundary birth that reaches the server (older client, direct call, profile edited elsewhere) gets the
+// specific AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED reason rather than the generic one.
+export {
+  isSolarTermBoundaryTimeRequired,
+  AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED,
+  type BirthBoundaryInput,
+} from '@/features/consultation/birthBoundaryGate';
 export {
   resolveModelRoute,
   consultationWorkload,
@@ -36,8 +44,9 @@ export {
   parseUsageDetails,
   redactDiag,
   SAFE_DIAG_KEYS,
+  gateFiringSummary,
 } from './edgeDiagnostics';
-export type { OpenAiOutcome, SafeDiagKey } from './edgeDiagnostics';
+export type { OpenAiOutcome, SafeDiagKey, GateFiringSummary } from './edgeDiagnostics';
 export {
   resolveLlmBudgets,
   resolveConsultationProfile,
@@ -98,6 +107,21 @@ export {
   type MonthlyFortuneDeps,
   type MonthlyFortuneServerResult,
 } from '@/features/monthly/server';
+// 프리미엄 리포트 (Premium Report V1) — the widest product (원국 + 대운·세운 + 향후 12개월). Part of the SAME
+// server graph so the Edge bundle picks it up with no new external dependency. ONE Terra call; the model
+// realizes deterministic evidence and decides nothing.
+export {
+  buildPremiumReport,
+  parsePremiumReport,
+  premiumReportResponseFormat,
+  PREMIUM_REPORT_JSON_SCHEMA,
+  PREMIUM_POLICY_VERSION,
+  PREMIUM_FORWARD_MONTHS,
+  type PremiumReportRequest,
+  type PremiumReportDeps,
+  type PremiumReportServerResult,
+  type PremiumReportResult,
+} from '@/features/premium/server';
 export type {
   CompatibilityResultMeta,
   PriorHistoryLoad,

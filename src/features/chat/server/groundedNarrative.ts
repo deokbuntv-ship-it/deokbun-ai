@@ -393,11 +393,26 @@ const TECHNICAL_LEXICON: readonly RegExp[] = [
   // Qimen — doors, nine stars, eight deities, duty symbols, palace/board vocabulary.
   /팔문|휴문|생문|상문|두문|경문|사문|개문|구성|구궁|팔신|값부|값사|천반|지반|음둔|양둔|삼원/g,
   /천봉|천임|천충|천보|천영|천예|천주|천심|천금|등사|육합|백호|현무|구지|구천/g,
-  // Myungri — 십신 (인성 is excluded: it is also the ordinary Korean word for "personality"; 상관 is guarded
-  // against 상관없다/상관있다), pillar positions, and the time layers.
-  /비견|겁재|식신|편재|정재|편관|정관|편인|재성|관성|식상|비겁|칠살|상관(?!없|있|한다|하지|하고)/g,
-  /년주|월주|일주|시주|년간|월간|일간|년지|월지|일지|시지|원국|통근|투간|득령|실령/g,
-  /대운|세운|월운|일운/g,
+  // Myungri — 십신 (인성 is excluded: it is also the ordinary Korean word for "personality"), pillar
+  // positions, and the time layers.
+  //
+  // ORDINARY-KOREAN GUARDS (2026-09-05, KNOWN_RISKS H1). Several of these tokens are also everyday
+  // words. A hit here is not a stripped word — it discards the ENTIRE LLM answer and replaces it with
+  // the server's deterministic composition, so a false positive costs a whole answer. Measured over
+  // the 314 delivered B84 answers: `세운` (세우다's adnominal/verb form) was the only token that
+  // actually caused that, twice — "우선순위를 세운다면", "목표를 세운 뒤".
+  //
+  // Each guard NARROWS a token, never removes it — the same shape as the pre-existing 상관 guard.
+  // Removing a token wholesale would let a genuine fabrication through, which is the failure this
+  // gate exists to prevent.
+  //
+  // `세운` guards on what PRECEDES it, not what follows. A first attempt guarded the following noun
+  // (세운 계획/목표/…) and missed "우선순위를 세운다면" — that is a verb ending, not an adnominal.
+  // The object particle in front is what both real cases had in common. It cannot eat a technical
+  // 세운 preceded by 이/그/의/과 ("이 세운은 …"), which is how the term actually appears.
+  /비견|겁재|식신|편재|정재(?!계)|편관|정관|편인|재성|(?<!상)관성(?!적|대로)|식상(?!한|하|해|함)|비겁(?!한|하|해|함|스)|칠살|상관(?!없|있|한다|하지|하고|관계|성|도)/g,
+  /년주|월주|일주(?!일|하)|시주|년간|월간|일간|년지|월지|일지|시지|원국|통근(?!\s*(?:시간|길|버스|열차|하|러|중))|투간|득령|실령/g,
+  /대운|(?<!(?:을|를|은|는|앞|미리|먼저)\s{0,2})세운|월운|일운/g,
   // Stem/branch hanja — never authored freely.
   /[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]/g,
 ];

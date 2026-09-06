@@ -13,6 +13,8 @@ import { Stack } from '@/components/Stack';
 import { StateView } from '@/components/StateView';
 import { Text } from '@/components/Text';
 import { isSavedSubjectId, useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { consumePendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { useAuth } from '@/features/auth';
 import { isBalanceShort, walletStateOf } from '@/features/duk/consumerDukView';
@@ -81,8 +83,21 @@ export default function CompatibilityScreen() {
   // unloaded/unknown wallet must NOT read as insufficient; the server remains the final authority.
   const short = isBalanceShort(wallet.state, required);
 
+  // ⚠ 절기 경계일 게이트를 결제 앞으로 당겨 왔다 (2026-09-06).
+  //
+  // 판정은 생년월일만으로 결정론적이라 이 화면에서 이미 답이 나온다. 그런데 안내는 네 화면 뒤(대화 화면
+  // 자동 전송 실패)에서야 나왔고, 실측해 보니 그마저도 실패가 아니었다 — 궁합 서버는 두 차트가 다 없어도
+  // `ok:true` 로 답을 만들고 **12덕이 청구된다**(§7.29). 그래서 여기서는 경고가 아니라 **차단**한다.
+  //
+  // 본인 상담과 다른 이유: 솔로는 명리가 안 서도 기문이 답할 여지가 있어 경고 후 진행이 말이 되지만,
+  // 궁합의 pairwise 근거는 **두 차트를 모두** 요구해 부분 성립이 없다. 한쪽이 갈리면 결과가 0이다.
+  const ambiguous = [self, target]
+    .filter((s): s is ConsultationSubjectRecord => s !== null)
+    .filter((s) => isSolarTermBoundaryTimeRequired(s.birthInfo));
+  const blockedByBoundary = ambiguous.length > 0;
+
   const startCompatibility = () => {
-    if (!self || !targetId) return;
+    if (!self || !targetId || blockedByBoundary) return;
     const targetRel = others.find((s) => s.id === targetId)?.relationship ?? undefined;
     void trackProductEvent('compatibility_pair_selected', {
       surface: 'compatibility_select',
@@ -99,7 +114,7 @@ export default function CompatibilityScreen() {
         key={subject.id}
         onPress={() => setTargetId(selected ? null : subject.id)}
         accessibilityRole="button"
-        accessibilityState={{ selected }}
+        aria-selected={selected}
         accessibilityLabel={`${subject.displayName} 선택`}
         style={({ pressed }) => [
           styles.personRow,
@@ -221,6 +236,18 @@ export default function CompatibilityScreen() {
                 />
               ) : (
                 <Stack gap="sm">
+                  {blockedByBoundary ? (
+                    <BoundaryTimeNotice
+                      context="compatibility"
+                      names={ambiguous.map((s) => s.displayName)}
+                      onEnterTime={() =>
+                        router.push({
+                          pathname: '/birth-info',
+                          params: { subjectId: ambiguous[0].id, origin: 'compatibility' },
+                        })
+                      }
+                    />
+                  ) : null}
                   {/* Cost AND balance, together, above the button. */}
                   <View style={styles.costRow}>
                     <Text variant="bodyMedium" colorToken="textSecondary">지금 있는 덕</Text>
@@ -236,7 +263,7 @@ export default function CompatibilityScreen() {
                     label={`${dukLabel(required)}으로 궁합 보기`}
                     radius="lg"
                     onPress={startCompatibility}
-                    disabled={!targetId || !balanceKnown}
+                    disabled={!targetId || !balanceKnown || blockedByBoundary}
                   />
                 </Stack>
               )

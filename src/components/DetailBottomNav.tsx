@@ -52,7 +52,7 @@ export function DetailBottomNav({ active }: { active?: DetailNavKey }) {
             onPress={() => router.replace(item.route)}
             accessibilityRole="button"
             accessibilityLabel={item.label}
-            accessibilityState={{ selected: isActive }}
+            aria-selected={isActive}
           >
             <ConsumerNavGlyph name={item.key} color={color} active={isActive} />
             <Text style={[styles.navLabel, { color, fontWeight: isActive ? '700' : '500' }]} numberOfLines={1} allowFontScaling maxFontSizeMultiplier={1.2}>

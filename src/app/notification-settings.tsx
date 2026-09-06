@@ -102,6 +102,9 @@ export default function NotificationSettingsScreen() {
         <Text variant="bodySmall" colorToken="textSecondary">{r.desc}</Text>
       </View>
       <Switch
+        // 보이는 라벨은 왼쪽 <Text> 에만 있고 스위치와 연결돼 있지 않았다 — 보조기술에는
+        // '스위치, 꺼짐' 으로만 읽혔다. 무엇을 켜고 끄는지 이름으로 준다.
+        accessibilityLabel={r.label}
         value={prefs[r.key]}
         onValueChange={() => toggle(r.key)}
         trackColor={{ true: theme.primary, false: theme.border }}

@@ -94,6 +94,12 @@ export function Input({
 					inputStyle,
 				]}
 				{...rest}
+				// ⚠ 2026-09-06 — 보이는 `label` 은 위에서 별도 <Text> 로 그려질 뿐 입력칸과 **프로그램적으로
+				// 연결돼 있지 않았다.** `accessibilityLabel` 을 따로 넘긴 곳(문의 내용 등)만 접근 가능한
+				// 이름을 가졌고, `label` 만 준 곳(연도·월·일·시·분·태어난 곳·이름)은 스크린리더에 이름 없는
+				// 입력칸으로 읽혔다 — 온보딩 출생정보 폼이 전부 여기 해당한다. 명시적으로 넘긴 값이
+				// 우선하고, 없을 때만 보이는 라벨로 채운다. 시각적 변화는 없다.
+				accessibilityLabel={rest.accessibilityLabel ?? label}
 			/>
 
 			{error ? (

@@ -99,6 +99,19 @@ export type MyungriStructuralV2Result =
       dayMasterElement: FiveElement;
       hourKnown: boolean;
       structuralState: StructuralState;
+      /**
+       * AX01/AX02 의 원본 사실. `structuralState` 를 만든 두 입력을 그대로 노출한다.
+       *
+       * 왜 필요한가 (2026-09-02, YONGSHIN_CONSISTENCY_AUDIT F1): `structuralState` 만으로는
+       * `ROOT_EXISTS_TRUE + NEUTRAL` 과 `ROOT_EXISTS_TRUE + SUPPORTED` 를 구별할 수 없다. 둘 다
+       * ANCHORED 이지만 전자는 계절이 아무것도 기여하지 않았다. 하위 계층이 "계절과 뿌리 양쪽에서
+       * 힘을 받는다"고 **거짓 문장**을 출고하고 있었던 원인이 이 정보 소실이다.
+       *
+       * **이 두 필드는 어떤 판정도 바꾸지 않는다.** 순수 추가이며, 문장을 사실과 맞추는 용도로만 읽는다.
+       * 판정은 여전히 `runStructuralSynthesis` 하나가 결정한다.
+       */
+      rootFact: RootExistsFact;
+      seasonFact: SeasonRoleFact;
       strengthView: StrengthView;
       specialStructureStatus: SpecialStructureStatus;
       confidenceClass: ConfidenceClass;
@@ -290,7 +303,7 @@ function runCore(facts: {
     ruleVersion: MYUNGRI_STRUCTURAL_V2_METHOD,
     graphVersion: MYUNGRI_STRUCTURAL_V2_GRAPH_VERSION,
     dayMaster, dayMasterElement, hourKnown,
-    structuralState, strengthView, specialStructureStatus, confidenceClass,
+    structuralState, rootFact, seasonFact, strengthView, specialStructureStatus, confidenceClass,
     numerousnessEvidence,
     taskCapacities: 'NOT_EVALUATED',
     reasoningTrace: trace,

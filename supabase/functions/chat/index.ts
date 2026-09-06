@@ -51,6 +51,7 @@ import {
   openAiFailureCode,
   parseUsageDetails,
   redactDiag,
+  gateFiringSummary,
   resolveConsultationProfile,
   resolveLlmBudgets,
   runCanonicalGeneration,
@@ -61,6 +62,9 @@ import {
   currentTargetMonth,
   monthKey,
   MAX_REQUEST_BODY_BYTES,
+  buildPremiumReport,
+  premiumReportResponseFormat,
+  PREMIUM_POLICY_VERSION,
 } from './_server/serverBundle.mjs';
 import {
   globalSpendGuardFailure,
@@ -155,6 +159,14 @@ const LLM_DEADLINE_MS = (() => {
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 90_000;
 })();
 
+// Premium 만 따로 둔다 (2026-09-02). 90초는 한 번 호출하면 끝나는 상품의 값이고, Premium 은 실측 지연이
+// 50~67초여서 재시도가 들어갈 자리가 없었다. 150초면 두 번째 표본이 데드라인 안에 들어간다.
+// 이 상수는 premium_report 경로에서만 쓰인다 — 상담·오늘·월별은 LLM_DEADLINE_MS 그대로다.
+const LLM_PREMIUM_DEADLINE_MS = (() => {
+  const v = Number(Deno.env.get('LLM_PREMIUM_DEADLINE_MS')?.trim());
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 150_000;
+})();
+
 async function callOpenAI(
   messages: LLMMessage[],
   cfg: { apiKey: string; model: string; maxOutputTokens: number; responseFormat?: unknown; reasoningEffort?: string },
@@ -206,7 +218,9 @@ async function callOpenAI(
 type AiUsageLog = {
   user_id: string | null;
   model: string | null;
-  request_type: 'chat' | 'today_fortune' | 'monthly_fortune';
+  // 'safety_route' (2026-09-06) — 위기 정지 발동을 세기 위한 0토큰 행. 원가 집계는
+  // `request_type='chat'` 로 필터하므로 여기 섞이지 않는다.
+  request_type: 'chat' | 'today_fortune' | 'monthly_fortune' | 'safety_route';
   input_tokens: number | null;
   output_tokens: number | null;
   total_tokens: number | null;
@@ -303,6 +317,12 @@ async function resolveOwnedPartner(
     return null;
   }
 }
+/** SQLSTATE only (e.g. '42703'). Never the message — a constraint message can echo the failing row value. */
+function sqlState(error: unknown): string {
+  const c = (error as { code?: unknown } | null)?.code;
+  return typeof c === 'string' && /^[0-9A-Z]{5}$/.test(c) ? c : 'UNKNOWN';
+}
+
 async function logAiUsage(
   entry: AiUsageLog,
   requestId: string | null,
@@ -314,17 +334,36 @@ async function logAiUsage(
     const withReq = requestId ? { ...entry, request_id: requestId } : { ...entry };
     // Progressive fallback (same policy as request_id): try the richest row first; if a telemetry
     // column (cost §13) is not applied yet, retry without it so usage is NEVER lost.
+    //
+    // IT MUST NOT BE SILENT. Until 2026-09-02 every degradation here was swallowed, and a single
+    // missing column (`request_id`) had been dropping the ENTIRE cost breakdown — cached_input_tokens,
+    // reasoning_tokens, max_output_tokens, complexity, reasoning_effort were NULL on every row ever
+    // written, with nothing anywhere saying so. Each fallback step now says what it lost and why, so a
+    // schema gap shows up in the logs the same day instead of surfacing months later as absent data.
+    const dropped: string[] = [];
     if (extra && Object.keys(extra).length > 0) {
       const { error } = await admin.from('ai_usage_logs').insert({ ...withReq, ...extra });
       if (!error) return;
+      dropped.push(...Object.keys(extra));
+      logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_DEGRADED_DROPPED_EXTRA', {
+        droppedColumns: Object.keys(extra).join(','),
+        errorCode: sqlState(error),
+      });
     }
     if (requestId) {
       const { error } = await admin.from('ai_usage_logs').insert(withReq);
       if (!error) return;
+      dropped.push('request_id');
+      logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_DEGRADED_DROPPED_REQUEST_ID', {
+        droppedColumns: dropped.join(','),
+        errorCode: sqlState(error),
+      });
     }
-    await admin.from('ai_usage_logs').insert(entry);
+    const { error } = await admin.from('ai_usage_logs').insert(entry);
+    if (error) logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_LOST', { errorCode: sqlState(error) });
   } catch {
-    // Usage logging must never affect the chat response.
+    // Usage logging must never affect the chat response — but a total loss is still worth one line.
+    logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_THREW');
   }
 }
 
@@ -685,7 +724,7 @@ async function completeConsultationWithBilling(
 type ConsultationRequestBody = {
   mode?: 'consultation' | 'summary';
   // 오늘의 운세 / 이번 달 운세: server resolves canonical SELF and owns the date/month.
-  kind?: 'today_fortune' | 'monthly_fortune';
+  kind?: 'today_fortune' | 'monthly_fortune' | 'premium_report';
   subjectProfileId?: string | null;
   birthInput?: unknown;
   subjectLabel?: string | null;
@@ -709,6 +748,13 @@ type ConsultationRequestBody = {
   turns?: unknown;
 };
 
+// Premium's evidence-unavailable message. Same honesty contract as the consultation's: say what is missing
+// and what would fix it, assert nothing about a chart that could not be built, and offer no substitute prose.
+const PREMIUM_GROUNDING_MESSAGE =
+  '등록하신 출생 정보로는 사주 원국을 세울 수 없어 리포트를 만들지 못했습니다. '
+  + '태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹치면 월주가 두 가지로 갈려 확정할 수 없습니다. '
+  + '덕은 차감되지 않았습니다. 정확한 태어난 시각을 입력해 주시면 바로 다시 만들어 드리겠습니다.';
+
 const REASON_STATUS: Record<string, number> = {
   INVALID_INPUT: 400,
   REQUEST_TOO_LARGE: 413,
@@ -718,6 +764,9 @@ const REASON_STATUS: Record<string, number> = {
   // V6 — the reading could not be performed from the information on file. A client-correctable input state,
   // not a server fault: 422 so the app can prompt for the missing birth time instead of offering a retry.
   GROUNDING_UNAVAILABLE: 422,
+  // Same class as GROUNDING_UNAVAILABLE (client-correctable input, not a server fault), narrowed to the
+  // 절기 boundary date so the app can point at the birth-time field instead of offering a retry.
+  AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED: 422,
   CONSENT_REQUIRED: 403,
   PROFILE_REQUIRED: 403,
   GENERATION_IN_PROGRESS: 409,
@@ -791,7 +840,14 @@ export default {
         // Summary output budget (small, free text). The CONSULTATION config is built PER-QUESTION after the
         // question is validated (below) so its output ceiling + reasoning effort follow the question's
         // complexity (Overnight Sprint §4/§8) — SIMPLE/STANDARD run cheaper 'low' reasoning, DEEP 'medium'.
-        const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary };
+        // Reasoning effort is passed EXPLICITLY (2026-09-02). It used to be omitted here — the comment in
+        // callOpenAI even said "Absent for summary (free text)" — so the summary ran at the provider default
+        // (medium) while the consultation had already been moved onto a per-complexity profile. Medium
+        // reasoning against a small ceiling is exactly the failure that forced the consultation from 800 to
+        // 5000, and the summary was never revisited: 8 of 10 staging summaries burned the budget on
+        // reasoning and returned nothing. 'low' is the repo's safe floor and the right level for a pure
+        // compression task; unlike raising the ceiling, it lowers cost rather than raising it.
+        const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary, reasoningEffort: 'low' };
 
         // 오늘의 운세 (Today Fortune V1): a stateless daily-fortune generation. The SERVER owns the date
         // (nowEpochSeconds = receipt time, §6/§29), builds the deterministic daily evidence + plan from the
@@ -995,6 +1051,190 @@ export default {
           return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
         }
 
+        // 프리미엄 리포트 (Premium Report V1) — 50덕, ONE Terra call, no question and no conversation.
+        //
+        // BILLING: it takes the EXISTING duk path (reserve_session_duk → commit inside
+        // complete_consultation_with_billing → release on any pre-completion failure), with product_type
+        // 'premium_report' so the 50덕 price comes from economy_policy and never from this file.
+        //
+        // WORKLOAD = 'chat' on the paid-request lease, deliberately. `acquire_paid_request` and the global
+        // spend guard both constrain workload to a DB check constraint that has no 'premium_report' member;
+        // widening it would be a migration that later reaches production for a product that is still
+        // staging-only. The lease is an idempotency + rate mechanism keyed by requestId — the ACCOUNTING
+        // identity lives in consultation_sessions.product_type / duk_reserve.product_type, which do say
+        // 'premium_report'. Tradeoff recorded: Premium shares the consultation rate bucket.
+        if (body.kind === 'premium_report') {
+          stage = 'premium_report_request';
+          if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          if (!authority.birthInfo) return Response.json({ error: 'PROFILE_REQUIRED' }, { status: 403 });
+
+          const dukOn = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').toLowerCase() === 'true';
+          let reservation: DukReservation | null = null;
+          if (dukOn) {
+            const rv = await reserveSessionDuk(admin, userId, 'premium_report', requestId);
+            if (rv.kind === 'INSUFFICIENT') return Response.json(
+              { error: 'INSUFFICIENT_DUK', balance: rv.balance, required: rv.required, shortfall: rv.shortfall },
+              { status: 402 },
+            );
+            if (rv.kind === 'FAILED') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+            if (rv.kind === 'RESERVED') reservation = rv.reservation;
+            // ACTIVE_SESSION → an unexpired premium session already exists; it was already charged. Replay it
+            // rather than charging again (reserve_session_duk returns price 0 for that case).
+          }
+          const releaseIfHeld = async () => { if (reservation) await releaseSessionReservation(admin!, reservation); };
+
+          const paid = await acquirePaidRequest(admin, userId, 'chat', requestId);
+          if (paid.status === 'completed') return Response.json(paid.response);
+          if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
+          if (paid.status === 'rate_limited') { await releaseIfHeld(); return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+          ); }
+          if (paid.status === 'generation_disabled') { await releaseIfHeld(); return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 }); }
+          if (paid.status === 'global_limit_reached') { await releaseIfHeld(); return Response.json(
+            { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
+          ); }
+          if (paid.status !== 'acquired') { await releaseIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+          heldPaidRequest = paid.context;
+          if (apiKey.length === 0) { await releasePaidRequest(paid.context); await releaseIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+
+          // Terra by the SAME server-owned routing policy (premium_report → PREMIUM_TERRA). Never client-chosen.
+          const premiumRoute = resolveModelRoute('premium_report', {
+            miniModel: Deno.env.get('LLM_MODEL_MINI') ?? Deno.env.get('LLM_MODEL') ?? null,
+            terraModel: Deno.env.get('LLM_MODEL_TERRA') ?? null,
+          });
+          // Ceiling 8000 = HARD_MAX. The consultation needed 5000 for ONE answer; Premium emits a headline, a
+          // natal summary, up to 6 sections, 12 month lines and 5 actions — roughly 3× the visible text — on
+          // top of Terra's reasoning. A ceiling costs nothing when unused (billed on ACTUAL tokens) and a
+          // too-low one costs the FULL budget and returns nothing, which is exactly how the summary path
+          // failed 8 of 10 times before 2026-09-02. Effort 'medium': this is a synthesis over 14 evidence
+          // blocks — the DEEP class in the consultation profile — not the compression that justifies 'low'.
+          const premiumCap = Number(Deno.env.get('LLM_PREMIUM_MAX_OUTPUT_TOKENS')?.trim());
+          const premiumCfg = {
+            apiKey,
+            model: premiumRoute.modelId,
+            maxOutputTokens: Number.isFinite(premiumCap) && premiumCap >= 256 ? Math.min(Math.floor(premiumCap), 8000) : 8000,
+            reasoningEffort: Deno.env.get('LLM_PREMIUM_REASONING_EFFORT')?.trim() || 'medium',
+            responseFormat: premiumReportResponseFormat(),
+          };
+          console.log(
+            `[chat.route] req=${requestId} workload=premium_report model=${premiumRoute.modelId} policy=${premiumRoute.routingPolicyVersion} reason=${premiumRoute.reasonCode} effort=${premiumCfg.reasoningEffort} cap=${premiumCfg.maxOutputTokens}`,
+          );
+
+          // 재시도가 생기면 호출이 두 번이다. usage 를 덮어쓰면 두 번째 것만 남아 실제 지출을 과소 계상한다.
+          let premiumAttempts = 0;
+          let premiumRetriedFrom: string | null = null;
+          const premiumTokens = { input: 0, output: 0, total: 0, cached: 0, reasoning: 0 };
+          let premiumErrorCode: string | null = null;
+          let premiumOutcome: OpenAiCall | null = null;
+          const premiumDeadlineAt = startedAt + LLM_PREMIUM_DEADLINE_MS;
+          const result = await buildPremiumReport(
+            { birthInput: authority.birthInfo },
+            {
+              digestProvider: denoDigestProvider,
+              nowEpochSeconds: Math.floor(startedAt / 1000),
+              callLLM: async (messages: LLMMessage[]) => {
+                stage = 'openai_request';
+                premiumAttempts += 1;
+                const r = await callOpenAI(messages, premiumCfg, premiumDeadlineAt);
+                premiumOutcome = r;
+                const d = parseUsageDetails(r.usage);
+                premiumTokens.input += toNullableInt(r.usage.input_tokens) ?? 0;
+                premiumTokens.output += toNullableInt(r.usage.output_tokens) ?? 0;
+                premiumTokens.total += toNullableInt(r.usage.total_tokens) ?? 0;
+                premiumTokens.cached += d.cachedInputTokens ?? 0;
+                premiumTokens.reasoning += d.reasoningTokens ?? 0;
+                stage = 'response_parse';
+                const code = openAiFailureCode(r);
+                if (code === 'OK') return r.text;
+                premiumErrorCode = code;
+                return '';
+              },
+              onRetry: (firstFailure) => { premiumRetriedFrom = firstFailure; },
+            },
+          );
+
+          // 누적값을 쓴다. 재시도가 없었으면 1회 호출값과 같고, 있었으면 실제로 쓴 만큼이 남는다.
+          const premiumTelemetry = {
+            cached_input_tokens: premiumAttempts > 0 ? premiumTokens.cached : null,
+            reasoning_tokens: premiumAttempts > 0 ? premiumTokens.reasoning : null,
+            max_output_tokens: premiumCfg.maxOutputTokens,
+            complexity: 'DEEP',
+            reasoning_effort: premiumCfg.reasoningEffort,
+          };
+          const premiumTokenCols = {
+            input_tokens: premiumAttempts > 0 ? premiumTokens.input : null,
+            output_tokens: premiumAttempts > 0 ? premiumTokens.output : null,
+            total_tokens: premiumAttempts > 0 ? premiumTokens.total : null,
+          };
+
+          // INVALID_OUTPUT 만으로는 왜 버렸는지 알 수 없어 2026-09-02 V3 재생성에서 원인 추적이 막혔다.
+          // detail 은 parsePremiumReport 가 돌려주는 고정 문자열(HEADLINE_UNSAFE 등)이라 자유 텍스트가 아니다.
+          const premiumFailCode = premiumErrorCode
+            ?? (result.ok ? null : result.detail ? `${result.reason}_${result.detail}` : result.reason);
+          if (!result.ok) {
+            // EVERY failure releases the reserve → 0 덕. The tokens actually spent are still recorded so a
+            // failed Premium never looks free (the same fix the summary/consultation paths took).
+            await logAiUsage(
+              {
+                user_id: userId, model: premiumRoute.modelId, request_type: 'chat',
+                ...premiumTokenCols,
+                latency_ms: Date.now() - startedAt, status: 'error',
+                error_code: premiumFailCode,
+              },
+              requestId,
+              premiumTelemetry,
+            );
+            logDiag(requestId, result.reason === 'EVIDENCE_UNAVAILABLE' ? 'GROUNDING' : 'OPENAI_RESPONSE',
+              premiumFailCode ?? result.reason, {
+                path: 'premium_report', model: premiumRoute.modelId,
+                attempts: premiumAttempts,
+                upstreamStatus: premiumOutcome?.statusCode || undefined,
+                responseStatus: premiumOutcome?.responseStatus,
+                incompleteReason: premiumOutcome?.incompleteReason,
+              });
+            await releasePaidRequest(paid.context);
+            await releaseIfHeld();
+            if (result.reason === 'EVIDENCE_UNAVAILABLE') {
+              return Response.json({ error: 'GROUNDING_UNAVAILABLE', message: PREMIUM_GROUNDING_MESSAGE }, { status: 422 });
+            }
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+
+          await logAiUsage(
+            {
+              user_id: userId, model: premiumRoute.modelId, request_type: 'chat',
+              ...premiumTokenCols,
+              latency_ms: Date.now() - startedAt, status: 'success',
+              // 재시도로 살아난 건은 성공이지만 공짜가 아니다 — 사유를 error_code 에 남겨 두면
+              // "성공했지만 한 번 실패했다"를 나중에 셀 수 있다. 상태는 success 그대로다.
+              error_code: premiumRetriedFrom ? `RETRIED_${premiumRetriedFrom}` : null,
+            },
+            requestId,
+            premiumTelemetry,
+          );
+          if (premiumRetriedFrom) {
+            logDiag(requestId, 'OPENAI_RESPONSE', `PREMIUM_RETRY_OK_${premiumRetriedFrom}`,
+              { path: 'premium_report', model: premiumRoute.modelId, attempts: premiumAttempts });
+          }
+
+          // Persist + commit in ONE transaction. No conversation and no decision meta → the no-decision branch
+          // (complete_paid_request only). The 50덕 debit happens INSIDE this call and only if the response was
+          // actually persisted, which is what makes "첫 accepted persisted answer 에서만 청구" true here too.
+          const response = {
+            kind: 'premium_report',
+            result: result.result,
+            policyVersion: result.policyVersion,
+            evidenceVersion: result.evidenceVersion,
+            coveredMonths: result.coveredMonths,
+            premiumPolicyVersion: PREMIUM_POLICY_VERSION,
+          } as Record<string, unknown>;
+          const completed = await completeConsultationWithBilling(paid.context, response, null, null, reservation, null);
+          if (!completed) { await releaseIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+          return Response.json(completed);
+        }
+
         // Summary mode (FIX A/B/C): the SERVER owns the summary prompt (buildServerSummary → existingSummary
         // is untrusted content, never system) and applies hard input bounds server-side. Usage is logged
         // exactly like consultation so summary calls COUNT toward the ai_usage_logs burst window — no
@@ -1065,14 +1305,31 @@ export default {
             }
             if (summary.reason === 'LLM_FAILED') {
               // OpenAI WAS attempted → log the error (consistent with consultation; counts in the window).
+              //
+              // AND log the TOKENS. These used to be hardcoded null even though `summaryUsage` held the real
+              // counts, so every failed call was billed by OpenAI and recorded as costing nothing. The
+              // 2026-09-02 benchmark hit exactly this: 8 of 10 summaries died on
+              // OPENAI_INCOMPLETE_max_output_tokens, each having burned its full output budget, and all 8
+              // landed as NULL — the measured total understated the invoice. An incomplete response still
+              // reports usage; there is no reason to discard it. error_code and the client response are
+              // unchanged: this only stops us from under-counting our own spend.
+              const failedUsage = parseUsageDetails(summaryUsage);
               await logAiUsage(
                 {
                   user_id: userId, model, request_type: 'chat',
-                  input_tokens: null, output_tokens: null, total_tokens: null,
+                  input_tokens: toNullableInt(summaryUsage.input_tokens),
+                  output_tokens: toNullableInt(summaryUsage.output_tokens),
+                  total_tokens: toNullableInt(summaryUsage.total_tokens),
                   latency_ms: Date.now() - startedAt, status: 'error',
                   error_code: summaryErrorCode ?? 'LLM_FAILED',
                 },
                 requestId,
+                {
+                  cached_input_tokens: failedUsage.cachedInputTokens,
+                  reasoning_tokens: failedUsage.reasoningTokens,
+                  max_output_tokens: summaryCfg.maxOutputTokens,
+                  reasoning_effort: summaryCfg.reasoningEffort,
+                },
               );
               await releasePaidRequest(paid.context);
               return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
@@ -1083,6 +1340,12 @@ export default {
             return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
           }
           // Success → log usage exactly once (FIX C: summary now counts toward the burst window).
+          // The telemetry `extra` is passed here too (2026-09-02). It was the last path still omitting it:
+          // the consultation success path and both failure paths carry it, so summary success rows were the
+          // only ones landing with cached_input_tokens / reasoning_tokens / max_output_tokens NULL — which
+          // is exactly the blindness this batch exists to remove. `complexity` stays absent because a
+          // summary has no question to classify; `reasoning_effort` comes from the config actually used.
+          const summarySuccessUsage = parseUsageDetails(summaryUsage);
           await logAiUsage(
             {
               user_id: userId, model, request_type: 'chat',
@@ -1092,6 +1355,12 @@ export default {
               latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
             },
             requestId,
+            {
+              cached_input_tokens: summarySuccessUsage.cachedInputTokens,
+              reasoning_tokens: summarySuccessUsage.reasoningTokens,
+              max_output_tokens: summaryCfg.maxOutputTokens,
+              reasoning_effort: summaryCfg.reasoningEffort,
+            },
           );
           const response = { text: summary.text };
           const completed = await completePaidRequest(paid.context, response);
@@ -1122,6 +1391,37 @@ export default {
             validationCategory: 'SAFETY_ROUTED',
             safetyRoute: crisisStop.diagnostics?.safetyRoute,
           });
+          // 관측 (2026-09-06). LLM 을 부르지 않으므로 usage 행이 없었고, 그래서 **이 앱에서 가장
+          // 이해관계가 큰 경로의 발동 횟수를 셀 수 없었다.** 0토큰 행 하나를 남긴다 — 비용은 insert
+          // 한 번이고, 라우터가 과발화/미발화하는지는 SQL 로만 답할 수 있는 질문이다.
+          //
+          // ⚠ 개인정보 — 남기는 것과 남기지 않는 것:
+          //   남긴다  : 어떤 라우트(4개 닫힌 집합) · 시각 · 대기시간
+          //   안 남긴다: **user_id(null)** · request_id · 질문 원문 · 매칭된 표현 · 증상 · 상황
+          // user_id 를 일부러 비운다. 우리는 정신건강 시스템이 아니고(모듈 헤더가 명시) "이 사용자가
+          // 자해를 언급했다"에 대해 취할 후속 절차가 없다. 행동할 수 없는 민감 신호를 귀속 가능한
+          // 형태로 보관하는 것은 순수한 위험이다. 세는 것으로 필요한 판단(라우터가 도는가, 비율이
+          // 변하는가)은 전부 답할 수 있다. request_id 도 뺀다 — 세는 데 조인 키는 필요 없고, 그것이
+          // 플랫폼 로그로 되짚는 경로가 된다.
+          //
+          // status 는 'success' 다: 요청은 실제로 성공했고(사용자는 올바른 통제 응답을 받았다),
+          // 구분은 request_type='safety_route' 가 한다 — 원가 집계(`request_type='chat'`)에도 섞이지
+          // 않는다. 실패해도 응답을 막지 않는다(logAiUsage 는 자체적으로 삼킨다).
+          await logAiUsage(
+            {
+              user_id: null,
+              model: null,
+              request_type: 'safety_route',
+              input_tokens: null,
+              output_tokens: null,
+              total_tokens: null,
+              latency_ms: Date.now() - startedAt,
+              status: 'success',
+              error_code: null,
+            },
+            null,
+            { gate_firings: gateFiringSummary(crisisStop.diagnostics) },
+          );
           return Response.json({ text: crisisStop.text, groundingMeta: crisisStop.groundingMeta });
         }
 
@@ -1385,14 +1685,26 @@ export default {
               outputTokens: toNullableInt(capturedUsage.output_tokens),
               totalTokens: toNullableInt(capturedUsage.total_tokens),
             });
+            // Tokens, not null — same reason as the summary branch: an incomplete/failed Responses call is
+            // still billed and still reports usage, and recording it as NULL made the failure look free.
+            const failedUsage = parseUsageDetails(capturedUsage);
             await logAiUsage(
               {
                 user_id: userId, model: routedModel, request_type: 'chat',
-                input_tokens: null, output_tokens: null, total_tokens: null,
+                input_tokens: toNullableInt(capturedUsage.input_tokens),
+                output_tokens: toNullableInt(capturedUsage.output_tokens),
+                total_tokens: toNullableInt(capturedUsage.total_tokens),
                 latency_ms: Date.now() - startedAt, status: 'error',
                 error_code: code,
               },
               requestId,
+              {
+                cached_input_tokens: failedUsage.cachedInputTokens,
+                reasoning_tokens: failedUsage.reasoningTokens,
+                max_output_tokens: profile.maxOutputTokens,
+                complexity,
+                reasoning_effort: profile.reasoningEffort,
+              },
             );
             await releasePaidRequest(paid.context);
             await releaseDukIfHeld(); // first-turn failure → 0 charged (§7)
@@ -1403,13 +1715,16 @@ export default {
           // rejected-non-answer path below: a paid divination product must never bill for a reading it could
           // not perform, and must not fill the gap with general coaching. The consumer-safe explanation says
           // what input would let it run.
-          if (result.reason === 'GROUNDING_UNAVAILABLE') {
-            logDiag(requestId, 'GROUNDING', 'GROUNDING_UNAVAILABLE', { path: 'consultation' });
+          // AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED is the SAME outcome with a narrower cause (절기 경계일 +
+          // no exact birth time). It shares this branch on purpose: identical release + identical
+          // releaseDukIfHeld, so the 0-덕 guarantee is the same code path, not a parallel one to keep in sync.
+          if (result.reason === 'GROUNDING_UNAVAILABLE' || result.reason === 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED') {
+            logDiag(requestId, 'GROUNDING', result.reason, { path: 'consultation' });
             await releasePaidRequest(paid.context);
             await releaseDukIfHeld();
             return Response.json(
-              { error: 'GROUNDING_UNAVAILABLE', message: result.message ?? null },
-              { status: REASON_STATUS.GROUNDING_UNAVAILABLE },
+              { error: result.reason, message: result.message ?? null },
+              { status: REASON_STATUS[result.reason] },
             );
           }
           // SUBJECT_FORBIDDEN(403) / SUBJECT_NOT_FOUND(404) / INVALID_INPUT(400) — attribute the stage.
@@ -1423,6 +1738,8 @@ export default {
         // complexity/effort/ceiling. All non-PII scalars; written via the progressive fallback so a
         // not-yet-applied column never loses the row. Turns the cost estimates into MEASURED per-Q&A cost.
         const usageDetails = parseUsageDetails(capturedUsage);
+        // 게이트 발화 요약 (순수 함수, 번들 공유). 발화가 없으면 null.
+        const gateSummary = gateFiringSummary(result.diagnostics);
         await logAiUsage(
           {
             user_id: userId, model: routedModel, request_type: 'chat',
@@ -1438,17 +1755,42 @@ export default {
             max_output_tokens: profile.maxOutputTokens,
             complexity,
             reasoning_effort: profile.reasoningEffort,
+            // 게이트 발화 (2026-09-06). ⚠ 발화가 있을 때만 키를 넣는다. 점진적 폴백은 실패 시
+            // `extra` 를 **통째로** 떨구므로, 컬럼이 아직 없는 환경에서 이 키를 늘 넣으면 정상 응답의
+            // 원가 텔레메트리까지 같이 날아간다. 조건부로 넣으면 정상 응답의 삽입은 오늘과 글자 그대로
+            // 같고, 컬럼이 없는 환경에서도 잃는 것은 발화 행의 텔레메트리 하나뿐이다(그 경우에도
+            // 진단 로그 줄은 남는다) → 기록 실패가 응답을 막지 않는다.
+            ...(gateSummary ? { gate_firings: gateSummary } : {}),
           },
         );
 
         // Diagnose WHY a success response was NOT rendered as a card (§3): a card-worthy answer
         // (structuredResult present) needs no diagnostic; a fallback / safe-message does. Safe fields only.
-        if (result.diagnostics && result.diagnostics.outputClassification !== 'ACCEPTED') {
-          logDiag(requestId, 'RESPONSE_VALIDATION', result.diagnostics.rejectionReason ?? 'UNKNOWN', {
+        //
+        // ⚠ 2026-09-06 — 조건이 `!== 'ACCEPTED'` 하나였다. 그런데 **문장 단위 폐기는 답변이 그대로
+        // 배달되므로 ACCEPTED 다.** 즉 스크러버가 가장 흔하게 하는 일이 한 줄도 안 남고 있었다
+        // (감사에서 "발생 0건" 으로 보인 이유). 게이트가 발화했으면 분류와 무관하게 남긴다.
+        const gateFired = Boolean(
+          result.diagnostics
+          && (result.diagnostics.groundedFallback
+            || (result.diagnostics.groundedViolations?.length ?? 0) > 0),
+        );
+        if (result.diagnostics && (result.diagnostics.outputClassification !== 'ACCEPTED' || gateFired)) {
+          logDiag(requestId, 'RESPONSE_VALIDATION', result.diagnostics.rejectionReason ?? 'GATE_FIRED', {
             path: 'consultation',
             model: routedModel,
             validationCategory: result.diagnostics.outputClassification,
             grounded: result.groundingMeta.grounded,
+            groundedFallback: result.diagnostics.groundedFallback,
+            groundedViolations: result.diagnostics.groundedViolations,
+            groundedViolationCount: result.diagnostics.groundedViolationCount,
+            groundedGateUnit: result.diagnostics.groundedGateUnit,
+            safetyRoute: result.diagnostics.safetyRoute,
+            regenerated: result.diagnostics.regenerated,
+            // ⚠ 진단값 중 "LLM 부재" 플래그는 일부러 넣지 않았다. `consultationDeliveryV6.test.ts` 가
+            // **Edge 소스에 그 식별자가 등장하지 않는 것** 자체로 "Edge 는 그것으로 분기하지 않는다
+            // = 배달 경로는 하나"를 잠그고 있다(주석에 적어도 잠금이 깨진다). 관측 목표(어떤 게이트가
+            // 몇 번 발화했나)와도 무관하고, 그 사건은 error_code 가 이미 센다.
           });
         }
 

@@ -14,6 +14,8 @@ import { useAuth } from '@/features/auth';
 import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
 import { ShareReportSheet } from '@/features/chat/report/ShareReportSheet';
 import { toPremiumReportView, type PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
+import { toPremiumProductView } from '@/features/premium/presentation/premiumReportProjection';
+import type { PremiumReportPayload } from '@/features/premium/types';
 import { reportService } from '@/features/chat/report/reportService';
 
 // 상담 보고서 상세 (Commercial UX V4 §5–§28). Lives INSIDE the (tabs) group so it renders within the REAL
@@ -44,7 +46,11 @@ export default function ConsultationReportDetailScreen() {
           setStatus('notfound');
           return;
         }
-        setView(toPremiumReportView(report));
+        // A premium row carries its own payload shape, so it takes its own projection into the SAME
+        // view-model. The renderer below is untouched — that is the point of the projection.
+        setView(report.reportType === 'premium'
+          ? toPremiumProductView(report.payload as PremiumReportPayload)
+          : toPremiumReportView(report));
         setStatus('ready');
       })
       .catch(() => {
@@ -67,7 +73,7 @@ export default function ConsultationReportDetailScreen() {
 
   return (
     <Screen padded={false} frame>
-      <AppHeader title="상담 보고서" showBack showBell onBack={handleBack} />
+      <AppHeader title={view?.eyebrow === '프리미엄 리포트' ? '프리미엄 리포트' : '상담 보고서'} showBack showBell onBack={handleBack} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           {status === 'loading' || authState.status === 'loading' ? (

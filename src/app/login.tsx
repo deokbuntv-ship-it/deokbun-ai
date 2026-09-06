@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/Screen';
 import { SocialButton } from '@/components/SocialButton';
+import { colors } from '@/theme';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth, type AuthProviderId } from '@/features/auth';
@@ -19,6 +20,22 @@ import { trackOnboardingEvent } from '@/features/onboarding/onboardingAnalytics'
 // (thumb reach). Social auth is BOTH login and signup — no "로그인 vs 회원가입" choice up front; new-vs-existing
 // is resolved after auth by the onboarding resolver. On success we ALWAYS route to /onboarding (never straight
 // to Home or a shared report): the resolver decides the next step and is the single consumer of any continuation.
+/**
+ * Apple button placement (2026-09-02, when Apple became a V1 requirement).
+ *
+ * SHOWN ON EVERY PLATFORM, not iOS-only. The reason is account portability, not parity for its own sake:
+ * someone who signs up with Apple on an iPhone must be able to log in to the SAME account from the web.
+ * Hiding the button off iOS would strand those accounts. iOS uses the system sheet; web and Android use
+ * the Supabase provider flow — both land on the same Supabase identity, so it is one account.
+ *
+ * FIRST ON iOS, LAST ELSEWHERE. Apple's platform guidance is that Sign in with Apple appears at least as
+ * prominently as the other options, and "first" is the unambiguous reading of that. Off iOS that guidance
+ * does not apply and the Korean-market order (Kakao first) is the better one.
+ * ⚠ The exact placement requirement is a store-policy question this repository cannot verify — flagged for
+ * owner confirmation. Changing it is a one-line edit here.
+ */
+const APPLE_FIRST_ON_IOS = Platform.OS === 'ios';
+
 export default function LoginScreen() {
   const router = useRouter();
   const { signInWithProvider, isSigningIn } = useAuth();
@@ -78,9 +95,18 @@ export default function LoginScreen() {
 
         {/* Social CTAs anchored low (thumb reach, §38). Each provider keeps its own signature — never orange. */}
         <Stack gap="sm" style={{ paddingBottom: 12 }}>
+          {/* Apple first on iOS (see APPLE_FIRST_ON_IOS). Written out per provider rather than mapped over
+              an array so the existing source-level regression locks keep working and each provider's
+              wiring stays greppable. */}
+          {APPLE_FIRST_ON_IOS ? (
+            <SocialButton provider="apple" onPress={() => handleLogin('apple')} disabled={isSigningIn} loading={pending === 'apple'} />
+          ) : null}
           <SocialButton provider="kakao" onPress={() => handleLogin('kakao')} disabled={isSigningIn} loading={pending === 'kakao'} />
           <SocialButton provider="naver" onPress={() => handleLogin('naver')} disabled={isSigningIn} loading={pending === 'naver'} />
           <SocialButton provider="google" onPress={() => handleLogin('google')} disabled={isSigningIn} loading={pending === 'google'} />
+          {APPLE_FIRST_ON_IOS ? null : (
+            <SocialButton provider="apple" onPress={() => handleLogin('apple')} disabled={isSigningIn} loading={pending === 'apple'} />
+          )}
 
           {errorText ? (
             <Text variant="bodySmall" colorToken="danger" style={{ textAlign: 'center', paddingTop: 4 }}>
@@ -108,7 +134,9 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FDF3D7', // surface.butter — the login screen renders before any theme branch matters
+    // surface.butter. 로그인 화면은 테마 분기 전에 그려지므로 **의도적으로 라이트 값 고정**이다
+    // (2026-09-06: 같은 값을 하드코딩하던 것을 토큰 참조로 바꿨다 — 시각 변화 0).
+    backgroundColor: colors.light.surfaceButter,
   },
   markGlyph: { fontSize: 30, lineHeight: 38 },
   valueProp: { textAlign: 'center' },
