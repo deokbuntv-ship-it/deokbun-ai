@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "_buildCommand_why": "expo export 를 직접 부르면 정적 라우트 데이터와 sitemap 이 빠진다 — 유명인 페이지가 0개가 되고 그 사실이 사람 눈에는 안 보인다. 순서는 scripts/build-web.mjs 가 강제한다.",
   "buildCommand": "node scripts/build-web.mjs",
   "outputDirectory": "dist",
   "framework": null,

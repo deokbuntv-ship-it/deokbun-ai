@@ -13,6 +13,12 @@
 // crawler. That failure is impossible to notice by looking at the app, which is exactly why the
 // order belongs in a file instead of in someone's memory.
 //
+// ⚠ WHY vercel.json POINTS HERE. `vercel.json` sets `buildCommand` to this file rather than to
+// `expo export`. That reason used to live in vercel.json as a `_buildCommand_why` key — Vercel
+// rejects the whole file for any key outside its schema ("should NOT have additional property"),
+// so the note moved here, next to the thing it explains. **vercel.json takes no comments and no
+// extra keys.** Anything worth saying about the build goes in this header.
+//
 // ⚠ `package.json` is a PROTECTED file in this repo, so this is a script rather than an npm script.
 // The `npm run build:web` diff for the owner to apply is in `docs/OWNER_TODO.md`.
 //
