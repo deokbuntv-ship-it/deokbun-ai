@@ -14,6 +14,17 @@
 // database was briefly unreachable — it should produce a site with no famous pages, which is the
 // same thing that happens when nobody has published yet.
 //
+// ⚠ BUT FAIL-OPEN MUST STILL SAY WHY. Measured 2026-09-06: a Vercel Preview logged
+//   `wrote src/generated/famousStatic.ts (0 famous pages)` — the SUCCESS line, not SKIP and not
+//   FAILED. So the env was set, nothing threw, and the RPC simply returned nothing. The log could
+//   not distinguish "pointed at a database with no published people" from "published people exist
+//   but something dropped them", because it never said WHICH DATABASE it had reached.
+//   Staging at that moment returned 5 rows to the same publishable key.
+//
+//   Every line below therefore stamps the Supabase host. **Never the key** — the host is what
+//   identifies the environment, and it is not a secret. This is the same lesson as
+//   `PROJECT_STATE` §7.34: a measurement without its source is a rumour.
+//
 // Usage (before a web export):
 //   node scripts/generate-static-routes.mjs
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -55,11 +66,20 @@ function emit(entries, stamp) {
 const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim();
 const supabaseKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '').trim();
 
+// 호스트만 뽑는다. 키는 어떤 형태로도 찍지 않는다.
+const hostOf = (u) => { try { return new URL(u).host; } catch { return '(unparsable)'; } };
+const where = supabaseUrl ? hostOf(supabaseUrl) : '(unset)';
+
 if (!supabaseUrl || !supabaseKey) {
-  console.log('[static-routes] SKIP — Supabase env not set. Wrote the empty module (0 famous pages).');
+  console.log(
+    `[static-routes] SKIP — Supabase env not set (url=${supabaseUrl ? where : 'unset'}, `
+    + `key=${supabaseKey ? 'set' : 'unset'}). Wrote the empty module (0 famous pages).`,
+  );
   emit([], null);
   process.exit(0);
 }
+
+console.log(`[static-routes] source ${where}`);
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -79,13 +99,23 @@ try {
     slugs.push(...rows.map((r) => r.slug).filter(Boolean));
     if (rows.length < pageSize) break;
   }
+  console.log(`[static-routes] public_list_famous → ${slugs.length} published slug(s) from ${where}`);
+  if (slugs.length === 0) {
+    // 여기서 멈추면 원인이 하나로 좁혀진다 — 붙긴 붙었는데 그 DB 에 발행된 사람이 없다.
+    console.warn(
+      `[static-routes] ⚠ ${where} has no rows matching status='published' AND is_public=true `
+      + 'AND slug is not null. The connection and the key are fine — this database simply has '
+      + 'nobody published. Check that EXPO_PUBLIC_SUPABASE_URL points at the environment that '
+      + 'holds the famous profiles.',
+    );
+  }
 
   // 2) Full detail per slug — the list RPC does not carry `bio`, and the body is the whole point.
   const entries = [];
   for (const slug of slugs) {
     const { data, error } = await supabase.rpc('public_get_famous', { p_slug: slug });
     if (error) throw error;
-    if (!data) continue;
+    if (!data) { console.warn(`[static-routes] ⚠ public_get_famous returned nothing for "${slug}" — skipped`); continue; }
     entries.push({
       slug: str(data.slug) ?? slug,
       name: str(data.name) ?? slug,
@@ -111,10 +141,14 @@ try {
   }
 
   emit(entries, new Date().toISOString());
-  console.log(`[static-routes] wrote src/generated/famousStatic.ts (${entries.length} famous pages).`);
+  console.log(
+    `[static-routes] wrote src/generated/famousStatic.ts (${entries.length} famous pages`
+    + `${entries.length === slugs.length ? '' : ` — ${slugs.length - entries.length} slug(s) dropped at detail`}`
+    + `, source ${where}).`,
+  );
 } catch (err) {
   // ⚠ Never break the build. An unreachable database must not stop a release.
-  console.error(`[static-routes] FAILED — wrote the empty module instead: ${String(err).slice(0, 200)}`);
+  console.error(`[static-routes] FAILED against ${where} — wrote the empty module instead: ${String(err).slice(0, 200)}`);
   emit([], null);
   process.exit(0);
 }

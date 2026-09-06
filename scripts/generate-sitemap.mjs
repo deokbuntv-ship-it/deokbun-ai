@@ -47,6 +47,9 @@ if (!supabaseUrl || !supabaseKey) {
   process.exit(1);
 }
 
+// ⚠ 출처를 찍는다(키는 절대 안 찍는다). 개수만 보고 어느 DB 인지 모르면 0이 왜 0인지 알 수 없다.
+console.log(`[sitemap] source ${(() => { try { return new URL(supabaseUrl).host; } catch { return '(unparsable)'; } })()} · base ${base}`);
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function collect(rpc, args) {
