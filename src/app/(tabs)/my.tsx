@@ -12,6 +12,7 @@ import { ListRow } from '@/components/ListRow';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
+import { buildBannerInfo, buildBannerLine } from '@/config/buildBanner';
 import { useAuth } from '@/features/auth';
 import { useConsultationSubjects } from '@/features/consultation';
 import { walletStateOf } from '@/features/duk/consumerDukView';
@@ -251,6 +252,16 @@ export default function MyScreen() {
               덕분이의 해석은 자기이해와 의사결정을 돕기 위한 참고 정보이며,
               의료·법률·투자 등 중대한 판단의 단독 근거로 사용하지 않습니다.
             </Text>
+
+            {/* ⚠ 내부 테스트 빌드에서만 보인다. 스토어 빌드(production 프로필)에서는 `null` 이라
+                아무것도 그려지지 않는다 — `buildBanner.test.ts` 가 양방향으로 잠근다.
+                왜 필요한가: 오너가 폰에서 레이아웃을 볼 때, 그 빌드가 어느 DB 를 보는지 화면에
+                없으면 남긴 데이터가 어디에 쌓였는지 나중에 알 수 없다(H5 가 그 사고였다). */}
+            {buildBannerLine(buildBannerInfo()) ? (
+              <Text variant="caption" colorToken="textMuted" style={styles.buildBanner}>
+                {buildBannerLine(buildBannerInfo())}
+              </Text>
+            ) : null}
           </Stack>
         </View>
       </ScrollView>
@@ -288,4 +299,6 @@ const styles = StyleSheet.create({
   logoutLabel: { fontWeight: '600' },
   deleteAccount: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   disclaimer: { paddingTop: spacing.lg, paddingHorizontal: spacing.xs, lineHeight: 18 },
+  // 내부 빌드 전용 한 줄. 눈에 띄되 화면을 차지하지 않게 — 오너가 확인용으로만 본다.
+  buildBanner: { paddingTop: spacing.sm, paddingHorizontal: spacing.xs, opacity: 0.7 },
 });

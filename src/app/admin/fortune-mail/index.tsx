@@ -14,6 +14,7 @@ import {
   type AdminTableColumn,
 } from '@/features/admin';
 import { adminMono, adminTheme } from '@/features/admin/adminTheme';
+import { AdminConfirmDialog } from '@/features/admin/components/AdminConfirmDialog';
 import {
   adminEmailCampaignService,
   type EmailCampaignDetail,
@@ -113,6 +114,9 @@ export default function AdminFortuneMailScreen() {
   const [detail, setDetail] = useState<EmailCampaignDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(false);
+  // ⚠ 즉시 발송은 회수가 안 된다. 누르는 순간이 아니라 **확인한 순간**에 나가게 한다.
+  //   그리고 확인 문구에 수신자 수를 넣는다 — 몇 명에게 가는지 모르고 누르는 일이 없어야 한다.
+  const [sendNowFor, setSendNowFor] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [scheduleInput, setScheduleInput] = useState('');
@@ -364,6 +368,29 @@ export default function AdminFortuneMailScreen() {
       </Stack>
 
       {/* (4) 선택한 캠페인 상세 + 액션 */}
+      <AdminConfirmDialog
+        visible={sendNowFor !== null}
+        busy={actionBusy}
+        title="지금 발송할까요?"
+        what="이 캠페인의 대기 중인 메일이 발송 대기열로 넘어갑니다. 한 번 나간 메일은 회수할 수 없습니다."
+        scope={
+          detail
+            ? `대상자 ${detail.campaign.totalCount}명에게 발송됩니다. 동의하지 않았거나 주소가 잘못된 사람은 이미 제외된 숫자입니다.`
+            : '대상자 수를 아직 불러오지 못했습니다. 목록을 다시 연 뒤에 발송하십시오.'
+        }
+        reversible={
+          '아직 나가지 않은 건은 캠페인을 취소해 멈출 수 있습니다. **이미 나간 메일은 되돌릴 수 없습니다.** '
+          + '이메일 제공자(EMAIL_PROVIDER)가 아직 연결되지 않았다면 실제 전송은 일어나지 않고 대기 상태로만 남습니다.'
+        }
+        confirmLabel="발송합니다"
+        onCancel={() => setSendNowFor(null)}
+        onConfirm={() => {
+          const id = sendNowFor;
+          setSendNowFor(null);
+          if (id) void doSendNow(id);
+        }}
+      />
+
       {selectedId ? (
         <CampaignDetailPanel
           loading={detailLoading}
@@ -375,7 +402,7 @@ export default function AdminFortuneMailScreen() {
           onScheduleInputChange={setScheduleInput}
           onFillTomorrow={() => setScheduleInput(new Date(Date.now() + 86_400_000).toISOString())}
           onSchedule={() => void doSchedule(selectedId)}
-          onSendNow={() => void doSendNow(selectedId)}
+          onSendNow={() => setSendNowFor(selectedId)}
           onCancel={() =>
             void runReturningCount(
               selectedId,

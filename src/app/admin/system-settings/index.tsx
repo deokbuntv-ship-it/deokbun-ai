@@ -4,6 +4,8 @@ import { Switch, View } from 'react-native';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { AdminPageHeader } from '@/features/admin';
+import { AdminConfirmDialog } from '@/features/admin/components/AdminConfirmDialog';
+import { guardWarningLabel } from '@/features/admin/presentation/labels';
 import { adminTheme } from '@/features/admin/adminTheme';
 import {
   fetchGlobalGenerationGuard,
@@ -103,6 +105,10 @@ function GenerationGuardCard() {
   const [guard, setGuard] = useState<GlobalGenerationGuard | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  // ⚠ 토글을 즉시 반영하지 않는다. 스위치는 **요청**만 만들고, 실제 반영은 확인 뒤에 일어난다.
+  //   2026-09-06 이전에는 onValueChange 가 곧바로 서버를 바꿨다 — 화면을 훑다가 스치기만 해도
+  //   전 사용자의 유료 생성이 멈췄고, 멈췄다는 사실을 알려 주는 것이 아무것도 없었다.
+  const [pending, setPending] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     const g = await fetchGlobalGenerationGuard();
@@ -114,15 +120,21 @@ function GenerationGuardCard() {
   }, [load]);
 
   const onToggle = useCallback(
-    async (next: boolean) => {
+    (next: boolean) => {
       if (!guard || saving) return;
-      setSaving(true);
-      const ok = await setGlobalGenerationEnabled(next, guard.hourlyLimit, guard.dailyLimit);
-      if (ok) await load();
-      setSaving(false);
+      setPending(next);
     },
-    [guard, saving, load],
+    [guard, saving],
   );
+
+  const applyPending = useCallback(async () => {
+    if (!guard || pending === null) return;
+    setSaving(true);
+    const ok = await setGlobalGenerationEnabled(pending, guard.hourlyLimit, guard.dailyLimit);
+    if (ok) await load();
+    setSaving(false);
+    setPending(null);
+  }, [guard, pending, load]);
 
   const warnTone =
     guard?.warningLevel === 'CRITICAL_95' ? adminTheme.warning : guard?.warningLevel === 'WARNING_80' ? adminTheme.warning : adminTheme.inkVariant;
@@ -148,7 +160,35 @@ function GenerationGuardCard() {
           </View>
           <InfoRow label="시간당 사용/한도" value={`${guard.hourlyUsed} / ${guard.hourlyLimit}`} />
           <InfoRow label="일일 사용/한도" value={`${guard.dailyUsed} / ${guard.dailyLimit}`} />
-          <InfoRow label="사용률 · 경고 단계" value={`${guard.utilizationPercent}% · ${guard.warningLevel}`} tone={warnTone} />
+          <InfoRow label="사용률 · 경고 단계" value={`${guard.utilizationPercent}% · ${guardWarningLabel(guard.warningLevel)}`} tone={warnTone} />
+
+          {/* 끄는 쪽과 켜는 쪽 **둘 다** 확인을 받는다. 토글은 방향을 구분하지 않으므로,
+              잘못 건드리는 사고는 양방향으로 똑같이 일어난다. 그리고 재개는 "지출을 다시 연다" 는
+              결정이라 그 자체로 한 번 볼 값어치가 있다. 문구를 방향별로 달리 줘서 지금 어느 쪽인지
+              오너가 확실히 알게 한다. */}
+          <AdminConfirmDialog
+            visible={pending !== null}
+            busy={saving}
+            title={pending === false ? 'AI 생성을 중지할까요?' : 'AI 생성을 재개할까요?'}
+            what={
+              pending === false
+                ? '새로 시작되는 유료 생성이 전부 즉시 거절됩니다 — 상담·궁합·Premium·오늘의 운세·월간 운세 전부입니다.'
+                : '새 유료 생성이 다시 허용됩니다. OpenAI 비용이 다시 발생하기 시작합니다.'
+            }
+            scope={
+              pending === false
+                ? '모든 사용자에게 즉시 적용됩니다. 이미 시작된 요청은 끝까지 마칩니다 — 가드는 요청을 받을 때 한 번만 보기 때문입니다. 이미 만들어진 답변과 캐시는 그대로 보입니다.'
+                : `모든 사용자에게 즉시 적용됩니다. 시간당 ${guard.hourlyLimit}건 · 하루 ${guard.dailyLimit}건 한도 안에서 다시 동작합니다.`
+            }
+            reversible={
+              pending === false
+                ? '되돌릴 수 있습니다 — 같은 스위치를 다시 켜면 즉시 재개됩니다. 다만 중지된 동안 거절된 요청은 사용자가 다시 시도해야 합니다.'
+                : '되돌릴 수 있습니다 — 같은 스위치를 다시 끄면 즉시 중지됩니다.'
+            }
+            confirmLabel={pending === false ? '중지합니다' : '재개합니다'}
+            onCancel={() => setPending(null)}
+            onConfirm={() => void applyPending()}
+          />
         </>
       )}
     </Card>

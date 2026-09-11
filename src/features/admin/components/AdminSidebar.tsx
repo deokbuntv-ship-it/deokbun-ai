@@ -29,7 +29,14 @@ const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '대시보드', href: '/admin' },
   { label: '사용자 관리', href: '/admin/users' },
   { label: '상담 관리', href: '/admin/consultations' },
-  { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
+  // ⚠ 2026-09-06 메뉴에서 감춤 — **화면 파일은 남겨 둔다.**
+  //   이 화면은 `admin_list_intelligence_runs` · `admin_get_intelligence_run` 을 부르는데,
+  //   그 둘은 `docs/CONSULTATION_INTELLIGENCE_DB.sql` 에만 있고 staging·production 어디에도
+  //   승격되지 않았다. 시임(`isConnected()`)이 있어 크래시는 안 나지만, 오너에게는 **열면 늘
+  //   비어 있는 메뉴**로 보인다. 파이프라인이 생기면 이 줄의 주석만 풀면 되살아난다.
+  //   (미승격 사유는 `FEATURE_MASTER_CHECKLIST` §스키마 표 참조 — "쓰는 코드가 없어서" 가 아니라
+  //    "파이프라인이 없어서" 다. 화면과 서비스는 이미 있다.)
+  // { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
   { label: '고객문의', href: '/admin/support' },
   { label: '홈 인기질문', href: '/admin/popular-questions' },
   { label: '리텐션 · 알림', href: '/admin/retention' },

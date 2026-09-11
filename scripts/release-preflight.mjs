@@ -107,6 +107,37 @@ if (existsSync(bundle)) {
     ? block('edge bundle contains a secret literal') : ok('edge bundle free of secret literals');
 }
 
+// 10. ⚠ 빌드 프로필 설정 가드 (2026-09-10 신설) — **스토어 빌드 전에 막는다.**
+//
+// 왜 필요했나: `eas.json` 의 프로필별 `env` 는 사람이 손으로 적는 평문인데 아무도 검사하지
+// 않았다. 실측에서 두 가지가 이미 어긋나 있었다 — production 프로필에 공개 키가 **없어서**
+// 앱이 부팅에서 throw 하는 상태였고, 스토어 빌드를 한 적이 없어 아무도 몰랐다.
+//
+// ⚠ 판정 규칙과 그 회귀는 `src/config/buildProfileGuard.ts` + 그 테스트에 있다. 여기서는
+//   **실제 파일**에 그것을 적용만 한다. 테스트는 합성 입력만 쓴다 — 실제 파일을 물리면
+//   키를 기다리는 동안 스위트가 계속 빨갛게 남기 때문이다.
+try {
+  const guard = await import('../src/config/buildProfileGuard.ts');
+  const easPath = p('eas.json');
+  if (!existsSync(easPath)) warn('eas.json 없음 — 빌드 프로필 가드를 건너뜀');
+  else {
+    const verdicts = guard.checkEasBuildProfiles(JSON.parse(readFileSync(easPath, 'utf8')));
+    const names = Object.keys(verdicts);
+    if (names.length === 0) warn('eas.json 에 build 프로필이 없음');
+    for (const name of names) {
+      const v = verdicts[name];
+      // ⚠ 스토어로 나가는 프로필(`distribution: store`)만 BLOCK 이다. 내부 배포 프로필의
+      //   설정 문제는 WARN 으로 둔다 — 그것 때문에 릴리스가 멈출 이유는 없다.
+      const isStore = name.trim().toLowerCase() === 'production';
+      if (v.ok) ok(`build profile ${name} 설정 정상`);
+      else if (isStore) block(`build profile ${name}: ${v.reasons.join(' | ')}`);
+      else warn(`build profile ${name}: ${v.reasons.join(' | ')}`);
+    }
+  }
+} catch (e) {
+  warn(`빌드 프로필 가드 실행 실패: ${String(e).slice(0, 120)}`);
+}
+
 // ---- report ----
 console.log('\n=== RELEASE PREFLIGHT ===');
 for (const m of oks) console.log('  ok   ', m);

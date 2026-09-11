@@ -5866,10 +5866,110 @@ function buildFamousBodyUserPrompt(chart) {
 function clampSemicolons(text) {
   return text.replace(/\s*;\s*/g, ". ");
 }
+var EMPTY_SLOTS = ["년간", "월간", "일간", "시간", "년지", "월지", "일지", "시지"];
+var EMPTY_GLYPH = "[갑을병정무기경신임계자축인묘진사오미유술해]";
+var EMPTY_STOP = /* @__PURE__ */ new Set([
+  "이",
+  "그",
+  "저",
+  "이런",
+  "이러한",
+  "여기",
+  "명식",
+  "자료",
+  "것",
+  "때",
+  "등",
+  "및",
+  "또",
+  "또한",
+  "그리고",
+  "따라서",
+  "즉",
+  "이처럼",
+  "서",
+  "있",
+  "표기",
+  "자체",
+  "로",
+  "으로",
+  "에서",
+  "해당",
+  "경우",
+  "놓",
+  "놓여",
+  "섰",
+  "섬",
+  "자리",
+  "위치",
+  "존재",
+  "되",
+  "기재",
+  "적"
+]);
+function emptyStem(word) {
+  return word.replace(/(습니다|입니다|합니다|됩니다|한다|이다|였다|있다)$/, "").replace(/(에서는|으로는|에서|으로|에게|에|은|는|이|가|을|를|의|와|과|도|만|로|나)$/, "").trim();
+}
+function isEmptySentence(sentence) {
+  const raw = String(sentence ?? "").trim();
+  if (raw === "") return null;
+  const ev = /[(（]\s*근거\s*[:：][\s\S]*$/.exec(raw);
+  const body = (ev ? raw.slice(0, ev.index) : raw).trim();
+  if (body === "") return null;
+  const hits = EMPTY_SLOTS.filter((s) => (body.match(new RegExp(s, "g")) ?? []).length >= 2);
+  if (hits.length === 1) {
+    const slot = hits[0];
+    const after = "(?=[은는이가을를와과로으에의도만·,.\\s)\\]]|$)";
+    const echo = new RegExp(`${slot}\\s*(${EMPTY_GLYPH})${after}`).exec(body);
+    const isSubject = new RegExp(`${slot}\\s*(?:${EMPTY_GLYPH}\\s*)?[은는이가]`).test(body);
+    if (echo && isSubject) {
+      const glyph = echo[1];
+      const leftover = body.split(/[^가-힣0-9A-Za-z㐀-鿿]+/).map(emptyStem).filter((w) => w.length > 0).filter((w) => w !== slot && w !== glyph).filter((w) => !/^[㐀-鿿]+$/.test(w)).filter((w) => !EMPTY_STOP.has(w));
+      if (leftover.length === 0) {
+        return `자리 되풀이: '${slot}' 을 '${slot} ${glyph}' 로 되받을 뿐 새로 놓는 것이 없음`;
+      }
+    }
+  }
+  if (/(이|본|위)\s*(해석|설명|문장|풀이|서술|기술)[은는]/.test(body) && /(자료|원문|표기|기록)/.test(body) && /(따릅니다|따랐습니다|따른\s*것입니다|근거합니다|인용합니다|옮긴\s*것입니다)/.test(body)) {
+    return '출처 고백: 명식이 아니라 "자료를 그대로 따랐다" 는 인용 태도만 말함';
+  }
+  return null;
+}
+function splitBalanced(text) {
+  const out = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === "(" || c === "（") depth += 1;
+    else if (c === ")" || c === "）") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && /[.!?]/.test(c) && /\s|$/.test(text[i + 1] ?? " ")) {
+      out.push(text.slice(start, i + 1).trim());
+      start = i + 1;
+    }
+  }
+  const tail = text.slice(start).trim();
+  if (tail !== "") out.push(tail);
+  return out.filter((s) => s !== "");
+}
+function dropEmptySentences(text) {
+  const kept = splitBalanced(text).filter((s) => isEmptySentence(s) === null);
+  return kept.length > 0 ? kept.join(" ") : text;
+}
+function droppedEmptySentences(sections2) {
+  const out = [];
+  for (const k of Object.keys(FAMOUS_BODY_SECTION_TITLES)) {
+    for (const sen of splitBalanced(clampSemicolons(sections2[k].trim()))) {
+      const why = isEmptySentence(sen);
+      if (why !== null) out.push(`${FAMOUS_BODY_SECTION_TITLES[k]}: "${sen}" — ${why}`);
+    }
+  }
+  return out;
+}
 function composeFamousBody(sections2) {
   return Object.keys(FAMOUS_BODY_SECTION_TITLES).map((k) => `## ${FAMOUS_BODY_SECTION_TITLES[k]}
 
-${clampSemicolons(sections2[k].trim())}`).join("\n\n");
+${dropEmptySentences(clampSemicolons(sections2[k].trim()))}`).join("\n\n");
 }
 var FAMOUS_BODY_FORBIDDEN = [
   // ⚠ 시간 축. 이것이 들어가면 명식 해설이 아니라 인물 예측이다.
@@ -6027,19 +6127,30 @@ function namedGlyphs(sentence) {
   );
   return [...new Set([...stripped.matchAll(re)].map((m) => m[1]))];
 }
+function splitEvidence(sentence) {
+  const at = sentence.search(/[(（]\s*근거\s*[:：]/);
+  return at < 0 ? { body: sentence, evidence: "" } : { body: sentence.slice(0, at).trim(), evidence: sentence.slice(at) };
+}
+function plainAnchorClaim(body, label2) {
+  const exists = "(?:있|형성|성립|생기|맺|나타|존재)";
+  return new RegExp(`(?<![가-힣])(?:천간)?${label2}(?:[이가]\\s*${exists}|입니다|이었)`).test(body);
+}
 function checkRelationClaims(markdown, chart) {
   const out = [];
   const facts = chart.relations ?? [];
   for (const { sentences } of sections(markdown)) {
     for (const sentence of sentences) {
       if (/없|아니|아닙|않|없이/.test(sentence)) continue;
-      const named = namedGlyphs(sentence);
+      const { body } = splitEvidence(sentence);
+      const named = namedGlyphs(body);
       for (const anchor of RELATION_ANCHORS) {
-        if (!sentence.includes(`(${anchor.hanja})`) && !sentence.includes(`（${anchor.hanja}）`)) continue;
+        const hasHanja = sentence.includes(`(${anchor.hanja})`) || sentence.includes(`（${anchor.hanja}）`);
+        if (!hasHanja && !plainAnchorClaim(body, anchor.label)) continue;
         const kindExists = facts.some((f) => f.name.includes(anchor.label));
-        if (named.length < 2 && kindExists) break;
+        const slotPairs = body.match(new RegExp(`(?:년|월|일|시)(?:간|지|주)\\s*[${GLYPHS}]`, "g")) ?? [];
+        if (named.length < 2 && slotPairs.length < 2 && kindExists) break;
         const hit = facts.find(
-          (f) => f.name.includes(anchor.label) && f.members.every((m) => sentence.includes(m))
+          (f) => f.name.includes(anchor.label) && f.members.every((m) => body.includes(m))
         );
         out.push({
           anchor: anchor.label,
@@ -6051,6 +6162,19 @@ function checkRelationClaims(markdown, chart) {
     }
   }
   return out;
+}
+function relationMentionCount(markdown) {
+  let n = 0;
+  for (const { sentences } of sections(markdown)) {
+    for (const sentence of sentences) {
+      if (/없|아니|아닙|않|없이/.test(sentence)) continue;
+      const { body } = splitEvidence(sentence);
+      const pairs = body.match(new RegExp(`(?:년|월|일|시)(?:간|지|주)\\s*[${GLYPHS}]`, "g")) ?? [];
+      if (namedGlyphs(body).length === 0 && pairs.length === 0) continue;
+      if (RELATION_ANCHORS.some((a) => sentence.includes(`(${a.hanja})`) || sentence.includes(`（${a.hanja}）`) || plainAnchorClaim(body, a.label))) n += 1;
+    }
+  }
+  return n;
 }
 function unverifiedRelationClaims(markdown, chart) {
   return checkRelationClaims(markdown, chart).filter((c) => c.matched === null);
@@ -6105,6 +6229,12 @@ function sentenceDefects(markdown) {
   for (const m of markdown.matchAll(/(?:이다|한다|본다|된다)\./g)) {
     out.push(`문체 이탈: "${m[0]}"`);
   }
+  for (const { title, sentences } of sections(markdown)) {
+    for (const sen of sentences) {
+      const why = isEmptySentence(sen);
+      if (why !== null) out.push(`내용 없는 문장 (${title}): "${sen.slice(0, 40)}" — ${why} · clamp 를 거치지 않은 경로가 있습니다`);
+    }
+  }
   return [...new Set(out)];
 }
 function definitionalOrConditional(sentence) {
@@ -6119,9 +6249,13 @@ function checkRevealedClaims(markdown, chart) {
       if (/없|아니|아닙|않|못|숨/.test(sentence)) continue;
       if (definitionalOrConditional(sentence)) continue;
       if (!/[년월일시]지/.test(sentence)) continue;
-      const glyphs = namedGlyphs(sentence);
+      const { body } = splitEvidence(sentence);
+      const bodyGlyphs = namedGlyphs(body);
+      const bodySelfContained = /[년월일시]지/.test(body) && bodyGlyphs.length > 0 && /[년월일시]간/.test(body);
+      const scope = bodySelfContained ? body : sentence;
+      const glyphs = bodySelfContained ? bodyGlyphs : namedGlyphs(sentence);
       const hit = facts.find(
-        (f) => sentence.includes(f.branchPosition + "지") && glyphs.includes(f.hiddenStem) && f.revealedAt.some((at) => sentence.includes(at))
+        (f) => scope.includes(f.branchPosition + "지") && glyphs.includes(f.hiddenStem) && f.revealedAt.some((at) => scope.includes(at))
       );
       out.push({
         kind: "투간",
@@ -6138,11 +6272,16 @@ function checkRootingClaims(markdown, chart) {
   if (facts.length === 0) return out;
   for (const { sentences } of sections(markdown)) {
     for (const sentence of sentences) {
-      if (!/통근(?!\s*(?:시간|길|버스|열차|거리))/.test(sentence)) continue;
+      if (!/통근(?!\s*(?:시간|길|버스|열차|거리))|뿌리/.test(sentence)) continue;
       if (definitionalOrConditional(sentence)) continue;
       const pairs = [
         ...sentence.matchAll(
-          /([년월일시])간\s+([갑을병정무기경신임계])(?=[\s,·)\](]|은|는|이|가|을|를|의|도|과|와|에|만|$)/g
+          // ⚠ v8 — `년·월간의 임` 처럼 **자리를 묶어 쓴** 형태를 놓치고 있었다(v4 실측 오류).
+          //   `월간의 임` 은 사이에 `의 ` 가 끼어 짝이 안 잡혔고, 그래서 **틀린 주장이 검사에서
+          //   통째로 빠졌다.** 소유격을 허용한다. ⚠ 공백은 여전히 요구한다 — `일간을` 이
+          //   "일간 + 을(乙)" 로 파싱돼 없는 짝을 만든 실측 2건이 그 이유다. `의` 뒤에도 공백을
+          //   요구하므로 그 함정은 다시 생기지 않는다.
+          /([년월일시])간(?:의)?\s+([갑을병정무기경신임계])(?=[\s,·)\](]|은|는|이|가|을|를|의|도|과|와|에|만|$)/g
         )
       ];
       if (pairs.length === 0) continue;
@@ -6157,13 +6296,26 @@ function checkRootingClaims(markdown, chart) {
           sentence.slice((pairs[last].index ?? 0) + pairs[last][0].length, pairs[last + 1].index ?? 0)
         )) last += 1;
         let to = Math.min(pairs[last + 1]?.index ?? sentence.length, (pairs[last].index ?? 0) + 40);
+        if (to === (pairs[last].index ?? 0) + 40 && to < sentence.length) {
+          const boundary = sentence.slice(to).search(/[\s.,!?)\]]/);
+          if (boundary > 0 && boundary <= 8) to += boundary;
+        }
         const clause = sentence.slice(pairs[last].index ?? 0, to).match(/(?:있고|하고|되고|이고|으며|지만|으나|는데),?\s/);
         if (clause?.index !== void 0) {
           to = (pairs[last].index ?? 0) + clause.index + clause[0].length;
         }
-        const before = sentence.slice(pairs[i - 1] ? (pairs[i - 1].index ?? 0) + pairs[i - 1][0].length : 0, from);
-        const DENY_ADNOMINAL = /(?:통근\s*(?:이|은)?\s*없는|뿌리\s*(?:가|는)?\s*없는|통근하지\s*못한|뿌리를\s*두지\s*못한|통근되지\s*않은)\s*$/;
-        const denies = DENY.test(sentence.slice(from, to).replace(DENY_ADNOMINAL, "")) || DENY_ADNOMINAL.test(before);
+        let firstOfGroup = i;
+        while (pairs[firstOfGroup - 1] && /^\s*(?:와|과|·|,|및|그리고)\s*$/.test(
+          sentence.slice(
+            (pairs[firstOfGroup - 1].index ?? 0) + pairs[firstOfGroup - 1][0].length,
+            pairs[firstOfGroup].index ?? 0
+          )
+        )) firstOfGroup -= 1;
+        const beforeStart = pairs[firstOfGroup - 1] ? (pairs[firstOfGroup - 1].index ?? 0) + pairs[firstOfGroup - 1][0].length : 0;
+        const before = sentence.slice(beforeStart, pairs[firstOfGroup].index ?? 0);
+        const DENY_ADNOMINAL = /(?:통근\s*(?:이|은)?\s*없는|뿌리\s*(?:가|는)?\s*없는|통근하지\s*못한|뿌리를\s*두지\s*못한|통근되지\s*않은)\s*[가-힣]{0,4}\s*[(（]?\s*$/;
+        const DENY_ADNOMINAL_TAIL = /(?:통근\s*(?:이|은)?\s*없는|뿌리\s*(?:가|는)?\s*없는|통근하지\s*못한|뿌리를\s*두지\s*못한|통근되지\s*않은)\s*[가-힣]{0,4}\s*[(（]?\s*$/;
+        const denies = DENY.test(sentence.slice(from, to).replace(DENY_ADNOMINAL_TAIL, "")) || DENY_ADNOMINAL.test(before);
         const fact = facts.find((f) => f.position === pos && f.stem === stem);
         if (!fact) {
           out.push({ kind: "통근", sentence: sentence.slice(0, 90), matched: null });
@@ -6182,6 +6334,22 @@ function checkRootingClaims(markdown, chart) {
     }
   }
   return out;
+}
+function withoutEvidence(markdown) {
+  return markdown.split("\n").map((l) => l.startsWith("## ") ? l : l.replace(/[(（]\s*근거\s*[:：][^)）]*[)）]/g, "")).join("\n");
+}
+var countOf = (full, body) => ({
+  bodyClaims: body.length,
+  bodyMatched: body.filter((c) => c.matched !== null).length,
+  evidenceOnlyClaims: Math.max(0, full.length - body.length),
+  evidenceOnlyMatched: Math.max(0, full.filter((c) => c.matched !== null).length - body.filter((c) => c.matched !== null).length)
+});
+function factClaimCounts(markdown, chart) {
+  const bare = withoutEvidence(markdown);
+  return {
+    revealed: countOf(checkRevealedClaims(markdown, chart), checkRevealedClaims(bare, chart)),
+    rooting: countOf(checkRootingClaims(markdown, chart), checkRootingClaims(bare, chart))
+  };
 }
 function unverifiedFactClaims(markdown, chart) {
   return [
@@ -6300,8 +6468,11 @@ export {
   clampSemicolons,
   composeFamousBody,
   contradictsChart,
+  droppedEmptySentences,
+  factClaimCounts,
   leakySources,
   phaseDirectionErrors,
+  relationMentionCount,
   repeatedOpenings,
   selfContradictions,
   sentenceDefects,

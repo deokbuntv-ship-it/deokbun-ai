@@ -10,6 +10,7 @@
       "channel": "development",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_BUILD_PROFILE": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-Ti1LWxshsLR2uuwjYwyVA_FP77uHkI"
       },
@@ -22,6 +23,20 @@
       "channel": "staging",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_BUILD_PROFILE": "staging",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-Ti1LWxshsLR2uuwjYwyVA_FP77uHkI"
+      }
+    },
+    "internal": {
+      "distribution": "internal",
+      "channel": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_BUILD_PROFILE": "internal",
         "EXPO_PUBLIC_SUPABASE_URL": "https://aephpsiurgkvqcswyeie.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-Ti1LWxshsLR2uuwjYwyVA_FP77uHkI"
       }
@@ -31,7 +46,9 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://olvkpaldrwvtexxpoaag.supabase.co"
+        "EXPO_PUBLIC_BUILD_PROFILE": "production",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://olvkpaldrwvtexxpoaag.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_zTRz17S_Sj8ljVbVayX0kw_uzRNDwt8"
       },
       "autoIncrement": true
     }

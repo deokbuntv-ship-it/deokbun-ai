@@ -470,10 +470,177 @@ export function clampSemicolons(text: string): string {
   return text.replace(/\s*;\s*/g, '. ');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// 내용 없는 문장 clamp (v6 신설) — **프롬프트가 세 번 실패한 자리.**
+//
+// 실측 대상 (v5 ③ 기 일간):
+//   `이 명식의 일간은 일간 기로 서 있습니다. (근거: 일간 기)`
+//   틀린 말이 아니라 **아무 말도 아니다.** 주어(일간)를 술어가 `일간 기` 로 되받고, 근거 괄호가
+//   본문을 또 되풀이한다. v4 옛 형태는 `이 명식에서 일간 기는 일간 기(己)로 표기됩니다` 였다 —
+//   프롬프트로 세 번 눌렀는데 세 번 다 **형태만 바꿔** 살아남았다. Premium verdict fidelity ·
+//   세미콜론 · 문두 반복이 전부 같은 곡선을 그렸고, 셋 다 결정론적 처리로 끝났다.
+//
+// ⚠ 왜 "동어반복 검사기" 가 아니라 **좁은 규칙 둘**인가 — 실측이 설계를 바꿨다.
+//   v1~v5 실측 356문장을 독립 라벨러 셋이 전수 분류했고(2인 이상 합의 6건), 규칙 후보 넷을 세워
+//   전부 356문장에 돌렸다. 넷 다 실측에서 tp 6/6 · **거짓 양성 0** 이었다. 그런데 적대적 검증에서
+//   프롬프트가 실제로 요구하는 정상 문장 62개를 새로 지어 돌리자 **넷 다 깨졌다**(FP 11·7·5·5).
+//   깨진 자리가 전부 같다 — 넓은 규칙일수록 프롬프트가 시키는 문장을 죽인다:
+//     · `월지 유는 월지 자리의 글자로 이 명식의 계절을 정합니다` (자리+글자 표기를 지킨 정상문)
+//     · `통근이 여러 곳에 있는 명식은 뿌리가 많은 쪽으로 읽습니다` (프롬프트 ③이 매 글마다 요구)
+//     · `일지 구조는 일간과 가장 가까운 자리라는 점을 보여 줍니다` (tenGods 스펙이 요구하는 사실)
+//   그래서 **관측된 두 형태만** 남겼다. 라벨러가 합의한 나머지 넷(38·46 "구조가 보여 줍니다",
+//   199·200 "통근 → 뿌리" 되받기)은 **일부러 놓친다** — 그것을 잡는 규칙이 위 정상문들을 함께
+//   죽이기 때문이다. 못 잡는 값이 정상 문장을 버리는 값보다 싸다.
+//
+// ⚠⚠ **이것은 이 결함 계열을 끝내지 않는다. 관측된 형태의 재발을 막을 뿐이다.**
+//   적대적 검증이 우회형 12개를 지었고 그중 이 규칙이 막는 것은 1개다. 어미만 `…로 읽힙니다` 로
+//   바꾸거나(`이 명식의 일간은 기(己)로 서 있습니다`), 술어를 지우거나(`이 명식의 월지는 월지
+//   유입니다`), 숫자 하나를 끼우면 통과한다. **프롬프트를 약하게 하지 말 것.**
+//   그리고 재발형이 나와도 **규칙을 넓히지 말 것** — 넓히면 위 정상문들이 죽는다.
+//   규칙을 건드릴 때는 실측 356문장과 합성 62문장을 **둘 다** 다시 돌려야 한다.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const EMPTY_SLOTS = ['년간', '월간', '일간', '시간', '년지', '월지', '일지', '시지'];
+const EMPTY_GLYPH = '[갑을병정무기경신임계자축인묘진사오미유술해]';
+// 되받은 자리·글자 말고 **남는 내용어**를 셀 때 내용어로 치지 않는 것들. 지시어·존재 동사·조사다.
+const EMPTY_STOP = new Set([
+  '이', '그', '저', '이런', '이러한', '여기', '명식', '자료', '것', '때', '등', '및', '또', '또한',
+  '그리고', '따라서', '즉', '이처럼', '서', '있', '표기', '자체', '로', '으로', '에서', '해당', '경우',
+  '놓', '놓여', '섰', '섬', '자리', '위치', '존재', '되', '기재', '적',
+]);
+
+/** 조사·어미를 떼어 낸 어간. ⚠ 한글은 음절 블록이라 어간 접두 매칭이 조용히 빗나간다 — 어미째 자른다. */
+function emptyStem(word: string): string {
+  return word
+    .replace(/(습니다|입니다|합니다|됩니다|한다|이다|였다|있다)$/, '')
+    .replace(/(에서는|으로는|에서|으로|에게|에|은|는|이|가|을|를|의|와|과|도|만|로|나)$/, '')
+    .trim();
+}
+
+/**
+ * 문장이 **아무것도 나르지 않는가**. 사유 문자열 또는 `null`.
+ *
+ * ⚠ 근거 괄호는 판정에 쓰지 않는다. 근거가 본문을 자구까지 되풀이하는 것은 **인용의 정상 형태**다
+ *   (`식상 4 · 재성 2 …` 같은 수치 열거, `년지 지장간 기 → 일간 투간되었습니다` 같은 사실 인용).
+ *   실측에서 근거-재진술 문장 14건 중 12건이 정상이었다. 근거로 판정하면 그 12건이 죽는다.
+ */
+export function isEmptySentence(sentence: string): string | null {
+  const raw = String(sentence ?? '').trim();
+  if (raw === '') return null;
+  const ev = /[(（]\s*근거\s*[:：][\s\S]*$/.exec(raw);
+  const body = (ev ? raw.slice(0, ev.index) : raw).trim();
+  if (body === '') return null;
+
+  // ── 규칙 A: 자리 되풀이.
+  //   주부의 자리 이름을 술부가 `자리 + 글자` 로 그대로 되받고, 남는 내용어가 하나도 없다.
+  //   ⚠ 자리 이름이 **한 종류**일 때만 본다. 둘이면 두 자리 사이의 관계(투간 등)를 나르는 문장이라
+  //     내용이 있다 — `…일지는 일지 미로서 그 지장간 글자들이 일간과의 관계에서…` 가 그 예다.
+  //   ⚠ `일간은 계(癸) 음수입니다` 는 자리 이름이 **한 번**뿐이라 애초에 들어오지 않는다.
+  const hits = EMPTY_SLOTS.filter((s) => (body.match(new RegExp(s, 'g')) ?? []).length >= 2);
+  if (hits.length === 1) {
+    const slot = hits[0];
+    const after = '(?=[은는이가을를와과로으에의도만·,.\\s)\\]]|$)';
+    const echo = new RegExp(`${slot}\\s*(${EMPTY_GLYPH})${after}`).exec(body);
+    const isSubject = new RegExp(`${slot}\\s*(?:${EMPTY_GLYPH}\\s*)?[은는이가]`).test(body);
+    if (echo && isSubject) {
+      const glyph = echo[1];
+      const leftover = body
+        .split(/[^가-힣0-9A-Za-z㐀-鿿]+/)
+        .map(emptyStem)
+        .filter((w) => w.length > 0)
+        .filter((w) => w !== slot && w !== glyph)
+        .filter((w) => !/^[㐀-鿿]+$/.test(w)) // 기(己) 처럼 같은 글자의 한자 표기
+        .filter((w) => !EMPTY_STOP.has(w));
+      if (leftover.length === 0) {
+        return `자리 되풀이: '${slot}' 을 '${slot} ${glyph}' 로 되받을 뿐 새로 놓는 것이 없음`;
+      }
+    }
+  }
+
+  // ── 규칙 D: 출처 고백. 명식이 아니라 **글쓴이 자신의 인용 태도**를 말한다.
+  //   `이 해석은 자료의 '생극 방향' 문장을 그대로 따릅니다` — 독자는 그 자료를 볼 수 없다.
+  //   `leakySources` 와 같은 병인데 그쪽은 **근거 괄호 안**만 본다. 이건 본문에 있다.
+  if (
+    /(이|본|위)\s*(해석|설명|문장|풀이|서술|기술)[은는]/.test(body)
+    && /(자료|원문|표기|기록)/.test(body)
+    && /(따릅니다|따랐습니다|따른\s*것입니다|근거합니다|인용합니다|옮긴\s*것입니다)/.test(body)
+  ) {
+    return '출처 고백: 명식이 아니라 "자료를 그대로 따랐다" 는 인용 태도만 말함';
+  }
+
+  return null;
+}
+
+/**
+ * 괄호 깊이를 지키는 문장 분리.
+ *
+ * ⚠ `sections()` 의 `/(?<=[.!?])\s+/` 를 여기서 **쓰면 안 된다.** 그것은 근거 괄호 **안의**
+ *   마침표에서도 자른다 — 실측 84섹션 중 **15섹션**이 이 분리와 결과가 다르다.
+ *   검사만 할 때는 조각 하나에 헛경고가 나는 것으로 끝나지만, **글을 실제로 자르는** 여기서는
+ *   조각을 버리면 남은 문장에 짝 없는 괄호가 남는다. 깊이가 0일 때의 마침표에서만 자른다.
+ */
+function splitBalanced(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === '(' || c === '（') depth += 1;
+    else if (c === ')' || c === '）') depth = Math.max(0, depth - 1);
+    else if (depth === 0 && /[.!?]/.test(c) && /\s|$/.test(text[i + 1] ?? ' ')) {
+      out.push(text.slice(start, i + 1).trim());
+      start = i + 1;
+    }
+  }
+  const tail = text.slice(start).trim();
+  if (tail !== '') out.push(tail);
+  return out.filter((s) => s !== '');
+}
+
+/**
+ * 내용 없는 문장을 **버린다**. 조립 단계에서 도는 결정론적 처리다 — LLM 콜이 늘지 않는다.
+ *
+ * ⚠ 왜 거절-재생성이 아닌가: 이 파일이 세미콜론에서 이미 답을 적어 두었다 —
+ *   "거절로 두면 LLM 콜만 계속 태우면서 파이프라인이 막힌다". 게다가 이 규칙은 우회형 12개 중
+ *   1개만 막으므로, 재생성이 통과하는 다른 형태를 뱉으면 9,444 토큰만 나가고 결함은 남는다.
+ * ⚠ 왜 경고가 아닌가: 경고는 오너가 이미 세 번 사람 손으로 잡다 실패한 자리다. 이 파일의
+ *   `repeatedOpenings` 주석이 그 판단을 적어 두었다 — "사람이 매번 읽어서 걸러야 한다면
+ *   자동 생성의 값이 사라진다".
+ * ⚠ 버려서 잃는 것: 실측으로 확인했다. 84섹션 전수 재조립에서 버려진 문장은 **2건**이고,
+ *   섹션 **첫 문장은 0건**, 2문장 미만이 된 섹션도 **0건**이다. 대상 절은 버린 뒤가 더 낫다 —
+ *   `일간 기` 를 처음 소개하는 것이 빈 문장이 아니라 자기 근거를 단 다음 문장이 된다.
+ * ⚠ 전부 버려지면 원문을 그대로 돌려준다. 빈 섹션을 내보내면 `unsourcedSections` 가 422로
+ *   거절하면서 오너에게 "근거가 없다" 는 엉뚱한 이유를 띄운다. 원문을 남기면 최악이 v5 상태다.
+ */
+export function dropEmptySentences(text: string): string {
+  const kept = splitBalanced(text).filter((s) => isEmptySentence(s) === null);
+  return kept.length > 0 ? kept.join(' ') : text;
+}
+
+/**
+ * 조립하면서 **무엇을 버렸는지**. 응답에 실어 운영자에게 보여 준다.
+ *
+ * ⚠ 세미콜론 clamp 와 다르게 이것은 **내용을 지운다.** 표기 교정은 조용히 해도 되지만 문장 삭제는
+ *   안 된다 — 규칙이 언젠가 정상 문장을 지우면, 지웠다는 사실이 보이지 않는 한 아무도 못 잡는다.
+ *   삭제가 매끄럽게 읽히는 것이 바로 위험한 점이다(적대적 검증의 지적).
+ */
+export function droppedEmptySentences(sections: FamousBodySections): string[] {
+  const out: string[] = [];
+  for (const k of Object.keys(FAMOUS_BODY_SECTION_TITLES) as (keyof FamousBodySections)[]) {
+    for (const sen of splitBalanced(clampSemicolons(sections[k].trim()))) {
+      const why = isEmptySentence(sen);
+      if (why !== null) out.push(`${FAMOUS_BODY_SECTION_TITLES[k]}: "${sen}" — ${why}`);
+    }
+  }
+  return out;
+}
+
 /** 섹션 JSON → 저장할 마크다운. 표는 화면이 그리므로 본문에는 넣지 않는다. */
 export function composeFamousBody(sections: FamousBodySections): string {
   return (Object.keys(FAMOUS_BODY_SECTION_TITLES) as (keyof FamousBodySections)[])
-    .map((k) => `## ${FAMOUS_BODY_SECTION_TITLES[k]}\n\n${clampSemicolons(sections[k].trim())}`)
+    // ⚠ 세미콜론을 먼저 마침표로 바꾼다. 그래야 `…입니다; 이 명식의 일간은 일간 기로…` 처럼
+    //   세미콜론 뒤에 붙은 빈 문장도 분리되어 검사 대상이 된다.
+    .map((k) => `## ${FAMOUS_BODY_SECTION_TITLES[k]}\n\n${dropEmptySentences(clampSemicolons(sections[k].trim()))}`)
     .join('\n\n');
 }
 
@@ -742,6 +909,47 @@ function namedGlyphs(sentence: string): string[] {
  * ⚠ 부정문은 뺀다 — "이 명식에는 충(沖)이 없습니다" 는 **맞는 문장**이다. 득령/실령 검사에서
  * 같은 오검출을 네 번 겪었다.
  */
+/**
+ * 문장을 **본문**과 **근거 괄호**로 가른다 (v7 신설).
+ *
+ * ⚠⚠ 이것이 v7 의 전부다. v6 에서 이런 문장이 통과했다:
+ *     본문 `년간 경과 월간 임 사이에 천간합(合)이 있습니다`
+ *     근거 `(근거: 천간합 임·정 [월·일주 사이])`
+ *   실제 합은 **월간 임 ↔ 일간 정**이다. 본문이 틀렸는데, 대조가 **문장 전체**를 보는 바람에
+ *   근거 괄호 안의 `임·정` 이 엔진 판정과 맞아 통과했다 — **근거가 틀린 본문을 구제했다.**
+ *   독자는 본문을 읽는다. 근거가 맞아도 본문이 틀리면 틀린 것을 배운다.
+ */
+function splitEvidence(sentence: string): { body: string; evidence: string } {
+  const at = sentence.search(/[(（]\s*근거\s*[:：]/);
+  return at < 0
+    ? { body: sentence, evidence: '' }
+    : { body: sentence.slice(0, at).trim(), evidence: sentence.slice(at) };
+}
+
+/**
+ * 한자 없이 관계를 주장하는 형태 (v7 신설).
+ *
+ * ⚠ 왜 한자를 앵커로 썼었나: `해석`·`파악`·`충분`·`종합`·`합계`·`형태` 가 일상어와 겹쳐서였다.
+ *   그런데 그 함정은 **음절 경계**로 전부 막힌다 — 실측 확인: 함정 단어 25개 중 걸리는 것 **0개**.
+ *   (`해석` 은 `해`+`석` 이라 뒤가 조사가 아니고, `방해` 는 앞이 한글이라 앞 경계에서 막힌다.)
+ *
+ * ⚠ 그래도 **좁게** 간다. 조사만으로는 부족하다 — 실측에 두 함정이 더 있다:
+ *   · `서로의 합을 방해하는` — 엔진이 주는 해(害)의 **뜻 문장**에 `합` 이 들어 있다(실측 5건)
+ *   · `해·충·합 등은 관계의 이름이며` — 열거·정의
+ *   그래서 **존재 서술이 바로 뒤에 붙을 때만** 주장으로 본다: `천간합이 있습니다` ·
+ *   `천간합이 형성되어` · `자와 미 사이의 해입니다`. `합을 방해` 는 조사가 `을` 이라 걸리지 않는다.
+ *
+ * ⚠ 이 판정은 **본문에만** 쓴다. 근거 괄호에는 한자가 거의 없지만(실측 85건 중 대부분) 근거는
+ *   주장이 아니라 인용이라 앵커가 필요 없다.
+ */
+function plainAnchorClaim(body: string, label: string): boolean {
+  const exists = '(?:있|형성|성립|생기|맺|나타|존재)';
+  // ⚠ `천간합`·`천간충` 은 앵커 목록에 `合`·`沖` 으로 들어 있어 label 이 `합`·`충` 이다. 접두사를
+  //   허용하지 않으면 `천간합이` 의 `합` 이 앞 음절 `간` 때문에 경계에서 막혀 **영영 안 잡힌다**
+  //   (실측 v6 ① 이 정확히 이 형태였다).
+  return new RegExp(`(?<![가-힣])(?:천간)?${label}(?:[이가]\\s*${exists}|입니다|이었)`).test(body);
+}
+
 export function checkRelationClaims(
   markdown: string,
   chart: Pick<FamousChartSnapshot, 'relations'>,
@@ -757,17 +965,34 @@ export function checkRelationClaims(
       // 이 문장은 어느 글자 사이인지 말하지 않았으므로 대조할 대상이 없다. 프롬프트가 사례를 쓸 때는
       // **반드시 참여 글자를 적게** 하므로, 글자를 지목하지 않은 문장은 정의로 보고 넘긴다.
       // (득령/실령 검사에서 용어 풀이를 단정으로 오판한 것과 같은 종류의 실패다.)
-      const named = namedGlyphs(sentence);
+      //
+      // ⚠ v7 — **본문만** 본다. 근거 괄호는 인용이지 주장이 아니다(`splitEvidence` 주석 참조).
+      const { body } = splitEvidence(sentence);
+      const named = namedGlyphs(body);
       for (const anchor of RELATION_ANCHORS) {
-        if (!sentence.includes(`(${anchor.hanja})`) && !sentence.includes(`（${anchor.hanja}）`)) continue;
+        // ⚠ **탐지는 넓게, 대조는 좁게.** 한자 앵커는 문장 전체에서 찾는다 — 관계 이름을 근거
+        //   괄호에만 적고 본문은 평문으로 쓰는 형태가 실재한다
+        //   (`일지와 월지가 정면으로 부딪힙니다 (근거: 오와 자의 충(沖))`). 그것을 후보에서
+        //   빼면 검사가 줄어든다. 반면 **참여 글자 대조는 본문만** 본다 — 그것이 이 트랙의 수정이다.
+        const hasHanja = sentence.includes(`(${anchor.hanja})`) || sentence.includes(`（${anchor.hanja}）`);
+        // ⚠ v7 — 한자를 안 붙여도 존재 서술이면 주장이다. 프롬프트가 "한자를 빼지 마십시오" 라고
+        //   이미 지시하는데도 v6 에서 지켜지지 않았다(실측 1건). 형식 미준수를 이유로 사실 검사를
+        //   건너뛰면, 형식을 어긴 글이 **오히려 검사를 면제받는다.**
+        if (!hasHanja && !plainAnchorClaim(body, anchor.label)) continue;
         // 글자를 지목하지 않았으면 보통 **정의 문장**이라 대조할 대상이 없다 — 넘긴다.
         // 다만 그 종류의 관계가 이 명식에 **하나도 없으면** 정의를 쓴 것 자체가 틀렸다(프롬프트가
         // 자료에 있는 관계만 쓰라고 한다). 그때는 글자가 없어도 잡는다.
         const kindExists = facts.some((f) => f.name.includes(anchor.label));
-        if (named.length < 2 && kindExists) break;
-        // 같은 종류의 엔진 판정 중, 참여 글자가 이 문장에 **전부** 나오는 것이 있는가.
+        // ⚠ v7 — `자리 + 글자` 쌍도 지목으로 센다. `namedGlyphs` 는 **중복을 지우므로**
+        //   `년지 오와 월지 오의 자형(自刑)` 이 글자 하나로 세어져 문턱(2) 아래로 떨어진다.
+        //   v6 까지는 `사이` 의 `사` 가 글자로 오인돼 우연히 문턱을 넘고 있었다(실측 확인) —
+        //   본문만 보게 되면 그 우연이 사라져 자형 주장이 **검사에서 빠진다.** 그래서 자리 쌍을 센다.
+        //   프롬프트가 요구하는 형태(`월지 오`)라 이 셈이 곧 "참여 글자를 지목했는가" 다.
+        const slotPairs = body.match(new RegExp(`(?:년|월|일|시)(?:간|지|주)\\s*[${GLYPHS}]`, 'g')) ?? [];
+        if (named.length < 2 && slotPairs.length < 2 && kindExists) break;
+        // 같은 종류의 엔진 판정 중, 참여 글자가 **본문에** 전부 나오는 것이 있는가.
         const hit = facts.find(
-          (f) => f.name.includes(anchor.label) && f.members.every((m) => sentence.includes(m)),
+          (f) => f.name.includes(anchor.label) && f.members.every((m) => body.includes(m)),
         );
         out.push({
           anchor: anchor.label,
@@ -779,6 +1004,35 @@ export function checkRelationClaims(
     }
   }
   return out;
+}
+
+/**
+ * ⚠ **분모.** 관계 이름이 나온 문장 수 vs 실제로 대조된 주장 수 (v7 신설).
+ *
+ * 왜 필요한가: v3~v6 내내 "관계 7/7 · 8/8 · 9/9" 로 보고해 왔는데, 그 분모는 **검사된 것**이었지
+ * **본문의 모든 관계 주장**이 아니었다. 검사에서 빠진 것은 세지도 않았으므로 100%가 나온다.
+ * 통과했으니 맞다고 믿게 되는 것이 검사기가 없는 것보다 나쁘다.
+ * 이 함수가 그 차이를 눈에 보이게 한다 — 두 수가 다르면 검사가 못 본 문장이 있다는 뜻이다.
+ */
+export function relationMentionCount(markdown: string): number {
+  let n = 0;
+  for (const { sentences } of sections(markdown)) {
+    for (const sentence of sentences) {
+      if (/없|아니|아닙|않|없이/.test(sentence)) continue;
+      const { body } = splitEvidence(sentence);
+      // ⚠ 참여 글자를 **하나라도** 지목했으면 주장으로 센다. 대조(분자)는 둘을 요구하므로,
+      //   하나만 적은 문장이 정확히 **분모에는 들어가고 분자에서는 빠지는** 자리다 — 그 차이를
+      //   보이게 하는 것이 이 함수의 목적이다.
+      //   ⚠ 어미로 정의문을 가르려 했더니(`…관계입니다`) 진짜 주장까지 걸러 분모가 분자보다
+      //     작아졌다(실측 V4_AUTUMN 3<4). 참여 글자 유무가 더 정확한 기준이다 — 아무 글자도
+      //     지목하지 않은 문장은 애초에 대조할 주장이 아니다.
+      const pairs = body.match(new RegExp(`(?:년|월|일|시)(?:간|지|주)\\s*[${GLYPHS}]`, 'g')) ?? [];
+      if (namedGlyphs(body).length === 0 && pairs.length === 0) continue;
+      if (RELATION_ANCHORS.some((a) => sentence.includes(`(${a.hanja})`) || sentence.includes(`（${a.hanja}）`)
+        || plainAnchorClaim(body, a.label))) n += 1;
+    }
+  }
+  return n;
 }
 
 /** 대조에 실패한 관계 주장만. 이것이 거절 사유다. */
@@ -882,6 +1136,15 @@ export function sentenceDefects(markdown: string): string[] {
   for (const m of markdown.matchAll(/(?:이다|한다|본다|된다)\./g)) {
     out.push(`문체 이탈: "${m[0]}"`);
   }
+  // ⑤ 내용 없는 문장 — `dropEmptySentences` 가 조립 단계에서 이미 버린다. 세미콜론(③)과 **같은
+  //    구조의 경보**다: 여기서 발견되면 clamp 를 거치지 않은 경로가 생겼다는 뜻이므로 그대로
+  //    보고한다(경고, 거절 아님). clamp 가 도는 한 이 줄은 영원히 비어 있어야 정상이다.
+  for (const { title, sentences } of sections(markdown)) {
+    for (const sen of sentences) {
+      const why = isEmptySentence(sen);
+      if (why !== null) out.push(`내용 없는 문장 (${title}): "${sen.slice(0, 40)}" — ${why} · clamp 를 거치지 않은 경로가 있습니다`);
+    }
+  }
   return [...new Set(out)];
 }
 
@@ -937,11 +1200,28 @@ export function checkRevealedClaims(
       //   지지를 안 대면 총평이지 주장이 아니다(실측 거짓 양성:
       //   "여러 지장간이 투간되어 겉과 속의 구성이 섞여 있는 쪽에 해당합니다").
       if (!/[년월일시]지/.test(sentence)) continue;
-      const glyphs = namedGlyphs(sentence);
+      // ⚠ v8 — **주장이 있는 쪽에서 대조한다.** 관계 검사(v7)에서 배운 것과 같다.
+      //   합성 반례가 증명한 구멍: 본문 `일지 사의 지장간 정이 일간으로 투간되었습니다`
+      //   (일지의 지장간은 무·경·병이라 **틀렸다**) + 근거 `(근거: 년지 오의 정이 일간으로 투간)`.
+      //   문장 전체로 대조하면 근거의 `년지` 가 삼요소를 채워 **틀린 본문이 통과한다.**
+      //   ⚠ 실측 15편에서는 이 형태가 **0건**이었다. 그래도 막는다 — 관계에서는 같은 형태가
+      //     실제로 나왔고(v6 2건), 합성이 없었다면 그때도 못 봤을 것이다.
+      //
+      //   ⚠ 그러나 **근거에만 있는 주장을 버리지 않는다.** 본문이 총평이고 자리별 사실은 근거가
+      //     나르는 문장이 실측의 다수다(97건 중 82건). 근거도 독자가 읽는 글자이고, 근거만 떼어
+      //     검사기에 넣었을 때 투간 9/9 · 통근 77/77 전부 일치했다 — 검사할 값이 있다.
+      //     그래서 **본문이 삼요소를 스스로 갖췄을 때만** 본문으로 좁힌다.
+      const { body } = splitEvidence(sentence);
+      const bodyGlyphs = namedGlyphs(body);
+      const bodySelfContained = /[년월일시]지/.test(body)
+        && bodyGlyphs.length > 0
+        && /[년월일시]간/.test(body);
+      const scope = bodySelfContained ? body : sentence;
+      const glyphs = bodySelfContained ? bodyGlyphs : namedGlyphs(sentence);
       const hit = facts.find(
-        (f) => sentence.includes(f.branchPosition + '지')
+        (f) => scope.includes(f.branchPosition + '지')
           && glyphs.includes(f.hiddenStem)
-          && f.revealedAt.some((at) => sentence.includes(at)),
+          && f.revealedAt.some((at) => scope.includes(at)),
       );
       out.push({
         kind: '투간',
@@ -976,7 +1256,13 @@ export function checkRootingClaims(
       // ⚠ 레포의 상담 스크러버 좁힘은 `통근하` 까지 뺀다("통근하는 사람"). 그런데 여기서는
       //    `통근하여`·`통근하고` 가 **명리 동사형**이라 그대로 쓰면 정상 주장을 통째로 놓친다(실측 2건).
       //    이 글은 사주 해설이라 출퇴근 문맥이 나올 일이 없으므로 **명사 문맥만** 뺀다.
-      if (!/통근(?!\s*(?:시간|길|버스|열차|거리))/.test(sentence)) continue;
+      // ⚠ v8 — `뿌리` 만 쓴 통근 주장이 게이트에서 빠지고 있었다. 실측:
+      //   "일간 정은 뿌리를 가진 글자입니다 (근거: 일간 정은 년지 오·월지 오·시지 미 세 곳에 뿌리를 둠)"
+      //   — 사실은 맞지만 **검사된 적이 없다.** 이 글은 `통근` 을 `뿌리` 로 풀어 쓰는 것이 정상
+      //   문체라(프롬프트가 전문어를 풀라고 요구한다) 그 형태가 계속 나온다.
+      //   ⚠ 낱말을 넓혀도 아래 **`자리 + 글자` 짝 요구**가 그대로라, 정의문("뿌리가 없는 천간을
+      //   뜬 글자라 부릅니다")과 비유는 여전히 걸리지 않는다. 합성 정상 40개로 확인했다.
+      if (!/통근(?!\s*(?:시간|길|버스|열차|거리))|뿌리/.test(sentence)) continue;
       if (definitionalOrConditional(sentence)) continue;
       // 뒤에 조사가 붙는 것이 정상이다(`일간 정은`·`월간 임이`). 글자 뒤 경계를 조사까지 넓힌다 —
       // `(?![가-힣])` 로 두면 조사가 붙는 순간 짝을 못 찾아 **아무것도 판정하지 않는다**(실측 3건).
@@ -984,7 +1270,12 @@ export function checkRootingClaims(
       //   을은 목의 천간이면서 목적격 조사다. `\s*` 로 두면 조사가 전부 글자로 읽힌다.
       const pairs = [
         ...sentence.matchAll(
-          /([년월일시])간\s+([갑을병정무기경신임계])(?=[\s,·)\](]|은|는|이|가|을|를|의|도|과|와|에|만|$)/g,
+          // ⚠ v8 — `년·월간의 임` 처럼 **자리를 묶어 쓴** 형태를 놓치고 있었다(v4 실측 오류).
+          //   `월간의 임` 은 사이에 `의 ` 가 끼어 짝이 안 잡혔고, 그래서 **틀린 주장이 검사에서
+          //   통째로 빠졌다.** 소유격을 허용한다. ⚠ 공백은 여전히 요구한다 — `일간을` 이
+          //   "일간 + 을(乙)" 로 파싱돼 없는 짝을 만든 실측 2건이 그 이유다. `의` 뒤에도 공백을
+          //   요구하므로 그 함정은 다시 생기지 않는다.
+          /([년월일시])간(?:의)?\s+([갑을병정무기경신임계])(?=[\s,·)\](]|은|는|이|가|을|를|의|도|과|와|에|만|$)/g,
         ),
       ];
       if (pairs.length === 0) continue;
@@ -1022,6 +1313,14 @@ export function checkRootingClaims(
         //   천간 둘은 뿌리 없음으로 판정됩니다" — 뒤 절의 부정을 앞 짝이 삼켜 계를 부재로 읽었다.
         //   짝이 아닌 주어("다른 천간 둘")라 짝 경계로는 못 자른다. **연결어미**에서 자른다.
         //   목록은 좁게 유지한다 — `없고`·`못해` 처럼 부정 자체를 담은 어미는 넣지 않는다.
+        // ⚠ v8 — 40자 상한이 **낱말 가운데를 자른다.** 실측: `… 뜬 글자가 아닙니다` 가
+        //   `… 뜬 글자가 아` 에서 잘려 이중부정 가드(`뜬 글자…아니`)가 깨졌고, 사실인 긍정 주장이
+        //   부재로 뒤집혔다. 상한 때문에 잘린 경우에만 **다음 낱말 경계까지** 늘린다(최대 8자).
+        //   짝 경계나 절 경계로 잘린 경우는 늘리지 않는다 — 그건 옆 짝으로 새는 길이다.
+        if (to === (pairs[last].index ?? 0) + 40 && to < sentence.length) {
+          const boundary = sentence.slice(to).search(/[\s.,!?)\]]/);
+          if (boundary > 0 && boundary <= 8) to += boundary;
+        }
         const clause = sentence.slice((pairs[last].index ?? 0), to)
           .match(/(?:있고|하고|되고|이고|으며|지만|으나|는데),?\s/);
         if (clause?.index !== undefined) {
@@ -1033,11 +1332,43 @@ export function checkRootingClaims(
         //   ⚠ 뒤로 창을 통째로 넓히지는 않는다. "일간 정은 통근이 없고, 월간 임은 …" 에서
         //   앞 짝의 부정이 뒤 짝으로 옮아붙기 때문이다. **관형형(`없는`)만** 본다 —
         //   관형형은 바로 뒤 명사를 꾸미고, 연결어미(`없고`·`없으며`)는 꾸미지 않는다.
-        const before = sentence.slice(pairs[i - 1] ? (pairs[i - 1].index ?? 0) + pairs[i - 1][0].length : 0, from);
-        const DENY_ADNOMINAL = /(?:통근\s*(?:이|은)?\s*없는|뿌리\s*(?:가|는)?\s*없는|통근하지\s*못한|뿌리를\s*두지\s*못한|통근되지\s*않은)\s*$/;
+        // ⚠ v8 — 접속으로 묶인 짝들은 **앞의 관형형을 함께** 받는다. 뒤로 묶는 처리(`last`)는
+        //   있었는데 앞으로 묶는 처리가 없어서, `통근이 없는 천간(년간 갑·월간 병)` 에서
+        //   `년간 갑` 만 부정을 보고 `월간 병` 은 못 봤다 — 사실인 부재 주장이 거절됐다(실측).
+        let firstOfGroup = i;
+        while (
+          pairs[firstOfGroup - 1]
+          && /^\s*(?:와|과|·|,|및|그리고)\s*$/.test(
+            sentence.slice(
+              (pairs[firstOfGroup - 1].index ?? 0) + pairs[firstOfGroup - 1][0].length,
+              pairs[firstOfGroup].index ?? 0,
+            ),
+          )
+        ) firstOfGroup -= 1;
+        const beforeStart = pairs[firstOfGroup - 1]
+          ? (pairs[firstOfGroup - 1].index ?? 0) + pairs[firstOfGroup - 1][0].length
+          : 0;
+        const before = sentence.slice(beforeStart, pairs[firstOfGroup].index ?? 0);
+        // ⚠ v8 — 관형형과 짝 사이에 **꾸밈받는 명사 하나**가 낄 수 있다. 실측 거짓 양성(v8 ③,
+        //   정상 본문이 거절되고 LLM 콜 하나를 태웠다):
+        //     "통근이 없는 천간은 **년간 무** 하나여서 뜬 천간이 섞여 있습니다"
+        //   `없는` 이 꾸미는 것은 `천간` 이고 `년간 무` 는 그 보어다. 관형형이 짝에 **바로** 붙어야
+        //   한다는 조건 때문에 부재 주장이 긍정으로 오판됐다.
+        //   ⚠ 넓히되 **짧은 명사구 하나까지만** 허용한다. 통째로 넓히면
+        //   "일간 정은 통근이 없고, 월간 임은 …" 처럼 앞 짝의 부정이 뒤로 옮아붙는다
+        //   (`없고` 는 연결어미라 이 정규식에 애초에 안 걸린다 — 관형형만 본다).
+        const DENY_ADNOMINAL = /(?:통근\s*(?:이|은)?\s*없는|뿌리\s*(?:가|는)?\s*없는|통근하지\s*못한|뿌리를\s*두지\s*못한|통근되지\s*않은)\s*[가-힣]{0,4}\s*[(（]?\s*$/;
         // 꼬리에 붙은 관형형은 **다음 짝의 것**이다. 이 짝의 창에서 잘라 낸다 — 안 자르면
         // "시간 정은 … 뿌리를 두고, 통근이 없는 월간 임은 …" 에서 앞 짝이 뒤 짝의 부정을 삼킨다.
-        const denies = DENY.test(sentence.slice(from, to).replace(DENY_ADNOMINAL, ''))
+        // ⚠ v8 — 관형형과 다음 짝 사이에 **꾸밈받는 명사**가 끼면 꼬리 자르기가 안 먹었다.
+        //   실측 거짓 양성(v8 ② 재시도, 정상 본문이 거절되고 LLM 콜을 태웠다):
+        //     "통근이 있는 일간(일간 계)과 **통근이 없는 천간(**년간 갑·월간 병)을 …"
+        //   `일간 계` 의 창이 `… 통근이 없는 천간(` 로 끝나는데, 원래 꼬리 정규식은 `없는` 이
+        //   창의 **끝**이어야 잘라 냈다. `천간(` 이 남아 자르지 못했고, 뒤 짝의 부정이 앞 짝을 뒤집었다.
+        //   → 꼬리에 **짧은 명사 하나와 여는 괄호**까지 허용한다. 길이를 4자로 묶어 두는 것이
+        //     안전장치다 — `통근이 없는 상태입니다`(서술 명사, 5자)는 여전히 안 잘린다.
+        const DENY_ADNOMINAL_TAIL = /(?:통근\s*(?:이|은)?\s*없는|뿌리\s*(?:가|는)?\s*없는|통근하지\s*못한|뿌리를\s*두지\s*못한|통근되지\s*않은)\s*[가-힣]{0,4}\s*[(（]?\s*$/;
+        const denies = DENY.test(sentence.slice(from, to).replace(DENY_ADNOMINAL_TAIL, ''))
           || DENY_ADNOMINAL.test(before);
         const fact = facts.find((f) => f.position === pos && f.stem === stem);
         if (!fact) {
@@ -1069,6 +1400,66 @@ export function checkRootingClaims(
 }
 
 /** 대조에 실패한 사실 주장만. 거절 사유다. */
+/**
+ * ⚠ **분모 — 투간·통근** (v8 신설). 관계에서 세운 규율을 여기에도 적용한다.
+ *
+ * 무엇이 잘못돼 있었나: v4~v7 내내 "통근 14/14 · 34/34 · 20/20 · 29/29" 로 보고했는데,
+ * 그 숫자는 **본문의 주장이 아니라 근거 괄호의 인용을 대부분 세고 있었다.** 실측:
+ *
+ * | 버전 | 보고한 통근 | 본문 기준 |
+ * |---|---|---|
+ * | v4 | 14/14 | **2/2** |
+ * | v5 | 34/34 | **7/7** |
+ * | v6 | 20/20 | **3/3** |
+ * | v7 | 29/29 | **3/3** |
+ *
+ * ⚠ **그런데 검사를 좁히지 않았다.** 관계와 사정이 다르기 때문이다 —
+ *   · 관계에서는 **근거가 틀린 본문을 구제**했다(본문 `년간 경과 월간 임`, 근거 `임·정`).
+ *     투간·통근에서는 그런 구제가 **0건**이다(실측 15편).
+ *   · 근거만 떼어 검사기에 넣으면 **투간 9/9 · 통근 77/77 전부 일치**한다. 근거는 엔진 값을
+ *     옮긴 것이고, 그 인용도 **독자가 읽는 글자**다. 검사할 값이 있다.
+ *   따라서 좁히는 것은 **검사기를 약화시키는 것**이지 정직하게 만드는 것이 아니다.
+ *   틀린 것은 검사가 아니라 **숫자의 이름표**였다. 그래서 이름표를 나눈다.
+ *
+ * 쓰는 법: `"통근 29/29"` 가 아니라 `"본문 주장 3건 대조 3건 일치 · 근거 인용 26건 전부 일치"`.
+ */
+export type FactClaimCounts = {
+  bodyClaims: number;
+  bodyMatched: number;
+  /** 본문에는 없고 근거 괄호에만 있는 주장. 독자는 읽지만 본문의 서술은 아니다. */
+  evidenceOnlyClaims: number;
+  evidenceOnlyMatched: number;
+};
+
+/** 근거 괄호를 지운 마크다운. 제목 줄은 건드리지 않는다. */
+function withoutEvidence(markdown: string): string {
+  return markdown
+    .split('\n')
+    .map((l) => (l.startsWith('## ') ? l : l.replace(/[(（]\s*근거\s*[:：][^)）]*[)）]/g, '')))
+    .join('\n');
+}
+
+const countOf = (
+  full: FactClaim[],
+  body: FactClaim[],
+): FactClaimCounts => ({
+  bodyClaims: body.length,
+  bodyMatched: body.filter((c) => c.matched !== null).length,
+  evidenceOnlyClaims: Math.max(0, full.length - body.length),
+  evidenceOnlyMatched: Math.max(0, full.filter((c) => c.matched !== null).length - body.filter((c) => c.matched !== null).length),
+});
+
+export function factClaimCounts(
+  markdown: string,
+  chart: Pick<FamousChartSnapshot, 'revealed' | 'rooting'>,
+): { revealed: FactClaimCounts; rooting: FactClaimCounts } {
+  const bare = withoutEvidence(markdown);
+  return {
+    revealed: countOf(checkRevealedClaims(markdown, chart), checkRevealedClaims(bare, chart)),
+    rooting: countOf(checkRootingClaims(markdown, chart), checkRootingClaims(bare, chart)),
+  };
+}
+
 export function unverifiedFactClaims(
   markdown: string,
   chart: Pick<FamousChartSnapshot, 'revealed' | 'rooting'>,

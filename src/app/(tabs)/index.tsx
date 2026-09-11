@@ -31,6 +31,8 @@ import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBo
 import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { birthMonthDay, isBirthdayTodayKst, trackRetentionEvent } from '@/features/retention';
 import { useAuth } from '@/features/auth';
+import { consultationSubjectService } from '@/features/consultation';
+import { syncTurningPointNotifications } from '@/features/retention/services/turningPointService';
 import { useWallet } from '@/features/duk/useWallet';
 import { walletStateOf } from '@/features/duk/consumerDukView';
 import { getCandleAvailability } from '@/features/duk/dukWalletService';
@@ -128,6 +130,23 @@ export default function HomeScreen() {
 
   // 🕯️ Home tile copy comes from the SERVER's candle eligibility — the tile itself never lights the
   // candle (that ritual lives in the wallet) and never invents a countdown.
+  // 변곡점 알림 — 앱을 열 때 한 번. **본인 명식**으로만 만든다(지금 선택된 대상이 친구일 수 있다).
+  // ⚠ 멱등성은 앱이 아니라 DB 제약(`unique(user_id, dedup_key)`)에 있다. 매번 불러도 중복이 없다.
+  // ⚠ 실패해도 홈을 막지 않는다 — 서비스가 스스로 삼킨다.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    // ⚠ try/catch 로 감싼다. .catch 는 **거절**만 잡는다 — 서비스가 없어 호출 자체가 던지면
+    //   홈이 통째로 죽는다(실측: 목이 이 함수를 안 가진 테스트에서 그렇게 됐다).
+    //   부가 기능이 본 화면을 막는 일은 없어야 한다.
+    try {
+      void consultationSubjectService.getSelfSubject?.().then((self) => {
+        if (active && self?.birthInfo) void syncTurningPointNotifications(self.birthInfo);
+      }).catch(() => {});
+    } catch { /* 홈은 계속 그린다 */ }
+    return () => { active = false; };
+  }, [isAuthenticated]);
+
   const [candleEligible, setCandleEligible] = useState<boolean | null>(null);
   useEffect(() => {
     if (!isAuthenticated) return;

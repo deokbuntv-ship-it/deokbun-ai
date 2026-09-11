@@ -10,6 +10,7 @@ import {
   AdminStateView,
   confirmDestructive,
 } from '@/features/admin';
+import { AdminConfirmDialog } from '@/features/admin/components/AdminConfirmDialog';
 import {
   FamousEditor,
   famousService,
@@ -109,7 +110,12 @@ export default function AdminFamousDetailScreen() {
   //   과다 빌드는 Edge 쪽 쿨다운(3분)이 흡수한다 — 뒤늦게 시작한 빌드가 그 사이 커밋을 전부 담는다.
   const wasPublished = profile?.status === 'published';
 
-  const handleSubmit = (input: FamousInput) => {
+  // ⚠ 발행 상태를 건드리는 저장은 **확인을 거친다.** 실명 공개 페이지가 생기거나 내려가고,
+  //   그 자리에서 Vercel 재배포까지 돈다. 되돌리기가 있긴 하지만 검색 엔진 캐시는 남는다.
+  //   발행과 무관한 저장(초안 수정 등)은 그냥 지나간다 — 모든 저장에 확인을 걸면 확인이 소음이 된다.
+  const [pendingPublish, setPendingPublish] = useState<FamousInput | null>(null);
+
+  const applySubmit = (input: FamousInput) => {
     if (submitting || id === undefined) return;
     setSubmitting(true);
     setErrorMessage(null);
@@ -134,6 +140,15 @@ export default function AdminFamousDetailScreen() {
         );
       })
       .finally(() => setSubmitting(false));
+  };
+
+  const handleSubmit = (input: FamousInput) => {
+    if (submitting || id === undefined) return;
+    if (wasPublished || input.status === 'published') {
+      setPendingPublish(input);
+      return;
+    }
+    applySubmit(input);
   };
 
   const handleArchive = () => {
@@ -248,6 +263,41 @@ export default function AdminFamousDetailScreen() {
             errorMessage={errorMessage}
             onSubmit={handleSubmit}
             onArchive={handleArchive}
+          />
+
+          {/* ⚠ Z11(법률 검토)을 문구에 넣는다. "실존 인물입니까?" 를 **묻지는** 않는다 —
+              물어도 확인할 방법이 없고, 매번 예를 누르게 훈련시키면 물음 자체가 무뎌진다.
+              대신 상시 경고로 둔다. 오너가 그 순간 알아야 하는 것은 "이 버튼이 실명 페이지를
+              공개한다" 와 "그 검토가 아직 안 끝났다" 두 가지다. */}
+          <AdminConfirmDialog
+            visible={pendingPublish !== null}
+            busy={submitting}
+            title={
+              pendingPublish?.status === 'published'
+                ? '이 인물을 공개할까요?'
+                : '공개 상태를 바꿀까요?'
+            }
+            what={
+              pendingPublish?.status === 'published'
+                ? '이름과 명식, 해설이 담긴 페이지가 누구나 볼 수 있게 인터넷에 올라갑니다.'
+                : '지금 공개된 페이지가 내려갑니다. 저장과 동시에 사이트가 다시 만들어집니다.'
+            }
+            scope="사이트 전체가 다시 만들어집니다(보통 2~5분). 검색 엔진이 이 페이지를 수집할 수 있게 됩니다."
+            reversible={
+              '상태를 되돌리면 페이지는 사라집니다. 다만 **검색 엔진이 이미 가져간 내용은 한동안 남습니다** — '
+              + '올린 것을 완전히 없던 일로 만들 수는 없습니다.'
+            }
+            notice={
+              '⚠ 실존 인물의 법률 검토가 아직 끝나지 않았습니다(OWNER_TODO Z11). '
+              + '검토 전에는 가상 명식으로만 발행하십시오.'
+            }
+            confirmLabel={pendingPublish?.status === 'published' ? '공개합니다' : '적용합니다'}
+            onCancel={() => setPendingPublish(null)}
+            onConfirm={() => {
+              const input = pendingPublish;
+              setPendingPublish(null);
+              if (input) applySubmit(input);
+            }}
           />
         </>
       )}

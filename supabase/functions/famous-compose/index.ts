@@ -21,6 +21,7 @@ import {
   buildFamousBodyUserPrompt,
   checkFamousBody,
   composeFamousBody,
+  droppedEmptySentences,
   ungloassedTerms,
   repeatedOpenings,
   unsourcedSections,
@@ -35,6 +36,8 @@ import {
   phaseDirectionErrors,
   sentenceDefects,
   checkRelationClaims,
+  relationMentionCount,
+  factClaimCounts,
   citationCount,
   claimCoverage,
   FAMOUS_BODY_PROMPT_VERSION,
@@ -353,7 +356,17 @@ export default {
       // v3 — 운영자 화면에 뜨는 경고. 거절하지 않는 이유: 오타·조사는 기계가 못 잡고,
       // 잡히는 것만으로 글을 버리면 LLM 1콜을 날리면서 파이프라인이 막힌다.
       sentenceDefects: sentenceDefects(markdown),
+      // ⚠ 조립 단계에서 **버린** 문장. 세미콜론 clamp 와 달리 이것은 내용을 지우므로 조용히
+      //   두지 않는다 — 규칙이 언젠가 정상 문장을 지우면 여기 보이는 것이 유일한 단서다.
+      droppedEmptySentences: droppedEmptySentences(sections as never),
       relationClaims: checkRelationClaims(markdown, chartResult.snapshot),
+      // ⚠ **분모.** v3~v6 내내 "관계 9/9" 로 보고했는데 그 분모는 **검사된 것**이었다.
+      //   검사에서 빠진 문장은 세지도 않아 항상 100%가 나왔다. 두 수가 다르면 못 본 것이 있다는 뜻이다.
+      relationMentions: relationMentionCount(markdown),
+      // ⚠ **분모 — 투간·통근.** v4~v7 의 "통근 14/14 · 34/34 · 20/20 · 29/29" 는 본문의 주장이
+      //   아니라 **근거 인용을 대부분 세고 있었다**(본문 기준 2/2 · 7/7 · 3/3 · 3/3).
+      //   검사는 좁히지 않았다 — 근거도 독자가 읽고, 근거만 넣어도 전부 일치했다. 이름표를 나눈다.
+      factClaims: factClaimCounts(markdown, chartResult.snapshot),
       revealedClaims: checkRevealedClaims(markdown, chartResult.snapshot),
       rootingClaims: checkRootingClaims(markdown, chartResult.snapshot),
       promptVersion: FAMOUS_BODY_PROMPT_VERSION,

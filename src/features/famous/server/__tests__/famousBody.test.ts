@@ -19,11 +19,16 @@ import {
   repeatedOpenings,
   ungloassedTerms,
   unsourcedSections,
+  isEmptySentence,
+  dropEmptySentences,
+  sentenceDefects,
+  clampSemicolons,
 } from '../famousBodyPrompt';
 
 import { FAMOUS_BODY_SECTION_TITLES } from '../famousBodyPrompt';
 
 import { GENERATED_BODIES, GENERATED_BODIES_V2, SAMPLE_V2_EXACT } from './famousBodySamples';
+import * as SAMPLES from './famousBodySamples';
 
 // 실제 위반 문장. "정규식이 이런 문자열에 맞는다" 가 아니라 "이런 **문장**이 걸린다" 를 본다.
 const VIOLATIONS: { id: string; sentence: string }[] = [
@@ -297,5 +302,179 @@ describe('본문 조립', () => {
     }
     // v2 실측도 당시 개념 제목이었다 — 되돌아가지 않았는지 함께 본다.
     expect((SAMPLE_V2_EXACT.match(/^## .+$/gm) ?? []).join(' ')).toContain('통근');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// 내용 없는 문장 clamp (v6) — **양방향.**
+//
+// ⚠ 이 프로젝트의 규율: 실측 본문을 회귀 픽스처로 박는다. 여기 한쪽만 있으면 위험하다 —
+//   "잡아야 할 것을 잡는가" 만 보면 규칙을 넓히게 되고, 넓히면 정상 문장이 죽는다(누적 25건).
+//   그래서 **잡는 쪽과 통과시키는 쪽을 같은 무게로** 둔다.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+/** 픽스처 전체를 문장으로 편다. `sections()` 와 같은 방식(근거 괄호를 마침표 앞으로 정규화). */
+function allFixtureSentences(): { name: string; title: string; sen: string }[] {
+  const out: { name: string; title: string; sen: string }[] = [];
+  for (const [name, value] of Object.entries(SAMPLES)) {
+    if (typeof value !== 'string' || !value.startsWith('## ')) continue;
+    for (const section of value.split(/^## /m).slice(1)) {
+      const [title, ...rest] = section.split('\n');
+      const normalized = rest.join(' ').replace(/([.!?])\s*([(（]근거:[^)）]*[)）])/g, ' $2$1');
+      for (const sen of normalized.split(/(?<=[.!?])\s+/)) {
+        const t = sen.trim();
+        if (t.length > 12) out.push({ name, title: title.trim(), sen: t });
+      }
+    }
+  }
+  return out;
+}
+
+describe('내용 없는 문장 — 잡아야 하는 것', () => {
+  // ⚠ v5 ③ 에서 실제로 나온 문장. 프롬프트로 세 번 눌러 세 번 다 형태만 바꿔 살아남았다.
+  it('실측 대상 — "일간은 일간 기로 서 있습니다"', () => {
+    expect(isEmptySentence('이 명식의 일간은 일간 기로 서 있습니다 (근거: 일간 기).'))
+      .toMatch(/자리 되풀이/);
+  });
+
+  it('v4 옛 형태 — "일간 기는 일간 기(己)로 표기됩니다"', () => {
+    expect(isEmptySentence('이 명식에서 일간 기는 일간 기(己)로 표기됩니다.')).toMatch(/자리 되풀이/);
+  });
+
+  it('자리만 바꾼 재발형도 잡는다 — 규칙이 일간에만 붙어 있지 않다', () => {
+    expect(isEmptySentence('이 명식의 월지는 월지 유로 서 있습니다 (근거: 월지 유).')).toMatch(/자리 되풀이/);
+  });
+
+  it('출처 고백 — 명식이 아니라 자료를 말한다', () => {
+    expect(isEmptySentence("이 해석은 자료의 '생극 방향' 문장을 그대로 따릅니다."))
+      .toMatch(/출처 고백/);
+    expect(isEmptySentence('이 설명은 자료의 계절 단계 표기를 그대로 옮긴 것입니다.'))
+      .toMatch(/출처 고백/);
+  });
+
+  it('픽스처 전체에서 정확히 이 둘만 잡는다 — 그 밖은 전부 정상 문장이다', () => {
+    const caught = allFixtureSentences().filter((r) => isEmptySentence(r.sen) !== null);
+    // ⚠ 실패하면 무엇이 잡혔는지 보이게 한다. 숫자만 보면 어느 정상 문장이 죽었는지 모른다.
+    expect(caught.map((c) => `${c.name}: ${c.sen.slice(0, 50)}`)).toEqual([
+      "SAMPLE_V4_NO_HOUR: 이 해석은 자료의 '생극 방향' 문장을 그대로 따릅니다 (근거: 생극 방향: 계절과 일간이",
+      'SAMPLE_V5_AUTUMN: 이 명식의 일간은 일간 기로 서 있습니다 (근거: 일간 기).',
+    ]);
+  });
+});
+
+describe('⚠ 내용 없는 문장 — **통과시켜야 하는 것** (거짓 양성 0)', () => {
+  // ⚠ 실측 356문장 중 354건. 위 테스트가 이미 전수로 보지만, 특히 위험한 형태를 이름으로 박는다.
+  it.each([
+    ['짧은 사실 진술 — 술어가 새 속성을 준다', '일간은 계(癸) 음수입니다 (근거: 일간 계).'],
+    ['귀결이 있는 진술', '월간 임은 통근이 없어 뜬 글자입니다 (근거: 월간 임 통근 X).'],
+    ['수치 열거 — 근거가 본문을 되풀이해도 정상이다', '식상은 4, 재성은 2이며 관성과 인성은 각각 1입니다 (근거: 식상 4 · 재성 2 · 관성 1 · 인성 1).'],
+    ['같은 자리를 두 번 쓰되 관계를 나른다', '이 명식의 일간은 일간 기로 통근합니다 (근거: 일간 기 통근 O).'],
+    ['같은 자리를 두 번 쓰되 판정을 나른다', '이 명식의 월지는 월지 유로 실령입니다 (근거: 월지 유 실령).'],
+    ['개념 정의문', '통근(通根, 천간이 지지 속에 같은 오행의 뿌리를 두는 것)은 일간이 뿌리를 가지고 있는지로 글자의 안정성을 보는 개념입니다.'],
+    ['⚠ 프롬프트 ③이 매 글마다 요구하는 조건문', '통근이 여러 곳에 있는 명식은 뿌리가 많은 쪽으로 읽습니다.'],
+    ['⚠ tenGods 스펙이 요구하는 사실', '일지 구조는 일간과 가장 가까운 자리라는 점을 보여 줍니다.'],
+    ['⚠ 자리+글자 표기를 지킨 정상문', '월지 유는 월지 자리의 글자로 이 명식의 계절을 정합니다.'],
+    ['⚠ 읽는 법 지시문', '일간을 볼 때 일간 하나만 떼어 읽지 말고 주변 글자와 함께 읽습니다.'],
+    ['⚠ 술부에 새 항이 있는 서술', '일간 기는 일간의 자리에서 자신의 성향을 그대로 표현합니다 (근거: 일간 기).'],
+    ['⚠ 두 자리 사이의 관계', '일간 계와 가장 직접적으로 맞닿은 일지는 일지 미로서 그 지장간 글자들이 일간과의 관계에서 중심이 됩니다.'],
+    ['정상 출처 인용 — 근거 괄호는 판정에 쓰지 않는다', '이 명식에서는 년지의 지장간 기가 일간으로 투간되었습니다 (근거: 년지 지장간 기 → 일간 투간되었습니다).'],
+  ])('%s', (_label, sentence) => {
+    expect(isEmptySentence(sentence)).toBeNull();
+  });
+});
+
+describe('버리기 — 글이 끊기지 않는가', () => {
+  const SECTION = '통근(通根, 천간이 지지 속에 같은 오행의 뿌리를 두는 것)은 일간이 뿌리를 가지고 있는지로 글자의 안정성을 보는 개념입니다. '
+    + '이 명식의 일간은 일간 기로 서 있습니다. (근거: 일간 기) '
+    + '일간 기는 뿌리를 두고 있어 뜬 글자가 아닙니다. (근거: 일간 기는 년지 오·일지 축에 통근 O) '
+    + '통근이 있는 쪽과 없는 쪽의 대비가 읽기의 출발점입니다.';
+
+  it('그 문장만 사라지고 나머지는 그대로 남는다', () => {
+    const after = dropEmptySentences(SECTION);
+    expect(after).not.toContain('일간은 일간 기로 서 있습니다');
+    expect(after).toContain('안정성을 보는 개념입니다');
+    expect(after).toContain('뜬 글자가 아닙니다');
+    expect(after).toContain('읽기의 출발점입니다');
+  });
+
+  it('⚠ 남은 글에 짝 없는 괄호가 없다 — 근거 괄호 안의 마침표에서 자르면 이것이 깨진다', () => {
+    const after = dropEmptySentences(SECTION);
+    expect((after.match(/\(/g) ?? []).length).toBe((after.match(/\)/g) ?? []).length);
+  });
+
+  it('⚠ 괄호 안 마침표에서 자르지 않는다 — 실측 84섹션 중 15섹션이 이 차이에 걸린다', () => {
+    const t = '일간은 뿌리를 두고 있습니다 (근거: 일간 정 음화. 통근 O — 년지 오·월지 오).';
+    // 순진한 분리는 둘로 자른다. 우리 분리는 하나로 둔다 — 그래서 버려도 괄호가 깨지지 않는다.
+    expect(t.split(/(?<=[.!?])\s+/).length).toBe(2);
+    expect(dropEmptySentences(t)).toBe(t);
+  });
+
+  it('전부 버려지면 원문을 그대로 둔다 — 빈 섹션은 엉뚱한 이유로 422가 된다', () => {
+    const only = '이 명식의 일간은 일간 기로 서 있습니다 (근거: 일간 기).';
+    expect(dropEmptySentences(only)).toBe(only);
+  });
+
+  it('조립 경로가 실제로 버린다 — clamp 가 composeFamousBody 안에 있다', () => {
+    const sections = Object.fromEntries(
+      Object.keys(FAMOUS_BODY_SECTION_TITLES).map((k) => [k, SECTION]),
+    );
+    const md = composeFamousBody(sections as never);
+    expect(md).not.toContain('일간은 일간 기로 서 있습니다');
+    expect(md).toContain('뜬 글자가 아닙니다');
+  });
+
+  it('세미콜론 뒤에 붙은 빈 문장도 잡힌다 — clamp 순서가 맞다', () => {
+    const t = '통근은 뿌리를 보는 개념입니다; 이 명식의 일간은 일간 기로 서 있습니다. 일간 기는 뜬 글자가 아닙니다.';
+    expect(dropEmptySentences(clampSemicolons(t))).not.toContain('일간은 일간 기로 서 있습니다');
+  });
+});
+
+describe('⚠ 실측 본문 전체가 clamp 를 통과해도 달라지지 않는다', () => {
+  it('v1·v2 본문은 한 글자도 바뀌지 않는다 — 이 계열이 없었다', () => {
+    for (const { body } of [...GENERATED_BODIES, ...GENERATED_BODIES_V2]) {
+      for (const section of body.split(/^## /m).slice(1)) {
+        const text = section.split('\n').slice(1).join('\n').trim();
+        if (text === '') continue;
+        expect(dropEmptySentences(text)).toBe(text);
+      }
+    }
+  });
+
+  it('clamp 를 거친 마크다운에서는 경보가 울리지 않는다', () => {
+    const sections = Object.fromEntries(
+      Object.keys(FAMOUS_BODY_SECTION_TITLES).map((k) => [
+        k,
+        '통근은 뿌리를 보는 개념입니다. 이 명식의 일간은 일간 기로 서 있습니다 (근거: 일간 기). 일간 기는 뜬 글자가 아닙니다.',
+      ]),
+    );
+    expect(sentenceDefects(composeFamousBody(sections as never)).filter((d) => d.includes('내용 없는 문장'))).toEqual([]);
+  });
+
+  it('⚠ clamp 를 거치지 않은 글에서는 경보가 울린다 — 세미콜론(③)과 같은 구조', () => {
+    const md = '## 일간은 무엇으로 서 있나 — 통근\n\n통근은 뿌리를 보는 개념입니다. 이 명식의 일간은 일간 기로 서 있습니다 (근거: 일간 기). 일간 기는 뜬 글자가 아닙니다.';
+    expect(sentenceDefects(md).some((d) => d.includes('내용 없는 문장'))).toBe(true);
+  });
+});
+
+describe('⚠ 이 clamp 가 **못 잡는 것** — 알고 넣는다', () => {
+  // 적대적 검증이 지은 우회형 12건 중 이 규칙이 막는 것은 1건이다.
+  // ⚠ 이 테스트를 "고치려고" 규칙을 넓히지 말 것. 넓히면 위 "통과시켜야 하는 것" 이 죽는다.
+  //   실제로 넷 다 실측 356문장에서는 거짓 양성 0이었는데, 프롬프트가 요구하는 정상 문장 62개를
+  //   새로 지어 돌리자 전부 깨졌다(FP 11·7·5·5). 규칙을 건드릴 때는 둘 다 다시 돌려야 한다.
+  it.each([
+    // ⚠⚠ **실측이다. 합성이 아니다.** clamp 를 넣고 배포한 **바로 다음 생성**(v6 ③)에서 나왔다.
+    //   `천간` 과 `명확히` 두 낱말이 남아 leftover 가 0이 아니게 되면서 규칙 A 를 빠져나간다.
+    //   두 낱말을 STOP 에 더하면 잡히지만 **그렇게 하지 않았다** — 그것이 어휘를 넓히는 길이고,
+    //   적대적 검증에서 넓힌 규칙이 프롬프트가 요구하는 정상 문장을 죽이는 것을 실행으로 봤다.
+    //   이 줄이 이 트랙의 결론이다: **검사기로 이 계열을 끝낼 수 없다.**
+    ['⚠ 실측 우회형 (v6 ③, clamp 배포 직후)', '일간 기는 천간 자리로는 일간 기(己)로 명확히 서 있습니다 (근거: 일간 기 표기).'],
+    ['이름표를 뺀 형태', '이 명식의 일간은 기(己)로 서 있습니다 (근거: 일간 기).'],
+    ['술어를 지운 형태', '이 명식의 월지는 월지 유입니다.'],
+    ['숫자 하나를 끼운 형태', '이 명식의 일간은 1개의 자리에서 일간 기로 서 있습니다 (근거: 일간 기).'],
+    ['용어를 바꾼 되받기', '월령이 왕이라는 것은 월령의 단계가 왕이라는 뜻입니다 (근거: 월령 왕).'],
+    ['구조 마감 선언 (라벨러 합의 38·46)', '명식 구조 자체가 일간의 표현 방식과 내적 자원의 상호작용을 드러냅니다.'],
+    ['통근 되받기 (라벨러 합의 199·200)', '통근이 여러 곳에 모여 있어 겉으로 드러나는 뿌리가 많습니다 (근거: 통근 O가 년·월·시·일에 나타남).'],
+  ])('%s — 통과한다(측정된 천장)', (_label, sentence) => {
+    expect(isEmptySentence(sentence)).toBeNull();
   });
 });

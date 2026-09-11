@@ -16,6 +16,7 @@ import {
   type AdminTableColumn,
 } from '@/features/admin';
 import { adminMono, adminTheme } from '@/features/admin/adminTheme';
+import { AdminConfirmDialog } from '@/features/admin/components/AdminConfirmDialog';
 import {
   adminEconomyService,
   type EconomyOverview,
@@ -170,6 +171,11 @@ export default function AdminEconomyScreen() {
   const [adjNote, setAdjNote] = useState('');
   const [adjBusy, setAdjBusy] = useState(false);
   const [adjResult, setAdjResult] = useState<{ ok: boolean; message: string } | null>(null);
+  // ⚠ 확인 단계를 붙인 이유. 필수 입력이 셋이라 실수 여지가 적다고 볼 수도 있었지만, 그 논리가
+  //   여기서는 거꾸로다 — 사용자 ID 는 **붙여넣기 대상**이고, 틀린 UUID 라도 형식만 맞으면 세 검사를
+  //   전부 통과한다. 폼은 "잘못된 사람" 을 잡아낼 수 없다. 확인 창이 대상과 금액을 되읽어 주는 것이
+  //   커밋 전에 그 실수가 보이는 유일한 자리다. 원장은 append-only 라 되돌리기가 없다.
+  const [adjConfirm, setAdjConfirm] = useState(false);
 
   const parsedAmount = Number.parseInt(adjAmount, 10);
   const amountValid = Number.isInteger(parsedAmount) && parsedAmount !== 0;
@@ -177,6 +183,12 @@ export default function AdminEconomyScreen() {
 
   const submitAdjust = useCallback(async () => {
     if (!canSubmit) return;
+    setAdjConfirm(true);
+  }, [canSubmit]);
+
+  const applyAdjust = useCallback(async () => {
+    if (!canSubmit) return;
+    setAdjConfirm(false);
     const targetId = adjUserId.trim();
     setAdjBusy(true);
     setAdjResult(null);
@@ -327,6 +339,17 @@ export default function AdminEconomyScreen() {
             <Text variant="bodySmall" style={{ color: adminTheme.warning }}>
               조정은 되돌릴 수 없는 원장 기록으로 남습니다.
             </Text>
+            <AdminConfirmDialog
+              visible={adjConfirm}
+              busy={adjBusy}
+              title="덕을 조정할까요?"
+              what={`${adjBucket} 잔액을 ${parsedAmount > 0 ? "+" : ""}${parsedAmount} 만큼 바꿉니다. 사유: ${adjNote.trim()}`}
+              scope={`대상 사용자 ${adjUserId.trim()}. 이 한 명에게만 적용됩니다 — 사용자 ID 가 맞는지 다시 보십시오.`}
+              reversible="되돌릴 수 없습니다. 원장은 덧붙이기만 하는 장부라, 잘못 넣으면 반대 방향으로 한 번 더 조정해 상쇄하는 수밖에 없고 두 기록이 모두 남습니다."
+              confirmLabel="조정합니다"
+              onCancel={() => setAdjConfirm(false)}
+              onConfirm={() => void applyAdjust()}
+            />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <Button variant="primary" label={adjBusy ? '적용 중…' : '조정 적용'} onPress={submitAdjust} disabled={!canSubmit} />
               {adjResult ? (

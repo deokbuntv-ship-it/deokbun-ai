@@ -152,11 +152,19 @@ describe('⚠ 약관 [보기] 가 여는 문서가 실제로 그려진다', () =
     await waitFor(() => expect(document.body.textContent!.length).toBeGreaterThan(200));
   });
 
-  it('⚠ 이용약관에 탈퇴 조항이 없다 — 이미 알려진 사항(OWNER_TODO D5), 확인만 한다', async () => {
+  // ⚠ 2026-09-10 — **뒤집은 단언.** 전에는 "탈퇴 조항이 **없다**" 를 확인만 하는 테스트였고
+  //   주석이 "이 단언이 깨지면 = 조항이 생겼다는 뜻이므로 그때 D5 를 닫으면 된다" 고 적어 두었다.
+  //   조항이 생겼으므로 그대로 따른다. 이제는 **있어야** 통과한다.
+  it('⚠ 이용약관에 탈퇴 조항이 있다 (OWNER_TODO D5 닫힘)', async () => {
     await act(async () => { render(<TermsOfServiceScreen />); });
     await waitFor(() => expect(document.body.textContent!.length).toBeGreaterThan(200));
     const body = document.body.textContent ?? '';
-    // 이 단언이 깨지면 = 탈퇴 조항이 생겼다는 뜻이므로, 그때 D5 를 닫으면 된다.
-    expect(body).not.toMatch(/회원\s*탈퇴|탈퇴\s*절차|계정\s*삭제\s*조항/);
+    expect(body).toMatch(/회원\s*탈퇴/);
+    // 조항이 **무엇을 말하는가** 까지 본다. 제목만 있고 알맹이가 없으면 없는 것과 같다.
+    expect(body).toContain('계정 탈퇴');                 // 앱 내 경로
+    expect(body).toContain('/account-deletion');         // 앱이 없을 때 볼 웹 주소
+    expect(body).toMatch(/전자상거래/);                   // 보존 근거 법령
+    expect(body).toMatch(/\[법률 검토/);                  // 확정 못 한 것을 확정한 척하지 않는다
+    expect(body).toMatch(/\[오너 결정 · 법률 검토 필요: 유료 구매 덕의 탈퇴 시 처리\]/); // 빈칸으로 남긴 것
   });
 });

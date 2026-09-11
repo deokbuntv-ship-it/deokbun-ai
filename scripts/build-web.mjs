@@ -27,6 +27,7 @@
 //   node scripts/build-web.mjs            # full web build
 //   node scripts/build-web.mjs --no-export  # data steps only (fast check)
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,4 +55,24 @@ if (skipExport) {
 }
 
 step('3/3 expo export', 'npx', ['expo', 'export', '-p', 'web', '--output-dir', 'dist']);
+
+// 4. 검색엔진 소유확인 메타 — 값이 있을 때만. 규칙과 회귀는 `src/config/siteVerificationMeta.ts`.
+//
+// ⚠ 왜 export 뒤인가: 소유확인은 **사이트 루트**(`/`)를 가져가 확인한다. 루트를 그리는
+//   `(tabs)/index` 는 `SeoHead` 를 쓰지 않고, 거기에 넣으면 모든 탭 페이지에 같은 태그가
+//   복제된다. 루트 HTML 한 장에 넣는 것이 정확하고 작다.
+{
+  const { VERIFICATION_ENV, withVerificationMeta } = await import('../src/config/siteVerificationMeta.ts');
+  const rootHtml = join(root, 'dist', 'index.html');
+  const set = Object.keys(VERIFICATION_ENV).filter((k) => (process.env[k] ?? '').trim() !== '');
+  if (set.length === 0) {
+    console.log('\n[build-web] 4/4 소유확인 메타: 건너뜀 — ' + Object.keys(VERIFICATION_ENV).join(' · ') + ' 없음');
+  } else if (!existsSync(rootHtml)) {
+    console.log('\n[build-web] 4/4 소유확인 메타: dist/index.html 없음 — 건너뜀');
+  } else {
+    writeFileSync(rootHtml, withVerificationMeta(readFileSync(rootHtml, 'utf8'), process.env), 'utf8');
+    console.log(`\n[build-web] 4/4 소유확인 메타 넣음 → dist/index.html (${set.join(' · ')})`);
+  }
+}
+
 console.log('\n[build-web] done → dist/');
