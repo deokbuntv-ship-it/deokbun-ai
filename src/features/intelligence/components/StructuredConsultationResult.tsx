@@ -54,12 +54,17 @@ export function StructuredConsultationResult({
   onRetry,
   onFeedback,
   initialFeedback,
+  onReport,
+  reported,
 }: {
   vm: StructuredConsultationViewModel;
   onSelectFollowUp?: (q: string) => void;
   onRetry?: () => void;
   onFeedback?: (verdict: FeedbackVerdict) => Promise<void> | void;
   initialFeedback?: FeedbackVerdict | null;
+  /** AI 답변 신고 시트를 여는 콜백 (구글 AI 생성 콘텐츠 정책). 없으면 입구를 그리지 않는다. */
+  onReport?: () => void;
+  reported?: boolean;
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
@@ -120,7 +125,12 @@ export function StructuredConsultationResult({
         <FollowUpSuggestions suggestions={p.followUps} onSelect={onSelectFollowUp} />
       ) : null}
 
-      <UserFeedbackControl onSubmit={onFeedback} initialVerdict={initialFeedback} />
+      <UserFeedbackControl
+        onSubmit={onFeedback}
+        initialVerdict={initialFeedback}
+        onReport={onReport}
+        reported={reported}
+      />
     </Stack>
   );
 }

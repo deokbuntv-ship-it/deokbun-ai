@@ -260,7 +260,15 @@ function adminClient(): ReturnType<typeof createClient> | null {
 type AdminClient = ReturnType<typeof createClient>;
 type ConsumerAuthority =
   | { status: 'ok'; subjectId: string; subjectLabel: string; birthInfo: BirthInfoDraft; tier: 'FREE' }
-  | { status: 'consent_required' | 'profile_required' | 'unavailable' };
+  | { status: 'consent_required' | 'ai_consent_required' | 'profile_required' | 'unavailable' };
+
+// ⚠ 제3자 AI 처리 동의 (애플 5.1.2(i)). **설정값(데이터)으로 켜고 끈다** — 코드가 아니다.
+//   기본은 꺼짐이다. 새 APK 가 나가기 전에 켜면 동의 화면이 없는 옛 APK 가 상담을 못 한다.
+//   `DUK_BILLING_ENABLED` 와 같은 방식(Edge 시크릿)이라 배우는 비용이 늘지 않는다.
+const AI_CONSENT_ENFORCED = (Deno.env.get('AI_CONSENT_ENFORCED') ?? '').trim().toLowerCase() === 'true';
+// 문안 버전. 클라이언트의 `AI_CONSENT_VERSION` 과 같아야 한다. 시크릿으로 덮을 수 있게 둔다 —
+// 문안이 바뀌었을 때 앱 배포를 기다리지 않고 서버가 먼저 요구할 수 있어야 하기 때문이다.
+const AI_CONSENT_VERSION = (Deno.env.get('AI_CONSENT_VERSION') ?? '').trim() || 'ai-processing@2026-09-1';
 
 function storedSubjectBirth(row: Record<string, unknown>): BirthInfoDraft | null {
   const raw = row.birth_info;
@@ -283,6 +291,19 @@ async function resolveConsumerAuthority(userId: string | null, admin: AdminClien
     if (profileResult.error || subjectResult.error) return { status: 'unavailable' };
     if (!profileResult.data || (profileResult.data as { terms_version?: unknown }).terms_version !== REQUIRED_TERMS_VERSION) {
       return { status: 'consent_required' };
+    }
+    // ⚠ AI 로 개인정보가 나가기 **전에** 본다. 이 함수는 사용자 대상 AI 경로
+    //   (상담 · 궁합 · 오늘 · 이달 · 프리미엄 리포트)가 전부 지나는 단 하나의 문이다.
+    if (AI_CONSENT_ENFORCED) {
+      const consent = await admin.from('ai_processing_consents')
+        .select('revoked_at')
+        .eq('user_id', userId).eq('consent_version', AI_CONSENT_VERSION)
+        .maybeSingle();
+      // ⚠ 조회가 실패하면 **통과시키지 않는다.** 동의 확인을 못 한 채 보내는 것이 더 나쁘다.
+      if (consent.error) return { status: 'unavailable' };
+      if (!consent.data || (consent.data as { revoked_at?: unknown }).revoked_at !== null) {
+        return { status: 'ai_consent_required' };
+      }
     }
     if (!subjectResult.data) return { status: 'profile_required' };
     const row = subjectResult.data as Record<string, unknown>;
@@ -768,6 +789,8 @@ const REASON_STATUS: Record<string, number> = {
   // 절기 boundary date so the app can point at the birth-time field instead of offering a retry.
   AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED: 422,
   CONSENT_REQUIRED: 403,
+  // 애플 5.1.2(i) — AI 전송 전용 동의가 없다. 클라이언트가 이 코드를 보고 동의 화면으로 보낸다.
+  AI_CONSENT_REQUIRED: 403,
   PROFILE_REQUIRED: 403,
   GENERATION_IN_PROGRESS: 409,
   REQUEST_IN_PROGRESS: 409,
@@ -833,7 +856,9 @@ export default {
         if (authority.status !== 'ok') {
           const code = authority.status === 'consent_required'
             ? 'CONSENT_REQUIRED'
-            : authority.status === 'profile_required' ? 'PROFILE_REQUIRED' : 'TEMPORARILY_UNAVAILABLE';
+            : authority.status === 'ai_consent_required'
+              ? 'AI_CONSENT_REQUIRED'
+              : authority.status === 'profile_required' ? 'PROFILE_REQUIRED' : 'TEMPORARILY_UNAVAILABLE';
           return Response.json({ error: code }, { status: REASON_STATUS[code] });
         }
 

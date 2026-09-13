@@ -39,7 +39,7 @@ export type CompatibilityChatResult =
     }
   | {
       success: false;
-      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK' | 'GROUNDING_UNAVAILABLE';
+      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK' | 'GROUNDING_UNAVAILABLE' | 'AI_CONSENT_REQUIRED';
       requestId: string;
       // Authoritative server balance — present ONLY for 'INSUFFICIENT_DUK' (drives the top-up/paywall UX).
       insufficientDuk?: { balance: number; required: number; shortfall: number };
@@ -129,6 +129,11 @@ export function createCompatibilityConsultationService(
         // **사실이 아닌 안내**였다. 값도 치르지 않았고 재시도로도 풀리지 않는다 — 고쳐야 할 것은 입력이다.
         if (result.error === 'GROUNDING_UNAVAILABLE') {
           return { success: false, errorCode: 'GROUNDING_UNAVAILABLE', message: result.message, requestId };
+        }
+        // 애플 5.1.2(i) — 서버가 AI 처리 동의 없음으로 거절했다. REQUEST_FAILED 로 뭉개면
+        // "잠시 후 다시" 라는 **사실이 아닌 안내**가 뜬다. 재시도로 풀리지 않고, 할 일은 동의다.
+        if (result.error === 'AI_CONSENT_REQUIRED') {
+          return { success: false, errorCode: 'AI_CONSENT_REQUIRED', requestId };
         }
         logFailure('REQUEST_FAILED', 'error');
         return { success: false, errorCode: 'REQUEST_FAILED', requestId };

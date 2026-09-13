@@ -23,7 +23,8 @@ type NavHref =
   | '/admin/economy'
   | '/admin/ai-usage'
   | '/admin/engine-status'
-  | '/admin/system-settings';
+  | '/admin/system-settings'
+  | '/admin/ai-reports';
 
 const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '대시보드', href: '/admin' },
@@ -38,6 +39,8 @@ const NAV_ITEMS: { label: string; href: NavHref }[] = [
   //    "파이프라인이 없어서" 다. 화면과 서비스는 이미 있다.)
   // { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
   { label: '고객문의', href: '/admin/support' },
+  // 구글 AI 생성 콘텐츠 정책이 요구하는 신고 창구. 고객문의 바로 아래 — 둘 다 "사람이 보낸 것" 이다.
+  { label: 'AI 답변 신고', href: '/admin/ai-reports' },
   { label: '홈 인기질문', href: '/admin/popular-questions' },
   { label: '리텐션 · 알림', href: '/admin/retention' },
   { label: '광고', href: '/admin/ads' },

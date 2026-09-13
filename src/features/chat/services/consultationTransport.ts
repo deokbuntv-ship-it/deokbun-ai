@@ -23,7 +23,10 @@ export type ConsultationTransportResult =
   // V6 — authoritative HTTP 422: no chart could be built from the birth information on file, so nothing was
   // charged and retrying the same question cannot help. `message` is the server's own explanation of which
   // input to correct; the client must not substitute a generic failure string for it.
-  | { ok: false; error: 'GROUNDING_UNAVAILABLE'; message: string | null };
+  | { ok: false; error: 'GROUNDING_UNAVAILABLE'; message: string | null }
+  // 애플 5.1.2(i) — HTTP 403 AI_CONSENT_REQUIRED. 아무것도 청구되지 않았고 재시도로 풀리지
+  // 않는다. 할 일은 동의이므로 클라이언트가 동의 화면으로 연결한다.
+  | { ok: false; error: 'AI_CONSENT_REQUIRED' };
 
 export type ConsultationTransport = {
   requestConsultation(request: ServerConsultationRequest): Promise<ConsultationTransportResult>;

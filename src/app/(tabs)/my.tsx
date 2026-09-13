@@ -9,6 +9,7 @@ import { CandleStrip } from '@/components/Candle';
 import { DukBalance } from '@/components/DukBalance';
 import { LineIcon } from '@/components/LineIcon';
 import { ListRow } from '@/components/ListRow';
+import { AiConsentSetting } from '@/features/legal/components/AiConsentSetting';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -212,6 +213,11 @@ export default function MyScreen() {
             ) : null}
 
             <RowGroup title="나의 기록" rows={RECORD_ROWS} />
+
+            {/* AI 처리 동의 — 애플 5.1.2(i) 는 **철회 경로**를 요구한다. 서비스 안내(읽기 전용
+                문서 묶음) 바로 위에 둔다: 여기만 사용자가 상태를 바꾸는 자리다. */}
+            {isAuthenticated ? <AiConsentSetting /> : null}
+
             <RowGroup title="서비스 안내" rows={POLICY_ROWS} />
 
             {isAuthenticated ? (

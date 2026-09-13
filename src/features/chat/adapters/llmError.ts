@@ -42,6 +42,19 @@ export function isAuthLLMError(error: unknown): boolean {
 const UNGROUNDED_REASONS = ['GROUNDING_UNAVAILABLE', 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED'] as const;
 export type UngroundedReason = (typeof UNGROUNDED_REASONS)[number];
 
+// 애플 5.1.2(i) — 서버가 **AI 처리 동의 없음**으로 거절한 403. 로그인 실패(401)와 다른 것이라
+// AUTH_REQUIRED 로 뭉개면 안 된다: 사용자가 할 일이 "다시 로그인" 이 아니라 "동의" 다.
+export async function parseAiConsentRequired(error: unknown): Promise<boolean> {
+  const ctx = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx || ctx.status !== 403 || typeof ctx.json !== 'function') return false;
+  try {
+    const body = (await ctx.json()) as { error?: unknown };
+    return body?.error === 'AI_CONSENT_REQUIRED';
+  } catch {
+    return false;
+  }
+}
+
 export async function parseGroundingUnavailable(
   error: unknown,
 ): Promise<{ reason: UngroundedReason; message: string | null } | null> {

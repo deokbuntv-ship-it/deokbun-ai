@@ -63,6 +63,11 @@ import { ReportCtaFooter } from '@/features/chat/report/ReportCtaFooter';
 import { isReportEligible, resolveReportCtaView } from '@/features/chat/report/reportCta';
 import { reportService } from '@/features/chat/report/reportService';
 import { feedbackService } from '@/features/chat/services/feedbackService';
+import { aiReportService } from '@/features/chat/services/aiReportService';
+import { AiConsentSheet } from '@/features/legal/components/AiConsentSheet';
+import { aiConsentService } from '@/features/legal/services/aiConsentService';
+import { AiReportSheet } from '@/features/intelligence/components/AiReportSheet';
+import type { ReportReason } from '@/features/intelligence/aiContentReport';
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import type { FeedbackVerdict } from '@/features/intelligence';
 import { colors, spacing } from '@/theme';
@@ -173,6 +178,34 @@ export default function ChatScreen() {
       cancelled = true;
     };
   }, [activeConversationId]);
+
+  // ── AI 답변 신고 (구글 AI 생성 콘텐츠 정책) ───────────────────────────────
+  // ⚠ 앱을 벗어나지 않고 신고할 수 있어야 한다. 이미 신고한 답변은 다시 못 누르게 상태를 읽어 둔다.
+  const [consentSheet, setConsentSheet] = useState(false);
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!activeConversationId) { setReportedIds(new Set()); return; }
+    let cancelled = false;
+    void aiReportService.listReportedMessages(activeConversationId).then((s) => { if (!cancelled) setReportedIds(s); });
+    return () => { cancelled = true; };
+  }, [activeConversationId]);
+  const sendReport = async (reason: ReportReason, detail: string) => {
+    const messageId = reportTarget;
+    if (!messageId) return 'failed' as const;
+    const r = await aiReportService.submitReport({
+      messageId,
+      conversationId: activeConversationId,
+      surface: 'consultation',
+      reason,
+      detail,
+    });
+    if (r.status === 'ok' || r.status === 'already') {
+      setReportedIds((prev) => new Set(prev).add(messageId));
+    }
+    return r.status === 'invalid' ? ('failed' as const) : r.status;
+  };
+
   const submitFeedback = async (messageId: string, verdict: FeedbackVerdict) => {
     setFeedbackMap((prev) => ({ ...prev, [messageId]: verdict }));
     await feedbackService.saveFeedback({
@@ -451,6 +484,10 @@ export default function ChatScreen() {
         // V6 — GROUNDING_UNAVAILABLE carries the SERVER's own explanation of which birth input is missing;
         // only the server knows that, so it is preferred over the fixed client copy.
         const view = mapConsultationError(result.errorCode, result.errorDetail);
+        if (result.errorCode === 'AI_CONSENT_REQUIRED') {
+          // 안내만 하지 않는다 — 동의 화면을 연다. 그래야 "그래서 어디서 동의하나" 로 끝나지 않는다.
+          setConsentSheet(true);
+        }
         if (result.errorCode === 'AUTH_REQUIRED') {
           // Preserve the question + resume route so login returns here, not Home (§9/§28).
           setPendingConsultationIntent({ question: text, returnTo: '/chat' });
@@ -709,6 +746,8 @@ export default function ChatScreen() {
                       onRetry={handleRetry}
                       onFeedback={(verdict) => void submitFeedback(message.id, verdict)}
                       initialFeedback={feedbackMap[message.id] ?? null}
+                      onReport={() => setReportTarget(message.id)}
+                      reported={reportedIds.has(message.id)}
                     />
                   ) : (
                     <ChatBubble message={message} />
@@ -836,6 +875,18 @@ export default function ChatScreen() {
       <PersonSelectorSheet
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
+      />
+
+      <AiReportSheet
+        visible={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        onSubmit={sendReport}
+      />
+
+      <AiConsentSheet
+        visible={consentSheet}
+        onClose={() => setConsentSheet(false)}
+        onAgree={() => aiConsentService.grant()}
       />
     </Screen>
   );

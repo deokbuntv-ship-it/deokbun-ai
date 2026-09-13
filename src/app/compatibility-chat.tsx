@@ -15,6 +15,9 @@ import { useConsumerLayout } from '@/hooks/useConsumerLayout';
 import { useAuth } from '@/features/auth';
 import { ChatInput, conversationService, createSingleFlight, supabaseEdgeConsultationAdapter, type ChatMessage } from '@/features/chat';
 import { feedbackService } from '@/features/chat/services/feedbackService';
+import { aiReportService } from '@/features/chat/services/aiReportService';
+import { AiReportSheet } from '@/features/intelligence/components/AiReportSheet';
+import type { ReportReason } from '@/features/intelligence/aiContentReport';
 import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
 import { CONSULTATION_PROMPT_VERSION } from '@/features/chat/prompts/consultationPromptVersion';
 import { reportService } from '@/features/chat/report/reportService';
@@ -30,6 +33,9 @@ import { getCandleAvailability } from '@/features/duk/dukWalletService';
 import { getSessionStatus, isSessionExhausted, type SessionStatus } from '@/features/duk/dukClientContract';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { mapConsumerError } from '@/features/errors/consumerErrorCopy';
+import { AI_CONSENT_REQUIRED_CODE } from '@/features/legal/aiProcessingConsent';
+import { AiConsentSheet } from '@/features/legal/components/AiConsentSheet';
+import { aiConsentService } from '@/features/legal/services/aiConsentService';
 import { AiDisclosure } from '@/components/AiDisclosure';
 import { CompatibilityTierCard } from '@/features/compatibility/components/CompatibilityTierCard';
 import { trackProductEvent } from '@/services/productEvents';
@@ -241,6 +247,10 @@ export default function CompatibilityChatScreen() {
           // Actionable paywall instead of a generic failure (§10). Numbers are the server snapshot; the client
           // never grants — it only routes to where 덕 can be earned (candle) or topped up.
           setInsufficientSnap(result.insufficientDuk);
+        } else if (result.errorCode === AI_CONSENT_REQUIRED_CODE) {
+          // 서버가 동의 없음으로 거절했다 → 안내만 하지 말고 **동의 화면을 연다**.
+          setErrorText(mapConsumerError(AI_CONSENT_REQUIRED_CODE).message);
+          setConsentSheet(true);
         } else if (result.errorCode === 'GROUNDING_UNAVAILABLE') {
           // 서버가 자기 설명을 실어 보냈으면 그쪽이 더 정확하다 — 어느 입력을 고쳐야 하는지는 서버만 안다
           // (일반 상담의 `mapConsultationError(detail)` 과 같은 우선순위). 없을 때만 고정 문구.
@@ -310,6 +320,10 @@ export default function CompatibilityChatScreen() {
         void feedbackService.loadFeedbackForConversation(loaded.conversationId).then((fm) => {
           if (!cancelled) setFeedbackMap(fm);
         });
+        // 이미 신고한 답변은 입구를 "신고 접수됨" 으로 되돌려 놓는다.
+        void aiReportService.listReportedMessages(loaded.conversationId).then((ids) => {
+          if (!cancelled) setReportedIds(ids);
+        });
       } else {
         void trackProductEvent('compatibility_started', { surface: 'compatibility_chat', consultationMode: 'compatibility' });
         void send(INITIAL_QUESTION);
@@ -359,6 +373,26 @@ export default function CompatibilityChatScreen() {
 
   // Persist 👍/👎 for an assistant message (non-blocking; optimistic local update). One row per
   // (user, message) — a re-vote updates it (§30). No PII: only the message id + verdict + versions.
+  // ── AI 답변 신고 (구글 AI 생성 콘텐츠 정책) ───────────────────────────────
+  const [consentSheet, setConsentSheet] = useState(false);
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const sendReport = async (reason: ReportReason, detail: string) => {
+    const messageId = reportTarget;
+    if (!messageId) return 'failed' as const;
+    const r = await aiReportService.submitReport({
+      messageId,
+      conversationId: conversationIdRef.current,
+      surface: 'compatibility',
+      reason,
+      detail,
+    });
+    if (r.status === 'ok' || r.status === 'already') {
+      setReportedIds((prev) => new Set(prev).add(messageId));
+    }
+    return r.status === 'invalid' ? ('failed' as const) : r.status;
+  };
+
   const submitFeedback = async (messageId: string, verdict: FeedbackVerdict) => {
     setFeedbackMap((prev) => ({ ...prev, [messageId]: verdict }));
     void trackProductEvent(
@@ -401,6 +435,8 @@ export default function CompatibilityChatScreen() {
             }}
             onFeedback={(verdict) => void submitFeedback(m.id, verdict)}
             initialFeedback={feedbackMap[m.id] ?? null}
+            onReport={() => setReportTarget(m.id)}
+            reported={reportedIds.has(m.id)}
           />
         </View>
       );
@@ -546,6 +582,18 @@ export default function CompatibilityChatScreen() {
             is part of the 궁합 flow. It owns the bottom safe-area, so the composer above never overlaps it. */}
         <DetailBottomNav active="compatibility" />
       </View>
+
+      <AiReportSheet
+        visible={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        onSubmit={sendReport}
+      />
+
+      <AiConsentSheet
+        visible={consentSheet}
+        onClose={() => setConsentSheet(false)}
+        onAgree={() => aiConsentService.grant()}
+      />
     </Screen>
   );
 }

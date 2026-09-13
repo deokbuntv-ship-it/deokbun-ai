@@ -131,15 +131,31 @@ describe('nav selected state uses signature orange (§15)', () => {
   });
 });
 
-describe('top-up is honestly unavailable — no purchasable control (§27)', () => {
+// ⚠ 2026-09-11 — 이 계약의 **전제가 바뀌었다.** 원래는 "05B 가 연기됐으므로 결제 기계가
+// 한 줄도 없어야 한다" 였다. 이번 묶음이 안드로이드 결제를 붙였으므로 그 문장은 더 이상
+// 사실이 아니다. 계약을 지우지 않고 **새 사실로 다시 쓴다** — 지키려던 것(살 수 없는데
+// 살 수 있는 것처럼 보이지 않기)은 그대로 지킨다.
+describe('top-up: 살 수 없으면 살 수 있는 것처럼 보이지 않는다 (§27)', () => {
   const topup = read('app/duk-topup.tsx');
-  it('communicates 준비 중', () => {
+  it('스토어가 없을 때 보일 문구가 남아 있다', () => {
     expect(topup).toMatch(/준비 중/);
   });
-  it('renders no purchase Button and invokes no IAP purchase machinery', () => {
-    expect(topup).not.toMatch(/<Button\b/);
-    // The real risk is an actual purchase call, not the word "purchase" in a comment.
-    expect(topup).not.toMatch(/requestPurchase|purchaseFlow\s*\(|nativeStore|react-native-iap/);
+
+  it('⚠ 구매 컨트롤이 storeReady 뒤에 있다 — 조건 없이 그리지 않는다', () => {
+    expect(topup).toMatch(/storeReady \? \(/);
+    // "준비 중" 은 그 반대편(else)에 남아 있어야 한다.
+    expect(topup).toMatch(/\) : \([\s\S]{0,400}준비 중/);
+  });
+
+  it('⚠ 클라이언트가 덕을 지급하지 않는다', () => {
+    // 지급은 서버(verify-purchase)만 한다. 화면이 잔액을 직접 만지면 안 된다.
+    expect(topup).not.toMatch(/grant_duk|grantDuk|setBalance|duk_ledger/);
+  });
+
+  it('구매는 서버 검증을 거치는 서비스로만 간다', () => {
+    // 네이티브 SDK 를 화면이 직접 부르지 않는다 — 어댑터 뒤에 있어야 한다.
+    expect(topup).not.toMatch(/require\(['"]expo-iap|require\(['"]react-native-iap/);
+    expect(topup).toMatch(/purchaseService\.buy/);
   });
 });
 

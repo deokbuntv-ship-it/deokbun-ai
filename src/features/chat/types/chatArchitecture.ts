@@ -122,7 +122,10 @@ export type ChatServiceResult =
         | 'INSUFFICIENT_DUK'
         // V6 — no chart could be built from the birth information on file. Nothing was charged, and a retry
         // of the same question cannot succeed until the input is corrected.
-        | 'GROUNDING_UNAVAILABLE';
+        | 'GROUNDING_UNAVAILABLE'
+        // 애플 5.1.2(i) — 제3자 AI 처리 동의가 없다. 청구 0, 재시도로 풀리지 않는다.
+        // 사용자가 할 일은 재시도가 아니라 동의이므로 화면이 동의 경로로 안내한다.
+        | 'AI_CONSENT_REQUIRED';
       requestId?: string;
       // Authoritative server balance snapshot — present ONLY for errorCode 'INSUFFICIENT_DUK'. The UI uses
       // these for a top-up/paywall prompt; they are NEVER computed client-side.

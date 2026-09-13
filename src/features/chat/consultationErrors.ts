@@ -10,9 +10,14 @@ export type ConsultationErrorCode =
   | 'INVALID_INPUT'
   | 'REQUEST_FAILED'
   | 'INSUFFICIENT_DUK'
-  | 'GROUNDING_UNAVAILABLE';
+  | 'GROUNDING_UNAVAILABLE'
+  // 애플 5.1.2(i) — 제3자 AI 처리 동의가 없다.
+  | 'AI_CONSENT_REQUIRED';
 
-export type ConsultationErrorKind = 'auth' | 'recoverable' | 'blocked' | 'input' | 'insufficient';
+export type ConsultationErrorKind =
+  | 'auth' | 'recoverable' | 'blocked' | 'input' | 'insufficient'
+  // 동의가 필요하다. auth 와 **다르다** — 로그인은 돼 있고, 할 일은 동의다.
+  | 'consent';
 
 export type ConsultationErrorView = {
   kind: ConsultationErrorKind;
@@ -52,6 +57,14 @@ export function mapConsultationError(
       return {
         kind: 'input',
         message: '메시지를 다시 확인해 주세요.',
+        canRetry: false,
+      };
+    case 'AI_CONSENT_REQUIRED':
+      // 청구 0. 재시도로 풀리지 않는다. 겁주지 않고, 안 되는 것만 사실대로 말한다.
+      return {
+        kind: 'consent',
+        message:
+          'AI가 해석문을 만들려면 AI 처리 동의가 필요해요.\n무엇을 어디로 보내는지 확인하고 동의하시면 이어서 진행할 수 있어요.',
         canRetry: false,
       };
     case 'GROUNDING_UNAVAILABLE':

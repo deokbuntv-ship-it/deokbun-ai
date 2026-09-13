@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Card } from '@/components/Card';
@@ -10,8 +11,11 @@ import { StateView } from '@/components/StateView';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth';
 import { walletStateOf } from '@/features/duk/consumerDukView';
+import { purchaseService } from '@/features/duk/iap/purchaseService';
+import { PURCHASE_UI_TEXT, canRetry, shouldRefreshWallet, storeProductIdFor } from '@/features/duk/iap/purchaseUiText';
+import type { PurchaseFlowResult } from '@/features/duk/iap/purchaseFlow';
 import { TOPUP_PACKS, dukLabel } from '@/features/duk/pricing';
-import { useWallet } from '@/features/duk/useWallet';
+import { refreshWallet, useWallet } from '@/features/duk/useWallet';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useConsumerLayout } from '@/hooks/useConsumerLayout';
 import { colors, radius, spacing } from '@/theme';
@@ -45,6 +49,33 @@ export default function DukTopupScreen() {
   const balance = wallet.state?.totalSpendable ?? 0;
   const balanceKnown = walletState === 'loaded' || walletState === 'zero';
 
+  // ── 스토어 결제 (2026-09-11) ───────────────────────────────────────────────
+  // ⚠ 네이티브 모듈이 없으면(Expo Go · config plugin 미반영 빌드) `storeReady` 가 false 이고
+  //   화면은 예전 그대로 "준비 중" 이다. **없는 기능을 있는 척하지 않는다.**
+  const [storeReady, setStoreReady] = useState(false);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ status: PurchaseFlowResult['status']; text: string } | null>(null);
+
+  useEffect(() => {
+    setStoreReady(purchaseService.nativeStore().isAvailable());
+    // ⚠ 앱이 결제 도중 꺼졌다면 스토어 큐에 구매가 남아 있다. 조용히 다시 제출한다 —
+    //   서버가 거래 id 로 멱등 처리하므로 중복 지급이 되지 않는다.
+    void purchaseService.recoverPendingPurchases().then((r) => {
+      if (r.granted > 0) void refreshWallet().catch(() => {});
+    });
+  }, []);
+
+  const onBuy = useCallback(async (internalKey: string) => {
+    const storeProductId = storeProductIdFor(internalKey, 'GOOGLE');
+    if (!storeProductId || busyKey) return;
+    setBusyKey(internalKey);
+    setNotice(null);
+    const r = await purchaseService.buy(storeProductId);
+    setBusyKey(null);
+    setNotice({ status: r.status, text: PURCHASE_UI_TEXT[r.status] });
+    if (shouldRefreshWallet(r.status)) void refreshWallet().catch(() => {});
+  }, [busyKey]);
+
   return (
     <Screen padded={false}>
       <AppHeader
@@ -64,11 +95,27 @@ export default function DukTopupScreen() {
               </Text>
             </View>
 
-            <StateView
-              kind="preparing"
-              title="덕 충전은 준비 중이에요"
-              description="스토어 결제가 열리면 바로 알려드릴게요. 그동안은 🕯️ 오늘의 초로 덕을 모을 수 있어요."
-            />
+            {storeReady ? null : (
+              <StateView
+                kind="preparing"
+                title="덕 충전은 준비 중이에요"
+                description="스토어 결제가 열리면 바로 알려드릴게요. 그동안은 🕯️ 오늘의 초로 덕을 모을 수 있어요."
+              />
+            )}
+
+            {notice ? (
+              <Card radius="xl">
+                <Stack gap="xs">
+                  <Text variant="bodyMedium" accessibilityLabel="결제 결과">{notice.text}</Text>
+                  {/* ⚠ 보류·검증 실패에서는 다시 사게 두지 않는다 — 두 번 결제된다. */}
+                  {canRetry(notice.status) ? null : (
+                    <Text variant="caption" colorToken="textSecondary">
+                      같은 상품을 다시 결제하지 마세요.
+                    </Text>
+                  )}
+                </Stack>
+              </Card>
+            ) : null}
 
             {TOPUP_PACKS.map((p) => (
               <Card key={p.internalKey} radius="xl">
@@ -96,11 +143,28 @@ export default function DukTopupScreen() {
                   {/* Inactivity lives on the CONTROL, at full contrast (#EFEAE0 / #4C463B ≈ 6.7:1) — not
                       as an opacity wash over the pack, which would take the price and amount down with it.
                       05B attaches the verified purchase control in this exact slot; nothing else moves. */}
-                  <View style={[styles.soonPill, { backgroundColor: theme.actionDisabledBg }]}>
-                    <Text variant="bodySmall" style={styles.soonText}>
-                      준비 중
-                    </Text>
-                  </View>
+                  {storeReady ? (
+                    <Pressable
+                      onPress={() => void onBuy(p.internalKey)}
+                      disabled={busyKey !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${dukLabel(p.duk)} 구매`}
+                      aria-disabled={busyKey !== null}
+                      style={[styles.soonPill, { backgroundColor: busyKey ? theme.actionDisabledBg : theme.surfaceSage }]}
+                    >
+                      {busyKey === p.internalKey ? (
+                        <ActivityIndicator size="small" />
+                      ) : (
+                        <Text variant="bodySmall" style={styles.soonText}>구매</Text>
+                      )}
+                    </Pressable>
+                  ) : (
+                    <View style={[styles.soonPill, { backgroundColor: theme.actionDisabledBg }]}>
+                      <Text variant="bodySmall" style={styles.soonText}>
+                        준비 중
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </Card>
             ))}

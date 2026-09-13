@@ -105,6 +105,10 @@ export function createServerConsultationService(
             requestId,
           };
         }
+        if (result.error === 'AI_CONSENT_REQUIRED') {
+          // 전송 실패가 아니고 재시도 대상도 아니다. 서버가 **보내기 전에** 멈춘 것이라 청구가 없다.
+          return { success: false, errorCode: 'AI_CONSENT_REQUIRED', requestId };
+        }
         if (result.error === 'INSUFFICIENT_DUK') {
           // Authoritative server balance — surface distinctly (not a generic failure) for a top-up prompt.
           return {

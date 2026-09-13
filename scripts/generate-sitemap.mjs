@@ -78,7 +78,33 @@ function urlEntry(loc, lastmod) {
 }
 
 const content = await collect('public_list_content', { p_category: null });
-const famous = await collect('public_list_famous', {});
+const famousList = await collect('public_list_famous', {});
+
+// ⚠ noindex 인 인물은 사이트맵에 넣지 않는다 (2026-09-11 실측에서 나온 결함).
+//
+//   가상 인물 `예시인 하나` 를 staging 에 발행하고 웹을 빌드했더니, 그 페이지는
+//   `<meta name="robots" content="noindex">` 를 달고 나오면서 **사이트맵에도 들어갔다.**
+//   해롭지는 않다(noindex 가 이긴다). 다만 Search Console 이 "제출된 URL이 noindex로
+//   표시됨" 을 오류로 보고하고, 그 오류가 쌓이면 진짜 문제를 덮는다.
+//
+//   `public_list_famous` 는 `index_policy` 를 주지 않는다. 그래서 슬러그마다
+//   `public_get_famous` 를 한 번씩 더 부른다 — 새 RPC 를 만들지 않고, 정적 라우트
+//   생성기가 이미 쓰는 그 함수를 그대로 쓴다. 인물 수가 수백이 되면 그때 목록 RPC 에
+//   칸을 더하는 것이 맞다.
+const famous = [];
+let skippedNoindex = 0;
+for (const f of famousList) {
+  if (!f.slug) continue;
+  const { data, error } = await supabase.rpc('public_get_famous', { p_slug: f.slug });
+  if (error || !data) {
+    // ⚠ 확인하지 못하면 **넣지 않는다.** 모르는 채로 크롤러에게 제출하는 것보다 낫다.
+    console.warn(`[sitemap] ⚠ public_get_famous 실패 — 사이트맵에서 제외: ${f.slug}`);
+    skippedNoindex += 1;
+    continue;
+  }
+  if (data.index_policy === 'noindex') { skippedNoindex += 1; continue; }
+  famous.push(f);
+}
 
 const entries = [
   urlEntry(`${base}/content`),
@@ -97,7 +123,8 @@ const outDir = join(root, 'public');
 if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'sitemap.xml'), xml, 'utf8');
 console.log(
-  `[sitemap] wrote public/sitemap.xml (${content.length} content + ${famous.length} famous).`,
+  `[sitemap] wrote public/sitemap.xml (${content.length} content + ${famous.length} famous`
+  + `${skippedNoindex > 0 ? `, noindex/확인불가 ${skippedNoindex}건 제외` : ''}).`,
 );
 
 // Also emit robots.txt WITH the absolute Sitemap directive (base URL known here).

@@ -23,6 +23,7 @@ export type ConsumerErrorCode =
   | 'AUTH_REQUIRED'
   | 'PROFILE_REQUIRED'
   | 'CONSENT_REQUIRED'
+  | 'AI_CONSENT_REQUIRED'
   | 'INSUFFICIENT_DUK'
   | 'REQUEST_FAILED'
   | 'NETWORK'
@@ -54,6 +55,13 @@ const TABLE: Record<ConsumerErrorCode, Omit<ConsumerErrorView, 'code'>> = {
   CONSENT_REQUIRED: {
     kind: 'consent',
     message: '서비스 이용을 위해 약관 동의가 필요해요.',
+    canRetry: false,
+  },
+  // 애플 5.1.2(i) — 제3자 AI 전송 전용 동의. 약관 동의와 **다른 것**이라 문구도 따로 둔다.
+  // 겁주지 않는다: 동의하지 않아도 앱은 쓸 수 있고, 안 되는 것만 사실대로 말한다.
+  AI_CONSENT_REQUIRED: {
+    kind: 'consent',
+    message: 'AI가 해석문을 만들려면 AI 처리 동의가 필요해요.\n무엇을 어디로 보내는지 확인하고 동의하시면 이어서 진행할 수 있어요.',
     canRetry: false,
   },
   INSUFFICIENT_DUK: {
