@@ -4,6 +4,7 @@ import { Pressable } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DeleteConfirmSheet } from '@/components/DeleteConfirmSheet';
 import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
@@ -20,6 +21,13 @@ import {
 } from '@/features/consultation';
 
 type HistoryStatus = 'loading' | 'ready' | 'error' | 'invalid';
+
+// What deleting a conversation actually does (migration 20260922000000) — said BEFORE the button.
+const CONVERSATION_DELETE_LINES = [
+  '대화 내용과 이 상담의 답변이 지워져요. 되돌릴 수 없어요.',
+  '이 상담으로 만든 보고서는 운세우편함에 남아요. 보고서는 따로 삭제할 수 있어요.',
+  '보고서를 공유했다면 그 링크는 더 이상 열리지 않아요.',
+] as const;
 
 type StoredSnapshot = {
   subject: ConsultationSubject | null;
@@ -52,6 +60,10 @@ export default function SubjectHistoryScreen() {
 
   const [items, setItems] = useState<ConversationSummaryItem[]>([]);
   const [status, setStatus] = useState<HistoryStatus>('loading');
+  // 상담 삭제 (2026-09-13 오너 결정). The item leaves the list only after the server confirms one deleted row.
+  const [pendingDelete, setPendingDelete] = useState<ConversationSummaryItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Discards stale responses (unmount / manual retry).
   const loadTokenRef = useRef(0);
@@ -97,6 +109,25 @@ export default function SubjectHistoryScreen() {
       updateBirthInfo(snapshot.birthInfo);
     }
     router.push({ pathname: '/chat', params: { conversationId: item.id } });
+  };
+
+  const askDelete = (item: ConversationSummaryItem) => {
+    setDeleteError(null);
+    setPendingDelete(item);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const deleted = await conversationService.deleteConversation(pendingDelete.id);
+    setDeleting(false);
+    if (!deleted) {
+      setDeleteError('삭제하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+    setItems((current) => current.filter((row) => row.id !== pendingDelete.id));
+    setPendingDelete(null);
   };
 
   const renderBody = () => {
@@ -149,34 +180,43 @@ export default function SubjectHistoryScreen() {
       const relationship = snapshot?.subject?.relationship ?? null;
       const preview = summaryPreview(item.summary);
 
+      // Open and delete are SIBLINGS, not nested: a button inside the card's Pressable would also fire the
+      // card's open (a click bubbles on web).
       return (
-        <Pressable
-          key={item.id}
-          onPress={() => openConversation(item)}
-          accessibilityRole="button"
-          accessibilityLabel={`${name} ${formatDate(item.updatedAt)} 상담 열기`}
-        >
-          <Card>
-            <Stack gap="xs">
-              <Stack direction="row" gap="xs" align="center">
-                <Text variant="bodyLarge">{name}</Text>
-                {relationship ? (
+        <Card key={item.id}>
+          <Stack gap="sm">
+            <Pressable
+              onPress={() => openConversation(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${name} ${formatDate(item.updatedAt)} 상담 열기`}
+            >
+              <Stack gap="xs">
+                <Stack direction="row" gap="xs" align="center">
+                  <Text variant="bodyLarge">{name}</Text>
+                  {relationship ? (
+                    <Text variant="bodySmall" colorToken="textSecondary">
+                      · {relationship}
+                    </Text>
+                  ) : null}
+                </Stack>
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {formatDate(item.updatedAt)}
+                </Text>
+                {preview ? (
                   <Text variant="bodySmall" colorToken="textSecondary">
-                    · {relationship}
+                    {preview}
                   </Text>
                 ) : null}
               </Stack>
-              <Text variant="bodySmall" colorToken="textSecondary">
-                {formatDate(item.updatedAt)}
-              </Text>
-              {preview ? (
-                <Text variant="bodySmall" colorToken="textSecondary">
-                  {preview}
-                </Text>
-              ) : null}
-            </Stack>
-          </Card>
-        </Pressable>
+            </Pressable>
+            <Button
+              label="상담 삭제"
+              variant="tertiary"
+              onPress={() => askDelete(item)}
+              accessibilityLabel={`${name} ${formatDate(item.updatedAt)} 상담 삭제`}
+            />
+          </Stack>
+        </Card>
       );
     });
   };
@@ -196,6 +236,17 @@ export default function SubjectHistoryScreen() {
         <Button label="뒤로" variant="secondary" onPress={() => router.back()} />
       </Stack>
       <DetailBottomNav active="my" />
+
+      <DeleteConfirmSheet
+        visible={pendingDelete !== null}
+        title="이 상담을 삭제할까요?"
+        lines={CONVERSATION_DELETE_LINES}
+        confirmLabel="삭제"
+        busy={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onClose={() => setPendingDelete(null)}
+      />
     </Screen>
   );
 }

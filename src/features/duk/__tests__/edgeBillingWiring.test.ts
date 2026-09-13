@@ -13,7 +13,7 @@ describe('§5/§6 Edge Duk billing wiring (flag-gated, correct order, release-on
   it('reserves AFTER ownership verification and BEFORE paid/global admission', () => {
     const ownerAt = edge.indexOf('verifyOwnedConversation(admin, userId, suppliedConversationId)');
     const reserveAt = edge.indexOf('reserveSessionDuk(admin, userId, productType, requestId)');
-    const acquireAt = edge.indexOf('const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId)');
+    const acquireAt = edge.indexOf('const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId, verifiedConversationId)');
     expect(ownerAt).toBeGreaterThan(-1);
     expect(reserveAt).toBeGreaterThan(ownerAt);
     expect(acquireAt).toBeGreaterThan(reserveAt);

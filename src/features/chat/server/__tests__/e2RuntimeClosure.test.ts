@@ -196,7 +196,7 @@ describe('E.2 actual client/Edge/store source boundaries', () => {
 
   it('Edge rejects missing/cross-owner ids before paid acquisition and reuses the verified id', () => {
     const verifyAt = edge.indexOf('verifyOwnedConversation(admin, userId, suppliedConversationId)');
-    const acquireAt = edge.indexOf('const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId)');
+    const acquireAt = edge.indexOf('const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId, verifiedConversationId)');
     expect(verifyAt).toBeGreaterThan(-1);
     expect(acquireAt).toBeGreaterThan(verifyAt);
     expect(edge).toContain("error: 'CONVERSATION_FORBIDDEN'");

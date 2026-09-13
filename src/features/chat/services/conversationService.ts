@@ -382,6 +382,41 @@ async function saveSummary(
   }
 }
 
+// Owner deletes a conversation (conversations_delete_own RLS, migration 20260922000000). The DB does the
+// rest in one statement: messages/feedback/decisions cascade, the server copies of its answers are expired
+// and its report's share links are revoked (BEFORE DELETE trigger). The report itself stays in the inbox.
+// Success is judged by the RETURNED ROW — PostgREST answers a 0-row delete with the same success status.
+async function deleteConversation(conversationId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .delete()
+    .eq('id', conversationId)
+    .select('id');
+
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  return !error && Array.isArray(data) && data.length === 1;
+}
+
+// A 궁합 conversation is created only AFTER its first answer (it stores that answer's tier), so the server
+// could not tie that request to a conversation when it ran. Once the app has the conversation it links the
+// answer here, so deleting the conversation later expires that answer's server copy at once. Best-effort:
+// false just leaves it to the 24h retention job. The RPC only links the caller's own answer to the caller's
+// own conversation (20260922000000).
+async function linkCompatibilityAnswer(conversationId: string, requestId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('link_compatibility_answer', {
+    p_request_id: requestId,
+    p_conversation_id: conversationId,
+  });
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  return !error && data === true;
+}
+
 export const conversationService = {
   createConversation,
   saveMessage,
@@ -392,4 +427,6 @@ export const conversationService = {
   loadLatestCompatibilityConversation,
   listCompatibilityConversationsForSubject,
   saveSummary,
+  deleteConversation,
+  linkCompatibilityAnswer,
 };

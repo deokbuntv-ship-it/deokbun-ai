@@ -322,6 +322,7 @@ export function useConversationPersistence(
         const generatedSummary = await supabaseEdgeSummaryAdapter.summarize(
           result.existingSummary,
           result.messagesToSummarize,
+          conversationId,
         );
         if (generatedSummary === null) {
           break;

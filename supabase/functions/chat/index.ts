@@ -533,6 +533,9 @@ type PaidRequestStart =
 
 async function acquirePaidRequest(
   admin: AdminClient | null, userId: string | null, workload: PaidRequestWorkload, requestId: string | null,
+  // Caller-VERIFIED owned conversation (verifyOwnedConversation) — never a raw body value. Recorded on the
+  // row so deleting that conversation expires this answer's text at once (migration 20260922000000).
+  conversationId: string | null = null,
 ): Promise<PaidRequestStart> {
   if (!admin || !userId || !requestId) return { status: 'unavailable' };
   try {
@@ -572,6 +575,14 @@ async function acquirePaidRequest(
         };
       }
       return { status: 'unavailable' };
+    }
+    if (conversationId) {
+      // Best-effort: a failed link only means the 24h retention job (not conversation delete) removes this
+      // answer's text. It must never fail the paid request.
+      try {
+        await admin.from('paid_request_idempotency').update({ conversation_id: conversationId })
+          .eq('user_id', userId).eq('workload', workload).eq('request_id', requestId);
+      } catch { /* see above */ }
     }
     return { status: 'acquired', context: { admin, userId, workload, requestId, token: row.lease_token } };
   } catch {
@@ -1276,7 +1287,13 @@ export default {
             logDiag(requestId, 'RESPONSE_VALIDATION', 'SUMMARY_SAFETY_SKIPPED', { path: 'summary' });
             return Response.json({ text: typeof body.existingSummary === 'string' ? body.existingSummary : '' });
           }
-          const paid = await acquirePaidRequest(admin, userId, 'summary', requestId);
+          // The app names the conversation it is summarizing. Link it only once ownership is verified — the link
+          // exists for deletion (20260922000000); the summary itself never reads the conversation.
+          const summaryConversationId =
+            typeof body.conversationId === 'string' && body.conversationId.length > 0 && admin && userId
+              && await verifyOwnedConversation(admin, userId, body.conversationId)
+              ? body.conversationId : null;
+          const paid = await acquirePaidRequest(admin, userId, 'summary', requestId, summaryConversationId);
           if (paid.status === 'completed') return Response.json(paid.response);
           if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
           if (paid.status === 'rate_limited') return Response.json(
@@ -1505,7 +1522,7 @@ export default {
         // Release the Duk reserve on any pre-completion failure (best-effort; TTL reconciles otherwise).
         const releaseDukIfHeld = async () => { if (dukReservation) await releaseSessionReservation(admin!, dukReservation); };
 
-        const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId);
+        const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId, verifiedConversationId);
         // 'completed' → idempotent replay (reserve resolved to the committed session, nothing held); 'processing'
         // → the in-flight worker owns the reserve — in both cases we must NOT release here.
         if (paid.status === 'completed') return Response.json(paid.response);

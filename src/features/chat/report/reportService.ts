@@ -197,6 +197,17 @@ async function listReportsByType(reportType: ReportType): Promise<ConsultationRe
   return ((data as ReportRow[] | null) ?? []).map(toReport);
 }
 
+// Owner deletes a report (reports_all_own RLS). Its share links go with it (report_shares cascades), so a
+// link someone already received stops resolving. The source conversation is untouched.
+// Success is judged by the RETURNED ROW, not the HTTP status: PostgREST answers a 0-row delete (wrong id,
+// someone else's report) with the same success status.
+async function deleteReport(id: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from(REPORTS).delete().eq('id', id).select('id');
+  if (error) logDbError(error, 'report', 'db');
+  return !error && Array.isArray(data) && data.length === 1;
+}
+
 export const reportService = {
   createOrUpdateReport,
   createCompatibilityReport,
@@ -204,4 +215,5 @@ export const reportService = {
   listReportsByType,
   loadReport,
   loadReportByConversation,
+  deleteReport,
 };

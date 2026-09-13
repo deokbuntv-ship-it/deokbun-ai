@@ -191,6 +191,7 @@ export default function CompatibilityChatScreen() {
     userMsg: CompatMessage,
     assistantMsg: CompatMessage,
     tierForCreate: CompatibilityResultMeta | null,
+    requestId: string | null,
   ) => {
     if (!isAuthenticatedRef.current || !self || !target) return;
     try {
@@ -206,6 +207,9 @@ export default function CompatibilityChatScreen() {
           ...(m.structuredResult ? { structuredResult: m.structuredResult } : {}),
         });
       }
+      // The server could not tie this answer to the conversation (it did not exist yet when the request ran),
+      // so tie it now — deleting the conversation then expires this answer's server copy at once. Best-effort.
+      if (requestId) void conversationService.linkCompatibilityAnswer(cid, requestId).catch(() => {});
     } catch {
       // fail-open: keep the in-memory conversation; a later message can retry conversation creation.
     }
@@ -276,7 +280,7 @@ export default function CompatibilityChatScreen() {
       };
       setMessages((prev) => [...prev, assistantMsg]);
       // Persist the Q&A pair (best-effort) so a refresh restores it with ZERO new LLM call (§9).
-      void persistPair(userMsg, assistantMsg, result.compatibility ?? tier);
+      void persistPair(userMsg, assistantMsg, result.compatibility ?? tier, result.requestId);
       // A successful turn changed the server's remaining-question count → re-read it (never decrement locally),
       // so the meter is accurate and the exhausted consent gate appears BEFORE a new paid session can start.
       void refreshCompatSession().catch(() => {});
