@@ -25,14 +25,15 @@ export const FROZEN_ENGINE_ID: Record<EngineKind, 'SAJU' | 'ZIWEI' | 'QIMEN'> = 
   qimen: 'QIMEN',
 };
 
-// Whether each discipline is currently wired into the app pipeline.
-// Codex flips these on 2026-08-17 as engines are connected. (SAJU calc exists in
-// the frozen engine but is not yet called from contextSelector; ZIWEI/QIMEN
-// calculators are not implemented.)
+// Whether each discipline is currently wired into the app pipeline. SAJU (natal), ZIWEI (natal), and
+// QIMEN (question-time) all run in the consultation grounding path (chat/services/
+// consultationGrounding.ts → chatService), producing real EngineEvidence. Qimen is question-time based:
+// it activates only for a timing/decision question (else not_applicable) and never reuses the birth
+// chart (Qimen V1). Do not flip a flag without a real, tested path.
 export const ENGINE_CONNECTED: Record<EngineKind, boolean> = {
-  saju: false,
-  ziwei: false,
-  qimen: false,
+  saju: true,
+  ziwei: true,
+  qimen: true,
 };
 
 // The minimum context needed to decide eligibility. No raw birth values here —

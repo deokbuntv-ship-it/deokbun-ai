@@ -1,23 +1,27 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/Text';
+import { environmentLabel, resolveEnvironment } from '@/config/environment';
 
 import { adminTheme } from '../adminTheme';
 
-// Shared admin top bar (Stitch §9). Left: environment label. Center: unified
-// search (exact placeholder per §10 — presentational; global search API not yet
-// connected, so it performs no action rather than faking results). Right:
-// notifications affordance + admin identity with a NEUTRAL account placeholder
-// (no external/AI-generated profile image, §10).
+// Shared admin top bar (Stitch §9). Left: the REAL resolved environment label (§7.2 — was a hardcoded
+// "운영 서버" literal that lied in staging/dev builds; now reflects the actual backend target). Center: unified
+// search (presentational). Right: notifications affordance + admin identity (neutral placeholder).
 export function AdminTopBar() {
+  const env = resolveEnvironment().env;
   return (
     <View style={styles.bar}>
-      <Text variant="bodyMedium" style={styles.env}>
-        운영 서버
+      <Text
+        variant="bodyMedium"
+        style={[styles.env, env !== 'production' ? styles.envNonProd : null]}
+      >
+        {environmentLabel(env)} 서버
       </Text>
 
       <View style={styles.searchWrap}>
         <TextInput
+          accessibilityLabel="통합 검색"
           style={styles.search}
           placeholder="사용자 · 상담 · 운세우편 통합 검색"
           placeholderTextColor={adminTheme.inkMuted}
@@ -51,6 +55,9 @@ const styles = StyleSheet.create({
   env: {
     color: adminTheme.ink,
     fontWeight: '600',
+  },
+  envNonProd: {
+    color: adminTheme.warning, // non-production stands out so operators never mistake the target
   },
   searchWrap: {
     flex: 1,

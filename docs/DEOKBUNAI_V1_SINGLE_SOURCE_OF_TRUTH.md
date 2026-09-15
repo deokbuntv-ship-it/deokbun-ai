@@ -1,5 +1,10 @@
 # DEOKBUNAI V1.0 — SINGLE SOURCE OF TRUTH (SSOT)
 
+> **📍 문서 권위 (2026-09-04 확정)** — ⚠ **HISTORICAL — HEAD `cf2fe7e`(2026-08-14) 기준. 이름과 달리 더 이상 SSOT 가 아니다.** 107 커밋 낡았다. 다만 이 문서의 **충돌 해소 우선순위 규칙**은 전 문서 공통 규칙으로 채택됐다.
+> 전체 서열: `OWNER_TODO.md`(오너 액션) · `PROJECT_STATE.md`(운영 상태) · `FEATURE_MASTER_CHECKLIST.md`(기능 판정) · `KNOWN_RISKS.md`(위험) · `BACKLOG_V1_1.md`(V1.1) · `DATABASE_RUNBOOK.md`(DB 적용 절차).
+> 충돌 시 판정 순서: **코드 → 테스트/빌드 → 라이브 스키마·배포 실측 → git 이력 → 프로덕션 E2E → 문서.**
+
+
 > **Purpose.** One authoritative, code-verified baseline of what DeokbunAI actually
 > is right now — implemented vs. documented, local vs. production, foundation vs.
 > live-wired. This is the official input to the next *Independent Product + UX + AI +
@@ -108,7 +113,7 @@ code exist & compile; *Integration* = are the pieces actually wired together end
 | Memory / Retention / Fortune | 40% | 20% | 5% | memory live; fortune/mailbox scaffold; push absent |
 | Content / Famous / SEO | 75% | 45% | 15% | routes+guards built; needs ~24 SQL applied; CTA-to-consult missing |
 | Admin | 80% | 60% | 20% | real-data areas + solid authz; needs SQL applied; 5 truthful seams |
-| Database / RLS | 85% | 40% | 30% | thorough artifacts; **no migrations dir**; apply manual/unverified |
+| Database / RLS | 85% | 40% | 30% | thorough artifacts; `migrations/` now holds the consumer_birth_profiles RLS migration (REVIEWED_NOT_APPLIED); other apply manual/unverified |
 | Infrastructure | 85% | 65% | 50% | Vercel verified; Supabase live; edges/secrets partial |
 | Security / Privacy | 75% | 65% | 40% | no client secret exposure, RLS-based; drafts user_id + apply-dependence |
 | Acquisition / Analytics | 5% | 0% | 0% | NOT_STARTED |
@@ -199,18 +204,92 @@ chat.tsx → chatService.sendMessage → authGuard ✓ → selectConsultationCon
 
 | Engine | Calc | Adapter→EngineEvidence | Tests/Fixtures | Live-wired to prompt | Prod |
 |---|---|---|---|---|---|
-| **SAJU** (in-repo, frozen) | ✅ E2E_LOCAL (~10K LOC) | ❌ **adapter missing** (`myungri` slot) | tests via analysis; golden fixtures internal | ❌ | ❌ |
-| **Ziwei** (iztro) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toZiweiEvidence`) | ziwei tests | ❌ | ❌ |
-| **Qimen** (qimen-dunjia) | ✅ FUNCTIONAL_LOCAL | ◐ SCAFFOLDED (`toQimenEvidence`) | qimen tests | ❌ | ❌ |
-| Orchestration/cross-analysis seam | — | ◐ SCAFFOLDED, no non-test caller | analysis tests | ❌ (`ENGINE_CONNECTED={all:false}`) | ❌ |
+| **SAJU / Myungri** (in-repo, **FROZEN `7c7ed82`** — Codex `APPROVED_FREEZE`) | ✅ E2E_LOCAL — 立春 year / 12-Jie month + 십신·지장간·오행·관계·대운·세운·월운·시간축·대운십신·통근투간·월령득령 | ✅ **CONNECTED** (`toSajuEvidence` → `buildConsultationGrounding` → chatService) | 464 tests (+ grounding E2E: Solar/Lunar equivalence + fail-closed) | ✅ **grounding path** | ❌ |
+| **Ziwei** (iztro `2.5.8`, MIT) | ✅ FUNCTIONAL_LOCAL — iztro-default@2.5.8, ko-KR, fixLeap | ✅ **CONNECTED** (`toZiweiEvidence` → structured sections → `buildConsultationGrounding`) | ziwei tests + evidence sections + dual-engine E2E | ✅ **grounding path (dual-engine)** | ❌ |
+| **Qimen** (qimen-dunjia `2.1.0`, MIT, 時家·拆補法) | ✅ FUNCTIONAL_LOCAL | ✅ **CONNECTED** (`toQimenEvidence` → sections → grounding, QUESTION-TIME) | qimen tests + evidence sections + tri-engine E2E | ✅ **grounding path (question-time, activation-gated)** | ❌ |
+| Orchestration/cross-analysis seam | — | ◐ SAJU+Ziwei+Qimen live; cross = per-engine, no fake consensus | analysis + dual/tri-engine tests | `ENGINE_CONNECTED={saju:true, ziwei:true, qimen:true}` | ❌ |
 
 - **Semantic/astrological correctness is `BLOCKED_OWNER`/Codex** (golden fixtures + 학파/정국
   canon required; `ZIWEI_ENGINE_SPEC.md`/`QIMEN_ENGINE_SPEC.md` are marked "RESEARCH/SPEC
   SCAFFOLD").
-- **The missing wire is documented** in `CODEX_HANDOFF_2026-08-17.md §21` (exact seam:
-  contextSelector → run engines → EngineEvidence → orchestration → promptBuilder). This is
-  a *known, deliberate Codex handoff*, not an accidental regression. **Do not change
-  engine semantics (§19).**
+- **SAJU (2026-08-16), Ziwei (Ziwei V1), and Qimen (Qimen V1, question-time) are now wired** — all three
+  run in the consultation path (dual-/tri-engine, with honest SAJU-only / Ziwei-only / Qimen-not-applicable
+  degraded modes). **Do not change engine semantics (§19).**
+- **LLM grounding trust boundary — server-owned (2026-08-17, Server-Trust sprint). Status
+  `READY_FOR_CODEX_SERVER_TRUST_BOUNDARY_REVIEW` + `EDGE_RUNTIME_NOT_EXECUTED` + `OWNER_ACTION_REQUIRED`.**
+  The deterministic grounding for all three engines is now (re)built by the **server**: the production
+  client (`createServerConsultationService`) posts inputs only (birth INPUT + question + untrusted turns);
+  the Edge `chat` recomputes grounding (`buildServerConsultation`), owns the Qimen question time (receipt
+  time) + activation + availability, builds the system prompt, calls OpenAI, and validates output. A
+  modified client can no longer fabricate facts/availability/provenance/consensus (adversarially tested,
+  Node). The conversation-summary path is server-owned too (2026-08-17 closure): the client's prior summary
+  is untrusted USER content (never a system message), server bounds cap turns/chars/aggregate, and summary
+  calls are usage-logged so they count toward the rate window. **Not deploy-verified:** the Deno/Supabase
+  CLIs are absent in the build workspace, so engine execution inside the Edge is `EDGE_RUNTIME_NOT_EXECUTED`
+  (owner deploy + runtime-verify). The `supabase/migrations/` directory now exists in-repo; the
+  `consumer_birth_profiles` RLS migration is **REVIEWED_NOT_APPLIED** (owner applies). Detail:
+  `docs/CODEX_SERVER_TRUST_BOUNDARY_REVIEW.md`. (Supersedes the 2026-08-16 `SERVER_TRUST_BOUNDARY_BLOCKED` note.)
+
+### 11b. SAJU product integration (2026-08-16) — honest status
+
+The frozen Saju/Myungri engine is connected to the live consultation, ending "engine exists but
+consultation doesn't use it." Real production chain:
+`draft.birthInfo → toSajuEngineInput → executeSajuFromBirthInput (frozen) → SajuEngineResult +
+Myungri facts → toSajuEvidence (converter) → buildConsultationGrounding → chatService → promptBuilder`.
+
+| Stage | Status |
+|---|---|
+| `SAJU_CALC` | **FROZEN** (`7c7ed82`) |
+| `SAJU_EVIDENCE` (`toSajuEvidence`) | **CONNECTED** — facts-only converter (4주·일간·오행·십신·지장간·월령/득령·통근/투간·대운·대운십신·当年 세운/월운 + 立春/12-Jie provenance) |
+| `SAJU_GROUNDING` | **CONNECTED** — fail-closed (unsupported/ambiguous/unknown-time-on-boundary → `unavailable`, no fabrication) |
+| `SAJU_PROMPT` | **CONNECTED** — `promptBuilder` renders the facts + requests the structured schema; LLM interprets, does not calculate |
+| `SAJU_LLM` | **CODE_COMPLETE / OWNER_ACTION** — `supabaseEdgeLLMAdapter` → edge `chat` (holds the OpenAI key server-side). Live calls need the edge deployed + `OPENAI_API_KEY` secret. Boundary integration-tested with a mock. |
+| `STRUCTURED_RESULT` (`ChatMessage.structuredResult`) | **CONNECTED** — `parseStructuredConsultation` (backend validate) → `buildStructuredConsultationResult` → `chatService` → assistant message → `StructuredConsultationResult` render. Malformed/prose → plain-text fallback (no crash). |
+| `SAJU_LIVE_CHAT` | **CONNECTED** — `chat.tsx` renders `StructuredConsultationResult` when `structuredResult` present (else `ChatBubble`); long-form EXPANDED; answer-start anchor preserved. |
+| `SAJU_FOLLOW_UP` | **CONNECTED** — contextual `followUps` from the parsed result → `onSelectFollowUp` → `submitQuestion` (same conversation, subject/grounding preserved). |
+| `ASSESSMENT` / `CROSS_ANALYSIS` | SAJU-only evidence; assessment **fail-closed** (`toConsumerAssessmentView([])` → not-connected, no fabricated 15-axis score); **no "3-학문 일치"** (ziwei/qimen unconnected) |
+
+Deferred (recorded, do NOT start here): ~~Qimen→grounding (Sprint 3, timing questions only)~~ **DONE**
+(Qimen V1 wired question-time, see §11 + `CODEX_QIMEN_FULL_PRODUCT_REVIEW.md`); deterministic SAJU+Ziwei
+cross-analysis domain mapping (Sprint 4). Detail: `docs/SAJU_INTEGRATION_SPRINT.md`. (This 11b section is
+the SAJU-sprint snapshot; "ziwei/qimen unconnected" in the row above was true then, superseded by 11c + §11.)
+
+### 11c. Ziwei (자미두수) V1 product integration — `READY_FOR_CODEX_ZIWEI_FULL_PRODUCT_REVIEW`
+
+The existing iztro Ziwei engine is connected to the live consultation **alongside** the frozen SAJU
+engine (dual-engine). Chain: `draft.birthInfo → toZiweiBirthInput (lunar→solar via lunar-javascript)
+→ computeZiweiChartMemoized (iztro, unchanged) → toZiweiEvidence (+ structured sections) →
+buildConsultationGrounding (SAJU + Ziwei) → prompt → structured consultation`.
+
+| Stage | Status |
+|---|---|
+| `ZIWEI_CALC` | **FUNCTIONAL_LOCAL** — iztro `2.5.8` (MIT), `iztro-default@2.5.8`, fixLeap, ko-KR (engine unchanged) |
+| `ZIWEI_INPUT` | **CONNECTED** — exact time required (else `missing_birth_time`); lunar→solar via lunar-javascript (leap = negative month); Solar/Lunar equivalent births → identical evidence |
+| `ZIWEI_EVIDENCE` (`toZiweiEvidence`) | **CONNECTED** — facts-only sections (명반 기준·12궁·四化·근거·한계); provenance + Saju↔Ziwei convention note + characterization limitation; `hasTimingEvidence:false` (natal only) |
+| `ZIWEI_GROUNDING` / orchestration | **CONNECTED** — `ENGINE_CONNECTED.ziwei=true`; dual / SAJU-only / **Ziwei-only** (pre-1970, iztro wider range) / both-unavailable; fail-closed, no fabrication |
+| `ZIWEI_PROMPT` | **CONNECTED** — both engines' sections rendered + **엔진 구분** attribution + convention discipline + qimen 미연결 |
+| `CLAIM_VALIDATION` | **CONNECTED** — Ziwei claim allowed only when available; Qimen claim / "세 학문 일치" / **strong Saju↔Ziwei full-consensus** rejected (V1 has no deterministic cross-map); forbidden theory rejected |
+| `ZIWEI_LLM` / live | **CODE_COMPLETE / OWNER_ACTION** — same edge `chat` + `OPENAI_API_KEY` as SAJU |
+
+**QIMEN stays disconnected** — no "기문둔갑 사용"/"세 학문 일치" claims. No new score system; cross-analysis
+is per-engine separation (§22 insufficient_evidence is the honest default). Detail + Codex checklist:
+`docs/CODEX_ZIWEI_FULL_PRODUCT_REVIEW.md`.
+
+### 11a. Myungri V1 deterministic freeze — `APPROVED_FREEZE` (canonical commit `7c7ed82`)
+
+Codex final review (2026-08-16) returned **`APPROVED_FREEZE`** for the Myungri deterministic
+CALC layer at **`7c7ed82f9dcabad034795919f6103ef562d0a6bb`**. Freeze record + Codex's 12-point
+PASS checklist: `docs/MYUNGRI_V1_FREEZE.md`. Detail: `MYUNGRI_TIME_AXIS_V1.md`,
+`MYUNGRI_YEAR_MONTH_BOUNDARY_FIX.md`.
+
+**Frozen (deterministic, fail-closed, facts-only):** natal Four Pillars · canonical year(立春)/
+month(12 Jie) attribution · ten gods · hidden stems · five-element facts/distribution · pillar
+relations (합충형파해·삼합·방합) · Daewoon (ENGINE-12) · Sewoon · Wolwoon · 원국↔대운↔세운↔월운
+time-axis · Daewoon ten-gods · rooting/transparency (통근/투간) · month-command / 득령 input facts.
+
+**Deferred / separately scoped (NOT in the freeze, do NOT start here):** EngineEvidence adapter +
+live-wiring (§11 above) · 신강신약 verdict · 용신 · 격국 · 12운성 · 12신살. **Do NOT reopen:**
+calendar / Solar-Term / 立春·12-Jie / Daewoon theory / new-OSS research (all settled & frozen).
 
 ## 12. Consultation Intelligence
 
@@ -305,7 +384,8 @@ functions (`cancelContent`, `archiveFamous`, `listContent`/`listFamous`/`listSch
 - **Fortune tables:** `DEFERRED_POST_V1`.
 - RLS pattern: owner-scoped (`auth.uid()`), admin via `is_admin()`, `SECURITY DEFINER` RPCs
   for cross-user/public reads. `DRAFT_RLS_SETUP.sql` + `CONSUMER_CORE_SCHEMA.sql` document
-  the boundary. **No `supabase/migrations/` dir** → apply is manual (see `DATABASE_RUNBOOK.md`).
+  the boundary. `supabase/migrations/` now exists (the `consumer_birth_profiles` RLS migration,
+  REVIEWED_NOT_APPLIED); other schema apply is still manual (see `DATABASE_RUNBOOK.md`).
 - **Contradiction (F-H):** `ADMIN_02_SETUP.sql:12` says `public.profiles` does NOT exist,
   while `CONSUMER_CORE_SCHEMA.sql:49` defines it and `profileService` writes it every login
   (fire-and-forget, errors swallowed at `AuthContext`) — a genuinely-missing table would

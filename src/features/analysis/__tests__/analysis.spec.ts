@@ -74,8 +74,38 @@ export function runAnalysisSpecs(): { passed: number } {
   );
   ok(() => eq(resolveEngineEligibility({ ...withSubject, hasSubject: false }, 'saju'), 'not_applicable', 'no subject'));
 
-  // --- effective availability downgrades to engine_not_connected while unwired ---
-  ok(() => eq(resolveEngineAvailability(withSubject, 'saju'), 'engine_not_connected', 'saju eligible but unwired'));
+  // --- SAJU and ZIWEI are now WIRED (consultation grounding path) → effective availability is
+  //     'available' when eligible; an eligible-but-time-unknown ziwei stays missing_birth_time;
+  //     qimen remains unwired (downgrades to engine_not_connected when eligible) ---
+  ok(() => eq(resolveEngineAvailability(withSubject, 'saju'), 'available', 'saju eligible and wired'));
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, birthTimeKnown: true }, 'ziwei'),
+      'available',
+      'ziwei eligible and wired',
+    ),
+  );
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, birthTimeKnown: false }, 'ziwei'),
+      'missing_birth_time',
+      'ziwei without birth time → missing_birth_time (never fabricated)',
+    ),
+  );
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, isTimingQuestion: true }, 'qimen'),
+      'available',
+      'qimen eligible (timing question) and wired',
+    ),
+  );
+  ok(() =>
+    eq(
+      resolveEngineAvailability({ ...withSubject, isTimingQuestion: false }, 'qimen'),
+      'not_applicable',
+      'qimen not applicable for a non-timing question',
+    ),
+  );
 
   // --- normalized context: no fabricated facts, warnings surface ---
   ok(() => {

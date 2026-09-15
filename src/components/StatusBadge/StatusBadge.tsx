@@ -61,7 +61,7 @@ export function StatusBadge({
         {
           alignSelf: 'flex-start',
           backgroundColor: bg,
-          borderRadius: pill ? radius.pill : radius.sm,
+          borderRadius: pill ? radius.pill : 6,
           paddingHorizontal: pill ? spacing.md : spacing.sm,
           paddingVertical: pill ? 4 : 2,
         },

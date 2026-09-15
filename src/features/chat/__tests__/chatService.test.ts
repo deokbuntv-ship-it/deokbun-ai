@@ -70,9 +70,11 @@ describe('createChatService — login-before-LLM gate + boundaries', () => {
   });
 
   it('an authenticated real question invokes the adapter once and returns its text', async () => {
-    const { adapter, calls } = makeAdapter({ text: '올해는 무난합니다.' });
-    const r = await createChatService(adapter, allow).sendMessage(input('올해 재물운은 어때?'));
-    expect(r).toMatchObject({ success: true, responseText: '올해는 무난합니다.' });
+    // Plain, timing-free text (no grounding injected here → any specific/relative period would be
+    // fail-closed by the pipeline; this test only checks the adapter-once + passthrough mechanics).
+    const { adapter, calls } = makeAdapter({ text: '무난한 흐름으로 보입니다.' });
+    const r = await createChatService(adapter, allow).sendMessage(input('제 성향은 어떤가요?'));
+    expect(r).toMatchObject({ success: true, responseText: '무난한 흐름으로 보입니다.' });
     expect(calls).toHaveLength(1);
   });
 

@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DetailBottomNav } from '@/components/DetailBottomNav';
 import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -169,6 +170,7 @@ export default function SubjectManseScreen() {
           </Stack>
         </View>
       </ScrollView>
+      <DetailBottomNav active="my" />
     </Screen>
   );
 }

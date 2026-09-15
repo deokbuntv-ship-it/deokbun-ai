@@ -59,8 +59,8 @@ export default function PublicContentListScreen() {
   return (
     <PublicScreen>
       <SeoHead
-        title="콘텐츠 | 덕분AI"
-        description="덕분AI의 사주·명리·운세·유명인 콘텐츠 모음"
+        title="콘텐츠 | 덕분이"
+        description="덕분이의 사주·명리·운세·유명인 콘텐츠 모음"
       />
       <Stack gap="xl">
         <Stack gap="xs">

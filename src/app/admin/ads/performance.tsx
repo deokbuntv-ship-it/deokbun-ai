@@ -157,7 +157,7 @@ export default function AdminAdPerformanceScreen() {
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <Button label="엑셀 다운로드 (.xlsx)" onPress={onDownload} disabled={rows.length === 0} />
+            <Button variant="primary" label="엑셀 다운로드 (.xlsx)" onPress={onDownload} disabled={rows.length === 0} />
             {downloadNote ? (
               <Text variant="caption" style={{ color: adminTheme.inkMuted }}>
                 {downloadNote}

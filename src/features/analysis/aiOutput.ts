@@ -17,10 +17,46 @@ export type EngineEvidenceAvailability =
   | 'engine_not_connected'
   | 'calculation_failed';
 
+// A labeled deterministic fact section (natal / relations / timing / provenance / limitations).
+// Machine-readable structure so grounding delivers facts to the prompt without a single opaque blob.
+export type EngineEvidenceSection = {
+  label: string;
+  lines: string[];
+};
+
+// Structured timing anchors DERIVED from the deterministic evidence (Codex FIX #2). The validator
+// uses these as the ALLOWLIST for any specific period the LLM asserts — a Gregorian year not in
+// `years` (and outside the Daewoon age span) is an unsupported/fabricated timing claim. Facts only;
+// never widened by the LLM.
+export type EngineEvidenceTimingAnchors = {
+  /** Gregorian years the evidence actually covers (current 세운/월운 target years + birth year). */
+  years: number[];
+  /** The current 사주(세운) year — resolves RELATIVE claims (올해/내년/내후년/N년 뒤). null ⇒ none. */
+  referenceYear?: number | null;
+  /** Inclusive age span covered by the Daewoon cycles, when available. */
+  daewoonAgeSpan?: { min: number; max: number } | null;
+  /** true when the current-month 월운 evidence exists — gates 이번 달 / 다음 달 claims. */
+  hasMonthlyEvidence?: boolean;
+  /** Grounded CIVIL months as year*100+month (e.g. 202702 = 2027-02), one per question-requested month
+   *  whose 월운 was computed. A specific "YYYY년 M월" claim is a valid timing anchor ONLY when its
+   *  (year, month) is in this set — this both ENABLES grounded future-month claims and CLOSES the prior
+   *  gap where a bare "2027년 2월" passed on year-only grounding. */
+  months?: number[];
+};
+
 export type EngineEvidence = {
   availability: EngineEvidenceAvailability;
   summary?: string; // present only when availability === 'available'
   detail?: string;
+  // Additive (Codex FIX #1/#3/#4): structured fact sections carried to the prompt. When present,
+  // the grounding renderer emits these instead of only the one-line summary.
+  sections?: EngineEvidenceSection[];
+  // Additive (Codex FIX #8): true when real timing facts (Daewoon/Sewoon/Wolwoon) are present —
+  // gates whether the LLM's `futureFlow` may be accepted as factual timing content.
+  hasTimingEvidence?: boolean;
+  // Additive (Codex pipeline FIX #2): structured allowlist of the specific periods the evidence
+  // covers, so timing validation gates ALL user-facing fields (not just futureFlow) against real data.
+  timingAnchors?: EngineEvidenceTimingAnchors;
 };
 
 export type StructuredAiResponse = {

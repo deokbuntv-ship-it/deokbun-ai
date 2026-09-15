@@ -1,5 +1,9 @@
 # DeokbunAI — RELEASE READINESS (V1.0, Claude app track)
 
+> ⚠ **HISTORICAL — 2026-08-17 기준.** 현재 상태는 `PROJECT_STATE.md`, 기능 판정은 `FEATURE_MASTER_CHECKLIST.md`, 오너 액션은 `OWNER_TODO.md`.
+> 이 문서의 테스트 수치·게이트 상태는 낡았다 (실제: **298 suites / 4,841 tests**, 2026-09-04).
+
+
 > Directives §16 (release readiness) + §17 (native readiness). Honest snapshot of
 > what is code-complete vs. what still needs an **Owner action** or **Codex** before
 > a real release. No fabricated "done". Date context: pre-Codex-return (2026-08-17).

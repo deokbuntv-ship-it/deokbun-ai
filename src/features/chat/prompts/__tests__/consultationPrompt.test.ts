@@ -61,8 +61,8 @@ describe('mode classification (§14/§15/§29)', () => {
 
 describe('system constitution — hard rules present (§9/§10/§21/§40/§44)', () => {
   const c = SYSTEM_CONSTITUTION;
-  it('names DeokbunAI and the interpreter-not-calculator principle', () => {
-    expect(c).toContain('DeokbunAI');
+  it('names 덕분이 and the interpreter-not-calculator principle', () => {
+    expect(c).toContain('덕분이');
     expect(c).toContain('계산하지 않고 해석');
   });
   it('forbids fabricated calculation, timing, and precision', () => {
@@ -202,8 +202,8 @@ describe('fail-closed against fabricated interpretation (§13/§53 red-team fix)
     grounding: {
       status: 'available',
       evidence: {
-        myungri: { availability: 'available', summary: '일간 갑목' },
-        ziwei: { availability: 'available', summary: '명궁 자미' },
+        myungri: { availability: 'available', summary: '일간 갑목', sections: [{ label: '명식', lines: ['일간 갑목'] }] },
+        ziwei: { availability: 'available', summary: '명궁 자미', sections: [{ label: '명반', lines: ['명궁 자미'] }] },
         qimen: { availability: 'not_applicable' },
       },
     },
@@ -248,7 +248,7 @@ describe('broadened prohibitions + summary discipline (§21/§44 red-team fix)',
 });
 
 describe('traceability (§36/§37)', () => {
-  it('exposes a stable prompt version', () => {
-    expect(CONSULTATION_PROMPT_VERSION).toBe('consultation@1.0.0');
+  it('exposes a stable prompt version (bumped to 1.5.0 for the V1-finalization interpretation-depth contract)', () => {
+    expect(CONSULTATION_PROMPT_VERSION).toBe('consultation@1.5.0');
   });
 });

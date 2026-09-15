@@ -5,6 +5,7 @@ import { Card } from '@/components/Card';
 import { Input } from '@/components/Input';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
+import { FamousDuplicateWarning } from './FamousDuplicateWarning';
 import { AdminSelect } from '@/features/admin';
 import { canonicalForFamous } from '@/features/publicSite';
 import type {
@@ -16,7 +17,10 @@ import type {
   LunarMonthType,
 } from '@/features/consultation';
 
+import { canPublishFamous, FAMOUS_CHART_BLOCKED_NOTICE } from '../famousDisclosure';
+
 import { FamousAiPanel } from './FamousAiPanel';
+import { FamousBodyPanel } from './FamousBodyPanel';
 import type {
   FamousBirthSource,
   FamousIndexPolicy,
@@ -170,6 +174,13 @@ export function FamousEditor({
       setLocalError('slug은 소문자/숫자/하이픈만 사용할 수 있습니다. 예) hong-gildong');
       return;
     }
+    // ⚠ 명식 없이 공개하지 않는다. (b) 명식 해설형에서 페이지의 주장은 전부 명식에서 나오는데,
+    // 명식이 없거나 낡았으면 글과 표가 서로 다른 사주를 말하게 된다. 초안·보관은 막지 않는다 —
+    // 막는 것은 **공개** 뿐이다.
+    if (status === 'published' && !canPublishFamous(initial?.calculationState)) {
+      setLocalError(FAMOUS_CHART_BLOCKED_NOTICE);
+      return;
+    }
     setLocalError(null);
     onSubmit({
       name: trimmedName,
@@ -218,11 +229,25 @@ export function FamousEditor({
         onApplyIndexPolicy={setIndexPolicy}
       />
 
+      <FamousBodyPanel
+        famousId={initial?.id ?? null}
+        calculationState={initial?.calculationState ?? null}
+        onApplyBody={setBio}
+      />
+
       <Stack gap="sm">
         <Text variant="headingMedium">기본 정보</Text>
         <Card>
           <Stack gap="md">
             <Input label="이름" value={name} onChangeText={setName} required />
+            {/* Advisory only — never blocks the save (see FamousDuplicateWarning). */}
+            <FamousDuplicateWarning
+              name={name}
+              birthYear={birthYear}
+              birthMonth={birthMonth}
+              birthDay={birthDay}
+              excludeId={initial?.id ?? null}
+            />
             <Input
               label="slug (URL)"
               value={slug}

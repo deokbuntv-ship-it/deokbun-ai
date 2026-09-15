@@ -1,5 +1,9 @@
 # Beta Production Readiness (Sprint 2B)
 
+> ⚠ **HISTORICAL — Sprint 2B 기준.** 현재 상태는 `PROJECT_STATE.md`, 기능 판정은 `FEATURE_MASTER_CHECKLIST.md`, 오너 액션은 `OWNER_TODO.md`.
+> 이 문서의 테스트 수치·게이트 상태는 낡았다 (실제: **298 suites / 4,841 tests**, 2026-09-04).
+
+
 > Code-verified inventory of what production needs, what exists, and what only the Owner
 > can do — the operational baseline for a Nov-2026 beta. No secret values here. "Applied
 > in the live Supabase project" is **not derivable from the repo** → `OWNER_VERIFY` on all

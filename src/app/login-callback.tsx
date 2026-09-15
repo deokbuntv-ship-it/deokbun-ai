@@ -6,24 +6,18 @@ import { Screen } from '@/components/Screen';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth';
-import { resolveOAuthReturn } from '@/features/auth/services/oauthReturn';
-import { peekPendingConsultationIntent } from '@/features/consultation';
 
-// Provider-neutral OAuth return route (google / kakao / naver all share it).
+// Provider-neutral OAuth return route (google / kakao / naver share it).
 //
-// WEB (static export): the OAuth popup returns to `/login-callback`;
-// `maybeCompleteAuthSession()` completes the auth session and closes the popup,
-// handing the result URL back to the opener window, which performs the token parse
-// + `setSession` (features/auth/services/authService). This route therefore NEVER
-// parses tokens, reads credentials, or logs anything — it only completes + waits.
+// WEB (static export): the OAuth popup returns here; `maybeCompleteAuthSession()` completes the session and
+// closes the popup, handing the result URL to the opener window, which performs the token parse + setSession.
+// This route NEVER parses tokens, reads credentials, or logs anything — it only completes + waits.
 //
-// NATIVE: the deep-link return (`deokbunai://login-callback`) is intercepted by
-// `WebBrowser.openAuthSessionAsync` and this screen is never mounted — native
-// login is unaffected by this file.
+// NATIVE: the deep-link return (`deokbunai://login-callback`) is intercepted by openAuthSessionAsync and this
+// screen is never mounted.
 //
-// Direct / full-page landings fall through to a safe redirect once auth state
-// resolves (authenticated → home, otherwise → login). No token is ever placed in
-// or read from long-term storage here.
+// On a direct / full-page landing we forward to the onboarding RESOLVER once authenticated (it owns member
+// resolution + continuation), or back to /login otherwise. No token is placed in or read from storage here.
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginCallbackScreen() {
@@ -31,15 +25,16 @@ export default function LoginCallbackScreen() {
   const { authState } = useAuth();
 
   useEffect(() => {
-    // Peek (do not consume) the resume route so the opener window (login.tsx) remains
-    // the single consumer in the popup flow; this only matters on a direct/full-page
-    // landing where this route IS the main window.
-    const returnTo = peekPendingConsultationIntent()?.returnTo;
-    const destination = resolveOAuthReturn(authState.status, returnTo);
-    if (destination !== null) {
-      router.replace(destination);
+    if (authState.status === 'authenticated') {
+      // Single hub: the resolver decides new-vs-existing and consumes any pending continuation (§13).
+      router.replace('/onboarding');
+      return;
     }
-    // null ('loading') → wait; in the web popup flow this window closes first.
+    if (authState.status === 'unauthenticated') {
+      router.replace('/login');
+      return;
+    }
+    // 'loading' → wait; in the web popup flow this window closes before this resolves.
   }, [authState.status, router]);
 
   return (

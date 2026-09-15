@@ -18,6 +18,9 @@ export function AdminSearchInput({
   return (
     <Stack direction="row" gap="sm" align="flex-end">
       <Input
+        // 보이는 라벨이 없는 검색칸이다 — `Input` 의 label 폴백이 undefined 라 접근 이름이
+        // 비어 있었다(2026-09-06). placeholder 를 이름으로 준다. 시각 변화 없음.
+        accessibilityLabel={placeholder ?? '검색'}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder ?? '검색'}

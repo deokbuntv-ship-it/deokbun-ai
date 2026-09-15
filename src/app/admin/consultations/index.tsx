@@ -1,5 +1,6 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
@@ -40,6 +41,7 @@ export default function AdminConsultationsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AdminConsultationDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const router = useRouter();
 
   const load = useCallback((search: string, nextOffset: number) => {
     const token = loadTokenRef.current + 1;
@@ -155,6 +157,19 @@ export default function AdminConsultationsScreen() {
                 표시됩니다. 임의 값을 표시하지 않습니다.
               </Text>
             </Section>
+
+            {/* Link to the full decision-audit view (versions/polarity/domain) — was previously unreachable (§J9). */}
+            {selectedId ? (
+              <Pressable
+                onPress={() => router.push({ pathname: '/admin/consultations/[conversationId]', params: { conversationId: selectedId } })}
+                accessibilityRole="button"
+                style={{ paddingVertical: 8 }}
+              >
+                <Text variant="bodySmall" style={{ color: adminTheme.ink, fontWeight: '700' }}>
+                  결정 감사 상세 보기 →
+                </Text>
+              </Pressable>
+            ) : null}
           </>
         )}
       </AdminDetailDrawer>

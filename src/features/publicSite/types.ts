@@ -51,6 +51,8 @@ export type PublicFamousListItem = {
   publishedAt: string | null;
 };
 
+import type { FamousChartView } from './components/FamousChartTable';
+
 export type PublicFamousDetail = {
   slug: string;
   name: string;
@@ -64,6 +66,10 @@ export type PublicFamousDetail = {
   canonicalUrl: string | null;
   indexPolicy: string | null;
   publishedAt: string | null;
+  /** 왜 그 출처인지. (b) 명식 해설형에서는 이것이 교육 정보다. */
+  birthSourceNote: string | null;
+  /** 명식 스냅샷. 계산 전이거나 절기 경계일이면 null 이다 — 그 경우 표를 그리지 않는다. */
+  chart: FamousChartView | null;
   related: PublicContentRelated[];
 };
 

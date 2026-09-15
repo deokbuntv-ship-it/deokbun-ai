@@ -15,19 +15,37 @@ type NavHref =
   | '/admin/users'
   | '/admin/consultations'
   | '/admin/consultation-intelligence'
+  | '/admin/support'
+  | '/admin/popular-questions'
+  | '/admin/retention'
   | '/admin/ads'
   | '/admin/fortune-mail'
+  | '/admin/economy'
   | '/admin/ai-usage'
   | '/admin/engine-status'
-  | '/admin/system-settings';
+  | '/admin/system-settings'
+  | '/admin/ai-reports';
 
 const NAV_ITEMS: { label: string; href: NavHref }[] = [
   { label: '대시보드', href: '/admin' },
   { label: '사용자 관리', href: '/admin/users' },
   { label: '상담 관리', href: '/admin/consultations' },
-  { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
+  // ⚠ 2026-09-06 메뉴에서 감춤 — **화면 파일은 남겨 둔다.**
+  //   이 화면은 `admin_list_intelligence_runs` · `admin_get_intelligence_run` 을 부르는데,
+  //   그 둘은 `docs/CONSULTATION_INTELLIGENCE_DB.sql` 에만 있고 staging·production 어디에도
+  //   승격되지 않았다. 시임(`isConnected()`)이 있어 크래시는 안 나지만, 오너에게는 **열면 늘
+  //   비어 있는 메뉴**로 보인다. 파이프라인이 생기면 이 줄의 주석만 풀면 되살아난다.
+  //   (미승격 사유는 `FEATURE_MASTER_CHECKLIST` §스키마 표 참조 — "쓰는 코드가 없어서" 가 아니라
+  //    "파이프라인이 없어서" 다. 화면과 서비스는 이미 있다.)
+  // { label: '상담 인텔리전스', href: '/admin/consultation-intelligence' },
+  { label: '고객문의', href: '/admin/support' },
+  // 구글 AI 생성 콘텐츠 정책이 요구하는 신고 창구. 고객문의 바로 아래 — 둘 다 "사람이 보낸 것" 이다.
+  { label: 'AI 답변 신고', href: '/admin/ai-reports' },
+  { label: '홈 인기질문', href: '/admin/popular-questions' },
+  { label: '리텐션 · 알림', href: '/admin/retention' },
   { label: '광고', href: '/admin/ads' },
   { label: '운세우편 관리', href: '/admin/fortune-mail' },
+  { label: '덕 경제', href: '/admin/economy' },
   { label: 'AI 사용량 · 비용', href: '/admin/ai-usage' },
   { label: '해석엔진 상태', href: '/admin/engine-status' },
   { label: '시스템 설정', href: '/admin/system-settings' },
@@ -63,7 +81,7 @@ export function AdminSidebar() {
               <Link key={item.href} href={item.href} asChild>
                 <Pressable
                   accessibilityRole="link"
-                  accessibilityState={{ selected: active }}
+                  aria-selected={active}
                   style={{
                     paddingVertical: 11,
                     paddingHorizontal: 12,

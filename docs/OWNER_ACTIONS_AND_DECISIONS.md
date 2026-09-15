@@ -1,5 +1,10 @@
 # Owner Actions & Decisions — DeokbunAI (Claude app track)
 
+> **📍 문서 권위 (2026-09-04 확정)** — **오너 액션 목록의 권위는 `OWNER_TODO.md` 로 이관됐다.** 이 문서는 **각 설정의 단계별 절차와 과거 결정 기록**만 소유한다. 상태 판정(무엇이 끝났는지)은 적지 말 것 — 낡는다.
+> 전체 서열: `OWNER_TODO.md`(오너 액션) · `PROJECT_STATE.md`(운영 상태) · `FEATURE_MASTER_CHECKLIST.md`(기능 판정) · `KNOWN_RISKS.md`(위험) · `BACKLOG_V1_1.md`(V1.1) · `DATABASE_RUNBOOK.md`(DB 적용 절차).
+> 충돌 시 판정 순서: **코드 → 테스트/빌드 → 라이브 스키마·배포 실측 → git 이력 → 프로덕션 E2E → 문서.**
+
+
 Single operational reference for the non-developer owner. Split into: (1) USER
 ACTIONS you run now, (2) OWNER DECISIONS (cost/lock-in — no default chosen),
 (3) inventories, (4) a manual smoke script. Nothing here contains secret values.

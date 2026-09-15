@@ -140,6 +140,9 @@ async function getFamous(slug: string): Promise<PublicFamousDetail | null> {
     shortDescription: str(row.short_description),
     bio: str(row.bio),
     birthSource: str(row.birth_source),
+    birthSourceNote: str(row.birth_source_note),
+    // 명식 스냅샷은 서버가 만든 불투명 객체다 — 클라이언트가 손대지 않고 그대로 넘긴다.
+    chart: (row.chart ?? null) as PublicFamousDetail['chart'],
     seoTitle: str(row.seo_title),
     seoDescription: str(row.seo_description),
     canonicalUrl: str(row.canonical_url),

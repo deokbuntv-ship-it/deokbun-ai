@@ -13,6 +13,7 @@ import type { EvidenceNode } from '../domain/evidence';
 import type { MissingDataItem, WarningSeverity } from '../domain/issues';
 import { calculateFourPillars } from './fourPillars';
 import { calculateSajuDerivedFacts } from './derived/calculateDerivedFacts';
+import { calculateFiveElementDistribution } from './distribution/calculateFiveElementDistribution';
 
 export const DEOKBUNAI_SAJU_ENGINE_VERSION =
   'deokbunai.saju-engine.v1' as const;
@@ -46,6 +47,7 @@ const EVIDENCE_IDS = {
   input: 'SAJU.EVIDENCE.NORMALIZED_BIRTH',
   calendar: 'SAJU.EVIDENCE.CALENDAR',
   productRule: 'SAJU.EVIDENCE.PRODUCT_RULE',
+  yearMonthAttribution: 'SAJU.EVIDENCE.YEAR_MONTH_ATTRIBUTION',
   dayRule: 'SAJU.EVIDENCE.DAY_RULE',
   hourRule: 'SAJU.EVIDENCE.HOUR_RULE',
   year: 'SAJU.EVIDENCE.YEAR_PILLAR',
@@ -53,6 +55,8 @@ const EVIDENCE_IDS = {
   day: 'SAJU.EVIDENCE.DAY_PILLAR',
   hour: 'SAJU.EVIDENCE.HOUR_PILLAR',
   derivedFacts: 'SAJU.EVIDENCE.DERIVED_FACTS_RULES',
+  fiveElementDistribution:
+    'SAJU.EVIDENCE.FIVE_ELEMENT_DISTRIBUTION_RULES',
 } as const;
 
 function createDescriptor(input: SajuEngineExecutionInput): EngineDescriptor {
@@ -236,6 +240,14 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
       factIds: [factIds.year, factIds.month],
     },
     {
+      // year/month pillars are attributed by 立春 / the twelve 節 — the authoritative boundary rule.
+      id: EVIDENCE_IDS.yearMonthAttribution,
+      kind: 'RULE',
+      ruleId: output.provenance.yearMonthAttributionRule.ruleId,
+      ruleVersion: output.provenance.yearMonthAttributionRule.ruleVersion,
+      factIds: [factIds.year, factIds.month],
+    },
+    {
       id: EVIDENCE_IDS.dayRule,
       kind: 'RULE',
       ruleId: output.provenance.dayRule.ruleId,
@@ -257,6 +269,7 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
         EVIDENCE_IDS.productRule,
+        EVIDENCE_IDS.yearMonthAttribution,
       ],
     },
     {
@@ -267,6 +280,7 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
         EVIDENCE_IDS.input,
         EVIDENCE_IDS.calendar,
         EVIDENCE_IDS.productRule,
+        EVIDENCE_IDS.yearMonthAttribution,
       ],
     },
     {
@@ -304,17 +318,26 @@ function createEvidence(output: SajuEngineOutput): EvidenceNode[] {
       ...(factIds.hour ? [EVIDENCE_IDS.hour] : []),
     ],
   });
+  evidence.push({
+    id: EVIDENCE_IDS.fiveElementDistribution,
+    kind: 'RULE',
+    ruleId: 'DEOKBUNAI_SAJU_FIVE_ELEMENT_DISTRIBUTION',
+    ruleVersion: output.fiveElementDistribution.ruleVersion,
+    parentEvidenceIds: [EVIDENCE_IDS.derivedFacts],
+  });
   return evidence;
 }
 
 type SajuExecutionCalculators = {
   calculateFourPillars: typeof calculateFourPillars;
   calculateDerivedFacts: typeof calculateSajuDerivedFacts;
+  calculateFiveElementDistribution: typeof calculateFiveElementDistribution;
 };
 
 const PRODUCTION_CALCULATORS: SajuExecutionCalculators = {
   calculateFourPillars,
   calculateDerivedFacts: calculateSajuDerivedFacts,
+  calculateFiveElementDistribution,
 };
 
 /** @internal Validation seam. Not exported from the interpretation package. */
@@ -360,13 +383,27 @@ export function executeSajuWithCalculatorsForValidation(
     );
   }
 
+  const distribution = calculators.calculateFiveElementDistribution({
+    derivedFacts: derived.value,
+  });
+  if (!distribution.ok) {
+    throw new Error(
+      `Saju Five Element Distribution invariant failed: ${distribution.error.code} at ${distribution.error.field}.`,
+    );
+  }
+
   const output: SajuEngineOutput = {
     fourPillars: aggregate.pillars,
     derivedFacts: derived.value,
+    fiveElementDistribution: distribution.value,
     identity: aggregate.identity,
     provenance: {
       ...aggregate.provenance,
       derivedFactsRuleVersions: derived.value.ruleVersions,
+      fiveElementDistributionRuleVersions: {
+        distribution: distribution.value.ruleVersion,
+        ...distribution.value.sourceRuleVersions,
+      },
     },
   };
   const hour = output.fourPillars.hour;

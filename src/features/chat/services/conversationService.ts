@@ -1,5 +1,10 @@
 import { logDbError } from '@/features/analysis';
+import {
+  parsePersistedStructured,
+  serializeStructuredForPersistence,
+} from '@/features/chat/presentation/persistStructured';
 import type { ChatMessage } from '@/features/chat/types/chat';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { getSupabaseClient } from '@/services/supabase';
 
 // Persistence for conversation sessions and their messages. This lives OUTSIDE
@@ -11,7 +16,9 @@ import { getSupabaseClient } from '@/services/supabase';
 // composite-ownership RLS WITH CHECK so a conversation can only reference the
 // caller's own consultation_subjects.
 //
-// Never stores: prompt text, memory summary, API keys, JWTs, or secrets.
+// Never stores: prompt text, grounding/engine payload, API keys, JWTs, or secrets. It DOES store the
+// validated user-facing structured answer (prose + follow-ups) in `structured_result` so a reload
+// keeps the card + chips (§14/§56 — no grounding, no raw payload).
 
 const CONVERSATIONS = 'conversations';
 const MESSAGES = 'conversation_messages';
@@ -30,6 +37,7 @@ type ConversationMessageRow = {
   role: PersistableMessageRole;
   content: string;
   client_message_id: string;
+  structured_result?: unknown; // JSONB — parsed fail-closed by parsePersistedStructured
 };
 
 type ConversationRow = {
@@ -60,9 +68,13 @@ export type ConversationSummaryItem = {
 // Creates a new conversation. user_id is decided by the DB default `auth.uid()`.
 // `subjectId` is the saved consultation_subjects UUID, or null for temp/legacy
 // consultations. `subjectSnapshot` freezes the subject/birthInfo at this moment.
+// `opts` (additive) marks a 궁합 conversation (consultation_mode='compatibility') and stores its
+// deterministic tier meta — solo callers pass no opts, so their inserts are byte-unchanged (both
+// columns default null). compatibility_meta requires migration 20260819000100.
 async function createConversation(
   subjectId: string | null,
   subjectSnapshot: ConversationSubjectSnapshot,
+  opts?: { consultationMode?: 'solo' | 'compatibility'; compatibilityMeta?: unknown },
 ): Promise<string> {
   const supabase = getSupabaseClient();
 
@@ -71,6 +83,8 @@ async function createConversation(
     .insert({
       subject_id: subjectId,
       subject_snapshot: subjectSnapshot ?? null,
+      ...(opts?.consultationMode ? { consultation_mode: opts.consultationMode } : {}),
+      ...(opts?.compatibilityMeta !== undefined ? { compatibility_meta: opts.compatibilityMeta } : {}),
     })
     .select('id')
     .single();
@@ -93,9 +107,16 @@ async function saveMessage(
     role: PersistableMessageRole;
     content: string;
     clientMessageId: string;
+    structuredResult?: StructuredConsultationViewModel;
   },
 ): Promise<void> {
   const supabase = getSupabaseClient();
+
+  // Persist the VALIDATED structured answer (user-facing prose + follow-ups only — never grounding
+  // or raw payload; §14/§56) so a reload keeps the card + chips instead of a plain bubble.
+  const persisted = message.structuredResult
+    ? serializeStructuredForPersistence(message.structuredResult)
+    : null;
 
   // Idempotent: the (conversation_id, client_message_id) unique constraint plus
   // ignoreDuplicates makes a repeated save a no-op. The parent-ownership INSERT
@@ -106,6 +127,8 @@ async function saveMessage(
       role: message.role,
       content: message.content,
       client_message_id: message.clientMessageId,
+      structured_result: persisted,
+      follow_ups: persisted?.followUps ?? null,
     },
     { onConflict: 'conversation_id,client_message_id', ignoreDuplicates: true },
   );
@@ -120,7 +143,7 @@ async function loadMessages(conversationId: string): Promise<ChatMessage[]> {
 
   const { data: rows, error } = await supabase
     .from(MESSAGES)
-    .select('role, content, client_message_id')
+    .select('role, content, client_message_id, structured_result')
     .eq('conversation_id', conversationId)
     .order('seq', { ascending: true });
 
@@ -128,11 +151,16 @@ async function loadMessages(conversationId: string): Promise<ChatMessage[]> {
     logDbError(error, 'conversation', 'persist');
   }
 
-  return ((rows as ConversationMessageRow[] | null) ?? []).map((row) => ({
-    id: row.client_message_id,
-    role: row.role,
-    text: row.content,
-  }));
+  return ((rows as ConversationMessageRow[] | null) ?? []).map((row) => {
+    // Restore the structured card fail-closed: malformed/legacy/absent → plain text bubble.
+    const structuredResult = parsePersistedStructured(row.structured_result);
+    return {
+      id: row.client_message_id,
+      role: row.role,
+      text: row.content,
+      ...(structuredResult ? { structuredResult } : {}),
+    };
+  });
 }
 
 async function hydrateConversation(
@@ -183,6 +211,9 @@ async function loadLatestConversationForSubject(
     .from(CONVERSATIONS)
     .select(CONVERSATION_COLUMNS)
     .eq('subject_id', subjectId)
+    // Exclude 궁합 conversations so the SOLO chat never restores a compatibility conversation for a
+    // subject that is also used as a 궁합 target (solo = null/legacy or explicit 'solo').
+    .or('consultation_mode.is.null,consultation_mode.eq.solo')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -195,6 +226,76 @@ async function loadLatestConversationForSubject(
   }
 
   return hydrateConversation(data as ConversationRow);
+}
+
+// ── 궁합(compatibility) conversation persistence ─────────────────────────────
+// Reuses the SAME conversations + conversation_messages tables (no compatibility_conversations
+// table). A 궁합 conversation is subject_id = target subject + consultation_mode = 'compatibility';
+// the pair is DERIVED (owner is_self + target). compatibility_meta carries the deterministic tier so a
+// reload restores the tier chip without any LLM call. Requires migrations 20260819000000/000100.
+const COMPAT_CONVERSATION_COLUMNS =
+  'id, summary, last_summarized_message_id, subject_snapshot, compatibility_meta';
+
+export type LoadedCompatibilityConversation = LoadedConversation & { compatibilityMeta: unknown };
+
+// Latest 궁합 conversation for a target subject (or null). Restores messages (structured cards +
+// follow-ups) + the deterministic tier meta — the load-first path that prevents a duplicate LLM
+// call on refresh (§9/§54).
+async function loadLatestCompatibilityConversation(
+  subjectId: string,
+): Promise<LoadedCompatibilityConversation | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .select(COMPAT_CONVERSATION_COLUMNS)
+    .eq('subject_id', subjectId)
+    .eq('consultation_mode', 'compatibility')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  if (data === null) {
+    return null;
+  }
+  const row = data as ConversationRow & { compatibility_meta?: unknown };
+  const messages = await loadMessages(row.id);
+  return {
+    conversationId: row.id,
+    messages,
+    summary: row.summary,
+    lastSummarizedMessageId: row.last_summarized_message_id,
+    subjectSnapshot: row.subject_snapshot,
+    compatibilityMeta: row.compatibility_meta ?? null,
+  };
+}
+
+// All 궁합 conversations for a target (pair history), newest first.
+async function listCompatibilityConversationsForSubject(
+  subjectId: string,
+): Promise<ConversationSummaryItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .select('id, created_at, updated_at, summary, subject_snapshot')
+    .eq('subject_id', subjectId)
+    .eq('consultation_mode', 'compatibility')
+    .order('updated_at', { ascending: false });
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  return (
+    (data as
+      | Array<{ id: string; created_at: string; updated_at: string; summary: string | null; subject_snapshot: ConversationSubjectSnapshot }>
+      | null) ?? []
+  ).map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    summary: row.summary,
+    subjectSnapshot: row.subject_snapshot,
+  }));
 }
 
 // Loads a specific conversation by id (for opening a past conversation from
@@ -231,6 +332,8 @@ async function listConversationsForSubject(
     .from(CONVERSATIONS)
     .select('id, created_at, updated_at, summary, subject_snapshot')
     .eq('subject_id', subjectId)
+    // Solo history excludes 궁합 conversations (they surface under 운세우편함 > 궁합, not solo history).
+    .or('consultation_mode.is.null,consultation_mode.eq.solo')
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -279,6 +382,41 @@ async function saveSummary(
   }
 }
 
+// Owner deletes a conversation (conversations_delete_own RLS, migration 20260922000000). The DB does the
+// rest in one statement: messages/feedback/decisions cascade, the server copies of its answers are expired
+// and its report's share links are revoked (BEFORE DELETE trigger). The report itself stays in the inbox.
+// Success is judged by the RETURNED ROW — PostgREST answers a 0-row delete with the same success status.
+async function deleteConversation(conversationId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(CONVERSATIONS)
+    .delete()
+    .eq('id', conversationId)
+    .select('id');
+
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  return !error && Array.isArray(data) && data.length === 1;
+}
+
+// A 궁합 conversation is created only AFTER its first answer (it stores that answer's tier), so the server
+// could not tie that request to a conversation when it ran. Once the app has the conversation it links the
+// answer here, so deleting the conversation later expires that answer's server copy at once. Best-effort:
+// false just leaves it to the 24h retention job. The RPC only links the caller's own answer to the caller's
+// own conversation (20260922000000).
+async function linkCompatibilityAnswer(conversationId: string, requestId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('link_compatibility_answer', {
+    p_request_id: requestId,
+    p_conversation_id: conversationId,
+  });
+  if (error) {
+    logDbError(error, 'conversation', 'persist');
+  }
+  return !error && data === true;
+}
+
 export const conversationService = {
   createConversation,
   saveMessage,
@@ -286,5 +424,9 @@ export const conversationService = {
   loadLatestConversationForSubject,
   loadConversationById,
   listConversationsForSubject,
+  loadLatestCompatibilityConversation,
+  listCompatibilityConversationsForSubject,
   saveSummary,
+  deleteConversation,
+  linkCompatibilityAnswer,
 };

@@ -46,8 +46,8 @@ export default function PublicFamousListScreen() {
   return (
     <PublicScreen>
       <SeoHead
-        title="유명인 | 덕분AI"
-        description="덕분AI가 소개하는 유명인 이야기"
+        title="유명인 | 덕분이"
+        description="덕분이가 소개하는 유명인 이야기"
       />
       <Stack gap="xl">
         <Stack gap="xs">

@@ -130,6 +130,7 @@ export default function AdminAdDetailScreen() {
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {!published ? (
             <Button
+              variant="primary"
               label={busy ? '발행 중...' : '발행'}
               onPress={() => runAction(() => adAdvertisementService.publishAd(ad.id), '발행에 실패했어요. 다시 시도해 주세요.')}
               disabled={busy}

@@ -1,8 +1,9 @@
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, createContext, useContext, type ReactNode } from 'react';
 import { Linking, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { Spacing } from '@/constants/theme';
+import type { TypographyToken } from '@/theme';
 
 // Dependency-free, SAFE Markdown renderer for public article content.
 // LINE-BASED parser: headings (#/##/###), paragraphs, unordered (-,*) and ordered
@@ -17,6 +18,11 @@ type InlineNode =
   | { t: 'italic'; v: string }
   | { t: 'code'; v: string }
   | { t: 'link'; v: string; url: string };
+
+// DESIGN_FREEZE_FINAL C11 — the SAME safe renderer serves both the compact body (bodyMedium) and the
+// long-form 해석 reading measure (reading 16/28). One parser, one escaping story; only the type scale
+// changes, injected here so no call site has to re-implement Markdown.
+const BodyVariant = createContext<TypographyToken>('bodyMedium');
 
 const LINK_RE = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/;
 
@@ -81,19 +87,20 @@ function openLink(url: string) {
 
 function InlineText({ text }: { text: string }) {
   const nodes = parseInline(text);
+  const bv = useContext(BodyVariant);
   return (
-    <Text variant="bodyMedium">
+    <Text variant={bv}>
       {nodes.map((n, idx) => {
         if (n.t === 'bold') {
           return (
-            <Text key={idx} variant="bodyMedium" style={{ fontWeight: '700' }}>
+            <Text key={idx} variant={bv} style={{ fontWeight: '700' }}>
               {n.v}
             </Text>
           );
         }
         if (n.t === 'italic') {
           return (
-            <Text key={idx} variant="bodyMedium" style={{ fontStyle: 'italic' }}>
+            <Text key={idx} variant={bv} style={{ fontStyle: 'italic' }}>
               {n.v}
             </Text>
           );
@@ -109,7 +116,7 @@ function InlineText({ text }: { text: string }) {
           return (
             <Text
               key={idx}
-              variant="bodyMedium"
+              variant={bv}
               colorToken="primary"
               onPress={() => openLink(n.url)}
             >
@@ -134,11 +141,12 @@ function Heading({ level, text }: { level: number; text: string }) {
 }
 
 function ListBlock({ items, ordered }: { items: string[]; ordered: boolean }) {
+  const bv = useContext(BodyVariant);
   return (
     <View style={{ gap: Spacing.one }}>
       {items.map((l, idx) => (
         <View key={idx} style={{ flexDirection: 'row', gap: Spacing.two }}>
-          <Text variant="bodyMedium">{ordered ? `${idx + 1}.` : '•'}</Text>
+          <Text variant={bv}>{ordered ? `${idx + 1}.` : '•'}</Text>
           <View style={{ flex: 1 }}>
             <InlineText text={l} />
           </View>
@@ -160,7 +168,8 @@ function Hr() {
   );
 }
 
-export function Markdown({ source }: { source: string }) {
+export function Markdown({ source, reading = false }: { source: string; reading?: boolean }) {
+  const bv: TypographyToken = reading ? 'reading' : 'bodyMedium';
   const lines = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const blocks: ReactNode[] = [];
   let para: string[] = [];
@@ -198,7 +207,7 @@ export function Markdown({ source }: { source: string }) {
             paddingLeft: Spacing.three,
           }}
         >
-          <Text variant="bodyMedium" colorToken="textSecondary">
+          <Text variant={bv} colorToken="textSecondary">
             {quote.join('\n')}
           </Text>
         </View>,
@@ -259,5 +268,9 @@ export function Markdown({ source }: { source: string }) {
   }
   flushAll();
 
-  return <View style={{ gap: Spacing.three }}>{blocks}</View>;
+  return (
+    <BodyVariant.Provider value={bv}>
+      <View style={{ gap: Spacing.three }}>{blocks}</View>
+    </BodyVariant.Provider>
+  );
 }

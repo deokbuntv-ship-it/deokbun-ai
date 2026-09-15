@@ -47,7 +47,7 @@ export function AdminDetailDrawer({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.root}>
-        <Pressable style={styles.scrim} accessibilityLabel="닫기" onPress={onClose} />
+        <Pressable style={styles.scrim} accessibilityRole="button" accessibilityLabel="닫기" onPress={onClose} />
         <View style={styles.panel}>
           <View style={styles.header}>
             <View style={styles.headerText}>

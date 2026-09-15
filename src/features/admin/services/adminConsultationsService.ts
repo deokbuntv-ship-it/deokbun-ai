@@ -89,7 +89,48 @@ async function getConsultation(
   return toDetail(data as Record<string, unknown>);
 }
 
+// Server-owned DECISION AUDIT scalars (Sprint J5 §5.8) — versions + polarity/domain metadata only. NO prompt,
+// question, answer prose, or chain-of-thought is stored or returned (see migration 20260829). Fail-clean to [].
+export type AdminConsultationAudit = {
+  workload: string | null;
+  answerPlanVersion: string | null;
+  decisionPolicyVersion: string | null;
+  engineVersion: string | null;
+  modelId: string | null;
+  polarity: string | null;
+  domain: string | null;
+  createdAt: string | null;
+};
+
+async function getConsultationAudit(conversationId: string): Promise<AdminConsultationAudit[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_get_consultation_audit', {
+    p_conversation_id: conversationId,
+  });
+  if (error) {
+    logDbError(error, 'admin', 'db');
+    return [];
+  }
+  if (!Array.isArray(data)) return [];
+  return (data as Record<string, unknown>[]).map((r) => {
+    const meta = r.decision_meta && typeof r.decision_meta === 'object'
+      ? (r.decision_meta as Record<string, unknown>)
+      : {};
+    return {
+      workload: asString(r.workload),
+      answerPlanVersion: asString(r.answer_plan_version),
+      decisionPolicyVersion: asString(r.decision_policy_version),
+      engineVersion: asString(r.engine_version),
+      modelId: asString(r.model_id),
+      polarity: asString(meta.polarity), // only surfaced if a scalar string; nested objects → null
+      domain: asString(meta.domain),
+      createdAt: asString(r.created_at),
+    };
+  });
+}
+
 export const adminConsultationsService = {
   listConsultations,
   getConsultation,
+  getConsultationAudit,
 };

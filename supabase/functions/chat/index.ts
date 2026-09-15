@@ -1,117 +1,226 @@
-// DeokbunAI — Chat Edge Function
+// DeokbunAI — Chat Edge Function  (Server Trust Boundary — Server-Trust sprint)
 //
-// This is the ONLY place a real LLM provider is called (server trust boundary).
+// This is the ONLY place a real LLM provider is called AND — as of the server-trust sprint — the ONLY
+// place the authoritative deterministic grounding is built. The client is authoritative for NOTHING
+// deterministic (§7/§8): it sends a question + untrusted prior turns. The SERVER resolves canonical SELF,
+// every fact, builds the grounding + system prompt, calls OpenAI, validates the output, and returns a
+// bounded result. A modified client can no longer fabricate SAJU/Ziwei/Qimen facts, availability,
+// provenance, or "세 학문 일치" consensus.
 //
 // Principles enforced here:
-// - OpenAI API key lives only in server secrets (never in the client).           [Sprint 2-19 #1, #6]
-// - Only authenticated Supabase users may call this function.                     [#3, #4]
-//   Auth uses the recommended `withSupabase({ auth: 'user' })` wrapper with the
-//   platform-level `verify_jwt = true`; unauthenticated requests are rejected
-//   before this handler runs.
-// - The client only sends `messages`. The MODEL and OUTPUT TOKEN LIMIT are
-//   decided by the server (env/secret), so the client cannot inflate cost.       [#15, #16, #17]
-// - A per-user burst Rate Limit runs at the top of this handler (before any LLM
-//   call) using the existing ai_usage_logs table; fail-open, no new infra.       [#13]
+// - OpenAI API key lives only in server secrets (never in the client).
+// - Only authenticated Supabase users may call this function (`withSupabase({ auth: 'user' })`,
+//   platform `verify_jwt = true`).
+// - The client CANNOT send messages/grounding/system prompts. The server builds them from input.        [§8]
+// - The question time (Qimen + current-year 세운/월운) is the SERVER receipt time, not the client clock.  [§10]
+// - The model + output-token limit are server-decided.
+// - An atomic DB reservation runs before every paid LLM call; cache hits need no reservation.
 //
-// Logging policy: the success path is silent. Only failure paths log, via
-// `console.error`, and never include secrets, tokens, the Authorization header,
-// the user JWT, the request body, or the full OpenAI response body — only a
-// stage marker, HTTP status, or exception name/message.
-//
-// Runtime: Supabase Edge Functions (Deno). This file is intentionally excluded
-// from the app's TypeScript project (see tsconfig `exclude`) and is never bundled
-// by Metro — it runs only on Supabase.
+// Runtime: Supabase Edge Functions (Deno). Excluded from the app tsconfig; never bundled by Metro. It
+// imports the app's runtime-neutral orchestrator via the sibling deno.json import map ('@/' → src).
+// NOTE: engine execution under Deno is UNVERIFIED in this workspace (no deno/supabase CLI) —
+// EDGE_RUNTIME_NOT_EXECUTED; the orchestrator logic itself is verified under Node/Jest.
 
-import { withSupabase } from 'npm:@supabase/server';
-import { createClient } from 'npm:@supabase/supabase-js';
+// Pinned for reproducible Edge builds: @supabase/supabase-js to the app's exact locked version
+// (package-lock: 2.112.1), and @supabase/server (a Deno-only helper, not in the app lockfile) to the
+// owner-verified current version 1.4.1.
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.112.1';
 
-type ChatMessage = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+// The server orchestrator + its whole runtime-neutral graph (108 files incl. the FROZEN Saju engine) is
+// pre-bundled by esbuild into ONE Deno-safe ESM file (build: _server/build.mjs). Deno's Edge runtime
+// rejects the app's Node/Metro-style extensionless + directory imports and does NOT honor sloppy-imports,
+// so the Edge imports the single generated bundle instead. The 3 engine deps stay external → resolved by
+// deno.json to pinned npm: specifiers. No app-SOURCE import remains in this file.
+import {
+  buildServerConsultation,
+  buildCompatibilityConsultation,
+  evaluateConsultationSafetyStop,
+  parseDecisionMeta,
+  buildTodayFortune,
+  dailyFortuneResponseFormat,
+  buildMonthlyFortune,
+  monthlyFortuneResponseFormat,
+  buildServerSummary,
+  summaryContainsHardStop,
+  resolveModelRoute,
+  consultationWorkload,
+  classifyQuestionComplexity,
+  consultationResponseFormat,
+  extractResponsesText,
+  openAiFailureCode,
+  parseUsageDetails,
+  redactDiag,
+  gateFiringSummary,
+  resolveConsultationProfile,
+  resolveLlmBudgets,
+  runCanonicalGeneration,
+  validateConsultationInputBounds,
+  TODAY_CANONICAL_VERSION,
+  MONTHLY_CANONICAL_VERSION,
+  fortuneDateStringFromEpoch,
+  currentTargetMonth,
+  monthKey,
+  MAX_REQUEST_BODY_BYTES,
+  buildPremiumReport,
+  premiumReportResponseFormat,
+  PREMIUM_POLICY_VERSION,
+} from './_server/serverBundle.mjs';
+import {
+  globalSpendGuardFailure,
+  reserveGlobalPaidGeneration,
+  type GlobalSpendGuardVerdict,
+} from '../_shared/globalSpendGuard.ts';
+
+// Types the Edge's own locals reference. Kept INLINE (not imported from @/) so this file exposes NO
+// extensionless/directory/@/ specifier to Deno. They mirror the source contracts; the authoritative
+// shapes are enforced at runtime by the bundled buildServerConsultation/buildServerSummary.
+type LLMMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type BirthInfoDraft = {
+  displayName: string;
+  gender: 'male' | 'female' | null;
+  calendarType: 'solar' | 'lunar' | null;
+  lunarMonthType: 'regular' | 'leap' | null;
+  birthYear: string;
+  birthMonth: string;
+  birthDay: string;
+  birthTimeAccuracy: 'exact' | 'approximate' | 'unknown' | null;
+  birthHour: string;
+  birthMinute: string;
+  approximateTimePeriod: 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' | null;
+  birthPlace: string;
 };
-
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5-mini';
-const DEFAULT_MAX_OUTPUT_TOKENS = 800;
+const REQUIRED_TERMS_VERSION = '2026-08-v1';
+const CURRENT_TIER = 'FREE';
 
+// apiKey + model + the two per-path OUTPUT-token budgets. resolveLlmBudgets (bundled, bounded) gives the
+// consultation long-form and the summary DIFFERENT caps — a shared 800 made gpt-5-mini return
+// status=incomplete (reasoning ate the budget). Model is unchanged; env vars can tune within hard bounds.
 function readServerConfig() {
   const apiKey = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
   const model = Deno.env.get('LLM_MODEL')?.trim() || DEFAULT_MODEL;
-
-  const rawMaxOutputTokens = Deno.env.get('LLM_MAX_OUTPUT_TOKENS')?.trim();
-  const parsedMaxOutputTokens = Number(rawMaxOutputTokens);
-  const maxOutputTokens =
-    Number.isFinite(parsedMaxOutputTokens) && parsedMaxOutputTokens > 0
-      ? Math.floor(parsedMaxOutputTokens)
-      : DEFAULT_MAX_OUTPUT_TOKENS;
-
-  return { apiKey, model, maxOutputTokens };
+  const budgets = resolveLlmBudgets({
+    consultation: Deno.env.get('LLM_CONSULTATION_MAX_OUTPUT_TOKENS'),
+    summary: Deno.env.get('LLM_SUMMARY_MAX_OUTPUT_TOKENS'),
+  });
+  return { apiKey, model, budgets };
 }
 
-function isValidMessages(value: unknown): value is ChatMessage[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every(
-      (message) =>
-        message !== null &&
-        typeof message === 'object' &&
-        (message.role === 'system' ||
-          message.role === 'user' ||
-          message.role === 'assistant') &&
-        typeof message.content === 'string',
-    )
-  );
+// Deno-native DigestProvider (Web Crypto). Byte-identical hex to the app's Node provider
+// (createHash('sha256').update(x,'utf8').digest('hex')) so the frozen engine's fingerprint is stable.
+const denoDigestProvider = {
+  async sha256Utf8(input: string): Promise<string> {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  },
+};
+
+// extractResponsesText / openAiFailureCode / redactDiag are imported from the bundle (unit-tested in Jest).
+
+// SAFE diagnostic line (§F). redactDiag keeps ONLY an allowlist of non-sensitive fields — never the
+// prompt, birth data, question, engine evidence, API key, auth header, or the OpenAI response text.
+type DiagStage =
+  | 'AUTH' | 'INPUT' | 'PROFILE_RESOLUTION' | 'GROUNDING'
+  | 'OPENAI_REQUEST' | 'OPENAI_RESPONSE' | 'RESPONSE_VALIDATION' | 'USAGE_LOG';
+function logDiag(requestId: string | null, stage: DiagStage, code: string, extra?: Record<string, unknown>) {
+  console.error('[chat.diag]', JSON.stringify(redactDiag({ requestId, stage, code, ...(extra ?? {}) })));
 }
 
-// Extract assistant text from the raw Responses API JSON.
-// The raw HTTP response exposes an `output` array; the assistant text lives in a
-// `message` item's `output_text` content parts. `output_text` at the top level
-// is an SDK convenience and may be absent in the raw payload, so it is only a
-// fallback here.
-function extractText(payload: unknown): string {
-  const output = (payload as { output?: unknown } | null)?.output;
+// The one outbound provider call, shared by the consultation + summary paths. NEVER throws — it returns a
+// CLASSIFIED outcome (transport fault / HTTP status / Responses `status` + `incomplete_details.reason` /
+// extracted text / usage) so a 502 can be attributed to an exact class without exposing any content.
+type OpenAiCall = {
+  ok: boolean; // false = transport/HTTP failure
+  statusCode: number; // 0 when fetch threw
+  text: string;
+  usage: Record<string, unknown>;
+  responseStatus: string | null;
+  incompleteReason: string | null;
+};
+// V6 ROOT CAUSE 6 — THE INTERNAL UPSTREAM DEADLINE.
+//
+// The provider fetch carried no timeout at all, so a slow completion ran until the Edge PLATFORM killed the
+// worker: 2 of 84 Blind-84 cases returned 546/504 with no answer, and their `paid_request_idempotency` row
+// was then stuck at PROCESSING with a null `response_json` — every retry on the same request id answered 409
+// REQUEST_IN_PROGRESS until the lease expired. Nothing downstream could recover, because the worker that
+// owned the lease no longer existed.
+//
+// The deadline is a TOTAL budget for the LLM stage, not a per-call one: the certainty guard may spend a
+// second call, and two independent per-call timeouts would sum past the platform limit again. It is set
+// comfortably below that limit so the deterministic grounded composition, the decision persist and the Duk
+// commit all still have room to run and PERSIST — which is what turns a dead request into a normal,
+// idempotently replayable answer.
+const LLM_DEADLINE_MS = (() => {
+  const v = Number(Deno.env.get('LLM_DEADLINE_MS')?.trim());
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 90_000;
+})();
 
-  if (Array.isArray(output)) {
-    const parts: string[] = [];
+// Premium 만 따로 둔다 (2026-09-02). 90초는 한 번 호출하면 끝나는 상품의 값이고, Premium 은 실측 지연이
+// 50~67초여서 재시도가 들어갈 자리가 없었다. 150초면 두 번째 표본이 데드라인 안에 들어간다.
+// 이 상수는 premium_report 경로에서만 쓰인다 — 상담·오늘·월별은 LLM_DEADLINE_MS 그대로다.
+const LLM_PREMIUM_DEADLINE_MS = (() => {
+  const v = Number(Deno.env.get('LLM_PREMIUM_DEADLINE_MS')?.trim());
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 150_000;
+})();
 
-    for (const item of output) {
-      if (item?.type === 'message' && Array.isArray(item.content)) {
-        for (const contentPart of item.content) {
-          if (
-            contentPart?.type === 'output_text' &&
-            typeof contentPart.text === 'string'
-          ) {
-            parts.push(contentPart.text);
-          }
-        }
-      }
-    }
-
-    const joined = parts.join('').trim();
-    if (joined.length > 0) {
-      return joined;
-    }
+async function callOpenAI(
+  messages: LLMMessage[],
+  cfg: { apiKey: string; model: string; maxOutputTokens: number; responseFormat?: unknown; reasoningEffort?: string },
+  deadlineAtMs?: number,
+): Promise<OpenAiCall> {
+  const base: OpenAiCall = { ok: false, statusCode: 0, text: '', usage: {}, responseStatus: null, incompleteReason: null };
+  // Budget already spent ⇒ do not open another connection. Reported as a transport fault (statusCode 0),
+  // which is exactly what it is from the caller's point of view.
+  const remainingMs = deadlineAtMs === undefined ? undefined : deadlineAtMs - Date.now();
+  if (remainingMs !== undefined && remainingMs <= 0) return base;
+  let providerResponse: Response;
+  try {
+    providerResponse = await fetch(OPENAI_RESPONSES_URL, {
+      method: 'POST',
+      ...(remainingMs === undefined ? {} : { signal: AbortSignal.timeout(remainingMs) }),
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: cfg.model,
+        input: messages,
+        max_output_tokens: cfg.maxOutputTokens,
+        // Reasoning effort (Overnight Sprint §4/§8) — gpt-5-mini bills reasoning tokens as OUTPUT; without
+        // this it ran at the provider default (medium) and reasoning dominated cost. The per-question
+        // complexity profile sets it (SIMPLE/STANDARD 'low', DEEP 'medium'). Absent for summary (free text).
+        ...(cfg.reasoningEffort ? { reasoning: { effort: cfg.reasoningEffort } } : {}),
+        // Structured Outputs (consultation only) — the Responses API constrains output to the JSON schema
+        // so the server always gets parseable JSON. Absent for summary (free text).
+        ...(cfg.responseFormat ? { text: { format: cfg.responseFormat } } : {}),
+      }),
+    });
+  } catch {
+    return base; // transport failure → ok:false, statusCode:0
   }
-
-  const convenience = (payload as { output_text?: unknown } | null)?.output_text;
-  if (typeof convenience === 'string' && convenience.trim().length > 0) {
-    return convenience.trim();
+  if (!providerResponse.ok) return { ...base, statusCode: providerResponse.status };
+  let payload: unknown;
+  try {
+    payload = await providerResponse.json();
+  } catch {
+    return { ...base, ok: true, statusCode: providerResponse.status }; // 2xx but unparseable → empty text
   }
-
-  return '';
+  const usage = (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
+  const rawStatus = (payload as { status?: unknown } | null)?.status;
+  const responseStatus = typeof rawStatus === 'string' ? rawStatus : null;
+  const rawReason = (payload as { incomplete_details?: { reason?: unknown } } | null)?.incomplete_details?.reason;
+  const incompleteReason = typeof rawReason === 'string' ? rawReason : null;
+  return { ok: true, statusCode: providerResponse.status, text: extractResponsesText(payload), usage, responseStatus, incompleteReason };
 }
 
-// ---- AI usage logging (ADMIN-04) --------------------------------------------
-// Fail-safe, server-side only. Writes public.ai_usage_logs via the service_role
-// key (auto-injected into Edge Functions). It NEVER blocks or fails the chat
-// response — every path swallows its own errors. The user id is read from the
-// already-verified JWT `sub` claim (no extra network call). Only raw usage is
-// stored; no cost/price calculation happens here.
+// ---- AI usage logging -------------------------------------------------------
 type AiUsageLog = {
   user_id: string | null;
   model: string | null;
-  request_type: 'chat';
+  // 'safety_route' (2026-09-06) — 위기 정지 발동을 세기 위한 0토큰 행. 원가 집계는
+  // `request_type='chat'` 로 필터하므로 여기 섞이지 않는다.
+  request_type: 'chat' | 'today_fortune' | 'monthly_fortune' | 'safety_route';
   input_tokens: number | null;
   output_tokens: number | null;
   total_tokens: number | null;
@@ -119,22 +228,15 @@ type AiUsageLog = {
   status: 'success' | 'error';
   error_code: string | null;
 };
-
 function toNullableInt(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? Math.trunc(value)
-    : null;
+  return typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : null;
 }
-
-// Accept only a short, safe correlation id from the client (never PII by
-// contract; still sanitized here to prevent log injection / oversized values).
 function sanitizeRequestId(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > 64) return null;
+  if (trimmed.length < 8 || trimmed.length > 64) return null;
   return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : null;
 }
-
 function userIdFromRequest(req: Request): string | null {
   try {
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -148,51 +250,145 @@ function userIdFromRequest(req: Request): string | null {
     return null;
   }
 }
+function adminClient(): ReturnType<typeof createClient> | null {
+  const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (url.length === 0 || serviceRoleKey.length === 0) return null;
+  return createClient(url, serviceRoleKey);
+}
+
+type AdminClient = ReturnType<typeof createClient>;
+type ConsumerAuthority =
+  | { status: 'ok'; subjectId: string; subjectLabel: string; birthInfo: BirthInfoDraft; tier: 'FREE' }
+  | { status: 'consent_required' | 'ai_consent_required' | 'profile_required' | 'unavailable' };
+
+// ⚠ 제3자 AI 처리 동의 (애플 5.1.2(i)). **설정값(데이터)으로 켜고 끈다** — 코드가 아니다.
+//   기본은 꺼짐이다. 새 APK 가 나가기 전에 켜면 동의 화면이 없는 옛 APK 가 상담을 못 한다.
+//   `DUK_BILLING_ENABLED` 와 같은 방식(Edge 시크릿)이라 배우는 비용이 늘지 않는다.
+const AI_CONSENT_ENFORCED = (Deno.env.get('AI_CONSENT_ENFORCED') ?? '').trim().toLowerCase() === 'true';
+// 문안 버전. 클라이언트의 `AI_CONSENT_VERSION` 과 같아야 한다. 시크릿으로 덮을 수 있게 둔다 —
+// 문안이 바뀌었을 때 앱 배포를 기다리지 않고 서버가 먼저 요구할 수 있어야 하기 때문이다.
+const AI_CONSENT_VERSION = (Deno.env.get('AI_CONSENT_VERSION') ?? '').trim() || 'ai-processing@2026-09-1';
+
+function storedSubjectBirth(row: Record<string, unknown>): BirthInfoDraft | null {
+  const raw = row.birth_info;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const birth = raw as BirthInfoDraft;
+  if (typeof birth.birthYear !== 'string' || typeof birth.birthMonth !== 'string'
+      || typeof birth.birthDay !== 'string') return null;
+  return { ...birth, displayName: String(row.display_name ?? birth.displayName ?? '나') };
+}
+
+async function resolveConsumerAuthority(userId: string | null, admin: AdminClient | null): Promise<ConsumerAuthority> {
+  if (!userId || !admin) return { status: 'unavailable' };
+  try {
+    const [profileResult, subjectResult] = await Promise.all([
+      admin.from('profiles').select('terms_version').eq('id', userId).maybeSingle(),
+      admin.from('consultation_subjects')
+        .select('id,display_name,birth_info')
+        .eq('user_id', userId).eq('is_self', true).maybeSingle(),
+    ]);
+    if (profileResult.error || subjectResult.error) return { status: 'unavailable' };
+    if (!profileResult.data || (profileResult.data as { terms_version?: unknown }).terms_version !== REQUIRED_TERMS_VERSION) {
+      return { status: 'consent_required' };
+    }
+    // ⚠ AI 로 개인정보가 나가기 **전에** 본다. 이 함수는 사용자 대상 AI 경로
+    //   (상담 · 궁합 · 오늘 · 이달 · 프리미엄 리포트)가 전부 지나는 단 하나의 문이다.
+    if (AI_CONSENT_ENFORCED) {
+      const consent = await admin.from('ai_processing_consents')
+        .select('revoked_at')
+        .eq('user_id', userId).eq('consent_version', AI_CONSENT_VERSION)
+        .maybeSingle();
+      // ⚠ 조회가 실패하면 **통과시키지 않는다.** 동의 확인을 못 한 채 보내는 것이 더 나쁘다.
+      if (consent.error) return { status: 'unavailable' };
+      if (!consent.data || (consent.data as { revoked_at?: unknown }).revoked_at !== null) {
+        return { status: 'ai_consent_required' };
+      }
+    }
+    if (!subjectResult.data) return { status: 'profile_required' };
+    const row = subjectResult.data as Record<string, unknown>;
+    const birthInfo = storedSubjectBirth(row);
+    if (!birthInfo || typeof row.id !== 'string') return { status: 'profile_required' };
+    return {
+      status: 'ok', subjectId: row.id, subjectLabel: String(row.display_name ?? '나'), birthInfo, tier: CURRENT_TIER,
+    };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+async function resolveOwnedPartner(
+  userId: string,
+  partnerSubjectId: string,
+  admin: AdminClient,
+): Promise<{ birthInfo: BirthInfoDraft; label: string; relationship: string | null } | null> {
+  try {
+    const { data, error } = await admin.from('consultation_subjects')
+      .select('id,display_name,relationship,birth_info')
+      .eq('id', partnerSubjectId).eq('user_id', userId).maybeSingle();
+    if (error || !data) return null;
+    const row = data as Record<string, unknown>;
+    const birthInfo = storedSubjectBirth(row);
+    return birthInfo ? {
+      birthInfo,
+      label: String(row.display_name ?? '상대방'),
+      relationship: typeof row.relationship === 'string' ? row.relationship : null,
+    } : null;
+  } catch {
+    return null;
+  }
+}
+/** SQLSTATE only (e.g. '42703'). Never the message — a constraint message can echo the failing row value. */
+function sqlState(error: unknown): string {
+  const c = (error as { code?: unknown } | null)?.code;
+  return typeof c === 'string' && /^[0-9A-Z]{5}$/.test(c) ? c : 'UNKNOWN';
+}
 
 async function logAiUsage(
   entry: AiUsageLog,
   requestId: string | null,
+  extra?: Record<string, unknown>,
 ): Promise<void> {
   try {
-    const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-    const serviceRoleKey =
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
-    if (url.length === 0 || serviceRoleKey.length === 0) {
-      return;
+    const admin = adminClient();
+    if (!admin) return;
+    const withReq = requestId ? { ...entry, request_id: requestId } : { ...entry };
+    // Progressive fallback (same policy as request_id): try the richest row first; if a telemetry
+    // column (cost §13) is not applied yet, retry without it so usage is NEVER lost.
+    //
+    // IT MUST NOT BE SILENT. Until 2026-09-02 every degradation here was swallowed, and a single
+    // missing column (`request_id`) had been dropping the ENTIRE cost breakdown — cached_input_tokens,
+    // reasoning_tokens, max_output_tokens, complexity, reasoning_effort were NULL on every row ever
+    // written, with nothing anywhere saying so. Each fallback step now says what it lost and why, so a
+    // schema gap shows up in the logs the same day instead of surfacing months later as absent data.
+    const dropped: string[] = [];
+    if (extra && Object.keys(extra).length > 0) {
+      const { error } = await admin.from('ai_usage_logs').insert({ ...withReq, ...extra });
+      if (!error) return;
+      dropped.push(...Object.keys(extra));
+      logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_DEGRADED_DROPPED_EXTRA', {
+        droppedColumns: Object.keys(extra).join(','),
+        errorCode: sqlState(error),
+      });
     }
-    const admin = createClient(url, serviceRoleKey);
-
-    // Persist the correlation id when we have one. The `request_id` column is
-    // optional (see docs/AI_USAGE_LOGS_REQUEST_ID.sql — owner-apply): if it does
-    // not exist yet, the insert errors and we FALL BACK to inserting without it,
-    // so usage telemetry is never lost pre-migration.
     if (requestId) {
-      const { error } = await admin
-        .from('ai_usage_logs')
-        .insert({ ...entry, request_id: requestId });
-      if (!error) {
-        return;
-      }
+      const { error } = await admin.from('ai_usage_logs').insert(withReq);
+      if (!error) return;
+      dropped.push('request_id');
+      logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_DEGRADED_DROPPED_REQUEST_ID', {
+        droppedColumns: dropped.join(','),
+        errorCode: sqlState(error),
+      });
     }
-    await admin.from('ai_usage_logs').insert(entry);
+    const { error } = await admin.from('ai_usage_logs').insert(entry);
+    if (error) logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_LOST', { errorCode: sqlState(error) });
   } catch {
-    // Usage logging must never affect the chat response.
+    // Usage logging must never affect the chat response — but a total loss is still worth one line.
+    logDiag(requestId, 'USAGE_LOG', 'USAGE_LOG_THREW');
   }
 }
 
-// ---- burst rate limiting (Sprint 2-13, directive §2-A) ----------------------
-// Server-side abuse guard: caps sustained per-user request volume in a sliding
-// window BEFORE any paid LLM call. It reuses the EXISTING public.ai_usage_logs
-// table (no new infra / no Redis) — counting this user's chat rows written in
-// the last window. This is NOT a UX quota (free beta is not throttled); it only
-// blunts burst / runaway-cost abuse. Deterministic policy mirrors the pure
-// module src/features/analysis/rateLimit.ts (DEFAULT_RATE_LIMIT). Denials use
-// the standard Error Contract token RATE_LIMITED (→ LLM_RATE_LIMIT client-side).
-//
-// FAIL-OPEN by design: any infra error here must never block a legitimate user,
-// so the guard is skipped (request allowed) on error. Denials are console-logged
-// only and are NOT written to ai_usage_logs — a denial must not feed back into
-// the window count and extend its own block.
+// ---- atomic paid-work reservation ------------------------------------------
 const RATE_WINDOW_MS = (() => {
   const v = Number(Deno.env.get('CHAT_RATE_WINDOW_MS')?.trim());
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 60_000;
@@ -201,222 +397,1495 @@ const RATE_MAX_REQUESTS = (() => {
   const v = Number(Deno.env.get('CHAT_RATE_MAX_REQUESTS')?.trim());
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 20;
 })();
-
-type RateVerdict = { limited: false } | { limited: true; retryAfterMs: number };
-
-async function checkBurstRateLimit(
+type PaidReservationVerdict =
+  | { status: 'allowed' }
+  | { status: 'rate_limited'; retryAfterMs: number }
+  | { status: 'unavailable' };
+async function reservePaidWorkAtomic(
+  admin: AdminClient | null,
   userId: string | null,
-  now: number,
-): Promise<RateVerdict> {
-  // No attributable user → the auth wrapper already gated the request; allow.
-  if (!userId) return { limited: false };
+  workload: 'chat' | 'today_fortune' | 'monthly_fortune',
+): Promise<PaidReservationVerdict> {
+  if (!admin || !userId) return { status: 'unavailable' };
   try {
-    const url = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-    const serviceRoleKey =
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
-    if (url.length === 0 || serviceRoleKey.length === 0) {
-      return { limited: false };
-    }
-    const admin = createClient(url, serviceRoleKey);
-    const cutoffIso = new Date(now - RATE_WINDOW_MS).toISOString();
-    const { count, error } = await admin
-      .from('ai_usage_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('request_type', 'chat')
-      .gte('created_at', cutoffIso);
-    if (error || count === null) {
-      return { limited: false }; // fail-open on query error
-    }
-    if (count >= RATE_MAX_REQUESTS) {
-      return { limited: true, retryAfterMs: RATE_WINDOW_MS };
-    }
-    return { limited: false };
+    const { data, error } = await admin.rpc('reserve_paid_work', {
+      p_user_id: userId, p_workload: workload,
+      p_window_ms: RATE_WINDOW_MS, p_max_requests: RATE_MAX_REQUESTS,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row || typeof row.allowed !== 'boolean') return { status: 'unavailable' };
+    return row.allowed
+      ? { status: 'allowed' }
+      : { status: 'rate_limited', retryAfterMs: Number(row.retry_after_ms) || RATE_WINDOW_MS };
   } catch {
-    return { limited: false }; // fail-open on any infra error
+    return { status: 'unavailable' };
   }
 }
+
+type FortuneIdentity = {
+  userId: string;
+  kind: 'today' | 'monthly';
+  periodKey: string;
+  subjectId: string;
+  tier: 'FREE';
+  semanticVersion: string;
+};
+
+type CanonicalFortuneRead =
+  | { status: 'found'; record: Record<string, unknown> }
+  | { status: 'missing' }
+  | { status: 'unavailable' };
+async function readCanonicalFortune(admin: AdminClient, identity: FortuneIdentity): Promise<CanonicalFortuneRead> {
+  try {
+    let query = admin.from(identity.kind === 'today' ? 'daily_fortunes' : 'monthly_fortunes')
+      .select('*').eq('user_id', identity.userId).eq('subject_id', identity.subjectId)
+      .eq('tier', identity.tier).eq('semantic_version', identity.semanticVersion);
+    if (identity.kind === 'today') {
+      query = query.eq('fortune_date', identity.periodKey);
+    } else {
+      const [year, month] = identity.periodKey.split('-').map(Number);
+      query = query.eq('fortune_year', year).eq('fortune_month', month);
+    }
+    const { data, error } = await query.maybeSingle();
+    if (error) return { status: 'unavailable' };
+    return data
+      ? { status: 'found', record: data as Record<string, unknown> }
+      : { status: 'missing' };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+async function acquireFortuneLease(admin: AdminClient, identity: FortuneIdentity) {
+  try {
+    const { data, error } = await admin.rpc('acquire_fortune_generation_lease', {
+      p_user_id: identity.userId, p_kind: identity.kind, p_period_key: identity.periodKey,
+      p_subject_id: identity.subjectId, p_tier: identity.tier,
+      p_semantic_version: identity.semanticVersion, p_lease_seconds: 300,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return { status: 'unavailable' as const };
+    if (row.outcome === 'COMPLETED') return { status: 'completed' as const };
+    if (row.outcome === 'BUSY') return { status: 'busy' as const };
+    return row.outcome === 'ACQUIRED' && typeof row.lease_token === 'string'
+      ? { status: 'acquired' as const, token: row.lease_token }
+      : { status: 'unavailable' as const };
+  } catch {
+    return { status: 'unavailable' as const };
+  }
+}
+
+async function releaseFortuneLease(admin: AdminClient, identity: FortuneIdentity, token: string): Promise<void> {
+  try {
+    await admin.rpc('release_fortune_generation_lease', {
+      p_user_id: identity.userId, p_kind: identity.kind, p_period_key: identity.periodKey,
+      p_subject_id: identity.subjectId, p_tier: identity.tier,
+      p_semantic_version: identity.semanticVersion, p_lease_token: token,
+    });
+  } catch {
+    // DB-clock expiry is the final recovery path; never let a cleanup fault mask the original result.
+  }
+}
+
+async function completeTodayFortune(
+  admin: AdminClient, identity: FortuneIdentity, token: string, generated: Record<string, unknown>, model: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await admin.rpc('complete_today_fortune_generation', {
+      p_user_id: identity.userId, p_period_key: identity.periodKey, p_subject_id: identity.subjectId,
+      p_tier: identity.tier, p_semantic_version: identity.semanticVersion, p_lease_token: token,
+      p_overall_tone: generated.overallTone, p_result_json: generated.result,
+      p_evidence_version: generated.evidenceVersion ?? null,
+      p_policy_version: generated.policyVersion ?? null, p_model: model,
+    });
+    return error || !data ? null : data as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function completeMonthlyFortune(
+  admin: AdminClient, identity: FortuneIdentity, token: string, generated: Record<string, unknown>, model: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await admin.rpc('complete_monthly_fortune_generation', {
+      p_user_id: identity.userId, p_period_key: identity.periodKey, p_subject_id: identity.subjectId,
+      p_tier: identity.tier, p_semantic_version: identity.semanticVersion, p_lease_token: token,
+      p_overall_tier: generated.overallTier, p_result_json: generated.result,
+      p_evidence_version: generated.evidenceVersion ?? null,
+      p_plan_version: generated.planVersion ?? null, p_policy_version: generated.policyVersion ?? null,
+      p_model: model,
+    });
+    return error || !data ? null : data as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+type PaidRequestWorkload = 'chat' | 'compatibility' | 'summary';
+type PaidRequestContext = { admin: AdminClient; userId: string; workload: PaidRequestWorkload; requestId: string; token: string };
+type PaidRequestStart =
+  | { status: 'acquired'; context: PaidRequestContext }
+  | { status: 'completed'; response: Record<string, unknown> }
+  | { status: 'processing' | 'rate_limited' | 'unavailable'; retryAfterMs?: number }
+  | { status: 'generation_disabled' }
+  | { status: 'global_limit_reached'; period: 'hourly' | 'daily'; retryAfterMs: number };
+
+async function acquirePaidRequest(
+  admin: AdminClient | null, userId: string | null, workload: PaidRequestWorkload, requestId: string | null,
+  // Caller-VERIFIED owned conversation (verifyOwnedConversation) — never a raw body value. Recorded on the
+  // row so deleting that conversation expires this answer's text at once (migration 20260922000000).
+  conversationId: string | null = null,
+): Promise<PaidRequestStart> {
+  if (!admin || !userId || !requestId) return { status: 'unavailable' };
+  try {
+    const { data, error } = await admin.rpc('acquire_paid_request', {
+      p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_seconds: 300,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return { status: 'unavailable' };
+    if (row.outcome === 'COMPLETED' && row.response_json && typeof row.response_json === 'object') {
+      return { status: 'completed', response: row.response_json as Record<string, unknown> };
+    }
+    if (row.outcome === 'PROCESSING') return { status: 'processing' };
+    if (row.outcome !== 'ACQUIRED' || typeof row.lease_token !== 'string') return { status: 'unavailable' };
+    const reservation = await reservePaidWorkAtomic(admin, userId, 'chat');
+    if (reservation.status !== 'allowed') {
+      await admin.rpc('release_paid_request', {
+        p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_token: row.lease_token,
+      });
+      return reservation.status === 'rate_limited'
+        ? { status: 'rate_limited', retryAfterMs: reservation.retryAfterMs }
+        : { status: 'unavailable' };
+    }
+    // §4 — request-scoped global reservation when enabled (owner applied migration 20260836). Same request_id
+    // → at most one global slot across retries. Default OFF → the unchanged legacy reservation.
+    const global = await reserveGlobalPaidGeneration(admin, userId, workload, {
+      requestId,
+      idempotent: (Deno.env.get('GLOBAL_REQ_IDEMPOTENCY_ENABLED') ?? '').toLowerCase() === 'true',
+    });
+    if (global.status !== 'allowed') {
+      await admin.rpc('release_paid_request', {
+        p_user_id: userId, p_workload: workload, p_request_id: requestId, p_lease_token: row.lease_token,
+      });
+      if (global.status === 'disabled') return { status: 'generation_disabled' };
+      if (global.status === 'exhausted') {
+        return {
+          status: 'global_limit_reached', period: global.period, retryAfterMs: global.retryAfterMs,
+        };
+      }
+      return { status: 'unavailable' };
+    }
+    if (conversationId) {
+      // Best-effort: a failed link only means the 24h retention job (not conversation delete) removes this
+      // answer's text. It must never fail the paid request.
+      try {
+        await admin.from('paid_request_idempotency').update({ conversation_id: conversationId })
+          .eq('user_id', userId).eq('workload', workload).eq('request_id', requestId);
+      } catch { /* see above */ }
+    }
+    return { status: 'acquired', context: { admin, userId, workload, requestId, token: row.lease_token } };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+async function releasePaidRequest(ctx: PaidRequestContext): Promise<void> {
+  try {
+    await ctx.admin.rpc('release_paid_request', {
+      p_user_id: ctx.userId, p_workload: ctx.workload,
+      p_request_id: ctx.requestId, p_lease_token: ctx.token,
+    });
+  } catch {
+    // Lease expiry is the recovery path.
+  }
+}
+
+async function readCompletedPaidRequest(ctx: PaidRequestContext): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.from('paid_request_idempotency')
+      .select('response_json').eq('user_id', ctx.userId).eq('workload', ctx.workload)
+      .eq('request_id', ctx.requestId).eq('status', 'COMPLETED').maybeSingle();
+    const response = (data as { response_json?: unknown } | null)?.response_json;
+    return !error && response && typeof response === 'object' ? response as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+async function completePaidRequest(
+  ctx: PaidRequestContext,
+  response: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.rpc('complete_paid_request', {
+      p_user_id: ctx.userId, p_workload: ctx.workload, p_request_id: ctx.requestId,
+      p_lease_token: ctx.token, p_response_json: response,
+    });
+    if (!error && data === true) return response;
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  } catch {
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  }
+  await releasePaidRequest(ctx);
+  return null;
+}
+
+async function verifyOwnedConversation(
+  admin: SupabaseClient,
+  userId: string,
+  conversationId: string,
+): Promise<boolean> {
+  try {
+    const { data, error } = await admin.from('conversations').select('id')
+      .eq('id', conversationId).eq('user_id', userId).maybeSingle();
+    return !error && (data as { id?: unknown } | null)?.id === conversationId;
+  } catch {
+    return false;
+  }
+}
+
+async function completeConsultationWithDecision(
+  ctx: PaidRequestContext,
+  response: Record<string, unknown>,
+  conversationId: string,
+  decisionMeta: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.rpc('complete_consultation_request_with_decision', {
+      p_user_id: ctx.userId,
+      p_workload: ctx.workload,
+      p_request_id: ctx.requestId,
+      p_lease_token: ctx.token,
+      p_response_json: response,
+      p_conversation_id: conversationId,
+      p_decision_meta: decisionMeta,
+      p_answer_plan_version: typeof decisionMeta.answerPlanVersion === 'string' ? decisionMeta.answerPlanVersion : null,
+      p_decision_policy_version: typeof decisionMeta.decisionPolicyVersion === 'string' ? decisionMeta.decisionPolicyVersion : null,
+      p_engine_version: typeof decisionMeta.engineVersion === 'string' ? decisionMeta.engineVersion : null,
+      p_model_id: typeof decisionMeta.modelId === 'string' ? decisionMeta.modelId : null,
+    });
+    if (!error && typeof data === 'string' && data.length > 0) return response;
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  } catch {
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  }
+  logDiag(ctx.requestId, 'RESPONSE_VALIDATION', 'DECISION_PERSIST_FAILED', { path: 'consultation' });
+  await releasePaidRequest(ctx);
+  return null;
+}
+
+// ---- Sprint H — Duk session billing runtime (flag-gated by DUK_BILLING_ENABLED) ----------------------------
+// All three are thin service-role RPC wrappers. They are only invoked when DUK_BILLING_ENABLED is 'true'; until
+// the owner applies migrations 20260831-20260833 and flips the flag, the consultation path is byte-for-byte
+// unchanged. EDGE_RUNTIME_NOT_EXECUTED — verified by code review + the runtime-neutral orchestrator tests.
+type DukReservation = { reservationId: string; version: number; sessionId: string; chargeId: string };
+type DukReserveOutcome =
+  | { kind: 'RESERVED'; reservation: DukReservation }
+  | { kind: 'ACTIVE_SESSION'; sessionId: string }
+  | { kind: 'INSUFFICIENT'; balance: number; required: number; shortfall: number }
+  | { kind: 'FAILED' };
+
+async function reserveSessionDuk(
+  admin: AdminClient, userId: string, productType: 'general' | 'compatibility' | 'premium_report', requestId: string,
+): Promise<DukReserveOutcome> {
+  try {
+    const { data, error } = await admin.rpc('reserve_session_duk', {
+      p_user_id: userId, p_product_type: productType, p_request_id: requestId,
+    });
+    const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+    if (error || !row || typeof row.kind !== 'string') return { kind: 'FAILED' };
+    if (row.kind === 'RESERVED') {
+      return { kind: 'RESERVED', reservation: {
+        reservationId: String(row.reservation_id), version: Number(row.version ?? 0),
+        sessionId: String(row.session_id), chargeId: String(row.charge_id),
+      } };
+    }
+    if (row.kind === 'ACTIVE_SESSION') return { kind: 'ACTIVE_SESSION', sessionId: String(row.session_id) };
+    if (row.kind === 'INSUFFICIENT') return {
+      kind: 'INSUFFICIENT', balance: Number(row.balance ?? 0), required: Number(row.required ?? 0), shortfall: Number(row.shortfall ?? 0),
+    };
+    return { kind: 'FAILED' };
+  } catch {
+    return { kind: 'FAILED' };
+  }
+}
+
+async function releaseSessionReservation(admin: AdminClient, reservation: DukReservation): Promise<void> {
+  try {
+    await admin.rpc('release_session_reservation', { p_reservation_id: reservation.reservationId, p_version: reservation.version });
+  } catch { /* best-effort; a stale/expired reserve is reconciled by TTL */ }
+}
+
+// ATOMIC decision persist + Duk commit (§21). Falls back to the persisted replay on any failure.
+async function completeConsultationWithBilling(
+  ctx: PaidRequestContext, response: Record<string, unknown>, conversationId: string | null,
+  decisionMeta: Record<string, unknown> | null, reservation: DukReservation | null, followupSessionId: string | null,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await ctx.admin.rpc('complete_consultation_with_billing', {
+      p_user_id: ctx.userId, p_workload: ctx.workload, p_request_id: ctx.requestId, p_lease_token: ctx.token,
+      p_response_json: response, p_conversation_id: conversationId, p_decision_meta: decisionMeta,
+      p_answer_plan_version: decisionMeta && typeof decisionMeta.answerPlanVersion === 'string' ? decisionMeta.answerPlanVersion : null,
+      p_decision_policy_version: decisionMeta && typeof decisionMeta.decisionPolicyVersion === 'string' ? decisionMeta.decisionPolicyVersion : null,
+      p_engine_version: decisionMeta && typeof decisionMeta.engineVersion === 'string' ? decisionMeta.engineVersion : null,
+      p_model_id: decisionMeta && typeof decisionMeta.modelId === 'string' ? decisionMeta.modelId : null,
+      p_reservation_id: reservation?.reservationId ?? null,
+      p_reservation_version: reservation?.version ?? null,
+      p_followup_session_id: followupSessionId,
+    });
+    if (!error && typeof data === 'string' && data.length > 0) return response;
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  } catch {
+    const replay = await readCompletedPaidRequest(ctx);
+    if (replay) return replay;
+  }
+  logDiag(ctx.requestId, 'RESPONSE_VALIDATION', 'DECISION_PERSIST_FAILED', { path: 'consultation' });
+  return null;
+}
+
+// ---- request contract (§7) --------------------------------------------------
+// The client sends ONLY untrusted inputs. No messages / grounding / system prompt.
+//   mode 'consultation' (default): question + untrusted turns; server resolves canonical SELF and grounds.
+//   mode 'summary': existingSummary + raw turns → the SERVER builds the summary prompt (§20).
+type ConsultationRequestBody = {
+  mode?: 'consultation' | 'summary';
+  // 오늘의 운세 / 이번 달 운세: server resolves canonical SELF and owns the date/month.
+  kind?: 'today_fortune' | 'monthly_fortune' | 'premium_report';
+  subjectProfileId?: string | null;
+  birthInput?: unknown;
+  subjectLabel?: string | null;
+  question?: unknown;
+  conversationContext?: unknown;
+  conversationSummary?: unknown;
+  // Sprint E — the CURRENT conversation id, used ONLY to server-load the previous decision (ownership-
+  // verified below). It is an identifier, not authoritative decision data; the client's own copy of a
+  // previous polarity/version/target is never trusted.
+  conversationId?: unknown;
+  requestMetadata?: { clientQuestionTimeEpoch?: number | null; requestId?: string | null } | null;
+  // 궁합(compatibility) mode: the partner's untrusted birth INPUT (server recomputes the pair). Absent →
+  // the existing single-subject consultation path is used unchanged.
+  consultationMode?: 'solo' | 'compatibility';
+  partnerBirthInput?: unknown;
+  partnerLabel?: string | null;
+  partnerSubjectId?: string | null;
+  targetSource?: 'OWNED_SUBJECT' | 'RAW_UNSAVED';
+  // summary mode only
+  existingSummary?: unknown;
+  turns?: unknown;
+};
+
+// Premium's evidence-unavailable message. Same honesty contract as the consultation's: say what is missing
+// and what would fix it, assert nothing about a chart that could not be built, and offer no substitute prose.
+const PREMIUM_GROUNDING_MESSAGE =
+  '등록하신 출생 정보로는 사주 원국을 세울 수 없어 리포트를 만들지 못했습니다. '
+  + '태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹치면 월주가 두 가지로 갈려 확정할 수 없습니다. '
+  + '덕은 차감되지 않았습니다. 정확한 태어난 시각을 입력해 주시면 바로 다시 만들어 드리겠습니다.';
+
+const REASON_STATUS: Record<string, number> = {
+  INVALID_INPUT: 400,
+  REQUEST_TOO_LARGE: 413,
+  SUBJECT_FORBIDDEN: 403,
+  SUBJECT_NOT_FOUND: 404,
+  LLM_FAILED: 502,
+  // V6 — the reading could not be performed from the information on file. A client-correctable input state,
+  // not a server fault: 422 so the app can prompt for the missing birth time instead of offering a retry.
+  GROUNDING_UNAVAILABLE: 422,
+  // Same class as GROUNDING_UNAVAILABLE (client-correctable input, not a server fault), narrowed to the
+  // 절기 boundary date so the app can point at the birth-time field instead of offering a retry.
+  AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED: 422,
+  CONSENT_REQUIRED: 403,
+  // 애플 5.1.2(i) — AI 전송 전용 동의가 없다. 클라이언트가 이 코드를 보고 동의 화면으로 보낸다.
+  AI_CONSENT_REQUIRED: 403,
+  PROFILE_REQUIRED: 403,
+  GENERATION_IN_PROGRESS: 409,
+  REQUEST_IN_PROGRESS: 409,
+  TEMPORARILY_UNAVAILABLE: 503,
+};
 
 export default {
   fetch: withSupabase(
     { auth: 'user' },
     async (req: Request, _ctx: unknown): Promise<Response> => {
-      // `stage` is tracked so an unhandled exception can be attributed to a step.
       let stage = 'auth_completed';
       const startedAt = Date.now();
       const userId = userIdFromRequest(req);
+      const admin = adminClient();
+      // V6 §IDEMPOTENCY STATE CLEANUP — the one reachable path that left a request PROCESSING forever.
+      //
+      // Every ordinary outcome (answer, LLM fault, invalid input, no grounding, rejected non-answer) already
+      // reaches a terminal state via complete_paid_request or release_paid_request. An UNHANDLED EXCEPTION
+      // did not: the catch below logged and rethrew while `paid` was still block-scoped inside the try, so
+      // the idempotency row kept `status='PROCESSING'` with a null `response_json` and every retry on the
+      // same request id answered 409 REQUEST_IN_PROGRESS until the 300s lease expired. Holding the context
+      // out here lets the catch record the terminal state before the exception propagates.
+      //
+      // Double-release is safe by construction: `release_paid_request` deletes only a row that is still
+      // PROCESSING and still holds this lease token, so a COMPLETED response can never be undone by it.
+      let heldPaidRequest: PaidRequestContext | null = null;
 
       try {
         if (req.method !== 'POST') {
           return Response.json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
         }
 
-        // Rate Limit (#13, directive §2-A): burst guard BEFORE any paid LLM call.
-        // Fail-open; standard Error Contract token; no ai_usage_logs row written.
-        const rate = await checkBurstRateLimit(userId, startedAt);
-        if (rate.limited) {
-          console.error(
-            '[chat] rate_limited',
-            JSON.stringify({ retryAfterMs: rate.retryAfterMs }),
-          );
-          return Response.json(
-            { error: 'RATE_LIMITED', retryAfterMs: rate.retryAfterMs },
-            {
-              status: 429,
-              headers: {
-                'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)),
-              },
-            },
-          );
+        if (!userId) return Response.json({ error: 'AUTH_REQUIRED' }, { status: 401 });
+        const declaredLength = Number(req.headers.get('content-length'));
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BODY_BYTES) {
+          return Response.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
         }
 
-        const { apiKey, model, maxOutputTokens } = readServerConfig();
+        const { apiKey, model, budgets } = readServerConfig();
 
-        if (apiKey.length === 0) {
-          // Missing secret — do not leak configuration details to the client.
-          console.error('[chat] server_not_configured');
-          return Response.json({ error: 'SERVER_NOT_CONFIGURED' }, { status: 500 });
-        }
-
-        let body: unknown;
+        let body: ConsultationRequestBody;
         try {
-          body = await req.json();
+          body = (await req.json()) as ConsultationRequestBody;
         } catch {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
-
-        const messages = (body as { messages?: unknown } | null)?.messages;
-        if (!isValidMessages(messages)) {
+        if (body === null || typeof body !== 'object') {
           return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
         }
+        const requestId = sanitizeRequestId(body.requestMetadata?.requestId);
 
-        // Client correlation id (directive §2-C): trace one request across
-        // client → edge logs → usage persistence. Optional + sanitized + non-PII.
-        const requestId = sanitizeRequestId(
-          (body as { requestId?: unknown } | null)?.requestId,
+        // Server-authoritative input bounds (§A3) — reject clearly oversized untrusted payloads BEFORE any
+        // grounding/LLM work, so a modified client cannot inflate prompt cost past the client UI's maxLength.
+        const bounds = validateConsultationInputBounds(body);
+        if (!bounds.ok) {
+          logDiag(requestId, 'INPUT', 'REQUEST_TOO_LARGE', {});
+          return Response.json({ error: bounds.code }, { status: REASON_STATUS[bounds.code] ?? 413 });
+        }
+
+        // Authenticated is not product-authorized. Resolve required consent + the ONE canonical SELF from the
+        // actual consumer tables before any paid work. Raw client SELF birth input is ignored downstream.
+        const authority = await resolveConsumerAuthority(userId, admin);
+        if (authority.status !== 'ok') {
+          const code = authority.status === 'consent_required'
+            ? 'CONSENT_REQUIRED'
+            : authority.status === 'ai_consent_required'
+              ? 'AI_CONSENT_REQUIRED'
+              : authority.status === 'profile_required' ? 'PROFILE_REQUIRED' : 'TEMPORARILY_UNAVAILABLE';
+          return Response.json({ error: code }, { status: REASON_STATUS[code] });
+        }
+
+        // Summary output budget (small, free text). The CONSULTATION config is built PER-QUESTION after the
+        // question is validated (below) so its output ceiling + reasoning effort follow the question's
+        // complexity (Overnight Sprint §4/§8) — SIMPLE/STANDARD run cheaper 'low' reasoning, DEEP 'medium'.
+        // Reasoning effort is passed EXPLICITLY (2026-09-02). It used to be omitted here — the comment in
+        // callOpenAI even said "Absent for summary (free text)" — so the summary ran at the provider default
+        // (medium) while the consultation had already been moved onto a per-complexity profile. Medium
+        // reasoning against a small ceiling is exactly the failure that forced the consultation from 800 to
+        // 5000, and the summary was never revisited: 8 of 10 staging summaries burned the budget on
+        // reasoning and returned nothing. 'low' is the repo's safe floor and the right level for a pure
+        // compression task; unlike raising the ceiling, it lowers cost rather than raising it.
+        const summaryCfg = { apiKey, model, maxOutputTokens: budgets.summary, reasoningEffort: 'low' };
+
+        // 오늘의 운세 (Today Fortune V1): a stateless daily-fortune generation. The SERVER owns the date
+        // (nowEpochSeconds = receipt time, §6/§29), builds the deterministic daily evidence + plan from the
+        // stored canonical SELF, and makes EXACTLY ONE OpenAI call. The completion RPC persists before success.
+        if (body.kind === 'today_fortune') {
+          stage = 'today_fortune_request';
+          if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          const serverEpoch = Math.floor(startedAt / 1000);
+          const periodKey = fortuneDateStringFromEpoch(serverEpoch);
+          const identity: FortuneIdentity = {
+            userId, kind: 'today', periodKey, subjectId: authority.subjectId,
+            tier: authority.tier, semanticVersion: TODAY_CANONICAL_VERSION,
+          };
+          const todayEffort = Deno.env.get('LLM_TODAY_REASONING_EFFORT')?.trim() || 'low';
+          const todayMaxRaw = Number(Deno.env.get('LLM_TODAY_MAX_OUTPUT_TOKENS'));
+          const todayMaxTokens = Number.isFinite(todayMaxRaw) && todayMaxRaw > 0 ? Math.floor(todayMaxRaw) : 2500;
+          const todayCfg = { apiKey, model, maxOutputTokens: todayMaxTokens, reasoningEffort: todayEffort, responseFormat: dailyFortuneResponseFormat() };
+          let todayUsage: Record<string, unknown> = {};
+          let todayErrorCode: string | null = null;
+          let todayOutcome: OpenAiCall | null = null;
+          let nonPaidFailure: Record<string, unknown> | null = null;
+          const globalGuard = {
+            failure: null as Exclude<GlobalSpendGuardVerdict, { status: 'allowed' }> | null,
+          };
+          const guarded = await runCanonicalGeneration({
+            readCanonical: () => readCanonicalFortune(admin, identity),
+            acquireLease: () => acquireFortuneLease(admin, identity),
+            reservePaidWork: async () => {
+              if (apiKey.length === 0) return { status: 'unavailable' as const };
+              const userReservation = await reservePaidWorkAtomic(admin, userId, 'today_fortune');
+              if (userReservation.status !== 'allowed') return userReservation;
+              const global = await reserveGlobalPaidGeneration(admin, userId, 'today_fortune');
+              if (global.status === 'allowed') return { status: 'allowed' as const };
+              globalGuard.failure = global;
+              return { status: 'unavailable' as const };
+            },
+            generate: async () => {
+              const fortune = await buildTodayFortune(
+                { birthInput: authority.birthInfo },
+                {
+                  digestProvider: denoDigestProvider, nowEpochSeconds: serverEpoch,
+                  callLLM: async (messages: LLMMessage[]): Promise<string> => {
+                    stage = 'openai_request';
+                    const r = await callOpenAI(messages, todayCfg);
+                    todayUsage = r.usage; todayOutcome = r;
+                    const code = openAiFailureCode(r);
+                    if (code === 'OK') return r.text;
+                    todayErrorCode = code; return '';
+                  },
+                },
+              );
+              if (!fortune.ok) {
+                if (fortune.reason === 'EVIDENCE_UNAVAILABLE') {
+                  nonPaidFailure = { ok: false, reason: fortune.reason, fortuneDate: fortune.fortuneDate };
+                } else {
+                  const code = todayErrorCode ?? fortune.reason;
+                  await logAiUsage({ user_id: userId, model, request_type: 'today_fortune',
+                    input_tokens: null, output_tokens: null, total_tokens: null,
+                    latency_ms: Date.now() - startedAt, status: 'error', error_code: code }, requestId);
+                }
+                return { ok: false as const };
+              }
+              const details = parseUsageDetails(todayUsage);
+              await logAiUsage({ user_id: userId, model, request_type: 'today_fortune',
+                input_tokens: toNullableInt(todayUsage.input_tokens), output_tokens: toNullableInt(todayUsage.output_tokens),
+                total_tokens: toNullableInt(todayUsage.total_tokens), latency_ms: Date.now() - startedAt,
+                status: 'success', error_code: null }, requestId, {
+                cached_input_tokens: details.cachedInputTokens, reasoning_tokens: details.reasoningTokens,
+                max_output_tokens: todayMaxTokens, complexity: 'TODAY', reasoning_effort: todayEffort,
+              });
+              return { ok: true as const, value: fortune as unknown as Record<string, unknown> };
+            },
+            complete: (token: string, value: Record<string, unknown>) => completeTodayFortune(admin, identity, token, value, model),
+            release: (token: string) => releaseFortuneLease(admin, identity, token),
+          });
+          if (guarded.status === 'ok') {
+            const row = guarded.record as Record<string, unknown>;
+            return Response.json({ ok: true, fortuneDate: row.fortune_date, overallTone: row.overall_tone,
+              result: row.result_json, policyVersion: row.policy_version, evidenceVersion: row.evidence_version,
+              model: row.model });
+          }
+          if (guarded.status === 'in_progress') return Response.json({ error: 'GENERATION_IN_PROGRESS' }, { status: 409 });
+          if (guarded.status === 'rate_limited') return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: guarded.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(guarded.retryAfterMs / 1000)) } },
+          );
+          if (globalGuard.failure) {
+            const failure = globalSpendGuardFailure(globalGuard.failure);
+            return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+          }
+          if (nonPaidFailure) return Response.json(nonPaidFailure);
+          if (guarded.status === 'generation_failed') {
+            logDiag(requestId, 'OPENAI_RESPONSE', todayErrorCode ?? 'LLM_FAILED', {
+              path: 'today_fortune', model, upstreamStatus: todayOutcome?.statusCode || undefined,
+              responseStatus: todayOutcome?.responseStatus, incompleteReason: todayOutcome?.incompleteReason,
+            });
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+          return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+        }
+
+        // 이번 달 운세 (Monthly Fortune V1) — a SEPARATE temporal product (NOT Today×30). The SERVER owns the
+        // CURRENT target month (nowEpochSeconds = receipt time; never a client-supplied month → abuse-proof
+        // §60) and makes EXACTLY ONE OpenAI call. Slightly larger output ceiling than Today (a month digest is
+        // longer, §33) but still fixed 'low' reasoning. The completion RPC persists before success.
+        if (body.kind === 'monthly_fortune') {
+          stage = 'monthly_fortune_request';
+          if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          const serverEpoch = Math.floor(startedAt / 1000);
+          const targetMonth = currentTargetMonth(serverEpoch);
+          const periodKey = monthKey(targetMonth);
+          const identity: FortuneIdentity = {
+            userId, kind: 'monthly', periodKey, subjectId: authority.subjectId,
+            tier: authority.tier, semanticVersion: MONTHLY_CANONICAL_VERSION,
+          };
+          const monthlyEffort = Deno.env.get('LLM_MONTHLY_REASONING_EFFORT')?.trim() || 'low';
+          const monthlyMaxRaw = Number(Deno.env.get('LLM_MONTHLY_MAX_OUTPUT_TOKENS'));
+          const monthlyMaxTokens = Number.isFinite(monthlyMaxRaw) && monthlyMaxRaw > 0 ? Math.floor(monthlyMaxRaw) : 3000;
+          const monthlyCfg = { apiKey, model, maxOutputTokens: monthlyMaxTokens, reasoningEffort: monthlyEffort, responseFormat: monthlyFortuneResponseFormat() };
+          let monthlyUsage: Record<string, unknown> = {};
+          let monthlyErrorCode: string | null = null;
+          let monthlyOutcome: OpenAiCall | null = null;
+          let nonPaidFailure: Record<string, unknown> | null = null;
+          const globalGuard = {
+            failure: null as Exclude<GlobalSpendGuardVerdict, { status: 'allowed' }> | null,
+          };
+          const guarded = await runCanonicalGeneration({
+            readCanonical: () => readCanonicalFortune(admin, identity),
+            acquireLease: () => acquireFortuneLease(admin, identity),
+            reservePaidWork: async () => {
+              if (apiKey.length === 0) return { status: 'unavailable' as const };
+              const userReservation = await reservePaidWorkAtomic(admin, userId, 'monthly_fortune');
+              if (userReservation.status !== 'allowed') return userReservation;
+              const global = await reserveGlobalPaidGeneration(admin, userId, 'monthly_fortune');
+              if (global.status === 'allowed') return { status: 'allowed' as const };
+              globalGuard.failure = global;
+              return { status: 'unavailable' as const };
+            },
+            generate: async () => {
+              const monthly = await buildMonthlyFortune(
+                { birthInput: authority.birthInfo },
+                {
+                  digestProvider: denoDigestProvider, nowEpochSeconds: serverEpoch,
+                  callLLM: async (messages: LLMMessage[]): Promise<string> => {
+                    stage = 'openai_request';
+                    const r = await callOpenAI(messages, monthlyCfg);
+                    monthlyUsage = r.usage; monthlyOutcome = r;
+                    const code = openAiFailureCode(r);
+                    if (code === 'OK') return r.text;
+                    monthlyErrorCode = code; return '';
+                  },
+                },
+              );
+              if (!monthly.ok) {
+                if (monthly.reason === 'EVIDENCE_UNAVAILABLE') {
+                  nonPaidFailure = { ok: false, reason: monthly.reason, year: monthly.year, month: monthly.month };
+                } else {
+                  const code = monthlyErrorCode ?? monthly.reason;
+                  await logAiUsage({ user_id: userId, model, request_type: 'monthly_fortune',
+                    input_tokens: null, output_tokens: null, total_tokens: null,
+                    latency_ms: Date.now() - startedAt, status: 'error', error_code: code }, requestId);
+                }
+                return { ok: false as const };
+              }
+              const details = parseUsageDetails(monthlyUsage);
+              await logAiUsage({ user_id: userId, model, request_type: 'monthly_fortune',
+                input_tokens: toNullableInt(monthlyUsage.input_tokens), output_tokens: toNullableInt(monthlyUsage.output_tokens),
+                total_tokens: toNullableInt(monthlyUsage.total_tokens), latency_ms: Date.now() - startedAt,
+                status: 'success', error_code: null }, requestId, {
+                cached_input_tokens: details.cachedInputTokens, reasoning_tokens: details.reasoningTokens,
+                max_output_tokens: monthlyMaxTokens, complexity: 'MONTHLY', reasoning_effort: monthlyEffort,
+              });
+              return { ok: true as const, value: monthly as unknown as Record<string, unknown> };
+            },
+            complete: (token: string, value: Record<string, unknown>) => completeMonthlyFortune(admin, identity, token, value, model),
+            release: (token: string) => releaseFortuneLease(admin, identity, token),
+          });
+          if (guarded.status === 'ok') {
+            const row = guarded.record as Record<string, unknown>;
+            return Response.json({ ok: true, year: row.fortune_year, month: row.fortune_month,
+              overallTier: row.overall_tier, result: row.result_json, policyVersion: row.policy_version,
+              evidenceVersion: row.evidence_version, planVersion: row.plan_version, model: row.model });
+          }
+          if (guarded.status === 'in_progress') return Response.json({ error: 'GENERATION_IN_PROGRESS' }, { status: 409 });
+          if (guarded.status === 'rate_limited') return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: guarded.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(guarded.retryAfterMs / 1000)) } },
+          );
+          if (globalGuard.failure) {
+            const failure = globalSpendGuardFailure(globalGuard.failure);
+            return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+          }
+          if (nonPaidFailure) return Response.json(nonPaidFailure);
+          if (guarded.status === 'generation_failed') {
+            logDiag(requestId, 'OPENAI_RESPONSE', monthlyErrorCode ?? 'LLM_FAILED', {
+              path: 'monthly_fortune', model, upstreamStatus: monthlyOutcome?.statusCode || undefined,
+              responseStatus: monthlyOutcome?.responseStatus, incompleteReason: monthlyOutcome?.incompleteReason,
+            });
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+          return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+        }
+
+        // 프리미엄 리포트 (Premium Report V1) — 50덕, ONE Terra call, no question and no conversation.
+        //
+        // BILLING: it takes the EXISTING duk path (reserve_session_duk → commit inside
+        // complete_consultation_with_billing → release on any pre-completion failure), with product_type
+        // 'premium_report' so the 50덕 price comes from economy_policy and never from this file.
+        //
+        // WORKLOAD = 'chat' on the paid-request lease, deliberately. `acquire_paid_request` and the global
+        // spend guard both constrain workload to a DB check constraint that has no 'premium_report' member;
+        // widening it would be a migration that later reaches production for a product that is still
+        // staging-only. The lease is an idempotency + rate mechanism keyed by requestId — the ACCOUNTING
+        // identity lives in consultation_sessions.product_type / duk_reserve.product_type, which do say
+        // 'premium_report'. Tradeoff recorded: Premium shares the consultation rate bucket.
+        if (body.kind === 'premium_report') {
+          stage = 'premium_report_request';
+          if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          if (!authority.birthInfo) return Response.json({ error: 'PROFILE_REQUIRED' }, { status: 403 });
+
+          const dukOn = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').toLowerCase() === 'true';
+          let reservation: DukReservation | null = null;
+          if (dukOn) {
+            const rv = await reserveSessionDuk(admin, userId, 'premium_report', requestId);
+            if (rv.kind === 'INSUFFICIENT') return Response.json(
+              { error: 'INSUFFICIENT_DUK', balance: rv.balance, required: rv.required, shortfall: rv.shortfall },
+              { status: 402 },
+            );
+            if (rv.kind === 'FAILED') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+            if (rv.kind === 'RESERVED') reservation = rv.reservation;
+            // ACTIVE_SESSION → an unexpired premium session already exists; it was already charged. Replay it
+            // rather than charging again (reserve_session_duk returns price 0 for that case).
+          }
+          const releaseIfHeld = async () => { if (reservation) await releaseSessionReservation(admin!, reservation); };
+
+          const paid = await acquirePaidRequest(admin, userId, 'chat', requestId);
+          if (paid.status === 'completed') return Response.json(paid.response);
+          if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
+          if (paid.status === 'rate_limited') { await releaseIfHeld(); return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+          ); }
+          if (paid.status === 'generation_disabled') { await releaseIfHeld(); return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 }); }
+          if (paid.status === 'global_limit_reached') { await releaseIfHeld(); return Response.json(
+            { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
+          ); }
+          if (paid.status !== 'acquired') { await releaseIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+          heldPaidRequest = paid.context;
+          if (apiKey.length === 0) { await releasePaidRequest(paid.context); await releaseIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+
+          // Terra by the SAME server-owned routing policy (premium_report → PREMIUM_TERRA). Never client-chosen.
+          const premiumRoute = resolveModelRoute('premium_report', {
+            miniModel: Deno.env.get('LLM_MODEL_MINI') ?? Deno.env.get('LLM_MODEL') ?? null,
+            terraModel: Deno.env.get('LLM_MODEL_TERRA') ?? null,
+          });
+          // Ceiling 8000 = HARD_MAX. The consultation needed 5000 for ONE answer; Premium emits a headline, a
+          // natal summary, up to 6 sections, 12 month lines and 5 actions — roughly 3× the visible text — on
+          // top of Terra's reasoning. A ceiling costs nothing when unused (billed on ACTUAL tokens) and a
+          // too-low one costs the FULL budget and returns nothing, which is exactly how the summary path
+          // failed 8 of 10 times before 2026-09-02. Effort 'medium': this is a synthesis over 14 evidence
+          // blocks — the DEEP class in the consultation profile — not the compression that justifies 'low'.
+          const premiumCap = Number(Deno.env.get('LLM_PREMIUM_MAX_OUTPUT_TOKENS')?.trim());
+          const premiumCfg = {
+            apiKey,
+            model: premiumRoute.modelId,
+            maxOutputTokens: Number.isFinite(premiumCap) && premiumCap >= 256 ? Math.min(Math.floor(premiumCap), 8000) : 8000,
+            reasoningEffort: Deno.env.get('LLM_PREMIUM_REASONING_EFFORT')?.trim() || 'medium',
+            responseFormat: premiumReportResponseFormat(),
+          };
+          console.log(
+            `[chat.route] req=${requestId} workload=premium_report model=${premiumRoute.modelId} policy=${premiumRoute.routingPolicyVersion} reason=${premiumRoute.reasonCode} effort=${premiumCfg.reasoningEffort} cap=${premiumCfg.maxOutputTokens}`,
+          );
+
+          // 재시도가 생기면 호출이 두 번이다. usage 를 덮어쓰면 두 번째 것만 남아 실제 지출을 과소 계상한다.
+          let premiumAttempts = 0;
+          let premiumRetriedFrom: string | null = null;
+          const premiumTokens = { input: 0, output: 0, total: 0, cached: 0, reasoning: 0 };
+          let premiumErrorCode: string | null = null;
+          let premiumOutcome: OpenAiCall | null = null;
+          const premiumDeadlineAt = startedAt + LLM_PREMIUM_DEADLINE_MS;
+          const result = await buildPremiumReport(
+            { birthInput: authority.birthInfo },
+            {
+              digestProvider: denoDigestProvider,
+              nowEpochSeconds: Math.floor(startedAt / 1000),
+              callLLM: async (messages: LLMMessage[]) => {
+                stage = 'openai_request';
+                premiumAttempts += 1;
+                const r = await callOpenAI(messages, premiumCfg, premiumDeadlineAt);
+                premiumOutcome = r;
+                const d = parseUsageDetails(r.usage);
+                premiumTokens.input += toNullableInt(r.usage.input_tokens) ?? 0;
+                premiumTokens.output += toNullableInt(r.usage.output_tokens) ?? 0;
+                premiumTokens.total += toNullableInt(r.usage.total_tokens) ?? 0;
+                premiumTokens.cached += d.cachedInputTokens ?? 0;
+                premiumTokens.reasoning += d.reasoningTokens ?? 0;
+                stage = 'response_parse';
+                const code = openAiFailureCode(r);
+                if (code === 'OK') return r.text;
+                premiumErrorCode = code;
+                return '';
+              },
+              onRetry: (firstFailure) => { premiumRetriedFrom = firstFailure; },
+            },
+          );
+
+          // 누적값을 쓴다. 재시도가 없었으면 1회 호출값과 같고, 있었으면 실제로 쓴 만큼이 남는다.
+          const premiumTelemetry = {
+            cached_input_tokens: premiumAttempts > 0 ? premiumTokens.cached : null,
+            reasoning_tokens: premiumAttempts > 0 ? premiumTokens.reasoning : null,
+            max_output_tokens: premiumCfg.maxOutputTokens,
+            complexity: 'DEEP',
+            reasoning_effort: premiumCfg.reasoningEffort,
+          };
+          const premiumTokenCols = {
+            input_tokens: premiumAttempts > 0 ? premiumTokens.input : null,
+            output_tokens: premiumAttempts > 0 ? premiumTokens.output : null,
+            total_tokens: premiumAttempts > 0 ? premiumTokens.total : null,
+          };
+
+          // INVALID_OUTPUT 만으로는 왜 버렸는지 알 수 없어 2026-09-02 V3 재생성에서 원인 추적이 막혔다.
+          // detail 은 parsePremiumReport 가 돌려주는 고정 문자열(HEADLINE_UNSAFE 등)이라 자유 텍스트가 아니다.
+          const premiumFailCode = premiumErrorCode
+            ?? (result.ok ? null : result.detail ? `${result.reason}_${result.detail}` : result.reason);
+          if (!result.ok) {
+            // EVERY failure releases the reserve → 0 덕. The tokens actually spent are still recorded so a
+            // failed Premium never looks free (the same fix the summary/consultation paths took).
+            await logAiUsage(
+              {
+                user_id: userId, model: premiumRoute.modelId, request_type: 'chat',
+                ...premiumTokenCols,
+                latency_ms: Date.now() - startedAt, status: 'error',
+                error_code: premiumFailCode,
+              },
+              requestId,
+              premiumTelemetry,
+            );
+            logDiag(requestId, result.reason === 'EVIDENCE_UNAVAILABLE' ? 'GROUNDING' : 'OPENAI_RESPONSE',
+              premiumFailCode ?? result.reason, {
+                path: 'premium_report', model: premiumRoute.modelId,
+                attempts: premiumAttempts,
+                upstreamStatus: premiumOutcome?.statusCode || undefined,
+                responseStatus: premiumOutcome?.responseStatus,
+                incompleteReason: premiumOutcome?.incompleteReason,
+              });
+            await releasePaidRequest(paid.context);
+            await releaseIfHeld();
+            if (result.reason === 'EVIDENCE_UNAVAILABLE') {
+              return Response.json({ error: 'GROUNDING_UNAVAILABLE', message: PREMIUM_GROUNDING_MESSAGE }, { status: 422 });
+            }
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+
+          await logAiUsage(
+            {
+              user_id: userId, model: premiumRoute.modelId, request_type: 'chat',
+              ...premiumTokenCols,
+              latency_ms: Date.now() - startedAt, status: 'success',
+              // 재시도로 살아난 건은 성공이지만 공짜가 아니다 — 사유를 error_code 에 남겨 두면
+              // "성공했지만 한 번 실패했다"를 나중에 셀 수 있다. 상태는 success 그대로다.
+              error_code: premiumRetriedFrom ? `RETRIED_${premiumRetriedFrom}` : null,
+            },
+            requestId,
+            premiumTelemetry,
+          );
+          if (premiumRetriedFrom) {
+            logDiag(requestId, 'OPENAI_RESPONSE', `PREMIUM_RETRY_OK_${premiumRetriedFrom}`,
+              { path: 'premium_report', model: premiumRoute.modelId, attempts: premiumAttempts });
+          }
+
+          // Persist + commit in ONE transaction. No conversation and no decision meta → the no-decision branch
+          // (complete_paid_request only). The 50덕 debit happens INSIDE this call and only if the response was
+          // actually persisted, which is what makes "첫 accepted persisted answer 에서만 청구" true here too.
+          const response = {
+            kind: 'premium_report',
+            result: result.result,
+            policyVersion: result.policyVersion,
+            evidenceVersion: result.evidenceVersion,
+            coveredMonths: result.coveredMonths,
+            premiumPolicyVersion: PREMIUM_POLICY_VERSION,
+          } as Record<string, unknown>;
+          const completed = await completeConsultationWithBilling(paid.context, response, null, null, reservation, null);
+          if (!completed) { await releaseIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+          return Response.json(completed);
+        }
+
+        // Summary mode (FIX A/B/C): the SERVER owns the summary prompt (buildServerSummary → existingSummary
+        // is untrusted content, never system) and applies hard input bounds server-side. Usage is logged
+        // exactly like consultation so summary calls COUNT toward the ai_usage_logs burst window — no
+        // rate-limit bypass, no double count.
+        if (body.mode === 'summary') {
+          stage = 'summary_request';
+          if (!requestId) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          // §G/§H (Sprint F.1) — SAFETY PRECEDES SPEND for the summary workload too. Classify the CURRENT
+          // summary source (turns + prior summary) BEFORE any paid/global reserve or LLM. A crisis-bearing
+          // summary (self-harm / death / medical) is never LLM-summarized: no reserve, no LLM, no grounding,
+          // no previous-fortune context. The client simply keeps its prior summary (memory unaffected). This
+          // reuses the deterministic safety router — no new medical/mental-health semantics.
+          if (summaryContainsHardStop({ existingSummary: typeof body.existingSummary === 'string' ? body.existingSummary : null, turns: body.turns })) {
+            logDiag(requestId, 'RESPONSE_VALIDATION', 'SUMMARY_SAFETY_SKIPPED', { path: 'summary' });
+            return Response.json({ text: typeof body.existingSummary === 'string' ? body.existingSummary : '' });
+          }
+          // The app names the conversation it is summarizing. Link it only once ownership is verified — the link
+          // exists for deletion (20260922000000); the summary itself never reads the conversation.
+          const summaryConversationId =
+            typeof body.conversationId === 'string' && body.conversationId.length > 0 && admin && userId
+              && await verifyOwnedConversation(admin, userId, body.conversationId)
+              ? body.conversationId : null;
+          const paid = await acquirePaidRequest(admin, userId, 'summary', requestId, summaryConversationId);
+          if (paid.status === 'completed') return Response.json(paid.response);
+          if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
+          if (paid.status === 'rate_limited') return Response.json(
+            { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+          );
+          if (paid.status === 'generation_disabled') {
+            return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 });
+          }
+          if (paid.status === 'global_limit_reached') return Response.json(
+            { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
+          );
+          if (paid.status !== 'acquired') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          if (apiKey.length === 0) {
+            await releasePaidRequest(paid.context);
+            return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          }
+          let summaryUsage: Record<string, unknown> = {};
+          let summaryErrorCode: string | null = null;
+          const summaryCallLLM = async (messages: LLMMessage[]): Promise<string> => {
+            const r = await callOpenAI(messages, summaryCfg);
+            summaryUsage = r.usage;
+            const code = openAiFailureCode(r);
+            if (code === 'OK') return r.text;
+            summaryErrorCode = code;
+            logDiag(requestId, 'OPENAI_RESPONSE', code, {
+              path: 'summary',
+              model,
+              upstreamStatus: r.statusCode || undefined,
+              responseStatus: r.responseStatus,
+              incompleteReason: r.incompleteReason,
+              outputTokens: toNullableInt(r.usage.output_tokens),
+              totalTokens: toNullableInt(r.usage.total_tokens),
+            });
+            return ''; // empty → buildServerSummary maps to LLM_FAILED
+          };
+          const summary = await buildServerSummary(
+            {
+              existingSummary: typeof body.existingSummary === 'string' ? body.existingSummary : null,
+              turns: body.turns,
+            },
+            { callLLM: summaryCallLLM },
+          );
+          if (!summary.ok) {
+            if (summary.reason === 'SAFETY_SKIPPED') {
+              // Backstop (should be unreachable — the pre-check above already returned): never spend on crisis.
+              logDiag(requestId, 'RESPONSE_VALIDATION', 'SUMMARY_SAFETY_SKIPPED', { path: 'summary' });
+              await releasePaidRequest(paid.context);
+              return Response.json({ text: typeof body.existingSummary === 'string' ? body.existingSummary : '' });
+            }
+            if (summary.reason === 'LLM_FAILED') {
+              // OpenAI WAS attempted → log the error (consistent with consultation; counts in the window).
+              //
+              // AND log the TOKENS. These used to be hardcoded null even though `summaryUsage` held the real
+              // counts, so every failed call was billed by OpenAI and recorded as costing nothing. The
+              // 2026-09-02 benchmark hit exactly this: 8 of 10 summaries died on
+              // OPENAI_INCOMPLETE_max_output_tokens, each having burned its full output budget, and all 8
+              // landed as NULL — the measured total understated the invoice. An incomplete response still
+              // reports usage; there is no reason to discard it. error_code and the client response are
+              // unchanged: this only stops us from under-counting our own spend.
+              const failedUsage = parseUsageDetails(summaryUsage);
+              await logAiUsage(
+                {
+                  user_id: userId, model, request_type: 'chat',
+                  input_tokens: toNullableInt(summaryUsage.input_tokens),
+                  output_tokens: toNullableInt(summaryUsage.output_tokens),
+                  total_tokens: toNullableInt(summaryUsage.total_tokens),
+                  latency_ms: Date.now() - startedAt, status: 'error',
+                  error_code: summaryErrorCode ?? 'LLM_FAILED',
+                },
+                requestId,
+                {
+                  cached_input_tokens: failedUsage.cachedInputTokens,
+                  reasoning_tokens: failedUsage.reasoningTokens,
+                  max_output_tokens: summaryCfg.maxOutputTokens,
+                  reasoning_effort: summaryCfg.reasoningEffort,
+                },
+              );
+              await releasePaidRequest(paid.context);
+              return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+            }
+            // INVALID_INPUT: pre-flight (no OpenAI call) → no usage row, matching consultation's policy.
+            logDiag(requestId, 'INPUT', 'SUMMARY_INVALID_INPUT', { path: 'summary' });
+            await releasePaidRequest(paid.context);
+            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          }
+          // Success → log usage exactly once (FIX C: summary now counts toward the burst window).
+          // The telemetry `extra` is passed here too (2026-09-02). It was the last path still omitting it:
+          // the consultation success path and both failure paths carry it, so summary success rows were the
+          // only ones landing with cached_input_tokens / reasoning_tokens / max_output_tokens NULL — which
+          // is exactly the blindness this batch exists to remove. `complexity` stays absent because a
+          // summary has no question to classify; `reasoning_effort` comes from the config actually used.
+          const summarySuccessUsage = parseUsageDetails(summaryUsage);
+          await logAiUsage(
+            {
+              user_id: userId, model, request_type: 'chat',
+              input_tokens: toNullableInt(summaryUsage.input_tokens),
+              output_tokens: toNullableInt(summaryUsage.output_tokens),
+              total_tokens: toNullableInt(summaryUsage.total_tokens),
+              latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
+            },
+            requestId,
+            {
+              cached_input_tokens: summarySuccessUsage.cachedInputTokens,
+              reasoning_tokens: summarySuccessUsage.reasoningTokens,
+              max_output_tokens: summaryCfg.maxOutputTokens,
+              reasoning_effort: summaryCfg.reasoningEffort,
+            },
+          );
+          const response = { text: summary.text };
+          const completed = await completePaidRequest(paid.context, response);
+          return completed
+            ? Response.json(completed)
+            : Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+        }
+
+        if (typeof body.question !== 'string') {
+          logDiag(requestId, 'INPUT', 'MISSING_QUESTION', { path: 'consultation' });
+          return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+        if (body.question.trim().length === 0) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        if (!requestId) return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+
+        // §12-14 (HIGH 5) — CRISIS HARD-STOP PRECEDES ALL PAID / GLOBAL WORK. A self-harm / death-timing /
+        // medical question must receive the controlled safe response EVEN WHEN the paid kill-switch is off, the
+        // per-user or global generation limit is exhausted, the reserve RPC fails, or the provider is down —
+        // so we classify + short-circuit HERE, before partner resolution, acquirePaidRequest (paid reservation
+        // + global-spend guard), the previous-decision loader, any astrology grounding, and any LLM call. No
+        // cost is incurred → no ai_usage row and no reservation to release. Deterministic + idempotent (same
+        // input → same safe text), so replay-safety needs no idempotency key. Uses the SAME pure evaluator the
+        // orchestrator runs internally, so the Edge pre-check and buildServerConsultation can never drift.
+        const crisisStop = evaluateConsultationSafetyStop(body.question, Math.floor(startedAt / 1000));
+        if (crisisStop && crisisStop.ok) {
+          logDiag(requestId, 'RESPONSE_VALIDATION', 'SAFETY_ROUTED', {
+            path: 'consultation',
+            validationCategory: 'SAFETY_ROUTED',
+            safetyRoute: crisisStop.diagnostics?.safetyRoute,
+          });
+          // 관측 (2026-09-06). LLM 을 부르지 않으므로 usage 행이 없었고, 그래서 **이 앱에서 가장
+          // 이해관계가 큰 경로의 발동 횟수를 셀 수 없었다.** 0토큰 행 하나를 남긴다 — 비용은 insert
+          // 한 번이고, 라우터가 과발화/미발화하는지는 SQL 로만 답할 수 있는 질문이다.
+          //
+          // ⚠ 개인정보 — 남기는 것과 남기지 않는 것:
+          //   남긴다  : 어떤 라우트(4개 닫힌 집합) · 시각 · 대기시간
+          //   안 남긴다: **user_id(null)** · request_id · 질문 원문 · 매칭된 표현 · 증상 · 상황
+          // user_id 를 일부러 비운다. 우리는 정신건강 시스템이 아니고(모듈 헤더가 명시) "이 사용자가
+          // 자해를 언급했다"에 대해 취할 후속 절차가 없다. 행동할 수 없는 민감 신호를 귀속 가능한
+          // 형태로 보관하는 것은 순수한 위험이다. 세는 것으로 필요한 판단(라우터가 도는가, 비율이
+          // 변하는가)은 전부 답할 수 있다. request_id 도 뺀다 — 세는 데 조인 키는 필요 없고, 그것이
+          // 플랫폼 로그로 되짚는 경로가 된다.
+          //
+          // status 는 'success' 다: 요청은 실제로 성공했고(사용자는 올바른 통제 응답을 받았다),
+          // 구분은 request_type='safety_route' 가 한다 — 원가 집계(`request_type='chat'`)에도 섞이지
+          // 않는다. 실패해도 응답을 막지 않는다(logAiUsage 는 자체적으로 삼킨다).
+          await logAiUsage(
+            {
+              user_id: null,
+              model: null,
+              request_type: 'safety_route',
+              input_tokens: null,
+              output_tokens: null,
+              total_tokens: null,
+              latency_ms: Date.now() - startedAt,
+              status: 'success',
+              error_code: null,
+            },
+            null,
+            { gate_firings: gateFiringSummary(crisisStop.diagnostics) },
+          );
+          return Response.json({ text: crisisStop.text, groundingMeta: crisisStop.groundingMeta });
+        }
+
+        // E.2 authority boundary: a solo paid consultation must be keyed by an already-created owned
+        // conversation before reservation/LLM work. A supplied cross-user UUID is rejected, not merely
+        // filtered at read time, and the same verified id is reused for both loader and atomic writer.
+        const suppliedConversationId =
+          typeof body.conversationId === 'string' && body.conversationId.length > 0 ? body.conversationId : null;
+        if (body.consultationMode !== 'compatibility' && !suppliedConversationId) {
+          return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+        }
+        if (suppliedConversationId && !await verifyOwnedConversation(admin, userId, suppliedConversationId)) {
+          return Response.json({ error: 'CONVERSATION_FORBIDDEN' }, { status: 403 });
+        }
+        const verifiedConversationId = suppliedConversationId;
+
+        let partnerBirthInput: BirthInfoDraft | null = null;
+        let partnerLabel: string | null = null;
+        if (body.consultationMode === 'compatibility') {
+          if (typeof body.partnerSubjectId === 'string' && admin) {
+            const partner = await resolveOwnedPartner(userId, body.partnerSubjectId, admin);
+            if (!partner) return Response.json({ error: 'SUBJECT_NOT_FOUND' }, { status: 404 });
+            partnerBirthInput = partner.birthInfo;
+            partnerLabel = partner.relationship ? `${partner.label} (${partner.relationship})` : partner.label;
+          } else if (body.targetSource === 'RAW_UNSAVED'
+              && body.partnerBirthInput && typeof body.partnerBirthInput === 'object') {
+            // Explicit raw TARGET only. SELF always remains the server-owned canonical subject.
+            partnerBirthInput = body.partnerBirthInput as BirthInfoDraft;
+            partnerLabel = typeof body.partnerLabel === 'string' ? body.partnerLabel : '상대방';
+          } else {
+            return Response.json({ error: 'INVALID_INPUT' }, { status: 400 });
+          }
+        }
+
+        const requestWorkload: PaidRequestWorkload = body.consultationMode === 'compatibility' ? 'compatibility' : 'chat';
+
+        // §5/§6 (Sprint H) — DUK SESSION BILLING, flag-gated. Reserve the session price BEFORE paid/global
+        // admission so a user with no Duk never consumes a global slot. INSUFFICIENT → 402 (no LLM). An active
+        // session (follow-up) skips the reserve and never re-charges. Inert unless DUK_BILLING_ENABLED='true'.
+        const dukBillingEnabled = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').toLowerCase() === 'true';
+        let dukReservation: DukReservation | null = null;
+        let dukFollowupSessionId: string | null = null;
+        if (dukBillingEnabled && admin && userId) {
+          const productType = body.consultationMode === 'compatibility' ? 'compatibility' : 'general';
+          const rv = await reserveSessionDuk(admin, userId, productType, requestId);
+          if (rv.kind === 'INSUFFICIENT') {
+            return Response.json(
+              { error: 'INSUFFICIENT_DUK', balance: rv.balance, required: rv.required, shortfall: rv.shortfall },
+              { status: 402 },
+            );
+          }
+          if (rv.kind === 'FAILED') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+          if (rv.kind === 'RESERVED') dukReservation = rv.reservation;
+          else dukFollowupSessionId = rv.sessionId; // ACTIVE_SESSION → follow-up, no charge
+        }
+        // Release the Duk reserve on any pre-completion failure (best-effort; TTL reconciles otherwise).
+        const releaseDukIfHeld = async () => { if (dukReservation) await releaseSessionReservation(admin!, dukReservation); };
+
+        const paid = await acquirePaidRequest(admin, userId, requestWorkload, requestId, verifiedConversationId);
+        // 'completed' → idempotent replay (reserve resolved to the committed session, nothing held); 'processing'
+        // → the in-flight worker owns the reserve — in both cases we must NOT release here.
+        if (paid.status === 'completed') return Response.json(paid.response);
+        if (paid.status === 'processing') return Response.json({ error: 'REQUEST_IN_PROGRESS' }, { status: 409 });
+        if (paid.status === 'rate_limited') { await releaseDukIfHeld(); return Response.json(
+          { error: 'RATE_LIMITED', retryAfterMs: paid.retryAfterMs },
+          { status: 429, headers: { 'Retry-After': String(Math.ceil((paid.retryAfterMs ?? RATE_WINDOW_MS) / 1000)) } },
+        ); }
+        if (paid.status === 'generation_disabled') {
+          await releaseDukIfHeld();
+          return Response.json({ error: 'GENERATION_DISABLED' }, { status: 503 });
+        }
+        if (paid.status === 'global_limit_reached') { await releaseDukIfHeld(); return Response.json(
+          { error: 'GLOBAL_GENERATION_LIMIT_REACHED', period: paid.period, retryAfterMs: paid.retryAfterMs },
+          { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(paid.retryAfterMs / 1000))) } },
+        ); }
+        if (paid.status !== 'acquired') { await releaseDukIfHeld(); return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 }); }
+        heldPaidRequest = paid.context; // §IDEMPOTENCY STATE CLEANUP — reachable by the unhandled-exception catch.
+        if (apiKey.length === 0) {
+          await releasePaidRequest(paid.context);
+          await releaseDukIfHeld();
+          return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+        }
+
+        // Per-question complexity → LLM tuning profile (Overnight Sprint §4/§8). DETERMINISTIC (no LLM call)
+        // and with NO effect on grounding/validation — it only sets the output-token CEILING + reasoning
+        // effort. gpt-5-mini bills reasoning tokens as output, so 'low' effort on SIMPLE/STANDARD questions is
+        // the dominant, truncation-SAFE cost saving (a lower effort leaves MORE budget for the answer, not
+        // less). Global env overrides both the ceiling (LLM_CONSULTATION_MAX_OUTPUT_TOKENS) and the effort
+        // (LLM_CONSULTATION_REASONING_EFFORT) when set.
+        const complexity = classifyQuestionComplexity(body.question);
+        const profile = resolveConsultationProfile(complexity, {
+          maxOutputTokens: Deno.env.get('LLM_CONSULTATION_MAX_OUTPUT_TOKENS'),
+          reasoningEffort: Deno.env.get('LLM_CONSULTATION_REASONING_EFFORT'),
+        });
+        // Sprint G §D–§H — SERVER-OWNED model routing. The model is resolved by WORKLOAD (product), never by
+        // the client and never by membership: solo general → Mini, compatibility → Terra. Env can pin the real
+        // ids (LLM_MODEL_MINI / LLM_MODEL_TERRA); a client-supplied model is ignored. A routing change is
+        // output-layer metadata only — it never alters the frozen deterministic decision.
+        const modelRoute = resolveModelRoute(
+          consultationWorkload(body.consultationMode === 'compatibility' ? 'compatibility' : 'solo'),
+          {
+            miniModel: Deno.env.get('LLM_MODEL_MINI') ?? Deno.env.get('LLM_MODEL') ?? null,
+            terraModel: Deno.env.get('LLM_MODEL_TERRA') ?? null,
+            compatibilityModelMode:
+              (Deno.env.get('COMPATIBILITY_MODEL_MODE') as 'FULL_TERRA' | 'SMART_HYBRID' | null) ?? null,
+          },
+        );
+        const routedModel = modelRoute.modelId;
+        const consultationCfg = {
+          apiKey,
+          model: routedModel,
+          maxOutputTokens: profile.maxOutputTokens,
+          reasoningEffort: profile.reasoningEffort,
+          responseFormat: consultationResponseFormat(),
+        };
+        // SAFE routing breadcrumb — the class + tuning scalars + the resolved model/policy. Never question/PII.
+        console.log(
+          `[chat.route] req=${requestId} workload=${modelRoute.workload} model=${routedModel} policy=${modelRoute.routingPolicyVersion} reason=${modelRoute.reasonCode} complexity=${complexity} effort=${profile.reasoningEffort} cap=${profile.maxOutputTokens}`,
         );
 
-        stage = 'openai_request';
+        // The single outbound trust exit. Captures the classified OpenAI outcome so a 502 can be attributed
+        // to an exact class. callLLM never throws — a non-OK outcome returns '' → the orchestrator maps it
+        // to LLM_FAILED, and we log the precise code + safe diagnostics here.
+        let capturedUsage: Record<string, unknown> = {};
+        let llmErrorCode: string | null = null;
+        let capturedOutcome: OpenAiCall | null = null;
+        // V6 ROOT CAUSE 6 — the LLM stage's TOTAL budget, anchored to the server receipt time so a second
+        // (regeneration) call cannot push past the platform limit. An exhausted or aborted call returns ''
+        // exactly like any other provider fault, and the orchestrator then delivers the deterministic
+        // grounded composition instead of failing the request.
+        const llmDeadlineAt = startedAt + LLM_DEADLINE_MS;
+        const callLLM = async (messages: LLMMessage[]): Promise<string> => {
+          stage = 'openai_request';
+          const r = await callOpenAI(messages, consultationCfg, llmDeadlineAt);
+          capturedUsage = r.usage;
+          capturedOutcome = r;
+          stage = 'response_parse';
+          const code = openAiFailureCode(r);
+          if (code === 'OK') return r.text;
+          llmErrorCode = code;
+          return ''; // empty → deterministic grounded delivery when a verdict exists; LLM_FAILED otherwise
+        };
 
-        let providerResponse: Response;
-        try {
-          providerResponse = await fetch(OPENAI_RESPONSES_URL, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model, // server-decided (#15, #17)
-              input: messages,
-              max_output_tokens: maxOutputTokens, // server-enforced (#16, #17)
-            }),
-          });
-        } catch (fetchError) {
-          // Network/transport failure before any HTTP status was received.
-          console.error(
-            '[chat] openai_fetch_threw',
-            JSON.stringify({
-              stage,
+        stage = 'server_consultation';
+        const conversationContext = Array.isArray(body.conversationContext)
+          ? (body.conversationContext as { role: 'user' | 'assistant'; content: string }[])
+          : undefined;
+        const conversationSummary =
+          typeof body.conversationSummary === 'string' ? body.conversationSummary : null;
+        // 궁합(compatibility) mode routes to the pairwise orchestrator (SAME one-LLM-call boundary + validator);
+        // Sprint E — SERVER-AUTHORITATIVE previous-decision loader for live follow-ups (solo path). Ownership
+        // is verified (the conversation must belong to this user) BEFORE reading the latest assistant row's
+        // persisted decisionMeta. BLOCKER 1 (§1-§4) — the previous decision is read from the SERVER-OWNED
+        // consultation_decisions store, which only the service-role Edge can write (RLS denies all client
+        // writes) — not the CLIENT-written conversation_messages.structured_result.decisionMeta a modified
+        // client could forge. Ownership is enforced by the user_id filter (a cross-user conversation returns
+        // no row).
+        //
+        // G6 PATCH 2 §6/§8 — FOUR OUTCOMES, NEVER COLLAPSED. See PriorHistoryLoad's own doc comment
+        // (serverConsultationTypes.ts) for the full state model. NONE = no row queried back at all.
+        // VALID = a row was found, decisionMeta.ts's parser accepted it, and it does not itself carry a
+        // priorHistoryUnavailable taint from an earlier turn's own decline (§7's durability — the taint
+        // propagates forward through re-loads so a malformed T1 cannot be laundered into a valid-looking T2).
+        // MALFORMED = a row was found but the parser rejected it, or it parsed but IS such a tainted decline.
+        // LOAD_FAILED = the query itself threw (network/timeout/etc.) — a DIFFERENT fact from "no row exists",
+        // kept distinct here even though buildServerConsultation currently fails closed identically for both.
+        const loadPreviousDecision =
+          admin && userId && verifiedConversationId
+            ? async () => {
+                try {
+                  const { data: dec, error } = await admin
+                    .from('consultation_decisions')
+                    .select('decision_meta')
+                    .eq('conversation_id', verifiedConversationId)
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .order('id', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                  // G6 FINAL — a PostgREST query failure returns `{data: null, error}`, it does not throw. The
+                  // `error` field was previously discarded, so a genuine backend error surfaced as `data: null`
+                  // and fell straight into the `!row` branch below — indistinguishable from "no prior decision
+                  // exists". A dependent follow-up over a real query error therefore classified as a brand-new
+                  // conversation and answered with a fresh, unrelated reading instead of failing closed.
+                  if (error) return { status: 'LOAD_FAILED' };
+                  const row = dec as { decision_meta?: unknown } | null;
+                  if (!row) return { status: 'NONE' };
+                  const parsed = parseDecisionMeta(row.decision_meta);
+                  if (!parsed) return { status: 'MALFORMED' };
+                  if (parsed.priorHistoryUnavailable === true) return { status: 'MALFORMED' };
+                  return { status: 'VALID', meta: parsed };
+                } catch {
+                  return { status: 'LOAD_FAILED' };
+                }
+              }
+            : undefined;
+
+        // solo path is unchanged. Both return the identical ServerConsultationResult shape.
+        const result =
+          body.consultationMode === 'compatibility'
+            ? await buildCompatibilityConsultation(
+                  {
+                   birthInput: authority.birthInfo,
+                   subjectLabel: authority.subjectLabel,
+                   partnerBirthInput,
+                   partnerLabel,
+                  consultationMode: 'compatibility',
+                  question: body.question,
+                  conversationContext,
+                  conversationSummary,
+                  requestMetadata: {
+                    clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
+                    requestId,
+                  },
+                },
+                {
+                  digestProvider: denoDigestProvider,
+                  nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
+                  callLLM,
+                  modelId: routedModel, // Sprint E §10 — actual runtime model id into decisionMeta
+                },
+              )
+            : await buildServerConsultation(
+                  {
+                   subjectProfileId: null,
+                   birthInput: authority.birthInfo,
+                   subjectLabel: authority.subjectLabel,
+                  question: body.question,
+                  conversationContext,
+                  // BUG FIX (product-integration-readiness audit): this was missing here while the
+                  // compatibility branch above already passes it — every solo consultation's
+                  // conversationSummary silently never reached the LLM, so a conversation past
+                  // chatConfig.maxRecentMessages lost all earlier context with no error.
+                  conversationSummary,
+                  requestMetadata: {
+                    clientQuestionTimeEpoch: body.requestMetadata?.clientQuestionTimeEpoch ?? null,
+                    requestId,
+                  },
+                },
+                {
+                  digestProvider: denoDigestProvider,
+                  nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
+                  callLLM,
+                  modelId: routedModel, // Sprint E §10 — actual runtime model id into decisionMeta
+                  ...(loadPreviousDecision ? { loadPreviousDecision } : {}),
+                },
+              );
+
+        if (!result.ok) {
+          const status = REASON_STATUS[result.reason] ?? 500;
+          if (result.reason === 'LLM_FAILED') {
+            const code = llmErrorCode ?? 'LLM_FAILED';
+            // The precise 502 class (§F): transport / HTTP status / incomplete-reason / empty-output +
+            // token counts — enough to tell WHY without exposing prompt, birth, question, or the answer.
+            logDiag(requestId, 'OPENAI_RESPONSE', code, {
+              path: 'consultation',
+              model: routedModel,
+              upstreamStatus: capturedOutcome?.statusCode || undefined,
+              responseStatus: capturedOutcome?.responseStatus,
+              incompleteReason: capturedOutcome?.incompleteReason,
+              outputTokens: toNullableInt(capturedUsage.output_tokens),
+              totalTokens: toNullableInt(capturedUsage.total_tokens),
+            });
+            // Tokens, not null — same reason as the summary branch: an incomplete/failed Responses call is
+            // still billed and still reports usage, and recording it as NULL made the failure look free.
+            const failedUsage = parseUsageDetails(capturedUsage);
+            await logAiUsage(
+              {
+                user_id: userId, model: routedModel, request_type: 'chat',
+                input_tokens: toNullableInt(capturedUsage.input_tokens),
+                output_tokens: toNullableInt(capturedUsage.output_tokens),
+                total_tokens: toNullableInt(capturedUsage.total_tokens),
+                latency_ms: Date.now() - startedAt, status: 'error',
+                error_code: code,
+              },
               requestId,
-              name: (fetchError as Error)?.name ?? 'UnknownError',
-              message: (fetchError as Error)?.message ?? String(fetchError),
-            }),
-          );
-          await logAiUsage(
-            {
-              user_id: userId,
-              model,
-              request_type: 'chat',
-              input_tokens: null,
-              output_tokens: null,
-              total_tokens: null,
-              latency_ms: Date.now() - startedAt,
-              status: 'error',
-              error_code: 'OPENAI_FETCH_FAILED',
-            },
-            requestId,
-          );
-          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+              {
+                cached_input_tokens: failedUsage.cachedInputTokens,
+                reasoning_tokens: failedUsage.reasoningTokens,
+                max_output_tokens: profile.maxOutputTokens,
+                complexity,
+                reasoning_effort: profile.reasoningEffort,
+              },
+            );
+            await releasePaidRequest(paid.context);
+            await releaseDukIfHeld(); // first-turn failure → 0 charged (§7)
+            return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
+          }
+          // V6 ROOT CAUSE 5 — NO DIVINATION BASIS. Every engine fail-closed for this birth, so there is no
+          // chart to read and no verdict to answer from. Released and NOT charged, exactly like the
+          // rejected-non-answer path below: a paid divination product must never bill for a reading it could
+          // not perform, and must not fill the gap with general coaching. The consumer-safe explanation says
+          // what input would let it run.
+          // AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED is the SAME outcome with a narrower cause (절기 경계일 +
+          // no exact birth time). It shares this branch on purpose: identical release + identical
+          // releaseDukIfHeld, so the 0-덕 guarantee is the same code path, not a parallel one to keep in sync.
+          if (result.reason === 'GROUNDING_UNAVAILABLE' || result.reason === 'AMBIGUOUS_BOUNDARY_DATE_TIME_REQUIRED') {
+            logDiag(requestId, 'GROUNDING', result.reason, { path: 'consultation' });
+            await releasePaidRequest(paid.context);
+            await releaseDukIfHeld();
+            return Response.json(
+              { error: result.reason, message: result.message ?? null },
+              { status: REASON_STATUS[result.reason] },
+            );
+          }
+          // SUBJECT_FORBIDDEN(403) / SUBJECT_NOT_FOUND(404) / INVALID_INPUT(400) — attribute the stage.
+          logDiag(requestId, result.reason === 'INVALID_INPUT' ? 'INPUT' : 'PROFILE_RESOLUTION', result.reason, { path: 'consultation' });
+          await releasePaidRequest(paid.context);
+          await releaseDukIfHeld();
+          return Response.json({ error: result.reason }, { status });
         }
 
-        if (!providerResponse.ok) {
-          // Fault tracking: HTTP status ONLY (e.g. 429 billing/quota, 401, 5xx).
-          // Never forward the provider's error body/URL/token to the client (#20).
-          console.error(
-            '[chat] openai_error_status',
-            JSON.stringify({ status: providerResponse.status, requestId }),
-          );
-          await logAiUsage(
-            {
-              user_id: userId,
-              model,
-              request_type: 'chat',
-              input_tokens: null,
-              output_tokens: null,
-              total_tokens: null,
-              latency_ms: Date.now() - startedAt,
-              status: 'error',
-              error_code: `OPENAI_${providerResponse.status}`,
-            },
-            requestId,
-          );
-          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
-        }
-
-        stage = 'response_parse';
-
-        let payload: unknown;
-        try {
-          payload = await providerResponse.json();
-        } catch {
-          return Response.json({ error: 'REQUEST_FAILED' }, { status: 502 });
-        }
-
-        const text = extractText(payload);
-
-        if (text.length === 0) {
-          // Fault tracking: no assistant text parsed (marker only, no content).
-          console.error('[chat] empty_response', JSON.stringify({ requestId }));
-          await logAiUsage(
-            {
-              user_id: userId,
-              model,
-              request_type: 'chat',
-              input_tokens: null,
-              output_tokens: null,
-              total_tokens: null,
-              latency_ms: Date.now() - startedAt,
-              status: 'error',
-              error_code: 'EMPTY_RESPONSE',
-            },
-            requestId,
-          );
-          return Response.json({ error: 'EMPTY_RESPONSE' }, { status: 502 });
-        }
-
-        // Success: record raw usage (tokens are provider-reported; no cost calc).
-        const usage =
-          (payload as { usage?: Record<string, unknown> } | null)?.usage ?? {};
+        // Cost telemetry (§13): reasoning + cached tokens split out of usage, plus the chosen
+        // complexity/effort/ceiling. All non-PII scalars; written via the progressive fallback so a
+        // not-yet-applied column never loses the row. Turns the cost estimates into MEASURED per-Q&A cost.
+        const usageDetails = parseUsageDetails(capturedUsage);
+        // 게이트 발화 요약 (순수 함수, 번들 공유). 발화가 없으면 null.
+        const gateSummary = gateFiringSummary(result.diagnostics);
         await logAiUsage(
           {
-            user_id: userId,
-            model,
-            request_type: 'chat',
-            input_tokens: toNullableInt(usage.input_tokens),
-            output_tokens: toNullableInt(usage.output_tokens),
-            total_tokens: toNullableInt(usage.total_tokens),
-            latency_ms: Date.now() - startedAt,
-            status: 'success',
-            error_code: null,
+            user_id: userId, model: routedModel, request_type: 'chat',
+            input_tokens: toNullableInt(capturedUsage.input_tokens),
+            output_tokens: toNullableInt(capturedUsage.output_tokens),
+            total_tokens: toNullableInt(capturedUsage.total_tokens),
+            latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
           },
           requestId,
+          {
+            cached_input_tokens: usageDetails.cachedInputTokens,
+            reasoning_tokens: usageDetails.reasoningTokens,
+            max_output_tokens: profile.maxOutputTokens,
+            complexity,
+            reasoning_effort: profile.reasoningEffort,
+            // 게이트 발화 (2026-09-06). ⚠ 발화가 있을 때만 키를 넣는다. 점진적 폴백은 실패 시
+            // `extra` 를 **통째로** 떨구므로, 컬럼이 아직 없는 환경에서 이 키를 늘 넣으면 정상 응답의
+            // 원가 텔레메트리까지 같이 날아간다. 조건부로 넣으면 정상 응답의 삽입은 오늘과 글자 그대로
+            // 같고, 컬럼이 없는 환경에서도 잃는 것은 발화 행의 텔레메트리 하나뿐이다(그 경우에도
+            // 진단 로그 줄은 남는다) → 기록 실패가 응답을 막지 않는다.
+            ...(gateSummary ? { gate_firings: gateSummary } : {}),
+          },
         );
 
-        return Response.json({ text });
+        // Diagnose WHY a success response was NOT rendered as a card (§3): a card-worthy answer
+        // (structuredResult present) needs no diagnostic; a fallback / safe-message does. Safe fields only.
+        //
+        // ⚠ 2026-09-06 — 조건이 `!== 'ACCEPTED'` 하나였다. 그런데 **문장 단위 폐기는 답변이 그대로
+        // 배달되므로 ACCEPTED 다.** 즉 스크러버가 가장 흔하게 하는 일이 한 줄도 안 남고 있었다
+        // (감사에서 "발생 0건" 으로 보인 이유). 게이트가 발화했으면 분류와 무관하게 남긴다.
+        const gateFired = Boolean(
+          result.diagnostics
+          && (result.diagnostics.groundedFallback
+            || (result.diagnostics.groundedViolations?.length ?? 0) > 0),
+        );
+        if (result.diagnostics && (result.diagnostics.outputClassification !== 'ACCEPTED' || gateFired)) {
+          logDiag(requestId, 'RESPONSE_VALIDATION', result.diagnostics.rejectionReason ?? 'GATE_FIRED', {
+            path: 'consultation',
+            model: routedModel,
+            validationCategory: result.diagnostics.outputClassification,
+            grounded: result.groundingMeta.grounded,
+            groundedFallback: result.diagnostics.groundedFallback,
+            groundedViolations: result.diagnostics.groundedViolations,
+            groundedViolationCount: result.diagnostics.groundedViolationCount,
+            groundedGateUnit: result.diagnostics.groundedGateUnit,
+            safetyRoute: result.diagnostics.safetyRoute,
+            regenerated: result.diagnostics.regenerated,
+            // ⚠ 진단값 중 "LLM 부재" 플래그는 일부러 넣지 않았다. `consultationDeliveryV6.test.ts` 가
+            // **Edge 소스에 그 식별자가 등장하지 않는 것** 자체로 "Edge 는 그것으로 분기하지 않는다
+            // = 배달 경로는 하나"를 잠그고 있다(주석에 적어도 잠금이 깨진다). 관측 목표(어떤 게이트가
+            // 몇 번 발화했나)와도 무관하고, 그 사건은 error_code 가 이미 센다.
+          });
+        }
+
+        // Bounded response (§17): server-validated text + optional structured view-model + safe meta.
+        // `diagnostics` is intentionally NOT returned to the client — it is log-only.
+        const response = {
+          text: result.text,
+          ...(result.structuredResult ? { structuredResult: result.structuredResult } : {}),
+          groundingMeta: result.groundingMeta,
+          // Deterministic 궁합 tier (compatibility mode only) — the client renders/persists it (no extra LLM).
+          ...(result.compatibility ? { compatibility: result.compatibility } : {}),
+        };
+        const acceptedDecision =
+          result.diagnostics?.outputClassification === 'ACCEPTED' &&
+          result.diagnostics?.followUp !== 'WHY' &&
+          result.structuredResult?.decisionMeta &&
+          verifiedConversationId
+            ? result.structuredResult.decisionMeta as Record<string, unknown>
+            : null;
+        // BILLING INTEGRATION FIX (product-integration-readiness audit, BUG-1): a SEMANTIC_REJECTED output
+        // (the guard's canned "잠시 후 다시 시도해 주세요" — no real answer, `result.text === SEMANTIC_REJECTION_MESSAGE`)
+        // is a real HTTP 200 (`result.ok`), so it fell through to the same commit path as an ACCEPTED answer —
+        // `p_decision_meta is null` there is ALSO the legitimate shape of a normal, successful compatibility
+        // completion (which never has decisionMeta), so the completion RPC could not distinguish "nothing to
+        // persist" from "nothing to charge for." A first-turn reservation must never commit for a rejected
+        // non-answer — treat it exactly like the LLM_FAILED/INVALID_INPUT paths above (release, no charge).
+        // Pairs with migration 20260846000000 (BUG-2: a released reservation must not be freely resumable) —
+        // deploy both together; this alone, without that migration applied, would only widen BUG-2's window.
+        const isRejectedNonAnswer = result.diagnostics?.outputClassification === 'SEMANTIC_REJECTED';
+        // Accepted authoritative decisions are committed atomically with paid-request completion. Any RPC /
+        // insert failure is fail-closed (503); it is never logged-and-ignored as if follow-up state existed.
+        // §21: when Duk billing is active, the Duk COMMIT rides the SAME atomic completion (decision + charge,
+        // or paid-complete + charge for compatibility). A non-completed result releases the reserve (0 charged).
+        let completed: Record<string, unknown> | null;
+        if (dukBillingEnabled && isRejectedNonAnswer && dukReservation) {
+          await releaseDukIfHeld();
+          completed = await completeConsultationWithBilling(
+            paid.context, response, verifiedConversationId, null, null, dukFollowupSessionId,
+          );
+        } else if (dukBillingEnabled && (dukReservation || dukFollowupSessionId)) {
+          completed = await completeConsultationWithBilling(
+            paid.context, response, verifiedConversationId, acceptedDecision, dukReservation, dukFollowupSessionId,
+          );
+          if (!completed) await releaseDukIfHeld();
+        } else {
+          completed = acceptedDecision && verifiedConversationId
+            ? await completeConsultationWithDecision(paid.context, response, verifiedConversationId, acceptedDecision)
+            : await completePaidRequest(paid.context, response);
+        }
+        return completed
+          ? Response.json(completed)
+          : Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
       } catch (error) {
-        // Fault tracking: capture the failing stage + exception identity, then
-        // re-throw to preserve the platform's EDGE_FUNCTION_ERROR behavior.
         console.error(
           '[chat] unhandled_exception',
           JSON.stringify({
@@ -425,6 +1894,10 @@ export default {
             message: (error as Error)?.message ?? String(error),
           }),
         );
+        // Record the terminal state BEFORE the exception propagates, so the request id is retry-safe instead
+        // of stuck at PROCESSING with nothing behind it. Best-effort: a failure here must not mask the
+        // original error, which is what the caller actually needs to see.
+        if (heldPaidRequest) await releasePaidRequest(heldPaidRequest).catch(() => {});
         throw error;
       }
     },

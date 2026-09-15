@@ -42,8 +42,11 @@ describe('resolveSupabaseProvider (directive §6 — provider abstraction)', () 
     expect(resolveSupabaseProvider('naver')).toEqual({ supported: false });
   });
 
-  it('reports apple (declared but not enabled) as unsupported', () => {
-    expect(resolveSupabaseProvider('apple')).toEqual({ supported: false });
+  // 2026-09-02 — 오너가 애플 로그인을 V1 필수로 확정했다. 이 단언은 "선언만 있고 꺼져 있다"는
+  // 이전 상태를 잠그고 있었으므로 뒤집는다. 검증 의도(provider 해석이 정확한가)는 그대로다.
+  // 애플 계약 전체는 `features/auth/__tests__/appleAuth.test.ts` 가 따로 잠근다.
+  it('reports apple as a Supabase provider (V1 필수 — 2026-09-02)', () => {
+    expect(resolveSupabaseProvider('apple')).toEqual({ supported: true, supabaseProvider: 'apple' });
   });
 });
 
@@ -245,22 +248,58 @@ describe('resolveOAuthReturn (shared web callback navigation, provider-neutral)'
 describe('login screen provider wiring (regression lock — source-level)', () => {
   // No RN render harness in this repo (tests are pure/fs-based), so this locks the
   // login.tsx wiring at the source level: all three providers present + naver added,
-  // each via the shared generic handler. Guards against accidental button removal.
+  // each via the shared handler. Post brand sprint the providers render through the
+  // provider-distinct <SocialButton provider="…"> (not the generic orange Button, §10).
   const src = fs.readFileSync(path.join(__dirname, '../../../app/login.tsx'), 'utf8');
+  const socialSrc = fs.readFileSync(path.join(__dirname, '../../../components/SocialButton/SocialButton.tsx'), 'utf8');
 
-  it('wires naver through the existing generic handler', () => {
+  it('wires naver through the existing handler + provider-distinct SocialButton', () => {
     expect(src).toMatch(/handleLogin\('naver'\)/);
-    expect(src).toContain('네이버로 시작하기');
+    expect(src).toMatch(/provider="naver"/);
+    expect(socialSrc).toContain('네이버로 계속하기'); // signup-first CTA copy (§12: "계속하기"), owned by SocialButton
   });
 
   it('keeps kakao + google wired (no regression)', () => {
     expect(src).toMatch(/handleLogin\('kakao'\)/);
     expect(src).toMatch(/handleLogin\('google'\)/);
+    expect(src).toMatch(/provider="kakao"/);
+    expect(src).toMatch(/provider="google"/);
   });
 
-  it('reuses the shared Button component + isSigningIn disabled state', () => {
-    // naver button reuses the same <Button ... disabled={isSigningIn}> pattern.
-    expect(src).toMatch(/label="네이버로 시작하기"[\s\S]*disabled=\{isSigningIn\}/);
+  it('naver SocialButton carries the isSigningIn disabled state', () => {
+    expect(src).toMatch(/provider="naver"[\s\S]*?disabled=\{isSigningIn\}/);
+  });
+});
+
+describe('Naver web login closure (Overnight Sprint §1 — source-level regression lock)', () => {
+  const naverSrc = fs.readFileSync(
+    path.join(__dirname, '../naver/naverAuthService.ts'),
+    'utf8',
+  );
+  const loginSrc = fs.readFileSync(path.join(__dirname, '../../../app/login.tsx'), 'utf8');
+
+  it('pins the web redirect_uri like google/kakao (resolveConfiguredWebRedirect), not a bare makeRedirectUri', () => {
+    // The fix: on web the Naver redirect is the canonical pinned origin (matches the
+    // one URL registered in the Naver console), removing apex/www/preview drift.
+    expect(naverSrc).toContain('resolveConfiguredWebRedirect');
+    expect(naverSrc).toContain('getPublicBaseUrl');
+  });
+
+  it('emits a SAFE [auth.diag] breadcrumb at each Naver failure stage', () => {
+    expect(naverSrc).toContain('authDiag');
+    // every failure goes through the shared `fail(stage, reason)` helper
+    expect(naverSrc).toMatch(/fail\('authorize'/);
+    expect(naverSrc).toMatch(/fail\('edge_invoke'/);
+    expect(naverSrc).toMatch(/fail\('state_validate'/);
+    expect(naverSrc).toMatch(/fail\('session_set'/);
+  });
+
+  it('login screen surfaces the SPECIFIC outcome (no single generic dead-end message)', () => {
+    expect(loginSrc).toContain('authReasonToOutcome');
+    expect(loginSrc).toContain('authOutcomeMessage');
+    expect(loginSrc).toContain('isSilentOutcome');
+    // the old always-generic string constant is gone (each failure is now specific)
+    expect(loginSrc).not.toContain('SIGN_IN_FAILED_MESSAGE');
   });
 });
 
@@ -273,6 +312,7 @@ describe('secret-exposure scan (directive §10/§21 — no client-side secrets)'
     '../services/authService.ts',
     '../services/oauthReturn.ts',
     '../errors/authErrors.ts',
+    '../authDiag.ts',
     '../naver/naverConfig.ts',
     '../naver/naverOAuth.ts',
     '../naver/naverProfile.ts',

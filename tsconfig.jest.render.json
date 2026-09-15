@@ -1,0 +1,9 @@
+{
+  "//": "ts-jest config for the RENDER project only. Extends the plain-Node one and adds the two things JSX needs: a `jsx` factory and the DOM lib (the harness renders through react-native-web into jsdom). Kept separate so the 302 plain-Node suites keep compiling under the exact settings they always did.",
+  "extends": "./tsconfig.jest.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["es2020", "dom"],
+    "types": ["jest", "node"]
+  }
+}

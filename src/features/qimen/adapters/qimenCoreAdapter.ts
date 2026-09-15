@@ -13,7 +13,7 @@ import { formatQueryDatetime, type QimenQueryTime } from '../domain/qimenTypes';
 
 // Version tracking (§18). Must match the exact pin in package.json.
 export const QIMEN_LIBRARY = 'qimen-dunjia';
-export const QIMEN_LIBRARY_VERSION = '2.1.0';
+export const QIMEN_LIBRARY_VERSION = '3.1.0';
 export const QIMEN_ADAPTER_VERSION = '1.0.0';
 // The library uses 拆補法 (Chai Bu) to fix the 局; that is the documented method.
 export const QIMEN_RULESET_VERSION = `qimen-dunjia-chaibu@${QIMEN_LIBRARY_VERSION}`;

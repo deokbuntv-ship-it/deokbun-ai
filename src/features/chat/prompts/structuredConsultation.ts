@@ -1,0 +1,585 @@
+// STRUCTURED consultation output contract (sprint §11/§13). The LLM returns a JSON object whose
+// fields map 1:1 to the existing StructuredConsultationViewModel long-form fields (reused names —
+// no new schema invented). This module holds the schema INSTRUCTION appended to the prompt and the
+// backend PARSER + VALIDATOR. Malformed / missing-substance output → null (caller falls back to
+// plain text; never a crash, never a fabricated structuredResult from prose — §13).
+//
+// Long-form is the product core (§12): the instruction demands substantial 핵심 해석 + 강점/주의점 +
+// 영역별 해석, EXPANDED. Timing (futureFlow) only when 대운/세운/월운 근거가 실제로 제공된 경우(§18).
+// No fabricated 신강/용신/격국/신살; no claim of Ziwei/Qimen when 미연결 (§4/§22) — mirrors the
+// System Constitution, so a compliant answer already honors it.
+
+/** The schema request appended to the consultation prompt when grounding is available. */
+export const STRUCTURED_OUTPUT_INSTRUCTION = [
+  '[출력 형식 — 구조화 JSON]',
+  '이번 답변은 아래 JSON 객체 하나로만 출력하십시오. JSON 앞뒤에 다른 설명 문장을 붙이지 마십시오.',
+  '',
+  '[상담 말투 — 실제 상담가처럼]',
+  '· 핵심 결론을 맨 먼저 한두 문장으로 분명히 말한 뒤, 그렇게 보는 이유를 덧붙이십시오. 사용자가 첫',
+  '  문장만 읽어도 "좋은가/주의할 흐름인가, 그래서 어떻게 하면 좋은가"를 알 수 있어야 합니다.',
+  '· 단일 결정을 묻는 질문(해도 될까/언제가 좋아)에는 첫 문장에서 방향(추천/비추천)을 먼저 밝히고 이유를 잇십시오.',
+  '  근거가 뒷받침하면 "추천합니다 / 좋은 시기입니다"처럼 분명하게. 다만 "A가 나아 B가 나아"처럼 여러 후보를',
+  '  비교하는 질문에서는 한쪽을 승자로 고르거나 1순위를 정하지 말고, 각 후보의 근거를 나란히 설명하십시오.',
+  '· 요청한 정확한 범위(예: 특정 달)를 근거로 답하기 어렵더라도 답변을 포기하지 마십시오. 대신 (1) 근거가',
+  '  있는 가장 가까운 범위(예: 그 해 전체의 흐름)로 분명히 답하고, (2) 확인 가능한 대안을 제시하십시오. 근거',
+  '  없는 특정 달을 지어내지는 말되, "그 해 자체는 이사에 좋은 흐름입니다"처럼 지원되는 답은 분명히 주십시오.',
+  '· "질문을 바꿔 다시 물어봐 주세요"처럼 사용자에게 미루지 마십시오. 사용자의 질문은 유효합니다 — 시스템이',
+  '  근거 범위 안에서 가장 유용한 답을 찾아 주는 것이 원칙입니다. (입력이 정말 모호할 때만 짧게 되물으십시오.)',
+  '· 모바일에서 편히 읽히도록 간결하게. 같은 내용을 반복하거나 보고서처럼 길게 늘이지 마십시오. 결론과',
+  '  같은 말을 요약·강점·상세에서 다시 되풀이하지 말고, 각 부분은 새로운 내용을 더하십시오.',
+  '· 답변 길이는 질문에 맞추십시오. 단순한 질문("내 성격은?")엔 짧게(핵심 + 포인트 2개 정도), 복합적',
+  '  이거나 장기 흐름 질문엔 조금 더 충실히. 길이를 채우려고 억지로 늘이지 마십시오. 짧아도 완결이면 좋습니다.',
+  '· 여러 해·장기 흐름 질문이면 연도를 하나씩 똑같이 길게 나열하지 말고, 전체 흐름 요약 → 좋은',
+  '  구간·주의할 구간 → 전환점 중심으로 답하십시오. 연도별 상세는 사용자가 다시 물을 때 제공합니다.',
+  '· 쉬운 일상 언어로 씁니다. "무조건 성공"·"반드시 돈을 번다" 같은 단정·과장 표현은 쓰지 마십시오.',
+  '· 근거 없는 점수·등급·별점·확률·시점을 만들지 마십시오.',
+  '',
+  '[쉬운 말 먼저 — 전문용어는 보조로만]',
+  '· 사용자가 먼저 읽는 부분(coreSummary·coreInterpretation·strengths·cautions)은 전문용어를 몰라도 핵심을',
+  '  완전히 이해할 수 있게 생활언어로 먼저 씁니다. 그 흐름이 "실제 생활에서 무엇을 뜻하는지"를 앞세우십시오.',
+  '· 재성·관성·식상·비겁·인성·합·충·형·파·해·대운·세운 같은 명리 용어를 꼭 써야 하면, 먼저 그 의미를 일상',
+  '  언어로 풀어 말한 뒤 "명리에서는 이런 흐름을 ~라고 봅니다"처럼 보조로만 덧붙이십시오. 설명 없이 용어를',
+  '  앞세우지 마십시오. (나쁜 예: "재성이 활성화되고 식상이 강해집니다." / 좋은 예: "돈과 현실적인 성과를',
+  '  만들려는 움직임이 강해지는 시기예요. 명리에서는 이런 흐름을 재성·식상의 움직임으로 설명합니다.")',
+  '· GROUNDED_NARRATIVE_V2 — 위 예시처럼 용어를 보조로 덧붙일 때도, 제공된 근거에 실제로 나온 용어만 쓰십시오.',
+  '  근거에 없는 궁·성·화·문·신·십신·간지, 그리고 근거에 없는 나이 구간("28~37세")은 만들어 쓰지 마십시오.',
+  '  정확한 기술 근거는 서버가 별도 항목으로 붙이므로, 당신은 그 뜻을 쉬운 말로 풀어 주기만 하면 됩니다.',
+  '· "대운의 직·주도적 기운이 강하다" 대신, 그것이 삶에서 뜻하는 바를 먼저: "지금은 남이 준 기회를 기다리기',
+  '  보다 직접 결정하고 움직일수록 성과를 내기 좋은 흐름이에요." — 용어는 필요하면 뒤에 보조로만.',
+  '· 합·충·형처럼 관계의 세부 근거는 앞부분에 늘어놓지 말고, 그 변화가 생활에서 무엇을 의미하는지 먼저',
+  '  설명한 뒤 domainInterpretation(전문 근거)에서 보조적으로 풀어 주십시오. 근거의 "뜻"은 살리되, 앞부분은',
+  '  쉬운 말이 먼저입니다. (근거를 삭제하라는 뜻이 아닙니다 — 순서를 지키라는 뜻입니다.)',
+  '',
+  '[명식 바탕과 지금 흐름을 연결 — 나만의 답]',
+  '· 타고난 바탕(원국)과 지금의 큰 흐름(대운)·올해 흐름(세운)이 질문과 어떻게 맞물리는지 한 줄기로 엮어 설명하십시오.',
+  '  누구에게나 맞는 일반론이 아니라, 이 사람의 흐름에서 나오는 답이어야 합니다. 뒷받침하는 서로 다른 사실이',
+  '  둘 이상 있으면 연결해 설명하고(예: 지금의 큰 흐름 + 올해 흐름), 사실이 하나뿐이면 억지로 지어내지 마십시오.',
+  '· "신중하세요 / 천천히 하세요 / 긍정적으로 생각하세요"처럼 누구에게나 되는 막연한 말은, 구체적인 근거와',
+  '  연결될 때만 쓰십시오. 근거 없이 일반적인 처세 조언만 나열하지 마십시오.',
+  '',
+  '[행동 조언 — 태도·방향이지 할 일 목록이 아님]',
+  '· 행동 조언은 체크리스트·"N개로 정리"·"며칠/몇 분 동안"·서류·계좌·영수증 정리 같은 업무 관리 지시가 아니라,',
+  '  삶의 태도와 방향으로 주십시오(예: "지금은 새로 벌이기보다 이미 하고 있는 일을 다듬는 쪽이 유리합니다").',
+  '  할 일 목록이나 생산성 코칭처럼 쓰지 마십시오.',
+  '',
+  '[자연스러운 한국어 — 기계 같은 문투 금지]',
+  '· "종합적으로 볼 때", "이를 바탕으로", "따라서"를 남발하지 말고, 번역·논문·관공서 같은 문투를 피하십시오.',
+  '· 모든 문장을 같은 어미로 끝내지 말고, 담백하고 분명한 상담가의 말투로 쓰십시오.',
+  '· 매 문장에 조건·유보를 달아 흐리지 마십시오. 근거 수준을 밝히는 한 번의 표현이면 충분합니다.',
+  '',
+  '[내부·개발 용어 노출 금지]',
+  '· "엔진", "SAJU", "iztro", "grounding", "schema", "provider", "V1", "제공됨",',
+  '  "계산되지 않았습니다" 같은 내부·개발 용어를 사용자 답변에 절대 쓰지 마십시오.',
+  '· 관점을 나눌 때는 자연스러운 학문명으로만: "사주에서 보면 …", "자미두수에서는 …".',
+  '· 계산하지 않은 내용은 그냥 언급하지 않으면 됩니다. "이 버전에서는 지원하지 않는다/계산되지',
+  '  않았다"처럼 구현 한계를 사용자에게 설명하지 마십시오.',
+  '· 신강·신약·용신·격국·12운성·12신살 같은 전문 용어 자체를 답변에 쓰지 말고 단정하지도 마십시오.',
+  '· 천간·지지 한자(甲乙丙丁戊己庚辛壬癸 · 子丑寅卯辰巳午未申酉戌亥)나 그 조합(예: 甲木·寅卯·丙午)을',
+  '  사용자 답변에 그대로 쓰지 마십시오. 반드시 뜻을 풀어 일상 언어로 설명하십시오(예: "寅卯의 기운"이',
+  '  아니라 "변화와 이동의 흐름이 강해지는 시기"). 근거의 뜻은 살리되, 기호는 노출하지 마십시오.',
+  '',
+  '[근거 사용 규칙]',
+  '· 제공된 근거만 사용하고, 제공되지 않은 학문(예: 기문둔갑)을 썼다고 말하지 마십시오.',
+  '· 사주와 자미두수 근거가 함께 있으면 각 관점을 따로 설명하고, 두 학문이 "모두"·"완전히 일치"처럼',
+  '  하나로 합의한다고 단정하지 마십시오.',
+  '',
+  '{',
+  '  "coreSummary": "가장 먼저 읽는 한두 문장. 좋은지/주의할 흐름인지 결론과, 그래서 어떤 방향이 유리한지를 함께. 예: \\"사업운은 좋은 편입니다. 다만 지금은 규모를 키우기보다 수익 구조를 단단히 하는 쪽이 유리합니다.\\"",',
+  '  "disposition": "기본 성향 한 줄 요약(선택).",',
+  '  "coreInterpretation": "핵심 해석 본문. 결론→이유 순서로 간결하게, 보통 2~4문장(질문이 복합적일수록 조금 더). coreSummary를 말만 바꿔 반복하지 말 것.",',
+  '  "strengths": ["실제로 도움이 되는 강점 1~3개. 한 항목에 한 가지 생각만. 억지로 3개를 채우지 말 것."],',
+  '  "cautions": ["정말 필요할 때만, 근거와 연결된 구체적 주의점(없으면 빈 배열). \\"신중해야 합니다\\" 같은 막연한 말 대신 실제로 무엇을 조심할지."],',
+  '  "domainInterpretation": [{ "title": "질문과 관련된 영역", "body": "핵심 요약을 되풀이하지 말고, 왜 그런지·요인 간 관계 등 새로운 내용을 담은 실용적 해석." }],',
+  '  "futureFlow": "대운/세운 등 시기 근거가 실제로 제공된 경우에만 앞으로의 흐름. 없으면 빈 문자열.",',
+  '  "followUps": ["이 상담에서 자연스럽게 이어지는 후속 질문 정확히 3개: 짧고 자연스러운 질문 2개 + 조금 더 깊은 질문 1개. 덕분이가 실제로 봐주는 역학 상담 범위(운세·흐름·시기·관계 등) 안에서만 제안하고, 계약서·법률문서 검토, 의료 진단, 투자 종목 추천처럼 덕분이가 직접 수행하지 않는 전문 서비스는 제안하지 마십시오."]',
+  '}',
+  'coreInterpretation은 핵심을 담아 충실하게(너무 짧지 않게) 쓰되, 불필요하게 길게 늘이지 마십시오.',
+].join('\n');
+
+export type ParsedStructuredConsultation = {
+  coreSummary?: string;
+  disposition?: string;
+  coreInterpretation?: string;
+  strengths?: string[];
+  cautions?: string[];
+  domainInterpretation?: { title: string; body: string }[];
+  futureFlow?: string;
+  followUps?: string[];
+};
+
+function extractJson(text: string): unknown {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fence ? fence[1] : text;
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  const slice = candidate.slice(start, end + 1);
+  const tryParse = (s: string): unknown => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return undefined;
+    }
+  };
+  const direct = tryParse(slice);
+  if (direct !== undefined) return direct;
+  // Tolerate the single most common LLM JSON defect: a trailing comma directly before a } or ]. Narrow —
+  // only strips commas that immediately precede a closing brace/bracket (across whitespace); it does not
+  // attempt to repair arbitrary malformed JSON.
+  const relaxed = tryParse(slice.replace(/,(\s*[}\]])/g, '$1'));
+  return relaxed === undefined ? null : relaxed;
+}
+
+// Map the raw object → typed consultation fields (no substance gate). Shared by the strict parser and the
+// readable-salvage path so a JSON payload that fails the card gate is never shown as raw JSON (§4).
+function mapStructuredFields(o: Record<string, unknown>): ParsedStructuredConsultation {
+  return {
+    coreSummary: str(o.coreSummary),
+    disposition: str(o.disposition),
+    coreInterpretation: str(o.coreInterpretation),
+    strengths: strArray(o.strengths),
+    cautions: strArray(o.cautions),
+    domainInterpretation: domainArray(o.domainInterpretation),
+    futureFlow: str(o.futureFlow),
+    followUps: strArray(o.followUps),
+  };
+}
+
+const str = (v: unknown): string | undefined => {
+  if (typeof v !== 'string') return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+};
+const strArray = (v: unknown): string[] | undefined => {
+  if (!Array.isArray(v)) return undefined;
+  const out = v.map(str).filter((x): x is string => x !== undefined);
+  return out.length > 0 ? out : undefined;
+};
+const domainArray = (v: unknown): { title: string; body: string }[] | undefined => {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .map((d) => {
+      const o = d as { title?: unknown; body?: unknown } | null;
+      const title = o ? str(o.title) : undefined;
+      const body = o ? str(o.body) : undefined;
+      return title && body ? { title, body } : null;
+    })
+    .filter((x): x is { title: string; body: string } => x !== null);
+  return out.length > 0 ? out : undefined;
+};
+
+/**
+ * Parse + validate the LLM structured response. Returns null when the text is not the expected JSON
+ * or carries no consultation substance (→ caller uses plain-text fallback). Fail-closed, no throw.
+ */
+export function parseStructuredConsultation(text: string): ParsedStructuredConsultation | null {
+  const raw = extractJson(text);
+  if (raw === null || typeof raw !== 'object') return null;
+  const parsed = mapStructuredFields(raw as Record<string, unknown>);
+
+  // Substance gate (Codex FIX #6 / §8): a valid structured consultation must be a real long-form answer,
+  // not a one-liner. Summary-only / too-shallow → null → safe fallback (no empty card).
+  if (!isSubstantiveLongForm(parsed)) return null;
+  return parsed;
+}
+
+const MIN_CORE_INTERPRETATION_CHARS = 120; // a long core alone is card-worthy
+const MIN_CORE_WITH_SUPPORT_CHARS = 50; // a shorter core is fine when backed by real supporting sections
+const MIN_TOTAL_BODY_CHARS = 180; // core + supporting content together
+
+/**
+ * Long-form product gate: coreSummary + a substantive core, EITHER a long core on its own OR a decent core
+ * backed by real supporting sections (강점/주의점/영역별/흐름/성향). A rich answer with a concise core is a
+ * full consultation, not a one-liner — this no longer forces every card to have a ≥120-char core (which
+ * dropped valid live answers to raw-text fallback). Still rejects genuine one-liners.
+ */
+export function isSubstantiveLongForm(p: ParsedStructuredConsultation): boolean {
+  if (!p.coreSummary || !p.coreInterpretation) return false;
+  // Unchanged rule: a card always needs ≥1 supporting section (강점/주의점/영역별/앞으로의 흐름/기본 성향).
+  const hasSupporting =
+    (p.strengths?.length ?? 0) > 0 ||
+    (p.cautions?.length ?? 0) > 0 ||
+    (p.domainInterpretation?.length ?? 0) > 0 ||
+    !!p.futureFlow ||
+    !!p.disposition;
+  if (!hasSupporting) return false;
+  // A long core is card-worthy on its own; a shorter core is fine when the TOTAL body is still substantial
+  // (a rich, concise-core answer — the shape that previously dropped to raw-text fallback).
+  if (p.coreInterpretation.length >= MIN_CORE_INTERPRETATION_CHARS) return true;
+  const supportingChars = [
+    ...(p.strengths ?? []),
+    ...(p.cautions ?? []),
+    ...(p.domainInterpretation ?? []).map((d) => d.body),
+    p.futureFlow ?? '',
+    p.disposition ?? '',
+  ]
+    .join(' ')
+    .trim().length;
+  return (
+    p.coreInterpretation.length >= MIN_CORE_WITH_SUPPORT_CHARS &&
+    p.coreInterpretation.length + supportingChars >= MIN_TOTAL_BODY_CHARS
+  );
+}
+
+// ── Grounding-aware validation (Codex FIX #8/#9/#10) ─────────────────────────────────
+// Second defensive layer AFTER the prompt instruction. NARROW, high-precision patterns — NOT a
+// general NL classifier (§10/§11). Residual risk (subtle phrasings) is mitigated by the prompt and
+// documented for Codex. A violation → null → plain-text fallback (never blessed as a structured card).
+import type { ConsultationGrounding } from './grounding';
+
+const ZIWEI_USE = /자미두수\s*(로\s*보|로\s*분석|를\s*보면|에\s*따르면|\s*분석|\s*결과|\s*명반|\s*차트|\s*상)/;
+// Qimen-derived fact reference. Bounded: 기문/기문둔갑 as a source-of-facts (에서/결과/국/으로 보면/…) OR
+// unambiguous Qimen-specific fact terms (값부/값사/值符/值使/八門/九星/八神/九宮/현재 국). The ambiguous bare
+// Korean forms (구성/팔신) are intentionally NOT matched — only the hanja + Qimen romanizations, so ordinary
+// Korean prose is not falsely flagged (Codex PART B2).
+const QIMEN_USE = /기문(둔갑)?\s*(에서|에는|으로\s*보|으로\s*분석|을\s*보면|를\s*보면|\s*보면|에\s*따르면|\s*분석|\s*결과|\s*국|\s*상|\s*판|까지|도\s*(함께|같이|보|분석))|기문\s*국|값부|값사|值符|值使|八門|九星|八神|九宮|현재\s*국세?/;
+// A formal three-engine CONSENSUS claim (Codex PART B4). V1 has NO deterministic cross-engine map, so a
+// strong "all-agree" claim is never grounded. Bounded by concept, not one exact phrase: a consensus
+// PREDICATE co-occurring with a three-engine reference (a "세 학문/엔진/관점" count OR the three names
+// enumerated). Separate sourced perspectives (no agreement predicate) are NOT matched (§B5).
+// SEMANTIC_GUARD_STABILIZATION — "합치" dropped from this list (Codex PART B4 originally included it as a
+// synonym of "일치"). It is ALSO the ordinary stem of "합치다" (to combine/synthesize), which a genuine
+// multi-discipline SUMMARY sentence uses constantly and benignly ("세 학문을 합치면…", "합쳐 보면…") — with
+// no proximity requirement to the engine-triple mention, that made an honest synthesis transition read as a
+// fabricated "all three agree" claim. "일치" alone already covers the actual forbidden claim precisely.
+const CONSENSUS_PRED = /(완전히\s*)?(일치|동일|같은\s*결론|같은\s*결과|공통\s*(결론|점)|모두\s*(같|동일|확정|일치)|전부\s*(같|동일)|한목소리|100\s*%?\s*(동일|일치))/;
+const ENGINE_TRIPLE = /(세\s*(가지\s*)?(학문|역학|엔진|관점)|3\s*(개|가지)\s*(학문|엔진|관점)|세\s*엔진)/;
+const THREE_ENGINE_NAMES = /(명리|사주)[^\n]{0,24}자미(두수)?[^\n]{0,24}기문(둔갑)?|기문(둔갑)?[^\n]{0,24}자미(두수)?[^\n]{0,24}(명리|사주)/;
+function hasMultiEngineConsensus(text: string): boolean {
+  if (!CONSENSUS_PRED.test(text)) return false; // no agreement claim → separate perspectives are fine
+  return ENGINE_TRIPLE.test(text) || THREE_ENGINE_NAMES.test(text);
+}
+// Saju↔Ziwei STRONG full-consensus claim. V1 produces NO deterministic cross-engine domain mapping
+// (§22 — insufficient_evidence is the honest default), so an ABSOLUTE "두 학문이 완전히 일치/모두 …"
+// claim is never grounded and is rejected (§23/§40). SOFT per-engine or "비슷한 방향" language is
+// intentionally NOT matched (§21 permits it): the strong adverb / bare-"일치합니다" / "모두 …" gates below.
+const CROSS_ENGINE_CONSENSUS =
+  /(두\s*학문|두\s*관점)[^\n]{0,12}(완전히|모두|정확히|똑같이|전부)\s*(일치|합치|동일|같)|두\s*학문[^\n]{0,6}일치(합니다|한다|하고|하며)|(사주(와|랑|과|·)\s*자미두수|자미두수(와|랑|과|·)\s*사주)[^\n]{0,16}모두[^\n]{0,14}(일치|동일|강하|좋|많|뛰어|같)/;
+// 2026-09-02 (YONGSHIN_CONSISTENCY_AUDIT F8) — 예외에 `확정되지`/`정해지지` 추가.
+// 이 규칙은 "용신이 X다" 같은 **단정**을 잡으려는 것인데, 정직한 부정 진술
+// ("용신이 확정되지 않아 이 흐름을 길흉으로 단정하지 않습니다." — myungriStrength.ts:291)까지 물어
+// 답변 전체를 폐기하고 있었다. 부정형만 통과시키므로 "용신이 확정되었습니다" 같은 단정은 여전히 잡힌다.
+// 같은 사유로 서버가 스스로 만들던 4개 문장(myungriConsultationJudge.ts)은 "억부용신 방향이/기준으로"
+// 형태로 바꿨다 — 같은 문장이 LLM이 쓰면 답변 전체 폐기이고 서버가 쓰면 정상 출고되던 비대칭을 없앤다.
+const FORBIDDEN_THEORY =
+  /((당신[은는]?\s*)?신강[한\s]*(사주|입니다|합니다|이에요)|(당신[은는]?\s*)?신약[한\s]*(사주|입니다|합니다|이에요)|용신(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정|확정되지|정해지지)\S|격국(은|이)\s*(?!아직|없|미|계산|불명|모름|따로|판정|확정되지|정해지지)\S|(12|십이)\s*운성|(12|십이)\s*신살)/;
+
+function coreProseFields(p: ParsedStructuredConsultation): string[] {
+  return [
+    p.coreSummary,
+    p.disposition,
+    p.coreInterpretation,
+    ...(p.strengths ?? []),
+    ...(p.cautions ?? []),
+    ...(p.domainInterpretation ?? []).map((d) => `${d.title} ${d.body}`),
+  ].filter((x): x is string => typeof x === 'string');
+}
+
+// The MAIN answer body (core prose + futureFlow). An engine/consensus/theory violation HERE makes
+// the whole answer unusable. followUps are validated SEPARATELY (a single bad suggestion is dropped,
+// not the whole answer) — Codex pipeline FIX #2/§7.
+function mainBodyText(p: ParsedStructuredConsultation): string {
+  return [...coreProseFields(p), p.futureFlow]
+    .filter((x): x is string => typeof x === 'string')
+    .join('\n');
+}
+
+// ── evidence-derived timing anchors (Codex pipeline FIX #2 + FIX A) ───────────────────
+type TimingAnchors = {
+  years: Set<number>;
+  months: Set<number>; // grounded CIVIL months as year*100+month (e.g. 202702)
+  referenceYear: number | null;
+  referenceMonth: number | null; // server current civil month — resolves 이번 달/다음 달 (Sprint C.1 §8)
+  ageMin: number | null;
+  ageMax: number | null;
+  hasMonthly: boolean;
+};
+
+function timingAnchorsOf(grounding: ConsultationGrounding): TimingAnchors {
+  const anchors: TimingAnchors = { years: new Set(), months: new Set(), referenceYear: null, referenceMonth: null, ageMin: null, ageMax: null, hasMonthly: false };
+  if (grounding.status !== 'available') return anchors;
+  // Prefer the CIVIL reference year+month (Sprint E.1 §8) so the validator resolves 올해/내년/이번 달/다음 달
+  // exactly as the plan did. The saju 세운 year from ev.timingAnchors is only a fallback (below).
+  anchors.referenceYear = grounding.referenceYear ?? null;
+  anchors.referenceMonth = grounding.referenceMonth ?? null;
+  for (const ev of [grounding.evidence.myungri, grounding.evidence.ziwei, grounding.evidence.qimen]) {
+    const ta = ev.timingAnchors;
+    if (!ta) continue;
+    for (const y of ta.years ?? []) if (Number.isFinite(y)) anchors.years.add(y);
+    for (const m of ta.months ?? []) if (Number.isInteger(m)) anchors.months.add(m);
+    if (typeof ta.referenceYear === 'number' && anchors.referenceYear === null) anchors.referenceYear = ta.referenceYear;
+    if (ta.hasMonthlyEvidence === true) anchors.hasMonthly = true;
+    if (ta.daewoonAgeSpan) {
+      anchors.ageMin = anchors.ageMin === null ? ta.daewoonAgeSpan.min : Math.min(anchors.ageMin, ta.daewoonAgeSpan.min);
+      anchors.ageMax = anchors.ageMax === null ? ta.daewoonAgeSpan.max : Math.max(anchors.ageMax, ta.daewoonAgeSpan.max);
+    }
+  }
+  return anchors;
+}
+
+// FIX A — relative-definite year terms resolved against the reference (current 세운) year.
+const RELATIVE_YEAR: readonly [RegExp, number][] = [
+  [/내후년/, 2],
+  [/내년|명년/, 1],
+  [/올해|금년/, 0],
+];
+
+// A SPECIFIC period NOT covered by the evidence anchors is an unsupported/fabricated timing claim.
+// Covers: explicit "YYYY년"; relative-definite years (올해/내년/내후년) via referenceYear; numeric relative
+// offsets ("3년 뒤/후"); relative months (이번 달/다음 달) via monthly-evidence presence; and ages/decades/
+// life-stages via the Daewoon age span. VAGUE, non-specific language (향후 몇 년, 앞으로, 조만간, 언젠가)
+// carries no resolvable period and is intentionally NOT flagged (§2).
+// SEMANTIC_GUARD_STABILIZATION — "올해 하반기에 대한 근거는 제공되지 않아 특정 시점 평가는 어렵습니다" is an
+// honest DECLINE, not a claim, but the RELATIVE_YEAR check below previously flagged it purely for containing
+// the token "올해" — no hedge-awareness at all, unlike `containsForbiddenCertainty`'s own HEDGE bypass in
+// certaintyGuard.ts. Scoped to a SENTENCE (not the whole text, and not the other checks in this function,
+// which have no reproduced false-positive evidence): a sentence that both mentions the relative year AND
+// explicitly declines/hedges is not an assertion.
+const TIMING_DECLINE_HEDGE =
+  /근거(가|는|를)?\s*(제공되지\s*않|없|부족)|확정(하기|적으로)?\s*(어렵|힘들)|평가(는|하기)?\s*(어렵|할\s*수\s*없)|단정(하기|할\s*수)?\s*(어렵|없)|말씀드리기\s*어렵/;
+function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?。\n])/).map((s) => s.trim()).filter((s) => s.length > 0);
+}
+
+function hasUnsupportedTiming(text: string, anchors: TimingAnchors): boolean {
+  const yearOK = (y: number): boolean => anchors.years.has(y);
+
+  // explicit Gregorian year
+  for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년/g)) {
+    if (!yearOK(Number(m[1]))) return true;
+  }
+  // explicit "YYYY년 M월" — a SPECIFIC month claim is supported ONLY when that (year, month) 월운 was
+  // grounded (§14). This ENABLES a grounded future-month judgment AND closes the prior gap where a bare
+  // "2027년 2월" passed on year-only grounding (the month was never checked).
+  for (const m of text.matchAll(/((?:19|20|21)\d{2})\s*년\s*(\d{1,2})\s*월/g)) {
+    const mm = Number(m[2]);
+    if (mm >= 1 && mm <= 12 && !anchors.months.has(Number(m[1]) * 100 + mm)) return true;
+  }
+  // relative-definite year (올해/내년/내후년) — an ungrounded mention is only a real violation when SOME
+  // sentence actually asserts it; a sentence that hedges/declines in the same breath is not a claim.
+  for (const [re, off] of RELATIVE_YEAR) {
+    if (!re.test(text)) continue;
+    if (anchors.referenceYear !== null && yearOK(anchors.referenceYear + off)) continue; // grounded → fine
+    if (splitSentences(text).some((s) => re.test(s) && !TIMING_DECLINE_HEDGE.test(s))) return true;
+  }
+  // numeric relative offset "N년 뒤/후" (specific). Vague "몇 년/여러 해" has no digit → not matched.
+  for (const m of text.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) {
+    const off = Number(m[1]);
+    if (anchors.referenceYear === null || !yearOK(anchors.referenceYear + off)) return true;
+  }
+  // relative months (Sprint C.1 §8): "다음 달" is allowed ONLY when its resolved civil month is an actual
+  // grounded month anchor (it was asked → its 월운 was computed); otherwise reject. "이번 달" needs 월운 evidence.
+  if (/(다음\s*달|담\s*달|이듬\s*달|다음달)/.test(text)) {
+    if (anchors.referenceYear === null || anchors.referenceMonth === null) return true;
+    const nextIdx = anchors.referenceYear * 12 + (anchors.referenceMonth - 1) + 1;
+    const nextKey = Math.floor(nextIdx / 12) * 100 + ((nextIdx % 12) + 1);
+    if (!anchors.months.has(nextKey)) return true;
+  }
+  if (/(이번\s*달|이달|금월|이번달)/.test(text) && !anchors.hasMonthly) return true;
+
+  // ages / decades / life-stages: with NO Daewoon age span, ANY age claim is unsupported (fail-closed).
+  const hasSpan = anchors.ageMin !== null && anchors.ageMax !== null;
+  const AGE_REF = /\d{1,3}\s*(?:세|살)|[1-9]0\s*대|중년|장년|노년|말년|청년|초년/;
+  if (AGE_REF.test(text) && !hasSpan) return true;
+  if (hasSpan) {
+    for (const m of text.matchAll(/(\d{1,3})\s*(?:세|살)/g)) {
+      const a = Number(m[1]);
+      if (a < (anchors.ageMin as number) || a > (anchors.ageMax as number)) return true;
+    }
+    for (const m of text.matchAll(/([1-9])0\s*대/g)) {
+      const lo = Number(m[1]) * 10; // a decade fully outside the Daewoon span is unsupported
+      if (lo + 9 < (anchors.ageMin as number) || lo > (anchors.ageMax as number)) return true;
+    }
+  }
+  return false;
+}
+
+// Engine-use / consensus / unsupported-theory violation on a piece of text, given the CURRENT engine
+// availability. Shared by the structured validator AND the raw-text safety scan (FIX #1).
+// Returns the FIRST violation reason code, or null. `hasEngineOrConsensusViolation` is the boolean wrapper
+// used by the decision paths; the code is surfaced ONLY for safe diagnostics (no content).
+function engineOrConsensusViolationReason(text: string, grounding: ConsultationGrounding): string | null {
+  const ziweiAvailable = grounding.status === 'available' && grounding.evidence.ziwei.availability === 'available';
+  const qimenAvailable = grounding.status === 'available' && grounding.evidence.qimen.availability === 'available';
+  if (!ziweiAvailable && ZIWEI_USE.test(text)) return 'UNGROUNDED_ZIWEI_CLAIM';
+  if (!qimenAvailable && QIMEN_USE.test(text)) return 'UNGROUNDED_QIMEN_CLAIM';
+  if (hasMultiEngineConsensus(text)) return 'CONSENSUS_CLAIM_MISMATCH'; // formal 3-engine consensus (no V1 cross-map)
+  if (CROSS_ENGINE_CONSENSUS.test(text)) return 'CROSS_ENGINE_CONSENSUS'; // fake Saju↔Ziwei full consensus
+  if (FORBIDDEN_THEORY.test(text)) return 'FORBIDDEN_THEORY'; // 신강/신약/용신/격국/12운성/12신살
+  return null;
+}
+function hasEngineOrConsensusViolation(text: string, grounding: ConsultationGrounding): boolean {
+  return engineOrConsensusViolationReason(text, grounding) !== null;
+}
+
+/** A single semantic safety scan (engine + consensus + theory + unsupported timing) over any text. */
+export function hasSemanticViolation(text: string, grounding: ConsultationGrounding): boolean {
+  return hasEngineOrConsensusViolation(text, grounding) || hasUnsupportedTiming(text, timingAnchorsOf(grounding));
+}
+
+/**
+ * Reconcile the parsed structured output with the deterministic grounding. Returns the cleaned result,
+ * or null when a SEMANTIC safety violation makes it unusable:
+ *  - false Ziwei/Qimen use, multi-engine or Saju↔Ziwei "consensus", unsupported theory (any field
+ *    incl. followUps) → reject (null).
+ *  - unsupported specific timing (연도/나이 not in evidence anchors) in a CORE prose field → reject.
+ *  - `futureFlow` with no timing evidence OR an unsupported period → dropped (never fabricated timing).
+ *  - followUps asserting unsupported timing or an unconnected-engine/theory claim → individually dropped.
+ */
+export function validateStructuredAgainstGrounding(
+  parsed: ParsedStructuredConsultation,
+  grounding: ConsultationGrounding,
+): ParsedStructuredConsultation | null {
+  const hasTiming = grounding.status === 'available' && grounding.evidence.myungri.hasTimingEvidence === true;
+  const anchors = timingAnchorsOf(grounding);
+
+  // (1) Engine/consensus/theory violation in the MAIN body (core prose + futureFlow) → reject whole.
+  if (hasEngineOrConsensusViolation(mainBodyText(parsed), grounding)) return null;
+
+  // (2) Unsupported specific period inside CORE prose (a year cannot be safely excised from prose) → reject.
+  if (hasUnsupportedTiming(coreProseFields(parsed).join('\n'), anchors)) return null;
+
+  // (3) futureFlow: needs timing evidence AND every period it names must be evidence-supported.
+  let futureFlow = parsed.futureFlow;
+  if (futureFlow && (!hasTiming || hasUnsupportedTiming(futureFlow, anchors))) futureFlow = undefined;
+
+  // (4) followUps: drop any that carry an unsupported period or an unconnected-engine/theory claim.
+  const cleanedFollowUps = (parsed.followUps ?? []).filter(
+    (f) => !hasUnsupportedTiming(f, anchors) && !hasEngineOrConsensusViolation(f, grounding),
+  );
+
+  return {
+    ...parsed,
+    futureFlow,
+    followUps: cleanedFollowUps.length > 0 ? cleanedFollowUps : undefined,
+  };
+}
+
+// ── FIX #1: typed outcome so SEMANTIC rejection never leaks the raw model text ────────────────
+// A safe generic message shown when the model output is semantically unsafe. NEVER a fabricated
+// interpretation — it simply asks the user to retry. The raw (unsafe) text is discarded.
+// Shown ONLY on a genuine safety/structural failure (never a mere granularity mismatch — those now
+// resolve to a supported-scope answer + alternative). No user-blame (§9/§33): the question was valid, so
+// this reads as a transient retry, not "ask differently".
+export const SEMANTIC_REJECTION_MESSAGE =
+  '죄송합니다. 지금은 답변을 정리하는 중에 문제가 있었어요. 잠시 후 다시 시도해 주세요.';
+
+export type ConsultationOutcome =
+  | { kind: 'ACCEPTED'; result: ParsedStructuredConsultation }
+  | { kind: 'STRUCTURAL_FALLBACK'; text: string }
+  | { kind: 'SEMANTIC_REJECTED'; reason: string };
+
+/**
+ * Classify a raw LLM response for safe rendering (Codex pipeline FIX #1). Distinguishes:
+ *  - ACCEPTED           → valid structured long-form that passed grounding validation.
+ *  - STRUCTURAL_FALLBACK → not the structured schema, but the raw prose is semantically SAFE to show.
+ *  - SEMANTIC_REJECTED   → a safety/evidence violation (false engine, fake consensus, unsupported theory
+ *                          or timing). The raw text is NEVER shown; the caller uses a safe message.
+ * The critical property: a semantic violation in EITHER the structured JSON OR the raw prose blocks
+ * the raw text from ever reaching the user as a fallback.
+ */
+export function classifyConsultationOutput(
+  rawText: string,
+  grounding: ConsultationGrounding,
+): ConsultationOutcome {
+  const parsed = parseStructuredConsultation(rawText);
+  if (parsed) {
+    const validated = validateStructuredAgainstGrounding(parsed, grounding);
+    return validated
+      ? { kind: 'ACCEPTED', result: validated }
+      : { kind: 'SEMANTIC_REJECTED', reason: 'structured_semantic_violation' };
+  }
+  // Parse did not yield an accepted card. CRITICAL (§4): the RAW model JSON must NEVER reach the user. If
+  // the output was a structured-JSON attempt, compose readable prose from whatever fields survived and use
+  // THAT as the fallback text (subject to the same semantic checks). Genuine prose passes through as-is.
+  const salvaged = salvageStructuredText(rawText);
+  const candidate = salvaged ?? rawText;
+  if (hasSemanticViolation(candidate, grounding)) {
+    return { kind: 'SEMANTIC_REJECTED', reason: 'raw_semantic_violation' };
+  }
+  // Last-resort guard: if the text still looks like a raw JSON payload (unparseable JSON we could not turn
+  // into prose), do NOT leak it — fall back to the safe message instead.
+  if (salvaged === null && looksLikeStructuredJson(rawText)) {
+    return { kind: 'SEMANTIC_REJECTED', reason: 'unrenderable_structured_json' };
+  }
+  return { kind: 'STRUCTURAL_FALLBACK', text: candidate };
+}
+
+// Turn a structured-JSON payload that failed the card gate into readable prose (never raw JSON, §4).
+// Returns null when the text is not a JSON object carrying consultation content.
+function salvageStructuredText(rawText: string): string | null {
+  const raw = extractJson(rawText);
+  if (raw === null || typeof raw !== 'object') return null;
+  const p = mapStructuredFields(raw as Record<string, unknown>);
+  const hasContent =
+    !!p.coreSummary ||
+    !!p.coreInterpretation ||
+    (p.strengths?.length ?? 0) > 0 ||
+    (p.cautions?.length ?? 0) > 0 ||
+    (p.domainInterpretation?.length ?? 0) > 0;
+  if (!hasContent) return null;
+  const composed = composeConsultationText(p).trim();
+  return composed.length > 0 ? composed : null;
+}
+
+// Heuristic: does the text look like a raw structured-JSON payload (so it must never be shown verbatim)?
+function looksLikeStructuredJson(text: string): boolean {
+  return (
+    /"(coreSummary|coreInterpretation|strengths|cautions|domainInterpretation|futureFlow|followUps)"\s*:/.test(text) ||
+    /^\s*[{[]/.test(text)
+  );
+}
+
+// DIAGNOSTIC ONLY (safe, no content): the specific reason a raw model output was NOT rendered as an
+// accepted card, for the Edge's [chat.diag] logs. It re-derives the reason and changes no decision. Codes:
+// FORBIDDEN_THEORY | CROSS_ENGINE_CONSENSUS | CONSENSUS_CLAIM_MISMATCH | UNGROUNDED_ZIWEI_CLAIM |
+// UNGROUNDED_QIMEN_CLAIM | TIMING_CLAIM_MISMATCH | SUBSTANCE_GATE_FAILED | UNRENDERABLE_STRUCTURED_JSON |
+// PARSE_FAILED | STRUCTURAL_FALLBACK | NONE.
+export function firstStructuredRejectionReason(rawText: string, grounding: ConsultationGrounding): string {
+  const anchors = timingAnchorsOf(grounding);
+  const parsed = parseStructuredConsultation(rawText);
+  if (parsed) {
+    const eng = engineOrConsensusViolationReason(mainBodyText(parsed), grounding);
+    if (eng) return eng;
+    if (hasUnsupportedTiming(coreProseFields(parsed).join('\n'), anchors)) return 'TIMING_CLAIM_MISMATCH';
+    return 'NONE'; // would have been ACCEPTED
+  }
+  const salvaged = salvageStructuredText(rawText);
+  const candidate = salvaged ?? rawText;
+  const eng = engineOrConsensusViolationReason(candidate, grounding);
+  if (eng) return eng;
+  if (hasUnsupportedTiming(candidate, anchors)) return 'TIMING_CLAIM_MISMATCH';
+  if (looksLikeStructuredJson(rawText)) {
+    // Split the old catch-all UNRENDERABLE_STRUCTURED_JSON into precise structural categories (§7).
+    const obj = extractJson(rawText);
+    if (obj === null) return jsonExtractFailureKind(rawText); // JSON_TRUNCATED | JSON_PARSE_FAILED
+    if (typeof obj !== 'object') return 'JSON_SHAPE_INVALID';
+    const p = mapStructuredFields(obj as Record<string, unknown>);
+    if (!p.coreSummary || !p.coreInterpretation) return 'REQUIRED_FIELD_MISSING';
+    return 'SUBSTANCE_GATE_FAILED'; // fields present but too shallow for a card
+  }
+  return 'STRUCTURAL_FALLBACK';
+}
+
+// Distinguish a TRUNCATED structured payload (no/too-few closing braces → cut off) from a genuine JSON
+// syntax error (balanced braces but still unparseable). Content-free.
+function jsonExtractFailureKind(text: string): string {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fence ? fence[1] : text;
+  const opens = (candidate.match(/\{/g) ?? []).length;
+  const closes = (candidate.match(/\}/g) ?? []).length;
+  return candidate.lastIndexOf('}') === -1 || opens > closes ? 'JSON_TRUNCATED' : 'JSON_PARSE_FAILED';
+}
+
+/** A readable plain-text rendering (for message persistence + the non-structured fallback). */
+export function composeConsultationText(p: ParsedStructuredConsultation): string {
+  const blocks: string[] = [];
+  if (p.coreSummary) blocks.push(p.coreSummary);
+  if (p.disposition) blocks.push(`[기본 성향]\n${p.disposition}`);
+  if (p.coreInterpretation) blocks.push(p.coreInterpretation);
+  if (p.strengths?.length) blocks.push(`[강점]\n${p.strengths.map((s) => `· ${s}`).join('\n')}`);
+  if (p.cautions?.length) blocks.push(`[주의할 점]\n${p.cautions.map((s) => `· ${s}`).join('\n')}`);
+  for (const d of p.domainInterpretation ?? []) blocks.push(`[${d.title}]\n${d.body}`);
+  if (p.futureFlow) blocks.push(`[앞으로의 흐름]\n${p.futureFlow}`);
+  return blocks.join('\n\n');
+}

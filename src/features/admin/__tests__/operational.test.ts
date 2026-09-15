@@ -1,3 +1,9 @@
+let rpcRow: Record<string, unknown> = {};
+jest.mock('@/services/supabase', () => ({
+  __esModule: true,
+  getSupabaseClient: () => ({ rpc: async () => ({ data: rpcRow, error: null }) }),
+}));
+
 // Coverage for the admin operational cost logic (directive §10/§13): computeCost
 // and the honest usage aggregator (never fabricates a total for unpriced models).
 import {
@@ -86,5 +92,44 @@ describe('aggregateUsageCost', () => {
     const a = aggregateUsageCost(rows('gpt-a', 2), {});
     expect(a.cost).toBeNull();
     expect(a.totalRequests).toBe(2);
+  });
+});
+
+// ── ⚠ 정정 (2026-09-06) — "대시보드는 부분 응답 방어가 없다" 는 **틀린 보고였다** ────────────────
+//
+// §7.28 에 그렇게 적었다. 근거는 렌더 테스트에서 지표 필드를 빠뜨린 mock 이 `toLocaleString` 에서
+// 크래시한 것이었는데, 그 mock 은 **서비스를 우회**했다. 실제 경로에서는 `toOverview` 가 모든 필드를
+// `num()` 으로 강제 변환하므로(누락·null·문자열 → 0) 화면이 undefined 를 볼 일이 없다.
+//
+// 같은 종류의 오판이 이번이 두 번째다(지갑의 `+NaN덕` 도 mock 이 `rewardAmount` 를 빠뜨린 것이었다).
+// **mock 이 서비스를 건너뛰면 화면 결함이 아니라 mock 결함을 보게 된다.** 그래서 화면이 기대는
+// 서비스 계약을 여기서 잠근다 — 이쪽이 진짜 방어선이다.
+// 실제 경로로 검사한다 — `toOverview` 를 테스트용으로 export 하면 프로덕션에 테스트 전용 구멍이 생긴다.
+describe('⚠ 대시보드 개요 — 부분 응답을 서비스가 정규화한다 (화면이 기대는 계약)', () => {
+  const FIELDS = [
+    'userCount', 'subjectCount', 'conversationCount', 'conversationToday',
+    'aiRequestCount', 'aiSuccessCount', 'aiErrorCount',
+    'aiInputTokens', 'aiOutputTokens', 'aiTodayRequestCount',
+  ] as const;
+
+  const overviewFrom = async (row: Record<string, unknown>) => {
+    rpcRow = row;
+    const { adminOpsService } = await import('@/features/admin/services/adminOpsService');
+    return adminOpsService.getDashboardOverview();
+  };
+
+  it('빈 응답이어도 열 필드가 모두 숫자다 — undefined 가 화면에 도달하지 않는다', async () => {
+    const out = await overviewFrom({});
+    for (const f of FIELDS) {
+      expect(typeof out[f]).toBe('number');
+      expect(Number.isFinite(out[f])).toBe(true);
+    }
+  });
+
+  it('null·문자열·NaN 도 0 으로 접힌다', async () => {
+    const out = await overviewFrom({ user_count: null, ai_request_count: 'abc', ai_error_count: '17' });
+    expect(out.userCount).toBe(0);
+    expect(out.aiRequestCount).toBe(0);
+    expect(out.aiErrorCount).toBe(17); // 숫자 문자열은 살린다
   });
 });

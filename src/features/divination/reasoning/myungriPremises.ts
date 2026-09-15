@@ -1,0 +1,468 @@
+// V4A §14 — MYUNGRI PREMISE CONSTRUCTION. Runs BEFORE any stance exists.
+//
+// Every premise below is an interpretation of a fact the frozen engine already computed, licensed by doctrine
+// this repository has ALREADY adopted (§26 freezes new doctrine for this sprint):
+//   · 궁위: 년=뿌리·집안 / 월=사회·직업 / 일=배우자·자기 / 시=말년·결과   (myungriLayer POSITION_AXIS)
+//   · 십신 family → 삶의 축                                              (tenGodJudgmentDomain)
+//   · 충·형 = 자리를 흔드는 구조적 타격, 파·해 = 가벼운 마찰, 합 = 맞물림  (myungriLayer KIND sets)
+//   · 통근(同干) / 득령                                                   (frozen rooting + month-command)
+//   · 겁재(ROB_WEALTH) = 같은 몫을 두고 겨루는 십신                        (canonical 십신 identity)
+//
+// WHAT IS DELIBERATELY *NOT* DONE HERE. The V3 judge wrote conjunctions inline —
+// `if (robbingLayer && chartHasWealth) leakage.push(...)` — which is a static rule masquerading as reasoning:
+// the two facts never exist separately, so nothing can test whether either one mattered. Here they become TWO
+// premises, and a named derivation rule combines them. That is what makes the resulting conclusion inspectable
+// and what makes the metamorphic test (remove one premise, watch the conclusion change) possible at all.
+import type {
+  DataReliability, JudgmentDomain, QuestionIntent,
+} from '../contracts';
+import { domainFamily, type NatalBaseline } from '../myungriNatal';
+import type { LayerAnalysis } from '../myungriLayer';
+import { tenGodJudgmentDomain, type TenGodFamily } from '../myungriJudge';
+import type { MyungriStructuralV2Result, SeasonRoleFact } from '../myungriStructuralV2';
+import type { MyungriYongshinResult, TreatmentRationale } from '../myungriYongshin';
+import type { ConsultationJudgeDomain, DomainJudgeResult } from '../myungriConsultationJudge';
+import type { FiveElement } from '@/features/interpretation';
+import {
+  natalSeatPairTarget, natalSeatTarget, nextId, target, consultationJudgeTarget, type DivinationPremise,
+} from './kernel';
+
+const FAMILY_LABEL: Record<TenGodFamily, string> = {
+  WEALTH: '재물', OFFICER: '자리·책임', OUTPUT: '활동·표현', PEER: '경쟁·동료', RESOURCE: '지원·배움',
+};
+const SCOPE_LABEL = {
+  NATAL: '타고난 바탕', DAEWOON: '지금의 큰 흐름', SEWOON: '올해 흐름',
+  WOLWOON: '이 시기 흐름', PRESENT_MOMENT: '지금 시점', UNSCOPED: '전반 흐름',
+} as const;
+
+/** Which axis a 십신 family natively answers. Reused, not redefined. */
+const FAMILY_AXIS: Record<TenGodFamily, JudgmentDomain> = {
+  WEALTH: 'MONEY_INFLOW', OFFICER: 'CAREER', OUTPUT: 'OPPORTUNITY',
+  PEER: 'INFLUENCE', RESOURCE: 'GENERAL',
+};
+
+export type MyungriPremiseInput = {
+  subject: string;
+  questionIntent: QuestionIntent;
+  askedAxis: JudgmentDomain;
+  baseline: NatalBaseline | null;
+  layers: LayerAnalysis[];
+  reliability: DataReliability;
+  /**
+   * The frozen Myungri Structural V2 judgment graph's result for this chart, when the chart HAS the
+   * inputs that judgment needs (`NatalStructureInput.strengthInputs` present) — computed by the
+   * caller (`reasoning/myungriReasoner.ts`) via `judgeMyungriStructuralV2FromStrengthInputs`. `null`
+   * only when those inputs are genuinely absent (no chart, or the frozen fact services themselves
+   * could not compute them) — never when a result was computed but happened to be UNRESOLVED, which
+   * is itself a real (not blocked) result and is reported as one below.
+   */
+  structuralV2?: MyungriStructuralV2Result | null;
+  /**
+   * Myungri Yongshin V1's result (`../myungriYongshin.ts`), computed by the caller
+   * (`reasoning/myungriReasoner.ts`) from the SAME `structuralV2` result above plus natal-relation and
+   * ten-god facts — never recomputed here. `null` only when Structural V2 itself never ran.
+   */
+  yongshin?: MyungriYongshinResult | null;
+  /**
+   * Myungri Consultation Judge V1 results (`../myungriConsultationJudge.ts`) to surface as premises —
+   * ONLY the domain(s) this turn actually routed to (the asked matter, plus TIMING when the question
+   * asks about timing), never all 7 unconditionally; computed by the caller. Empty when no domain
+   * routed (e.g. HEALTH_ENERGY/CONFLICT/DECISION/GENERAL questions, outside this V1's 7 domains) or
+   * Structural V2 never ran.
+   */
+  consultationJudgments?: DomainJudgeResult[];
+};
+
+const CONSULTATION_DOMAIN_AXIS: Record<ConsultationJudgeDomain, JudgmentDomain> = {
+  BUSINESS: 'OPPORTUNITY', MONEY: 'MONEY_INFLOW', CAREER: 'CAREER', LOVE: 'RELATION_BOND',
+  REUNION: 'RELATION_STABILITY', CHANGE: 'MOVEMENT', TIMING: 'TIMING',
+};
+
+const STRENGTH_CLASSIFICATION_LABEL: Record<string, string> = {
+  STRONG_LEANING: '일간이 계절과 뿌리 양쪽에서 힘을 받는 구조입니다.',
+  WEAK_LEANING: '일간이 계절과 뿌리 양쪽에서 힘을 받지 못하는 구조입니다.',
+  MIXED_EVIDENCE: '일간의 계절과 뿌리가 서로 다른 방향을 가리켜, 구조적 방향을 하나로 단정하지 않습니다.',
+  UNRESOLVED: '시주 등 필요한 정보가 확정되지 않아 일간의 구조적 방향을 판단하지 않습니다.',
+};
+
+/**
+ * 강약 라벨을 **사실과 맞는** 한 문장으로. 판정은 이미 끝났고 여기서는 문장만 고른다.
+ *
+ * 2026-09-02 수리 (YONGSHIN_CONSISTENCY_AUDIT §2 F1). 위 표는 `STRONG_LEANING` 을 언제나
+ * "계절과 뿌리 **양쪽**에서 힘을 받는다"로 내보냈다. 그런데 `runStructuralSynthesis` 는 계절이
+ * `NEUTRAL`(休)이면 **뿌리만으로** ANCHORED 를 준다 — 계절은 아무것도 기여하지 않았는데 기여했다고
+ * 사용자에게 말하고 있었다. 같은 파일의 구조 판정기 자신도 그 상태를 "계절이 일간의 힘을 밀지도
+ * 빼지도 않습니다(休)"로 서술한다(myungriStructuralV2.ts:179). 이 문장은 실제 전달문으로 나갔다
+ * (docs/DIVINATION_QA_PACK.md).
+ *
+ * 고친 것은 **문장뿐이다.** 분류·방향·후속 판정은 한 글자도 바뀌지 않는다.
+ *
+ * `WEAK_LEANING` 은 그대로 둔다: 부정 진술이라 도달 가능한 세 계절(NEUTRAL/DRAINED/OPPOSED)
+ * 모두에서 참이다. 거짓이 아닌 문장을 고치면 근거 없이 출고물만 흔든다.
+ */
+function strengthAssertionText(classification: string, seasonFact: SeasonRoleFact | undefined): string {
+  if (classification === 'STRONG_LEANING' && seasonFact === 'NEUTRAL') {
+    return '일간이 뿌리에서 힘을 받고, 계절은 힘을 더하지도 빼지도 않는 구조입니다.';
+  }
+  return STRENGTH_CLASSIFICATION_LABEL[classification];
+}
+
+const ELEMENT_LABEL: Record<FiveElement, string> = {
+  WOOD: '목(木)', FIRE: '화(火)', EARTH: '토(土)', METAL: '금(金)', WATER: '수(水)',
+};
+const RATIONALE_LABEL: Record<TreatmentRationale, string> = {
+  EOKBU: '억부', JOHOO: '조후', TONGGWAN: '통관', BYEONGYAK: '병약', SPECIAL_STRUCTURE_CONSTRAINT: '특수구조 제약',
+};
+
+export function buildMyungriPremises(input: MyungriPremiseInput): DivinationPremise[] {
+  const { subject, questionIntent, askedAxis, baseline, layers, reliability } = input;
+  const out: DivinationPremise[] = [];
+
+  const base = (over: Partial<DivinationPremise> & Pick<DivinationPremise,
+    'target' | 'questionAxis' | 'temporalScope' | 'semanticRelation' | 'concept' | 'assertion' | 'role' | 'doctrineReference'>,
+  ): DivinationPremise => ({
+    id: nextId('mp'),
+    discipline: 'MYUNGRI',
+    sourceFactIds: [],
+    subject,
+    questionIntent,
+    reliability,
+    applicability: over.questionAxis === askedAxis ? 'DIRECT' : 'CONTEXTUAL',
+    ...over,
+  });
+
+  // ── NATAL: which axes this chart is natively built around, and which it is not ─────────────────
+  if (baseline) {
+    for (const fam of Object.keys(baseline.familyPresence) as TenGodFamily[]) {
+      const count = baseline.familyPresence[fam];
+      const axis = FAMILY_AXIS[fam];
+      if (count > 0) {
+        out.push(base({
+          sourceFactIds: [`원국 ${FAMILY_LABEL[fam]} ${count}자리`],
+          target: target('TEN_GOD_FAMILY', fam, `원국 ${FAMILY_LABEL[fam]}`),
+          questionAxis: axis,
+          temporalScope: 'NATAL',
+          // V4B §10 — the count NO LONGER changes the semantic relation. `count >= 2 ? 'ENABLES' : 'SUPPORTS'`
+          // silently made "two seats" mean "can carry this axis" and "one seat" mean merely "present", which is
+          // an astrology claim with no adopted doctrine behind the boundary. The count survives as FACTUAL
+          // metadata in the source fact and in the wording; it no longer creates significance by itself.
+          semanticRelation: 'SUPPORTS',
+          concept: 'NATAL_FAMILY',
+          assertion: `${FAMILY_LABEL[fam]} 쪽 자리가 원국에 ${count}곳 있다.`,
+          role: 'DESCRIBES',
+          doctrineReference: '십신 배치 → 축 (frozen 십신 분포)',
+        }));
+      } else {
+        // Absence is a FACT, and it is the premise that lets "기회는 와도 받을 그릇이 없다" be derived later.
+        out.push(base({
+          sourceFactIds: [`원국 ${FAMILY_LABEL[fam]} 없음`],
+          target: target('TEN_GOD_FAMILY', fam, `원국 ${FAMILY_LABEL[fam]}`),
+          questionAxis: axis,
+          temporalScope: 'NATAL',
+          semanticRelation: 'ABSENT',
+          concept: 'NATAL_FAMILY',
+          assertion: `${FAMILY_LABEL[fam]} 쪽을 받쳐 줄 자리가 원국에 없다.`,
+          role: 'QUALIFIES',
+          doctrineReference: '십신 배치 → 축 (frozen 십신 분포)',
+        }));
+      }
+    }
+
+    if (baseline.inCommand !== null) {
+      out.push(base({
+        sourceFactIds: [baseline.inCommand ? '원국 득령' : '원국 실령'],
+        target: target('DAY_MASTER_FOOTING', 'SEASON', '일간의 계절 기반'),
+        concept: 'SEASONAL_FOOTING',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: baseline.inCommand ? 'ENABLES' : 'CONSTRAINS',
+        assertion: baseline.inCommand
+          ? '계절의 기운을 등에 업고 있어, 흐름이 올 때 밀고 나갈 힘이 있다.'
+          : '계절의 기운을 얻지 못해, 좋은 흐름이 와도 혼자 밀어붙이면 힘에 부친다.',
+        role: 'QUALIFIES',
+        applicability: 'CONTEXTUAL',
+        doctrineReference: '월령 득령/실령 (frozen month-command)',
+      }));
+    }
+
+    if (baseline.anchored !== 'UNKNOWN') {
+      out.push(base({
+        sourceFactIds: [`원국 통근 ${baseline.anchored}`],
+        target: target('DAY_MASTER_FOOTING', 'ROOT', '일간의 뿌리'),
+        concept: 'ROOTING',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: baseline.anchored === 'FLOATING' ? 'WEAKENS' : 'STABILIZES',
+        assertion: baseline.anchored === 'ROOTED'
+          ? '뿌리가 실리는 자리(월지·일지)에 박혀 있어, 흔들려도 되돌아오는 바탕이 있다.'
+          : baseline.anchored === 'PARTLY_ROOTED'
+            ? '뿌리가 일부만 있어, 받쳐 주는 자리에서만 오래 간다.'
+            : '뿌리가 없어 벌인 일이 오래 남기 어렵다.',
+        role: 'QUALIFIES',
+        applicability: 'CONTEXTUAL',
+        doctrineReference: '통근(同干) (frozen rooting)',
+      }));
+    }
+
+    if (baseline.spouseSeatStrained) {
+      out.push(base({
+        sourceFactIds: ['원국 일지 충·형·파·해'],
+        target: target('NATAL_SEAT', 'DAY', '원국 일지(배우자·자기 자리)'),
+        concept: 'NATAL_SEAT_STRAIN',
+        questionAxis: 'RELATION_STABILITY',
+        temporalScope: 'NATAL',
+        semanticRelation: 'DESTABILIZES',
+        assertion: '타고난 배우자 자리 자체가 흔들리는 구조다.',
+        role: 'ASSERTS',
+        doctrineReference: '궁위: 일지=배우자·자기 자리',
+      }));
+    }
+
+    for (const friction of baseline.natalFrictions) {
+      const seatPair = natalSeatPairTarget(friction.positions[0], friction.positions[1] ?? friction.positions[0]);
+      out.push(base({
+        sourceFactIds: [`원국 ${friction.label}`],
+        target: seatPair,
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'DESTABILIZES',
+        concept: 'NATAL_SEAT_STRAIN',
+        assertion: `${seatPair.label} 사이가 원국에서 이미 부딪히는 구조다.`,
+        role: 'QUALIFIES',
+        applicability: 'BACKGROUND',
+        doctrineReference: '원국 합충형파해 (frozen natal relations)',
+      }));
+    }
+  }
+
+  // ── TEMPORAL LAYERS: what is moving now, and exactly which natal seat it lands on ───────────────
+  for (const layer of layers) {
+    const where = SCOPE_LABEL[layer.scope];
+
+    // The layer's own 십신 says WHICH axis is being activated at this time level.
+    out.push(base({
+      sourceFactIds: [`${where} ${FAMILY_LABEL[layer.family]}`],
+      target: target('TEN_GOD_FAMILY', layer.family, `${where}의 ${FAMILY_LABEL[layer.family]}`),
+      concept: 'LAYER_ACTIVATION',
+      questionAxis: FAMILY_AXIS[layer.family],
+      temporalScope: layer.scope,
+      semanticRelation: 'ACTIVATES',
+      assertion: `${where}에 ${FAMILY_LABEL[layer.family]} 쪽 기운이 들어와 이 축이 실제로 움직인다.`,
+      role: 'ASSERTS',
+      doctrineReference: '십신 배치 → 축 (frozen 십신 분포)',
+    }));
+
+    // 겁재 is emitted on its OWN terms — a competitor for the same share. Whether that MATTERS depends on
+    // whether there is a share to contest, which is a different premise and therefore a real derivation.
+    if (layer.robWealth) {
+      out.push(base({
+        sourceFactIds: [`${where} 겁재`],
+        target: target('LUCK_LAYER', `${layer.scope}:RIVAL`, `${where}의 겁재`),
+        concept: 'RIVAL_CLAIM',
+        questionAxis: 'INFLUENCE',
+        temporalScope: layer.scope,
+        semanticRelation: 'OPPOSES',
+        assertion: `${where}에 같은 몫을 두고 겨루는 기운이 들어온다.`,
+        role: 'ASSERTS',
+        doctrineReference: '겁재(ROB_WEALTH) = 같은 몫을 두고 겨루는 십신',
+      }));
+    }
+
+    // Each relation the layer forms with the natal chart, keeping KIND and the exact seat it struck.
+    for (const hit of layer.hits) {
+      // V4D §33 — the seat's TARGET LABEL comes from the seat; the RELATION KIND stays in the assertion,
+      // where it belongs. V4C keyed `NATAL_SEAT:DAY` with a label split off `hit.evidence.fact`, so two hits
+      // on 일주 produced one key with two labels ("원국 일주 천간충" / "원국 일주 지지형") — and the label is
+      // interpolated into assertion text, which `screenSynthesis` and the certification harness COMPARE.
+      const struck = hit.evidence.fact.split('→ ')[1] ?? hit.kind;
+      out.push(base({
+        sourceFactIds: [hit.evidence.fact],
+        target: natalSeatTarget(hit.position),
+        concept: 'SEAT_CONTACT',
+        questionAxis: hit.axis,
+        temporalScope: layer.scope,
+        semanticRelation: hit.friction ? (hit.heavy ? 'DESTABILIZES' : 'CONSTRAINS') : 'CONNECTS',
+        assertion: hit.friction
+          ? hit.heavy
+            ? `${where}이 ${struck}를 정면으로 흔든다.`
+            : `${where}이 ${struck}에 마찰을 일으킨다.`
+          : `${where}이 ${struck}와 맞물려 풀린다.`,
+        role: 'ASSERTS',
+        doctrineReference: '궁위 + 합충형파해 (frozen relations to natal)',
+      }));
+    }
+
+    // Silence is a fact too, and it must never be read as a quiet yes.
+    if (layer.silent) {
+      out.push(base({
+        sourceFactIds: [`${where} 원국과 무관계`],
+        target: target('LUCK_LAYER', layer.scope, where),
+        concept: 'LAYER_SILENT',
+        questionAxis: 'GENERAL',
+        temporalScope: layer.scope,
+        semanticRelation: 'ABSENT',
+        assertion: `${where}은 원국의 어느 자리와도 관계를 맺지 않는다.`,
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: '관계 부재 (frozen relations to natal)',
+      }));
+    }
+  }
+
+  // ── DAY-MASTER STRENGTH (Myungri Structural V2, frozen judgment graph — see myungriStructuralV2.ts)
+  //
+  // Was a permanent DOCTRINE_BLOCK premise until the Structural V2 graph was frozen and implemented.
+  // `strengthView.classification` now speaks for itself; `role: 'QUALIFIES'`/`'DESCRIBES'` and
+  // `applicability: 'CONTEXTUAL'`/`'BACKGROUND'` (never 'ASSERTS') mean this premise NEVER enters
+  // `primitivePropositions`/`runDerivations` (those only lift `role === 'ASSERTS'` premises) — exactly
+  // the same non-competing shape the withheld premise it replaces always had. It is surfaced to the
+  // user via the SAME `directEvidence`/`factGroupsUsed` mechanism `myungriReasoner.ts` already used
+  // for the withheld marker (see that file's `STRUCTURAL_V2:`-prefixed `doctrineReference` handling).
+  //
+  // 용신(Yongshin) is reported separately below, from Myungri Yongshin V1's own result — Structural V2
+  // itself still supplies only 강약(strength), never 용신.
+  if (input.structuralV2) {
+    const r = input.structuralV2;
+    if (r.capability === 'AVAILABLE') {
+      const directional = r.strengthView.classification === 'STRONG_LEANING'
+        || r.strengthView.classification === 'WEAK_LEANING';
+      let assertion = strengthAssertionText(r.strengthView.classification, r.seasonFact);
+      if (r.specialStructureStatus.status === 'CANDIDATE') {
+        // §6 — CANDIDATE is carried as supporting structural metadata alongside the strength read; it
+        // never becomes its own verdict and never gates/replaces strengthView.
+        assertion += ' 다만 이 배치는 특수구조(종격 등) 후보 조건도 보여, 후속 검토가 필요합니다.';
+      }
+      out.push(base({
+        sourceFactIds: [`일간 강약: ${r.strengthView.classification} (Myungri Structural V2)`],
+        target: target('DAY_MASTER_FOOTING', 'STRENGTH', '일간의 구조적 강약'),
+        concept: 'DAY_MASTER_STRENGTH',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: r.strengthView.classification === 'STRONG_LEANING' ? 'ENABLES'
+          : r.strengthView.classification === 'WEAK_LEANING' ? 'CONSTRAINS'
+            : 'ABSENT', // MIXED_EVIDENCE / UNRESOLVED — no directional claim, never mapped to BALANCED
+        assertion,
+        role: directional ? 'QUALIFIES' : 'DESCRIBES',
+        applicability: directional ? 'CONTEXTUAL' : 'BACKGROUND',
+        doctrineReference: `STRUCTURAL_V2: 일간 강약(구조) — frozen judgment graph ${r.graphVersion}`,
+      }));
+    } else {
+      out.push(base({
+        sourceFactIds: [`일간 강약: 판정 보류(${r.reason})`],
+        // Reuses the SAME registered DOCTRINE_GAP id the pre-existing withheld premise used
+        // ('STRENGTH_YONGSHIN' — the only id registered for this kind besides 'AXIS:...', see
+        // reasoning/targets.ts's FOOTING/DOCTRINE_GAP validators) rather than minting a new one.
+        target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '일간 강약'),
+        concept: 'DOCTRINE_BLOCK',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'ABSENT',
+        assertion: r.reason,
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: 'BLOCKED: 일간 강약 판정에 필요한 입력 부족',
+      }));
+    }
+    // ── 억부용신 (Myungri Yongshin V1 — ../myungriYongshin.ts) ─────────────────────────────────
+    //
+    // Was a permanent DOCTRINE_BLOCK premise (Yongshin declared out of scope) until Yongshin V1 was
+    // frozen and implemented on top of Structural V2. Same non-competing shape as the strength premise
+    // above: `role: 'QUALIFIES'`/`'DESCRIBES'` (never 'ASSERTS') means this premise never enters
+    // `primitivePropositions`/`runDerivations` — it is reported to the user via `directEvidence`/
+    // `factGroupsUsed`, never treated as a derivation-eligible claim.
+    const y = input.yongshin;
+    if (y && (y.status === 'SELECTED' || y.status === 'MULTI_CANDIDATE')) {
+      const primaryText = y.primaryCandidate
+        ? `1차 치료 방향은 ${ELEMENT_LABEL[y.primaryCandidate]}입니다.`
+        : '서로 다른 방향이 함께 성립해 1차 치료 방향을 하나로 단정하지 않습니다.';
+      const supportingText = y.supportingCandidates.length > 0
+        ? ` 함께 쓸 수 있는 방향은 ${y.supportingCandidates.map((e) => ELEMENT_LABEL[e]).join(', ')}입니다.`
+        : '';
+      const contraindicatedText = y.contraindicatedCandidates.length > 0
+        ? ` ${y.contraindicatedCandidates.map((e) => ELEMENT_LABEL[e]).join(', ')} 방향은 구조를 더 흔들 수 있어 피합니다.`
+        : '';
+      const rationaleText = ` (근거: ${y.treatmentRationalesFired.map((r) => RATIONALE_LABEL[r]).join('·')})`;
+      out.push(base({
+        sourceFactIds: [`억부용신: ${y.status} (Myungri Yongshin V1)`],
+        target: target('DAY_MASTER_FOOTING', 'YONGSHIN', '일간의 구조 치료 방향'),
+        concept: 'DAY_MASTER_YONGSHIN',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: y.status === 'SELECTED' ? 'ENABLES' : 'ABSENT',
+        assertion: `${primaryText}${supportingText}${contraindicatedText}${rationaleText}`,
+        role: y.status === 'SELECTED' ? 'QUALIFIES' : 'DESCRIBES',
+        applicability: y.status === 'SELECTED' ? 'CONTEXTUAL' : 'BACKGROUND',
+        doctrineReference: `YONGSHIN_V1: 억부용신(구조) — ${y.ruleVersion}`,
+      }));
+    } else if (y && y.status === 'NOT_APPLICABLE_SPECIAL_CONFLICT') {
+      out.push(base({
+        sourceFactIds: ['억부용신: 특수구조 후보로 판정 보류'],
+        target: target('DAY_MASTER_FOOTING', 'YONGSHIN', '일간의 구조 치료 방향'),
+        concept: 'DAY_MASTER_YONGSHIN',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'ABSENT',
+        assertion: '이 배치는 특수구조 후보 조건을 보여, 일반 억부용신 방향을 판정하지 않습니다.',
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: `YONGSHIN_V1: 억부용신(구조) — ${y.ruleVersion}`,
+      }));
+    } else {
+      // Genuinely UNRESOLVED (no deterministic candidate from current facts) or Structural V2 itself
+      // never ran — honestly reported as withheld, never a fabricated primary.
+      out.push(base({
+        sourceFactIds: ['억부용신: 판정 보류'],
+        target: target('DOCTRINE_GAP', 'STRENGTH_YONGSHIN', '억부용신'),
+        concept: 'DOCTRINE_BLOCK',
+        questionAxis: 'GENERAL',
+        temporalScope: 'NATAL',
+        semanticRelation: 'ABSENT',
+        assertion: y?.uncertaintyReasons.join(' ') || '억부용신을 판정할 만한 근거가 이번 배치에서 확인되지 않는다.',
+        role: 'DESCRIBES',
+        applicability: 'BACKGROUND',
+        doctrineReference: 'BLOCKED: 억부용신 판정에 필요한 근거 부족',
+      }));
+    }
+  }
+
+  // ── Myungri Consultation Judge V1 (../myungriConsultationJudge.ts) — one premise per domain the
+  // caller already decided routed this turn (never all 7 unconditionally; see `MyungriPremiseInput`'s
+  // own doc comment). Same non-competing shape as Structural V2/Yongshin above: `role: 'QUALIFIES'`
+  // for a directional (FAVORABLE/CAUTION/MIXED) result, `'DESCRIBES'` for UNRESOLVED — never 'ASSERTS',
+  // so this never competes with or duplicates the kernel's own derivation rules. ────────────────────
+  for (const cj of input.consultationJudgments ?? []) {
+    const directional = cj.status !== 'UNRESOLVED';
+    out.push(base({
+      sourceFactIds: [`상담판정 ${cj.domain}: ${cj.status} (Myungri Consultation Judge V1)`],
+      target: consultationJudgeTarget(cj.domain),
+      concept: 'CONSULTATION_JUDGMENT',
+      questionAxis: CONSULTATION_DOMAIN_AXIS[cj.domain],
+      temporalScope: 'NATAL',
+      semanticRelation: cj.status === 'FAVORABLE' ? 'ENABLES' : cj.status === 'CAUTION' ? 'OPPOSES' : cj.status === 'MIXED' ? 'CONSTRAINS' : 'ABSENT',
+      assertion: cj.conclusion,
+      role: directional ? 'QUALIFIES' : 'DESCRIBES',
+      applicability: directional ? 'DIRECT' : 'BACKGROUND',
+      doctrineReference: `CONSULTATION_JUDGE_V1: ${cj.domain} — ${cj.provenance[0]}`,
+    }));
+  }
+
+  // ── ASKED-AXIS DOCTRINE COVERAGE (§13 honesty, not a conclusion) ────────────────────────────────
+  // When the asked axis has no route in adopted Myungri doctrine, that is recorded as a premise so the
+  // synthesis can say WHY it cannot answer instead of implying the chart was silent.
+  if (domainFamily(askedAxis) === null && !out.some((p) => p.questionAxis === askedAxis)) {
+    out.push(base({
+      sourceFactIds: [],
+      target: target('DOCTRINE_GAP', `AXIS:${askedAxis}`, `질문 축 ${askedAxis}`),
+      concept: 'DOCTRINE_BLOCK',
+      questionAxis: askedAxis,
+      temporalScope: 'UNSCOPED',
+      semanticRelation: 'ABSENT',
+      assertion: '명리에서 이 축을 직접 보는 경로가 아직 채택되어 있지 않다.',
+      role: 'DESCRIBES',
+      applicability: 'DIRECT',
+      doctrineReference: 'BLOCKED: 해당 축 도메인 매핑 미채택',
+    }));
+  }
+
+  return out;
+}

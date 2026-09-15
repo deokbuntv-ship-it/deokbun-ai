@@ -4,6 +4,7 @@
 import {
   clearPendingConsultationIntent,
   consumePendingQuestion,
+  consumePendingQuestionOrigin,
   consumePendingReturnTo,
   isSafeReturnTo,
   peekPendingConsultationIntent,
@@ -73,6 +74,60 @@ describe('returnTo preservation (§12)', () => {
     setPendingConsultationIntent({ returnTo: 'https://evil.example' });
     expect(peekPendingConsultationIntent()?.returnTo).toBeUndefined();
     expect(consumePendingReturnTo()).toBeNull();
+  });
+});
+
+describe('popular-question conversion origin (Home IA sprint)', () => {
+  it('stores and consumes a valid origin (key + category) exactly once', () => {
+    setPendingConsultationIntent({
+      question: '올해 재물운?',
+      originQuestionKey: 'money_flow_year',
+      originQuestionCategory: 'MONEY',
+    });
+    expect(consumePendingQuestionOrigin()).toEqual({ key: 'money_flow_year', category: 'MONEY' });
+    expect(consumePendingQuestionOrigin()).toBeNull(); // one-shot
+  });
+
+  it('rejects a non-slug key/category (spaces, symbols, over length) — never stored', () => {
+    setPendingConsultationIntent({
+      question: 'q',
+      originQuestionKey: 'has spaces',
+      originQuestionCategory: '재물!!',
+    });
+    const intent = peekPendingConsultationIntent();
+    expect(intent?.originQuestionKey).toBeUndefined();
+    expect(intent?.originQuestionCategory).toBeUndefined();
+    expect(consumePendingQuestionOrigin()).toBeNull();
+  });
+
+  it('keeps a valid key even when the category is invalid (category → null)', () => {
+    setPendingConsultationIntent({
+      question: 'q',
+      originQuestionKey: 'career_move_timing',
+      originQuestionCategory: 'not a slug',
+    });
+    expect(consumePendingQuestionOrigin()).toEqual({ key: 'career_move_timing', category: null });
+  });
+
+  it('expires the origin past the 30-min TTL (never attaches to a much-later consultation, §19)', () => {
+    const now = Date.now();
+    const spy = jest.spyOn(Date, 'now').mockReturnValue(now);
+    setPendingConsultationIntent({ question: 'q', originQuestionKey: 'new_relationship', originQuestionCategory: 'LOVE' });
+    spy.mockReturnValue(now + 31 * 60 * 1000); // +31 min
+    expect(consumePendingQuestionOrigin()).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('a typed question carries NO origin (direct composer never gets a fake id)', () => {
+    setPendingConsultationIntent({ question: '그냥 직접 입력한 질문' });
+    expect(consumePendingQuestionOrigin()).toBeNull();
+    expect(consumePendingQuestion()).toBe('그냥 직접 입력한 질문');
+  });
+
+  it('consuming the origin leaves the question intact', () => {
+    setPendingConsultationIntent({ question: 'q', originQuestionKey: 'biggest_change_year', originQuestionCategory: 'CHANGE' });
+    expect(consumePendingQuestionOrigin()).toEqual({ key: 'biggest_change_year', category: 'CHANGE' });
+    expect(consumePendingQuestion()).toBe('q'); // question survives origin consumption
   });
 });
 

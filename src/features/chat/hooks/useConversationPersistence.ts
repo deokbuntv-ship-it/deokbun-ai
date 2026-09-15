@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/features/auth';
-import { supabaseEdgeLLMAdapter } from '@/features/chat/adapters/supabaseEdgeLLMAdapter';
-import { chatConfig } from '@/features/chat/config/chatConfig';
+import { supabaseEdgeSummaryAdapter } from '@/features/chat/adapters/supabaseEdgeSummaryAdapter';
 import { computeConversationMemory } from '@/features/chat/memory/conversationMemory';
-import { buildSummaryPrompt } from '@/features/chat/prompts/summaryPromptBuilder';
+import { assertAuthenticatedForConversation } from '@/features/chat/services/conversationBoundSend';
 import {
   conversationService,
   type ConversationSubjectSnapshot,
@@ -43,6 +42,13 @@ type UseConversationPersistenceResult = {
   // Authoritative subject snapshot of a conversation opened by id (history).
   // The screen uses this to self-correct the draft on direct/F5 entry.
   restoredSubjectSnapshot: ConversationSubjectSnapshot;
+  // The active conversation id (null until a conversation is restored or lazily
+  // created). Surfaced reactively so the screen can offer conversation-level
+  // actions (e.g. "상담 보고서 만들기") once a real conversation row exists.
+  activeConversationId: string | null;
+  // Required before the first Edge request: creates/restores the owned conversation and returns its id.
+  // The caller passes this exact id directly, avoiding a stale React-state closure on the first turn.
+  ensureConversation: () => Promise<string>;
   persistMessage: (message: ChatMessage) => void;
 };
 
@@ -68,6 +74,8 @@ export function useConversationPersistence(
     useState<ConversationMemoryState>(EMPTY_MEMORY);
   const [restoredSubjectSnapshot, setRestoredSubjectSnapshot] =
     useState<ConversationSubjectSnapshot>(null);
+  // Mirror of conversationIdRef, exposed to the screen for conversation-level actions.
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   // Which (user + startNew + subject) context is currently hydrated.
   const hydratedKeyRef = useRef<string | null>(null);
@@ -102,6 +110,7 @@ export function useConversationPersistence(
 
   const resetInMemory = () => {
     conversationIdRef.current = null;
+    setActiveConversationId(null);
     persistedIdsRef.current = new Set();
     creationRef.current = null;
     saveChainRef.current = Promise.resolve();
@@ -165,6 +174,7 @@ export function useConversationPersistence(
       lastSummarizedMessageId: string | null;
     }) => {
       conversationIdRef.current = loaded.conversationId;
+      setActiveConversationId(loaded.conversationId);
       persistedMessagesRef.current = loaded.messages;
       loaded.messages.forEach((message) => {
         persistedIdsRef.current.add(message.id);
@@ -254,6 +264,17 @@ export function useConversationPersistence(
     if (conversationIdRef.current !== null) {
       return Promise.resolve(conversationIdRef.current);
     }
+    // Sprint F §B — AUTHENTICATION precedes conversation creation. Fail closed BEFORE any INSERT for an
+    // unauthenticated caller so the first turn returns AUTH_REQUIRED (not a bare RLS-denied REQUEST_FAILED)
+    // and creates no row / reserves no paid work / calls no LLM / persists no decision.
+    try {
+      assertAuthenticatedForConversation({
+        status: authState.status,
+        userId: authState.user?.id ?? null,
+      });
+    } catch (error) {
+      return Promise.reject(error);
+    }
     if (creationRef.current !== null) {
       return creationRef.current;
     }
@@ -261,6 +282,7 @@ export function useConversationPersistence(
       .createConversation(subjectIdRef.current, subjectSnapshotRef.current)
       .then((id) => {
         conversationIdRef.current = id;
+        setActiveConversationId(id);
         return id;
       })
       .catch((error) => {
@@ -294,23 +316,18 @@ export function useConversationPersistence(
           break;
         }
 
-        let summaryText: string;
-        try {
-          const promptMessages = buildSummaryPrompt(
-            result.existingSummary,
-            result.messagesToSummarize,
-          );
-          const response = await supabaseEdgeLLMAdapter.generateResponse({
-            model: chatConfig.defaultModel,
-            messages: promptMessages,
-            maxOutputTokens: chatConfig.maxOutputTokens,
-            temperature: chatConfig.temperature,
-          });
-          summaryText = response.text;
-        } catch {
-          // Generation failed → keep existing summary/checkpoint.
+        // Summary prompt is now built + generated SERVER-side (Server-Trust §20): the client sends only
+        // the raw turns + prior summary; the Edge authors the summary prompt. null → generation failed,
+        // keep the existing summary/checkpoint.
+        const generatedSummary = await supabaseEdgeSummaryAdapter.summarize(
+          result.existingSummary,
+          result.messagesToSummarize,
+          conversationId,
+        );
+        if (generatedSummary === null) {
           break;
         }
+        const summaryText: string = generatedSummary;
 
         // Discard if the conversation context changed while generating.
         if (
@@ -390,6 +407,9 @@ export function useConversationPersistence(
           role,
           content: message.text,
           clientMessageId: message.id,
+          // Persist the validated structured answer (assistant only; user messages have none) so a
+          // reload restores the card + follow-up chips instead of a plain text bubble (§14).
+          structuredResult: message.structuredResult,
         }),
       )
       .then(() => {
@@ -417,6 +437,8 @@ export function useConversationPersistence(
     resetToken,
     conversationMemory,
     restoredSubjectSnapshot,
+    activeConversationId,
+    ensureConversation: ensureConversationId,
     persistMessage,
   };
 }

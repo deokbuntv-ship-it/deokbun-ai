@@ -17,6 +17,10 @@ import type {
   SajuDerivedFacts,
   SajuDerivedFactsRuleVersions,
 } from '../saju/derived/contracts';
+import type {
+  SajuFiveElementDistribution,
+  SajuFiveElementDistributionRuleVersions,
+} from '../saju/distribution/contracts';
 
 // Saju-specific options are intentionally not invented in ENGINE-01. They will
 // be introduced with verified calculation rules in the Saju engine sprints.
@@ -59,9 +63,11 @@ export type SajuEngineWarning = EngineWarning &
 export type SajuEngineOutput = {
   fourPillars: SajuFourPillars;
   derivedFacts: SajuDerivedFacts;
+  fiveElementDistribution: SajuFiveElementDistribution;
   identity: SajuFourPillarsCalculationIdentity;
   provenance: SajuFourPillarsProvenance & {
     derivedFactsRuleVersions: SajuDerivedFactsRuleVersions;
+    fiveElementDistributionRuleVersions: SajuFiveElementDistributionRuleVersions;
   };
 };
 

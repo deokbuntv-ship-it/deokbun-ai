@@ -8,9 +8,16 @@ export type ConsultationErrorCode =
   | 'AUTH_REQUIRED'
   | 'NOT_CONFIGURED'
   | 'INVALID_INPUT'
-  | 'REQUEST_FAILED';
+  | 'REQUEST_FAILED'
+  | 'INSUFFICIENT_DUK'
+  | 'GROUNDING_UNAVAILABLE'
+  // 애플 5.1.2(i) — 제3자 AI 처리 동의가 없다.
+  | 'AI_CONSENT_REQUIRED';
 
-export type ConsultationErrorKind = 'auth' | 'recoverable' | 'blocked' | 'input';
+export type ConsultationErrorKind =
+  | 'auth' | 'recoverable' | 'blocked' | 'input' | 'insufficient'
+  // 동의가 필요하다. auth 와 **다르다** — 로그인은 돼 있고, 할 일은 동의다.
+  | 'consent';
 
 export type ConsultationErrorView = {
   kind: ConsultationErrorKind;
@@ -18,7 +25,13 @@ export type ConsultationErrorView = {
   canRetry: boolean;
 };
 
-export function mapConsultationError(code: ConsultationErrorCode): ConsultationErrorView {
+export function mapConsultationError(
+  code: ConsultationErrorCode,
+  // V6 — the SERVER's own consumer-safe explanation, when it supplied one. Only GROUNDING_UNAVAILABLE
+  // carries it, and only the server can know which input is missing, so it is preferred over the fixed
+  // string below rather than appended to it.
+  detail?: string,
+): ConsultationErrorView {
   switch (code) {
     case 'AUTH_REQUIRED':
       return {
@@ -44,6 +57,32 @@ export function mapConsultationError(code: ConsultationErrorCode): ConsultationE
       return {
         kind: 'input',
         message: '메시지를 다시 확인해 주세요.',
+        canRetry: false,
+      };
+    case 'AI_CONSENT_REQUIRED':
+      // 청구 0. 재시도로 풀리지 않는다. 겁주지 않고, 안 되는 것만 사실대로 말한다.
+      return {
+        kind: 'consent',
+        message:
+          'AI가 해석문을 만들려면 AI 처리 동의가 필요해요.\n무엇을 어디로 보내는지 확인하고 동의하시면 이어서 진행할 수 있어요.',
+        canRetry: false,
+      };
+    case 'GROUNDING_UNAVAILABLE':
+      // The reading could not be performed at all, so nothing was charged. Retrying the SAME question with
+      // the SAME birth information must fail identically — the user has to correct the input first, which is
+      // what the server's message tells them.
+      return {
+        kind: 'input',
+        message: detail
+          ?? '지금 등록된 출생 정보로는 사주를 세울 수 없어 상담을 진행하지 못했어요.\n덕은 차감되지 않았습니다. 태어난 시각(또는 대략적인 시간대)을 입력한 뒤 다시 물어봐 주세요.',
+        canRetry: false,
+      };
+    case 'INSUFFICIENT_DUK':
+      // Retrying the same request will not help until the wallet is topped up; a future top-up/paywall UX
+      // uses the authoritative server balance on the service result (never a client-calculated amount).
+      return {
+        kind: 'insufficient',
+        message: '덕이 부족해서 상담을 진행할 수 없어요.\n덕을 충전한 뒤 다시 시도해 주세요.',
         canRetry: false,
       };
   }

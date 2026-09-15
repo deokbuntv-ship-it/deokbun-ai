@@ -59,5 +59,6 @@ export function selectConsultationContext(
     birthTimeSummary,
     birthPlace,
     birthTimeAccuracy,
+    inputCalendar: birthInfo.calendarType === 'lunar' ? 'LUNAR' : 'SOLAR',
   };
 }

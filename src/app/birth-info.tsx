@@ -21,8 +21,11 @@ import {
     type Gender,
     type LunarMonthType,
 } from '@/features/consultation';
+import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
+import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
+import { setPendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { colors } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 type SelectOption<T extends string> = {
   value: T;
@@ -82,7 +85,7 @@ function SelectField<T extends string>({
             key={option.value}
             onPress={() => onSelect(option.value)}
             accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
+            aria-selected={isSelected}
           >
             <Card
               style={{
@@ -125,10 +128,13 @@ function isValidMinute(value: string): boolean {
 
 export default function BirthInfoScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ subjectId?: string }>();
+  const params = useLocalSearchParams<{ subjectId?: string; origin?: string; self?: string }>();
   const subjectId =
     typeof params.subjectId === 'string' ? params.subjectId : undefined;
   const isEditMode = subjectId !== undefined;
+  // Entered from the 궁합 flow (§2/§4): after save we return to /compatibility (never /chat), and we show
+  // an explicit "궁합으로 돌아가기" action instead of the onboarding "상담 시작" buttons.
+  const fromCompatibility = params.origin === 'compatibility';
 
   const { updateSubject, updateBirthInfo } = useConsultationDraft();
   const scheme = useColorScheme();
@@ -151,7 +157,9 @@ export default function BirthInfoScreen() {
 
   const [birthPlace, setBirthPlace] = useState('');
 
-  const [isSelf, setIsSelf] = useState(false);
+  // Pre-check 본인 when the 궁합 "본인 정보 등록하기" entry passed self=1 (create mode only; edit mode
+  // overwrites from the loaded record).
+  const [isSelf, setIsSelf] = useState(() => params.self === '1');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -246,6 +254,20 @@ export default function BirthInfoScreen() {
         ? approximatePeriod !== null
         : birthTimeAccuracy === 'unknown';
 
+  // 절기 경계일 — the date entered is a 節 boundary AND no exact time was given, so the 월주 has two
+  // candidates and 상담/오늘/월별 would all fail. Advisory only: it never enters `isFormValid`, so the
+  // save buttons stay enabled and the user decides. Same judgment the Edge and the 오늘/월별 notices use.
+  const showBoundaryWarning =
+    isDateValid
+    && isSolarTermBoundaryTimeRequired({
+      calendarType,
+      lunarMonthType,
+      birthYear: year,
+      birthMonth: month,
+      birthDay: day,
+      birthTimeAccuracy,
+    });
+
   const isFormValid =
     gender !== null &&
     calendarType !== null &&
@@ -339,6 +361,42 @@ export default function BirthInfoScreen() {
     }
   };
 
+  // 궁합 flow — create the subject, then RETURN to /compatibility (never /chat, never an LLM call §8).
+  // The new TARGET is auto-selected there via the ephemeral pending id; a new 본인 is not auto-selected.
+  const handleSaveForCompatibility = async () => {
+    if (isSaving) return;
+    const birthInfo = buildBirthInfo();
+    if (birthInfo === null) return;
+
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const record = await consultationSubjectService.createSubject({
+        displayName: birthInfo.displayName || (isSelf ? '본인' : '상대방'),
+        relationship: relationshipValue(),
+        isSelf,
+        birthInfo,
+      });
+      if (!isSelf) setPendingCompatibilitySubjectId(record.id);
+      router.replace('/compatibility');
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      setSaveError(
+        code === '23505'
+          ? '이미 본인으로 등록된 대상이 있습니다. "본인으로 저장"을 해제해 주세요.'
+          : '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Cancel/back BEFORE save → return to 궁합 without creating a record (§4). Never forces Home.
+  const handleCompatibilityBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/compatibility');
+  };
+
   // Edit flow — update the saved subject only (never touches drafts/conversations).
   const handleSaveEdit = async () => {
     if (isSaving || subjectId === undefined) {
@@ -430,11 +488,32 @@ export default function BirthInfoScreen() {
         <View style={styles.contentWrapper}>
           <Stack gap="xxl">
             <Stack gap="xs">
+              {fromCompatibility ? (
+                <Pressable
+                  onPress={handleCompatibilityBack}
+                  accessibilityRole="button"
+                  accessibilityLabel="궁합으로 돌아가기"
+                  hitSlop={8}
+                  style={{ marginBottom: spacing.sm }}
+                >
+                  <Text variant="bodyMedium" style={{ color: theme.secondary, fontWeight: '600' }}>
+                    ← 궁합으로 돌아가기
+                  </Text>
+                </Pressable>
+              ) : null}
               <Text variant="headingLarge">
-                {isEditMode ? '대상 편집' : '출생정보 입력'}
+                {isEditMode
+                  ? '대상 편집'
+                  : fromCompatibility
+                    ? params.self === '1'
+                      ? '본인 정보 등록'
+                      : '상대방 추가'
+                    : '출생정보 입력'}
               </Text>
               <Text variant="bodyMedium" colorToken="textSecondary">
-                정확한 분석을 위해 알고 있는 범위에서 입력해 주세요.
+                {fromCompatibility
+                  ? '저장하면 궁합 화면으로 돌아가 바로 궁합을 볼 수 있어요.'
+                  : '정확한 분석을 위해 알고 있는 범위에서 입력해 주세요.'}
               </Text>
             </Stack>
 
@@ -548,9 +627,27 @@ export default function BirthInfoScreen() {
 
               {birthTimeAccuracy === 'unknown' ? (
                 <Text variant="bodySmall" colorToken="textSecondary">
-                  출생시간에 따라 일부 해석 범위가 제한될 수 있습니다. 덕분AI는
+                  출생시간에 따라 일부 해석 범위가 제한될 수 있습니다. 덕분이는
                   알 수 없는 출생시간을 임의로 추측하지 않습니다.
                 </Text>
+              ) : null}
+
+              {showBoundaryWarning ? (
+                <BoundaryTimeNotice
+                  context="form"
+                  // 본인 문안은 상담·오늘·월별을 말하는데, 궁합 상대에게는 셋 다 해당이 없고 정작
+                  // "이 분과의 궁합은 못 본다" 는 말이 빠져 있었다. 판정은 같고 결과만 다르게 말한다.
+                  // ⚠ 본인 등록(현행)은 그대로다 — 여기 분기는 상대(비-본인) 등록에서만 켜진다.
+                  forCompatibilityTarget={fromCompatibility && !isSelf}
+                  onEnterTime={() => handleBirthTimeAccuracySelect('exact')}
+                  onSaveAnyway={
+                    isEditMode
+                      ? handleSaveEdit
+                      : fromCompatibility
+                        ? handleSaveForCompatibility
+                        : handleSaveAndStart
+                  }
+                />
               ) : null}
             </Stack>
 
@@ -567,7 +664,7 @@ export default function BirthInfoScreen() {
               <Pressable
                 onPress={() => setIsSelf((value) => !value)}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: isSelf }}
+                aria-checked={isSelf}
               >
                 <Card
                   style={{
@@ -606,6 +703,7 @@ export default function BirthInfoScreen() {
                         <Stack direction="row" gap="sm">
                           <Button
                             label={isDeleting ? '삭제 중...' : '삭제'}
+                            variant="danger"
                             disabled={isDeleting}
                             onPress={handleDelete}
                           />
@@ -634,6 +732,19 @@ export default function BirthInfoScreen() {
                       }}
                     />
                   )}
+                </>
+              ) : fromCompatibility ? (
+                <>
+                  <Button
+                    label={isSaving ? '저장 중...' : '저장하고 궁합으로'}
+                    disabled={!isFormValid || isSaving}
+                    onPress={handleSaveForCompatibility}
+                  />
+                  {saveError ? (
+                    <Text variant="bodySmall" colorToken="danger">
+                      {saveError}
+                    </Text>
+                  ) : null}
                 </>
               ) : (
                 <>

@@ -10,7 +10,7 @@
 // Security: verify_jwt + admin_users gate. Google key (GEMINI_API_KEY) is a
 // server secret only (USER ACTION to set). Runtime: Deno.
 
-import { withSupabase } from 'npm:@supabase/server';
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 import {
@@ -19,6 +19,7 @@ import {
   type VideoAspectRatio,
 } from './videoPolicy.ts';
 import { buildVideoPrompt, promptHash, VIDEO_PROMPT_VERSION } from './prompts.ts';
+import { globalSpendGuardFailure, reserveGlobalPaidGeneration } from '../_shared/globalSpendGuard.ts';
 
 // Gemini API Veo endpoint (server-side; API key auth via x-goog-api-key).
 function veoStartUrl(model: string): string {
@@ -152,6 +153,12 @@ export default {
         }
 
         const prompt = buildVideoPrompt({ subject, category, targetUse });
+
+        const spend = await reserveGlobalPaidGeneration(admin, userId, 'video_generation');
+        if (spend.status !== 'allowed') {
+          const failure = globalSpendGuardFailure(spend);
+          return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+        }
 
         // Start the long-running operation (Veo predictLongRunning contract).
         let providerResponse: Response;

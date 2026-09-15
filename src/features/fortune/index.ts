@@ -18,13 +18,9 @@ export {
 } from './types';
 export { fortuneService } from './fortuneService';
 export type {
-  FortuneAreaStatus,
-  FortuneCautionPeriod,
-  FortuneMailDetail,
   FortuneMailFilter,
   FortuneMailItem,
   FortuneMailTone,
-  FortuneTimelineEntry,
 } from './fortuneMail';
 export { FORTUNE_MAIL_FILTERS, fortuneMailService } from './fortuneMail';
 export {

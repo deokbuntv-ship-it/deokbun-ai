@@ -37,10 +37,14 @@ export {
 
 export {
   TRACKING_QUERY_PARAM,
+  TRACKING_UTM_PARAM,
+  UTM_PRESETS,
   isUsableOrigin,
   buildTrackingUrl,
+  buildUtmTrackingUrl,
   isValidAdCheckUrl,
   parseTrackingCodeFromQuery,
+  trackingCodeSource,
 } from './trackingUrl';
 
 export { DAY_MS, RETENTION_DAYS, isRetainedAtDay } from './retention';

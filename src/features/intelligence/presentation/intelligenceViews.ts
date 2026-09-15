@@ -9,13 +9,12 @@
 //     (§34) — the adapter surfaces verificationStatus verbatim;
 //   • feedback persistence is NOT live (§32) — `feedbackControlState()` reports the seam
 //     honestly so the UI never shows a fake "저장됨".
-import {
-  QUALITY_EVALUATOR_NOT_CONNECTED,
-  type ConsultationOutcome,
-  type QualityDimension,
-  type QualityReview,
-  type UserFeedback,
-} from '@/features/intelligence';
+// Source modules, not the barrel (avoids the index → this → index require cycle). See
+// assessmentView.ts for the rationale.
+import { type UserFeedback } from '../feedback';
+import { type ConsultationOutcome } from '../outcome';
+import { type QualityDimension, type QualityReview } from '../quality';
+import { QUALITY_EVALUATOR_NOT_CONNECTED } from '../versions';
 
 import {
   FEEDBACK_REASON_LABELS,
@@ -139,8 +138,11 @@ export type FeedbackControlState = {
 };
 
 export function feedbackControlState(): FeedbackControlState {
+  // The client write path is wired (feedbackService → consultation_feedback). The control still
+  // ANDs this with a provided onSubmit, so a screen that does not pass one falls back to the honest
+  // note rather than claiming persistence.
   return {
-    canPersist: false,
+    canPersist: true,
     unavailableNote: '피드백 저장 기능은 준비 중이에요.',
   };
 }

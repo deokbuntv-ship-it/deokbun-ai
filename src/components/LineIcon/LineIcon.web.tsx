@@ -15,7 +15,14 @@ export type LineIconName =
   | 'sparkle'
   | 'warning'
   | 'calendar'
-  | 'send';
+  | 'send'
+  | 'bell'
+  // Presentation-only additions (DESIGN_FREEZE_FINAL, approved): list chevrons, header back, and the
+  // subject-selection check. Navigation semantics and business logic are untouched — these are glyphs.
+  | 'chevron-right'
+  | 'chevron-down'
+  | 'back'
+  | 'check';
 
 type Props = {
   name: LineIconName;
@@ -24,7 +31,7 @@ type Props = {
   strokeWidth?: number;
 };
 
-export function LineIcon({ name, size = 22, color = '#44474C', strokeWidth = 1.7 }: Props) {
+export function LineIcon({ name, size = 22, color = '#6B6357', strokeWidth = 1.7 }: Props) {
   const common = {
     width: size,
     height: size,
@@ -125,6 +132,37 @@ export function LineIcon({ name, size = 22, color = '#44474C', strokeWidth = 1.7
       return (
         <svg {...common}>
           <path d="M12 19V6M6 11l6-6 6 6" />
+        </svg>
+      );
+    case 'chevron-right':
+      return (
+        <svg {...common}>
+          <path d="M9.5 6l6 6-6 6" />
+        </svg>
+      );
+    case 'chevron-down':
+      return (
+        <svg {...common}>
+          <path d="M6 9.5l6 6 6-6" />
+        </svg>
+      );
+    case 'back':
+      return (
+        <svg {...common}>
+          <path d="M14.5 5L8 12l6.5 7" />
+        </svg>
+      );
+    case 'check':
+      return (
+        <svg {...common}>
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+      );
+    case 'bell':
+      return (
+        <svg {...common}>
+          <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4.2 1.5 5.5 1.5 5.5H5s1.5-1.3 1.5-5.5z" />
+          <path d="M10 19a2 2 0 0 0 4 0" />
         </svg>
       );
   }

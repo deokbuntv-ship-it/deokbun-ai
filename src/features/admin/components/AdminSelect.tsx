@@ -47,7 +47,7 @@ export function AdminSelect<T extends string>({
               key={option.value}
               onPress={() => onChange(option.value)}
               accessibilityRole="button"
-              accessibilityState={{ selected }}
+              aria-selected={selected}
             >
               <View
                 style={{

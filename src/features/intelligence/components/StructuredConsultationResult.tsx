@@ -1,195 +1,136 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Card } from '@/components/Card';
+import { ReadingBullets, ReadingEvidence, ReadingLead, ReadingSection } from '@/components/Reading';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
-import type { ConsumerAssessmentView, FeedbackVerdict } from '@/features/intelligence';
-import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
+import { toConsultationPresentation } from '@/features/chat/presentation/consultationPresentationVM';
+import type { FeedbackVerdict } from '@/features/intelligence';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
 
-import { AssessmentSummary } from './AssessmentSummary';
-import { ConsultationStateNotice, type ConsultationState } from './ConsultationStateNotice';
+import { ConsultationStateNotice } from './ConsultationStateNotice';
 import { FollowUpSuggestions } from './FollowUpSuggestions';
-import { InterpretationEvidenceSheet } from './InterpretationEvidenceSheet';
 import { UserFeedbackControl } from './UserFeedbackControl';
 
-// Golden Flow v3 — the Structured Consultation Result (§6/§7/§15). Composes the approved
-// result hierarchy over REAL contract fields only. Every prose section (core summary,
-// disposition, interpretation, strengths, cautions, domain, future flow) is a caller-
-// provided string sourced from the LLM response — this component NEVER fabricates
-// interpretation copy (§6). A section with no source is simply omitted. Categorical
-// evaluation comes from `assessment` (fail-closed); explainability from `grounding`.
-//
-// PROGRESSIVE DISCLOSURE (§15): the initial view prioritises core → assessment →
-// current flow → core interpretation. Everything else expands behind 더 자세히 보기.
-// This is a hybrid (chat + structured result) — it lives inside the chat, and the
-// free-form composer stays outside it (§6/§18).
-
-export type StructuredConsultationViewModel = {
-  // 1 — one-line core summary (from the LLM). '' → omitted.
-  coreSummary?: string;
-  // 2 — 기본 성향
-  disposition?: string;
-  // 3 — Assessment (fail-closed ConsumerAssessmentView)
-  assessment: ConsumerAssessmentView;
-  // 4 — current flow / 현재 흐름
-  currentFlow?: string;
-  // 5 — core interpretation
-  coreInterpretation?: string;
-  // 7 — strengths
-  strengths?: string[];
-  // 8 — cautions
-  cautions?: string[];
-  // 9 — domain-specific interpretation
-  domainInterpretation?: { title: string; body: string }[];
-  // 10 — future flow
-  futureFlow?: string;
-  // 11 — Explainability source
-  grounding: ConsultationGrounding;
-  // 12 — recommended follow-up questions (helpers only)
-  followUps?: string[];
-  // Whole-result truthful state (conflict/partial/failure/…); overrides the body.
-  state?: ConsultationState;
-};
-
-function Section({ title, body }: { title: string; body?: string }) {
+// 전문 근거 detail row — a consumer-language domain title over its interpretation body, inside the collapsed
+// "왜 이렇게 보나요?" evidence. Kept plain (no pastel) so the evidence reads as neutral reference.
+function EvidenceRow({ title, body }: { title: string; body?: string }) {
   if (!body) return null;
   return (
     <Stack gap="xs">
-      <Text variant="bodySmall" colorToken="textSecondary">
+      <Text variant="bodySmall" colorToken="textSecondary" style={{ fontWeight: '700' }}>
         {title}
       </Text>
-      <Text variant="bodyMedium" style={{ lineHeight: 22 }}>
+      <Text variant="reading" style={{ lineHeight: 28 }}>
         {body}
       </Text>
     </Stack>
   );
 }
 
-function BulletList({ title, items, glyphColor }: { title: string; items?: string[]; glyphColor: string }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <Stack gap="xs">
-      <Text variant="bodySmall" colorToken="textSecondary">
-        {title}
-      </Text>
-      {items.map((it, i) => (
-        <View key={i} style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Text variant="bodyMedium" style={{ color: glyphColor }}>
-            ·
-          </Text>
-          <Text variant="bodyMedium" style={{ flex: 1, lineHeight: 22 }}>
-            {it}
-          </Text>
-        </View>
-      ))}
-    </Stack>
-  );
-}
+// Commercial cleanup (V4 §22/§23/§24): the AssessmentSummary (fail-closed "아직 평가를 보여드리지
+// 않아요" limitation copy) and the InterpretationEvidenceSheet (raw 활용된 관점 / 미사용 engine status,
+// 천간지지-level facts) are internal/debug surfaces — they are NOT rendered in the consumer answer. The
+// user sees only normalized, natural-language interpretation. The assessment/grounding remain on the
+// view-model for admin/inspection use; they are simply not shown here.
+
+// Commercial Consultation UX V4 — the Structured Consultation Result, COMMERCIAL hierarchy.
+//
+// OWNER PRODUCT DECISION (supersedes the old GOLDEN_FLOW_V4_UX §0 "long-form expanded by default"
+// lock): CONCLUSION FIRST → core points → cautions → DETAIL ON DEMAND (collapsed) → follow-ups.
+// The component binds to a commercial `ConsultationPresentationVM` (via toConsultationPresentation)
+// rather than the raw LLM/engine schema, so the UI layout is decoupled from the validation schema.
+// It NEVER fabricates copy — a section with no source is omitted (fail-closed). Internal engine
+// terminology is already stripped upstream (buildStructuredConsultationResult → stripEngineLabels).
+
+// `StructuredConsultationViewModel` moved to a runtime-neutral module (§2) so the server/Edge consultation
+// contract does not depend on this React-Native component. Re-exported here for existing UI importers.
+export type { StructuredConsultationViewModel };
 
 export function StructuredConsultationResult({
   vm,
   onSelectFollowUp,
   onRetry,
   onFeedback,
+  initialFeedback,
+  onReport,
+  reported,
 }: {
   vm: StructuredConsultationViewModel;
   onSelectFollowUp?: (q: string) => void;
   onRetry?: () => void;
   onFeedback?: (verdict: FeedbackVerdict) => Promise<void> | void;
+  initialFeedback?: FeedbackVerdict | null;
+  /** AI 답변 신고 시트를 여는 콜백 (구글 AI 생성 콘텐츠 정책). 없으면 입구를 그리지 않는다. */
+  onReport?: () => void;
+  reported?: boolean;
 }) {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
-  const [expanded, setExpanded] = useState(false);
 
-  // A whole-result truthful state replaces the body — never a fabricated reading (§13).
+  // A whole-result truthful state replaces the body — never a fabricated reading.
   if (vm.state) {
     return <ConsultationStateNotice state={vm.state} onRetry={onRetry} />;
   }
 
-  const hasDetail =
-    !!vm.coreInterpretation ||
-    (vm.strengths?.length ?? 0) > 0 ||
-    (vm.cautions?.length ?? 0) > 0 ||
-    (vm.domainInterpretation?.length ?? 0) > 0 ||
-    !!vm.futureFlow;
+  // Bind to the commercial presentation model (hierarchy + dedup + empty-filter + hygiene upstream).
+  const p = toConsultationPresentation(vm);
+  const hasDetail = p.detailSections.length > 0;
 
+  // Reading hierarchy (DEOKBUNI_READING_EXPERIENCE): 결론 → 쉬운 설명 → 🌿 좋은 흐름 → 🕯️ 조심할 점 →
+  // (왜 이렇게 보나요? ▾ 전문 근거) → 이어서 물어보기. Only two sections take a pastel surface (§7), so the
+  // reading stays a connected letter, not a colour patchwork. Empty sections are simply absent (fail-closed).
   return (
-    <Stack gap="lg">
-      {/* 1 — core summary (lead) */}
-      {vm.coreSummary ? (
-        <Card radius="xl">
-          <Text variant="bodyLarge" style={{ fontWeight: '700', lineHeight: 26 }}>
-            {vm.coreSummary}
+    <Stack gap="md">
+      {p.headline ? (
+        <ReadingLead label="✨ 덕분이의 한마디" sub={p.disposition}>
+          {p.headline}
+        </ReadingLead>
+      ) : null}
+
+      {p.summary ? (
+        // 상세 해석 — a neutral heading gives the long explanation the same scannable hierarchy as the pastel
+        // sections, without a surface (§A-2). Reading measure keeps it comfortable; content is never changed.
+        <ReadingSection variant="neutral" title="자세히 보면" emoji={null}>
+          <Text variant="reading" style={{ lineHeight: 28 }}>
+            {p.summary}
           </Text>
-        </Card>
+        </ReadingSection>
       ) : null}
 
-      {/* 2 — disposition */}
-      {vm.disposition ? (
-        <Card radius="xl">
-          <Section title="기본 성향" body={vm.disposition} />
-        </Card>
+      {p.keyPoints.length > 0 ? (
+        <ReadingSection variant="positive" title="좋은 흐름">
+          <ReadingBullets items={p.keyPoints} glyphColor={theme.onSage} />
+        </ReadingSection>
       ) : null}
 
-      {/* 3 — Assessment summary (fail-closed) */}
-      <AssessmentSummary view={vm.assessment} />
-
-      {/* 4 — current flow */}
-      {vm.currentFlow ? (
-        <Card radius="xl">
-          <Section title="현재 흐름" body={vm.currentFlow} />
-        </Card>
+      {p.cautions.length > 0 ? (
+        <ReadingSection variant="caution" title="조심할 점">
+          <ReadingBullets items={p.cautions} glyphColor={theme.onButter} />
+        </ReadingSection>
       ) : null}
 
-      {/* 5 — core interpretation (always in initial view) */}
-      {vm.coreInterpretation ? (
-        <Card radius="xl">
-          <Section title="핵심 해석" body={vm.coreInterpretation} />
-        </Card>
-      ) : null}
-
-      {/* 6 — 더 자세히 보기 (progressive disclosure) */}
+      {/* 전문 근거 — collapsed. Normalized user-language interpretation only; NO raw engine evidence /
+          활용됨·미사용 / assessment-limitation copy (§22-§24 upstream keep those off the consumer answer). */}
       {hasDetail ? (
-        <>
-          {!expanded ? (
-            <Pressable
-              onPress={() => setExpanded(true)}
-              accessibilityRole="button"
-              accessibilityLabel="더 자세히 보기"
-              style={{ alignSelf: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.lg }}
-            >
-              <Text variant="bodyMedium" style={{ color: theme.secondary, fontWeight: '700' }}>
-                더 자세히 보기 ▾
-              </Text>
-            </Pressable>
-          ) : (
-            <Card radius="xl">
-              <Stack gap="lg">
-                <BulletList title="강점" items={vm.strengths} glyphColor={theme.secondary} />
-                <BulletList title="주의할 점" items={vm.cautions} glyphColor={theme.accent} />
-                {vm.domainInterpretation?.map((d, i) => (
-                  <Section key={i} title={d.title} body={d.body} />
-                ))}
-                <Section title="앞으로의 흐름" body={vm.futureFlow} />
-              </Stack>
-            </Card>
-          )}
-        </>
+        <ReadingEvidence>
+          {p.detailSections.map((d, i) => (
+            <EvidenceRow key={i} title={d.title} body={d.body} />
+          ))}
+        </ReadingEvidence>
       ) : null}
 
-      {/* 11 — Explainability */}
-      <InterpretationEvidenceSheet grounding={vm.grounding} />
-
-      {/* 12 — recommended follow-ups (helpers only; composer stays external §18) */}
-      {vm.followUps && onSelectFollowUp ? (
-        <FollowUpSuggestions suggestions={vm.followUps} onSelect={onSelectFollowUp} />
+      {p.followUps.length > 0 && onSelectFollowUp ? (
+        <FollowUpSuggestions suggestions={p.followUps} onSelect={onSelectFollowUp} />
       ) : null}
 
-      {/* feedback (honest seam) */}
-      <UserFeedbackControl onSubmit={onFeedback} />
+      <UserFeedbackControl
+        onSubmit={onFeedback}
+        initialVerdict={initialFeedback}
+        onReport={onReport}
+        reported={reported}
+      />
     </Stack>
   );
 }

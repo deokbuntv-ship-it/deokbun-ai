@@ -1,0 +1,38 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- 옛 정책 제거 (2) — `conversation_messages` 두 개. 20260913 이 **이름을 틀렸습니다**
+-- ════════════════════════════════════════════════════════════════════════════
+--
+-- 무엇이 잘못됐나
+--   `20260913000000` 은 옛 정책 12개를 지우려 했고 10개는 지웠습니다.
+--   `conversation_messages` 의 둘만 남았습니다. **이름을 잘못 적었기 때문입니다:**
+--
+--     적은 것                                   실제
+--     insert messages in own conversation   →   insert messages into own conversation
+--     select messages in own conversation   →   select messages of own conversation
+--
+--   `in` 하나로 뭉뚱그렸는데 실제로는 `into` 와 `of` 로 서로 달랐습니다.
+--
+-- 왜 그렇게 됐나 — 그리고 그 파일은 스스로 알고 있었습니다
+--   사전점검 출력이 이 둘만 `insert/select messages ... own conversation` 으로 **가운데를
+--   줄여서** 보고했습니다. 나머지 10개는 이름이 통째로 나왔고, 그래서 맞았습니다.
+--   `20260913000000` 70행에 "위 두 줄의 이름은 **추정입니다**" 라고 적어 두었고,
+--   "틀린 이름이어도 `if exists` 라 오류는 나지 않고, **다만 안 지워집니다**" 라고도 적었습니다.
+--   **경고한 그대로 일어났습니다.**
+--
+-- ⚠ 이것이 이 계열 실수의 본질입니다
+--   `drop ... if exists` 는 이름이 틀려도 **조용히 성공**합니다. 오류가 없으니 지워진 줄 압니다.
+--   그래서 이런 문장은 **실행 성공이 아니라 결과로** 확인해야 합니다.
+--   확인 질의는 `docs/PRODUCTION_SCHEMA_PROMOTION_PLAN.md` §9 에 있습니다.
+--
+-- 안전한가 — 예
+--   오너가 production 에서 이 둘의 조건을 실측했고 **새 정책과 동일**했습니다.
+--   그리고 새 정책이 동사를 전부 덮습니다:
+--     messages_select_via_conversation (select) · messages_insert_via_conversation (insert)
+--   지워도 좁아지지 않습니다. 순수한 중복 정리입니다.
+--
+-- staging 에서의 동작
+--   이 이름들은 staging 에 없습니다. `if exists` 라 아무 일도 일어나지 않습니다.
+-- ════════════════════════════════════════════════════════════════════════════
+
+drop policy if exists "insert messages into own conversation" on public.conversation_messages;
+drop policy if exists "select messages of own conversation"   on public.conversation_messages;

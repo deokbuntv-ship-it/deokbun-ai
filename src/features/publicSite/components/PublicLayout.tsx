@@ -14,7 +14,7 @@ function PublicHeader() {
     <View style={styles.header}>
       <Link href="/content" asChild>
         <Pressable hitSlop={8}>
-          <Text variant="headingMedium">덕분AI</Text>
+          <Text variant="headingMedium">덕분이</Text>
         </Pressable>
       </Link>
       <View style={styles.headerNav}>
@@ -65,7 +65,7 @@ function PublicFooter() {
         </Link>
       </View>
       <Text variant="caption" colorToken="textSecondary">
-        덕분AI — AI 라이프 인사이트 · 해석은 참고용이며 중요한 판단의 단독 근거가
+        덕분이 — AI 라이프 인사이트 · 해석은 참고용이며 중요한 판단의 단독 근거가
         아닙니다.
       </Text>
     </View>

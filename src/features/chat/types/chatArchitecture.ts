@@ -1,6 +1,7 @@
 import type { ConsultationDraft } from '@/features/consultation';
 import type { ConsultationGrounding } from '@/features/chat/prompts/grounding';
 import type { ConsultationMode } from '@/features/chat/prompts/consultationMode';
+import type { StructuredConsultationViewModel } from '@/features/intelligence/types/consultationViewModel';
 import type { ChatMessage } from './chat';
 
 export type LLMMessageRole = 'system' | 'user' | 'assistant';
@@ -19,6 +20,10 @@ export type SelectedConsultationContext = {
   // Birth-time certainty, so the prompt can honor the birth-time-unknown / approximate
   // policy (§23/§24) without fabricating a 시주. Optional for backward compatibility.
   birthTimeAccuracy?: 'exact' | 'approximate' | 'unknown';
+  // Which calendar the RAW birthDate label is in (Codex FIX #5). The deterministic grounding uses
+  // the canonical (立春/Jie) Four Pillars regardless; this only disambiguates the display label so
+  // the LLM never guesses which calendar the raw date is.
+  inputCalendar?: 'SOLAR' | 'LUNAR';
 };
 
 export type PromptBuildInput = {
@@ -31,6 +36,10 @@ export type PromptBuildInput = {
   grounding?: ConsultationGrounding;
   // Response-shaping mode (§14). Optional — defaults to classifying currentUserMessage.
   mode?: ConsultationMode;
+  // Deterministic Decision-Engine directive (Answer-Seeking V1.4): the SERVER's computed decision (support
+  // level → assertiveness, comparison/ranking permission, claim permissions) as a compact system
+  // instruction the LLM verbalizes. Optional — absent → the LLM falls back to the static policy alone.
+  answerPlanDirective?: string | null;
 };
 
 // Response contract seam (§33/§37). The LLM answer stays a natural-language string
@@ -84,12 +93,20 @@ export type ChatServiceInput = {
   draft: ConsultationDraft;
   messages: ChatMessage[];
   conversationMemory: ConversationMemoryState;
+  // A retry reuses the first attempt's opaque id so the Edge can return the completed response at 0 LLM.
+  requestId?: string;
+  // Sprint E — the CURRENT conversation id (when one exists), so the Edge can server-load the previous
+  // decision for a follow-up. An identifier only; never authoritative decision data.
+  conversationId?: string | null;
 };
 
 export type ChatServiceResult =
   | {
       success: true;
       responseText: string;
+      // Validated structured long-form result (sprint §14). Present when the LLM returned the
+      // structured schema and it parsed; absent → the UI renders `responseText` (plain fallback).
+      structuredResult?: StructuredConsultationViewModel;
       // Correlation id for tracing/logging this request (optional; additive).
       requestId?: string;
       // Prompt/mode/grounding traceability (optional; additive — the UI ignores it).
@@ -101,6 +118,19 @@ export type ChatServiceResult =
         | 'NOT_CONFIGURED'
         | 'INVALID_INPUT'
         | 'REQUEST_FAILED'
-        | 'AUTH_REQUIRED';
+        | 'AUTH_REQUIRED'
+        | 'INSUFFICIENT_DUK'
+        // V6 — no chart could be built from the birth information on file. Nothing was charged, and a retry
+        // of the same question cannot succeed until the input is corrected.
+        | 'GROUNDING_UNAVAILABLE'
+        // 애플 5.1.2(i) — 제3자 AI 처리 동의가 없다. 청구 0, 재시도로 풀리지 않는다.
+        // 사용자가 할 일은 재시도가 아니라 동의이므로 화면이 동의 경로로 안내한다.
+        | 'AI_CONSENT_REQUIRED';
       requestId?: string;
+      // Authoritative server balance snapshot — present ONLY for errorCode 'INSUFFICIENT_DUK'. The UI uses
+      // these for a top-up/paywall prompt; they are NEVER computed client-side.
+      insufficientDuk?: { balance: number; required: number; shortfall: number };
+      // The SERVER's own consumer-safe explanation, present ONLY for 'GROUNDING_UNAVAILABLE'. It names the
+      // input to correct, which a fixed client string cannot.
+      errorDetail?: string;
     };

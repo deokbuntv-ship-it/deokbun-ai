@@ -103,7 +103,20 @@ export function pgCodeOf(raw: unknown): string | null {
 // Map a raw Supabase/Postgres error to a standard AppErrorCode for logging and
 // (optionally) user messaging. SQLSTATE reference: 23505 unique_violation,
 // 23503 fk_violation, 23502 not_null, 23514 check, 42501 insufficient_privilege
-// (RLS denial), class 08 connection exceptions. PostgREST PGRST301 = bad JWT.
+// (RLS denial), class 08 connection exceptions.
+//
+// PostgREST JWT group — ALL HTTP 401 authentication failures, NOT database faults:
+//   PGRST301 "Provided JWT couldn't be decoded or it is invalid"
+//   PGRST302 "request without Bearer auth while the anonymous role is disabled"
+//   PGRST303 "JWT claims validation or parsing failed" (e.g. expired session token /
+//             device clock skew — the request is rejected at the auth layer before the
+//             table is ever evaluated)
+// All three mean "re-authenticate" → AUTH_REQUIRED. Without 302/303 here they fall
+// through to the DB_ERROR default, which is exactly why a transient session-token
+// failure on a best-effort draft restore was logged as `DB_ERROR pgCode PGRST303`.
+// PGRST300 ("JWT secret missing", HTTP 500) is a SERVER-config fault, not a user-auth
+// problem, so it is deliberately left to the DB_ERROR fallback (never mislabel a
+// misconfigured server as "please log in").
 const PG_CODE_MAP: Record<string, AppErrorCode> = {
   '23505': 'DUPLICATE_REQUEST',
   '23503': 'INVALID_INPUT',
@@ -111,6 +124,8 @@ const PG_CODE_MAP: Record<string, AppErrorCode> = {
   '23514': 'INVALID_INPUT',
   '42501': 'FORBIDDEN',
   PGRST301: 'AUTH_REQUIRED',
+  PGRST302: 'AUTH_REQUIRED',
+  PGRST303: 'AUTH_REQUIRED',
 };
 
 export function pgErrorToAppCode(raw: unknown): AppErrorCode {

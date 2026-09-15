@@ -17,11 +17,12 @@
 // Runtime: Supabase Edge Functions (Deno). Excluded from the app tsconfig; never
 // bundled by Metro.
 
-import { withSupabase } from 'npm:@supabase/server';
+import { withSupabase } from 'npm:@supabase/server@1.4.1';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 import { getTemplate, type TemplateVariables } from './templates.ts';
 import { resolveWorkload } from './workloads.ts';
+import { globalSpendGuardFailure, reserveGlobalPaidGeneration } from '../_shared/globalSpendGuard.ts';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 
@@ -249,6 +250,12 @@ export default {
 
         const vars = (variables ?? {}) as TemplateVariables;
         const prompt = template.build(vars);
+
+        const spend = await reserveGlobalPaidGeneration(admin, userId, 'content_generation');
+        if (spend.status !== 'allowed') {
+          const failure = globalSpendGuardFailure(spend);
+          return Response.json(failure.body, { status: failure.status, headers: failure.headers });
+        }
 
         // ---- Provider call -------------------------------------------------
         stage = 'openai_request';

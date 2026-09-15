@@ -15,6 +15,7 @@ import {
   type AdminConsultationDetail,
   type AdminMessageMeta,
 } from '@/features/admin';
+import type { AdminConsultationAudit } from '@/features/admin/services/adminConsultationsService';
 
 type DetailStatus = 'loading' | 'ready' | 'error' | 'notfound';
 
@@ -42,6 +43,7 @@ export default function AdminConsultationDetailScreen() {
       : undefined;
 
   const [detail, setDetail] = useState<AdminConsultationDetail | null>(null);
+  const [audit, setAudit] = useState<AdminConsultationAudit[]>([]);
   const [status, setStatus] = useState<DetailStatus>('loading');
   const loadTokenRef = useRef(0);
 
@@ -66,6 +68,11 @@ export default function AdminConsultationDetailScreen() {
         }
         setDetail(result);
         setStatus('ready');
+        // Decision-audit scalars (§5.8) — non-blocking; empty on failure. Metadata only.
+        adminConsultationsService
+          .getConsultationAudit(conversationId)
+          .then((rows) => { if (token === loadTokenRef.current) setAudit(rows); })
+          .catch(() => { if (token === loadTokenRef.current) setAudit([]); });
       })
       .catch(() => {
         if (token !== loadTokenRef.current) {
@@ -117,6 +124,31 @@ export default function AdminConsultationDetailScreen() {
               { label: '요약 존재', value: detail.hasSummary ? '있음' : '없음' },
             ]}
           />
+          {audit.length > 0 ? (
+            <Stack gap="sm">
+              <Text variant="headingMedium">결정 감사 (버전 · 메타데이터)</Text>
+              {audit.map((a, i) => (
+                <AdminDetailSection
+                  key={`${a.createdAt ?? ''}-${i}`}
+                  title={a.workload ?? `결정 ${i + 1}`}
+                  rows={[
+                    { label: '모델', value: a.modelId ?? '–' },
+                    { label: '엔진 버전', value: a.engineVersion ?? '–' },
+                    { label: '결정 정책', value: a.decisionPolicyVersion ?? '–' },
+                    { label: '답변 플랜', value: a.answerPlanVersion ?? '–' },
+                    { label: '극성', value: a.polarity ?? '–' },
+                    { label: '도메인', value: a.domain ?? '–' },
+                    { label: '시각', value: formatDate(a.createdAt) },
+                  ]}
+                />
+              ))}
+              <Card>
+                <Text variant="caption" colorToken="textSecondary">
+                  결정 근거의 버전·메타데이터만 표시됩니다. 프롬프트·질문·답변 원문·내부 추론(chain-of-thought)은 저장·노출되지 않습니다.
+                </Text>
+              </Card>
+            </Stack>
+          ) : null}
           <Stack gap="sm">
             <Text variant="headingMedium">메시지 (메타데이터)</Text>
             {detail.messages.length === 0 ? (
