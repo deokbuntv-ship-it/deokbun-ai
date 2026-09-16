@@ -1,0 +1,27 @@
+{
+  "note": "실제 브라우저로 잰 값 (2026-09-17). 로그인 없이 열리는 화면만 잴 수 있다 — 로그인 수단이 없어 그 밖의 화면은 코드 기준으로만 봤다.",
+  "measuredAt": "2026-09-17",
+  "viewport": "375x812 (모바일) · duk-policy 만 1024 폭",
+  "pages": [
+    {
+      "where": "실사이트 www.deokbunai.com",
+      "path": "/login",
+      "overflowX": 0,
+      "clipped": 0,
+      "targets": 4,
+      "smallTargets": 0,
+      "unnamedTargets": 0,
+      "lowContrast": [{ "text": "네이버로 계속하기", "fontSize": 14, "ratio": 2.25, "need": 4.5 }]
+    },
+    { "where": "로컬 개발 서버 (이번 수정 반영)", "path": "/account-deletion", "overflowX": 0, "clipped": 0, "targets": 1, "smallTargets": 1, "smallDetail": "뒤로 32x44", "unnamedTargets": 0, "lowContrast": [] },
+    { "where": "로컬 개발 서버", "path": "/terms-of-service", "overflowX": 0, "clipped": 0, "targets": 1, "smallTargets": 1, "smallDetail": "뒤로 32x44", "unnamedTargets": 0, "lowContrast": [] },
+    { "where": "로컬 개발 서버", "path": "/privacy-policy", "overflowX": 0, "clipped": 0, "targets": 1, "smallTargets": 1, "smallDetail": "뒤로 32x44", "unnamedTargets": 0, "lowContrast": [] },
+    { "where": "로컬 개발 서버", "path": "/ai-notice", "overflowX": 0, "clipped": 0, "targets": 1, "smallTargets": 1, "smallDetail": "뒤로 32x44", "unnamedTargets": 0, "lowContrast": [] },
+    { "where": "로컬 개발 서버", "path": "/duk-policy", "overflowX": 0, "clipped": 0, "targets": 1, "smallTargets": 1, "smallDetail": "뒤로 32x44", "unnamedTargets": 0, "lowContrast": [] }
+  ],
+  "gateChecks": [
+    { "path": "/account-deletion", "where": "로컬(이번 수정)", "result": "그대로 열림 — 로그인으로 넘어가지 않음" },
+    { "path": "/account-deletion", "where": "실사이트(수정 전 코드)", "result": "/login 으로 넘어감 — 이번 수정이 배포되면 해소" },
+    { "path": "/onboarding/terms", "where": "로컬 · 로그인 안 함", "result": "/login 으로 넘어감 — 온보딩은 여전히 보호됨(fail-closed 유지)" }
+  ]
+}

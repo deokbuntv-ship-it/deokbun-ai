@@ -138,3 +138,52 @@ describe('pickPostOnboardingDestination — continuation priority (§49)', () =>
       expect(pickPostOnboardingDestination({ shareToken: null, returnTo: bad })).toEqual({ kind: 'path', to: '/' });
   });
 });
+
+// ⚠ 2026-09-17 — 공개 문서 7개. 2026-09-15 실사이트 실측에서 전부 `/login` 으로 튕겼다: 목록에 없으면
+// fail-closed 기본값이 `gated` 이기 때문이다(서버 HTML 에는 본문이 있었다). 반례는 양방향으로 건다 —
+// 열려야 하는 것이 열리는가, 그리고 **막혀야 하는 것이 그대로 막히는가**.
+const PUBLIC_DOCS = [
+  '/account-deletion',
+  '/terms-of-service',
+  '/privacy-policy',
+  '/ai-notice',
+  '/duk-policy',
+  '/refund-policy',
+  '/minor-policy',
+];
+
+describe('공개 문서 7개 — 로그인 없이 열린다 (2026-09-17)', () => {
+  it.each(PUBLIC_DOCS)('%s — public · 모든 상태에서 render', (p) => {
+    expect(classifyConsumerPath(p)).toBe('public');
+    for (const s of ALL_STATES) expect(resolveGateDecision(s, p)).toEqual({ kind: 'render' });
+  });
+
+  it('온보딩 약관 단계에서 전문을 열었다가 동의 화면으로 돌아올 수 있다', () => {
+    for (const p of ['/terms-of-service', '/privacy-policy', '/minor-policy'])
+      expect(resolveGateDecision('NEEDS_TERMS', p)).toEqual({ kind: 'render' });
+    // 뒤로 가면 동의 화면이 그대로 렌더된다(다시 튕기지 않는다).
+    expect(resolveGateNavigation('NEEDS_TERMS', '/onboarding/terms')).toEqual({ redirectTo: null, showOverlay: false });
+    // 히스토리가 없어 `/my` 로 떨어지는 경우에도 동의 단계로 돌아온다.
+    expect(resolveGateDecision('NEEDS_TERMS', '/my')).toEqual(redirect('/onboarding/terms'));
+  });
+
+  it('⚠ 반례 — 로그인이 필요한 화면은 그대로 막힌다 (접두사 오염 없음)', () => {
+    // `/account-delete`(하이픈 없는 -delete)는 로그인해서 실행하는 화면이다. `/account-deletion` 접두사에
+    // 걸려 열리면 안 된다.
+    expect(classifyConsumerPath('/account-delete')).toBe('gated');
+    expect(resolveGateDecision('ANONYMOUS', '/account-delete')).toEqual(redirect('/login'));
+    for (const p of ['/chat', '/my', '/inbox', '/report/1', '/subject-history', '/premium'])
+      expect(resolveGateDecision('ANONYMOUS', p)).toEqual(redirect('/login'));
+  });
+
+  it('⚠ 반례 — 목록에 없는 새 경로는 여전히 fail-closed', () => {
+    for (const p of ['/some-future-route', '/terms', '/privacy', '/policy', '/account', '/legal'])
+      expect(classifyConsumerPath(p)).toBe('gated');
+  });
+
+  it('정규화된 모양(슬래시·쿼리·해시)도 같은 판정', () => {
+    expect(classifyConsumerPath('/terms-of-service/')).toBe('public');
+    expect(classifyConsumerPath('/privacy-policy?from=onboarding')).toBe('public');
+    expect(classifyConsumerPath('/duk-policy#s3')).toBe('public');
+  });
+});

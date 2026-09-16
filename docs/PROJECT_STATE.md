@@ -76,12 +76,26 @@ HEAD는 `open_regression_v8_manifest.json`의 `release_candidate`와 일치한�
 
 | 경로 | 상태 | bytes | mtime |
 |---|---|---|---|
-| `app.json` | M | 1,469 | 2026-08-24 14:01:41 +0900 |
+| `app.json` | M | 1,429 | 2026-09-11 11:08:46 +0900 |
 | `docs/DEOKBUNI_AUTONOMOUS_BATCH_REPORT.md` | ?? | 10,186 | 2026-08-22 20:54:12 +0900 |
 | `docs/DEOKBUNI_AUTONOMOUS_BATCH_2_REPORT.md` | ?? | 7,736 | 2026-08-22 21:42:44 +0900 |
 | `docs/DEOKBUNI_AUTONOMOUS_BATCH_3_REPORT.md` | ?? | 8,685 | 2026-08-22 22:18:27 +0900 |
 | `docs/MYUNGRI_100_ADOPTION_ANALYSIS.md` | ?? | 16,768 | 2026-08-15 23:36:53 +0900 |
 | `docs/RUBRIC_KNOWN_LIMITATIONS.md` | ?? | 5,139 | 2026-09-02 08:35:08 +0900 |
+
+> **2026-09-17 갱신 (CTO 판정).** `app.json` 을 **1,469 bytes / 2026-08-24 → 1,429 bytes / 2026-09-11 11:08:46**
+> 로 고쳤다. 표의 값이 실제 파일과 6일 동안 어긋나 있었다 — 2026-09-11 세션(expo-iap 설정)에서 바뀐 뒤
+> 이 표가 갱신되지 않은 것이다. 2026-09-17 세션은 `app.json` 을 편집하지 않았다(그날 mtime 이 9월 11일인 것이 근거).
+> SHA-256 앞 16자리로도 남긴다 — bytes·mtime 보다 위조·착오에 강하다:
+>
+> | 경로 | SHA-256 (앞 16) |
+> |---|---|
+> | `app.json` | `ee1e10a7b7f383ac` |
+> | `docs/DEOKBUNI_AUTONOMOUS_BATCH_REPORT.md` | `e7ae7dc31647352a` |
+> | `docs/DEOKBUNI_AUTONOMOUS_BATCH_2_REPORT.md` | `95c26873041912c1` |
+> | `docs/DEOKBUNI_AUTONOMOUS_BATCH_3_REPORT.md` | `edc974b5428a1fb9` |
+> | `docs/MYUNGRI_100_ADOPTION_ANALYSIS.md` | `23bfa4a4a02b084b` |
+> | `docs/RUBRIC_KNOWN_LIMITATIONS.md` | `58f11e7990bd3f47` |
 
 > **제외됨 (2026-09-02, 오너 승인).** `docs/DIVINATION_QA_PACK.md` 는 보호 대상이 아니다.
 > `src/features/divination/__tests__/generateFounderQaPack.test.ts` 가 테스트를 돌릴 때마다 이 파일을

@@ -51,7 +51,7 @@ git push origin admin/master-operations-content
 | 3 | `/terms-of-service` 에 **§6 회원 탈퇴(계정 삭제)** 가 있다 | 스크롤 |
 | 4 | `/privacy-policy` 가 열리고 §6 에 탈퇴 경로가 있다 | 스크롤 |
 | 5 | `/ai-notice` · `/duk-policy` · `/refund-policy` · `/minor-policy` 가 열린다 | 주소 직접 입력 |
-| 6 | `/sitemap.xml` 이 200 이고 위 주소들이 들어 있다 | 주소 직접 입력 |
+| 6 | `/sitemap.xml` 이 200 이고 **법률·안내 7개 주소**(1·3·4·5 의 주소)가 들어 있다 | 주소 직접 입력 → Ctrl+F 로 `account-deletion` |
 | 7 | 홈이 흰 화면이 아니다 | 열어 본다 |
 
 ⚠ 1·3·4 중 하나라도 안 되면 **병합하지 마십시오.** 구글 제출에 그 주소를 써야 합니다.
@@ -92,13 +92,19 @@ git push origin admin/master-operations-content
 | 1 | 계정삭제 안내 (로그인 없이) | `https://www.deokbunai.com/account-deletion` |
 | 2 | 이용약관 §6 | `https://www.deokbunai.com/terms-of-service` |
 | 3 | 개인정보 처리방침 | `https://www.deokbunai.com/privacy-policy` |
-| 4 | 사이트맵 | `https://www.deokbunai.com/sitemap.xml` |
+| 4 | 사이트맵 — **법률·안내 7개 주소**가 들어 있다 | `https://www.deokbunai.com/sitemap.xml` |
 | 5 | 빌드 로그의 Supabase host | Vercel → Deployments → 최신 → Build Logs |
 | 6 | 관리자 원가 화면의 안내 문구 | 관리자 → AI 사용량 → "최근 24시간 AI 비용" |
 
-⚠ **6번의 기대값**: production 에 마이그레이션 15를 아직 안 올렸다면
-**"이 환경에는 아직 원가 기능이 설치되지 않았습니다."** 가 보여야 합니다.
-"불러오지 못했습니다" 가 보이면 알려 주십시오 — 그건 다른 뜻입니다(일시 오류).
+⚠ **6번의 기대값 (2026-09-17 갱신)**: 마이그레이션 15가 2026-09-15 ②-4 에서 production 에 적용됐습니다.
+그래서 이제는 **"가격 미확인"** 이 보여야 합니다.
+**"이 환경에는 아직 원가 기능이 설치되지 않았습니다."** 가 보이면 15가 반영되지 않은 것이고,
+"불러오지 못했습니다" 는 또 다른 뜻입니다(일시 오류).
+
+⚠ **4번(사이트맵)의 기대값 (2026-09-17 갱신)**: 법률·안내 7개 주소(`/account-deletion` · `/terms-of-service` ·
+`/privacy-policy` · `/ai-notice` · `/duk-policy` · `/refund-policy` · `/minor-policy`)가 들어 있어야 합니다.
+콘텐츠·인물 주소는 **발행된 것만** 들어갑니다(DB 에서 읽습니다). 생성기는 `scripts/generate-sitemap.mjs`,
+앱이 로그인 없이 여는 목록과 같은지는 `publicDocRoutes.test.ts` 가 대조합니다.
 
 ⚠ 1~3 은 **구글 플레이 제출에 그대로 넣을 주소**입니다. 열리는 것을 확인한 뒤에 넣으십시오.
 

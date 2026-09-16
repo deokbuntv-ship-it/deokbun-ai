@@ -26,7 +26,10 @@ export type ConsultationTransportResult =
   | { ok: false; error: 'GROUNDING_UNAVAILABLE'; message: string | null }
   // 애플 5.1.2(i) — HTTP 403 AI_CONSENT_REQUIRED. 아무것도 청구되지 않았고 재시도로 풀리지
   // 않는다. 할 일은 동의이므로 클라이언트가 동의 화면으로 연결한다.
-  | { ok: false; error: 'AI_CONSENT_REQUIRED' };
+  | { ok: false; error: 'AI_CONSENT_REQUIRED' }
+  // ⚠ 2026-09-17 — HTTP 409 REQUEST_IN_PROGRESS. 같은 (사용자 · workload · 요청 번호)를 서버가 아직 들고
+  // 있다는 뜻이다(리스 300초). 실패가 아니라 "아직" 이므로, 화면은 잠시 뒤 같은 번호로 다시 부른다.
+  | { ok: false; error: 'REQUEST_IN_PROGRESS' };
 
 export type ConsultationTransport = {
   requestConsultation(request: ServerConsultationRequest): Promise<ConsultationTransportResult>;
