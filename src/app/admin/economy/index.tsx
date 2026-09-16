@@ -19,6 +19,7 @@ import { adminMono, adminTheme } from '@/features/admin/adminTheme';
 import { AdminConfirmDialog } from '@/features/admin/components/AdminConfirmDialog';
 import {
   adminEconomyService,
+  classifyUserLookup,
   type EconomyOverview,
 } from '@/features/admin/services/adminEconomyService';
 
@@ -145,6 +146,12 @@ export default function AdminEconomyScreen() {
   const [walletState, setWalletState] = useState<WalletState>('idle');
   const [wallet, setWallet] = useState<Record<string, unknown> | null>(null);
   const [walletUserId, setWalletUserId] = useState('');
+  // ⚠ 2026-09-17 — 서버가 준 **진짜 이유**를 담아 둔다. 예전에는 오류를 버려서(`if (error) return null`)
+  //   화면에 "사용자 ID와 권한을 확인해 주세요" 한 줄만 떴고, 2026-09-15 에는 그 한 줄 때문에 원인이
+  //   입력값(이메일)인지 권한인지 알 수 없어 production 조회를 여덟 번 하고서야 밝혔다.
+  const [walletError, setWalletError] = useState<string | null>(null);
+  // 이메일로 찾았을 때 "누구를 찾았는지" 를 사람이 확인할 수 있게 적어 둔다.
+  const [walletFoundBy, setWalletFoundBy] = useState<string | null>(null);
 
   const lookupWallet = useCallback(async (rawId: string) => {
     const id = rawId.trim();
@@ -152,15 +159,47 @@ export default function AdminEconomyScreen() {
       setWalletState('idle');
       return;
     }
-    setWalletUserId(id);
-    setWalletState('loading');
-    const data = await adminEconomyService.getUserWallet(id);
-    if (data === null) {
+    // ⚠ 2026-09-17 — 운영 중에 오너가 아는 것은 이메일이다. UUID 가 아니면 이메일로 찾아보고, 이메일도
+    //   아니면 **서버를 부르지 않고** 바로 안내한다(2026-09-15: 이메일을 넣어 22P02 가 났는데 화면에는
+    //   "사용자 ID와 권한을 확인해 주세요" 한 줄만 떠서 원인이 보이지 않았다).
+    const kind = classifyUserLookup(id);
+    if (kind === 'unknown') {
       setWallet(null);
+      setWalletUserId(id);
+      setWalletFoundBy(null);
+      setWalletError('사용자 ID(UUID) 또는 이메일을 넣어 주세요. 예: name@example.com');
       setWalletState('error');
       return;
     }
-    setWallet(data);
+    setWalletState('loading');
+    setWalletError(null);
+    let targetId = id;
+    let foundBy: string | null = null;
+    if (kind === 'email') {
+      const found = await adminEconomyService.findUserByEmail(id);
+      if (!found.ok) {
+        setWallet(null);
+        setWalletUserId(id);
+        setWalletFoundBy(null);
+        setWalletError(found.message);
+        setWalletState('error');
+        return;
+      }
+      targetId = found.data.userId;
+      foundBy = `이메일로 찾음 — ${found.data.displayName ?? '이름 없음'} · 가입 ${found.data.createdAt?.slice(0, 10) ?? '-'}`;
+      // 조정 칸에도 같은 ID 를 넣어 준다 — 손으로 옮겨 적다 틀리는 일을 없앤다(원장은 되돌릴 수 없다).
+      setAdjUserId(targetId);
+    }
+    setWalletUserId(targetId);
+    setWalletFoundBy(foundBy);
+    const result = await adminEconomyService.getUserWallet(targetId);
+    if (!result.ok) {
+      setWallet(null);
+      setWalletError(result.code ? `${result.message} (${result.code})` : result.message);
+      setWalletState('error');
+      return;
+    }
+    setWallet(result.data);
     setWalletState('ready');
   }, []);
 
@@ -199,8 +238,11 @@ export default function AdminEconomyScreen() {
       note: adjNote.trim(),
     });
     setAdjBusy(false);
-    if (newId === null) {
-      setAdjResult({ ok: false, message: '조정에 실패했어요. 권한 또는 입력 값을 확인해 주세요.' });
+    if (!newId.ok) {
+      // ⚠ 2026-09-17 — 서버가 준 이유를 그대로 보여 준다. 'not authorized'(관리자 아님) · '22P02'(ID 모양) ·
+      //   'insufficient … balance'(차감이 잔액을 넘음)는 사람이 할 일이 서로 다른데, 예전에는 셋 다
+      //   "권한 또는 입력 값을 확인해 주세요" 한 줄로 보였다.
+      setAdjResult({ ok: false, message: newId.code ? `${newId.message} (${newId.code})` : newId.message });
       return;
     }
     setAdjResult({ ok: true, message: '조정 완료 · 원장 기록됨' });
@@ -268,13 +310,16 @@ export default function AdminEconomyScreen() {
 
       {/* 2. 사용자 지갑 조회 */}
       <Stack gap="md">
-        <SectionHeader title="사용자 지갑 조회" caption="사용자 ID를 입력해 서버 기준 지갑 스냅샷을 조회합니다." />
+        <SectionHeader
+          title="사용자 지갑 조회"
+          caption="사용자 ID(UUID) 또는 이메일로 서버 기준 지갑 스냅샷을 조회합니다. 이메일은 정확히 한 명이 찾아질 때만 씁니다."
+        />
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <Input
-            label="사용자 ID"
+            label="사용자 ID 또는 이메일"
             value={walletInput}
             onChangeText={setWalletInput}
-            placeholder="사용자 ID"
+            placeholder="UUID 또는 name@example.com"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -292,11 +337,20 @@ export default function AdminEconomyScreen() {
         ) : walletState === 'error' || wallet === null ? (
           <AdminStateView
             state="error"
-            message="지갑을 불러오지 못했습니다. 사용자 ID와 권한을 확인해 주세요."
+            // ⚠ 2026-09-17 — 서버가 준 이유가 있으면 그것을 보여 준다. 고정 문구는 이유가 없을 때만.
+            message={walletError ?? '지갑을 불러오지 못했습니다. 사용자 ID와 권한을 확인해 주세요.'}
             onRetry={() => lookupWallet(walletUserId)}
           />
         ) : (
-          <WalletView wallet={wallet} userId={walletUserId} />
+          <Stack gap="sm">
+            {/* ⚠ 이메일로 찾았으면 **누구를 찾았는지** 사람이 확인할 수 있게 적는다 — 덕 조정은 되돌릴 수 없다. */}
+            {walletFoundBy ? (
+              <Text variant="bodySmall" style={{ color: adminTheme.inkMuted }}>
+                {walletFoundBy} · 사용자 ID {walletUserId}
+              </Text>
+            ) : null}
+            <WalletView wallet={wallet} userId={walletUserId} />
+          </Stack>
         )}
       </Stack>
 

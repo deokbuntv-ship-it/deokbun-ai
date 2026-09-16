@@ -1,4 +1,10 @@
-import { isAuthTransportError, parseAiConsentRequired, parseGroundingUnavailable, parseInsufficientDuk } from '@/features/chat/adapters/llmError';
+import {
+  isAuthTransportError,
+  parseAiConsentRequired,
+  parseGroundingUnavailable,
+  parseInsufficientDuk,
+  parseRequestInProgress,
+} from '@/features/chat/adapters/llmError';
 import { chatConfig } from '@/features/chat/config/chatConfig';
 import type {
   ConsultationTransport,
@@ -35,6 +41,9 @@ export const supabaseEdgeConsultationAdapter: ConsultationTransport = {
       if (ungrounded) return { ok: false, error: 'GROUNDING_UNAVAILABLE', message: ungrounded.message };
       // 403 → AI 처리 동의 없음. 401(세션)과 구분해야 화면이 옳은 곳으로 안내한다.
       if (await parseAiConsentRequired(error)) return { ok: false, error: 'AI_CONSENT_REQUIRED' };
+      // ⚠ 409 → 같은 요청 번호를 서버가 아직 들고 있다(2026-09-17). 실패가 아니므로 실패 화면을 띄우면 안
+      // 된다: 잠시 뒤 같은 번호로 다시 부르면 저장된 답이 그대로 온다(LLM 재호출 없음).
+      if (await parseRequestInProgress(error)) return { ok: false, error: 'REQUEST_IN_PROGRESS' };
       // 401 → session expired/invalid: surface as auth so the client routes to login+resume (§15).
       return { ok: false, error: isAuthTransportError(error) ? 'AUTH_REQUIRED' : 'REQUEST_FAILED' };
     }

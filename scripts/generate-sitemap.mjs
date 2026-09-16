@@ -106,9 +106,24 @@ for (const f of famousList) {
   famous.push(f);
 }
 
+// ⚠ 2026-09-17 — 법률·안내 문서 7개. **검색 노출이 목적이 아니라, 주소가 있다는 것을 구글에 알리는** 용도다
+//   (구글 플레이 제출에 계정 삭제 안내 · 개인정보 처리방침 URL 을 적는다). 콘텐츠·인물과 달리 DB 가 아니라
+//   앱 라우트라서 여기에 상수로 적는다. 앱이 로그인 없이 여는 목록(`src/features/onboarding/entryRouting.ts`
+//   PUBLIC_PREFIXES)의 문서 7개와 같아야 한다 — `publicDocRoutes.test.ts` 가 둘을 대조한다.
+const LEGAL_PATHS = [
+  '/account-deletion',
+  '/terms-of-service',
+  '/privacy-policy',
+  '/ai-notice',
+  '/duk-policy',
+  '/refund-policy',
+  '/minor-policy',
+];
+
 const entries = [
   urlEntry(`${base}/content`),
   urlEntry(`${base}/famous`),
+  ...LEGAL_PATHS.map((p) => urlEntry(`${base}${p}`)),
   ...content
     .filter((c) => c.slug)
     .map((c) => urlEntry(`${base}/content/${c.slug}`, c.published_at)),

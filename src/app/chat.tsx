@@ -58,6 +58,7 @@ import {
     ConsultationLoading,
     StructuredConsultationResult,
 } from '@/features/intelligence/components';
+import { clearPendingAnswer, readPendingAnswer, rememberPendingAnswer } from '@/features/chat';
 import { computeAnswerAnchorOffset } from '@/features/chat/scrollAnchor';
 import { ReportCtaFooter } from '@/features/chat/report/ReportCtaFooter';
 import { isReportEligible, resolveReportCtaView } from '@/features/chat/report/reportCta';
@@ -320,6 +321,17 @@ export default function ChatScreen() {
   // Synchronous re-entrancy lock (the `isSending` STATE updates a tick later): a
   // same-frame double-tap cannot start two sends (§30/§e).
   const isSendingRef = useRef(false);
+  // ⚠ 2026-09-17 — 서버가 "아직 만드는 중"(409 REQUEST_IN_PROGRESS)이라고 답할 때의 자동 재수신 상태.
+  //   실패 카드를 띄우지 않고 간격을 벌리며 **같은 요청 번호로** 다시 받아온다. 새 번호로 보내면 LLM 이
+  //   한 번 더 돈다(2026-09-15 실측: 새 번호 → 새 AI 호출 → 또 끊김 → 같은 실패 화면 반복).
+  const [pendingAnswer, setPendingAnswer] = useState(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryAttemptRef = useRef(0);
+  // 동의 화면이 뜬 그 질문. 동의가 저장되면 사용자가 다시 치지 않아도 이어서 보낸다
+  // (2026-09-16 실측: 동의는 저장됐는데 서버로 간 요청이 없어 답이 올 자리가 없었다).
+  const consentPendingRef = useRef<{ text: string; context: ChatMessage[]; requestId?: string } | null>(null);
+  // 대화를 다시 열었을 때 저장된 답을 꺼내는 시도는 대화당 한 번만 한다.
+  const replayCheckedRef = useRef<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -464,6 +476,16 @@ export default function ChatScreen() {
         persistMessage(assistantMessage);
         setSendError(null);
         lastAttemptRef.current = null;
+        // ⚠ 2026-09-17 — 답을 받았으니 자동 재수신을 멈추고, 보관해 둔 요청 번호도 지운다(소비형).
+        consentPendingRef.current = null;
+        retryAttemptRef.current = 0;
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
+        setPendingAnswer(false);
+        const answeredConversationId = ensuredConversationId ?? activeConversationId;
+        if (answeredConversationId) clearPendingAnswer(answeredConversationId);
         setSuccessfulTurnsThisView((n) => n + 1); // this conversation has now consulted (gates the exhausted card)
         // Popular-question funnel: the FIRST successful answer of a popular-origin consultation, once.
         if (popularOriginRef.current && !popularSuccessFiredRef.current) {
@@ -484,9 +506,31 @@ export default function ChatScreen() {
         // V6 — GROUNDING_UNAVAILABLE carries the SERVER's own explanation of which birth input is missing;
         // only the server knows that, so it is preferred over the fixed client copy.
         const view = mapConsultationError(result.errorCode, result.errorDetail);
+        const conversationIdNow = ensuredConversationId ?? activeConversationId ?? null;
         if (result.errorCode === 'AI_CONSENT_REQUIRED') {
           // 안내만 하지 않는다 — 동의 화면을 연다. 그래야 "그래서 어디서 동의하나" 로 끝나지 않는다.
           setConsentSheet(true);
+          // ⚠ 2026-09-17 — 동의 뒤 **이어서 보내려면** 그 질문을 붙잡고 있어야 한다. 서버는 청구하기 전에
+          //   거절했으므로 같은 요청 번호를 그대로 쓴다(중복 청구 없음).
+          consentPendingRef.current = {
+            text,
+            context,
+            ...(result.requestId ? { requestId: result.requestId } : {}),
+          };
+        }
+        // ⚠ 2026-09-17 — 409(아직 만드는 중)는 실패가 아니다: 번호를 보관하고 간격을 벌리며 다시 받아온다.
+        //   그 밖의 실패는 자동 재수신을 멈춘다. 단, 끊긴 요청(REQUEST_FAILED + 번호)은 서버가 계속 만들고
+        //   있을 수 있으므로 번호를 남겨 둔다 — 대화를 다시 열면 그 번호로 저장된 답을 꺼낸다.
+        if (result.errorCode === 'REQUEST_IN_PROGRESS') {
+          if (conversationIdNow && result.requestId) {
+            rememberPendingAnswer({ conversationId: conversationIdNow, requestId: result.requestId });
+          }
+          scheduleAnswerRefetch(text, context, result.requestId);
+        } else {
+          setPendingAnswer(false);
+          if (result.errorCode === 'REQUEST_FAILED' && result.requestId && conversationIdNow) {
+            rememberPendingAnswer({ conversationId: conversationIdNow, requestId: result.requestId });
+          }
         }
         if (result.errorCode === 'AUTH_REQUIRED') {
           // Preserve the question + resume route so login returns here, not Home (§9/§28).
@@ -506,6 +550,64 @@ export default function ChatScreen() {
       isSendingRef.current = false;
     }
   };
+
+  // ⚠ 2026-09-17 — 자동 재수신 간격(3 · 5 · 8 · 13 · 21초 = 50초). 서버의 AI 상한이 90초이고 첫 요청이
+  //   이미 기다린 시간이 여기에 더해진다. 다섯 번을 넘기면 멈춘다 — 무한 폴링은 하지 않는다.
+  const REFETCH_DELAYS_MS = [3000, 5000, 8000, 13000, 21000];
+
+  // 자동 경로(동의 뒤 이어보내기 · 409 재수신 · 대화 다시 열기)에서 쓰는, 재진입 잠금이 붙은 전송.
+  const runSendLocked = async (text: string, context: ChatMessage[], requestId?: string) => {
+    if (isSendingRef.current) return;
+    isSendingRef.current = true;
+    try {
+      const ensuredConversationId = await ensureConversation();
+      await runSend(text, context, requestId, ensuredConversationId);
+    } catch {
+      setSendError(mapConsultationError('REQUEST_FAILED'));
+    } finally {
+      isSendingRef.current = false;
+    }
+  };
+
+  // 같은 요청 번호로 잠시 뒤 다시 받아온다. 번호가 없으면 자동으로 부르지 않는다 — 번호 없는 재전송은
+  // 서버에 새 요청이라 LLM 이 또 돌기 때문이다.
+  const scheduleAnswerRefetch = (text: string, context: ChatMessage[], requestId?: string) => {
+    const delay = REFETCH_DELAYS_MS[retryAttemptRef.current];
+    if (delay === undefined || !requestId) {
+      setPendingAnswer(false);
+      return;
+    }
+    retryAttemptRef.current += 1;
+    setPendingAnswer(true);
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      void runSendLocked(text, context, requestId);
+    }, delay);
+  };
+
+  // 화면을 떠나면 예약된 재수신을 취소한다(떠난 화면이 상태를 건드리지 않게).
+  useEffect(
+    () => () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    },
+    [],
+  );
+
+  // ⚠ 2026-09-17 — 대화를 다시 열었을 때: 마지막이 **답 없는 질문**이고 저장해 둔 요청 번호가 있으면,
+  //   서버에 저장된 답을 그 번호로 꺼내 온다(LLM 재호출 없음 · 24시간 안). 대화당 한 번만 시도한다.
+  useEffect(() => {
+    if (messagesHydrationStatus !== 'ready' || !activeConversationId) return;
+    if (replayCheckedRef.current === activeConversationId) return;
+    replayCheckedRef.current = activeConversationId;
+    const pending = readPendingAnswer(activeConversationId);
+    if (!pending) return;
+    const restored = restoredMessages ?? [];
+    const last = restored[restored.length - 1];
+    if (!last || last.role !== 'user') return; // 답이 이미 있으면 꺼낼 것이 없다
+    void runSendLocked(last.text, restored.slice(0, -1), pending.requestId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messagesHydrationStatus, activeConversationId, restoredMessages]);
 
   // Send `rawText` as a new user message. Shared by the composer and by follow-up chips (§7)
   // so both go through the exact same proven send path (auth gate, idempotent retry, persist).
@@ -754,11 +856,13 @@ export default function ChatScreen() {
                   )}
                 </View>
               ))}
-              {/* One honest analysis state — no fake engine stages (§H/§10). */}
-              {isSending ? <ConsultationLoading /> : null}
+              {/* One honest analysis state — no fake engine stages (§H/§10).
+                  ⚠ 2026-09-17 — 서버가 "아직 만드는 중"(409)이라 자동으로 다시 받아오는 동안에도 켜 둔다.
+                  최대 120초를 기다리는 화면에 아무 표시가 없으면 멈춘 것처럼 보인다. */}
+              {isSending || pendingAnswer ? <ConsultationLoading /> : null}
               {/* Conversation-level report action (ONE per conversation, §7) — appears once the
                   consultation has a real answer. Hidden while a send is in flight. */}
-              {!isSending ? (
+              {!isSending && !pendingAnswer ? (
                 <ReportCtaFooter
                   view={reportCtaView}
                   error={reportError}
@@ -787,6 +891,12 @@ export default function ChatScreen() {
                   onTopup={() => router.push('/duk-topup')}
                   style={styles.errorCard}
                 />
+              ) : sendError.kind === 'pending' ? (
+                // ⚠ 2026-09-17 — 실패가 아니라 "아직" 이다. 빨간 실패 카드가 아니라 기다림 안내로 그리고,
+                // "다시 시도" 버튼도 주지 않는다 — 화면이 같은 요청 번호로 알아서 다시 받아온다.
+                <Card use="status" statusColor={theme.primary} radius="xl" style={styles.errorCard}>
+                  <Text variant="bodyMedium">{sendError.message}</Text>
+                </Card>
               ) : (
                 <Card use="status" statusColor={theme.danger} radius="xl" style={styles.errorCard}>
                   <Stack gap="sm">
@@ -864,8 +974,10 @@ export default function ChatScreen() {
               value={inputText}
               onChangeText={setInputText}
               onSend={handleSend}
-              placeholder={isSending ? '덕분이가 읽는 중이에요…' : undefined}
-              disabled={inputText.trim().length === 0 || isSending}
+              // ⚠ 2026-09-17 — 자동 재수신 중(pendingAnswer)에도 "읽는 중" 으로 두고 전송을 막는다.
+              //   여기서 새 질문을 보내면 **새 요청 번호**가 되어 LLM 이 한 번 더 돈다.
+              placeholder={isSending || pendingAnswer ? '덕분이가 읽는 중이에요…' : undefined}
+              disabled={inputText.trim().length === 0 || isSending || pendingAnswer}
             />
             ) : null}
           </View>
@@ -886,7 +998,20 @@ export default function ChatScreen() {
       <AiConsentSheet
         visible={consentSheet}
         onClose={() => setConsentSheet(false)}
-        onAgree={() => aiConsentService.grant()}
+        // ⚠ 2026-09-17 — 동의만 저장하고 끝내면 사용자가 질문을 다시 쳐야 한다(2026-09-16 실측: 동의는
+        //   저장됐는데 서버로 간 요청이 없어 답이 올 자리가 없었다). 저장에 성공하면 붙잡아 둔 질문을
+        //   **같은 요청 번호로** 이어서 보낸다. 실패하면 시트가 닫히지 않으므로 여기서는 아무것도 하지 않는다.
+        onAgree={async () => {
+          const granted = await aiConsentService.grant();
+          if (!granted) return granted;
+          const pending = consentPendingRef.current;
+          consentPendingRef.current = null;
+          if (pending) {
+            setSendError(null);
+            void runSendLocked(pending.text, pending.context, pending.requestId);
+          }
+          return granted;
+        }}
       />
     </Screen>
   );

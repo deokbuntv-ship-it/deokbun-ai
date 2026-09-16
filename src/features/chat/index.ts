@@ -31,6 +31,14 @@ export { selectConsultationContext } from './selectors/contextSelector';
 export { createChatService } from './services/chatService';
 export type { AuthGuard, GroundingBuilder } from './services/chatService';
 export { createServerConsultationService } from './services/createServerConsultationService';
+// 끊긴 상담의 요청 번호 보관소 (2026-09-17) — 대화를 다시 열어도 서버에 저장된 답을 꺼낼 수 있게 한다.
+export {
+  clearPendingAnswer,
+  readPendingAnswer,
+  rememberPendingAnswer,
+  PENDING_ANSWER_TTL_MS,
+  type PendingAnswer,
+} from './services/pendingAnswerStore';
 export type {
   ConsultationTransport,
   ConsultationTransportResult,

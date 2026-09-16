@@ -118,6 +118,11 @@ export function createServerConsultationService(
             requestId,
           };
         }
+        if (result.error === 'REQUEST_IN_PROGRESS') {
+          // ⚠ 2026-09-17 — 실패가 아니다. 서버가 같은 요청을 아직 만들고 있다(409). 실패 로그도 남기지
+          // 않는다 — 로그가 오염되면 진짜 실패를 찾지 못한다. 화면이 잠시 뒤 같은 requestId 로 다시 부른다.
+          return { success: false, errorCode: 'REQUEST_IN_PROGRESS', requestId };
+        }
         logFailure('REQUEST_FAILED', 'error');
         return { success: false, errorCode: 'REQUEST_FAILED', requestId };
       }

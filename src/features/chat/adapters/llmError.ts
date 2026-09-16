@@ -92,3 +92,24 @@ export async function parseInsufficientDuk(
     return null;
   }
 }
+
+// ⚠ 2026-09-17 — HTTP 409 `REQUEST_IN_PROGRESS`. `acquire_paid_request` 가 같은 (사용자 · workload · 요청
+// 번호)의 리스를 이미 들고 있다는 뜻이다: 답은 만들어지는 중이고, 잠시 뒤 같은 번호로 다시 부르면 저장된
+// 답이 그대로 온다(LLM 재호출 없음). 이것을 REQUEST_FAILED 로 뭉개면 2026-09-15 실측처럼 화면이 "지금
+// 답변을 가져오지 못했어요" 를 반복하고, 사용자는 새 질문을 보내 LLM 을 한 번 더 태운다.
+//
+// 상태(409)만으로 판정하지 않고 본문의 error 값도 본다 — 같은 409 를 쓰는 `GENERATION_IN_PROGRESS`
+// (오늘·이달 운세 생성)도 같은 뜻이라 함께 받는다. 본문을 읽지 못하면 상태만으로 참으로 본다.
+const IN_PROGRESS_REASONS = ['REQUEST_IN_PROGRESS', 'GENERATION_IN_PROGRESS'];
+
+export async function parseRequestInProgress(error: unknown): Promise<boolean> {
+  const ctx = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx || ctx.status !== 409) return false;
+  if (typeof ctx.json !== 'function') return true;
+  try {
+    const body = (await ctx.json()) as { error?: unknown };
+    return typeof body?.error === 'string' ? IN_PROGRESS_REASONS.includes(body.error) : true;
+  } catch {
+    return true;
+  }
+}

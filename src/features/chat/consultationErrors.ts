@@ -12,12 +12,16 @@ export type ConsultationErrorCode =
   | 'INSUFFICIENT_DUK'
   | 'GROUNDING_UNAVAILABLE'
   // 애플 5.1.2(i) — 제3자 AI 처리 동의가 없다.
-  | 'AI_CONSENT_REQUIRED';
+  | 'AI_CONSENT_REQUIRED'
+  // ⚠ 2026-09-17 — 서버가 같은 요청을 아직 만들고 있다(409). 실패가 아니라 "아직" 이다.
+  | 'REQUEST_IN_PROGRESS';
 
 export type ConsultationErrorKind =
   | 'auth' | 'recoverable' | 'blocked' | 'input' | 'insufficient'
   // 동의가 필요하다. auth 와 **다르다** — 로그인은 돼 있고, 할 일은 동의다.
-  | 'consent';
+  | 'consent'
+  // 아직 만들어지는 중이다. 실패 카드가 아니라 기다림 표시로 그린다 — 사용자가 할 일은 없다.
+  | 'pending';
 
 export type ConsultationErrorView = {
   kind: ConsultationErrorKind;
@@ -57,6 +61,14 @@ export function mapConsultationError(
       return {
         kind: 'input',
         message: '메시지를 다시 확인해 주세요.',
+        canRetry: false,
+      };
+    case 'REQUEST_IN_PROGRESS':
+      // ⚠ 2026-09-17 — 실패가 아니라 "아직" 이다. **"다시 시도" 버튼을 주지 않는다**: 화면이 같은 요청
+      // 번호로 알아서 다시 받아온다. 버튼을 주면 사용자가 새 질문을 보내 LLM 을 한 번 더 태우게 된다.
+      return {
+        kind: 'pending',
+        message: '답을 만들고 있어요.\n조금만 기다려 주세요 — 다 되면 바로 보여 드릴게요.',
         canRetry: false,
       };
     case 'AI_CONSENT_REQUIRED':

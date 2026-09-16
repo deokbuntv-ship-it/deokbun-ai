@@ -25,6 +25,20 @@ const PUBLIC_PREFIXES: readonly string[] = [
   '/admin',
   '/shared-report',
   '/_sitemap', // expo-router internal
+  // ⚠ 2026-09-17 — 법률·안내 문서 7개. 두 가지 이유로 로그인 없이 열려야 한다:
+  //   ① 구글 플레이에 제출하는 계정 삭제 안내 · 개인정보 처리방침 URL 은 앱을 지운 사람도 열 수 있어야 한다.
+  //   ② 온보딩 약관 동의 단계에서 전문 링크를 눌렀다가 동의 화면으로 돌아올 수 있어야 한다.
+  //   2026-09-15 실사이트 실측: 이 목록에 없어서 fail-closed 기본값(gated)으로 분류되어 7개 모두 /login 으로
+  //   튕겼다(서버 HTML 에는 본문이 있었고, 튕긴 것은 클라이언트 게이트다). 여는 방법은 **이 목록에 넣는 것뿐**
+  //   이며 기본값과 구조는 그대로 둔다. ⚠ 로그인이 필요한 실행 화면 `/account-delete`(하이픈 없는 -delete)는
+  //   여기 없다 — 접두사가 `/account-deletion` 이라 `/account-delete` 는 여전히 gated 다.
+  '/account-deletion',
+  '/terms-of-service',
+  '/privacy-policy',
+  '/ai-notice',
+  '/duk-policy',
+  '/refund-policy',
+  '/minor-policy',
 ];
 
 export type PathClass = 'public' | 'onboarding' | 'gated';
