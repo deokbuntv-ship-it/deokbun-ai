@@ -13,6 +13,7 @@ import type { CrossDivinationVerdict, JudgmentDomain } from '@/features/divinati
 import type { PolarityTier } from '@/features/polarity/polarityKernel';
 import type { TargetPolarityDerivation } from '@/features/chat/prompts/grounding';
 import type { ConsultationDomain } from './consultationDomain';
+import type { ShortAnswerDiagnostics } from './shortAnswer';
 
 // An untrusted prior conversation turn. The type constrains role to user/assistant; the server ALSO
 // drops any other role (incl. injected `system`) at runtime — history is never authoritative (§20).
@@ -89,6 +90,11 @@ export type ServerConsultationDeps = {
   //   LOAD_FAILED   — PRIOR_HISTORY_LOAD_FAILED: the query/loader itself threw. Distinct from MALFORMED only
   //                   for diagnostics; a dependent follow-up fails closed identically for both.
   loadPreviousDecision?: () => Promise<PriorHistoryLoad>;
+  /**
+   * 2026-09-19 PART 1 — 짧은 답의 **말투 다듬기** 호출. 조립기 문장만 받는다(근거 블록·질문·대화 없음).
+   * 없으면(테스트·구 호출자) 조립기 원문이 그대로 나간다. Edge 가 추론 강도·출력 형식을 정한다.
+   */
+  rewriteLLM?: (messages: LLMMessage[]) => Promise<string>;
 };
 
 export type PriorHistoryLoad =
@@ -237,6 +243,8 @@ export type ServerConsultationDiagnostics = {
    * and its absence must never cost the reader the answer.
    */
   llmUnavailable?: boolean;
+  /** 2026-09-19 PART 1-4 — 짧은 답이 다듬어져 나갔는지, 아니면 왜 원문이 나갔는지 · 검사별 걸린 횟수. 내용 없음. */
+  shortAnswer?: ShortAnswerDiagnostics;
 };
 
 // Deterministic 궁합 verdict (SERVER-owned tier — never an LLM/ fabricated score). Carried alongside the

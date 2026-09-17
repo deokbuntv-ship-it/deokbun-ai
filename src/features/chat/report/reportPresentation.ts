@@ -146,6 +146,13 @@ export function toReportDetailView(report: ConsultationReport): ReportDetailView
   };
   push('핵심 포인트', p.keyFindings);
   push('주의할 점', p.cautions);
+  // 2026-09-19 — 상담 답변에서 접혀 있던 자세한 해석. 상담은 짧은 대화이고 리포트는 자세한 문서이므로,
+  // 여기서는 접지 않고 제목을 단 문단으로 편다. 예전에 저장된 리포트에는 이 칸이 없어 그냥 안 나온다.
+  for (const d of p.details ?? []) {
+    const body = (d?.body ?? '').trim();
+    const title = (d?.title ?? '').trim();
+    if (title && body) sections.push({ kind: 'paragraph', title, body });
+  }
   push('상담에서 다룬 주요 질문', p.coveredTopics);
 
   return {

@@ -6,6 +6,7 @@ import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
+import { phaseFor, subtitleFor } from './consultationLoadingPhases';
 
 // Golden Flow V4 — the ONE honest analysis loading state (docs/GOLDEN_FLOW_V4_UX.md §H/§10).
 // It NEVER claims real engine progress: no "명리 분석 중", no "자미두수 33%", no fake steps or
@@ -13,26 +14,27 @@ import { colors, spacing } from '@/theme';
 // that is deliberately non-committal about what is happening under the hood. The rotating
 // copy is presentation only; it does not represent any backend state.
 
-const PRIMARY = '덕분이가 지금 질문과 흐름을 함께 살펴보고 있어요.';
-
-// Non-progress, non-engine subtitles. None implies a stage or a percentage.
-const SUBTITLES = [
-  '필요한 관점을 함께 살펴보는 중이에요…',
-  '질문의 맥락을 천천히 짚어보고 있어요…',
-  '중요한 부분부터 정리하고 있어요…',
-];
+// 2026-09-19 — 문구를 **경과 시간대별**로 바꾼다(`consultationLoadingPhases.ts`).
+// staging 실측 813건에서 절반이 15.5초·열에 하나가 35.1초를 넘었다. 오래 기다리는 사람에게는
+// 같은 문구를 되풀이하지 말고 결을 바꿔 준다. 단계나 남은 시간은 여전히 말하지 않는다.
 
 export function ConsultationLoading() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
   const [subtitleIndex, setSubtitleIndex] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const pulse = useRef(new Animated.Value(0.4)).current;
 
   // Rotate the subtitle calmly (presentation only). No timers that imply progress.
   useEffect(() => {
-    const id = setInterval(() => {
-      setSubtitleIndex((i) => (i + 1) % SUBTITLES.length);
-    }, 2600);
+    const id = setInterval(() => setSubtitleIndex((i) => i + 1), 2600);
+    return () => clearInterval(id);
+  }, []);
+
+  // 경과 시간만 센다. 화면에 숫자로 보여 주지 않는다 — 어느 구간의 문구를 쓸지 고르는 데만 쓴다.
+  useEffect(() => {
+    const startedAt = Date.now();
+    const id = setInterval(() => setElapsedMs(Date.now() - startedAt), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -56,11 +58,11 @@ export function ConsultationLoading() {
             style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.secondary, opacity: pulse }}
           />
           <Text variant="bodyMedium" style={{ color: theme.textPrimary, fontWeight: '600' }}>
-            {PRIMARY}
+            {phaseFor(elapsedMs).primary}
           </Text>
         </View>
         <Text variant="bodySmall" colorToken="textSecondary" accessibilityLiveRegion="polite">
-          {SUBTITLES[subtitleIndex]}
+          {subtitleFor(elapsedMs, subtitleIndex)}
         </Text>
       </Stack>
     </Card>

@@ -47,9 +47,11 @@ import {
   consultationWorkload,
   classifyQuestionComplexity,
   consultationResponseFormat,
+  rewriteResponseFormat,
   extractResponsesText,
   openAiFailureCode,
   parseUsageDetails,
+  mergeOpenAiUsage,
   redactDiag,
   gateFiringSummary,
   resolveConsultationProfile,
@@ -269,6 +271,10 @@ const AI_CONSENT_ENFORCED = (Deno.env.get('AI_CONSENT_ENFORCED') ?? '').trim().t
 // 문안 버전. 클라이언트의 `AI_CONSENT_VERSION` 과 같아야 한다. 시크릿으로 덮을 수 있게 둔다 —
 // 문안이 바뀌었을 때 앱 배포를 기다리지 않고 서버가 먼저 요구할 수 있어야 하기 때문이다.
 const AI_CONSENT_VERSION = (Deno.env.get('AI_CONSENT_VERSION') ?? '').trim() || 'ai-processing@2026-09-1';
+// 2026-09-19 짧은 답 다듬기 스위치. **기본은 켜짐** — 'off' 일 때만 모델을 부르지 않고 조립기 원문을 낸다.
+//   쓰는 때: 다듬기 모델 장애·원가 급등 같은 운영 사고, 그리고 골든 미니팩(채점기는 접힌 긴 답만 읽어 다듬기와 무관하다).
+//   꺼도 답은 그대로 나간다 — 짧은 답이 조립기 원문이 될 뿐이다.
+const SHORT_ANSWER_REWRITE_ENABLED = (Deno.env.get('SHORT_ANSWER_REWRITE') ?? '').trim().toLowerCase() !== 'off';
 
 function storedSubjectBirth(row: Record<string, unknown>): BirthInfoDraft | null {
   const raw = row.birth_info;
@@ -1606,6 +1612,23 @@ export default {
           llmErrorCode = code;
           return ''; // empty → deterministic grounded delivery when a verdict exists; LLM_FAILED otherwise
         };
+        // 2026-09-19 지시서 PART 1 — 짧은 답의 **말투 다듬기**. 조립기가 정한 문장만 보낸다(근거 블록·질문·대화 없음).
+        // CTO 판정(속도): 추론 low · 출력 상한은 상담과 같은 값(꼬리 자르기 금지) · 긴 답 호출과 **같은 기한** 안.
+        // 실패하면 '' → 조립기 원문이 그대로 나간다. 긴 답 호출과 동시에 돌므로 `stage` 는 건드리지 않는다.
+        // 토큰은 같은 사용 기록 한 줄에 더한다 — 줄을 늘리면 사용자별 속도 제한 창을 한 상담이 여러 칸 쓴다.
+        let rewriteUsage: Record<string, unknown> = {};
+        const rewriteCfg = {
+          apiKey,
+          model: routedModel,
+          maxOutputTokens: profile.maxOutputTokens,
+          reasoningEffort: 'low',
+          responseFormat: rewriteResponseFormat(),
+        };
+        const rewriteLLM = async (messages: LLMMessage[]): Promise<string> => {
+          const r = await callOpenAI(messages, rewriteCfg, llmDeadlineAt);
+          rewriteUsage = mergeOpenAiUsage(rewriteUsage, r.usage);
+          return openAiFailureCode(r) === 'OK' ? r.text : '';
+        };
 
         stage = 'server_consultation';
         const conversationContext = Array.isArray(body.conversationContext)
@@ -1707,6 +1730,7 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
+                  ...(SHORT_ANSWER_REWRITE_ENABLED ? { rewriteLLM } : {}),
                   modelId: routedModel, // Sprint E §10 — actual runtime model id into decisionMeta
                   ...(loadPreviousDecision ? { loadPreviousDecision } : {}),
                 },
@@ -1779,15 +1803,23 @@ export default {
         // Cost telemetry (§13): reasoning + cached tokens split out of usage, plus the chosen
         // complexity/effort/ceiling. All non-PII scalars; written via the progressive fallback so a
         // not-yet-applied column never loses the row. Turns the cost estimates into MEASURED per-Q&A cost.
-        const usageDetails = parseUsageDetails(capturedUsage);
+        // 긴 답 호출 + 짧은 답 다듬기 호출의 합 (2026-09-19). 다듬기를 안 불렀으면 긴 답 값 그대로다.
+        const loggedUsage = mergeOpenAiUsage(capturedUsage, rewriteUsage);
+        const usageDetails = parseUsageDetails(loggedUsage);
         // 게이트 발화 요약 (순수 함수, 번들 공유). 발화가 없으면 null.
         const gateSummary = gateFiringSummary(result.diagnostics);
+        // 짧은 답 기록 (지시서 PART 1-4 — 어느 검사에서 몇 번 걸렸는지 쌓는다). 내용 없음: 결과·이유·검사별 횟수·글자 수.
+        // ⚠ 짧은 답이 있는 상담마다 쓴다(통과율의 분모가 필요하다). gate_firings 칸은 staging·production 둘 다 있다(20260907).
+        const shortAnswerLog = result.diagnostics?.shortAnswer ?? null;
+        const firings = gateSummary || shortAnswerLog
+          ? { ...(gateSummary ?? { v: 1 }), ...(shortAnswerLog ? { shortAnswer: shortAnswerLog } : {}) }
+          : null;
         await logAiUsage(
           {
             user_id: userId, model: routedModel, request_type: 'chat',
-            input_tokens: toNullableInt(capturedUsage.input_tokens),
-            output_tokens: toNullableInt(capturedUsage.output_tokens),
-            total_tokens: toNullableInt(capturedUsage.total_tokens),
+            input_tokens: toNullableInt(loggedUsage.input_tokens),
+            output_tokens: toNullableInt(loggedUsage.output_tokens),
+            total_tokens: toNullableInt(loggedUsage.total_tokens),
             latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
           },
           requestId,
@@ -1802,7 +1834,7 @@ export default {
             // 원가 텔레메트리까지 같이 날아간다. 조건부로 넣으면 정상 응답의 삽입은 오늘과 글자 그대로
             // 같고, 컬럼이 없는 환경에서도 잃는 것은 발화 행의 텔레메트리 하나뿐이다(그 경우에도
             // 진단 로그 줄은 남는다) → 기록 실패가 응답을 막지 않는다.
-            ...(gateSummary ? { gate_firings: gateSummary } : {}),
+            ...(firings ? { gate_firings: firings } : {}),
           },
         );
 

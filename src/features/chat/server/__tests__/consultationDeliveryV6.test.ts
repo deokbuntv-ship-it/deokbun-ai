@@ -294,9 +294,12 @@ describe('V6 ROOT CAUSE 3 — no internal identifier reaches the reader', () => 
     // Explanatory sentences are counted; instructions and citations are deliberately allowed to restate a
     // claim, because an action line stripped of its reason is worse than a repeat (see the delivery contract).
     const INSTRUCTIONAL = /^(이렇게 |어느 쪽을 |시점을 |이 결을 |한마디|시기$|전문근거)/;
+    // 2026-09-19 — `짧은 답` 은 아래 긴 답을 **접어 둔 채** 보이는 요약이다(지시서 PART 1·3). 같은 결론·행동 경계를
+    // 말투만 바꿔 다시 말하는 것이 설계이므로 이 원장에서 뺀다. 원장은 접힌 긴 답 안의 되풀이를 잰다.
+    const SUMMARY = /^짧은 답$/;
     const counts = new Map<string, number>();
     for (const s of answer.sections) {
-      if (INSTRUCTIONAL.test(s.title)) continue;
+      if (INSTRUCTIONAL.test(s.title) || SUMMARY.test(s.title)) continue;
       for (const sentence of s.body.split(/\n|(?<=[.!?])\s+/)) {
         const key = sentence.trim().replace(/\s+/g, '');
         if (key.length < 12) continue;

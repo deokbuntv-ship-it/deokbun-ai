@@ -45,6 +45,7 @@ export {
   redactDiag,
   SAFE_DIAG_KEYS,
   gateFiringSummary,
+  mergeOpenAiUsage,
 } from './edgeDiagnostics';
 export type { OpenAiOutcome, SafeDiagKey, GateFiringSummary } from './edgeDiagnostics';
 export {
@@ -84,6 +85,8 @@ export { fortuneDateStringFromEpoch } from '@/features/today/engine/fortuneDate'
 export { currentTargetMonth, monthKey } from '@/features/monthly/engine/monthDate';
 export type { InputBoundsVerdict } from './inputBounds';
 export { consultationResponseFormat, CONSULTATION_JSON_SCHEMA } from './consultationSchema';
+export { buildRewriteMessages, rewriteResponseFormat, SHORT_ANSWER_VERSION } from './shortAnswer';
+export type { ShortAnswerDiagnostics } from './shortAnswer';
 // 오늘의 운세 (Today Fortune V1) — the daily generator is part of the SAME server graph so the Edge bundle
 // includes it (no new external dependency). The Edge dispatches a `today_fortune` request to buildTodayFortune.
 export {

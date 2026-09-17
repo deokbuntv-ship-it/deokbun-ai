@@ -191,7 +191,7 @@ App Store Connect → 앱 → **앱 정보**(이름·부제) · 버전 페이지
 
 ---
 
-## 4. 앱 심사 노트 (App Store Connect → 앱 심사 정보 → 메모) — 1223/4000자
+## 4. 앱 심사 노트 (App Store Connect → 앱 심사 정보 → 메모) — 1481/4000자 (2026-09-19 한 문장 추가 — 이전 1223자)
 
 4.3(점술 앱은 포화 카테고리) 대응. 심사관이 읽으므로 영어다.
 
@@ -199,14 +199,16 @@ App Store Connect → 앱 → **앱 정보**(이름·부제) · 버전 페이지
 Deokbuni is not a fortune-text generator. Every interpretation starts from a deterministic calculation.
 
 1. Calculation first. Saju (Four Pillars) charts are computed deterministically from the birth date and time; Zi Wei Dou Shu and Qi Men Dun Jia charts are also computed when the birth time or the question calls for them. The language model never computes a chart. It only puts into words a plan the server has already decided from those calculations.
-2. For supported year and month questions the server, not the model, decides the conclusion for that period. Output guards reject answers that contradict it, that make definitive or guaranteed claims, or that rank a "best time". A rejected answer is regenerated or declined, never shown as-is.
+2. For supported year and month questions the server, not the model, decides the conclusion for that period. Output guards reject answers that contradict it, that make definitive or guaranteed claims, or that rank a "best time". A rejected answer is regenerated or declined, never shown as-is. In consultations the model only rewords sentences the server has already written; a rewording that adds, drops or reorders any content word, or changes a negation, a hedge, a number or a period, is discarded and the server's own sentences are shown instead.
 3. Questions about illness, lifespan or death are declined by a deterministic safety router.
 4. Every interpretation screen is labelled as AI-generated. Users give separate consent before their birth data and consultation text are sent to our AI provider (OpenAI), and they can report any AI answer in the app.
 5. The price in the in-app unit (Duk) is shown before anything is spent. Users can delete individual conversations and reports, and their account, inside the app.
 ```
 
 **한국어 요약** — ① 명식은 엔진이 결정론적으로 계산하고 언어모델은 계산하지 않는다 ② 지원되는 올해·이번 달 질문은
-서버가 결론을 정하고, 그와 어긋나거나 단정·보장·최적 시기를 말하는 답은 다시 만들거나 내보내지 않는다 ③ 질병·수명·죽음
+서버가 결론을 정하고, 그와 어긋나거나 단정·보장·최적 시기를 말하는 답은 다시 만들거나 내보내지 않는다 · 상담에서 모델은
+서버가 쓴 문장을 **말투만** 다듬고, 낱말을 더하거나 빼거나 순서를 바꾸거나 부정·추측·숫자·시기를 바꾸면 버리고 서버 문장을
+그대로 보인다(2026-09-19 추가) ③ 질병·수명·죽음
 질문은 안전 라우터가 거절한다 ④ 해석 화면마다 AI 표시 · AI 처리 전 별도 동의 · 답변 신고 ⑤ 덕을 쓰기 전 가격 표시 ·
 상담·보고서·계정 삭제를 앱 안에서.
 
@@ -239,6 +241,7 @@ Deokbuni is not a fortune-text generator. Every interpretation starts from a det
 | 참고용 정보, 전문 판단 대체 아님 | 약관 §1 |
 | 건강·수명 질문에 답하지 않는다 | 안전 라우터(`consultationSafety`) — PRODUCT_TRUTH_GUARD §2 |
 | (심사 노트 2) 서버가 결론을 정하고 가드가 어긋난 답을 다시 만들거나 거절 | `certaintyGuard.ts` (`containsForbiddenCertainty` · `containsWinnerClaim` · `contradictsPolarity`) · 거절 시 SEMANTIC_REJECTED |
+| (심사 노트 2 마지막 문장 · 2026-09-19) 상담에서 모델은 서버 문장을 다듬기만 하고, 내용이 바뀌면 버린다 | `rewriteGuard.ts` `verifyRewrite`(낱말 대응·순서 · 부정·추측·인과 · 숫자·시기 · 문장 수) · `shortAnswer.ts` 재생성 1회 뒤 서버 원문 · 레드팀 `scripts/bundle8/redteamSweep.mjs`(변형 3,743개 중 사실이 바뀌는 것 전부 적발 · 통과 48개는 기능어 변화) |
 
 ## 6. 쓰지 않은 것 — 그리고 이유
 

@@ -78,21 +78,63 @@ export function StructuredConsultationResult({
   const p = toConsultationPresentation(vm);
   const hasDetail = p.detailSections.length > 0;
 
+  // 2026-09-19 지시서 PART 3 — 짧은 답이 있으면 **그것 하나가 답이다.** 상담은 짧은 대화이고, 결론·좋은 흐름·
+  // 조심할 점·근거는 "왜 이렇게 보나요?" 를 눌러야 펼쳐진다(버리지 않는다 — 리포트도 여기서 모은다).
+  // 짧은 답이 없는 예전 답·근거 판단이 서지 않은 답은 아래 예전 화면 그대로다.
+  if (p.shortAnswer) {
+    const folded = [
+      { title: '결론', body: p.headline },
+      { title: '기본 성향', body: p.disposition },
+      { title: '쉬운 설명', body: p.summary },
+      { title: '좋은 흐름', body: p.keyPoints.join('\n') },
+      { title: '조심할 점', body: p.cautions.join('\n') },
+      ...p.detailSections,
+    ].filter((d) => (d.body ?? '').trim().length > 0);
+    return (
+      <Stack gap="md">
+        <ReadingSection variant="neutral" emoji={null} style={{ paddingVertical: spacing.xl }}>
+          <Text variant="reading" style={{ lineHeight: 30 }}>
+            {p.shortAnswer}
+          </Text>
+        </ReadingSection>
+
+        {folded.length > 0 ? (
+          <ReadingEvidence>
+            {folded.map((d, i) => (
+              <EvidenceRow key={i} title={d.title} body={d.body ?? undefined} />
+            ))}
+          </ReadingEvidence>
+        ) : null}
+
+        {p.followUps.length > 0 && onSelectFollowUp ? (
+          <FollowUpSuggestions suggestions={p.followUps} onSelect={onSelectFollowUp} />
+        ) : null}
+
+        <UserFeedbackControl
+          onSubmit={onFeedback}
+          initialVerdict={initialFeedback}
+          onReport={onReport}
+          reported={reported}
+        />
+      </Stack>
+    );
+  }
+
   // Reading hierarchy (DEOKBUNI_READING_EXPERIENCE): 결론 → 쉬운 설명 → 🌿 좋은 흐름 → 🕯️ 조심할 점 →
   // (왜 이렇게 보나요? ▾ 전문 근거) → 이어서 물어보기. Only two sections take a pastel surface (§7), so the
   // reading stays a connected letter, not a colour patchwork. Empty sections are simply absent (fail-closed).
   return (
     <Stack gap="md">
+      {/* 2026-09-19 — 제목 두 개("✨ 덕분이의 한마디" · "자세히 보면")를 없앴다.
+          오너 판정: "딱 짚어주고, 편안해야 하고, 다음이 궁금해야 대화가 된다". 그 제목들이 짧은 답
+          하나를 둘로 갈라 보고서처럼 읽히게 만들고 있었다. 결론과 이야기를 **한 카드 안에** 두어
+          이어지는 말 한 줄기로 읽히게 한다. 성향 한 줄은 그 아래 보조로 붙는다. */}
       {p.headline ? (
-        <ReadingLead label="✨ 덕분이의 한마디" sub={p.disposition}>
+        <ReadingLead sub={p.disposition} body={p.summary}>
           {p.headline}
         </ReadingLead>
-      ) : null}
-
-      {p.summary ? (
-        // 상세 해석 — a neutral heading gives the long explanation the same scannable hierarchy as the pastel
-        // sections, without a surface (§A-2). Reading measure keeps it comfortable; content is never changed.
-        <ReadingSection variant="neutral" title="자세히 보면" emoji={null}>
+      ) : p.summary ? (
+        <ReadingSection variant="neutral" emoji={null}>
           <Text variant="reading" style={{ lineHeight: 28 }}>
             {p.summary}
           </Text>

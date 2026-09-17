@@ -173,3 +173,31 @@ export function gateFiringSummary(d: {
     ...(routed ? { safetyRoute: d.safetyRoute as string } : {}),
   };
 }
+
+// ── 사용량 합산 (2026-09-19) ──────────────────────────────────────────────────────────────────
+//
+// 상담 한 건이 모델을 두 갈래로 부른다 — 긴 답(1~2회)과 짧은 답의 말투 다듬기(0~2회). `ai_usage_logs` 는
+// 요청당 **한 줄**이고 사용자별 속도 제한 창도 그 줄 수로 센다. 다듬기 호출마다 줄을 더 쓰면 한 번의 상담이
+// 제한을 두세 칸씩 잡아먹는다. 그래서 줄은 하나로 두고 토큰만 더한다 — 원가가 실측으로 남는다.
+type UsageShape = {
+  input_tokens?: unknown; output_tokens?: unknown; total_tokens?: unknown;
+  input_tokens_details?: { cached_tokens?: unknown };
+  output_tokens_details?: { reasoning_tokens?: unknown };
+};
+const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.trunc(v) : 0);
+const has = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
+
+/** OpenAI Responses `usage` 두 개를 같은 모양으로 더한다. 한쪽에만 있는 칸은 그 값, 둘 다 없으면 칸을 만들지 않는다. */
+export function mergeOpenAiUsage(a: unknown, b: unknown): Record<string, unknown> {
+  const x = (a ?? {}) as UsageShape;
+  const y = (b ?? {}) as UsageShape;
+  const out: Record<string, unknown> = {};
+  for (const k of ['input_tokens', 'output_tokens', 'total_tokens'] as const) {
+    if (has(x[k]) || has(y[k])) out[k] = n(x[k]) + n(y[k]);
+  }
+  const cached = [x.input_tokens_details?.cached_tokens, y.input_tokens_details?.cached_tokens];
+  if (cached.some(has)) out.input_tokens_details = { cached_tokens: n(cached[0]) + n(cached[1]) };
+  const reasoning = [x.output_tokens_details?.reasoning_tokens, y.output_tokens_details?.reasoning_tokens];
+  if (reasoning.some(has)) out.output_tokens_details = { reasoning_tokens: n(reasoning[0]) + n(reasoning[1]) };
+  return out;
+}

@@ -42,11 +42,17 @@ export function ReadingLead({
   children,
   sub,
   label,
+  body,
   style,
 }: {
   children: string;
   sub?: string | null;
   label?: string;
+  /**
+   * 2026-09-19 — 결론에 이어지는 본문. 제목 없이 **같은 카드 안에** 두어 이야기 하나로 읽히게 한다.
+   * 예전에는 "자세히 보면" 이라는 제목을 단 별도 칸이었는데, 그 제목이 짧은 답 하나를 둘로 갈랐다.
+   */
+  body?: string | null;
   style?: StyleProp<ViewStyle>;
 }) {
   const scheme = useColorScheme();
@@ -61,6 +67,11 @@ export function ReadingLead({
       <Text variant="bodyLarge" style={styles.leadText}>
         {children}
       </Text>
+      {body ? (
+        <Text variant="reading" style={{ marginTop: spacing.sm, lineHeight: 28 }}>
+          {body}
+        </Text>
+      ) : null}
       {sub ? (
         <Text variant="bodySmall" colorToken="textSecondary" style={{ marginTop: spacing.xs, lineHeight: 21 }}>
           {sub}

@@ -183,7 +183,7 @@ var BRANCH_RELATION_KINDS = [
 function isValidTargetPolarityDerivation(v) {
   if (v === null || typeof v !== "object") return false;
   const o = v;
-  const validCount = (n) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 8;
+  const validCount = (n2) => typeof n2 === "number" && Number.isInteger(n2) && n2 >= 0 && n2 <= 8;
   if (!validCount(o.harmony) || !validCount(o.friction)) return false;
   const validRelations = (relations, kinds) => Array.isArray(relations) && relations.length <= 8 && relations.every((relation) => {
     if (relation === null || typeof relation !== "object") return false;
@@ -6319,7 +6319,7 @@ function calculateMyungriTimeAxis(input) {
       }
     }
   }
-  const branchSetRelationsOut = branchSetRelations(nodes.map((n) => n.branch));
+  const branchSetRelationsOut = branchSetRelations(nodes.map((n2) => n2.branch));
   return {
     capability: "AVAILABLE",
     ruleVersion: DEOKBUNAI_MYUNGRI_TIME_AXIS_V1_RULE.ruleVersion,
@@ -7090,8 +7090,8 @@ function resolveQuestionYears(question, referenceYear) {
   }
   if (referenceYear !== null) {
     for (const m of q.matchAll(/(?:앞으로|향후|다가오는)\s*(\d{1,2})\s*년|(\d{1,2})\s*년\s*(?:간|동안)/g)) {
-      const n = Number(m[1] ?? m[2]);
-      if (n >= 1) for (let i = 0; i < n; i++) years.push(referenceYear + i);
+      const n2 = Number(m[1] ?? m[2]);
+      if (n2 >= 1) for (let i = 0; i < n2; i++) years.push(referenceYear + i);
     }
     for (const m of q.matchAll(/(\d{1,2})\s*년\s*(?:뒤|후|후에|뒤에)/g)) years.push(referenceYear + Number(m[1]));
     for (const [re, off] of RELATIVE) if (re.test(q)) years.push(referenceYear + off);
@@ -7145,7 +7145,7 @@ function resolveQuestionMonths(question, referenceYear, referenceMonth) {
     if (/(다음\s*달|담\s*달|다음달)/.test(q)) return { intent: "EXACT_MONTH", targets: dedupeClampCap([normalize(referenceYear, referenceMonth + 1)]) };
     if (/(이번\s*달|이달|금월|이번달)/.test(q)) return { intent: "EXACT_MONTH", targets: dedupeClampCap([{ year: referenceYear, month: referenceMonth }]) };
   }
-  const monthNums = [...q.matchAll(/(\d{1,2})\s*월/g)].map((m) => Number(m[1])).filter((n) => n >= 1 && n <= 12);
+  const monthNums = [...q.matchAll(/(\d{1,2})\s*월/g)].map((m) => Number(m[1])).filter((n2) => n2 >= 1 && n2 <= 12);
   const rangeM = q.match(/(\d{1,2})\s*월?\s*(?:~|∼|-|–|—|부터)\s*(\d{1,2})\s*월(?:\s*까지)?/);
   if (yearCtx !== null && rangeM) {
     let a = Number(rangeM[1]);
@@ -7515,7 +7515,7 @@ import {
 
 // src/features/qimen/domain/qimenTypes.ts
 function formatQueryDatetime(qt) {
-  const p2 = (n) => String(n).padStart(2, "0");
+  const p2 = (n2) => String(n2).padStart(2, "0");
   return `${qt.year}${p2(qt.month)}${p2(qt.day)}${p2(qt.hour)}`;
 }
 
@@ -7535,7 +7535,7 @@ function daysInGregorianMonth2(year, month) {
   return [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
 }
 function isValidQueryTime(qt) {
-  if (![qt.year, qt.month, qt.day, qt.hour].every((n) => Number.isInteger(n))) return false;
+  if (![qt.year, qt.month, qt.day, qt.hour].every((n2) => Number.isInteger(n2))) return false;
   if (qt.year <= 0 || qt.month < 1 || qt.month > 12) return false;
   if (qt.hour < 0 || qt.hour > 23) return false;
   if (qt.day < 1 || qt.day > daysInGregorianMonth2(qt.year, qt.month)) return false;
@@ -7556,10 +7556,10 @@ function resolveQimenEligibility(query) {
 
 // src/features/qimen/adapters/qimenResultAdapter.ts
 function zipPalaces(raw) {
-  const n = raw.九宮?.length ?? 0;
+  const n2 = raw.九宮?.length ?? 0;
   const at = (arr, i) => arr && arr[i] !== void 0 ? arr[i] : "";
   const out = [];
-  for (let i = 0; i < n; i += 1) {
+  for (let i = 0; i < n2; i += 1) {
     out.push({
       index: i,
       palaceLabel: at(raw.九宮, i),
@@ -7833,8 +7833,8 @@ function axesShareOneMatter(a, b) {
 }
 
 // src/features/divination/reasoning/headlineProse.ts
-var agreedHeadline = (axis, direction, count) => {
-  const lead = `${axisLabel(axis, "전반")}에 대해서는 서로 다른 근거 ${count}가지가 모두 같은 쪽을 가리킵니다. `;
+var agreedHeadline = (axis, direction, count2) => {
+  const lead = `${axisLabel(axis, "전반")}에 대해서는 서로 다른 근거 ${count2}가지가 모두 같은 쪽을 가리킵니다. `;
   switch (direction) {
     case "FAVORABLE":
       return `${lead}열려 있는 자리로 보셔도 됩니다. 다만 어느 한 가지가 결정적이라기보다, 여러 근거가 함께 서 있는 상태입니다.`;
@@ -12184,11 +12184,11 @@ function buildMyungriPremises(input) {
   });
   if (baseline) {
     for (const fam of Object.keys(baseline.familyPresence)) {
-      const count = baseline.familyPresence[fam];
+      const count2 = baseline.familyPresence[fam];
       const axis = FAMILY_AXIS[fam];
-      if (count > 0) {
+      if (count2 > 0) {
         out.push(base({
-          sourceFactIds: [`원국 ${FAMILY_LABEL3[fam]} ${count}자리`],
+          sourceFactIds: [`원국 ${FAMILY_LABEL3[fam]} ${count2}자리`],
           target: target("TEN_GOD_FAMILY", fam, `원국 ${FAMILY_LABEL3[fam]}`),
           questionAxis: axis,
           temporalScope: "NATAL",
@@ -12198,7 +12198,7 @@ function buildMyungriPremises(input) {
           // metadata in the source fact and in the wording; it no longer creates significance by itself.
           semanticRelation: "SUPPORTS",
           concept: "NATAL_FAMILY",
-          assertion: `${FAMILY_LABEL3[fam]} 쪽 자리가 원국에 ${count}곳 있다.`,
+          assertion: `${FAMILY_LABEL3[fam]} 쪽 자리가 원국에 ${count2}곳 있다.`,
           role: "DESCRIBES",
           doctrineReference: "십신 배치 → 축 (frozen 십신 분포)"
         }));
@@ -13275,8 +13275,8 @@ var ASK_TAIL = /(?:할까요|될까요|괜찮을까요|나을까요|맞을까요
 function extractDecisionObject(focus) {
   const trimmed = focus.replace(ASK_TAIL, "").replace(/[.?!]\s*$/, "").trim();
   if (trimmed.length < 2) return null;
-  const words = trimmed.split(/\s+/);
-  const obj = words.slice(-8).join(" ").trim();
+  const words2 = trimmed.split(/\s+/);
+  const obj = words2.slice(-8).join(" ").trim();
   return obj.length >= 2 && obj.length <= 60 ? obj : null;
 }
 var FORMER = /헤어진|전\s*(?:남자|여자)\s*친구|전남친|전여친|재회|다시\s*(?:만나|연락)|되돌[릴리]|그\s*사람/;
@@ -14055,6 +14055,722 @@ function buildStructuredConsultationResult(parsed, grounding) {
   };
 }
 
+// src/features/chat/server/dispositionProse.ts
+var ELEMENT_TRAIT = {
+  WOOD: "새로 벌여 놓고 뻗어 나가는 편",
+  FIRE: "생각을 드러내고 표현하는 편",
+  EARTH: "버티면서 중심을 잡는 편",
+  METAL: "정리하고 끊어낼 건 끊어내는 편",
+  WATER: "흐름을 읽고 맞춰 가는 편"
+};
+var TEN_GOD_TRAIT = {
+  BI_GYEON: "스스로 밀고 가는 편",
+  GEOP_JAE: "겨루는 자리에서 힘이 나는 편",
+  SIK_SIN: "하나를 오래 파고드는 편",
+  SANG_GWAN: "하고 싶은 말은 해야 풀리는 편",
+  PYEON_JAE: "여러 갈래를 동시에 굴리는 편",
+  JEONG_JAE: "하나씩 확실히 쌓아 가는 편",
+  PYEON_GWAN: "압박이 있을 때 더 움직이는 편",
+  JEONG_GWAN: "정해진 틀 안에서 차분한 편",
+  PYEON_IN: "남과 다른 각도로 보는 편",
+  JEONG_IN: "배우고 정리해서 내 것으로 만드는 편"
+};
+var ELEMENT_LABEL3 = {
+  WOOD: "목",
+  FIRE: "화",
+  EARTH: "토",
+  METAL: "금",
+  WATER: "수"
+};
+var TEN_GOD_LABEL = {
+  BI_GYEON: "비견",
+  GEOP_JAE: "겁재",
+  SIK_SIN: "식신",
+  SANG_GWAN: "상관",
+  PYEON_JAE: "편재",
+  JEONG_JAE: "정재",
+  PYEON_GWAN: "편관",
+  JEONG_GWAN: "정관",
+  PYEON_IN: "편인",
+  JEONG_IN: "정인"
+};
+var ELEMENT_ORDER = ["WOOD", "FIRE", "EARTH", "METAL", "WATER"];
+function josa2(word, pair) {
+  const last = word[word.length - 1] ?? "";
+  const code = last.charCodeAt(0);
+  const hasFinal = code >= 44032 && code <= 55203 && (code - 44032) % 28 !== 0;
+  const [withFinal, withoutFinal] = pair.split("/");
+  return `${word}${hasFinal ? withFinal : withoutFinal}`;
+}
+function uniqueMax(counts, order) {
+  let best = null;
+  let bestN = -1;
+  let tied = false;
+  for (const k of order) {
+    const n2 = counts[k] ?? 0;
+    if (n2 > bestN) {
+      best = k;
+      bestN = n2;
+      tied = false;
+    } else if (n2 === bestN) {
+      tied = true;
+    }
+  }
+  if (best === null || bestN <= 0 || tied) return null;
+  return best;
+}
+function dominantTenGod(stems2) {
+  if (stems2.length === 0) return null;
+  const counts = {};
+  for (const k of Object.keys(TEN_GOD_TRAIT)) counts[k] = 0;
+  for (const s of stems2) counts[s] = (counts[s] ?? 0) + 1;
+  const order = Object.keys(TEN_GOD_TRAIT);
+  const key2 = uniqueMax(counts, order);
+  return key2 ? { key: key2, count: counts[key2] } : null;
+}
+var ZIWEI_TRAIT = {
+  자미: "중심에 서려는 편",
+  천부: "안정된 자리를 지키는 편",
+  태양: "드러내고 이끄는 편",
+  태음: "안에서 챙기는 편",
+  무곡: "실속을 따지는 편",
+  천동: "모난 데 없이 어울리는 편",
+  염정: "원칙을 세우는 편",
+  천기: "머리로 먼저 굴려 보는 편",
+  탐랑: "관심이 여러 곳으로 뻗는 편",
+  거문: "따져 묻는 편",
+  천상: "도와주는 자리에 서는 편",
+  천량: "한 발 물러서 보는 편",
+  칠살: "정면으로 부딪는 편",
+  파군: "판을 바꾸는 편"
+};
+function buildDisposition(input) {
+  const basis = [];
+  const element = input.elementCounts ? uniqueMax(input.elementCounts, ELEMENT_ORDER) : null;
+  const tenGod = dominantTenGod(input.stemTenGods ?? []);
+  const star = input.ziweiMainStar && ZIWEI_TRAIT[input.ziweiMainStar] ? input.ziweiMainStar : null;
+  let myungri = null;
+  if (tenGod) {
+    myungri = TEN_GOD_TRAIT[tenGod.key];
+    basis.push({ system: "명리", detail: `천간 십신에 ${josa2(TEN_GOD_LABEL[tenGod.key], "이/가")} ${tenGod.count}번 나옵니다.` });
+  } else if (element) {
+    myungri = ELEMENT_TRAIT[element];
+    basis.push({ system: "명리", detail: `오행 분포에서 ${josa2(ELEMENT_LABEL3[element], "이/가")} 가장 많습니다.` });
+  }
+  let ziwei = null;
+  if (star) {
+    ziwei = ZIWEI_TRAIT[star];
+    basis.push({ system: "자미두수", detail: `명궁 주성이 ${star}입니다.` });
+  }
+  if (!myungri && !ziwei) return { text: null, basis: [] };
+  if (myungri && ziwei && myungri !== ziwei) {
+    return { text: `${myungri}이에요.`, basis };
+  }
+  const text = myungri ?? ziwei;
+  return { text: text ? `${text}이에요.` : null, basis };
+}
+var ELEMENT_BY_LABEL = {
+  목: "WOOD",
+  화: "FIRE",
+  토: "EARTH",
+  금: "METAL",
+  수: "WATER"
+};
+var TEN_GOD_BY_LABEL = {
+  비견: "BI_GYEON",
+  겁재: "GEOP_JAE",
+  식신: "SIK_SIN",
+  상관: "SANG_GWAN",
+  편재: "PYEON_JAE",
+  정재: "JEONG_JAE",
+  편관: "PYEON_GWAN",
+  정관: "JEONG_GWAN",
+  편인: "PYEON_IN",
+  정인: "JEONG_IN"
+};
+var sectionLines = (sections, label) => sections?.find((s) => s.label === label)?.lines ?? [];
+function parseElementCounts(sections) {
+  const line = sectionLines(sections, "오행 분포")[0];
+  if (!line) return null;
+  const counts = { WOOD: 0, FIRE: 0, EARTH: 0, METAL: 0, WATER: 0 };
+  let found = 0;
+  for (const m of line.matchAll(/([목화토금수])\s+(\d+)/g)) {
+    const key2 = ELEMENT_BY_LABEL[m[1]];
+    if (key2) {
+      counts[key2] = Number(m[2]);
+      found += 1;
+    }
+  }
+  return found === 5 ? counts : null;
+}
+function parseStemTenGods(sections) {
+  const out = [];
+  for (const line of sectionLines(sections, "십신·지장간")) {
+    const pillar = line.match(/^([년월일시])주:/)?.[1];
+    if (!pillar || pillar === "일") continue;
+    const label = line.match(/천간\s+(비견|겁재|식신|상관|편재|정재|편관|정관|편인|정인)/)?.[1];
+    const key2 = label ? TEN_GOD_BY_LABEL[label] : void 0;
+    if (key2) out.push(key2);
+  }
+  return out;
+}
+function parseZiweiMainStar(sections) {
+  const line = sectionLines(sections, "12궁").find((l) => l.startsWith("명궁"));
+  const stars = line?.split(":")[1]?.trim();
+  const first = stars?.split(/[,·]/)[0]?.trim();
+  return first && first.length > 0 ? first : null;
+}
+function dispositionInputFrom(myungriSections, ziweiSections) {
+  return {
+    stemTenGods: parseStemTenGods(myungriSections),
+    elementCounts: parseElementCounts(myungriSections),
+    ziweiMainStar: parseZiweiMainStar(ziweiSections)
+  };
+}
+
+// src/features/chat/server/askBackPrompts.ts
+var POOL = {
+  WORK: [
+    "혹시 요즘 누가 자꾸 걸리세요?",
+    "요즘 어떤 일이 제일 손에 안 잡히세요?",
+    "지금 맡은 일 중에 무엇이 제일 무거우세요?",
+    "최근에 자리나 맡은 몫이 바뀌셨어요?"
+  ],
+  RELATION: [
+    "혹시 요즘 누가 제일 신경 쓰이세요?",
+    "그 사람과는 주로 어디서 부딪히세요?",
+    "요즘 누구와 이야기가 제일 안 통하세요?",
+    "언제부터 그렇게 느끼셨어요?"
+  ],
+  MONEY: [
+    "요즘 어디에 돈이 제일 많이 나가세요?",
+    "지금 걸려 있는 돈 이야기가 있으세요?",
+    "무엇을 정하려다 멈춰 계세요?"
+  ],
+  HEALTH: [
+    "요즘 어디가 제일 힘드세요?",
+    "언제부터 그러셨어요?",
+    "요즘 쉬는 시간은 좀 내세요?"
+  ],
+  MOVE: [
+    "어디로 옮기는 걸 보고 계세요?",
+    "언제쯤으로 생각하고 계세요?",
+    "누구랑 같이 정하는 일이세요?"
+  ],
+  GENERAL: [
+    "요즘 무슨 일이 제일 신경 쓰이세요?",
+    "지금 제일 마음에 걸리는 게 뭐예요?",
+    "어떤 쪽부터 같이 볼까요?"
+  ]
+};
+function seedIndex(seed, size) {
+  if (size <= 0) return 0;
+  const s = seed ?? "";
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) % 1000003;
+  return h % size;
+}
+function pickAskBack(input) {
+  const pool = POOL[input.domain] ?? POOL.GENERAL;
+  const start = seedIndex(input.seed, pool.length);
+  for (let i = 0; i < pool.length; i += 1) {
+    const candidate2 = pool[(start + i) % pool.length];
+    if (candidate2 !== input.previous) return candidate2;
+  }
+  return pool[start];
+}
+function allAskBacks() {
+  return Object.values(POOL).flat();
+}
+
+// src/features/chat/server/consultationAnswerGuard.ts
+var ANSWER_MIN_CHARS = 200;
+var ANSWER_MAX_CHARS = 350;
+var REPORT_ENDING = /(유리합니다|안전합니다|도움이\s*됩니다|바람직합니다|권장합니다|필요합니다|효과적입니다|중요합니다)/;
+var HAPSYO_END = /(습니다|ㅂ니다|입니다|합니다|됩니다|십시오)[.!?]?$/;
+var HAEYO_END = /(에요|예요|이에요|해요|거든요|나요|세요|게요|어요|아요|네요|더라고요|드려요|봐요|돼요|같아요|워요|려요|줘요|와요|셔요|자요|죠)[.!?]?$/;
+var CAUTION_REQ = /(확인|점검|검증|따져|살펴보|재확인|미루|보류|신중|삼가|피하시|줄이시|조심)/;
+var DISPOSITION_SHAPE = /(편이에요|편이라|편이시|편입니다|결이에요|편이죠)/;
+var OUTCOME_SHAPE = /(성공|실패|잘\s*됩니다|잘\s*돼|승진합니다|합격|유리합니다|불리합니다|돈을\s*벌)/;
+var PERIOD = /(이번\s*달|올해|내년|요즘|지금은|당분간|이달|올\s*한\s*해)/;
+var JARGON_LEAD = /(사주\s*근거로는|사주를?\s*보면|사주에서는|자미두수(에서는|로는|의)|기문\s*상황판|기문둔갑(에서는|은)|명리(에서는|로는))/;
+var COMMA_SPLICE = /(에요|예요|이에요|해요|거든요|돼요|나아요),\s*(그래서|그러니|그러면|그리고|하지만)/;
+var MISREAD = /(일상|하루하루|하루\s*단위|날마다|매일)/;
+var BANNED = [
+  { key: "세학문합침", re: /(세\s*학문|세\s*가지\s*학문|3\s*개\s*엔진)[^.]{0,20}(일치|합치|종합|모두\s*같)/ },
+  { key: "교차검증", re: /(교차\s*검증|크로스\s*체크|종합\s*판단)/ },
+  { key: "내부용어", re: /(엔진|SAJU|iztro|grounding|스키마|schema|provider|제공됨)/ },
+  { key: "천간지지한자", re: /[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]/ },
+  { key: "점수등급", re: /(\d+\s*점|[ABCD]\s*등급|★|별점)/ },
+  { key: "전문용어단정", re: /(신강|신약|용신|격국|12운성|십이운성|12신살|십이신살)/ }
+];
+var TONE = [
+  { key: "결과단정", re: /(반드시|무조건|틀림없이|확실히)\s*[^.]{0,14}(합니다|됩니다|입니다|일어납니다|성사|해요|돼요)/ },
+  { key: "공포조장", re: /(큰일\s*[나납]|위험합니다|망합니다|화를\s*입|불행|재앙)/ },
+  { key: "과장", re: /(놀라운|경이로운|완벽한|최고의|엄청난|대박)/ },
+  { key: "상담강권", re: /(지금\s*바로\s*(상담|문의)|놓치지\s*마|서둘러\s*(상담|문의)|꼭\s*상담)/ }
+];
+var AXES = [
+  { key: "일·직업", re: /(직업|직장|업무|일자리|직무|커리어|승진|이직|팀\s*내)/ },
+  { key: "돈·재물", re: /((^|[\s"'(])돈[\s이은을의도만과]|재물|수입|자금|금전|매출|투자|재정)/ },
+  { key: "관계·사람", re: /(사람\s*관계|대인|인간관계|배우자|가족|친구|연애|사람들과)/ },
+  { key: "건강·몸", re: /(건강|체력|몸이|몸을|몸은)/ },
+  { key: "이동·거처", re: /(이사|이주|거처)/ }
+];
+var splitSentences2 = (t) => t.split(/(?<=[.!?。])\s*|\n+/).map((s) => s.trim()).filter(Boolean);
+var axesTouched = (t) => AXES.filter((a) => a.re.test(t)).map((a) => a.key);
+function checkAnswer(body) {
+  const t = (body ?? "").trim();
+  const failures = [];
+  const ss = splitSentences2(t);
+  const questions = ss.filter((s) => /\?$/.test(s));
+  const askBack = questions.length === 1 ? questions[0] : null;
+  if (t.length < ANSWER_MIN_CHARS || t.length > ANSWER_MAX_CHARS) {
+    failures.push({ key: "길이", detail: `${t.length}자 (${ANSWER_MIN_CHARS}~${ANSWER_MAX_CHARS} 필요)` });
+  }
+  const cautions = ss.filter((s) => CAUTION_REQ.test(s));
+  if (cautions.length > 1) failures.push({ key: "조심과다", detail: `${cautions.length}개` });
+  const report = ss.filter((s) => REPORT_ENDING.test(s));
+  if (report.length) failures.push({ key: "보고서말투", detail: report.map((s) => `"${s}"`).join(" / ") });
+  const hapsyo = ss.filter((s) => HAPSYO_END.test(s));
+  if (hapsyo.length) failures.push({ key: "합쇼체", detail: `${hapsyo.length}개` });
+  const haeyo = ss.filter((s) => HAEYO_END.test(s));
+  if (ss.length > 0 && haeyo.length / ss.length < 0.7) {
+    failures.push({ key: "해요체부족", detail: `${haeyo.length}/${ss.length} 문장만 ~해요체` });
+  }
+  if (questions.length !== 1) failures.push({ key: "되묻기수", detail: `${questions.length}개 (1개 필요)` });
+  else if (questions[0] !== ss[ss.length - 1]) failures.push({ key: "되묻기위치", detail: "마지막 문장이 아님" });
+  const dispositionSentences = ss.filter((s) => DISPOSITION_SHAPE.test(s));
+  if (dispositionSentences.length === 0) failures.push({ key: "성향없음", detail: '"~한 편이에요" 결의 사람 설명이 없음' });
+  else {
+    const predictive = dispositionSentences.filter((s) => OUTCOME_SHAPE.test(s));
+    if (predictive.length) failures.push({ key: "성향아닌예측", detail: predictive.map((s) => `"${s}"`).join(" / ") });
+  }
+  const withoutAskBack = (askBack ? ss.slice(0, -1) : ss).join(" ");
+  if (!PERIOD.test(withoutAskBack)) failures.push({ key: "시기없음", detail: '"이번 달"·"올해" 같은 시기가 없음 (되묻기 제외)' });
+  const axes = axesTouched(t);
+  if (axes.length > 1) failures.push({ key: "축둘이상", detail: axes.join(" · ") });
+  if (COMMA_SPLICE.test(t)) failures.push({ key: "쉼표이어붙임", detail: t.match(COMMA_SPLICE)?.[0] ?? "" });
+  const jargon = t.match(JARGON_LEAD);
+  if (jargon) failures.push({ key: "전문용어노출", detail: jargon[0] });
+  if (MISREAD.test(t)) failures.push({ key: "오독", detail: t.match(MISREAD)?.[0] ?? "" });
+  if (/[(（]/.test(t)) failures.push({ key: "괄호", detail: "본문에 괄호" });
+  for (const b of BANNED) {
+    const m = t.match(b.re);
+    if (m) failures.push({ key: "금지표현", detail: `${b.key}: ${m[0]}` });
+  }
+  for (const x of TONE) {
+    const m = t.match(x.re);
+    if (m) failures.push({ key: "톤", detail: `${x.key}: ${m[0]}` });
+  }
+  return { ok: failures.length === 0, failures, chars: t.length, askBack };
+}
+var MAX_ANSWER_ATTEMPTS = 2;
+var isCautionRequest = (sentence) => CAUTION_REQ.test(sentence);
+
+// src/features/chat/server/rewriteGuard.ts
+var CAUSAL = /(때문에|므로|따라서|그래서|(?<![대위])해서|니까|덕분에|탓에|결과로|이유로)/;
+var ACTION = /(십시오|하세요|보세요|주세요|두세요|마세요|지키시|정하시|확인하시|세요[.!]?$)/;
+var QUOTE = /["“”'‘’「」『』]/;
+function isRewritable(sentence) {
+  const s = sentence.trim();
+  if (s.length === 0) return false;
+  return !CAUSAL.test(s) && !ACTION.test(s) && !QUOTE.test(s);
+}
+function splitSentences3(text) {
+  return text.split(/(?<=[.!?。])\s*|\n+/).map((s) => s.trim()).filter((s) => s.length > 0);
+}
+var HANGUL_BASE = 44032;
+var isHangul = (ch) => {
+  const c = ch.charCodeAt(0);
+  return c >= HANGUL_BASE && c <= 55203;
+};
+var SOFT_JONG = /* @__PURE__ */ new Set([0, 4, 7, 8, 17, 19]);
+var CHO_H = 18;
+var CHO_NG = 11;
+var O_CONTRACT_CHO = /* @__PURE__ */ new Set([15, 10, 1, 4, 16]);
+function syllableKey(ch) {
+  if (!isHangul(ch)) return ch;
+  const code = ch.charCodeAt(0) - HANGUL_BASE;
+  const cho = Math.floor(code / 588);
+  let jung = Math.floor(code % 588 / 28);
+  const jong = code % 28;
+  if (jung === 9) jung = 8;
+  else if (jung === 14) jung = 13;
+  else if (jung === 10) jung = 11;
+  else if (jung === 6) jung = 20;
+  else if (jung === 1 && cho === CHO_H) jung = 0;
+  else if (jung === 4 && O_CONTRACT_CHO.has(cho)) jung = 18;
+  else if (jung === 7 && cho === CHO_NG) jung = 20;
+  return `${cho}.${jung}.${SOFT_JONG.has(jong) ? 0 : jong}`;
+}
+var ENDING = new Set(
+  "요 어 아 여 워 와 에 예 이 으 죠 네 거 든 게 고 까 나 는 은 을 를 가 과 로 서 며 면 지 도 만 의 라 러 래 세 셔 시 십 오 해 돼 봐 줘 었 았 였 했 됐 겠 던 데 한 할 합 함 됨 입 인 니 다 습 랍 께 야 란 랑".split(" ")
+);
+var CONNECTIVES = /* @__PURE__ */ new Set([
+  "그리고",
+  "그래도",
+  "다만",
+  "그런데",
+  "하지만",
+  "또",
+  "또한",
+  "한편",
+  "그러면",
+  "이",
+  "그",
+  "저",
+  "이런",
+  "그런",
+  "저런",
+  "이렇게",
+  "그렇게",
+  "여기",
+  "거기",
+  "좀",
+  "조금",
+  "살짝"
+]);
+var DEPENDENT = ["정도", "것", "거", "게", "수", "편", "듯", "쯤"];
+var DEPENDENT_TAIL = /* @__PURE__ */ new Set([
+  "",
+  "은",
+  "는",
+  "이",
+  "가",
+  "을",
+  "를",
+  "도",
+  "만",
+  "에",
+  "으로",
+  "이에요",
+  "예요",
+  "이죠",
+  "죠",
+  "입니다",
+  "이고",
+  "이며"
+]);
+var words = (sentence) => sentence.match(/[가-힣]+/g) ?? [];
+var isFunctionWord = (w) => CONNECTIVES.has(w) || DEPENDENT.some((d) => w.startsWith(d) && DEPENDENT_TAIL.has(w.slice(d.length)));
+function derivable(a, b) {
+  if (a.length === 0 || b.length === 0) return false;
+  if (syllableKey(a[0]) !== syllableKey(b[0])) return false;
+  const aRest = [...a.slice(1)];
+  const bRest = [...b.slice(1)];
+  const aKeys = new Set(aRest.map(syllableKey));
+  for (const ch of bRest) {
+    if (!ENDING.has(ch) && !aKeys.has(syllableKey(ch))) return false;
+  }
+  const bKeys = new Set(bRest.map(syllableKey));
+  for (const ch of aRest) {
+    if (!ENDING.has(ch) && !bKeys.has(syllableKey(ch))) return false;
+  }
+  return true;
+}
+function checkWords(source, rewrite, index) {
+  const src = words(source).filter((w) => !isFunctionWord(w));
+  const rew = words(rewrite).filter((w) => !isFunctionWord(w));
+  const fails = [];
+  const at = `${index + 1}번째 문장 — `;
+  const used = new Array(src.length).fill(false);
+  const added = [];
+  const relation = [];
+  let reordered = null;
+  let last = -1;
+  for (const b of rew) {
+    let j = src.findIndex((a, k) => k > last && !used[k] && derivable(a, b));
+    if (j < 0) {
+      j = src.findIndex((a, k) => !used[k] && derivable(a, b));
+      if (j < 0) {
+        added.push(b);
+        continue;
+      }
+      reordered ??= b;
+    }
+    used[j] = true;
+    last = Math.max(last, j);
+    if (relationOf(src[j]) !== relationOf(b)) relation.push(`${src[j]}→${b}`);
+  }
+  const dropped = src.filter((_, k) => !used[k]);
+  if (added.length) fails.push({ kind: "NEW_CONTENT_WORD", detail: `${at}원문에 없는 말: ${added.join(", ")}` });
+  if (dropped.length) fails.push({ kind: "CONTENT_DROPPED", detail: `${at}빠진 말: ${dropped.join(", ")}` });
+  if (reordered) fails.push({ kind: "ORDER_CHANGED", detail: `${at}낱말 순서가 바뀜: ${reordered}` });
+  if (relation.length) fails.push({ kind: "RELATION_CHANGED", detail: `${at}잇는 어미가 바뀜: ${relation.join(", ")}` });
+  return fails;
+}
+function relationOf(word) {
+  if (/(으면|면)$/.test(word)) return "COND";
+  if (/(니까|으니|[^아]니|아서|어서|여서|해서|라서|므로)$/.test(word)) return "CAUSE";
+  if (/(지만|어도|아도|여도|해도|라도)$/.test(word)) return "CONCESSIVE";
+  return null;
+}
+var NEGATION = /(않|못|말고|마십시오|마세요|아니|아닙|없|안\s)/g;
+var HEDGE = /(수\s*있|편이|편\s|정도|가능|듯|쯤|보입니다|보여요|같습니다|같아요|수도)/g;
+var CAUSAL_LINK = /(때문|므로|따라서|그래서|그러니|그러므로|왜냐하면|덕분|탓에|니까|라서|해서)/g;
+var count = (text, re) => (text.match(re) ?? []).length;
+function checkPolarity(source, rewrite, index) {
+  const fails = [];
+  const at = `${index + 1}번째 문장 — `;
+  const ns = count(source, NEGATION);
+  const nr = count(rewrite, NEGATION);
+  if (ns !== nr) fails.push({ kind: "NEGATION_CHANGED", detail: `${at}부정 표현 ${ns}개 → ${nr}개` });
+  const hs = count(source, HEDGE);
+  const hr = count(rewrite, HEDGE);
+  if (hr < hs) fails.push({ kind: "HEDGE_DROPPED", detail: `${at}추측 표현 ${hs}개 → ${hr}개 (줄면 더 단정해진다)` });
+  const cs = count(source, CAUSAL_LINK);
+  const cr = count(rewrite, CAUSAL_LINK);
+  if (cr > cs) fails.push({ kind: "CAUSAL_ADDED", detail: `${at}인과 접속 ${cs}개 → ${cr}개` });
+  return fails;
+}
+var NUMBER = /\d+/g;
+var PERIOD2 = /(올해|내년|작년|이번\s*달|다음\s*달|지난달|상반기|하반기|초순|중순|하순|분기)/g;
+var multiset = (text, re) => {
+  const m = /* @__PURE__ */ new Map();
+  for (const x of text.match(re) ?? []) {
+    const k = x.replace(/\s+/g, "");
+    m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return m;
+};
+var sameMultiset = (a, b) => {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) if (b.get(k) !== v) return false;
+  return true;
+};
+function checkNumbers(source, rewrite, index) {
+  const fails = [];
+  const at = `${index + 1}번째 문장 — `;
+  const ns = multiset(source, NUMBER);
+  const nr = multiset(rewrite, NUMBER);
+  if (!sameMultiset(ns, nr)) {
+    fails.push({ kind: "NUMBER_CHANGED", detail: `${at}숫자 ${[...ns.keys()].join(",") || "없음"} → ${[...nr.keys()].join(",") || "없음"}` });
+  }
+  const ps = multiset(source, PERIOD2);
+  const pr = multiset(rewrite, PERIOD2);
+  if (!sameMultiset(ps, pr)) {
+    fails.push({ kind: "NUMBER_CHANGED", detail: `${at}시기 ${[...ps.keys()].join(",") || "없음"} → ${[...pr.keys()].join(",") || "없음"}` });
+  }
+  return fails;
+}
+function verifyRewrite(source, rewrite) {
+  const s = (source ?? "").trim();
+  const r = (rewrite ?? "").trim();
+  if (s.length === 0) return { ok: false, failures: [{ kind: "SENTENCE_COUNT", detail: "원문이 비어 있음" }] };
+  if (r.length === 0) return { ok: false, failures: [{ kind: "SENTENCE_COUNT", detail: "재작성이 비어 있음" }] };
+  const src = splitSentences3(s);
+  const rew = splitSentences3(r);
+  if (src.length !== rew.length) {
+    return { ok: false, failures: [{ kind: "SENTENCE_COUNT", detail: `문장 ${src.length}개 → ${rew.length}개` }] };
+  }
+  const failures = src.flatMap((sentence, i) => [
+    ...checkWords(sentence, rew[i], i),
+    ...checkPolarity(sentence, rew[i], i),
+    ...checkNumbers(sentence, rew[i], i)
+  ]);
+  return { ok: failures.length === 0, failures };
+}
+
+// src/features/chat/server/shortAnswer.ts
+var SHORT_ANSWER_VERSION = "short-answer@1.0.0";
+function periodWordFor(ctx) {
+  const targets = ctx.resolvedTargets ?? [];
+  if (targets.length === 0) return "이번 달";
+  const year = ctx.referenceYear;
+  if (year == null) return null;
+  if (ctx.referenceMonth != null && targets.includes(year * 100 + ctx.referenceMonth)) return "이번 달";
+  if (targets.includes(year)) return "올해";
+  if (targets.includes(year + 1)) return "내년";
+  return null;
+}
+var ASK_BACK_DOMAIN = {
+  사업: "WORK",
+  창업: "WORK",
+  이직: "WORK",
+  직업: "WORK",
+  계약: "WORK",
+  재물: "MONEY",
+  결혼: "RELATION",
+  연애: "RELATION",
+  재회: "RELATION",
+  관계: "RELATION",
+  건강: "HEALTH",
+  이사: "MOVE",
+  변화: "MOVE"
+};
+var askBackDomainOf = (d) => ASK_BACK_DOMAIN[d] ?? "GENERAL";
+function previousAskBackIn(lastAssistantText) {
+  if (!lastAssistantText) return null;
+  return allAskBacks().find((q) => lastAssistantText.includes(q)) ?? null;
+}
+var politeImperative = (sentence) => sentence.replace(/십시오(?=[.!]?$)/, "세요");
+var SOURCE_LENGTH_SLACK = 30;
+var DISCIPLINE_NAME = /(명리|자미두수|기문둔갑|기문|사주)/;
+var QUOTED_SCOPE_ANYWHERE = /"[^"]*"\s*에\s*대해서는\s*/g;
+var stems = (s) => new Set((s.match(/[가-힣]{2,}/g) ?? []).map((w) => w.slice(0, 2)));
+function repeats(sentence, earlier) {
+  const a = stems(sentence);
+  if (a.size === 0) return false;
+  return earlier.some((e) => {
+    const b = stems(e);
+    let hit = 0;
+    for (const x of a) if (b.has(x)) hit += 1;
+    return hit / Math.min(a.size, b.size || 1) >= 0.6;
+  });
+}
+function buildShortAnswerSource(input) {
+  const evidence = new Set((input.evidenceStatements ?? []).flatMap(splitSentences3).map((s) => s.replace(/\s+/g, "")));
+  const keep = (s) => !DISCIPLINE_NAME.test(s) && !evidence.has(s.replace(/\s+/g, "")) && (input.technicalTokensIn?.(s).length ?? 0) === 0;
+  const conclusion = splitSentences3((input.conclusion ?? "").replace(QUOTED_SCOPE_ANYWHERE, "")).filter(keep);
+  if (conclusion.length === 0) return null;
+  if (input.period) conclusion[0] = `${input.period} 흐름으로 보면, ${conclusion[0]}`;
+  const disposition = splitSentences3(input.disposition ?? "");
+  const action = splitSentences3(input.action ?? "").filter(keep);
+  const askBack = pickAskBack({
+    domain: askBackDomainOf(input.domain),
+    previous: input.previousAskBack ?? null,
+    seed: input.seed
+  });
+  const assemble = (middle2) => {
+    const body = [];
+    let cautioned = false;
+    for (const s of [...conclusion, ...middle2, ...action]) {
+      if (repeats(s, body)) continue;
+      if (isCautionRequest(s)) {
+        if (cautioned) continue;
+        cautioned = true;
+      }
+      body.push(s);
+    }
+    return [...disposition, ...body];
+  };
+  let middle = [];
+  for (const unit of input.fillers ?? []) {
+    if (joinAnswer(assemble(middle), askBack).length >= ANSWER_MIN_CHARS) break;
+    const sentences2 = splitSentences3(unit ?? "");
+    if (sentences2.length === 0 || !sentences2.every(keep)) continue;
+    const next = [...middle, ...sentences2];
+    if (joinAnswer(assemble(next), askBack).length > ANSWER_MAX_CHARS + SOURCE_LENGTH_SLACK) continue;
+    middle = next;
+  }
+  const sentences = assemble(middle).map((text) => isRewritable(text) ? { text, rewritable: true } : { text: politeImperative(text), rewritable: false });
+  return { sentences, askBack };
+}
+var joinAnswer = (sentences, askBack) => [...sentences, askBack].join(" ");
+var REWRITE_INSTRUCTION = [
+  "받은 문장들의 **말투만** 바꿔 주십시오. 상담가가 마주 앉아 편하게 말하듯이.",
+  '· "~해요 / ~거든요 / ~이에요" 로 끝내십시오. "~습니다 / ~입니다" 를 쓰지 마십시오.',
+  "· **내용을 더하거나 빼지 마십시오.** 새 낱말·숫자·시기를 넣지 말고, 원래 있던 낱말도 빼지 마십시오.",
+  "· 낱말 순서를 바꾸지 마십시오.",
+  '· "않다·못하다·말다·없다" 같은 부정과 "~수 있다·~편" 같은 추측은 그대로 두십시오.',
+  '· "그래서·그러니·때문에" 같은 잇는 말을 새로 넣지 마십시오. 괄호를 쓰지 마십시오.',
+  "· 문장 수와 순서를 그대로 두고, 한 문장을 한 칸에 담아 같은 개수로 돌려주십시오."
+].join("\n");
+var REWRITE_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: { sentences: { type: "array", items: { type: "string" } } },
+  required: ["sentences"]
+};
+function rewriteResponseFormat() {
+  return { type: "json_schema", name: "deokbun_rewrite", strict: true, schema: REWRITE_JSON_SCHEMA };
+}
+var HINT = {
+  NEW_CONTENT_WORD: "원문에 없는 낱말을 넣었습니다.",
+  CONTENT_DROPPED: "원문 낱말을 뺐습니다.",
+  ORDER_CHANGED: "낱말 순서를 바꿨습니다.",
+  NEGATION_CHANGED: "부정 표현이 바뀌었습니다.",
+  HEDGE_DROPPED: '"~수 있다·~편" 같은 추측 표현을 뺐습니다.',
+  CAUSAL_ADDED: '"그래서" 같은 잇는 말을 새로 넣었습니다.',
+  RELATION_CHANGED: '"~면·~니·~지만" 같은 잇는 어미를 바꿨습니다.',
+  NUMBER_CHANGED: "숫자나 시기가 바뀌었습니다.",
+  SENTENCE_COUNT: "문장 개수가 달라졌습니다.",
+  PARSE: "문장 배열을 돌려주지 않았습니다.",
+  합쇼체: '"~습니다·~입니다" 로 끝난 문장이 남았습니다.',
+  해요체부족: '"~해요" 로 끝나지 않은 문장이 많습니다.',
+  보고서말투: '"유리합니다·도움이 됩니다" 같은 보고서 말투가 남았습니다.',
+  쉼표이어붙임: "문장이 끝날 자리에 쉼표를 썼습니다.",
+  괄호: "괄호를 썼습니다."
+};
+function buildRewriteMessages(sentences, previousProblems = []) {
+  const hints = [...new Set(previousProblems.map((k) => HINT[k]).filter(Boolean))];
+  return [
+    { role: "system", content: REWRITE_INSTRUCTION },
+    ...hints.length > 0 ? [{ role: "system", content: `지난번 결과에서 고칠 점: ${hints.join(" ")}` }] : [],
+    { role: "user", content: JSON.stringify({ sentences }) }
+  ];
+}
+function parseRewriteSentences(raw, expected) {
+  try {
+    const parsed = JSON.parse(raw);
+    const list = parsed?.sentences;
+    if (!Array.isArray(list) || list.length !== expected) return null;
+    if (!list.every((s) => typeof s === "string" && s.trim().length > 0)) return null;
+    return list.map((s) => s.trim());
+  } catch {
+    return null;
+  }
+}
+var TONE_FIXABLE = /* @__PURE__ */ new Set(["합쇼체", "해요체부족", "보고서말투", "쉼표이어붙임", "길이"]);
+var HAPSYO_END2 = /(습니다|입니다|합니다|됩니다|십시오)[.!?]?$/;
+var bump = (m, k) => {
+  m[k] = (m[k] ?? 0) + 1;
+};
+async function realizeShortAnswer(source, rewrite) {
+  const original = source.sentences.map((s) => s.text);
+  const sourceText = joinAnswer(original, source.askBack);
+  const diag = { delivered: "SOURCE", attempts: 0, rewriteFailures: {}, answerFailures: {}, chars: sourceText.length };
+  const done = (reason) => ({ text: sourceText, diagnostics: { ...diag, reason } });
+  if (!rewrite) return done("NO_REWRITER");
+  const targets = source.sentences.map((s, i) => s.rewritable ? i : -1).filter((i) => i >= 0);
+  if (targets.length === 0) return done("NOTHING_TO_REWRITE");
+  const pre = checkAnswer(sourceText);
+  const unfixable = pre.failures.map((f) => f.key).filter((k) => !TONE_FIXABLE.has(k));
+  if (sourceText.length < ANSWER_MIN_CHARS || sourceText.length > ANSWER_MAX_CHARS + SOURCE_LENGTH_SLACK) unfixable.push("길이");
+  if (source.sentences.some((s) => !s.rewritable && HAPSYO_END2.test(s.text))) unfixable.push("합쇼체");
+  if (unfixable.length > 0) {
+    diag.sourceFailures = [...new Set(unfixable)];
+    return done("SOURCE_CHECK_FAILED");
+  }
+  let problems = [];
+  for (let attempt = 1; attempt <= MAX_ANSWER_ATTEMPTS; attempt += 1) {
+    diag.attempts = attempt;
+    let raw = "";
+    try {
+      raw = await rewrite(buildRewriteMessages(targets.map((i) => original[i]), problems));
+    } catch {
+      raw = "";
+    }
+    if (typeof raw !== "string" || raw.trim().length === 0) return done("LLM_UNAVAILABLE");
+    problems = [];
+    const rewritten = parseRewriteSentences(raw, targets.length);
+    if (!rewritten) {
+      bump(diag.rewriteFailures, "PARSE");
+      problems.push("PARSE");
+      continue;
+    }
+    const candidate2 = [...original];
+    targets.forEach((i, k) => {
+      const verdict = verifyRewrite(original[i], rewritten[k]);
+      if (verdict.ok) candidate2[i] = rewritten[k];
+      for (const f of verdict.failures) {
+        bump(diag.rewriteFailures, f.kind);
+        problems.push(f.kind);
+      }
+    });
+    if (problems.length > 0) continue;
+    const text = joinAnswer(candidate2, source.askBack);
+    const check = checkAnswer(text);
+    for (const f of check.failures) {
+      bump(diag.answerFailures, f.key);
+      problems.push(f.key);
+    }
+    if (check.ok) return { text, diagnostics: { ...diag, delivered: "REWRITE", chars: text.length } };
+  }
+  return done("CHECK_FAILED");
+}
+
 // src/features/chat/server/answerPlan.ts
 var ANSWER_PLAN_VERSION = "answer-plan@1.3.2";
 var DECISION_POLICY_VERSION = "decision-policy@1.3.0";
@@ -14263,7 +14979,7 @@ function containsProductivityChecklistTone(text) {
 // src/features/monthly/engine/monthDate.ts
 var KST_OFFSET_SECONDS2 = 32400;
 var FORTUNE_TIMEZONE = "Asia/Seoul";
-var pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
+var pad2 = (n2) => n2 < 10 ? `0${n2}` : `${n2}`;
 function currentTargetMonth(epochSeconds) {
   const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS2) * 1e3);
   return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 };
@@ -14888,15 +15604,15 @@ function monthlyFortuneResponseFormat() {
 var CERTAINTY_GUARANTEE = /(반드시|무조건|틀림없이|꼭|100\s*%|100\s*퍼)[^.!?。\n]{0,14}(성공|합격|부자|이뤄|이룹|잘\s*(된|됩|돼|될)|좋아[집지]|벌(어|게|ㄹ|립|린)|해결|성사|이깁|생깁|들어[와옵]|풀립|됩니다|돼요|될\s*겁)/;
 var ABSOLUTE_NEGATIVE_GUARANTEE = /절대[^.!?。\n]{0,10}(실패|망하|잃|틀리|안\s*(됩|돼|되|해)|못\s*[한할해])/;
 var FINANCIAL_GUARANTEE = /원금\s*보장|수익[^.!?。\n]{0,6}보장|보장[^.!?。\n]{0,6}수익|확정\s*수익|(무조건|반드시)[^.!?。\n]{0,8}(수익|이득|벌)|손실\s*(이\s*)?없(어|이|습|다)/;
-var HEDGE = /없|아니|않|어렵|힘들|불가|단정|장담|모르|수도\s*있|일\s*수\s*있|가능성|경향|편(이|입니다)|참고|보장(은|할)/;
-function splitSentences2(text) {
+var HEDGE2 = /없|아니|않|어렵|힘들|불가|단정|장담|모르|수도\s*있|일\s*수\s*있|가능성|경향|편(이|입니다)|참고|보장(은|할)/;
+function splitSentences4(text) {
   return text.split(/(?<=[.!?。\n])/).map((s) => s.trim()).filter((s) => s.length > 0);
 }
 function containsForbiddenCertainty(text) {
   if (typeof text !== "string" || text.length === 0) return false;
-  for (const s of splitSentences2(text)) {
+  for (const s of splitSentences4(text)) {
     if (containsEventGuarantee(s)) return true;
-    const hedged = HEDGE.test(s);
+    const hedged = HEDGE2.test(s);
     if (!hedged && FINANCIAL_GUARANTEE.test(s)) return true;
     if (!hedged && (CERTAINTY_GUARANTEE.test(s) || ABSOLUTE_NEGATIVE_GUARANTEE.test(s))) return true;
   }
@@ -14948,14 +15664,14 @@ var IMPLICIT_WINNER = new RegExp(
 var WINNER_HEDGE = /단정|어렵|아니|않|없|정하지|고르지|가리기|우열|비슷|팽팽|섣불리|못\s*(정|고르|가리)/;
 function containsWinnerClaim(text) {
   if (typeof text !== "string" || text.length === 0) return false;
-  for (const s of splitSentences2(text)) {
+  for (const s of splitSentences4(text)) {
     if ((WINNER_CLAIM.test(s) || IMPLICIT_WINNER.test(s)) && !WINNER_HEDGE.test(s)) return true;
   }
   return false;
 }
 function containsHardWinnerClaim(text) {
   if (typeof text !== "string" || text.length === 0) return false;
-  for (const s of splitSentences2(text)) {
+  for (const s of splitSentences4(text)) {
     if (WINNER_CLAIM.test(s) && !WINNER_HEDGE.test(s)) return true;
   }
   return false;
@@ -14981,7 +15697,7 @@ var COMPAT_OTHER_BEHAVIOR = /상대[는가]?\s*[^.!?。\n]{0,8}(반드시|틀림
 var COMPAT_HEDGE = /단정|알\s*수\s*없|속단|확신할\s*수\s*없|섣불리|라고\s*(볼|말할)\s*수\s*(는\s*)?없|아닐\s*수|모릅니다/;
 function containsCompatibilityHarm(text) {
   if (typeof text !== "string" || text.length === 0) return false;
-  for (const s of splitSentences2(text)) {
+  for (const s of splitSentences4(text)) {
     if (COMPAT_HEDGE.test(s)) continue;
     if (COMPAT_BREAKUP.test(s) || COMPAT_BREAKUP_EUPHEMISM.test(s) || COMPAT_MINDREAD.test(s) || COMPAT_CONDEMN.test(s) || COMPAT_FATE.test(s) || COMPAT_OTHER_BEHAVIOR.test(s)) {
       return true;
@@ -15347,8 +16063,8 @@ function validateCrossDerivation(prop, propositionById, ctx) {
       const nearParents = resolved.filter((p) => temporalBand(p.temporalScope) === "NEAR");
       if (structuralParents.length === 0 || nearParents.length === 0) return false;
       const qualifies = (structural, near) => classifyPair(structural, near) === "DIFFERENT_TIME_BAND" && opposed(structural, near) && halfIsAsserted(structural) && halfIsAsserted(near) && derivedChildSemanticsMatch(prop, crossTimingSplitChild(structural, near));
-      if (!structuralParents.every((s) => nearParents.some((n) => qualifies(s, n)))) return false;
-      if (!nearParents.every((n) => structuralParents.some((s) => qualifies(s, n)))) return false;
+      if (!structuralParents.every((s) => nearParents.some((n2) => qualifies(s, n2)))) return false;
+      if (!nearParents.every((n2) => structuralParents.some((s) => qualifies(s, n2)))) return false;
       return crossEvidenceMatches(prop, resolved);
     }
     case "CROSS_AXIS_COMPOUND": {
@@ -15516,7 +16232,7 @@ function parseDivinationVerdict(v) {
   const DISCIPLINES = /* @__PURE__ */ new Set(["MYUNGRI", "ZIWEI", "QIMEN"]);
   const PROPOSITION_DISCIPLINES = /* @__PURE__ */ new Set([...DISCIPLINES, "CROSS"]);
   const INTENTS = /* @__PURE__ */ new Set(["DESCRIPTIVE", "CAUSE_WHY", "DECISION", "TIMING", "OUTCOME", "PROBABILITY"]);
-  const AXES = /* @__PURE__ */ new Set([
+  const AXES2 = /* @__PURE__ */ new Set([
     "OPPORTUNITY",
     "OUTCOME",
     "MONEY_INFLOW",
@@ -15567,7 +16283,7 @@ function parseDivinationVerdict(v) {
     return x.every((e) => {
       if (e === null || typeof e !== "object") return false;
       const ev6 = e;
-      return typeof ev6.fact === "string" && typeof ev6.meaning === "string" && enumOk(AXES, ev6.domain) && enumOk(SCOPES2, ev6.temporalScope) && enumOk(DIRECTNESS, ev6.directness);
+      return typeof ev6.fact === "string" && typeof ev6.meaning === "string" && enumOk(AXES2, ev6.domain) && enumOk(SCOPES2, ev6.temporalScope) && enumOk(DIRECTNESS, ev6.directness);
     });
   };
   const enumOk = (set, x) => typeof x === "string" && set.has(x);
@@ -15592,7 +16308,7 @@ function parseDivinationVerdict(v) {
     if (!enumOk(RELIABILITIES, dj.dataReliability)) {
       return void 0;
     }
-    if (!enumOk(AXES, dj.questionDomain)) {
+    if (!enumOk(AXES2, dj.questionDomain)) {
       return void 0;
     }
     if (!enumOk(SCOPES2, dj.temporalScope)) {
@@ -15626,7 +16342,7 @@ function parseDivinationVerdict(v) {
         return void 0;
       }
       const sub2 = sj;
-      if (!enumOk(AXES, sub2.domain) || !enumOk(STANCES, sub2.stance)) {
+      if (!enumOk(AXES2, sub2.domain) || !enumOk(STANCES, sub2.stance)) {
         return void 0;
       }
       if (!enumOk(SCOPES2, sub2.temporalScope) || !enumOk(DIRECTNESS, sub2.directness)) {
@@ -15663,7 +16379,7 @@ function parseDivinationVerdict(v) {
       return void 0;
     }
     const av = a;
-    if (!enumOk(AXES, av.domain) || !enumOk(STANCES, av.stance)) {
+    if (!enumOk(AXES2, av.domain) || !enumOk(STANCES, av.stance)) {
       return void 0;
     }
     if (!enumOk(DISCIPLINES, av.dominantDiscipline)) {
@@ -15746,7 +16462,7 @@ function parseDivinationVerdict(v) {
       if (typeof pr.semanticRelation !== "string" || !RELATIONS.has(pr.semanticRelation)) {
         return void 0;
       }
-      if (!enumOk(AXES, pr.questionAxis) || typeof pr.subject !== "string" || pr.subject.length === 0) {
+      if (!enumOk(AXES2, pr.questionAxis) || typeof pr.subject !== "string" || pr.subject.length === 0) {
         return void 0;
       }
       if (!enumOk(SCOPES2, pr.temporalScope)) {
@@ -15834,7 +16550,7 @@ function parseDivinationVerdict(v) {
     if (!enumOk(SCOPES2, pr.temporalScope)) {
       return void 0;
     }
-    if (!enumOk(AXES, pr.questionAxis)) {
+    if (!enumOk(AXES2, pr.questionAxis)) {
       return void 0;
     }
     if (typeof pr.subject !== "string" || pr.subject.length === 0) {
@@ -16005,13 +16721,13 @@ function parseDivinationVerdict(v) {
   if (!enumOk(INTENTS, o.questionIntent)) {
     return void 0;
   }
-  if (!enumOk(AXES, o.questionDomain)) {
+  if (!enumOk(AXES2, o.questionDomain)) {
     return void 0;
   }
   if (typeof o.asksTiming !== "boolean") {
     return void 0;
   }
-  if (o.decidingAxes !== void 0 && !(Array.isArray(o.decidingAxes) && o.decidingAxes.every((a) => enumOk(AXES, a)))) {
+  if (o.decidingAxes !== void 0 && !(Array.isArray(o.decidingAxes) && o.decidingAxes.every((a) => enumOk(AXES2, a)))) {
     return void 0;
   }
   const decidingAxes2 = Array.isArray(o.decidingAxes) ? o.decidingAxes : void 0;
@@ -16074,13 +16790,13 @@ function parseDivinationVerdict(v) {
       if (!enumOk(CONCLUSION_DIRECTIONS, p.direction)) return null;
       if (!enumOk(RELIABILITIES, p.reliability)) return null;
       if (!enumOk(DIRECTNESS, p.directness)) return null;
-      if (p.axis !== null && !enumOk(AXES, p.axis)) return null;
+      if (p.axis !== null && !enumOk(AXES2, p.axis)) return null;
       if (p.role !== null && !enumOk(SY_ROLES, p.role)) return null;
       if (p.restriction !== null && p.restriction !== void 0 && !enumOk(RESTRICTIONS, p.restriction)) return null;
       if (p.temporalBand !== null && !enumOk(BANDS, p.temporalBand)) return null;
       if (typeof p.statement !== "string") return null;
       if (!isStringArray2(p.evidenceIds) || !isStringArray2(p.derivedFromAxes)) return null;
-      if (!p.derivedFromAxes.every((a) => AXES.has(a))) return null;
+      if (!p.derivedFromAxes.every((a) => AXES2.has(a))) return null;
       return {
         discipline: p.discipline,
         authority: p.authority,
@@ -16100,7 +16816,7 @@ function parseDivinationVerdict(v) {
       const arr2 = parts(x);
       if (!arr2) return null;
       const out = arr2.map((t) => {
-        if (!enumOk(DISCIPLINES, t.discipline) || !enumOk(AXES, t.axis) || !enumOk(SY_ROLES, t.role)) return null;
+        if (!enumOk(DISCIPLINES, t.discipline) || !enumOk(AXES2, t.axis) || !enumOk(SY_ROLES, t.role)) return null;
         if (!enumOk(CONCLUSION_DIRECTIONS, t.direction) || !enumOk(BANDS, t.temporalBand)) return null;
         if (typeof t.statement !== "string" || !isStringArray2(t.evidenceIds)) return null;
         return {
@@ -16129,7 +16845,7 @@ function parseDivinationVerdict(v) {
       return void 0;
     }
     const pairsOut = pairs.map((c) => {
-      if (!enumOk(DISCIPLINES, c.a) || !enumOk(DISCIPLINES, c.b) || !enumOk(AXES, c.axis)) return null;
+      if (!enumOk(DISCIPLINES, c.a) || !enumOk(DISCIPLINES, c.b) || !enumOk(AXES2, c.axis)) return null;
       if (!Array.isArray(c.directions) || c.directions.length !== 2) return null;
       if (!c.directions.every((d) => enumOk(CONCLUSION_DIRECTIONS, d))) return null;
       if (c.reconciledBy !== null && !enumOk(RECONCILED, c.reconciledBy)) return null;
@@ -16533,20 +17249,20 @@ function isDecisionVersionMismatch(persisted, current) {
 }
 
 // src/features/chat/server/koreanRealization.ts
-var HANGUL_BASE = 44032;
+var HANGUL_BASE2 = 44032;
 var HANGUL_LAST = 55203;
 var JONG_COUNT = 28;
 var JONG_NIEUN = 4;
 var JONG_BIEUP = 17;
 function jongseong(ch) {
   const c = ch.charCodeAt(0);
-  if (c < HANGUL_BASE || c > HANGUL_LAST) return null;
-  return (c - HANGUL_BASE) % JONG_COUNT;
+  if (c < HANGUL_BASE2 || c > HANGUL_LAST) return null;
+  return (c - HANGUL_BASE2) % JONG_COUNT;
 }
 var endsWithConsonant = (ch) => (jongseong(ch) ?? 0) !== 0;
 function withJongseong(ch, jong) {
   const c = ch.charCodeAt(0);
-  return String.fromCharCode(c - (c - HANGUL_BASE) % JONG_COUNT + jong);
+  return String.fromCharCode(c - (c - HANGUL_BASE2) % JONG_COUNT + jong);
 }
 var ANCHOR_TAIL_PARTICLE = /(천간합|천간충|지지합|지지충|반합|육합|삼합|방합|암합|원진|귀문|합|충|형|파|해|명궁|신궁|형제|부처|자녀|재백|질액|천이|노복|교우|관록|전택|복덕|부모)(를|을|와|과|이|가|은|는)(?=[\s.,)\]·]|$)/g;
 var PARTICLE_PAIR = {
@@ -17211,13 +17927,13 @@ function evidencePolarity(e) {
 function buildGroundedNarrativePlan(verdict, contentPlan, intent) {
   const declined = isDeclinedToDecide(verdict);
   const claims = [];
-  let n = 0;
+  let n2 = 0;
   const materialCorpus = crossMaterialCorpus(verdict);
   const add = (c, prefix) => {
-    n += 1;
+    n2 += 1;
     claims.push({
       ...c,
-      id: `${prefix}${n}`,
+      id: `${prefix}${n2}`,
       relevance: surfaceRelevanceOf(c, verdict.questionDomain, materialCorpus)
     });
   };
@@ -17716,10 +18432,10 @@ function buildGroundedActionPlan(plan) {
   const declined = plan.verdictState === "DECLINED";
   const p = pools(plan);
   const spent = /* @__PURE__ */ new Set();
-  const take = (pool, n = 1) => {
+  const take = (pool, n2 = 1) => {
     const out = [];
     for (const c of pool) {
-      if (out.length >= n) break;
+      if (out.length >= n2) break;
       if (spent.has(c.id)) continue;
       spent.add(c.id);
       out.push(c);
@@ -17733,7 +18449,7 @@ function buildGroundedActionPlan(plan) {
     text: realize(c.relevance === "CROSS_MATERIAL_QUALIFIER" ? `${CROSS_QUALIFIER_FRAME}: ${c.authoritativeMeaning} ${frame}` : `${c.authoritativeMeaning} ${frame}`),
     sourceClaimIds: [c.id]
   });
-  const items = (pool, frame, n = MAX_PER_BUCKET) => take(pool, n).map((c) => item(c, frame));
+  const items = (pool, frame, n2 = MAX_PER_BUCKET) => take(pool, n2).map((c) => item(c, frame));
   let verifyItems = [];
   let supportConditions = [];
   let cautionConditions = [];
@@ -18652,6 +19368,45 @@ ${extraDirective}` : base
       message: AMBIGUOUS_BOUNDARY_DATE_MESSAGE
     } : { ok: false, reason: "GROUNDING_UNAVAILABLE", message: GROUNDING_UNAVAILABLE_MESSAGE };
   }
+  const verdictForGuard = effectiveGrounding.status === "available" ? effectiveGrounding.divinationVerdict ?? null : null;
+  const narrativeIntent = verdictForGuard ? narrativeIntentOf(verdictForGuard.questionIntent, plan.comparisonContext.isComparison) : "DECISION";
+  const groundedPlan = verdictForGuard && contentPlanHolder.current ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent) : null;
+  const groundedActionPlan = groundedPlan ? buildGroundedActionPlan(groundedPlan) : null;
+  const groundedActionSection = groundedActionPlan ? renderGroundedActionSection(groundedActionPlan) : null;
+  const sharedActionForFallback = groundedActionPlan && groundedActionSection ? {
+    title: groundedActionSection.title,
+    lines: renderGroundedActionLines(groundedActionPlan),
+    format: formatGroundedActionLine
+  } : null;
+  const groundedFallbackResult = () => applyVerdictAuthorityClamp(
+    { kind: "ACCEPTED", result: composeGroundedFallback(groundedPlan, sharedActionForFallback) },
+    verdictForGuard,
+    narrativeIntent
+  );
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
+  const dispositionLine = effectiveGrounding.status === "available" ? buildDisposition(dispositionInputFrom(
+    effectiveGrounding.evidence.myungri.sections,
+    effectiveGrounding.evidence.ziwei.sections
+  )).text : null;
+  const shortContract = verdictForGuard ? buildNarrativeContract(verdictForGuard) : null;
+  const shortAnswerSource = groundedPlan ? buildShortAnswerSource({
+    disposition: dispositionLine,
+    conclusion: realizeForConsumer(groundedFallbackResult().coreSummary ?? ""),
+    action: shortContract?.actionBoundaries[0] ?? null,
+    fillers: [...shortContract?.practicalImplications ?? [], groundedPlan.conclusionSurface.closing],
+    evidenceStatements: shortContract ? [
+      ...shortContract.supportingTruths,
+      ...shortContract.limitingTruths,
+      ...shortContract.outcomeTruths,
+      ...shortContract.temporalTruths
+    ].map((t) => realizeForConsumer(t.meaning)) : [],
+    technicalTokensIn,
+    period: periodWordFor(resolvedTemporalContext),
+    domain: questionDomain,
+    seed: question,
+    previousAskBack: previousAskBackIn([...recentMessages].reverse().find((m) => m.role === "assistant")?.text)
+  }) : null;
+  const shortAnswerPending = shortAnswerSource ? realizeShortAnswer(shortAnswerSource, deps.rewriteLLM).catch(() => null) : null;
   let raw = "";
   let llmUnavailable = false;
   try {
@@ -18662,7 +19417,6 @@ ${extraDirective}` : base
   if (typeof raw !== "string" || raw.trim().length === 0) llmUnavailable = true;
   const hasAuthoritativeMaterial = effectiveGrounding.status === "available" && effectiveGrounding.divinationVerdict != null && contentPlanHolder.current !== null;
   if (llmUnavailable && !hasAuthoritativeMaterial) return { ok: false, reason: "LLM_FAILED" };
-  const verdictForGuard = effectiveGrounding.status === "available" ? effectiveGrounding.divinationVerdict ?? null : null;
   const domainComparisonAllowed = plan.comparisonKind === "DOMAIN" && verdictForGuard !== null && verdictForGuard.direction !== NO_SIGNAL;
   const guard = llmUnavailable ? { outcome: { kind: "SEMANTIC_REJECTED", reason: "LLM_UNAVAILABLE" }, regenerated: false, guardRejected: false } : await classifyWithGuards({
     raw,
@@ -18682,16 +19436,7 @@ ${extraDirective}` : base
     }
   });
   const outcome = guard.outcome;
-  const narrativeIntent = verdictForGuard ? narrativeIntentOf(verdictForGuard.questionIntent, plan.comparisonContext.isComparison) : "DECISION";
   const clampedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard, narrativeIntent);
-  const groundedPlan = verdictForGuard && contentPlanHolder.current ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent) : null;
-  const groundedActionPlan = groundedPlan ? buildGroundedActionPlan(groundedPlan) : null;
-  const groundedActionSection = groundedActionPlan ? renderGroundedActionSection(groundedActionPlan) : null;
-  const sharedActionForFallback = groundedActionPlan && groundedActionSection ? {
-    title: groundedActionSection.title,
-    lines: renderGroundedActionLines(groundedActionPlan),
-    format: formatGroundedActionLine
-  } : null;
   const gated = clampedResult && groundedPlan ? gateAgainstGroundedNarrative(clampedResult, groundedPlan) : null;
   const realizationViolations = clampedResult && verdictForGuard ? (() => {
     const contract = buildNarrativeContract(verdictForGuard);
@@ -18716,14 +19461,9 @@ ${extraDirective}` : base
   })() : [];
   const rejectedButGrounded = (clampedResult === null || realizationViolations.length > 0) && groundedPlan !== null && (realizationViolations.length > 0 || outcome.kind === "SEMANTIC_REJECTED" || outcome.kind === "STRUCTURAL_FALLBACK" && untraceableFacts(outcome.text, groundedPlan).length > 0);
   const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
-  const groundedFallbackResult = () => applyVerdictAuthorityClamp(
-    { kind: "ACCEPTED", result: composeGroundedFallback(groundedPlan, sharedActionForFallback) },
-    verdictForGuard,
-    narrativeIntent
-  );
   const acceptedResult = groundedPlan !== null ? groundedFallbackResult() : clampedResult;
+  const acceptedWithDisposition = acceptedResult && !acceptedResult.disposition && dispositionLine ? { ...acceptedResult, disposition: dispositionLine } : acceptedResult;
   const groundedViolations = gated?.fatal ? classifyGroundedViolations(gated.violations) : rejectedButGrounded ? ["LLM_OUTPUT_REJECTED"] : [];
-  const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
   const graphRevision = storedInstant === null ? void 0 : continuation === "REFINE_EXISTING" && graphExtended ? {
     schemaVersion: "graph-revision@1.0.0",
     kind: "EXTENDED",
@@ -18785,15 +19525,20 @@ ${extraDirective}` : base
   ].filter((s) => !deliveredSectionTitles.has(s.title)).concat(
     contentPlanHolder.current && contentPlanHolder.current.selectedEvidence.length > 0 ? renderVerifiedEvidenceSection(contentPlanHolder.current.selectedEvidence) : []
   );
-  const deliveredSections = applyConsumerDeliveryContract(acceptedResult, authoritativeSections);
+  const deliveredSections = applyConsumerDeliveryContract(acceptedWithDisposition, authoritativeSections);
   const verifiedEvidence = deliveredSections.authoritative.length > 0 ? deliveredSections.authoritative : void 0;
+  const shortAnswer = shortAnswerPending && deliveredSections.result ? await shortAnswerPending : null;
   const structuredResult = deliveredSections.result ? {
     ...buildStructuredConsultationResult(deliveredSections.result, effectiveGrounding),
+    ...shortAnswer ? { shortAnswer: shortAnswer.text } : {},
     ...conclusionPolarity ? { conclusionPolarity } : {},
     ...verifiedEvidence ? { verifiedEvidence } : {},
     decisionMeta
   } : void 0;
-  const text = deliveredSections.result ? composeConsultationText(deliveredSections.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? realizeForConsumer(outcome.text) : SEMANTIC_REJECTION_MESSAGE;
+  const longText = deliveredSections.result ? composeConsultationText(deliveredSections.result) : outcome.kind === "STRUCTURAL_FALLBACK" ? realizeForConsumer(outcome.text) : SEMANTIC_REJECTION_MESSAGE;
+  const text = shortAnswer ? `${shortAnswer.text}
+
+${longText}` : longText;
   const diagnostics = {
     outputClassification: outcome.kind,
     ...guard.regenerated ? { regenerated: true } : {},
@@ -18807,6 +19552,7 @@ ${extraDirective}` : base
     ...followUpIntent !== "NONE" ? { followUp: followUpIntent } : {},
     ...followUpVersionMismatch ? { versionMismatch: true } : {},
     ...llmUnavailable ? { llmUnavailable: true } : {},
+    ...shortAnswer ? { shortAnswer: shortAnswer.diagnostics } : {},
     ...outcome.kind === "ACCEPTED" ? {} : {
       rejectionReason: guard.guardRejected ? "GUARD_CERTAINTY_MITIGATION" : firstStructuredRejectionReason(raw, effectiveGrounding)
     }
@@ -19008,7 +19754,7 @@ function computePairwiseRelations(self, target4) {
 
 // src/features/compatibility/engine/compatibilityTiers.ts
 var el2 = (e) => FIVE_ELEMENT_LABELS[e].hangul;
-var clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+var clamp = (n2, min, max) => Math.max(min, Math.min(max, n2));
 var OVERALL_LABEL = {
   VERY_GOOD: "매우 잘 맞는 편",
   GOOD: "잘 맞는 편",
@@ -19573,7 +20319,7 @@ function sanitizeSummarySource(request) {
     if (text.trim().length === 0) continue;
     turns.push({ id: `sum-${turns.length}`, role: role2, text });
   }
-  const sourceLen = () => (existingSummary?.length ?? 0) + turns.reduce((n, m) => n + m.text.length, 0);
+  const sourceLen = () => (existingSummary?.length ?? 0) + turns.reduce((n2, m) => n2 + m.text.length, 0);
   while (turns.length > 0 && sourceLen() > MAX_SUMMARY_SOURCE_CHARS) turns.shift();
   return { existingSummary, turns };
 }
@@ -19709,6 +20455,21 @@ function gateFiringSummary(d) {
     ...routed ? { safetyRoute: d.safetyRoute } : {}
   };
 }
+var n = (v) => typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : 0;
+var has = (v) => typeof v === "number" && Number.isFinite(v);
+function mergeOpenAiUsage(a, b) {
+  const x = a ?? {};
+  const y = b ?? {};
+  const out = {};
+  for (const k of ["input_tokens", "output_tokens", "total_tokens"]) {
+    if (has(x[k]) || has(y[k])) out[k] = n(x[k]) + n(y[k]);
+  }
+  const cached = [x.input_tokens_details?.cached_tokens, y.input_tokens_details?.cached_tokens];
+  if (cached.some(has)) out.input_tokens_details = { cached_tokens: n(cached[0]) + n(cached[1]) };
+  const reasoning = [x.output_tokens_details?.reasoning_tokens, y.output_tokens_details?.reasoning_tokens];
+  if (reasoning.some(has)) out.output_tokens_details = { reasoning_tokens: n(reasoning[0]) + n(reasoning[1]) };
+  return out;
+}
 
 // src/features/chat/server/llmBudget.ts
 var DEFAULT_CONSULTATION_MAX_OUTPUT_TOKENS = 5e3;
@@ -19716,9 +20477,9 @@ var DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 3e3;
 var MIN_MAX_OUTPUT_TOKENS = 256;
 var HARD_MAX_OUTPUT_TOKENS = 8e3;
 function clampBudget(raw, fallback) {
-  const n = Number((raw ?? "").trim());
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return Math.min(Math.max(Math.floor(n), MIN_MAX_OUTPUT_TOKENS), HARD_MAX_OUTPUT_TOKENS);
+  const n2 = Number((raw ?? "").trim());
+  if (!Number.isFinite(n2) || n2 <= 0) return fallback;
+  return Math.min(Math.max(Math.floor(n2), MIN_MAX_OUTPUT_TOKENS), HARD_MAX_OUTPUT_TOKENS);
 }
 function resolveLlmBudgets(env) {
   return {
@@ -19919,7 +20680,7 @@ var TODAY_CANONICAL_VERSION = "today-canonical@1.3.0";
 // src/features/today/engine/fortuneDate.ts
 var KST_OFFSET_SECONDS4 = 32400;
 var FORTUNE_TIMEZONE2 = "Asia/Seoul";
-var pad22 = (n) => n < 10 ? `0${n}` : `${n}`;
+var pad22 = (n2) => n2 < 10 ? `0${n2}` : `${n2}`;
 function epochToKstCivilDate(epochSeconds) {
   const shifted = new Date((epochSeconds + KST_OFFSET_SECONDS4) * 1e3);
   return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
@@ -20521,7 +21282,7 @@ async function buildPremiumEvidence(input, deps) {
     natalRelationLines.push(`${POS3[r.positions[0]]}–${POS3[r.positions[1]]} ${BRANCH_REL3[r.relation.kind] ?? r.relation.kind}`);
   }
   for (const s of relations?.sets ?? []) natalRelationLines.push(SET_REL3[s.kind] ?? s.kind);
-  const countsOf = (rec) => Object.entries(rec ?? {}).filter(([, n]) => n > 0).map(([role2, count]) => ({ role: ROLE[role2] ?? role2, count }));
+  const countsOf = (rec) => Object.entries(rec ?? {}).filter(([, n2]) => n2 > 0).map(([role2, count2]) => ({ role: ROLE[role2] ?? role2, count: count2 }));
   const roleCounts = strength.capability === "AVAILABLE" ? countsOf(strength.visibleRoleCounts) : [];
   const hiddenRoleCounts = strength.capability === "AVAILABLE" ? countsOf(strength.hiddenRoleCounts) : [];
   const rootedStems = rooting.capability === "AVAILABLE" ? rooting.rooting.filter((r) => r.isRooted).map((r) => ({
@@ -20547,7 +21308,7 @@ async function buildPremiumEvidence(input, deps) {
   const natalFacts = {
     pillars,
     dayMasterElement: command.capability === "AVAILABLE" ? EL(command.dayMasterElement) : "",
-    elementCounts: Object.entries(temporal.elementCounts ?? {}).map(([element, count]) => ({ element: EL(element), count: Number(count) })),
+    elementCounts: Object.entries(temporal.elementCounts ?? {}).map(([element, count2]) => ({ element: EL(element), count: Number(count2) })),
     monthCommand: command.capability === "AVAILABLE" ? {
       season: SEASON[command.season] ?? String(command.season),
       phase: PHASE[command.dayMasterSeasonalPhase] ?? String(command.dayMasterSeasonalPhase),
@@ -20629,40 +21390,40 @@ var eun = (w) => (w.charCodeAt(w.length - 1) - 44032) % 28 > 0 ? "은" : "는";
 var PREMIUM_EVIDENCE_MAX_LINES = 8;
 var anchored2 = (conclusion, anchor) => `${conclusion} (근거: ${anchor})`;
 function premiumEvidenceLines(ev6) {
-  const n = ev6.natal;
+  const n2 = ev6.natal;
   const lines = [];
-  if (n.elementCounts.length > 0) {
-    const sorted = [...n.elementCounts].sort((a, b) => b.count - a.count);
+  if (n2.elementCounts.length > 0) {
+    const sorted = [...n2.elementCounts].sort((a, b) => b.count - a.count);
     const missing = sorted.filter((e) => e.count === 0).map((e) => e.element);
     const top = sorted[0];
     const conclusion = missing.length > 0 ? `타고난 기운이 ${top.element} 쪽으로 몰려 있고 ${missing.join("·")}${eun(missing[missing.length - 1])} 비어 있어, 그쪽은 환경에서 채워야 합니다.` : `타고난 기운이 ${top.element} 쪽으로 기울어 있습니다.`;
     lines.push(anchored2(conclusion, `오행 ${sorted.map((e) => `${e.element}${e.count}`).join("·")}`));
   }
-  if (n.monthCommand) {
+  if (n2.monthCommand) {
     lines.push(anchored2(
-      `태어난 계절이 이 사람의 중심 기운을 ${n.monthCommand.status.replace("계절이 ", "")}`,
-      `${n.monthCommand.season}생 · ${n.dayMasterElement || "일간"} 일간 · ${n.monthCommand.status.includes("않") ? "실령" : "득령"} · ${n.monthCommand.phase}`
+      `태어난 계절이 이 사람의 중심 기운을 ${n2.monthCommand.status.replace("계절이 ", "")}`,
+      `${n2.monthCommand.season}생 · ${n2.dayMasterElement || "일간"} 일간 · ${n2.monthCommand.status.includes("않") ? "실령" : "득령"} · ${n2.monthCommand.phase}`
     ));
   }
-  const vis = n.roleCounts.reduce((a, r) => a + r.count, 0);
-  const hid = n.hiddenRoleCounts.reduce((a, r) => a + r.count, 0);
+  const vis = n2.roleCounts.reduce((a, r) => a + r.count, 0);
+  const hid = n2.hiddenRoleCounts.reduce((a, r) => a + r.count, 0);
   if (vis + hid > 0) {
     const conclusion = hid > vis ? "겉으로 드러난 것보다 속에 쌓아 둔 힘이 더 두텁습니다. 남들이 보는 모습이 전부가 아닙니다." : "겉으로 드러난 힘이 속에 깔린 것과 비슷하거나 더 큽니다. 보이는 대로 쓰는 편입니다.";
     lines.push(anchored2(conclusion, `천간 십신 ${vis} · 지장간 십신 ${hid}`));
   }
-  if (n.rootedStems.length > 0) {
+  if (n2.rootedStems.length > 0) {
     lines.push(anchored2(
       "겉으로 드러난 힘이 아래에 뿌리를 두고 있어, 말뿐이 아니라 실제로 쓸 수 있습니다.",
-      `통근 — ${n.rootedStems.slice(0, 5).map((r) => r.position).join("·")}`
+      `통근 — ${n2.rootedStems.slice(0, 5).map((r) => r.position).join("·")}`
     ));
   } else {
     lines.push(anchored2("겉으로 드러난 힘을 받쳐 줄 뿌리가 확인되지 않아, 기세는 있어도 오래 끌기는 어렵습니다.", "통근 없음"));
   }
-  if (n.natalRelations.length > 0) {
-    const har = n.natalRelations.filter((r) => HARMONIOUS.has(r.split(" ").pop() ?? ""));
-    const fri = n.natalRelations.filter((r) => !HARMONIOUS.has(r.split(" ").pop() ?? ""));
+  if (n2.natalRelations.length > 0) {
+    const har = n2.natalRelations.filter((r) => HARMONIOUS.has(r.split(" ").pop() ?? ""));
+    const fri = n2.natalRelations.filter((r) => !HARMONIOUS.has(r.split(" ").pop() ?? ""));
     const conclusion = fri.length === 0 ? "네 기둥이 서로 맞물려 있어, 한쪽이 움직이면 다른 쪽도 같이 따라옵니다." : har.length === 0 ? "네 기둥 사이에 정면으로 부딪히는 자리가 있어, 같은 문제가 반복해서 올라옵니다." : "네 기둥에 맞물리는 자리와 부딪히는 자리가 함께 있어, 도움과 마찰이 같은 곳에서 나옵니다.";
-    lines.push(anchored2(conclusion, `원국 ${n.natalRelations.slice(0, 5).join(" · ")}`));
+    lines.push(anchored2(conclusion, `원국 ${n2.natalRelations.slice(0, 5).join(" · ")}`));
   }
   if (ev6.daewoon) {
     const touch = ev6.daewoon.relations.length > 0 ? "지금 흐름이 타고난 자리를 직접 건드리고 있습니다." : "지금 흐름은 타고난 자리와 직접 부딪히지 않고 배경으로 깔립니다.";
@@ -20741,34 +21502,34 @@ var SYSTEM = [
 ].join("\n");
 var bullet = (items) => items.map((s) => `  - ${s}`).join("\n");
 function buildPremiumReportPrompt(ev6) {
-  const n = ev6.natal;
+  const n2 = ev6.natal;
   const L = [];
   L.push("【근거 1 — 타고난 구성】");
   L.push(`나이: 만 ${ev6.ageAtReport}세 전후`);
-  if (n.dayMasterElement) L.push(`중심이 되는 성질: ${n.dayMasterElement}`);
-  if (n.elementCounts.length > 0) {
-    L.push(`오행 개수: ${n.elementCounts.map((e) => `${e.element} ${e.count}`).join(" · ")}`);
-    const zero = n.elementCounts.filter((e) => e.count === 0).map((e) => e.element);
+  if (n2.dayMasterElement) L.push(`중심이 되는 성질: ${n2.dayMasterElement}`);
+  if (n2.elementCounts.length > 0) {
+    L.push(`오행 개수: ${n2.elementCounts.map((e) => `${e.element} ${e.count}`).join(" · ")}`);
+    const zero = n2.elementCounts.filter((e) => e.count === 0).map((e) => e.element);
     if (zero.length > 0) L.push(`원국에 없는 기운: ${zero.join("·")} (이 사람이 환경에서 구해야 하는 것)`);
   }
-  if (n.monthCommand) L.push(`태어난 계절: ${n.monthCommand.season} · 계절 대비 상태: ${n.monthCommand.status} (${n.monthCommand.phase})`);
-  if (n.pillars.length > 0) L.push(`자리별 십신:
-${bullet(n.pillars.map((p) => `${plainify(p.position)} — ${p.tenGod}`))}`);
-  if (n.roleCounts.length > 0) L.push(`겉으로 드러난 힘의 구성비: ${n.roleCounts.map((r) => `${r.role} ${r.count}`).join(" · ")}`);
-  if (n.hiddenRoleCounts.length > 0) L.push(`속에 깔린 힘의 구성비: ${n.hiddenRoleCounts.map((r) => `${r.role} ${r.count}`).join(" · ")} (겉과 다르면 그 격차가 이 사람의 특징이다)`);
-  if (n.hiddenByPillar.length > 0) {
+  if (n2.monthCommand) L.push(`태어난 계절: ${n2.monthCommand.season} · 계절 대비 상태: ${n2.monthCommand.status} (${n2.monthCommand.phase})`);
+  if (n2.pillars.length > 0) L.push(`자리별 십신:
+${bullet(n2.pillars.map((p) => `${plainify(p.position)} — ${p.tenGod}`))}`);
+  if (n2.roleCounts.length > 0) L.push(`겉으로 드러난 힘의 구성비: ${n2.roleCounts.map((r) => `${r.role} ${r.count}`).join(" · ")}`);
+  if (n2.hiddenRoleCounts.length > 0) L.push(`속에 깔린 힘의 구성비: ${n2.hiddenRoleCounts.map((r) => `${r.role} ${r.count}`).join(" · ")} (겉과 다르면 그 격차가 이 사람의 특징이다)`);
+  if (n2.hiddenByPillar.length > 0) {
     L.push(`자리별로 속에 품은 것:
-${bullet(n.hiddenByPillar.map((h) => plainify(`${h.position} — ${h.tenGods.join(", ")}`)))}`);
+${bullet(n2.hiddenByPillar.map((h) => plainify(`${h.position} — ${h.tenGods.join(", ")}`)))}`);
   }
-  if (n.rootedStems.length > 0) {
+  if (n2.rootedStems.length > 0) {
     L.push(`뿌리가 있는 자리(실제로 쓸 수 있는 힘):
-${bullet(n.rootedStems.map((r) => plainify(`${r.position} ← ${r.roots.join(" · ")}`)))}`);
+${bullet(n2.rootedStems.map((r) => plainify(`${r.position} ← ${r.roots.join(" · ")}`)))}`);
   } else L.push("뿌리가 있는 자리: 없음 (겉으로 보이는 힘을 뒷받침하는 바탕이 약하다)");
-  if (n.revealedStems.length > 0) L.push(`속에 있던 것이 겉으로 올라온 자리:
-${bullet(n.revealedStems.map(plainify))}`);
-  if (n.hiddenOnlyTenGods.length > 0) L.push(`속에만 있고 겉으로 안 드러난 것: ${n.hiddenOnlyTenGods.join(" · ")}`);
-  if (n.natalRelations.length > 0) L.push(`타고난 네 기둥 사이의 관계:
-${bullet(n.natalRelations.map(plainify))}`);
+  if (n2.revealedStems.length > 0) L.push(`속에 있던 것이 겉으로 올라온 자리:
+${bullet(n2.revealedStems.map(plainify))}`);
+  if (n2.hiddenOnlyTenGods.length > 0) L.push(`속에만 있고 겉으로 안 드러난 것: ${n2.hiddenOnlyTenGods.join(" · ")}`);
+  if (n2.natalRelations.length > 0) L.push(`타고난 네 기둥 사이의 관계:
+${bullet(n2.natalRelations.map(plainify))}`);
   else L.push("타고난 네 기둥 사이의 관계: 두드러지게 부딪히거나 묶이는 자리가 없음 (구조가 서로 간섭하지 않는 편)");
   if (ev6.daewoon) {
     L.push("");
@@ -21005,12 +21766,14 @@ export {
   PREMIUM_POLICY_VERSION,
   PREMIUM_REPORT_JSON_SCHEMA,
   SAFE_DIAG_KEYS,
+  SHORT_ANSWER_VERSION,
   TODAY_CANONICAL_VERSION,
   applyVerdictAuthorityClamp,
   buildCompatibilityConsultation,
   buildConsultationDecisionMeta,
   buildMonthlyFortune,
   buildPremiumReport,
+  buildRewriteMessages,
   buildServerConsultation,
   buildServerSummary,
   buildTodayFortune,
@@ -21025,6 +21788,7 @@ export {
   gateFiringSummary,
   isDecisionVersionMismatch,
   isSolarTermBoundaryTimeRequired,
+  mergeOpenAiUsage,
   monthKey,
   monthlyFortuneResponseFormat,
   openAiFailureCode,
@@ -21038,6 +21802,7 @@ export {
   resolveConsultationProfile,
   resolveLlmBudgets,
   resolveModelRoute,
+  rewriteResponseFormat,
   runCanonicalGeneration,
   runIdempotentPaidRequest,
   sanitizeSummarySource,
