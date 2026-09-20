@@ -118,6 +118,28 @@ https://www.deokbunai.com/onboarding/terms
 
 기대 — "이메일로 찾음" 이라는 줄과 함께 지갑이 보입니다. 안 되면 **그 이유가 화면에 그대로** 뜹니다.
 
+**④-5 덕 경제 확인 — 모든 production 세션 공통** (2026-09-17 추가 · SQL Editor · production · 읽기)
+
+> **왜 이 칸이 생겼나.** 2026-09-17 조사에서 production 의 덕 경제가 **조용히 꺼져 있었다**는 것이 드러났다 —
+> 차감 시크릿 `DUK_BILLING_ENABLED` 가 어느 패키지에도 없어 **한 번도 켜진 적이 없었고**(결제 요청 6건 · 세션 0건),
+> 가입 덕 지급 장치(09-06 생성)보다 **먼저 동의한 3명은 가입 덕을 받지 못했다.** 둘 다 오류를 내지 않았다.
+> 앞으로 **모든 production 세션**은 끝에서 이 조회를 돌린다. 다음 패키지를 만들 때 이 칸을 그대로 가져간다.
+
+조회 1줄 — 파일 `scripts/bundle8/dukDiag.oneline.sql` 의 내용을 그대로 붙여 넣는다(시스템 카탈로그만 봐서
+객체가 빠져 있어도 오류 없이 돈다).
+
+| 결과 칸 | 기대 | 어긋나면 |
+|---|---|---|
+| `welcome_trigger` · `welcome_trigger_state` · `welcome_function` · `welcome_index` | 1 · `O` · 1 · 1 | 가입 덕 지급 장치가 없거나 꺼졌다 → **멈추고 CTO** |
+| `duk_migrations_recorded_of_13` | 13 | 덕 경제 마이그레이션이 빠졌다 → 멈추고 CTO |
+| `reason_check_allows_welcome` | true | 원장이 가입 덕을 거부한다 → 멈추고 CTO |
+| `billing_functions_of_3` | 3 | 차감 함수가 없다 → 멈추고 CTO |
+| **`sessions_rows_approx`** | **상담이 있었다면 0 보다 크다** | **0 이면 차감이 꺼져 있다** — `DUK_BILLING_ENABLED` 확인 |
+| `guard_enabled` · `guard_hourly_limit` · `guard_daily_limit` | true · 지금 값(2026-09-17: 100 · 1,000) | 값이 바뀌었으면 누가 왜 바꿨는지 기록 |
+
+그리고 **가입 덕이 새 가입자에게 실제로 지급되는지** — `scripts/bundle8/welcomeCheck.sql` 을 돌려
+`welcome_grants` 가 (소급 지급 이후) `consented_profiles` 와 같은지 본다(오너 계정은 관리자 지급이라 1 적을 수 있다).
+
 ## ⑤ 되돌리기 (필요할 때만)
 
 | 무엇이 잘못됐나 | 되돌리는 법 |

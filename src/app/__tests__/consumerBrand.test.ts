@@ -43,7 +43,9 @@ describe('consumer surfaces use the finalized brand 덕분이', () => {
     expect(read('components/AppHeader/AppHeader.tsx')).toMatch(/'덕분이'/);
     expect(read('app/login.tsx')).toMatch(/덕분이/);
     expect(read('app/chat.tsx')).toMatch(/덕분이입니다/);
-    expect(read('features/intelligence/components/ConsultationLoading.tsx')).toMatch(/덕분이/);
+    // 2026-09-19 — 기다리는 동안의 문구가 `consultationLoadingPhases.ts` 로 옮겨졌다(경과 시간대별).
+    // 브랜드 요구는 그대로다 — 문구를 가진 파일에서 본다.
+    expect(read('features/intelligence/components/consultationLoadingPhases.ts')).toMatch(/덕분이/);
   });
 });
 

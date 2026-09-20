@@ -55,6 +55,25 @@ export async function parseAiConsentRequired(error: unknown): Promise<boolean> {
   }
 }
 
+/**
+ * 403 `PROFILE_REQUIRED` — **기본 정보(본인 명식)가 없거나 모양이 깨졌다.**
+ *
+ * ⚠ 2026-09-21 (F-05 · F-04): 이 403 을 아무도 읽지 않아서 일반 실패("연결 상태를 확인하고 다시 시도")로
+ *   떨어졌다. 다시 시도해도 절대 성공할 수 없는 상태인데 재시도를 권하고 있었다. 사용자가 할 일은
+ *   재시도가 아니라 **기본 정보를 채우는 것**이다. 동의 필요(403 AI_CONSENT_REQUIRED)와 같은 상태
+ *   코드이므로 본문의 error 값으로 구분한다.
+ */
+export async function parseProfileRequired(error: unknown): Promise<boolean> {
+  const ctx = (error as { context?: { status?: number; json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx || ctx.status !== 403 || typeof ctx.json !== 'function') return false;
+  try {
+    const body = (await ctx.json()) as { error?: unknown };
+    return body?.error === 'PROFILE_REQUIRED';
+  } catch {
+    return false;
+  }
+}
+
 export async function parseGroundingUnavailable(
   error: unknown,
 ): Promise<{ reason: UngroundedReason; message: string | null } | null> {

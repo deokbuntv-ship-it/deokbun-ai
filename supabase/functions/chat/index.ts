@@ -47,9 +47,11 @@ import {
   consultationWorkload,
   classifyQuestionComplexity,
   consultationResponseFormat,
+  rewriteResponseFormat,
   extractResponsesText,
   openAiFailureCode,
   parseUsageDetails,
+  mergeOpenAiUsage,
   redactDiag,
   gateFiringSummary,
   resolveConsultationProfile,
@@ -58,6 +60,7 @@ import {
   validateConsultationInputBounds,
   TODAY_CANONICAL_VERSION,
   MONTHLY_CANONICAL_VERSION,
+  canonicalFortuneVersion,
   fortuneDateStringFromEpoch,
   currentTargetMonth,
   monthKey,
@@ -265,17 +268,80 @@ type ConsumerAuthority =
 // ⚠ 제3자 AI 처리 동의 (애플 5.1.2(i)). **설정값(데이터)으로 켜고 끈다** — 코드가 아니다.
 //   기본은 꺼짐이다. 새 APK 가 나가기 전에 켜면 동의 화면이 없는 옛 APK 가 상담을 못 한다.
 //   `DUK_BILLING_ENABLED` 와 같은 방식(Edge 시크릿)이라 배우는 비용이 늘지 않는다.
-const AI_CONSENT_ENFORCED = (Deno.env.get('AI_CONSENT_ENFORCED') ?? '').trim().toLowerCase() === 'true';
+/**
+ * 이 서버가 **production 인가.**
+ *
+ * ⚠ 2026-09-21 (CTO 7-5 · 7-6): staging · development 는 **명시적으로** `APP_ENV` 를 적어야 한다.
+ *   값이 없거나 모르는 값이면 **production 으로 본다**(fail-closed). 새 환경을 만들다가 시크릿을
+ *   빠뜨렸을 때 "조용히 다 열린 서버" 가 되는 것보다 "막힌 서버" 가 낫다.
+ */
+const ENV_NAME = (Deno.env.get('APP_ENV') ?? '').trim().toLowerCase();
+const IS_PROD_LIKE = ENV_NAME !== 'staging' && ENV_NAME !== 'development' && ENV_NAME !== 'local';
+
+/**
+ * AI 처리 동의 요구 여부.
+ *
+ * ⚠ 기본값을 뒤집었다(2026-09-21): 값이 **없으면 production 에서는 요구한다.** 예전에는 값이 없으면
+ *   조용히 꺼져서, 시크릿을 빠뜨린 production 이 동의 없이 개인정보를 AI 로 보내는 상태가 될 수 있었다.
+ *   staging · development 는 지금 동작 그대로(값이 없으면 꺼짐)라 QA 가 번거로워지지 않는다.
+ */
+const AI_CONSENT_FLAG = (Deno.env.get('AI_CONSENT_ENFORCED') ?? '').trim().toLowerCase();
+const AI_CONSENT_ENFORCED = AI_CONSENT_FLAG === 'true'
+  ? true
+  : AI_CONSENT_FLAG === '' ? IS_PROD_LIKE : false;
+
+/**
+ * 덕 차감 스위치.
+ *
+ * ⚠ 2026-09-21: production 에서 이 값이 없거나 'true' 가 아니면 **유료 요청을 거절한다.**
+ *   예전에는 조용히 "무료" 로 흘러가 상담 · 궁합 · 리포트가 공짜로 나갔다(2026-09-17 까지 실제로 그랬다).
+ *   공짜로 주는 것보다 **잠시 막고 크게 로그를 남기는 것**이 낫다. staging · development 는 그대로다.
+ */
+const DUK_BILLING_ENABLED = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').trim().toLowerCase() === 'true';
+const DUK_BILLING_MISCONFIGURED = IS_PROD_LIKE && !DUK_BILLING_ENABLED;
+
+function refuseWhenBillingMisconfigured(requestId: string | null, where: string): Response | null {
+  if (!DUK_BILLING_MISCONFIGURED) return null;
+  console.error('[chat] duk_billing_misconfigured', JSON.stringify({
+    where, requestId, env: ENV_NAME || '(unset)',
+    hint: 'production 인데 DUK_BILLING_ENABLED 가 true 가 아니다. 유료 요청을 거절했다.',
+  }));
+  return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
+}
 // 문안 버전. 클라이언트의 `AI_CONSENT_VERSION` 과 같아야 한다. 시크릿으로 덮을 수 있게 둔다 —
 // 문안이 바뀌었을 때 앱 배포를 기다리지 않고 서버가 먼저 요구할 수 있어야 하기 때문이다.
 const AI_CONSENT_VERSION = (Deno.env.get('AI_CONSENT_VERSION') ?? '').trim() || 'ai-processing@2026-09-1';
+// 2026-09-19 짧은 답 다듬기 스위치. **기본은 켜짐** — 'off' 일 때만 모델을 부르지 않고 조립기 원문을 낸다.
+//   쓰는 때: 다듬기 모델 장애·원가 급등 같은 운영 사고, 그리고 골든 미니팩(채점기는 접힌 긴 답만 읽어 다듬기와 무관하다).
+//   꺼도 답은 그대로 나간다 — 짧은 답이 조립기 원문이 될 뿐이다.
+const SHORT_ANSWER_REWRITE_ENABLED = (Deno.env.get('SHORT_ANSWER_REWRITE') ?? '').trim().toLowerCase() !== 'off';
 
+/**
+ * 저장된 출생정보가 **쓸 수 있는 모양인지** 먼저 본다.
+ *
+ * ⚠ 2026-09-21 (F-05): 예전에는 연 · 월 · 일이 문자열인지만 봤다. 그래서 출생지 칸이 없는 행이 들어오면
+ *   한참 뒤 계산 단계에서 `birthPlace.trim()` 이 터져 **500** 이 났고(`contextSelector.ts:47`),
+ *   예외 경로는 덕 예약을 풀지 않아 덕이 잠겼다. 사용자에게는 "다시 시도" 만 보였고 다시 해도 같았다.
+ *   여기서 **먼저** 걸러 `PROFILE_REQUIRED`(403)로 돌려보내면, 앱이 "기본 정보가 필요해요" 로 안내하고
+ *   덕은 아예 예약되지 않는다.
+ *
+ * 값의 **내용**(예: 13월, 존재하지 않는 날)은 여기서 보지 않는다 — 그것은 계산 단계가 근거 없음(422)으로
+ * 정직하게 답하는 영역이다. 여기서 보는 것은 **모양**뿐이다.
+ */
 function storedSubjectBirth(row: Record<string, unknown>): BirthInfoDraft | null {
   const raw = row.birth_info;
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const birth = raw as BirthInfoDraft;
   if (typeof birth.birthYear !== 'string' || typeof birth.birthMonth !== 'string'
       || typeof birth.birthDay !== 'string') return null;
+  // 문자열이어야 하는 칸들 — 없으면 계산 단계에서 터진다.
+  if (typeof birth.birthPlace !== 'string') return null;
+  if (typeof birth.birthHour !== 'string' || typeof birth.birthMinute !== 'string') return null;
+  // 비어 있어도 되는 칸이지만, 있으면 문자열이어야 한다.
+  for (const optional of [birth.gender, birth.calendarType, birth.lunarMonthType,
+    birth.birthTimeAccuracy, birth.approximateTimePeriod]) {
+    if (optional !== null && optional !== undefined && typeof optional !== 'string') return null;
+  }
   return { ...birth, displayName: String(row.display_name ?? birth.displayName ?? '나') };
 }
 
@@ -694,6 +760,10 @@ async function reserveSessionDuk(
   admin: AdminClient, userId: string, productType: 'general' | 'compatibility' | 'premium_report', requestId: string,
 ): Promise<DukReserveOutcome> {
   try {
+    // ⚠ 2026-09-21 (F-05): 예약 직전에 **이 사용자의 만료된 예약을 정리**한다. 만료된 예약이 잔액을
+    //   붙잡고 있으면 쓸 수 있는 덕이 있는데도 "덕이 부족해요" 가 뜬다. 크론 없이 스스로 정리되게
+    //   여기에 둔다. 실패해도 예약은 그대로 진행한다(뷰도 만료된 예약은 이미 빼고 센다).
+    await admin.rpc('release_expired_reservations', { p_user_id: userId }).then(() => undefined, () => undefined);
     const { data, error } = await admin.rpc('reserve_session_duk', {
       p_user_id: userId, p_product_type: productType, p_request_id: requestId,
     });
@@ -828,6 +898,11 @@ export default {
       // Double-release is safe by construction: `release_paid_request` deletes only a row that is still
       // PROCESSING and still holds this lease token, so a COMPLETED response can never be undone by it.
       let heldPaidRequest: PaidRequestContext | null = null;
+      // ⚠ 2026-09-21 (F-05 · CTO 필수): **처리되지 않은 예외가 나면 덕 예약이 풀리지 않았다.**
+      //   예약 변수가 try 블록 안에 있어 아래 catch 가 닿지 못했고, 만료돼도 풀어 주는 장치가 없어
+      //   사용자 덕이 **영구히 잠겼다**(staging 실측: 만료된 채 잠긴 예약 1건). 요청 리스와 같은 방식으로
+      //   바깥에 들고 나와 catch 에서 푼다. 두 번 풀어도 안전하다 — RPC 는 RESERVED 행만 건드린다.
+      let heldDukReservation: DukReservation | null = null;
 
       try {
         if (req.method !== 'POST') {
@@ -895,7 +970,9 @@ export default {
           const periodKey = fortuneDateStringFromEpoch(serverEpoch);
           const identity: FortuneIdentity = {
             userId, kind: 'today', periodKey, subjectId: authority.subjectId,
-            tier: authority.tier, semanticVersion: TODAY_CANONICAL_VERSION,
+            // ⚠ 저장 열쇠에 **출생정보 지문**이 들어간다 (GAP-04, 2026-09-21). 출생정보를 고치면 열쇠가
+            //   달라져 옛 명식으로 만든 저장본이 다시 나오지 않는다. 앱도 같은 함수로 같은 값을 만든다.
+            tier: authority.tier, semanticVersion: canonicalFortuneVersion(TODAY_CANONICAL_VERSION, authority.birthInfo),
           };
           const todayEffort = Deno.env.get('LLM_TODAY_REASONING_EFFORT')?.trim() || 'low';
           const todayMaxRaw = Number(Deno.env.get('LLM_TODAY_MAX_OUTPUT_TOKENS'));
@@ -997,7 +1074,8 @@ export default {
           const periodKey = monthKey(targetMonth);
           const identity: FortuneIdentity = {
             userId, kind: 'monthly', periodKey, subjectId: authority.subjectId,
-            tier: authority.tier, semanticVersion: MONTHLY_CANONICAL_VERSION,
+            // 오늘 운세와 같은 규칙 — 출생정보 지문이 저장 열쇠에 들어간다 (GAP-04).
+            tier: authority.tier, semanticVersion: canonicalFortuneVersion(MONTHLY_CANONICAL_VERSION, authority.birthInfo),
           };
           const monthlyEffort = Deno.env.get('LLM_MONTHLY_REASONING_EFFORT')?.trim() || 'low';
           const monthlyMaxRaw = Number(Deno.env.get('LLM_MONTHLY_MAX_OUTPUT_TOKENS'));
@@ -1104,7 +1182,10 @@ export default {
           if (!admin) return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
           if (!authority.birthInfo) return Response.json({ error: 'PROFILE_REQUIRED' }, { status: 403 });
 
-          const dukOn = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').toLowerCase() === 'true';
+          // production 인데 차감 스위치가 없으면 **공짜로 주지 않고 거절한다** (2026-09-21).
+          const billingRefusal = refuseWhenBillingMisconfigured(requestId, 'premium_report');
+          if (billingRefusal) return billingRefusal;
+          const dukOn = DUK_BILLING_ENABLED;
           let reservation: DukReservation | null = null;
           if (dukOn) {
             const rv = await reserveSessionDuk(admin, userId, 'premium_report', requestId);
@@ -1113,7 +1194,7 @@ export default {
               { status: 402 },
             );
             if (rv.kind === 'FAILED') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
-            if (rv.kind === 'RESERVED') reservation = rv.reservation;
+            if (rv.kind === 'RESERVED') { reservation = rv.reservation; heldDukReservation = reservation; }
             // ACTIVE_SESSION → an unexpired premium session already exists; it was already charged. Replay it
             // rather than charging again (reserve_session_duk returns price 0 for that case).
           }
@@ -1503,7 +1584,9 @@ export default {
         // §5/§6 (Sprint H) — DUK SESSION BILLING, flag-gated. Reserve the session price BEFORE paid/global
         // admission so a user with no Duk never consumes a global slot. INSUFFICIENT → 402 (no LLM). An active
         // session (follow-up) skips the reserve and never re-charges. Inert unless DUK_BILLING_ENABLED='true'.
-        const dukBillingEnabled = (Deno.env.get('DUK_BILLING_ENABLED') ?? '').toLowerCase() === 'true';
+        const consultBillingRefusal = refuseWhenBillingMisconfigured(requestId, 'consultation');
+        if (consultBillingRefusal) return consultBillingRefusal;
+        const dukBillingEnabled = DUK_BILLING_ENABLED;
         let dukReservation: DukReservation | null = null;
         let dukFollowupSessionId: string | null = null;
         if (dukBillingEnabled && admin && userId) {
@@ -1516,7 +1599,7 @@ export default {
             );
           }
           if (rv.kind === 'FAILED') return Response.json({ error: 'TEMPORARILY_UNAVAILABLE' }, { status: 503 });
-          if (rv.kind === 'RESERVED') dukReservation = rv.reservation;
+          if (rv.kind === 'RESERVED') { dukReservation = rv.reservation; heldDukReservation = dukReservation; }
           else dukFollowupSessionId = rv.sessionId; // ACTIVE_SESSION → follow-up, no charge
         }
         // Release the Duk reserve on any pre-completion failure (best-effort; TTL reconciles otherwise).
@@ -1605,6 +1688,23 @@ export default {
           if (code === 'OK') return r.text;
           llmErrorCode = code;
           return ''; // empty → deterministic grounded delivery when a verdict exists; LLM_FAILED otherwise
+        };
+        // 2026-09-19 지시서 PART 1 — 짧은 답의 **말투 다듬기**. 조립기가 정한 문장만 보낸다(근거 블록·질문·대화 없음).
+        // CTO 판정(속도): 추론 low · 출력 상한은 상담과 같은 값(꼬리 자르기 금지) · 긴 답 호출과 **같은 기한** 안.
+        // 실패하면 '' → 조립기 원문이 그대로 나간다. 긴 답 호출과 동시에 돌므로 `stage` 는 건드리지 않는다.
+        // 토큰은 같은 사용 기록 한 줄에 더한다 — 줄을 늘리면 사용자별 속도 제한 창을 한 상담이 여러 칸 쓴다.
+        let rewriteUsage: Record<string, unknown> = {};
+        const rewriteCfg = {
+          apiKey,
+          model: routedModel,
+          maxOutputTokens: profile.maxOutputTokens,
+          reasoningEffort: 'low',
+          responseFormat: rewriteResponseFormat(),
+        };
+        const rewriteLLM = async (messages: LLMMessage[]): Promise<string> => {
+          const r = await callOpenAI(messages, rewriteCfg, llmDeadlineAt);
+          rewriteUsage = mergeOpenAiUsage(rewriteUsage, r.usage);
+          return openAiFailureCode(r) === 'OK' ? r.text : '';
         };
 
         stage = 'server_consultation';
@@ -1707,6 +1807,7 @@ export default {
                   digestProvider: denoDigestProvider,
                   nowEpochSeconds: Math.floor(startedAt / 1000), // SERVER receipt time (§10)
                   callLLM,
+                  ...(SHORT_ANSWER_REWRITE_ENABLED ? { rewriteLLM } : {}),
                   modelId: routedModel, // Sprint E §10 — actual runtime model id into decisionMeta
                   ...(loadPreviousDecision ? { loadPreviousDecision } : {}),
                 },
@@ -1779,15 +1880,23 @@ export default {
         // Cost telemetry (§13): reasoning + cached tokens split out of usage, plus the chosen
         // complexity/effort/ceiling. All non-PII scalars; written via the progressive fallback so a
         // not-yet-applied column never loses the row. Turns the cost estimates into MEASURED per-Q&A cost.
-        const usageDetails = parseUsageDetails(capturedUsage);
+        // 긴 답 호출 + 짧은 답 다듬기 호출의 합 (2026-09-19). 다듬기를 안 불렀으면 긴 답 값 그대로다.
+        const loggedUsage = mergeOpenAiUsage(capturedUsage, rewriteUsage);
+        const usageDetails = parseUsageDetails(loggedUsage);
         // 게이트 발화 요약 (순수 함수, 번들 공유). 발화가 없으면 null.
         const gateSummary = gateFiringSummary(result.diagnostics);
+        // 짧은 답 기록 (지시서 PART 1-4 — 어느 검사에서 몇 번 걸렸는지 쌓는다). 내용 없음: 결과·이유·검사별 횟수·글자 수.
+        // ⚠ 짧은 답이 있는 상담마다 쓴다(통과율의 분모가 필요하다). gate_firings 칸은 staging·production 둘 다 있다(20260907).
+        const shortAnswerLog = result.diagnostics?.shortAnswer ?? null;
+        const firings = gateSummary || shortAnswerLog
+          ? { ...(gateSummary ?? { v: 1 }), ...(shortAnswerLog ? { shortAnswer: shortAnswerLog } : {}) }
+          : null;
         await logAiUsage(
           {
             user_id: userId, model: routedModel, request_type: 'chat',
-            input_tokens: toNullableInt(capturedUsage.input_tokens),
-            output_tokens: toNullableInt(capturedUsage.output_tokens),
-            total_tokens: toNullableInt(capturedUsage.total_tokens),
+            input_tokens: toNullableInt(loggedUsage.input_tokens),
+            output_tokens: toNullableInt(loggedUsage.output_tokens),
+            total_tokens: toNullableInt(loggedUsage.total_tokens),
             latency_ms: Date.now() - startedAt, status: 'success', error_code: null,
           },
           requestId,
@@ -1802,7 +1911,7 @@ export default {
             // 원가 텔레메트리까지 같이 날아간다. 조건부로 넣으면 정상 응답의 삽입은 오늘과 글자 그대로
             // 같고, 컬럼이 없는 환경에서도 잃는 것은 발화 행의 텔레메트리 하나뿐이다(그 경우에도
             // 진단 로그 줄은 남는다) → 기록 실패가 응답을 막지 않는다.
-            ...(gateSummary ? { gate_firings: gateSummary } : {}),
+            ...(firings ? { gate_firings: firings } : {}),
           },
         );
 
@@ -1898,6 +2007,8 @@ export default {
         // of stuck at PROCESSING with nothing behind it. Best-effort: a failure here must not mask the
         // original error, which is what the caller actually needs to see.
         if (heldPaidRequest) await releasePaidRequest(heldPaidRequest).catch(() => {});
+        // 덕 예약도 같이 푼다 — 답도 못 받았는데 덕이 잠긴 채 남으면 안 된다.
+        if (heldDukReservation && admin) await releaseSessionReservation(admin, heldDukReservation).catch(() => {});
         throw error;
       }
     },

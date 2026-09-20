@@ -34,6 +34,8 @@ import { createClient } from '@supabase/supabase-js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(root, 'src', 'generated', 'famousStatic.ts');
+// 2026-09-21 — 콘텐츠도 같은 장치를 갖는다. 없어서 `/content/<슬러그>` 가 전부 404 였다(실측 09-18).
+const CONTENT_OUT = join(root, 'src', 'generated', 'contentStatic.ts');
 
 // Minimal .env loader — same approach as generate-sitemap.mjs (no dotenv dependency).
 function loadEnv() {
@@ -49,6 +51,20 @@ function loadEnv() {
 loadEnv();
 
 const HEADER = readFileSync(OUT, 'utf8').split('/** Published famous profiles')[0];
+const CONTENT_HEADER = readFileSync(CONTENT_OUT, 'utf8').split('/** Published content captured')[0];
+
+function emitContent(entries, stamp) {
+  const body =
+    `${CONTENT_HEADER}/** Published content captured at build time. Empty when the generator has not run. */\n`
+    + `export const CONTENT_STATIC: ContentStaticEntry[] = ${JSON.stringify(entries, null, 2)};\n\n`
+    + `/** Build stamp — null when this is the committed fallback. */\n`
+    + `export const CONTENT_STATIC_GENERATED_AT: string | null = ${stamp ? JSON.stringify(stamp) : 'null'};\n\n`
+    + `export function contentStaticBySlug(slug: string): ContentStaticEntry | null {\n`
+    + `  return CONTENT_STATIC.find((e) => e.slug === slug) ?? null;\n`
+    + `}\n`;
+  mkdirSync(dirname(CONTENT_OUT), { recursive: true });
+  writeFileSync(CONTENT_OUT, body, 'utf8');
+}
 
 function emit(entries, stamp) {
   const body =
@@ -73,9 +89,10 @@ const where = supabaseUrl ? hostOf(supabaseUrl) : '(unset)';
 if (!supabaseUrl || !supabaseKey) {
   console.log(
     `[static-routes] SKIP — Supabase env not set (url=${supabaseUrl ? where : 'unset'}, `
-    + `key=${supabaseKey ? 'set' : 'unset'}). Wrote the empty module (0 famous pages).`,
+    + `key=${supabaseKey ? 'set' : 'unset'}). Wrote the empty modules (0 famous pages, 0 content pages).`,
   );
   emit([], null);
+  emitContent([], null);
   process.exit(0);
 }
 
@@ -150,5 +167,69 @@ try {
   // ⚠ Never break the build. An unreachable database must not stop a release.
   console.error(`[static-routes] FAILED against ${where} — wrote the empty module instead: ${String(err).slice(0, 200)}`);
   emit([], null);
+  emitContent([], null);
+  process.exit(0);
+}
+
+// ── 콘텐츠 (2026-09-21) ────────────────────────────────────────────────────────────────────────────
+// 인물과 **같은 절차**다: 공개 목록 RPC 로 슬러그를 모으고, 슬러그마다 상세 RPC 를 불러 본문까지 담는다.
+// 실패하면 빈 모듈을 쓰고 빌드를 세우지 않는다(사이트맵 대조 장치가 빌드 마지막에 따로 잡는다).
+try {
+  const contentSlugs = [];
+  const pageSize = 100;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase.rpc('public_list_content', {
+      p_category: null,
+      p_limit: pageSize,
+      p_offset: offset,
+    });
+    if (error) throw error;
+    const rows = data ?? [];
+    contentSlugs.push(...rows.map((r) => r.slug).filter(Boolean));
+    if (rows.length < pageSize) break;
+  }
+  console.log(`[static-routes] public_list_content → ${contentSlugs.length} published slug(s) from ${where}`);
+
+  const contentEntries = [];
+  for (const slug of contentSlugs) {
+    const { data, error } = await supabase.rpc('public_get_content', { p_slug: slug });
+    if (error) throw error;
+    if (!data) { console.warn(`[static-routes] ⚠ public_get_content returned nothing for "${slug}" — skipped`); continue; }
+    const famous = data.famous ?? null;
+    contentEntries.push({
+      slug: str(data.slug) ?? slug,
+      title: str(data.title) ?? slug,
+      summary: str(data.summary),
+      body: str(data.body),
+      channel: str(data.channel) ?? 'generic',
+      category: str(data.category),
+      tags: Array.isArray(data.tags) ? data.tags.filter((t) => typeof t === 'string') : [],
+      heroImageUrl: str(data.hero_image_url),
+      heroAlt: str(data.hero_alt),
+      videoUrl: str(data.video_url),
+      publishedAt: str(data.published_at),
+      updatedAt: str(data.updated_at),
+      seoTitle: str(data.seo_title),
+      seoDescription: str(data.seo_description),
+      famous: famous && str(famous.slug)
+        ? { slug: str(famous.slug), name: str(famous.name) ?? '', occupation: str(famous.occupation) }
+        : null,
+      related: Array.isArray(data.related)
+        ? data.related
+            .map((r) => ({ slug: str(r.slug), title: str(r.title) ?? str(r.name), summary: str(r.summary), category: str(r.category) }))
+            .filter((r) => r.slug && r.title)
+        : [],
+    });
+  }
+
+  emitContent(contentEntries, new Date().toISOString());
+  console.log(
+    `[static-routes] wrote src/generated/contentStatic.ts (${contentEntries.length} content pages`
+    + `${contentEntries.length === contentSlugs.length ? '' : ` — ${contentSlugs.length - contentEntries.length} slug(s) dropped at detail`}`
+    + `, source ${where}).`,
+  );
+} catch (err) {
+  console.error(`[static-routes] CONTENT FAILED against ${where} — wrote the empty module instead: ${String(err).slice(0, 200)}`);
+  emitContent([], null);
   process.exit(0);
 }

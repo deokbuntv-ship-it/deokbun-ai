@@ -23,6 +23,9 @@ export type ConsultationState =
 // The approved answer-first structured consultation view model. Every prose section is a caller-provided
 // string sourced from the LLM response (never fabricated); a section with no source is omitted.
 export type StructuredConsultationViewModel = {
+  // 0 — 2026-09-19 짧은 답(200~350자, 성향 → 이번 시기 → 어떻게 → 되묻기). 있으면 화면이 이것을 앞에 두고
+  //     나머지(결론·근거·좋은 흐름·조심할 점)는 접는다. 조립기 문장을 모델이 말투만 다듬은 것 — 없으면 예전 화면.
+  shortAnswer?: string;
   // 1 — one-line core conclusion (orientation, from the LLM). '' → omitted.
   coreSummary?: string;
   // 2 — 기본 성향 / current context

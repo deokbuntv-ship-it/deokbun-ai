@@ -11,6 +11,7 @@ import { AcquisitionBridge } from '@/features/ads/acquisition/AcquisitionBridge'
 import { appErrorEvent, consoleErrorLogger } from '@/features/analysis/logging';
 import { AuthProvider } from '@/features/auth';
 import { ConsultationDraftProvider } from '@/features/consultation';
+import { purchaseService } from '@/features/duk/iap/purchaseService';
 import { OnboardingGate, OnboardingProvider } from '@/features/onboarding';
 import { NotificationUnreadProvider } from '@/features/retention';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -54,6 +55,14 @@ function navigationTheme(scheme: string | null | undefined) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  // ⚠ 2026-09-21 (PART 1 ⑤): **앱이 켜질 때** 미처리 구매를 한 번 주워 온다.
+  //   결제 도중 앱이 꺼지면 스토어 큐에 구매가 남는데, 예전에는 **충전 화면에 다시 들어갈 때만** 복구가
+  //   돌았다. 그런데 안내 문구는 "앱을 다시 열면 이어서 처리됩니다" 라고 말하고 있었다 — 문구와 실제가
+  //   달랐다. 서버가 거래 번호로 멱등 처리하므로 여러 번 불러도 중복 지급이 되지 않는다.
+  useEffect(() => {
+    void purchaseService.recoverPendingPurchases().catch(() => {});
+  }, []);
 
   return (
     <ThemeProvider value={navigationTheme(colorScheme)}>

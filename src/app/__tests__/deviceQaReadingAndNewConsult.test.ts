@@ -54,10 +54,14 @@ describe('A — top-of-reading gets the same scannable hierarchy as the pastel s
   it('ReadingLead supports an optional semantic label (neutral, no surface)', () => {
     expect(read('components/Reading/Reading.tsx')).toMatch(/label\?: string;/);
   });
-  it('consultation: lead = "✨ 덕분이의 한마디"; 상세 해석 gets a neutral heading', () => {
+  // 2026-09-19 — 상담은 제목 두 개를 **뺐다**. 오너 판정: 그 제목들이 짧은 답 하나를 둘로 갈라
+  // 보고서처럼 읽히게 만들고 있었다. 오늘·이달의 운세는 그대로 제목을 쓴다(아래 케이스).
+  it('⚠ consultation: 제목 없이 한 카드로 — "덕분이의 한마디"·"자세히 보면" 이 없어야 한다', () => {
     const c = read('features/intelligence/components/StructuredConsultationResult.tsx');
-    expect(c).toMatch(/<ReadingLead label="✨ 덕분이의 한마디"/);
-    expect(c).toMatch(/<ReadingSection variant="neutral" title="자세히 보면"/);
+    expect(c).not.toMatch(/label="✨ 덕분이의 한마디"/);
+    expect(c).not.toMatch(/title="자세히 보면"/);
+    // 결론과 이야기가 같은 카드 안에 있다
+    expect(c).toMatch(/<ReadingLead sub={p.disposition} body={p.summary}>/);
   });
   it('today/monthly hero carry a lead label via the shared FortuneReading', () => {
     expect(read('components/Reading/FortuneReading.tsx')).toMatch(/leadLabel\?: string;/);

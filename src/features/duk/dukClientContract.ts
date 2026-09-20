@@ -81,13 +81,48 @@ export type PurchaseVerificationResult = { ok: boolean; code?: DukErrorCode };
  * Ask the SERVER to verify a store purchase. The client sends only the opaque submission — no price, no Duk, no
  * entitlement, no success flag. The server (verify-purchase Edge) verifies with the store and grants Duk.
  */
+type VerifyBody = { error?: unknown; reason?: unknown };
+
+/**
+ * 2xx 가 아닌 응답의 **본문**을 읽는다.
+ *
+ * ⚠ 2026-09-18 전수 조사: functions-js 는 2xx 가 아니면 `data` 를 null 로 두고 응답을 `error.context`
+ *   (Response 객체)에 담는다(`@supabase/functions-js/dist/main/FunctionsClient.js:273-275`). 본문을 읽지
+ *   않으면 서버가 말한 까닭(보류 · 이미 처리됨 · 상품 불일치)이 전부 한 덩어리로 뭉개진다.
+ *   `llmError.ts` 가 상담 쪽에서 쓰는 방법과 같다.
+ */
+async function readVerifyErrorBody(error: unknown): Promise<VerifyBody | null> {
+  const ctx = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx || typeof ctx.json !== 'function') return null;
+  try {
+    return (await ctx.json()) as VerifyBody;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 서버가 말한 까닭 → 클라이언트 코드.
+ *
+ * ⚠ **보류(202 `reason: 'PENDING'`)는 실패가 아니다.** 예전에는 `error` 값만 보고 전부
+ *   `PURCHASE_VERIFICATION_FAILED` 로 접어서 `PURCHASE_PENDING` 이 **한 번도 나오지 않았다** —
+ *   계좌이체·부모 승인 결제가 "확인 실패" 로 보였다.
+ */
+export function purchaseVerificationCode(body: VerifyBody | null): DukErrorCode {
+  const reason = String(body?.reason ?? '').toUpperCase();
+  if (reason === 'PENDING') return 'PURCHASE_PENDING';
+  const code = String(body?.error ?? '').toUpperCase();
+  if (code === 'SERVICE_UNAVAILABLE') return 'SERVICE_UNAVAILABLE';
+  return 'PURCHASE_VERIFICATION_FAILED';
+}
+
 export async function requestPurchaseVerification(req: PurchaseVerificationRequest): Promise<PurchaseVerificationResult> {
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.functions.invoke('verify-purchase', { body: req });
-    if (error) return { ok: false, code: 'PURCHASE_VERIFICATION_FAILED' };
-    const d = data as { error?: string } | null;
-    if (d?.error) return { ok: false, code: (d.error as DukErrorCode) ?? 'PURCHASE_VERIFICATION_FAILED' };
+    if (error) return { ok: false, code: purchaseVerificationCode(await readVerifyErrorBody(error)) };
+    const d = data as VerifyBody | null;
+    if (d?.error) return { ok: false, code: purchaseVerificationCode(d) };
     return { ok: true };
   } catch {
     return { ok: false, code: 'SERVICE_UNAVAILABLE' };

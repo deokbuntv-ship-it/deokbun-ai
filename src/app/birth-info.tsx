@@ -21,6 +21,13 @@ import {
     type Gender,
     type LunarMonthType,
 } from '@/features/consultation';
+import {
+  BIRTH_COUNTRY_LABEL,
+  BIRTH_RANGE_NOTICE,
+  OVERSEAS_BIRTH_NOTICE,
+  isBirthYearOutOfRange,
+  type BirthCountry,
+} from '@/features/consultation/birthRange';
 import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
 import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { setPendingCompatibilitySubjectId } from '@/features/compatibility/services/pendingCompatibilitySubject';
@@ -45,6 +52,11 @@ const CALENDAR_TYPE_OPTIONS: SelectOption<CalendarType>[] = [
 const LUNAR_MONTH_TYPE_OPTIONS: SelectOption<LunarMonthType>[] = [
   { value: 'regular', label: '평달' },
   { value: 'leap', label: '윤달' },
+];
+
+const BIRTH_COUNTRY_OPTIONS: SelectOption<BirthCountry>[] = [
+  { value: 'KR', label: BIRTH_COUNTRY_LABEL.KR },
+  { value: 'OVERSEAS', label: BIRTH_COUNTRY_LABEL.OVERSEAS },
 ];
 
 const BIRTH_TIME_ACCURACY_OPTIONS: SelectOption<BirthTimeAccuracy>[] = [
@@ -156,10 +168,20 @@ export default function BirthInfoScreen() {
   const [approximatePeriod, setApproximatePeriod] = useState<ApproximateTimePeriod | null>(null);
 
   const [birthPlace, setBirthPlace] = useState('');
+  const [birthCountry, setBirthCountry] = useState<BirthCountry>('KR');
 
   // Pre-check 본인 when the 궁합 "본인 정보 등록하기" entry passed self=1 (create mode only; edit mode
   // overwrites from the loaded record).
   const [isSelf, setIsSelf] = useState(() => params.self === '1');
+  /**
+   * 이 대상이 **불러올 때** 대표(본인)였는가.
+   *
+   * ⚠ 2026-09-21 (F-04): 대표가 사라지는 길이 세 개였다 — ① 교체 중 끊김(서버 함수로 막음)
+   *   ② 대표에서 "본인으로 지정" 체크를 끄고 저장 ③ 대표를 삭제. ②·③ 은 화면에서 막는다.
+   *   대표를 바꾸는 길은 **다른 대상을 본인으로 지정하는 것** 하나로 모은다.
+   */
+  const [wasPrimary, setWasPrimary] = useState(false);
+  const [primaryNotice, setPrimaryNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -200,6 +222,8 @@ export default function BirthInfoScreen() {
         setDisplayName(record.displayName ?? '');
         setRelationship(record.relationship ?? '');
         setIsSelf(record.isSelf);
+        // ⚠ 불러올 때의 값을 따로 기억한다 — **지금 대표인 대상**은 체크를 끄거나 지울 수 없다(F-04).
+        setWasPrimary(record.isSelf);
 
         const birthInfo = record.birthInfo;
         setGender(birthInfo.gender);
@@ -213,6 +237,7 @@ export default function BirthInfoScreen() {
         setMinute(birthInfo.birthMinute);
         setApproximatePeriod(birthInfo.approximateTimePeriod);
         setBirthPlace(birthInfo.birthPlace);
+        setBirthCountry(birthInfo.birthCountry === 'OVERSEAS' ? 'OVERSEAS' : 'KR');
 
         setEditStatus('ready');
       })
@@ -295,6 +320,7 @@ export default function BirthInfoScreen() {
       birthMinute: birthTimeAccuracy === 'exact' ? minute : '',
       approximateTimePeriod: birthTimeAccuracy === 'approximate' ? approximatePeriod : null,
       birthPlace: birthPlace.trim(),
+      birthCountry,
     };
   };
 
@@ -416,10 +442,12 @@ export default function BirthInfoScreen() {
         birthInfo,
       });
 
-      // is_self reassignment (sequential, clear-then-set inside the service).
+      // 대표 지정은 서버 함수 하나가 한 트랜잭션에서 끝낸다 (F-04 · `set_primary_subject`).
+      // ⚠ 지금 대표인 대상은 체크를 끌 수 없으므로(위 화면에서 막는다) 여기서 대표가 사라질 길이 없다.
+      //   혹시 그런 상태가 오더라도 **해제하지 않는다** — 대표 없는 상태를 만들지 않는 것이 규칙이다.
       if (isSelf) {
         await consultationSubjectService.setPrimarySubject(subjectId);
-      } else {
+      } else if (!wasPrimary) {
         await consultationSubjectService.updateSubject(subjectId, {
           isSelf: false,
         });
@@ -584,6 +612,12 @@ export default function BirthInfoScreen() {
                   style={styles.dateField}
                 />
               </Stack>
+              {/* 지원 범위 밖이면 사실만 알려 준다. 막지는 않는다(2026-09-21). */}
+              {isBirthYearOutOfRange(year) ? (
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {BIRTH_RANGE_NOTICE}
+                </Text>
+              ) : null}
             </Stack>
 
             <Stack gap="sm">
@@ -651,20 +685,40 @@ export default function BirthInfoScreen() {
               ) : null}
             </Stack>
 
+            {/* 태어난 곳 — 계산에는 쓰지 않고 어떤 안내를 보여 줄지만 고른다 (2026-09-21).
+                도움말 "도시 수준으로 입력해도 괜찮습니다" 는 장소가 계산에 쓰이는 것처럼 읽혀 뺐다. */}
+            <Stack gap="sm">
+              <Text variant="headingMedium">태어난 곳</Text>
+              <SelectField options={BIRTH_COUNTRY_OPTIONS} value={birthCountry} onSelect={setBirthCountry} />
+              {birthCountry === 'OVERSEAS' ? (
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {OVERSEAS_BIRTH_NOTICE}
+                </Text>
+              ) : null}
+            </Stack>
+
             <Input
-              label="출생지"
+              label="도시"
               value={birthPlace}
               onChangeText={setBirthPlace}
-              placeholder="예) 대한민국 고양시"
-              helperText="도시 수준으로 입력해도 괜찮습니다."
+              placeholder="예) 고양시"
               required
             />
 
             <Stack gap="sm">
               <Pressable
-                onPress={() => setIsSelf((value) => !value)}
+                onPress={() => {
+                  // 지금 대표인 대상은 체크를 끌 수 없다 — 끄면 대표가 아무도 없게 된다(F-04).
+                  if (wasPrimary) {
+                    setPrimaryNotice('본인은 비워 둘 수 없어요. 다른 대상을 본인으로 지정하면 이 대상은 자동으로 해제돼요.');
+                    return;
+                  }
+                  setPrimaryNotice(null);
+                  setIsSelf((value) => !value);
+                }}
                 accessibilityRole="checkbox"
                 aria-checked={isSelf}
+                aria-disabled={wasPrimary}
               >
                 <Card
                   style={{
@@ -677,6 +731,12 @@ export default function BirthInfoScreen() {
                   </Text>
                 </Card>
               </Pressable>
+
+              {primaryNotice ? (
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {primaryNotice}
+                </Text>
+              ) : null}
 
               {isEditMode ? (
                 <>
@@ -721,6 +781,11 @@ export default function BirthInfoScreen() {
                         ) : null}
                       </Stack>
                     </Card>
+                  ) : wasPrimary ? (
+                    // 대표는 지울 수 없다 — 지우면 상담 · 궁합이 막히고 다음 실행 때 같은 사람이 하나 더 생긴다(F-04).
+                    <Text variant="bodySmall" colorToken="textSecondary">
+                      본인으로 지정된 대상은 지울 수 없어요. 다른 대상을 본인으로 지정한 뒤 지워 주세요.
+                    </Text>
                   ) : (
                     <Button
                       label="대상 삭제"

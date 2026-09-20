@@ -101,6 +101,14 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# 승인 재시도 크론 (IAP). 크론이 `x-cron-secret` 헤더 하나로 인증하고 그것이 없으면 아무 일도 하지 않는다.
+# ⚠ 2026-09-18 전수 조사: 이 블록이 **없어서** 배포 기본값(JWT 검사 ON)이 걸렸다. 크론은 Supabase JWT 를
+#   보내지 않으므로 게이트웨이에서 401 로 막히고, 그러면 승인되지 않은 구매가 **3일 뒤 자동 환불**된다.
+#   다른 크론 워커 4개와 같은 모양으로 맞춘다(플랫폼 JWT 검사는 크론에 해당하지 않는다).
+[functions.iap-reconcile]
+enabled = true
+verify_jwt = false
+
 # Retention worker seams (Sprint J6). Cron-triggered; NOT consumer JWT — each authenticates via the CRON_SECRET
 # header and fails closed without it (verify_jwt = false because the platform JWT check does not apply to cron).
 # Not deployed by this batch (owner deploys). See docs/RETENTION_WORKERS_RUNBOOK.md for scheduling.

@@ -1,6 +1,7 @@
 import {
   isAuthTransportError,
   parseAiConsentRequired,
+  parseProfileRequired,
   parseGroundingUnavailable,
   parseInsufficientDuk,
   parseRequestInProgress,
@@ -41,6 +42,8 @@ export const supabaseEdgeConsultationAdapter: ConsultationTransport = {
       if (ungrounded) return { ok: false, error: 'GROUNDING_UNAVAILABLE', message: ungrounded.message };
       // 403 → AI 처리 동의 없음. 401(세션)과 구분해야 화면이 옳은 곳으로 안내한다.
       if (await parseAiConsentRequired(error)) return { ok: false, error: 'AI_CONSENT_REQUIRED' };
+      // 403 → 기본 정보가 없거나 모양이 깨졌다(F-05). 재시도로는 절대 풀리지 않는다 — 정보 화면으로 보낸다.
+      if (await parseProfileRequired(error)) return { ok: false, error: 'PROFILE_REQUIRED' };
       // ⚠ 409 → 같은 요청 번호를 서버가 아직 들고 있다(2026-09-17). 실패가 아니므로 실패 화면을 띄우면 안
       // 된다: 잠시 뒤 같은 번호로 다시 부르면 저장된 답이 그대로 온다(LLM 재호출 없음).
       if (await parseRequestInProgress(error)) return { ok: false, error: 'REQUEST_IN_PROGRESS' };

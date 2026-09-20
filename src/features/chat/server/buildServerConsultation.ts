@@ -29,6 +29,10 @@ import {
 } from '@/features/chat/services/consultationGrounding';
 import { classifyTimingQuestion } from '@/features/chat/selectors/qimenActivation';
 import { buildStructuredConsultationResult } from '@/features/chat/services/structuredConsultationResult';
+import { buildDisposition, dispositionInputFrom } from './dispositionProse';
+import {
+  buildShortAnswerSource, periodWordFor, previousAskBackIn, realizeShortAnswer,
+} from './shortAnswer';
 import {
   ANSWER_PLAN_VERSION,
   DECISION_POLICY_VERSION,
@@ -54,7 +58,7 @@ import {
 } from '@/features/divination';
 import {
   buildGroundedNarrativePlan, classifyGroundedViolations, composeGroundedFallback, gateAgainstGroundedNarrative,
-  narrativeIntentOf, renderGroundedSections, untraceableFacts,
+  narrativeIntentOf, renderGroundedSections, technicalTokensIn, untraceableFacts,
   type GroundedViolationCategory, type NarrativeIntent,
 } from './groundedNarrative';
 import {
@@ -107,6 +111,13 @@ const MAX_TURN_CHARS = 4000;
  * text: it states what is missing and what would fix it, asserts nothing about the chart (there is none),
  * and offers no coaching in place of the reading that could not run.
  */
+/**
+ * 되묻기에 대한 **대답**으로 볼 수 있는 길이 (2026-09-21).
+ *
+ * 짧은 대답만 이어받는다 — 사용자가 새 질문을 길게 쓰면 그것은 새 질문이다.
+ */
+const ASK_BACK_REPLY_MAX_CHARS = 30;
+
 export const GROUNDING_UNAVAILABLE_MESSAGE =
   '지금 등록된 출생 정보로는 사주·자미두수·기문둔갑 어느 쪽도 실제로 세울 수 없었습니다. '
   + '태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹쳐, 월주를 어느 쪽으로 볼지 확정할 수 없기 때문입니다. '
@@ -583,10 +594,22 @@ export async function buildServerConsultation(
       grounding = { ...grounding, priorAxisContext };
     }
   }
-  // §18 — a "그럼 내년은?" follow-up inherits the prior topic: the bare question classifies as 전반 on its own,
-  // so the NEW decision must persist the CARRIED domain. Only for NEXT_YEAR, only a real prior domain.
+  // ⚠ 2026-09-21 (CTO 8-1) — **되묻기에 대한 대답은 새 질문이 아니다.**
+  //
+  // 지난 답이 되묻기("지금 가장 걸리는 게 무엇인가요?")로 끝났고 사용자가 거기에 짧게 답하면
+  // ("이직이요"), 그 말만 보면 어느 주제인지 알 수 없어 **전반**으로 떨어지고 답이 처음부터 다시
+  // 시작됐다 — 사용자는 대화가 끊긴 것으로 읽는다. 이 경우 앞 판단의 주제를 **그대로 이어받는다**.
+  // NEXT_YEAR 후속이 이미 쓰던 장치(carriedDomain)를 같은 모양으로 넓힌 것이다.
+  const lastAssistantText = [...(request.conversationContext ?? [])]
+    .reverse()
+    .find((m) => m?.role === 'assistant')?.content ?? null;
+  const answersPreviousAskBack =
+    previousAskBackIn(lastAssistantText) !== null
+    && question.length <= ASK_BACK_REPLY_MAX_CHARS
+    && classifyConsultationDomain(question) === '전반';
   const carriedDomain: ConsultationDomain | null =
-    followUpIntent === 'NEXT_YEAR' && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== '전반'
+    (followUpIntent === 'NEXT_YEAR' || answersPreviousAskBack)
+      && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== '전반'
       ? previousDecision.decisionMeta.domain
       : null;
   // §10/§14 — DOMAIN-first routing (presentation only, no new scoring): answer the question's life-domain
@@ -722,6 +745,90 @@ export async function buildServerConsultation(
       : { ok: false, reason: 'GROUNDING_UNAVAILABLE', message: GROUNDING_UNAVAILABLE_MESSAGE };
   }
 
+  // The deterministic material below does not depend on the model's output, so it is built BEFORE the model is
+  // called — which is what lets the short answer's rewrite run concurrently with it (PART 1·2, 2026-09-19).
+  const verdictForGuard = effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
+  const narrativeIntent: NarrativeIntent = verdictForGuard
+    ? narrativeIntentOf(verdictForGuard.questionIntent, plan.comparisonContext.isComparison)
+    : 'DECISION';
+  // GROUNDED CONSULTATION NARRATIVE V2 — the whole answer body (not just 전문근거) is now bound to the
+  // authoritative claim catalog. The plan is built from the SAME content plan the accepted answer was
+  // composed against, so the fact boundary is never stale relative to what the model was shown.
+  const groundedPlan = verdictForGuard && contentPlanHolder.current
+    ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent)
+    : null;
+  // §11/§12 — a technical/temporal fact the grounded material never supplied is stripped from list-shaped
+  // fields; in the CORE prose it cannot be excised, so the user receives the deterministic composition of
+  // the same grounded claims rather than fabricated prose. ONE pass, never a regeneration loop, and never a
+  // billing change: this is presentation only.
+  // V5.1 — ONE action renderer for BOTH delivery paths. Built here, before the fallback composition, so the
+  // deterministic answer and the accepted answer present action under the same labelled buckets instead of
+  // this file holding one shape and `composeGroundedFallback` holding another.
+  const groundedActionPlan = groundedPlan ? buildGroundedActionPlan(groundedPlan) : null;
+  const groundedActionSection = groundedActionPlan ? renderGroundedActionSection(groundedActionPlan) : null;
+  // The fallback receives the same section as LINES, so it can reconcile it with the claim ledger by id
+  // rather than by text — the rendered text is realized while the bullets dedupe on the raw engine string.
+  const sharedActionForFallback = groundedActionPlan && groundedActionSection
+    ? {
+      title: groundedActionSection.title,
+      lines: renderGroundedActionLines(groundedActionPlan),
+      format: formatGroundedActionLine,
+    }
+    : null;
+  // The composition is run back through the SAME verdict-authority clamp the accepted path uses, so a
+  // declined verdict speaks in its declined, question-shaped headline on both paths rather than in the raw
+  // `primaryConclusion` — one headline contract, one place that decides it.
+  const groundedFallbackResult = (): ParsedStructuredConsultation => applyVerdictAuthorityClamp(
+    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!, sharedActionForFallback) },
+    verdictForGuard, narrativeIntent,
+  )!;
+  // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
+  // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
+  // §22 — the SAME instant the verdict was evaluated at. See `evaluationInstant` above.
+  const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
+  // PART 2-2 (2026-09-19) — 성향 한 줄.
+  //
+  // 조립기는 `disposition` 칸을 **한 번도 채우지 않았다**(명식 4개 × 성향 질문 4개 실측 0/4). 그래서
+  // 성격을 물으면 16건 중 12건이 "한 가지 성향으로 규정하기보다…" 로 거절됐고, 답변이 누구에게나
+  // 해당하는 말이 됐다. 성향 서술과 결과 예측은 다른 종류인데 같이 막고 있었던 것이다.
+  //
+  // 여기서는 **엔진을 다시 부르지 않는다.** 이미 렌더된 근거 섹션에서 십신·오행·명궁을 읽어 사람 설명
+  // 한 줄을 만든다(`dispositionProse`). 재료가 뚜렷하지 않으면 null 이고, 그러면 아무 말도 넣지 않는다.
+  const dispositionLine = effectiveGrounding.status === 'available'
+    ? buildDisposition(dispositionInputFrom(
+      effectiveGrounding.evidence.myungri.sections,
+      effectiveGrounding.evidence.ziwei.sections,
+    )).text
+    : null;
+  // PART 1·2 (2026-09-19) — 짧은 답: 조립기가 문장을 정하고 모델은 말투만 다듬는다(`shortAnswer.ts`).
+  //
+  // 근거 판단이 선 답에만 만든다 — 결론·행동 경계를 조립기가 갖고 있을 때다. 재료는 전부 긴 답에 이미
+  // 배달되는 것(성향 한 줄 · 같은 결론 · 결론이 허락하는 행동 경계)이고, 시기와 되묻기만 서버가 붙인다.
+  //
+  // 아래 긴 답 호출과 **동시에** 시작한다. 차례로 부르면 기다리는 시간이 두 호출의 합이 되고, 동시에 부르면
+  // 긴 쪽 하나다(CTO 판정: 먼저 보여 주고 뒤에서 다듬기는 쓰지 않는다 — 둘 다 끝난 뒤 한 번에 낸다).
+  const shortContract = verdictForGuard ? buildNarrativeContract(verdictForGuard) : null;
+  const shortAnswerSource = groundedPlan
+    ? buildShortAnswerSource({
+      disposition: dispositionLine,
+      conclusion: realizeForConsumer(groundedFallbackResult().coreSummary ?? ''),
+      action: shortContract?.actionBoundaries[0] ?? null,
+      fillers: [...(shortContract?.practicalImplications ?? []), groundedPlan.conclusionSurface.closing],
+      evidenceStatements: shortContract
+        ? [...shortContract.supportingTruths, ...shortContract.limitingTruths, ...shortContract.outcomeTruths,
+          ...shortContract.temporalTruths].map((t) => realizeForConsumer(t.meaning))
+        : [],
+      technicalTokensIn,
+      period: periodWordFor(resolvedTemporalContext),
+      domain: questionDomain,
+      seed: question,
+      previousAskBack: previousAskBackIn([...recentMessages].reverse().find((m) => m.role === 'assistant')?.text),
+    })
+    : null;
+  const shortAnswerPending = shortAnswerSource
+    ? realizeShortAnswer(shortAnswerSource, deps.rewriteLLM).catch(() => null)
+    : null;
+
   // 4) The single outbound trust exit (first attempt).
   //
   // V6 ROOT CAUSE 6 — THE LANGUAGE MODEL IS NOT A DELIVERY SINGLE POINT OF FAILURE.
@@ -768,7 +875,6 @@ export async function buildServerConsultation(
   // (CAREER-11/TIMING-02) is real and still open — see the root-cause report — but this specific mechanism
   // is not the fix; left at the pre-batch, verified-safe behavior (domainComparisonAllowed only, unchanged
   // since the Domain/Temporal Winner Guard batch).
-  const verdictForGuard = effectiveGrounding.status === 'available' ? effectiveGrounding.divinationVerdict ?? null : null;
   const domainComparisonAllowed = plan.comparisonKind === 'DOMAIN' && verdictForGuard !== null && verdictForGuard.direction !== NO_SIGNAL;
   // V6 §DELIVERY INVARIANT — with no model output there is nothing to classify, and no regeneration is
   // attempted: a second provider call after a timeout is exactly the wrong move when a deadline has already
@@ -797,34 +903,7 @@ export async function buildServerConsultation(
   const outcome = guard.outcome;
   // Both downstream derivations (structuredResult, text) read from this SAME clamped value, so the
   // delivered card and the plain-text mirror never disagree.
-  const narrativeIntent: NarrativeIntent = verdictForGuard
-    ? narrativeIntentOf(verdictForGuard.questionIntent, plan.comparisonContext.isComparison)
-    : 'DECISION';
   const clampedResult = applyVerdictAuthorityClamp(outcome, verdictForGuard, narrativeIntent);
-  // GROUNDED CONSULTATION NARRATIVE V2 — the whole answer body (not just 전문근거) is now bound to the
-  // authoritative claim catalog. The plan is built from the SAME content plan the accepted answer was
-  // composed against, so the fact boundary is never stale relative to what the model was shown.
-  const groundedPlan = verdictForGuard && contentPlanHolder.current
-    ? buildGroundedNarrativePlan(verdictForGuard, contentPlanHolder.current, narrativeIntent)
-    : null;
-  // §11/§12 — a technical/temporal fact the grounded material never supplied is stripped from list-shaped
-  // fields; in the CORE prose it cannot be excised, so the user receives the deterministic composition of
-  // the same grounded claims rather than fabricated prose. ONE pass, never a regeneration loop, and never a
-  // billing change: this is presentation only.
-  // V5.1 — ONE action renderer for BOTH delivery paths. Built here, before the fallback composition, so the
-  // deterministic answer and the accepted answer present action under the same labelled buckets instead of
-  // this file holding one shape and `composeGroundedFallback` holding another.
-  const groundedActionPlan = groundedPlan ? buildGroundedActionPlan(groundedPlan) : null;
-  const groundedActionSection = groundedActionPlan ? renderGroundedActionSection(groundedActionPlan) : null;
-  // The fallback receives the same section as LINES, so it can reconcile it with the claim ledger by id
-  // rather than by text — the rendered text is realized while the bullets dedupe on the raw engine string.
-  const sharedActionForFallback = groundedActionPlan && groundedActionSection
-    ? {
-      title: groundedActionSection.title,
-      lines: renderGroundedActionLines(groundedActionPlan),
-      format: formatGroundedActionLine,
-    }
-    : null;
   // DIAGNOSTICS ONLY since BLOCKER 1 — the delivered body no longer depends on this. Kept because the
   // fabrication rate it measures is the signal the next blind benchmark reads, and losing it would make
   // "the model invented a fact" and "the model wrote clean prose" indistinguishable in telemetry.
@@ -874,13 +953,6 @@ export async function buildServerConsultation(
       || outcome.kind === 'SEMANTIC_REJECTED'
       || (outcome.kind === 'STRUCTURAL_FALLBACK' && untraceableFacts(outcome.text, groundedPlan).length > 0));
   const groundedFallbackUsed = gated?.fatal === true || rejectedButGrounded;
-  // The composition is run back through the SAME verdict-authority clamp the accepted path uses, so a
-  // declined verdict speaks in its declined, question-shaped headline on both paths rather than in the raw
-  // `primaryConclusion` — one headline contract, one place that decides it.
-  const groundedFallbackResult = (): ParsedStructuredConsultation => applyVerdictAuthorityClamp(
-    { kind: 'ACCEPTED', result: composeGroundedFallback(groundedPlan!, sharedActionForFallback) },
-    verdictForGuard, narrativeIntent,
-  )!;
   // RED-TEAM BLOCKER 1 — SERVER-OWNED FACT AUTHORITY.
   //
   // The grounded gate above is a LEXICON gate: it catches a phantom 관록궁, a fabricated 28~37세, a 십신
@@ -906,13 +978,13 @@ export async function buildServerConsultation(
   // it is the pre-existing grounding-unavailable contract, where the prompt forbids chart claims and
   // `validateStructuredAgainstGrounding` is the authority. Billing is untouched either way.
   const acceptedResult = groundedPlan !== null ? groundedFallbackResult() : clampedResult;
+  // 이미 값이 있으면 덮어쓰지 않는다 — 이 칸의 주인은 여전히 조립기다(성향 한 줄은 모델 호출 전에 만들었다).
+  const acceptedWithDisposition = acceptedResult && !acceptedResult.disposition && dispositionLine
+    ? { ...acceptedResult, disposition: dispositionLine }
+    : acceptedResult;
   const groundedViolations: GroundedViolationCategory[] = gated?.fatal
     ? classifyGroundedViolations(gated.violations)
     : rejectedButGrounded ? ['LLM_OUTPUT_REJECTED'] : [];
-  // SERVER-owned polarity + decision/audit meta are INJECTED into the structured result from the plan
-  // (Sprint C §8 / Sprint D §D1) — the LLM verbalizes the conclusion but never decides these machine values.
-  // §22 — the SAME instant the verdict was evaluated at. See `evaluationInstant` above.
-  const resolvedTemporalContext = buildResolvedTemporalContext(question, evaluationInstant, effectiveGrounding);
   // §23 — GRAPH REVISION. Recorded so a later turn (and an audit) can see that this graph is the previous one
   // extended, or a deliberate restart, rather than an unrelated reading that happened to land in the same
   // conversation. Purely provenance: nothing downstream branches on it.
@@ -1048,21 +1120,28 @@ export async function buildServerConsultation(
   //     losing content (a conclusion or an action instruction must never be thinned by a later repetition),
   //     and any block that would be emptied entirely is kept whole — deleting the only claim a section
   //     stands on is worse than saying it twice.
-  const deliveredSections = applyConsumerDeliveryContract(acceptedResult, authoritativeSections);
+  const deliveredSections = applyConsumerDeliveryContract(acceptedWithDisposition, authoritativeSections);
   const verifiedEvidence = deliveredSections.authoritative.length > 0 ? deliveredSections.authoritative : undefined;
+  // PART 1·2 — the short answer started before the model call; it is awaited here so the reader receives ONE
+  // complete answer (never a first version that is later replaced).
+  const shortAnswer = shortAnswerPending && deliveredSections.result ? await shortAnswerPending : null;
   const structuredResult = deliveredSections.result
     ? {
         ...buildStructuredConsultationResult(deliveredSections.result, effectiveGrounding),
+        ...(shortAnswer ? { shortAnswer: shortAnswer.text } : {}),
         ...(conclusionPolarity ? { conclusionPolarity } : {}),
         ...(verifiedEvidence ? { verifiedEvidence } : {}),
         decisionMeta,
       }
     : undefined;
-  const text = deliveredSections.result
+  // The plain-text mirror leads with the short answer too: it is what a later turn's conversation context and
+  // any text-only surface read, and it is where the previous turn's 되묻기 is found (no consecutive repeats).
+  const longText = deliveredSections.result
     ? composeConsultationText(deliveredSections.result)
     : outcome.kind === 'STRUCTURAL_FALLBACK'
       ? realizeForConsumer(outcome.text)
       : SEMANTIC_REJECTION_MESSAGE;
+  const text = shortAnswer ? `${shortAnswer.text}\n\n${longText}` : longText;
 
   // Safe diagnostics (no content): how the model output was classified and — when NOT rendered as a card
   // — the exact reason. Surfaced to the Edge for [chat.diag]; NOT returned to the client.
@@ -1079,6 +1158,7 @@ export async function buildServerConsultation(
     ...(followUpIntent !== 'NONE' ? { followUp: followUpIntent } : {}),
     ...(followUpVersionMismatch ? { versionMismatch: true } : {}),
     ...(llmUnavailable ? { llmUnavailable: true } : {}),
+    ...(shortAnswer ? { shortAnswer: shortAnswer.diagnostics } : {}),
     ...(outcome.kind === 'ACCEPTED'
       ? {}
       : {

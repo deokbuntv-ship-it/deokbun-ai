@@ -39,7 +39,7 @@ export type CompatibilityChatResult =
     }
   | {
       success: false;
-      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK' | 'GROUNDING_UNAVAILABLE' | 'AI_CONSENT_REQUIRED';
+      errorCode: 'INVALID_INPUT' | 'REQUEST_FAILED' | 'AUTH_REQUIRED' | 'INSUFFICIENT_DUK' | 'GROUNDING_UNAVAILABLE' | 'AI_CONSENT_REQUIRED' | 'PROFILE_REQUIRED';
       requestId: string;
       // Authoritative server balance — present ONLY for 'INSUFFICIENT_DUK' (drives the top-up/paywall UX).
       insufficientDuk?: { balance: number; required: number; shortfall: number };
@@ -134,6 +134,10 @@ export function createCompatibilityConsultationService(
         // "잠시 후 다시" 라는 **사실이 아닌 안내**가 뜬다. 재시도로 풀리지 않고, 할 일은 동의다.
         if (result.error === 'AI_CONSENT_REQUIRED') {
           return { success: false, errorCode: 'AI_CONSENT_REQUIRED', requestId };
+        }
+        // 기본 정보가 없거나 모양이 깨졌다(F-05). 역시 재시도로 풀리지 않는다 — 정보 화면으로 안내한다.
+        if (result.error === 'PROFILE_REQUIRED') {
+          return { success: false, errorCode: 'PROFILE_REQUIRED', requestId };
         }
         logFailure('REQUEST_FAILED', 'error');
         return { success: false, errorCode: 'REQUEST_FAILED', requestId };

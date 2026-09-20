@@ -159,46 +159,22 @@ async function deleteSubject(id: string): Promise<void> {
   }
 }
 
-// Makes `targetId` the user's single is_self subject.
-// V1: sequential client updates (no RPC/transaction). To avoid violating the
-// partial unique index (one is_self=true per user), the existing self is cleared
-// FIRST, then the target is set. If the final update fails the caller must treat
-// it as a failure (do NOT report success); at most one self is ever guaranteed.
+/**
+ * `targetId` 를 이 사용자의 **유일한 대표(is_self)** 로 만든다.
+ *
+ * ⚠ 2026-09-21 (F-04): 예전에는 요청 **세 번**(찾기 → 해제 → 지정)으로 했다. 해제 다음에 끊기면
+ *   **대표가 아무도 없는 상태**로 남아 상담 · 궁합이 403 으로 막히고, 다음 앱 실행 때 온보딩이 같은
+ *   사람을 하나 더 만들었다. 이제 서버 함수 하나(`set_primary_subject`)가 한 트랜잭션에서 끝낸다 —
+ *   중간에 실패하면 통째로 되돌아가 **원래 대표가 그대로** 남는다.
+ *
+ * 실패하면 던진다. 호출한 화면은 성공으로 그리면 안 된다.
+ */
 async function setPrimarySubject(targetId: string): Promise<void> {
   const supabase = getSupabaseClient();
-
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('id')
-    .eq('is_self', true)
-    .maybeSingle();
-
+  const { error } = await supabase.rpc('set_primary_subject', { p_subject_id: targetId });
   if (error) {
-    logDbError(error, 'subject', 'setPrimarySubject:findSelf');
-  }
-
-  const currentSelfId = (data as { id: string } | null)?.id ?? null;
-
-  if (currentSelfId === targetId) {
-    return; // already the primary subject
-  }
-
-  if (currentSelfId !== null) {
-    const { error: clearError } = await supabase
-      .from(TABLE)
-      .update({ is_self: false })
-      .eq('id', currentSelfId);
-    if (clearError) {
-      logDbError(clearError, 'subject', 'setPrimarySubject:clear');
-    }
-  }
-
-  const { error: setError } = await supabase
-    .from(TABLE)
-    .update({ is_self: true })
-    .eq('id', targetId);
-  if (setError) {
-    logDbError(setError, 'subject', 'setPrimarySubject:set');
+    logDbError(error, 'subject', 'setPrimarySubject');
+    throw error;
   }
 }
 

@@ -5,6 +5,13 @@
 `docs/FEATURE_MASTER_CHECKLIST.md` 다(§9). docx 인수인계서는 이 둘에서 생성한다.
 문서 간 권위 다툼과 그 판정은 §7.9.
 
+> **2026-09-19 — 상담 답변 구조 개편(묶음 8) · 코드 완료 · staging `chat` v48 배포·실측 끝 · production 대기.** 상담 답이 **짧은 답 한 칸**
+> (`structuredResult.shortAnswer` · 200~350자 · 성향 → 이번 달/올해 → 어떻게 → 되묻기)이 되고, 긴 답은 「왜 이렇게
+> 보나요?」 안에 접힌다. **조립기가 문장을 정하고 모델은 말투만 다듬는다**(중간안) — 다듬은 문장은 `rewriteGuard.ts`
+> (낱말 대응·순서·부정·추측·인과·어미 관계·숫자·시기·문장 수)와 `consultationAnswerGuard.ts` 를 통과해야 화면에 가고,
+> 재생성 1회 뒤에도 걸리면 서버 원문이 나간다. 긴 답·판단 저장·과금 분류는 바뀌지 않았다(로컬 결정론 골든 28/28 동일).
+> 운영 스위치: Edge 시크릿 `SHORT_ANSWER_REWRITE=off`. 패키지 `docs/PRODUCTION_APPLY_PACKAGE_2026-09-19.md`.
+
 ---
 
 ## 1. 지금 단 하나의 다음 행동
@@ -71,6 +78,14 @@ HEAD는 `open_regression_v8_manifest.json`의 `release_candidate`와 일치한�
 ---
 
 ## 4. 보호 파일 (reset·clean·stash·overwrite 금지)
+
+> **2026-09-19 — production 패키지 동결(2026-09-12)은 수명을 다해 제거했다.** 동결 대상은
+> 2026-09-16 세션에서 **전부 적용**됐다(마이그레이션 9건 14~22 · Edge 8개 파일 = `chat` 4개 자산 포함).
+> 근거: `owner_inputs/보고_production_세션_2026-09-16.md` — ②-3 dry-run 9줄 → ②-4 "Applying 9줄 →
+> Finished · ERROR 없음" → ②-5 10/10, ⑤ Edge 3개 Deployed, ⑦-2 `chat` 배포(`serverBundle.mjs` 포함),
+> §6「production에 한 쓰기」 2번·7번. 가드 파일(`src/features/chat/__tests__/productionPackageFreeze.test.ts`)은
+> 자신의 머리말대로 제거했다 — 남겨 두면 앞으로 **모든 `serverBundle.mjs` 변경을 영구히 막는다**.
+> **다음 패키지에 같은 동결을 걸 때는 "적용 완료 후 가드 제거"를 패키지의 마지막 단계에 넣을 것.**
 
 ### 4.1 앱 repo WIP — `C:\Development\DeokbunAI-app`
 

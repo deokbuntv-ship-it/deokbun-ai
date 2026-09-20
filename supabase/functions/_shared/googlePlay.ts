@@ -141,7 +141,13 @@ export async function acknowledgeProduct(
       body: JSON.stringify({}),
     });
     if (res.ok) return 'ok';
-    if (res.status === 400) return 'already';
+    // ⚠ 2026-09-21: 예전에는 **모든 400** 을 "이미 승인됨" 으로 봤다. 다른 까닭의 400(잘못된 상품 id 등)도
+    //   승인 완료로 기록돼 재시도 크론이 다시 시도하지 않았고, 승인되지 않은 구매는 3일 뒤 자동 환불됐다.
+    //   구글이 말한 까닭을 읽어 **이미 승인된 경우만** 'already' 로 본다.
+    if (res.status === 400) {
+      const body = await res.text().catch(() => '');
+      return /already\s*been\s*acknowledged|alreadyAcknowledged/i.test(body) ? 'already' : 'failed';
+    }
     return 'failed';
   } catch {
     return 'failed';

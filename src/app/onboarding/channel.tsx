@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -35,6 +35,12 @@ export default function OnboardingChannelScreen() {
     if (addUrl) void Linking.openURL(addUrl).catch(() => {});
     proceed(); // we opened Kakao's page; we do not claim the channel was added.
   };
+
+  // ⚠ 2026-09-21 (CTO 7-8): 채널 설정이 없으면 이 단계를 **아예 건너뛴다.**
+  //   예전에는 모든 신규 가입자가 "채널 연결은 준비 중이에요 · 채널 추가하기 · 준비 중(비활성)" 화면을
+  //   지나야 했다. 빈 단계이고, "준비 중" 같은 임시 문구는 애플 심사(가이드라인 2.1)에도 불리하다.
+  //   설정값이 들어오면 아래 화면이 그대로 다시 살아난다.
+  if (!available) return <Redirect href="/onboarding" />;
 
   return (
     <Screen padded={false} frame>

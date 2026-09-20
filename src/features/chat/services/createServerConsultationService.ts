@@ -109,6 +109,10 @@ export function createServerConsultationService(
           // 전송 실패가 아니고 재시도 대상도 아니다. 서버가 **보내기 전에** 멈춘 것이라 청구가 없다.
           return { success: false, errorCode: 'AI_CONSENT_REQUIRED', requestId };
         }
+        if (result.error === 'PROFILE_REQUIRED') {
+          // 기본 정보가 없거나 모양이 깨졌다(F-05). 같은 이유로 청구가 없고, 재시도로는 풀리지 않는다.
+          return { success: false, errorCode: 'PROFILE_REQUIRED', requestId };
+        }
         if (result.error === 'INSUFFICIENT_DUK') {
           // Authoritative server balance — surface distinctly (not a generic failure) for a top-up prompt.
           return {

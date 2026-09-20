@@ -17,6 +17,7 @@ import { getCandleAvailability, lightCandle } from '@/features/duk/dukWalletServ
 import { useWallet } from '@/features/duk/useWallet';
 import { candleInitialState, walletStateOf, type CandleUiState } from '@/features/duk/consumerDukView';
 import { CANDLE_DUK, DUK_PRICES, WELCOME_DUK, dukLabel } from '@/features/duk/pricing';
+import { storePurchaseAvailable } from '@/features/duk/iap/storeAvailability';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useConsumerLayout } from '@/hooks/useConsumerLayout';
 import { colors, spacing } from '@/theme';
@@ -196,7 +197,10 @@ export default function WalletScreen() {
               </View>
             </Stack>
 
-            <Button label="덕 충전하기" variant="secondary" radius="lg" onPress={() => router.push('/duk-topup')} />
+            {/* F-02(2026-09-21): 살 수 있는 기기에서만. 아이폰 · 웹에서는 문구 없이 숨긴다. */}
+            {storePurchaseAvailable() ? (
+              <Button label="덕 충전하기" variant="secondary" radius="lg" onPress={() => router.push('/duk-topup')} />
+            ) : null}
 
             {/* ⑥ 정책 링크 */}
             <View>

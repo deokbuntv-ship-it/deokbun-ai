@@ -1,0 +1,1 @@
+select (select count(*) from public.consultation_sessions) as sessions, (select count(*) from public.duk_ledger where reason = 'CONSULTATION') as consultation_rows, (select coalesce(sum(delta), 0) from public.duk_ledger where reason = 'CONSULTATION') as consultation_debits;

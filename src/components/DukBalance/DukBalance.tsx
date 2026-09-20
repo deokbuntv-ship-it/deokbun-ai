@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'rea
 import { Text } from '@/components/Text';
 import { walletHeadline, type WalletLoadState } from '@/features/duk/consumerDukView';
 import { dukLabel } from '@/features/duk/pricing';
+import { storePurchaseAvailable } from '@/features/duk/iap/storeAvailability';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
 
@@ -101,7 +102,8 @@ export function DukBalance({ variant, state, total, onPress, onTopup, required, 
           </Text>
         </View>
       </Pressable>
-      {onTopup ? (
+      {/* F-02(2026-09-21): 살 수 있는 기기에서만 충전 입구를 연다. 아이폰 · 웹에서는 아예 숨긴다. */}
+      {onTopup && storePurchaseAvailable() ? (
         <Pressable
           onPress={onTopup}
           accessibilityRole="button"

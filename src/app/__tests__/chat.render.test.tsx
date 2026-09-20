@@ -222,13 +222,15 @@ describe('서버 오류 안내', () => {
     expect(document.body.textContent).toMatch(/덕은 차감되지 않았습니다/);
   });
 
-  it('INSUFFICIENT_DUK — 막다른 문구가 아니라 충전 경로를 준다', async () => {
+  // ⚠ 2026-09-21 (F-02): 웹에서는 충전 **버튼**이 뜨지 않는다(살 수 없는 기기). 막다른 문구가 아니라
+  //   부족하다는 사실과 덕을 모으는 길(촛불)을 주는지를 본다.
+  it('INSUFFICIENT_DUK — 막다른 문구가 아니라 부족한 양과 모으는 길을 준다', async () => {
     sendResult.current = {
       success: false, errorCode: 'INSUFFICIENT_DUK', requestId: 'r1',
       insufficientDuk: { balance: 1, required: DUK_PRICES.general, shortfall: DUK_PRICES.general - 1 },
     };
     await ask();
-    await waitFor(() => expect(document.body.textContent).toMatch(/충전|덕이 부족/));
+    await waitFor(() => expect(document.body.textContent).toMatch(/덕이 부족|더 필요한 덕|초 확인/));
   });
 
   it('네트워크 실패는 재시도를 준다', async () => {

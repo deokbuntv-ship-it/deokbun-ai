@@ -100,7 +100,8 @@ export const APP_REVIEW_NOTES = [
   'Deokbuni is not a fortune-text generator. Every interpretation starts from a deterministic calculation.',
   '',
   '1. Calculation first. Saju (Four Pillars) charts are computed deterministically from the birth date and time; Zi Wei Dou Shu and Qi Men Dun Jia charts are also computed when the birth time or the question calls for them. The language model never computes a chart. It only puts into words a plan the server has already decided from those calculations.',
-  '2. For supported year and month questions the server, not the model, decides the conclusion for that period. Output guards reject answers that contradict it, that make definitive or guaranteed claims, or that rank a "best time". A rejected answer is regenerated or declined, never shown as-is.',
+  // 2026-09-19 마지막 문장 추가(지시서 PART 7-2) — 중간안: 상담에서 모델은 서버 문장을 다듬기만 하고, 내용이 바뀌면 버린다.
+  '2. For supported year and month questions the server, not the model, decides the conclusion for that period. Output guards reject answers that contradict it, that make definitive or guaranteed claims, or that rank a "best time". A rejected answer is regenerated or declined, never shown as-is. In consultations the model only rewords sentences the server has already written; a rewording that adds, drops or reorders any content word, or changes a negation, a hedge, a number or a period, is discarded and the server\'s own sentences are shown instead.',
   '3. Questions about illness, lifespan or death are declined by a deterministic safety router.',
   '4. Every interpretation screen is labelled as AI-generated. Users give separate consent before their birth data and consultation text are sent to our AI provider (OpenAI), and they can report any AI answer in the app.',
   '5. The price in the in-app unit (Duk) is shown before anything is spent. Users can delete individual conversations and reports, and their account, inside the app.',

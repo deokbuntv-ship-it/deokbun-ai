@@ -4,6 +4,7 @@ import { Button } from '@/components/Button';
 import { Stack } from '@/components/Stack';
 import { Text } from '@/components/Text';
 import { insufficientView } from '@/features/duk/consumerDukView';
+import { storePurchaseAvailable } from '@/features/duk/iap/storeAvailability';
 import { dukLabel, type DukProduct } from '@/features/duk/pricing';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, radius, spacing } from '@/theme';
@@ -66,7 +67,8 @@ export function InsufficientDuk({
           radius="lg"
           onPress={onCandle}
         />
-        {view.topupAvailable ? (
+        {/* F-02: 충전은 살 수 있는 기기에서만. 촛불(위 버튼)은 어디서나 그대로다. */}
+        {view.topupAvailable && storePurchaseAvailable() ? (
           <Button label="덕 충전하기" variant="secondary" radius="lg" onPress={onTopup} />
         ) : null}
       </Stack>

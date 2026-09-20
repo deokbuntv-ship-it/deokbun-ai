@@ -13,6 +13,8 @@ export type ConsultationErrorCode =
   | 'GROUNDING_UNAVAILABLE'
   // 애플 5.1.2(i) — 제3자 AI 처리 동의가 없다.
   | 'AI_CONSENT_REQUIRED'
+  // ⚠ 2026-09-21 — 기본 정보가 없거나 모양이 깨졌다(403). 재시도로는 절대 풀리지 않는다.
+  | 'PROFILE_REQUIRED'
   // ⚠ 2026-09-17 — 서버가 같은 요청을 아직 만들고 있다(409). 실패가 아니라 "아직" 이다.
   | 'REQUEST_IN_PROGRESS';
 
@@ -77,6 +79,14 @@ export function mapConsultationError(
         kind: 'consent',
         message:
           'AI가 해석문을 만들려면 AI 처리 동의가 필요해요.\n무엇을 어디로 보내는지 확인하고 동의하시면 이어서 진행할 수 있어요.',
+        canRetry: false,
+      };
+    case 'PROFILE_REQUIRED':
+      // ⚠ 2026-09-21 (F-05): 기본 정보가 없거나 모양이 깨졌다. **재시도 버튼을 주지 않는다** —
+      //   다시 눌러도 같은 결과이고, 사용자가 할 일은 정보를 채우는 것이다. 청구는 없다.
+      return {
+        kind: 'input',
+        message: '기본 정보가 필요해요.\nMY에서 태어난 날짜·시각·태어난 곳을 확인해 주시면 이어서 봐 드릴게요.',
         canRetry: false,
       };
     case 'GROUNDING_UNAVAILABLE':

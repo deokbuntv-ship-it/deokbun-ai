@@ -12,7 +12,7 @@
 //              (`docs/DEVICE_QA_MATRIX.md`).
 import type { ReactElement } from 'react';
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 import { fixedWidthsOver, nowrapLongText, setViewport } from '@/test-support/renderAudit';
 
@@ -141,6 +141,8 @@ describe('여섯 화면 — 360dp 에서 넘치도록 선언된 폭이 없다', 
 describe('긴 콘텐츠 — 12개월이 실제로 열두 줄 다 나온다', () => {
   it('한 달도 빠지지 않고, 그래도 폭 위반이 생기지 않는다', async () => {
     render(<PremiumReportScreen />);
+    // 2026-09-21(CTO ②): 화면이 먼저 우편함을 본다 — 그 조회가 끝나기 전에는 유료 버튼이 눌리지 않는다.
+    await act(async () => {});
     fireEvent.click(screen.getByText(/으로 리포트 받기$/));
     await waitFor(() => expect(screen.getByText(PREMIUM_PAYLOAD.result.headline)).toBeInTheDocument());
     // 저장은 화면을 보여준 뒤에 일어난다 — 그 상태까지 기다려야 렌더가 완전히 가라앉는다.

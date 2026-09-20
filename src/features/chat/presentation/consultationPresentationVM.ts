@@ -14,6 +14,8 @@ import { filterFollowUpsToScope } from './followUpSafety';
 export type PresentationDetailSection = { title: string; body: string };
 
 export type ConsultationPresentationVM = {
+  /** 2026-09-19 짧은 답 — 있으면 화면의 첫 칸이고 나머지는 접힌다. 예전 답에는 없다(null). */
+  shortAnswer: string | null;
   headline: string | null; // one-line conclusion (coreSummary)
   disposition: string | null; // optional secondary context line
   summary: string | null; // the concise core interpretation
@@ -144,6 +146,7 @@ export function toConsultationPresentation(
   }
 
   return {
+    shortAnswer: vm.shortAnswer?.trim() || null,
     headline,
     disposition: vm.disposition?.trim() || null,
     summary,

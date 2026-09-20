@@ -1,5 +1,5 @@
 import type { BirthInfoDraft } from '@/features/consultation';
-import { isAuthTransportError } from '@/features/chat/adapters/llmError';
+import { isAuthTransportError, parseAiConsentRequired } from '@/features/chat/adapters/llmError';
 import { clientCurrentMonthGuess } from '@/features/monthly/engine/monthDate';
 import {
   MONTHLY_CANONICAL_VERSION,
@@ -7,6 +7,7 @@ import {
   type MonthlyFortuneResult,
   type MonthlyOverallTier,
 } from '@/features/monthly/types';
+import { canonicalFortuneVersion, canonicalFortuneVersionLike } from '@/features/fortune/birthFingerprint';
 import { getSupabaseClient } from '@/services/supabase';
 
 const TABLE = 'monthly_fortunes';
@@ -22,12 +23,23 @@ function mapRow(row: Row): MonthlyFortuneRecord {
     policyVersion: row.policy_version, model: row.model, createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-async function getByMonth(year: number, month: number, subjectId?: string | null): Promise<MonthlyFortuneRecord | null> {
+/**
+ * 저장본 찾기. 출생정보를 주면 **그 출생정보로 만든 것만** 찾는다 (GAP-04 — 오늘 운세와 같은 규칙).
+ */
+async function getByMonth(
+  year: number,
+  month: number,
+  subjectId?: string | null,
+  birth?: Parameters<typeof canonicalFortuneVersion>[1],
+): Promise<MonthlyFortuneRecord | null> {
   try {
     let query = getSupabaseClient().from(TABLE).select(COLUMNS).eq('fortune_year', year).eq('fortune_month', month)
-      .eq('tier', 'FREE').eq('semantic_version', MONTHLY_CANONICAL_VERSION);
+      .eq('tier', 'FREE');
+    query = birth
+      ? query.eq('semantic_version', canonicalFortuneVersion(MONTHLY_CANONICAL_VERSION, birth))
+      : query.like('semantic_version', canonicalFortuneVersionLike(MONTHLY_CANONICAL_VERSION));
     if (subjectId) query = query.eq('subject_id', subjectId);
-    const { data } = await query.maybeSingle();
+    const { data } = await query.order('updated_at', { ascending: false }).limit(1).maybeSingle();
     return data ? mapRow(data as Row) : null;
   } catch { return null; }
 }
@@ -35,7 +47,7 @@ async function getByMonth(year: number, month: number, subjectId?: string | null
 async function loadLatest(): Promise<MonthlyFortuneRecord | null> {
   try {
     const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS)
-      .eq('tier', 'FREE').eq('semantic_version', MONTHLY_CANONICAL_VERSION)
+      .eq('tier', 'FREE').like('semantic_version', canonicalFortuneVersionLike(MONTHLY_CANONICAL_VERSION))
       .order('fortune_year', { ascending: false }).order('fortune_month', { ascending: false })
       .limit(1).maybeSingle();
     return data ? mapRow(data as Row) : null;
@@ -44,8 +56,9 @@ async function loadLatest(): Promise<MonthlyFortuneRecord | null> {
 
 async function listAll(limit = 36): Promise<MonthlyFortuneRecord[]> {
   try {
+    // 우편함은 역사다 — 옛 출생정보로 만든 지난 달 운세도 그대로 보인다.
     const { data } = await getSupabaseClient().from(TABLE).select(COLUMNS)
-      .eq('tier', 'FREE').eq('semantic_version', MONTHLY_CANONICAL_VERSION)
+      .eq('tier', 'FREE').like('semantic_version', canonicalFortuneVersionLike(MONTHLY_CANONICAL_VERSION))
       .order('fortune_year', { ascending: false }).order('fortune_month', { ascending: false }).limit(limit);
     return ((data as Row[] | null) ?? []).map(mapRow);
   } catch { return []; }
@@ -55,10 +68,16 @@ type EdgeGenResult =
   | { ok: true; year: number; month: number; overallTier: MonthlyOverallTier; result: MonthlyFortuneResult }
   | { ok: false; reason: string; year?: number; month?: number };
 async function generateViaEdge(): Promise<{ status: 'ok'; gen: Extract<EdgeGenResult, { ok: true }> }
-  | { status: 'auth' | 'unavailable' | 'error' }> {
+  | { status: 'auth' | 'unavailable' | 'error' | 'consent' }> {
   try {
     const { data, error } = await getSupabaseClient().functions.invoke('chat', { body: { kind: 'monthly_fortune' } });
-    if (error) return { status: isAuthTransportError(error) ? 'auth' : 'error' };
+    // ⚠ 2026-09-21 (7-4): 403 AI 처리 동의 없음을 **따로** 읽는다. 로그인 문제도 아니고 재시도로도
+    //   풀리지 않는다 — 화면이 동의 시트를 열어야 한다. production 은 2026-09-15 부터 이 문을 쓰고 있어
+    //   동의 전 사용자는 여기서 막힌다.
+    if (error) {
+      if (await parseAiConsentRequired(error)) return { status: 'consent' };
+      return { status: isAuthTransportError(error) ? 'auth' : 'error' };
+    }
     const gen = data as EdgeGenResult | null;
     if (gen?.ok === false && gen.reason === 'EVIDENCE_UNAVAILABLE') return { status: 'unavailable' };
     return gen?.ok === true && typeof gen.year === 'number' && typeof gen.month === 'number' && !!gen.result
@@ -68,15 +87,16 @@ async function generateViaEdge(): Promise<{ status: 'ok'; gen: Extract<EdgeGenRe
 
 export type EnsureMonthOutcome =
   | { status: 'ok'; record: MonthlyFortuneRecord; cacheHit: boolean }
-  | { status: 'auth' | 'unavailable' | 'error' };
+  | { status: 'auth' | 'unavailable' | 'error' | 'consent' };
 
 async function ensureCurrentMonth(input: { birthInput: BirthInfoDraft; subjectId?: string | null }): Promise<EnsureMonthOutcome> {
   const guess = clientCurrentMonthGuess(Date.now());
-  const cached = await getByMonth(guess.year, guess.month, input.subjectId);
+  // 지금 출생정보로 만든 저장본만 캐시로 인정한다 (GAP-04).
+  const cached = await getByMonth(guess.year, guess.month, input.subjectId, input.birthInput);
   if (cached) return { status: 'ok', record: cached, cacheHit: true };
   const generated = await generateViaEdge();
   if (generated.status !== 'ok') return generated;
-  const record = await getByMonth(generated.gen.year, generated.gen.month, input.subjectId);
+  const record = await getByMonth(generated.gen.year, generated.gen.month, input.subjectId, input.birthInput);
   return record ? { status: 'ok', record, cacheHit: false } : { status: 'error' };
 }
 

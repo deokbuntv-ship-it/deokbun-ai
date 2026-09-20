@@ -209,9 +209,11 @@ describe('V5 — the delivered answer carries exactly one action section', () =>
     expect(visible.sections.filter((s) => ACTION_TITLES.includes(s.title))).toHaveLength(1);
   });
 
-  it('delivers the complete product in order: 결론 first, 전문근거 after the action section', async () => {
+  it('delivers the complete product in order: 짧은 답 → 결론 first of the long form, 전문근거 after the action section', async () => {
     const { visible } = await deliveredSections(PLAIN_ANSWER);
-    expect(visible.sections[0].title).toBe('결론');
+    // 2026-09-19 — 짧은 답이 화면의 첫 칸이다(지시서 PART 1·3). 긴 답은 그 아래 접혀 있고, 그 안에서는 결론이 먼저다.
+    expect(visible.sections[0].title).toBe('짧은 답');
+    expect(visible.sections[1].title).toBe('결론');
     expect(visible.text).toContain('[결론]');
     const evidenceAt = visible.sections.findIndex((s) => s.title.startsWith('전문근거'));
     const actionAt = visible.sections.findIndex((s) => ACTION_TITLES.includes(s.title));

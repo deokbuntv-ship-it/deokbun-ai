@@ -14,12 +14,20 @@ export type ConsultationReportPayload = {
   keyFindings: string[]; // deduped across all answers (headlines + key points)
   cautions: string[]; // deduped across all answers
   coveredTopics: string[]; // the questions asked, deduped
+  /**
+   * 2026-09-19 — 상담 답변에서 **접혀 있던 자세한 해석**(전문근거 · 왜 이렇게 보나요 · 행동 · 시기).
+   * 예전에는 리포트가 headline·keyPoints·cautions 만 모아서, 조립기가 만든 자세한 내용이 리포트에
+   * **한 줄도 오지 않았다**. 상담 답변이 짧아지면 리포트까지 같이 얇아지므로 여기서 받는다.
+   * 리포트는 문서라 칸을 나눠도 되고 길어도 된다.
+   */
+  details?: { title: string; body: string }[]; // 선택값 — 예전에 저장된 리포트에는 없다
   generatedAt: string; // ISO — passed in (deterministic/testable; no Date.now here)
 };
 
 const MAX_FINDINGS = 6;
 const MAX_CAUTIONS = 5;
 const MAX_TOPICS = 8;
+const MAX_DETAILS = 12; // 문서이므로 넉넉히. 상담 답변의 5칸 상한과 달리 여기서는 버리지 않는다.
 const TITLE_MAX = 22;
 
 const norm = (s: string): string => s.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -73,6 +81,18 @@ export function buildConsultationReport(input: {
   );
   const cautions = dedupeClean(answers.flatMap((a) => a.cautions), MAX_CAUTIONS);
   const coveredTopics = dedupeClean(questions, MAX_TOPICS);
+  // 답변마다 접혀 있던 자세한 해석을 모은다. 제목이 같으면 한 번만(같은 근거가 되풀이되지 않게).
+  const seenDetail = new Set<string>();
+  const details: { title: string; body: string }[] = [];
+  for (const a of answers) {
+    for (const d of a.detailSections ?? []) {
+      const title = (d.title ?? '').trim();
+      const body = (d.body ?? '').trim();
+      if (!title || !body || seenDetail.has(title) || details.length >= MAX_DETAILS) continue;
+      seenDetail.add(title);
+      details.push({ title, body });
+    }
+  }
 
   return {
     title: deriveReportTitle(questions[0]),
@@ -80,6 +100,7 @@ export function buildConsultationReport(input: {
     keyFindings,
     cautions,
     coveredTopics,
+    details,
     generatedAt,
   };
 }

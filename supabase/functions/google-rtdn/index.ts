@@ -38,8 +38,15 @@ function decode(dataB64: string): Rtdn | null {
 /** 위조·미인증 요청을 기록한다. 조용히 버리면 공격을 관측할 수 없다. */
 async function logRejected(admin: ReturnType<typeof createClient> | null, reason: string, detail: string) {
   if (!admin) return;
+  // ⚠ 2026-09-21: 예전에는 `target_type` · `detail` 칸에 넣었는데 `admin_audit_log` 에 **그런 칸이 없다**
+  //   (`20260842000000_admin_economy_ops.sql:12-22`). 오류는 아래에서 삼켜져 거절 기록이 **한 줄도 남지
+  //   않았다** — 공격을 관측할 수 없었다. 있는 칸(`reason_note` · `metadata`)으로 맞춘다.
   await admin.from('admin_audit_log')
-    .insert({ action: 'rtdn_rejected', target_type: 'iap', detail: `${reason}: ${detail}`.slice(0, 500) })
+    .insert({
+      action: 'rtdn_rejected',
+      reason_note: `${reason}: ${detail}`.slice(0, 500),
+      metadata: { source: 'google-rtdn', reason },
+    })
     .then(() => undefined, () => undefined);
 }
 

@@ -30,7 +30,7 @@ export { orderDetailSections, VERIFIED_EVIDENCE_TITLE_PREFIX } from './consultat
 /**
  * The complete product as the reader receives it:
  *
- *   결론 → 쉬운 설명 → 좋은 흐름 → 조심할 점 → 행동 → 한마디 → 왜 이렇게 보나요 → 전문근거 → 후속질문
+ *   (짧은 답) → 결론 → 쉬운 설명 → 좋은 흐름 → 조심할 점 → 행동 → 한마디 → 왜 이렇게 보나요 → 전문근거 → 후속질문
  *
  * Empty sections are omitted (§47) — never padded with a placeholder.
  */
@@ -46,6 +46,8 @@ export function fromPresentation(p: ConsultationPresentationVM): UserVisibleAnsw
     if (t.length > 0) sections.push({ title, body: t });
   };
 
+  // 2026-09-19 — 짧은 답이 화면의 첫 칸이다. 사용자가 **먼저 보는 것**이므로 여기서도 먼저 둔다.
+  push('짧은 답', p.shortAnswer);
   push('결론', p.headline);
   push('기본 성향', p.disposition);
   push('쉬운 설명', p.summary);

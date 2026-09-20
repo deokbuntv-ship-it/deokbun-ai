@@ -86,6 +86,7 @@ describe('buildConsultationReport — deterministic composition', () => {
       keyFindings: [],
       cautions: [],
       coveredTopics: [],
+      details: [], // 2026-09-19 추가 — 자세한 해석 칸. 빈 대화에서는 빈 배열
       generatedAt: NOW,
     });
   });

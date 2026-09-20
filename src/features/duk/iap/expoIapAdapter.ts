@@ -91,6 +91,37 @@ export function isDeferred(p: Record<string, unknown>): boolean {
   return state === 2 || String(state).toUpperCase() === 'PENDING' || p.isPending === true;
 }
 
+/**
+ * 구매를 얼마나 기다리는가. 결제창이 열려 있는 동안에는 아무 이벤트도 오지 않는다 — 계좌이체·부모 승인처럼
+ * 오래 걸리는 결제가 있어 넉넉히 둔다. 여기서 끝나도 **구매가 취소되는 것이 아니다**: 다음 복구 스캔
+ * (`restore`)이 남은 구매를 주워 서버에 검증을 다시 넣는다.
+ */
+export const PURCHASE_EVENT_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
+ * 스토어가 준 **원본 구매 행**을 토큰으로 기억한다.
+ *
+ * ⚠ 왜 필요한가: 설치본의 `finishTransaction` 은 구매 객체를 **통째로** 네이티브에 넘긴다.
+ *   안드로이드는 `purchaseToken` 만 읽지만 iOS 는 `id`/`transactionId` 를 요구한다
+ *   (`expo-iap/build/types.d.ts` · `ios/ExpoIapModule.swift`). 우리 `NativePurchase` 는 서버로 보낼
+ *   최소 정보만 담으므로, 마무리할 때 원본이 있으면 원본을 넘긴다.
+ */
+const rawByToken = new Map<string, Record<string, unknown>>();
+const RAW_CACHE_LIMIT = 20;
+function rememberRaw(token: string, row: Record<string, unknown>): void {
+  if (token.length === 0) return;
+  if (rawByToken.size >= RAW_CACHE_LIMIT) {
+    const oldest = rawByToken.keys().next();
+    if (!oldest.done) rawByToken.delete(oldest.value);
+  }
+  rawByToken.set(token, row);
+}
+
+/** 테스트용 — 기억해 둔 원본 구매 행을 비운다. */
+export function __resetRawPurchaseCache(): void {
+  rawByToken.clear();
+}
+
 export function createExpoIapAdapter(): NativeStoreAdapter {
   return {
     isAvailable: () => platformHasStore() && loadIap() !== null,
@@ -115,26 +146,90 @@ export function createExpoIapAdapter(): NativeStoreAdapter {
       }
     },
 
+    /**
+     * 구매. ⚠ **결과는 반환값이 아니라 이벤트로 온다.**
+     *
+     * 설치본이 그렇게 못박고 있다 — "The result is delivered through `purchaseUpdatedListener` — NOT the
+     * return value. … **Do not rely on it** for the actual outcome" (`expo-iap/build/index.js:677-684`).
+     * 2026-09-18 전수 조사에서 이 계약을 어기고 반환값만 읽고 있었다. 리스너를 **요청 전에** 걸고,
+     * 성공 · 취소 · 보류를 이벤트로 판정한다. 리스너가 없는 설치본(옛 버전)에서는 반환값으로 내려앉는다.
+     */
     async purchase(storeProductId: string): Promise<PurchaseOutcome> {
       const iap = loadIap();
       if (!iap) return { kind: 'ERROR', message: 'NOT_AVAILABLE' };
       try {
         await iap.initConnection?.();
-        const result = await (iap.requestPurchase ?? iap.purchase)?.({
-          request: { android: { skus: [storeProductId] }, ios: { sku: storeProductId } },
-          type: 'in-app',
-        });
-        const row = (Array.isArray(result) ? result[0] : result) as Record<string, unknown> | undefined;
-        if (!row) return { kind: 'ERROR', message: 'NO_RESULT' };
-        if (isDeferred(row)) return { kind: 'PENDING' };
-        const purchase = toNativePurchase(row);
-        // ⚠ 토큰이 비면 서버가 검증할 수 없다. 성공으로 그리지 않는다.
-        if (purchase.transactionToken.length === 0) return { kind: 'ERROR', message: 'NO_TOKEN' };
-        return { kind: 'SUCCESS', purchase };
       } catch (err) {
-        if (isUserCancelled(err)) return { kind: 'CANCELLED' };
         return { kind: 'ERROR', message: String((err as { message?: unknown })?.message ?? 'PURCHASE_FAILED') };
       }
+
+      // ⚠ 구매 전에 상품을 한 번 조회한다. 네이티브 결제 SDK 는 **미리 조회해 둔 상품 정보**를 요구해서,
+      //   조회 없이 구매하면 `sku-not-found` 로 떨어질 수 있다(`ExpoIapHelper.kt`). 조회 실패는 삼킨다 —
+      //   구매 자체를 막을 이유는 없고, 진짜 원인은 아래 오류 이벤트가 말해 준다.
+      try {
+        await (iap.fetchProducts ?? iap.getProducts)?.({ skus: [storeProductId], type: 'in-app' });
+      } catch { /* 조회 실패는 구매를 막지 않는다 */ }
+
+      return await new Promise<PurchaseOutcome>((resolve) => {
+        let settled = false;
+        const subscriptions: { remove: () => void }[] = [];
+        let timer: ReturnType<typeof setTimeout> | null = null;
+
+        const finish = (outcome: PurchaseOutcome): void => {
+          if (settled) return;
+          settled = true;
+          if (timer) clearTimeout(timer);
+          for (const sub of subscriptions) { try { sub.remove(); } catch { /* 이미 정리됨 */ } }
+          resolve(outcome);
+        };
+
+        const onPurchase = (event: unknown): void => {
+          const row = (event ?? {}) as Record<string, unknown>;
+          // 다른 상품의 이벤트(복구 중 흘러든 것 등)는 무시한다. id 를 모르면 우리 것으로 본다.
+          const id = productIdOf(row);
+          if (id.length > 0 && id !== storeProductId) return;
+          if (isDeferred(row)) { finish({ kind: 'PENDING' }); return; }
+          const purchase = toNativePurchase(row);
+          // ⚠ 토큰이 비면 서버가 검증할 수 없다. 성공으로 그리지 않는다.
+          if (purchase.transactionToken.length === 0) { finish({ kind: 'ERROR', message: 'NO_TOKEN' }); return; }
+          rememberRaw(purchase.transactionToken, row);
+          finish({ kind: 'SUCCESS', purchase });
+        };
+
+        const onError = (err: unknown): void => {
+          finish(isUserCancelled(err)
+            ? { kind: 'CANCELLED' }
+            : { kind: 'ERROR', message: String((err as { message?: unknown })?.message ?? 'PURCHASE_FAILED') });
+        };
+
+        try {
+          const updated = iap.purchaseUpdatedListener?.(onPurchase);
+          const failed = iap.purchaseErrorListener?.(onError);
+          if (updated) subscriptions.push(updated);
+          if (failed) subscriptions.push(failed);
+        } catch { /* 리스너를 못 걸면 아래 반환값 경로로 내려앉는다 */ }
+
+        const listening = subscriptions.length > 0;
+        if (listening) timer = setTimeout(() => finish({ kind: 'ERROR', message: 'NO_RESULT' }), PURCHASE_EVENT_TIMEOUT_MS);
+
+        void (async () => {
+          try {
+            const dispatched = await (iap.requestPurchase ?? iap.purchase)?.({
+              // ⚠ 설치본이 읽는 이름은 `google` · `apple` 이다(`expo-iap/build/index.js:652-657`).
+              //   옛 이름(`android` · `ios`)으로 보내면 결제창을 열기도 전에 EmptySkuList 로 끝난다.
+              request: { google: { skus: [storeProductId] }, apple: { sku: storeProductId } },
+              type: 'in-app',
+            });
+            if (listening) return; // 결과는 이벤트로 온다
+            const row = (Array.isArray(dispatched) ? dispatched[0] : dispatched) as Record<string, unknown> | undefined;
+            if (!row) { finish({ kind: 'ERROR', message: 'NO_RESULT' }); return; }
+            onPurchase(row);
+            finish({ kind: 'ERROR', message: 'NO_RESULT' }); // onPurchase 가 우리 상품이 아니라고 흘려보낸 경우
+          } catch (err) {
+            onError(err);
+          }
+        })();
+      });
     },
 
     /** 앱이 꺼졌다 켜졌을 때 남아 있는 구매. **미처리 구매 복구**의 입구다. */
@@ -145,7 +240,11 @@ export function createExpoIapAdapter(): NativeStoreAdapter {
         await iap.initConnection?.();
         const rows = (await (iap.getAvailablePurchases ?? iap.getPurchaseHistories)?.()) ?? [];
         return (rows as Record<string, unknown>[])
-          .map(toNativePurchase)
+          .map((row) => {
+            const purchase = toNativePurchase(row);
+            rememberRaw(purchase.transactionToken, row); // 마무리할 때 원본을 넘기기 위해
+            return purchase;
+          })
           .filter((p) => p.transactionToken.length > 0 && p.storeProductId.length > 0);
       } catch {
         return [];
@@ -159,11 +258,14 @@ export function createExpoIapAdapter(): NativeStoreAdapter {
     async finishTransaction(purchase: NativePurchase): Promise<void> {
       const iap = loadIap();
       if (!iap) return;
+      // 스토어가 준 원본이 있으면 원본을 넘긴다 — iOS 는 `id`/`transactionId` 까지 요구한다.
+      const raw = rawByToken.get(purchase.transactionToken);
       try {
         await iap.finishTransaction?.({
-          purchase: { productId: purchase.storeProductId, purchaseToken: purchase.transactionToken },
+          purchase: raw ?? { productId: purchase.storeProductId, purchaseToken: purchase.transactionToken },
           isConsumable: true,
         });
+        rawByToken.delete(purchase.transactionToken);
       } catch {
         // ⚠ 삼키는 것이 맞다. 소비 실패는 다음 실행의 복구 스캔이 처리하고,
         //   서버가 이미 **승인**해 두어 3일 자동 환불로 되돌아가지 않는다.

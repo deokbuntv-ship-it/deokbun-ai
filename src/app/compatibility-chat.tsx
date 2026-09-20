@@ -24,6 +24,7 @@ import { reportService } from '@/features/chat/report/reportService';
 import type { CompatibilityResultMeta } from '@/features/chat/server';
 import type { FeedbackVerdict } from '@/features/intelligence';
 import { useConsultationSubjects, type ConsultationSubjectRecord } from '@/features/consultation';
+import { BIRTH_RANGE_NOTICE, isBirthYearOutOfRange } from '@/features/consultation/birthRange';
 import { isSolarTermBoundaryTimeRequired } from '@/features/consultation/birthBoundaryGate';
 import { BoundaryTimeNotice } from '@/features/consultation/components/BoundaryTimeNotice';
 import { createCompatibilityConsultationService } from '@/features/compatibility/services/compatibilityConsultationService';
@@ -255,10 +256,18 @@ export default function CompatibilityChatScreen() {
           // 서버가 동의 없음으로 거절했다 → 안내만 하지 말고 **동의 화면을 연다**.
           setErrorText(mapConsumerError(AI_CONSENT_REQUIRED_CODE).message);
           setConsentSheet(true);
+        } else if (result.errorCode === 'PROFILE_REQUIRED') {
+          // 기본 정보가 없거나 모양이 깨졌다(F-05) — 재시도가 아니라 정보 화면으로 안내한다.
+          setErrorText(mapConsumerError('PROFILE_REQUIRED').message);
+          setNeedsBirthInfoFix(true);
         } else if (result.errorCode === 'GROUNDING_UNAVAILABLE') {
           // 서버가 자기 설명을 실어 보냈으면 그쪽이 더 정확하다 — 어느 입력을 고쳐야 하는지는 서버만 안다
           // (일반 상담의 `mapConsultationError(detail)` 과 같은 우선순위). 없을 때만 고정 문구.
-          setErrorText(result.message ?? mapConsumerError('GROUNDING_UNAVAILABLE').message);
+          // ⚠ 2026-09-21: 생년이 지원 범위 밖이면 까닭이 **시각이 아니다**. 시각을 고쳐도 안 되는 사람에게
+          //   '태어난 시각을 확인해 주시면' 이라고 말하지 않는다.
+          const outOfRange = isBirthYearOutOfRange(self?.birthInfo?.birthYear)
+            || isBirthYearOutOfRange(target?.birthInfo?.birthYear);
+          setErrorText(outOfRange ? BIRTH_RANGE_NOTICE : (result.message ?? mapConsumerError('GROUNDING_UNAVAILABLE').message));
           setNeedsBirthInfoFix(true);
         } else {
           // Shared consumer error copy (§10) — distinct wording per code instead of one generic fallback, and

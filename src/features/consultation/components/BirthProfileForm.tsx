@@ -23,6 +23,13 @@ import type {
   Gender,
   LunarMonthType,
 } from '@/features/consultation/types/consultation';
+import {
+  BIRTH_COUNTRY_LABEL,
+  BIRTH_RANGE_NOTICE,
+  OVERSEAS_BIRTH_NOTICE,
+  isBirthYearOutOfRange,
+  type BirthCountry,
+} from '@/features/consultation/birthRange';
 
 // Reusable SELF birth-profile form (onboarding). Collects the app birth fields, validates with the SHARED
 // pure validators (birthProfileValidation), and hands a complete BirthInfoDraft to `onSubmit`. It owns no
@@ -41,6 +48,10 @@ const CALENDAR_OPTIONS: SelectOption<CalendarType>[] = [
 const LUNAR_MONTH_OPTIONS: SelectOption<LunarMonthType>[] = [
   { value: 'regular', label: '평달' },
   { value: 'leap', label: '윤달' },
+];
+const COUNTRY_OPTIONS: SelectOption<BirthCountry>[] = [
+  { value: 'KR', label: BIRTH_COUNTRY_LABEL.KR },
+  { value: 'OVERSEAS', label: BIRTH_COUNTRY_LABEL.OVERSEAS },
 ];
 const TIME_ACCURACY_OPTIONS: SelectOption<BirthTimeAccuracy>[] = [
   { value: 'exact', label: '정확히 알아요' },
@@ -96,6 +107,7 @@ export function BirthProfileForm({
   const [minute, setMinute] = useState('');
   const [period, setPeriod] = useState<ApproximateTimePeriod | null>(null);
   const [birthPlace, setBirthPlace] = useState('');
+  const [birthCountry, setBirthCountry] = useState<BirthCountry>('KR');
 
   const onCalendar = (v: CalendarType) => {
     setCalendarType(v);
@@ -153,6 +165,7 @@ export function BirthProfileForm({
       birthMinute: timeAccuracy === 'exact' ? minute : '',
       approximateTimePeriod: timeAccuracy === 'approximate' ? period : null,
       birthPlace: birthPlace.trim(),
+      birthCountry,
     });
   };
 
@@ -178,6 +191,12 @@ export function BirthProfileForm({
           <Input label="월" value={month} onChangeText={setMonth} placeholder="5" keyboardType="number-pad" maxLength={2} style={styles.field} />
           <Input label="일" value={day} onChangeText={setDay} placeholder="20" keyboardType="number-pad" maxLength={2} style={styles.field} />
         </Stack>
+        {/* 지원 범위 밖이면 **사실만** 알려 준다. 막지는 않는다(2026-09-21). */}
+        {isBirthYearOutOfRange(year) ? (
+          <Text variant="bodySmall" colorToken="textSecondary">
+            {BIRTH_RANGE_NOTICE}
+          </Text>
+        ) : null}
       </Stack>
 
       <Stack gap="sm">
@@ -204,7 +223,18 @@ export function BirthProfileForm({
         ) : null}
       </Stack>
 
-      <Input label="태어난 곳" value={birthPlace} onChangeText={setBirthPlace} placeholder="예) 서울" helperText="도시 수준으로 입력해도 괜찮아요." required />
+      {/* 태어난 곳 — 계산에는 쓰지 않는다. 어떤 안내를 보여 줄지만 고른다(2026-09-21). */}
+      <Stack gap="sm">
+        <Text variant="headingMedium">태어난 곳</Text>
+        <SelectField options={COUNTRY_OPTIONS} value={birthCountry} onSelect={setBirthCountry} />
+        {birthCountry === 'OVERSEAS' ? (
+          <Text variant="bodySmall" colorToken="textSecondary">
+            {OVERSEAS_BIRTH_NOTICE}
+          </Text>
+        ) : null}
+      </Stack>
+
+      <Input label="도시" value={birthPlace} onChangeText={setBirthPlace} placeholder="예) 서울" required />
 
       <Stack gap="sm">
         <Button label={submitting ? '저장 중...' : submitLabel} onPress={submit} disabled={!valid || submitting} />
