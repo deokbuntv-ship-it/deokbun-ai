@@ -123,7 +123,7 @@ describe('⚠ 절기 경계일 경고 — 폼 전체에서 실제로 뜨는가',
     fillDate(BOUNDARY.y, BOUNDARY.m, BOUNDARY.d);
     fireEvent.click(screen.getByText('몰라요'));
     fireEvent.click(screen.getByText('여성'));
-    fireEvent.change(screen.getByLabelText('태어난 곳'), { target: { value: '서울' } });
+    fireEvent.change(screen.getByLabelText('도시'), { target: { value: '서울' } });
     expect(screen.getByText('이 날짜는 태어난 시각이 꼭 필요해요')).toBeInTheDocument();
     fireEvent.click(screen.getByText('이대로 저장'));
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -149,7 +149,7 @@ describe('두 검증기가 화면에서 어긋나지 않는다', () => {
     fillDate('1994', '5', '20');
     fireEvent.click(screen.getByText('몰라요'));
     fireEvent.click(screen.getByText('여성'));
-    fireEvent.change(screen.getByLabelText(/태어난 곳/), { target: { value: '서울' } });
+    fireEvent.change(screen.getByLabelText(/도시/), { target: { value: '서울' } });
     fireEvent.click(screen.getByText('저장하기'));
     expect(onSubmit).toHaveBeenCalledTimes(1);
     // ⚠ 폼이 통과시킨 값을 다른 검증기가 거부하면 사용자는 저장 뒤에 막힌다.

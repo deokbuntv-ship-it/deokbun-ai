@@ -5,6 +5,12 @@
   "outputDirectory": "dist",
   "framework": null,
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/shared-report/:token", "destination": "/shared-report/[token].html" },
+    { "source": "/report/:id", "destination": "/report/[id].html" },
+    { "source": "/content/:slug", "destination": "/content/[slug].html" },
+    { "source": "/famous/:slug", "destination": "/famous/[slug].html" }
+  ],
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",

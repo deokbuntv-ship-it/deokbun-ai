@@ -22,6 +22,13 @@ jest.mock('@/features/duk/dukWalletService', () => ({
   getCandleAvailability: () => Promise.resolve({ canLight, nextAvailableAtEpoch: null, rewardAmount: 1 }),
   lightCandle: () => lightCandle(),
 }));
+// ⚠ 2026-09-21 (F-02): 충전 입구는 **살 수 있는 기기에서만** 열린다. 렌더 하네스는 웹(jsdom)이라 기본이
+//   false 다. 스위치를 흉내 내어 **양쪽**을 다 본다 — 안드로이드에서는 보이고, 웹 · 아이폰에서는 숨는다.
+let storeAvailable = true;
+jest.mock('@/features/duk/iap/storeAvailability', () => ({
+  __esModule: true,
+  storePurchaseAvailable: () => storeAvailable,
+}));
 jest.mock('@/features/auth', () => ({
   __esModule: true,
   useAuth: () => ({ isAuthenticated: true, authState: { status: 'authenticated', user: { id: 'u1' } } }),
@@ -43,6 +50,7 @@ beforeEach(() => {
   walletLoading = false;
   walletError = null;
   canLight = true;
+  storeAvailable = true;
   routerMock.push.mockClear();
 });
 
@@ -78,11 +86,19 @@ describe('지갑 — 잔액', () => {
     // 디자인 판단이라 고치지 않고 보고만 했다(PROJECT_STATE §7.24).
     await waitFor(() => expect(screen.getAllByText('덕 정보를 불러오지 못했어요').length).toBeGreaterThanOrEqual(1));
     expect(screen.getByText('다시 시도')).toBeInTheDocument();
-    // 화면 자체는 남고 충전 경로도 살아 있다.
+    // 화면 자체는 남고, 살 수 있는 기기에서는 충전 경로도 살아 있다.
     expect(screen.getByText('덕 충전하기')).toBeInTheDocument();
   });
 
-  it('충전하기는 충전 화면으로 간다', async () => {
+  it('⚠ 살 수 없는 기기(웹 · 아이폰)에서는 충전 버튼이 아예 없다 — 문구도 두지 않는다', async () => {
+    storeAvailable = false;
+    await act(async () => { render(<WalletScreen />); });
+    await waitFor(() => expect(document.body.textContent).toMatch(/덕/));
+    expect(screen.queryByText('덕 충전하기')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/준비 중이에요s*$/);
+  });
+
+  it('충전하기는 충전 화면으로 간다 (안드로이드)', async () => {
     await act(async () => { render(<WalletScreen />); });
     await waitFor(() => expect(screen.getByText('덕 충전하기')).toBeInTheDocument());
     fireEvent.click(screen.getByText('덕 충전하기'));

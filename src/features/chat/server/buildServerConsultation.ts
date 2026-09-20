@@ -111,6 +111,13 @@ const MAX_TURN_CHARS = 4000;
  * text: it states what is missing and what would fix it, asserts nothing about the chart (there is none),
  * and offers no coaching in place of the reading that could not run.
  */
+/**
+ * 되묻기에 대한 **대답**으로 볼 수 있는 길이 (2026-09-21).
+ *
+ * 짧은 대답만 이어받는다 — 사용자가 새 질문을 길게 쓰면 그것은 새 질문이다.
+ */
+const ASK_BACK_REPLY_MAX_CHARS = 30;
+
 export const GROUNDING_UNAVAILABLE_MESSAGE =
   '지금 등록된 출생 정보로는 사주·자미두수·기문둔갑 어느 쪽도 실제로 세울 수 없었습니다. '
   + '태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹쳐, 월주를 어느 쪽으로 볼지 확정할 수 없기 때문입니다. '
@@ -587,10 +594,22 @@ export async function buildServerConsultation(
       grounding = { ...grounding, priorAxisContext };
     }
   }
-  // §18 — a "그럼 내년은?" follow-up inherits the prior topic: the bare question classifies as 전반 on its own,
-  // so the NEW decision must persist the CARRIED domain. Only for NEXT_YEAR, only a real prior domain.
+  // ⚠ 2026-09-21 (CTO 8-1) — **되묻기에 대한 대답은 새 질문이 아니다.**
+  //
+  // 지난 답이 되묻기("지금 가장 걸리는 게 무엇인가요?")로 끝났고 사용자가 거기에 짧게 답하면
+  // ("이직이요"), 그 말만 보면 어느 주제인지 알 수 없어 **전반**으로 떨어지고 답이 처음부터 다시
+  // 시작됐다 — 사용자는 대화가 끊긴 것으로 읽는다. 이 경우 앞 판단의 주제를 **그대로 이어받는다**.
+  // NEXT_YEAR 후속이 이미 쓰던 장치(carriedDomain)를 같은 모양으로 넓힌 것이다.
+  const lastAssistantText = [...(request.conversationContext ?? [])]
+    .reverse()
+    .find((m) => m?.role === 'assistant')?.content ?? null;
+  const answersPreviousAskBack =
+    previousAskBackIn(lastAssistantText) !== null
+    && question.length <= ASK_BACK_REPLY_MAX_CHARS
+    && classifyConsultationDomain(question) === '전반';
   const carriedDomain: ConsultationDomain | null =
-    followUpIntent === 'NEXT_YEAR' && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== '전반'
+    (followUpIntent === 'NEXT_YEAR' || answersPreviousAskBack)
+      && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== '전반'
       ? previousDecision.decisionMeta.domain
       : null;
   // §10/§14 — DOMAIN-first routing (presentation only, no new scoring): answer the question's life-domain

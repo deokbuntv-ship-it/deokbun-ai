@@ -628,6 +628,19 @@ export default function ChatScreen() {
       return;
     }
 
+    // ⚠ 2026-09-21 (CTO 7-7): **한 겹 더.** 새 상담을 여는 첫 질문인데 잔액이 확실히 모자라면 서버를
+    //   부르지 않고 여기서 멈춘다. 서버 시크릿(차감 스위치)에만 기대지 않기 위한 두 번째 그물이다.
+    //   ⓐ 이미 진행 중인 세션(후속 질문)은 추가 청구가 없으므로 막지 않는다.
+    //   ⓑ 잔액을 **모를 때는 막지 않는다** — 모름을 0으로 읽으면 멀쩡한 사용자를 가로막는다.
+    //      최종 판정은 언제나 서버(`reserve_session_duk`)다.
+    if (!session?.active && isBalanceShort(wallet.state, DUK_PRICES.general)) {
+      const balance = wallet.state?.totalSpendable ?? 0;
+      const required = DUK_PRICES.general;
+      setInsufficientSnap({ balance, required, shortfall: Math.max(0, required - balance) });
+      setSendError(mapConsultationError('INSUFFICIENT_DUK'));
+      return;
+    }
+
     isSendingRef.current = true; // lock synchronously, before any state update/await
     const previousMessages = messages;
 

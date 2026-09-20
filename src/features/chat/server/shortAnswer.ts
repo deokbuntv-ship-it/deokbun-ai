@@ -124,14 +124,23 @@ export function buildShortAnswerSource(input: {
   // 성향 → 이번 시기(결론) → [설명] → 어떻게 → 되묻기. 앞 문장이 이미 한 말은 뺀다.
   // 조심·확인을 요구하는 문장은 **하나만** 둔다(§2-1 편안함) — 판단 보류 결론의 둘째 문장과 행동 경계가
   // 둘 다 "확인하세요" 인 경우가 잦다(말뭉치 5건). 앞에 온 것을 남긴다.
+  // ⚠ 2026-09-21 (CTO 8-3): **명령문은 한 답에 둘까지.** 말뭉치에서 한 답에 "~하세요" 가 셋 나오는 경우가
+  //   있었다 — 상담이 아니라 지시서로 읽힌다. 뒤에 오는 셋째 명령문부터 뺀다(앞에 온 것을 남긴다).
+  const MAX_IMPERATIVES = 2;
   const assemble = (middle: readonly string[]): string[] => {
     const body: string[] = [];
     let cautioned = false;
+    let imperatives = 0;
     for (const s of [...conclusion, ...middle, ...action]) {
       if (repeats(s, body)) continue;
       if (isCautionRequest(s)) {
         if (cautioned) continue;
         cautioned = true;
+      }
+      if (!isRewritable(s)) {
+        // 다듬지 않는 문장 = 행동 지시(명령문). 셋째부터는 넣지 않는다.
+        if (imperatives >= MAX_IMPERATIVES) continue;
+        imperatives += 1;
       }
       body.push(s);
     }

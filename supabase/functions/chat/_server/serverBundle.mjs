@@ -13157,7 +13157,10 @@ var SUBJECT_FAMILIES = [
   // ── CAREER: the role, the workplace, and moving within it. ────────────────────────────────────────
   {
     domain: "직업",
-    pattern: /직업|직장|회사|취업|커리어|일자리|진로|승진|진급|발령|부서|보직|팀장|과장|차장|부장|임원|상사|동료|연봉|복직|복귀|정규직|계약직|근무|출근|야근|면접|입사|적성|하고\s*싶던\s*(?:일|분야)|이\s*일을\s*계속|일을\s*해야/
+    // ⚠ 2026-09-21 (CTO 8-2): "이번 달 일 운" 같은 말이 **직업이 아니라 전반**으로 떨어지고 있었다.
+    //   `(?<![내요매])일\s*운(?:이|은|을|도|만|세)` — 날짜 낱말에 섞인 "일 운"(내일 운세 · 매일 운동 ·
+    //   일요일 운세)은 앞 글자로 걸러 낸다. 뒤의 조사를 요구해 "일 운동" 같은 것도 걸리지 않는다.
+    pattern: /직업|직장|회사|취업|커리어|일자리|진로|승진|진급|발령|부서|보직|팀장|과장|차장|부장|임원|상사|동료|연봉|복직|복귀|정규직|계약직|근무|출근|야근|면접|입사|적성|하고\s*싶던\s*(?:일|분야)|이\s*일을\s*계속|일을\s*해야|(?<![내요매])일\s*운(?:이|은|을|도|만|세)/
   },
   // ── EXAM: a pass/fail outcome that is its own event. ──────────────────────────────────────────────
   { domain: "시험", pattern: /시험|합격|불합격|수능|자격증|취득|고시|공시|채용\s*시험/ },
@@ -13188,7 +13191,10 @@ var RESIDUAL_FAMILIES = [
     //   "지금이 …할 때인지" / "…할 때인가" — the whole proposition is whether NOW is the moment.
     //   "요즘 같은 때" / "지금 같은 시기" — the current stretch of time as the thing being asked about.
     //   "앞으로 N년/개월" — a forward window as the scope of the question.
-    pattern: /어떤\s*(?:시기|구간|흐름|해)|무슨\s*(?:시기|운)|시기(?:를|가|는|적으로)|시점|타이밍|운의\s*흐름|올해\s*(?:는|저한테|나한테|어떤|운)|지금이\s*(?:어떤|무슨|원래)|얼마나\s*(?:이어|더|갈)|언제쯤|언제가|몇\s*년\s*(?:안에|뒤|후)|상반기|하반기|어느\s*쪽\s*감|때인[지가]|(?:요즘|지금)\s*같은\s*(?:때|시기)|앞으로\s*(?:\d+|[일이삼사오육칠팔구십]|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|몇)\s*(?:년|해|개월|달)/
+    // ⚠ 2026-09-21 (CTO 8-2): "올해 어떻게 흘러갈까요" 가 아무 데도 걸리지 않아 전반으로 떨어졌다.
+    //   기간을 묻는 말인데 기간 가족이 그 모양을 갖고 있지 않았다. 주제 가족이 먼저 걸러지므로
+    //   ("이 관계가 어떻게 흘러갈까요" → 연애) 여기에 넣어도 주제 질문을 빼앗지 않는다.
+    pattern: /어떤\s*(?:시기|구간|흐름|해)|무슨\s*(?:시기|운)|시기(?:를|가|는|적으로)|시점|타이밍|운의\s*흐름|올해\s*(?:는|저한테|나한테|어떤|운|어떻게)|지금이\s*(?:어떤|무슨|원래)|얼마나\s*(?:이어|더|갈)|언제쯤|언제가|몇\s*년\s*(?:안에|뒤|후)|상반기|하반기|어느\s*쪽\s*감|때인[지가]|(?:요즘|지금)\s*같은\s*(?:때|시기)|어떻게\s*(?:흘러|흐를|풀릴|풀려)|앞으로\s*(?:\d+|[일이삼사오육칠팔구십]|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|몇)\s*(?:년|해|개월|달)/
   },
   // ── CHANGE: a transition of direction or circumstances that is none of the subjects above. ────────
   {
@@ -14632,14 +14638,20 @@ function buildShortAnswerSource(input) {
     previous: input.previousAskBack ?? null,
     seed: input.seed
   });
+  const MAX_IMPERATIVES = 2;
   const assemble = (middle2) => {
     const body = [];
     let cautioned = false;
+    let imperatives = 0;
     for (const s of [...conclusion, ...middle2, ...action]) {
       if (repeats(s, body)) continue;
       if (isCautionRequest(s)) {
         if (cautioned) continue;
         cautioned = true;
+      }
+      if (!isRewritable(s)) {
+        if (imperatives >= MAX_IMPERATIVES) continue;
+        imperatives += 1;
       }
       body.push(s);
     }
@@ -17317,8 +17329,8 @@ function tidyPunctuation(text) {
 var sentenceKey = (s) => s.replace(/\s+/g, "");
 function joinDistinctSentences(parts, seen = /* @__PURE__ */ new Set()) {
   const kept = [];
-  for (const part of parts) {
-    for (const sentence of part.split(/(?<=[.!?…])\s+/)) {
+  for (const part2 of parts) {
+    for (const sentence of part2.split(/(?<=[.!?…])\s+/)) {
       const s = sentence.trim();
       if (s.length === 0) continue;
       const key2 = sentenceKey(s);
@@ -19064,6 +19076,7 @@ function classifyContinuationIntent(question, hasPriorDecision) {
 // src/features/chat/server/buildServerConsultation.ts
 var MAX_CONTEXT_TURNS = 12;
 var MAX_TURN_CHARS = 4e3;
+var ASK_BACK_REPLY_MAX_CHARS = 30;
 var GROUNDING_UNAVAILABLE_MESSAGE = "지금 등록된 출생 정보로는 사주·자미두수·기문둔갑 어느 쪽도 실제로 세울 수 없었습니다. 태어난 시각이 비어 있고 생일이 절기가 바뀌는 날과 겹쳐, 월주를 어느 쪽으로 볼지 확정할 수 없기 때문입니다. 없는 근거로 풀이를 지어내지는 않겠습니다. 태어난 시각(또는 대략적인 시간대)을 입력해 주시면 바로 다시 봐 드리겠습니다.";
 var AMBIGUOUS_BOUNDARY_DATE_MESSAGE = "등록하신 생일이 사주의 달이 바뀌는 절기 경계일이라, 태어난 시각을 모르면 월주가 두 가지로 갈립니다. 어느 쪽인지 확정할 수 없어 없는 근거로 풀이를 지어내지 않습니다. 이 날짜는 대략적인 시간대로는 갈리는 부분이 정해지지 않아, 정확한 태어난 시각이 있어야 풀이를 드릴 수 있습니다.";
 function applyConsumerDeliveryContract(result, authoritative) {
@@ -19306,7 +19319,9 @@ async function buildServerConsultation(request, deps) {
       grounding = { ...grounding, priorAxisContext };
     }
   }
-  const carriedDomain = followUpIntent === "NEXT_YEAR" && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== "전반" ? previousDecision.decisionMeta.domain : null;
+  const lastAssistantText = [...request.conversationContext ?? []].reverse().find((m) => m?.role === "assistant")?.content ?? null;
+  const answersPreviousAskBack = previousAskBackIn(lastAssistantText) !== null && question.length <= ASK_BACK_REPLY_MAX_CHARS && classifyConsultationDomain(question) === "전반";
+  const carriedDomain = (followUpIntent === "NEXT_YEAR" || answersPreviousAskBack) && previousDecision?.decisionMeta?.domain && previousDecision.decisionMeta.domain !== "전반" ? previousDecision.decisionMeta.domain : null;
   const questionDomain = carriedDomain ?? classifyConsultationDomain(question);
   const hasAuthoritativeFollowUp = followUpDirective !== null && (followUpIntent === "WHY" || followUpIntent === "BETWEEN_CANDIDATES");
   const recentMessages = hasAuthoritativeFollowUp ? [] : sanitizeConversation(request.conversationContext);
@@ -20677,6 +20692,31 @@ var TODAY_DOMAIN_LABEL = {
 var TODAY_POLICY_VERSION = "today@1.1.0";
 var TODAY_CANONICAL_VERSION = "today-canonical@1.3.0";
 
+// src/features/fortune/birthFingerprint.ts
+function part(value) {
+  const s = String(value ?? "").trim().toLowerCase();
+  const cleaned = s.replace(/[^a-z0-9-]/g, "");
+  return cleaned.length > 0 ? cleaned : "_";
+}
+function birthFingerprint(birth) {
+  const b = birth ?? null;
+  return [
+    part(b?.birthYear),
+    part(b?.birthMonth),
+    part(b?.birthDay),
+    part(b?.calendarType),
+    part(b?.lunarMonthType),
+    part(b?.birthTimeAccuracy),
+    part(b?.birthHour),
+    part(b?.birthMinute),
+    part(b?.approximateTimePeriod),
+    part(b?.gender)
+  ].join("-");
+}
+function canonicalFortuneVersion(baseVersion, birth) {
+  return `${baseVersion}#${birthFingerprint(birth)}`;
+}
+
 // src/features/today/engine/fortuneDate.ts
 var KST_OFFSET_SECONDS4 = 32400;
 var FORTUNE_TIMEZONE2 = "Asia/Seoul";
@@ -21769,6 +21809,7 @@ export {
   SHORT_ANSWER_VERSION,
   TODAY_CANONICAL_VERSION,
   applyVerdictAuthorityClamp,
+  birthFingerprint,
   buildCompatibilityConsultation,
   buildConsultationDecisionMeta,
   buildMonthlyFortune,
@@ -21777,6 +21818,7 @@ export {
   buildServerConsultation,
   buildServerSummary,
   buildTodayFortune,
+  canonicalFortuneVersion,
   classifyQuestionComplexity,
   consultationResponseFormat,
   consultationWorkload,

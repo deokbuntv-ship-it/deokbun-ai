@@ -103,12 +103,15 @@ describe('시작 전 게이트', () => {
 });
 
 describe('⚠ 잔액을 모르는 것과 부족한 것은 다르다', () => {
-  it('잔액 부족이면 충전 경로가 뜬다', async () => {
+  // ⚠ 2026-09-21 (F-02): 충전 **버튼**은 살 수 있는 기기(안드로이드 앱)에서만 뜬다. 이 테스트는 웹(jsdom)
+  //   이므로 충전 버튼이 없는 것이 맞고, 대신 **부족하다는 사실과 덕을 모으는 길(촛불)** 이 보여야 한다.
+  it('잔액 부족이면 부족하다고 말하고 모으는 길을 준다 (웹에서는 충전 버튼 없음)', async () => {
     walletState = { totalSpendable: 1 };
     render(<ConsultationListScreen />);
     await waitFor(() => expect(screen.getByText(/새 상담 시작/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/새 상담 시작/));
-    await waitFor(() => expect(document.body.textContent).toMatch(/덕이 부족|충전/));
+    await waitFor(() => expect(document.body.textContent).toMatch(/덕이 부족|더 필요한 덕|초 확인/));
+    expect(screen.queryByText('덕 충전하기')).toBeNull();
   });
 
   it('지갑이 아직 안 실렸을 때 "부족"으로 읽히지 않는다', async () => {

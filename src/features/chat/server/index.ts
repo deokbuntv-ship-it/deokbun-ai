@@ -81,6 +81,8 @@ export type {
 } from './economicGuards';
 export { TODAY_CANONICAL_VERSION } from '@/features/today/types';
 export { MONTHLY_CANONICAL_VERSION } from '@/features/monthly/types';
+// 저장 열쇠에 출생정보 지문을 붙인다 (GAP-04) — 앱과 Edge 가 **같은 함수**를 써야 캐시가 맞는다.
+export { birthFingerprint, canonicalFortuneVersion } from '@/features/fortune/birthFingerprint';
 export { fortuneDateStringFromEpoch } from '@/features/today/engine/fortuneDate';
 export { currentTargetMonth, monthKey } from '@/features/monthly/engine/monthDate';
 export type { InputBoundsVerdict } from './inputBounds';

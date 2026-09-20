@@ -23,10 +23,13 @@ import {
   trackTodayEvent,
   type DailyFortuneRecord,
 } from '@/features/today';
+import { AiConsentSheet } from '@/features/legal/components/AiConsentSheet';
+import { aiConsentService } from '@/features/legal/services/aiConsentService';
 import { colors } from '@/theme';
+import { BIRTH_RANGE_NOTICE, isBirthYearOutOfRange } from '@/features/consultation/birthRange';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-type Status = 'loading' | 'ready' | 'unavailable' | 'error' | 'no-self' | 'auth';
+type Status = 'loading' | 'ready' | 'unavailable' | 'error' | 'no-self' | 'auth' | 'consent';
 
 // Tone/status colours now live in the shared FortuneReading (DESIGN_FREEZE tokens, no hardcoded hex).
 
@@ -46,6 +49,7 @@ export default function TodayScreen() {
   const self = subjects.find((s) => s.isSelf) ?? null;
 
   const [status, setStatus] = useState<Status>('loading');
+  const [consentSheet, setConsentSheet] = useState(false);
   const [record, setRecord] = useState<DailyFortuneRecord | null>(null);
   const loadToken = useRef(0);
 
@@ -78,6 +82,10 @@ export default function TodayScreen() {
         cache_status: outcome.cacheHit ? 'hit' : 'miss',
         overall_tier: outcome.record.overallTone,
       });
+    } else if (outcome.status === 'consent') {
+      // 7-4(2026-09-21): AI 처리 동의가 없어 막혔다 — 일반 오류가 아니라 **동의 시트**를 연다.
+      setStatus('consent');
+      setConsentSheet(true);
     } else if (outcome.status === 'auth') {
       setStatus('auth');
     } else if (outcome.status === 'unavailable') {
@@ -178,7 +186,11 @@ export default function TodayScreen() {
               <Stack gap="md">
                 <Text variant="headingMedium">오늘의 운세를 준비하지 못했어요.</Text>
                 <Text variant="bodyMedium" colorToken="textSecondary">
-                  출생정보를 확인해 주세요. 시간을 알 수 없는 경우 일부 해석이 제한될 수 있어요.
+                  {/* ⚠ 2026-09-21: 생년이 지원 범위 밖이면 **까닭이 시각이 아니다.** 예전 문구는
+                      "시간을 알 수 없는 경우…" 라고 해서 시각을 고쳐도 안 되는 사람에게 틀린 말을 했다. */}
+                  {isBirthYearOutOfRange(self?.birthInfo?.birthYear)
+                    ? BIRTH_RANGE_NOTICE
+                    : '출생정보를 확인해 주세요. 시간을 알 수 없는 경우 일부 해석이 제한될 수 있어요.'}
                 </Text>
                 <Button label="MY로 이동" variant="secondary" onPress={() => router.replace('/my')} />
               </Stack>
@@ -196,6 +208,16 @@ export default function TodayScreen() {
         </View>
       </ScrollView>
       <DetailBottomNav />
+      {/* 7-4(2026-09-21): 동의가 없어 막혔을 때만 뜬다. 동의하면 바로 다시 불러온다 — 사용자가 화면을 다시 열 필요가 없다. */}
+      <AiConsentSheet
+        visible={consentSheet}
+        onClose={() => setConsentSheet(false)}
+        onAgree={async () => {
+          const granted = await aiConsentService.grant();
+          if (granted) { setConsentSheet(false); void load(); }
+          return granted;
+        }}
+      />
     </Screen>
   );
 }

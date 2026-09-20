@@ -75,4 +75,11 @@ step('3/3 expo export', 'npx', ['expo', 'export', '-p', 'web', '--output-dir', '
   }
 }
 
+// 5. 사이트맵 ↔ 결과물 대조 (2026-09-21). 사이트맵에 넣은 주소가 실제 파일로 있는지 본다.
+//
+// ⚠ 여기서만 **빌드를 실패시킨다.** 앞 단계들은 fail-open 이지만(DB 가 잠깐 안 되는 것으로 릴리스를 막지
+//   않는다), "구글에 알려 놓고 실제로는 404" 는 조용히 넘어가면 안 되는 종류의 잘못이다.
+//   근거: 2026-09-18 실측 — `/content/jo-seyoung2026` 이 사이트맵에 있는 채로 404 였다.
+step('5/5 사이트맵 주소 대조', 'node', ['scripts/verify-sitemap-routes.mjs']);
+
 console.log('\n[build-web] done → dist/');

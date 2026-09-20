@@ -99,28 +99,26 @@ function readConfig() {
   };
 }
 
-// GoTrue admin has no getUserByEmail; listUsers is paginated. Bounded scan (V1
-// user counts). Returns the matching user or null.
+/**
+ * 이메일로 계정을 찾는다.
+ *
+ * ⚠ 2026-09-21 (F-03): 예전에는 GoTrue 의 `listUsers` 를 200명씩 **30쪽(6,000명)** 까지만 훑었다.
+ *   가입자가 그 수를 넘고 찾는 계정이 뒤쪽에 있으면 "없음" 으로 보고 같은 이메일로 새 계정을 만들려다
+ *   인증 서버가 거절해 **500** 이 났다 — 네이버로 가입했던 사람이 다시 로그인하지 못했다.
+ *   이제 서비스 롤 전용 함수가 `auth.users` 전체를 한 번에 본다(쪽 수 제한 없음).
+ */
 async function findUserByEmail(
   admin: ReturnType<typeof createClient>,
   email: string,
 ): Promise<{ id: string; appMetadataNaverId: string | null } | null> {
-  const target = email.toLowerCase();
-  for (let page = 1; page <= 30; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-    if (error) throw error;
-    const users = data?.users ?? [];
-    const match = users.find((u) => (u.email ?? '').toLowerCase() === target);
-    if (match) {
-      const meta = (match.app_metadata ?? {}) as { naver_id?: unknown };
-      return {
-        id: match.id,
-        appMetadataNaverId: typeof meta.naver_id === 'string' ? meta.naver_id : null,
-      };
-    }
-    if (users.length < 200) break; // last page reached
-  }
-  return null;
+  const { data, error } = await admin.rpc('find_auth_user_by_email', { p_email: email });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as { user_id?: unknown; naver_id?: unknown } | null | undefined;
+  if (!row || typeof row.user_id !== 'string') return null;
+  return {
+    id: row.user_id,
+    appMetadataNaverId: typeof row.naver_id === 'string' && row.naver_id.length > 0 ? row.naver_id : null,
+  };
 }
 
 async function handle(req: Request): Promise<Response> {

@@ -14,10 +14,17 @@ import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/features/auth';
 import { PremiumReportView } from '@/features/chat/report/PremiumReportView';
 import type { PremiumReportView as PremiumReportVM } from '@/features/chat/report/reportPresentation';
+import { formatReportDate } from '@/features/chat/report/reportPresentation';
+import type { ConsultationReport } from '@/features/chat/report/reportService';
+import { reportService } from '@/features/chat/report/reportService';
 import { DUK_PRICES, dukLabel } from '@/features/duk/pricing';
 import { toPremiumProductView } from '@/features/premium/presentation/premiumReportProjection';
 import { premiumReportService } from '@/features/premium/services/premiumReportService';
 import type { PremiumReportPayload } from '@/features/premium/types';
+import { useConsultationSubjects } from '@/features/consultation';
+import { AiConsentSheet } from '@/features/legal/components/AiConsentSheet';
+import { aiConsentService } from '@/features/legal/services/aiConsentService';
+import { BIRTH_RANGE_NOTICE, isBirthYearOutOfRange } from '@/features/consultation/birthRange';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { colors, spacing } from '@/theme';
 
@@ -28,7 +35,7 @@ import { colors, spacing } from '@/theme';
 // so the wait shows WHAT is being built, stage by stage, with the elapsed seconds. The stages advance on a
 // TIMER, not on server progress — the Edge reports none — so the copy says "약" and there is no percentage
 // anywhere. A fake progress bar would be a lie told to a reader who just spent 50덕.
-type Phase = 'confirm' | 'working' | 'ready' | 'grounding' | 'insufficient' | 'busy' | 'error';
+type Phase = 'confirm' | 'working' | 'ready' | 'grounding' | 'insufficient' | 'busy' | 'profile' | 'consent' | 'error';
 
 // Ordered by the real server sequence (원국 → 대운/세운 → 12개월 → 리포트 작성). The thresholds are the
 // measured shape of that work, not a promise: the last stage holds until the answer arrives.
@@ -44,15 +51,24 @@ const GIVE_UP_SECONDS = 100;
 export default function PremiumReportScreen() {
   const router = useRouter();
   const { authState } = useAuth();
+  // 지원 범위 밖 생년을 알아보려면 본인 명식이 필요하다 (2026-09-21).
+  const { subjects } = useConsultationSubjects();
+  const self = subjects.find((s) => s.isSelf) ?? null;
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? colors.dark : colors.light;
 
   const [phase, setPhase] = useState<Phase>('confirm');
+  const [consentSheet, setConsentSheet] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [view, setView] = useState<PremiumReportVM | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [shortfall, setShortfall] = useState<number>(0);
+  // 🆕 2026-09-21 (CTO ②): **다시 보기는 무료, 다시 만들기만 50덕**이다. 이 화면에 버튼이 하나뿐이라,
+  //   이미 리포트가 있는 사람이 "다시 보려고" 눌렀다가 50덕을 또 쓰는 일이 생긴다. 저장된 리포트가
+  //   있으면 무료로 여는 길을 **먼저** 보여 주고, 유료는 값이 적힌 두 번째 버튼으로 내린다.
+  //   `undefined` = 아직 확인 중 — 그동안 유료 버튼은 눌리지 않는다(실수 과금을 막는 쪽이 기본값이다).
+  const [lastReport, setLastReport] = useState<ConsultationReport | null | undefined>(undefined);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopTimer = () => {
@@ -60,6 +76,23 @@ export default function PremiumReportScreen() {
     timer.current = null;
   };
   useEffect(() => stopTimer, []);
+
+  // 우편함에 이미 있는 프리미엄 리포트 중 가장 최근 것. 읽기 한 번이고, 실패하면 옛 화면 그대로 간다
+  // (못 읽었다고 유료 버튼을 막아 버리면 살 수 있는 사람이 못 사게 된다).
+  const authed = authState.status === 'authenticated';
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const rows = await reportService.listReportsByType('premium');
+        if (alive) setLastReport(rows[0] ?? null);
+      } catch {
+        if (alive) setLastReport(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [authed]);
 
   const run = useCallback(async () => {
     setPhase('working');
@@ -90,6 +123,10 @@ export default function PremiumReportScreen() {
       setPhase('insufficient');
       return;
     }
+    // 기본 정보가 없거나 모양이 깨졌다(F-05) — 로그인 문제가 아니므로 정보 화면으로 보낸다.
+    // 7-4(2026-09-21): 동의가 없어 막힌 것은 로그인 문제가 아니다 — 동의 시트를 연다.
+    if (outcome.status === 'consent') { setPhase('consent'); setConsentSheet(true); return; }
+    if (outcome.status === 'profile_required') { setPhase('profile'); return; }
     if (outcome.status === 'busy') { setPhase('busy'); return; }
     setPhase('error');
   }, []);
@@ -117,10 +154,30 @@ export default function PremiumReportScreen() {
                   원국 전반, 지금 지나는 흐름, 그리고 다가오는 열두 달을 한 달씩 짚어 한 편의 글로 정리해
                   드려요. 만드는 데 40초쯤 걸리고, 다 되면 우편함에 저장됩니다.
                 </Text>
+                {lastReport ? (
+                  <Stack gap="sm">
+                    <Text variant="bodyMedium">
+                      {`${formatReportDate(lastReport.createdAt)}에 만든 리포트가 우편함에 있어요. 다시 보는 건 무료예요.`}
+                    </Text>
+                    <Button
+                      label="저장된 리포트 보기"
+                      radius="lg"
+                      onPress={() => router.push({ pathname: '/report/[id]', params: { id: lastReport.id } })}
+                    />
+                  </Stack>
+                ) : null}
                 <Text variant="bodySmall" colorToken="textSecondary">
-                  {`${dukLabel(DUK_PRICES.premium_report)} · 근거를 세울 수 없으면 덕은 차감되지 않아요`}
+                  {lastReport
+                    ? `새로 만들면 ${dukLabel(DUK_PRICES.premium_report)}이 또 빠져요 · 근거를 세울 수 없으면 덕은 차감되지 않아요`
+                    : `${dukLabel(DUK_PRICES.premium_report)} · 근거를 세울 수 없으면 덕은 차감되지 않아요`}
                 </Text>
-                <Button label={`${dukLabel(DUK_PRICES.premium_report)}으로 리포트 받기`} radius="lg" onPress={() => void run()} />
+                <Button
+                  label={lastReport ? `새로 만들기 · ${dukLabel(DUK_PRICES.premium_report)}` : `${dukLabel(DUK_PRICES.premium_report)}으로 리포트 받기`}
+                  radius="lg"
+                  variant={lastReport ? 'secondary' : 'brand'}
+                  loading={lastReport === undefined}
+                  onPress={() => void run()}
+                />
               </Stack>
             </Card>
           ) : phase === 'working' ? (
@@ -191,13 +248,28 @@ export default function PremiumReportScreen() {
               <Stack gap="md">
                 <Text variant="headingMedium">이 출생정보로는 리포트를 만들 수 없어요</Text>
                 <Text variant="bodyMedium" colorToken="textSecondary">
-                  {notice
-                    ?? '등록하신 출생 정보로는 사주 원국을 세울 수 없었어요. 태어난 시각을 확인해 주세요.'}
+                  {/* ⚠ 2026-09-21: 생년이 지원 범위 밖이면 까닭이 시각이 아니다 — 사실 문구로 바꾼다. */}
+                  {isBirthYearOutOfRange(self?.birthInfo?.birthYear)
+                    ? BIRTH_RANGE_NOTICE
+                    : (notice ?? '등록하신 출생 정보로는 사주 원국을 세울 수 없었어요. 태어난 시각을 확인해 주세요.')}
                 </Text>
                 <Text variant="bodySmall" colorToken="textSecondary">
                   {`${dukLabel(DUK_PRICES.premium_report)}은 차감되지 않았어요.`}
                 </Text>
                 <Button label="출생정보 수정하기" radius="lg" onPress={() => router.push('/subjects')} />
+              </Stack>
+            </Card>
+          ) : phase === 'profile' ? (
+            <Card radius="xl">
+              <Stack gap="md">
+                <Text variant="headingMedium">기본 정보가 필요해요</Text>
+                <Text variant="bodyMedium" colorToken="textSecondary">
+                  MY에서 태어난 날짜 · 시각 · 태어난 곳을 확인해 주시면 이어서 만들어 드릴게요.
+                </Text>
+                <Text variant="bodySmall" colorToken="textSecondary">
+                  {`${dukLabel(DUK_PRICES.premium_report)}은 차감되지 않았어요.`}
+                </Text>
+                <Button label="출생정보 확인하기" radius="lg" onPress={() => router.push('/subjects')} />
               </Stack>
             </Card>
           ) : phase === 'insufficient' ? (
@@ -228,6 +300,16 @@ export default function PremiumReportScreen() {
         </View>
       </ScrollView>
       <DetailBottomNav />
+      {/* 7-4(2026-09-21): 동의가 없어 막혔을 때 동의 시트를 열고, 동의하면 그대로 이어서 만든다. */}
+      <AiConsentSheet
+        visible={consentSheet}
+        onClose={() => setConsentSheet(false)}
+        onAgree={async () => {
+          const granted = await aiConsentService.grant();
+          if (granted) { setConsentSheet(false); void run(); }
+          return granted;
+        }}
+      />
     </Screen>
   );
 }

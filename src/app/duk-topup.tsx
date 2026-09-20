@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import { Stack } from '@/components/Stack';
 import { StateView } from '@/components/StateView';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth';
+import { storePurchaseAvailable } from '@/features/duk/iap/storeAvailability';
 import { walletStateOf } from '@/features/duk/consumerDukView';
 import { purchaseService } from '@/features/duk/iap/purchaseService';
 import { PURCHASE_UI_TEXT, canRetry, shouldRefreshWallet, storeProductIdFor } from '@/features/duk/iap/purchaseUiText';
@@ -39,6 +40,10 @@ export default function DukTopupScreen() {
   const { hPad, maxWidth } = useConsumerLayout();
   const { isAuthenticated } = useAuth();
   const wallet = useWallet();
+
+  // F-02(2026-09-21): 살 수 없는 기기에서는 이 화면 자체를 열지 않는다(주소로 직접 들어와도 지갑으로).
+  //   문구는 두지 않는다 — '준비 중' 은 애플 심사에 불리하다.
+  const canBuy = storePurchaseAvailable();
 
 
   const walletState = walletStateOf({
@@ -75,6 +80,9 @@ export default function DukTopupScreen() {
     setNotice({ status: r.status, text: PURCHASE_UI_TEXT[r.status] });
     if (shouldRefreshWallet(r.status)) void refreshWallet().catch(() => {});
   }, [busyKey]);
+
+  // 살 수 없는 기기(아이폰 · 웹)에서는 이 화면을 그리지 않고 지갑으로 돌려보낸다 (F-02).
+  if (!canBuy) return <Redirect href="/wallet" />;
 
   return (
     <Screen padded={false}>
