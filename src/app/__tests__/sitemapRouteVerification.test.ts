@@ -96,13 +96,22 @@ describe('동적 주소는 호스팅 설정으로 받는다', () => {
     rewrites?: { source: string; destination: string }[];
   };
 
+  // ⚠ 2026-09-21 production 실측: 목적지에 **`.html` 을 붙이면 404 가 난다.**
+  //   `cleanUrls: true` 라 `shared-report/[token].html` 은 **주소가 아니라 리다이렉트**가 된다
+  //   (`/shared-report/%5Btoken%5D.html` 요청 → 308 → `/shared-report/%5Btoken%5D` 200 을 실제로 확인).
+  //   rewrite 는 리다이렉트를 따라가지 않으므로 목적지를 찾지 못하고 404 로 떨어졌다.
+  //   그래서 목적지는 **확장자 없는 깨끗한 주소**여야 한다. 실제 파일(`[token].html`)은 그대로 있다.
   it.each([
-    ['/shared-report/:token', '/shared-report/[token].html'],
-    ['/report/:id', '/report/[id].html'],
-    ['/content/:slug', '/content/[slug].html'],
-    ['/famous/:slug', '/famous/[slug].html'],
+    ['/shared-report/:token', '/shared-report/[token]'],
+    ['/report/:id', '/report/[id]'],
+    ['/content/:slug', '/content/[slug]'],
+    ['/famous/:slug', '/famous/[slug]'],
   ])('%s → %s', (source, destination) => {
     expect(vercel.rewrites).toEqual(expect.arrayContaining([{ source, destination }]));
+  });
+
+  it('목적지에 `.html` 이 없다 — cleanUrls 와 함께 쓰면 404 가 된다', () => {
+    for (const r of vercel.rewrites ?? []) expect(r.destination.endsWith('.html')).toBe(false);
   });
 
   it('공개로 열려야 하는 주소는 앱 게이트 목록에도 있다 (PUBLIC_PREFIXES 와 대조)', () => {

@@ -6,10 +6,10 @@
   "framework": null,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/shared-report/:token", "destination": "/shared-report/[token].html" },
-    { "source": "/report/:id", "destination": "/report/[id].html" },
-    { "source": "/content/:slug", "destination": "/content/[slug].html" },
-    { "source": "/famous/:slug", "destination": "/famous/[slug].html" }
+    { "source": "/shared-report/:token", "destination": "/shared-report/[token]" },
+    { "source": "/report/:id", "destination": "/report/[id]" },
+    { "source": "/content/:slug", "destination": "/content/[slug]" },
+    { "source": "/famous/:slug", "destination": "/famous/[slug]" }
   ],
   "headers": [
     {
